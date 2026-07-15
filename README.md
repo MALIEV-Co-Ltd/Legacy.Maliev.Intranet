@@ -12,7 +12,7 @@ Migration rules:
 - expose useful downstream failure UX and correlation IDs;
 - deploy only to the existing GKE cluster in `maliev-legacy`, after the complete migration and staging gates pass.
 
-The customer and employee domains are completed typed workflow slices:
+The customer, employee, and material domains are completed typed workflow slices:
 
 - `/Customers/Index` preserves search, sorting, bounded pagination, and profile links;
 - `/Customers/View` reads the profile projection from CustomerService;
@@ -20,7 +20,10 @@ The customer and employee domains are completed typed workflow slices:
 - `/Employees/Index` preserves employee search, sorting, bounded pagination, and profile links;
 - `/Employees/View` reads profile, role, and address projections from EmployeeService;
 - `/Employees/Create` creates the profile in EmployeeService and the identity directly in AuthService, sends the password only in JSON, and compensates by deleting the profile if identity creation fails.
+- `/Materials/Index` preserves material search, sorting, and bounded pagination through CatalogService;
+- `/Materials/Create` preserves the complete material property payload and Catalog reference lookups;
+- `/Materials/View` edits the complete material and differentially synchronizes color and surface-finish associations.
 
-The remaining 36 route workflows render an explicit migration state until their domain
+The remaining 33 route workflows render an explicit migration state until their domain
 workflow is fully wired and tested. This repository must not be deployed before all
 of those route gates are complete.

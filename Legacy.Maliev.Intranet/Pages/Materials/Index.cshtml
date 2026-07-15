@@ -1,0 +1,30 @@
+@page
+@model Legacy.Maliev.Intranet.Pages.Materials.IndexModel
+@{
+    ViewData["Title"] = "Materials";
+}
+<section class="panel">
+    <p class="eyebrow">Catalog</p>
+    <div class="page-heading"><h1>Materials</h1><a class="button" asp-page="/Materials/Create">Create material</a></div>
+    <form method="get" class="filters">
+        <label>Search <input asp-for="Search" type="search" /></label>
+        <label>Sort <select asp-for="Sort" asp-items="Html.GetEnumSelectList<Legacy.Maliev.Intranet.Materials.MaterialSortType>()"></select></label>
+        <label>Per page <input asp-for="Size" type="number" min="1" max="250" /></label>
+        <button type="submit">Apply</button>
+    </form>
+    @if (Model.Results.Items.Count == 0) { <p>No materials matched this query.</p> }
+    else
+    {
+        <div class="table-scroll"><table><thead><tr><th>ID</th><th>Group</th><th>Name</th><th>Number</th><th>Density</th><th>Machinable</th><th>Printable</th></tr></thead><tbody>
+        @foreach (var material in Model.Results.Items)
+        {
+            <tr><td><a asp-page="/Materials/View" asp-route-id="@material.Id">@material.Id</a></td><td>@material.MaterialGroup?.Name</td><td>@material.Name</td><td>@material.MaterialNumber</td><td>@material.DensityKilogramPerCubicMeter</td><td>@material.Machinable</td><td>@material.Printable</td></tr>
+        }
+        </tbody></table></div>
+        <nav class="pager" aria-label="Material pages">
+            @if (Model.Results.HasPreviousPage) { <a asp-route-index="@(Model.Results.PageIndex - 1)" asp-route-size="@Model.Size" asp-route-search="@Model.Search" asp-route-sort="@Model.Sort">Previous</a> }
+            <span>Page @Model.Results.PageIndex of @Model.Results.TotalPages · @Model.Results.TotalRecords records</span>
+            @if (Model.Results.HasNextPage) { <a asp-route-index="@(Model.Results.PageIndex + 1)" asp-route-size="@Model.Size" asp-route-search="@Model.Search" asp-route-sort="@Model.Sort">Next</a> }
+        </nav>
+    }
+</section>
