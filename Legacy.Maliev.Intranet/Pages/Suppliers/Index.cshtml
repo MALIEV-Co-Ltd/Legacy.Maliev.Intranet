@@ -1,0 +1,6 @@
+@page
+@model Legacy.Maliev.Intranet.Pages.Suppliers.IndexModel
+@{ ViewData["Title"] = "Suppliers"; }
+<section class="panel"><p class="eyebrow">Procurement</p><div class="page-heading"><h1>Suppliers</h1><a class="button" asp-page="/Suppliers/Create">Create supplier</a></div>
+<form method="get" class="filters"><label>Search <input asp-for="Search" type="search" /></label><label>Sort <select asp-for="Sort" asp-items="Html.GetEnumSelectList<Legacy.Maliev.Intranet.Suppliers.SupplierSortType>()"></select></label><label>Per page <input asp-for="Size" type="number" min="1" max="250" /></label><button>Apply</button></form>
+<div class="table-scroll"><table><thead><tr><th>ID</th><th>Name</th><th>Email</th><th>Telephone</th></tr></thead><tbody>@foreach(var supplier in Model.Results.Items){<tr><td><a asp-page="/Suppliers/View" asp-route-id="@supplier.Id">@supplier.Id</a></td><td>@supplier.Name</td><td>@supplier.Email</td><td>@supplier.Telephone</td></tr>}</tbody></table></div></section>
