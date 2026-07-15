@@ -36,6 +36,7 @@ public sealed class RouteContractTests : IClassFixture<IntranetFactory>
     [Theory]
     [InlineData("/Dashboard")]
     [InlineData("/Customers/Index")]
+    [InlineData("/Employees/Index")]
     [InlineData("/Orders/View?id=1")]
     [InlineData("/Server/ErrorReport")]
     public async Task StaffRoutes_RequireEmployeeSession(string route)

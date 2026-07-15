@@ -132,5 +132,11 @@ public sealed partial class EmployeeSessionContractTests
             CreateCustomerIdentityRequest request,
             string accessToken,
             CancellationToken cancellationToken) => Task.FromResult<CustomerIdentityResponse?>(null);
+
+        public Task<EmployeeIdentityResponse?> CreateEmployeeIdentityAsync(
+            int databaseId,
+            CreateEmployeeIdentityRequest request,
+            string accessToken,
+            CancellationToken cancellationToken) => Task.FromResult<EmployeeIdentityResponse?>(null);
     }
 }
