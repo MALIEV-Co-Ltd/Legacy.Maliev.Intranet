@@ -1,5 +1,6 @@
 using Legacy.Maliev.Intranet;
 using Legacy.Maliev.Intranet.Auth;
+using Legacy.Maliev.Intranet.Customers;
 using Maliev.Aspire.ServiceDefaults;
 using Microsoft.AspNetCore.Authentication.Cookies;
 
@@ -24,7 +25,13 @@ builder.Services.AddHttpClient<ILegacyAuthClient, LegacyAuthClient>(client =>
     client.BaseAddress = new Uri(builder.Configuration["Services:Auth"]
         ?? throw new InvalidOperationException("Services:Auth is required."));
     client.Timeout = TimeSpan.FromSeconds(10);
-});
+}).AddStandardResilienceHandler();
+builder.Services.AddHttpClient<ILegacyCustomerClient, LegacyCustomerClient>(client =>
+{
+    client.BaseAddress = new Uri(builder.Configuration["Services:Customer"]
+        ?? throw new InvalidOperationException("Services:Customer is required."));
+    client.Timeout = TimeSpan.FromSeconds(10);
+}).AddStandardResilienceHandler();
 builder.Services
     .AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
     .AddCookie(options =>
@@ -58,6 +65,7 @@ builder.Services.AddRazorPages(options =>
 
     foreach (var route in LegacyRoutes.All.Where(route =>
                  !LegacyRoutes.Anonymous.Contains(route) &&
+                 !route.StartsWith("/Customers/", StringComparison.OrdinalIgnoreCase) &&
                  route is not "/Dashboard" and not "/AccessDenied"))
     {
         options.Conventions.AddPageRoute("/LegacyRoute", route);

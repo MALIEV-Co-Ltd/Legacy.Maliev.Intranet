@@ -1,0 +1,55 @@
+@page
+@model Legacy.Maliev.Intranet.Pages.Customers.IndexModel
+@{
+    ViewData["Title"] = "Customers";
+}
+<section class="panel">
+    <p class="eyebrow">Customer profiles</p>
+    <div class="page-heading">
+        <h1>Customers</h1>
+        <a class="button" asp-page="/Customers/Create">Create customer</a>
+    </div>
+    <form method="get" class="filters">
+        <label>Search <input asp-for="Search" type="search" autocomplete="off" /></label>
+        <label>Sort
+            <select asp-for="Sort" asp-items="Html.GetEnumSelectList<Legacy.Maliev.Intranet.Customers.CustomerSortType>()"></select>
+        </label>
+        <label>Per page <input asp-for="Size" type="number" min="1" max="250" /></label>
+        <button type="submit">Apply</button>
+    </form>
+    @if (Model.Results.Items.Count == 0)
+    {
+        <p>No customers matched this query.</p>
+    }
+    else
+    {
+        <div class="table-scroll">
+            <table>
+                <thead><tr><th>ID</th><th>Name</th><th>Email</th><th>Company</th><th></th></tr></thead>
+                <tbody>
+                @foreach (var customer in Model.Results.Items)
+                {
+                    <tr>
+                        <td>@customer.Id</td>
+                        <td>@customer.FullName</td>
+                        <td>@customer.Email</td>
+                        <td>@customer.Company?.Name</td>
+                        <td><a asp-page="/Customers/View" asp-route-id="@customer.Id">View</a></td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+        <nav class="pager" aria-label="Customer pages">
+            @if (Model.Results.HasPreviousPage)
+            {
+                <a asp-route-index="@(Model.Results.PageIndex - 1)" asp-route-size="@Model.Size" asp-route-search="@Model.Search" asp-route-sort="@Model.Sort">Previous</a>
+            }
+            <span>Page @Model.Results.PageIndex of @Model.Results.TotalPages · @Model.Results.TotalRecords records</span>
+            @if (Model.Results.HasNextPage)
+            {
+                <a asp-route-index="@(Model.Results.PageIndex + 1)" asp-route-size="@Model.Size" asp-route-search="@Model.Search" asp-route-sort="@Model.Sort">Next</a>
+            }
+        </nav>
+    }
+</section>

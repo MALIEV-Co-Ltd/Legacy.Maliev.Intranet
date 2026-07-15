@@ -126,5 +126,11 @@ public sealed partial class EmployeeSessionContractTests
             Task.FromResult<AuthTokenResponse?>(null);
 
         public Task RevokeAsync(string refreshToken, CancellationToken cancellationToken) => Task.CompletedTask;
+
+        public Task<CustomerIdentityResponse?> CreateCustomerIdentityAsync(
+            int databaseId,
+            CreateCustomerIdentityRequest request,
+            string accessToken,
+            CancellationToken cancellationToken) => Task.FromResult<CustomerIdentityResponse?>(null);
     }
 }

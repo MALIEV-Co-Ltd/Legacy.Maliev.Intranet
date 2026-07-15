@@ -2,6 +2,7 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Net;
 using System.Net.Http.Json;
 using System.Security.Claims;
+using System.Net.Http.Headers;
 
 namespace Legacy.Maliev.Intranet.Auth;
 
@@ -52,6 +53,28 @@ public sealed class LegacyAuthClient(HttpClient httpClient, ILogger<LegacyAuthCl
         using var response = await httpClient.PostAsJsonAsync(
             "/auth/v1/revoke", new { refreshToken }, cancellationToken);
         response.EnsureSuccessStatusCode();
+    }
+
+    /// <inheritdoc />
+    public async Task<CustomerIdentityResponse?> CreateCustomerIdentityAsync(
+        int databaseId,
+        CreateCustomerIdentityRequest identity,
+        string accessToken,
+        CancellationToken cancellationToken)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Post, $"/auth/v1/customer-identities/{databaseId}")
+        {
+            Content = JsonContent.Create(identity),
+        };
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+        using var response = await httpClient.SendAsync(request, cancellationToken);
+        if (response.StatusCode == HttpStatusCode.Conflict)
+        {
+            return null;
+        }
+
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<CustomerIdentityResponse>(cancellationToken);
     }
 
     private static bool TryReadEmployee(string accessToken, out EmployeeIdentity? identity)
