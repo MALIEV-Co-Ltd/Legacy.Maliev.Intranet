@@ -3,6 +3,7 @@ using Legacy.Maliev.Intranet.Auth;
 using Legacy.Maliev.Intranet.Customers;
 using Legacy.Maliev.Intranet.Employees;
 using Legacy.Maliev.Intranet.Materials;
+using Legacy.Maliev.Intranet.Orders;
 using Legacy.Maliev.Intranet.PurchaseOrders;
 using Legacy.Maliev.Intranet.Suppliers;
 using Maliev.Aspire.ServiceDefaults;
@@ -54,6 +55,12 @@ builder.Services.AddHttpClient<ILegacyProcurementClient, LegacyProcurementClient
         ?? throw new InvalidOperationException("Services:Procurement is required."));
     client.Timeout = TimeSpan.FromSeconds(10);
 }).AddStandardResilienceHandler();
+builder.Services.AddHttpClient<ILegacyOrderClient, LegacyOrderClient>(client =>
+{
+    client.BaseAddress = new Uri(builder.Configuration["Services:Order"]
+        ?? throw new InvalidOperationException("Services:Order is required."));
+    client.Timeout = TimeSpan.FromSeconds(10);
+}).AddStandardResilienceHandler();
 builder.Services.AddHttpClient<IPurchaseOrderDocumentClient, PurchaseOrderDocumentClient>(client =>
 {
     client.BaseAddress = new Uri(builder.Configuration["Services:Document"]
@@ -102,6 +109,7 @@ builder.Services.AddRazorPages(options =>
                  !route.StartsWith("/Customers/", StringComparison.OrdinalIgnoreCase) &&
                  !route.StartsWith("/Employees/", StringComparison.OrdinalIgnoreCase) &&
                  !route.StartsWith("/Materials/", StringComparison.OrdinalIgnoreCase) &&
+                 route is not "/Orders/Index" &&
                  !route.StartsWith("/PurchaseOrders/", StringComparison.OrdinalIgnoreCase) &&
                  !route.StartsWith("/Suppliers/", StringComparison.OrdinalIgnoreCase) &&
                  route is not "/Dashboard" and not "/AccessDenied"))

@@ -1,0 +1,45 @@
+@page
+@model Legacy.Maliev.Intranet.Pages.Orders.IndexModel
+@{ ViewData["Title"] = "Orders"; }
+
+<section class="panel">
+    <p class="eyebrow">Operations</p>
+    <div class="page-heading">
+        <h1>Orders</h1>
+        <a class="button" asp-page="/Orders/Create">Create order</a>
+    </div>
+    <form method="get" class="filters">
+        <label>Search <input asp-for="Search" type="search" /></label>
+        <label>Sort <select asp-for="Sort" asp-items="Html.GetEnumSelectList<Legacy.Maliev.Intranet.Orders.OrderSortType>()"></select></label>
+        <label>Per page <input asp-for="Size" type="number" min="1" max="250" /></label>
+        <button>Apply</button>
+    </form>
+</section>
+
+<section class="panel" aria-labelledby="assigned-orders-heading">
+    <div class="page-heading"><h2 id="assigned-orders-heading">Assigned to me</h2><span>@Model.AssignedOrders.Count order(s)</span></div>
+    <partial name="_OrderTable" model="Model.AssignedTable" />
+</section>
+
+<section class="panel" aria-labelledby="unassigned-orders-heading">
+    <div class="page-heading"><h2 id="unassigned-orders-heading">Awaiting assignment</h2><span>@Model.UnassignedOrders.Count order(s)</span></div>
+    <partial name="_OrderTable" model="Model.UnassignedTable" />
+</section>
+
+<section class="panel" aria-labelledby="all-orders-heading">
+    <div class="page-heading"><h2 id="all-orders-heading">All orders</h2></div>
+    <partial name="_OrderTable" model="Model.ResultsTable" />
+    <div class="pager">
+        <span>@Model.Results.TotalRecords record(s), @Model.Results.TotalPages page(s)</span>
+        <span>
+            @if (Model.Results.HasPreviousPage)
+            {
+                <a asp-route-index="@(Model.Results.PageIndex - 1)" asp-route-size="@Model.Size" asp-route-search="@Model.Search" asp-route-sort="@Model.Sort">Previous</a>
+            }
+            @if (Model.Results.HasNextPage)
+            {
+                <a asp-route-index="@(Model.Results.PageIndex + 1)" asp-route-size="@Model.Size" asp-route-search="@Model.Search" asp-route-sort="@Model.Sort">Next</a>
+            }
+        </span>
+    </div>
+</section>

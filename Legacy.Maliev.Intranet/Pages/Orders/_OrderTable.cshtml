@@ -1,0 +1,24 @@
+@model Legacy.Maliev.Intranet.Orders.OrderTableModel
+<div class="table-scroll">
+    <table>
+        <caption>@Model.Caption</caption>
+        <thead><tr><th>ID</th><th>Customer</th><th>Process</th><th>Name</th><th>Quantity</th><th>Manufactured</th><th>Remaining</th><th>Employee</th><th>Subtotal</th><th>Promised</th></tr></thead>
+        <tbody>
+        @foreach (var order in Model.Orders)
+        {
+            <tr>
+                <td><a asp-page="/Orders/View" asp-route-id="@order.Id">@order.Id</a></td>
+                <td>@(order.CustomerId?.ToString() ?? "-")</td>
+                <td>@(Model.ProcessNames.TryGetValue(order.ProcessId, out var processName) ? processName : order.ProcessId.ToString())</td>
+                <td>@(order.Name ?? "-") @if (!order.AllowSocialMedia) { <span class="badge">Confidential</span> }</td>
+                <td>@order.Quantity</td>
+                <td>@order.Manufactured</td>
+                <td>@(order.Remaining?.ToString() ?? "-")</td>
+                <td>@(order.EmployeeId is int employeeId && Model.EmployeeNames.TryGetValue(employeeId, out var employeeName) ? employeeName : "-")</td>
+                <td>@(order.Subtotal?.ToString("N2") ?? "-")</td>
+                <td>@order.PromisedDate?.ToString("yyyy-MM-dd")</td>
+            </tr>
+        }
+        </tbody>
+    </table>
+</div>
