@@ -3,6 +3,17 @@ namespace Legacy.Maliev.Intranet.Tests;
 public sealed class DeliveryContractTests
 {
     [Fact]
+    public void DockerContext_ExcludesBuildAndRepositoryArtifacts()
+    {
+        var dockerIgnore = File.ReadAllText(Path.Combine(FindRoot(), ".dockerignore"));
+
+        Assert.Contains(".git", dockerIgnore, StringComparison.Ordinal);
+        Assert.Contains("**/bin", dockerIgnore, StringComparison.Ordinal);
+        Assert.Contains("**/obj", dockerIgnore, StringComparison.Ordinal);
+        Assert.Contains("**/TestResults", dockerIgnore, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void KubernetesResources_AreNamespaceConfinedAndProvisionNoInfrastructure()
     {
         var manifests = Directory.GetFiles(Path.Combine(FindRoot(), "deploy", "base"), "*.yaml");
