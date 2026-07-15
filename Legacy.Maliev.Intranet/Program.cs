@@ -2,6 +2,7 @@ using Legacy.Maliev.Intranet;
 using Legacy.Maliev.Intranet.Auth;
 using Legacy.Maliev.Intranet.Customers;
 using Legacy.Maliev.Intranet.Employees;
+using Legacy.Maliev.Intranet.Materials;
 using Maliev.Aspire.ServiceDefaults;
 using Microsoft.AspNetCore.Authentication.Cookies;
 
@@ -39,6 +40,12 @@ builder.Services.AddHttpClient<ILegacyEmployeeClient, LegacyEmployeeClient>(clie
         ?? throw new InvalidOperationException("Services:Employee is required."));
     client.Timeout = TimeSpan.FromSeconds(10);
 }).AddStandardResilienceHandler();
+builder.Services.AddHttpClient<ILegacyCatalogClient, LegacyCatalogClient>(client =>
+{
+    client.BaseAddress = new Uri(builder.Configuration["Services:Catalog"]
+        ?? throw new InvalidOperationException("Services:Catalog is required."));
+    client.Timeout = TimeSpan.FromSeconds(10);
+}).AddStandardResilienceHandler();
 builder.Services
     .AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
     .AddCookie(options =>
@@ -74,6 +81,7 @@ builder.Services.AddRazorPages(options =>
                  !LegacyRoutes.Anonymous.Contains(route) &&
                  !route.StartsWith("/Customers/", StringComparison.OrdinalIgnoreCase) &&
                  !route.StartsWith("/Employees/", StringComparison.OrdinalIgnoreCase) &&
+                 !route.StartsWith("/Materials/", StringComparison.OrdinalIgnoreCase) &&
                  route is not "/Dashboard" and not "/AccessDenied"))
     {
         options.Conventions.AddPageRoute("/LegacyRoute", route);

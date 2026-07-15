@@ -1,0 +1,41 @@
+@model Legacy.Maliev.Intranet.Materials.MaterialInput
+<fieldset>
+    <legend>Basic information</legend>
+    <label>Name <input asp-for="Name" /></label><span asp-validation-for="Name" class="validation"></span>
+    <label>Material group ID <input asp-for="MaterialGroupId" type="number" min="1" /></label><span asp-validation-for="MaterialGroupId" class="validation"></span>
+    <label>Material number <input asp-for="MaterialNumber" /></label>
+    <label>Manufacturer reference <input asp-for="ManufacturerReference" /></label>
+    <label>Price per kilogram <input asp-for="PricePerKilogram" type="number" step="any" /></label>
+    <label>Currency ID <input asp-for="CurrencyId" type="number" min="1" /></label>
+    <label>Datasheet URL <input asp-for="Url" type="url" /></label>
+    <label>Comment <textarea asp-for="Comment"></textarea></label>
+</fieldset>
+<fieldset>
+    <legend>Mechanical properties</legend>
+    <label>Density (kg/m³) <input asp-for="DensityKilogramPerCubicMeter" type="number" step="any" /></label>
+    <label>Thermal conductivity (W/m-K) <input asp-for="ThermalConductivityWattPerMeterKelvin" type="number" step="any" /></label>
+    <label>Ultimate tensile strength (GPa) <input asp-for="TensileStrengthUltimateGigaPascal" type="number" step="any" /></label>
+    <label>Yield tensile strength (MPa) <input asp-for="TensileStrengthYieldMegaPascal" type="number" step="any" /></label>
+    <label>Shear modulus (GPa) <input asp-for="ShearModulusGigaPascal" type="number" step="any" /></label>
+    <label>Machinability (%) <input asp-for="MachinabilityPercent" type="number" step="any" /></label>
+    <label>Hardness Brinell <input asp-for="HardnessBrinell" type="number" step="any" /></label>
+    <label>Hardness Knoop <input asp-for="HardnessKnoop" type="number" step="any" /></label>
+    <label>Hardness Rockwell A <input asp-for="HardnessRockwellA" type="number" step="any" /></label>
+    <label>Hardness Rockwell B <input asp-for="HardnessRockwellB" type="number" step="any" /></label>
+    <label>Hardness Rockwell C <input asp-for="HardnessRockwellC" type="number" step="any" /></label>
+    <label>Hardness Vickers <input asp-for="HardnessVickers" type="number" step="any" /></label>
+</fieldset>
+<fieldset>
+    <legend>Material identification</legend>
+    <label>AISI <input asp-for="Aisi" /></label><label>DIN <input asp-for="Din" /></label>
+    <label>BTS <input asp-for="Bts" /></label><label>JIS <input asp-for="Jis" /></label>
+    <label>UNS <input asp-for="Uns" /></label><label>EN <input asp-for="En" /></label>
+    <label>AFNOR <input asp-for="Afnor" /></label><label>UNI <input asp-for="Uni" /></label>
+    <label>SIS <input asp-for="Sis" /></label><label>SAE <input asp-for="Sae" /></label>
+    <label>ASTM <input asp-for="Astm" /></label><label>AMS <input asp-for="Ams" /></label>
+</fieldset>
+<fieldset>
+    <legend>Process compatibility</legend>
+    <label><input asp-for="Machinable" /> CNC machinable</label>
+    <label><input asp-for="Printable" /> 3D printable</label>
+</fieldset>

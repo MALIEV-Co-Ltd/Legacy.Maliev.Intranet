@@ -1,0 +1,23 @@
+@page
+@model Legacy.Maliev.Intranet.Pages.Materials.ViewModel
+@{
+    ViewData["Title"] = $"Material #{Model.MaterialId}";
+}
+<section class="panel">
+    <p class="eyebrow">Material #@Model.MaterialId</p><h1>@Model.Input.Name</h1>
+    @if (!string.IsNullOrWhiteSpace(Model.Notification)) { <p>@Model.Notification</p> }
+    <p>Available groups: @string.Join(", ", Model.MaterialGroups.Select(x => $"{x.Id}: {x.Name}"))</p>
+    <p>Available currencies: @string.Join(", ", Model.Currencies.Select(x => $"{x.Id}: {x.ShortName}"))</p>
+    <form method="post" class="customer-form">
+        <div asp-validation-summary="ModelOnly" class="validation"></div>
+        <partial name="_MaterialFields" for="Input" />
+        <fieldset><legend>Colors</legend>
+            @foreach (var color in Model.Colors) { <label><input type="checkbox" name="SelectedColorIds" value="@color.Id" checked="@Model.SelectedColorIds.Contains(color.Id)" /> @color.Name</label> }
+        </fieldset>
+        <fieldset><legend>Surface finishes</legend>
+            @foreach (var finish in Model.SurfaceFinishes) { <label><input type="checkbox" name="SelectedSurfaceFinishIds" value="@finish.Id" checked="@Model.SelectedSurfaceFinishIds.Contains(finish.Id)" /> @finish.Name</label> }
+        </fieldset>
+        <button type="submit">Save material</button>
+    </form>
+    <a asp-page="/Materials/Index">Back to materials</a>
+</section>

@@ -1,0 +1,15 @@
+@page
+@model Legacy.Maliev.Intranet.Pages.Materials.CreateModel
+@{
+    ViewData["Title"] = "Create material";
+}
+<section class="panel">
+    <p class="eyebrow">Catalog</p><h1>Create material</h1>
+    <p>Available groups: @string.Join(", ", Model.MaterialGroups.Select(x => $"{x.Id}: {x.Name}"))</p>
+    <p>Available currencies: @string.Join(", ", Model.Currencies.Select(x => $"{x.Id}: {x.ShortName}"))</p>
+    <form method="post" class="customer-form">
+        <div asp-validation-summary="ModelOnly" class="validation"></div>
+        <partial name="_MaterialFields" for="Input" />
+        <button type="submit">Create material</button>
+    </form>
+</section>
