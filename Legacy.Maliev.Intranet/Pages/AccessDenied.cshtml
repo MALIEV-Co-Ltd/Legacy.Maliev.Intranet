@@ -1,0 +1,11 @@
+@page
+@attribute [Microsoft.AspNetCore.Authorization.AllowAnonymous]
+@{
+    ViewData["Title"] = "Access denied";
+}
+<section class="panel narrow">
+    <h1>Access denied</h1>
+    <p>Your employee session does not permit this action.</p>
+    <a class="button" asp-page="/Login">Return to sign in</a>
+</section>
+

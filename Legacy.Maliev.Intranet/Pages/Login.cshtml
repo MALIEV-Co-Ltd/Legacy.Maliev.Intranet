@@ -1,0 +1,19 @@
+@page
+@attribute [Microsoft.AspNetCore.Authorization.AllowAnonymous]
+@{
+    ViewData["Title"] = "Sign in";
+}
+<section class="panel narrow">
+    <p class="eyebrow">Staff access</p>
+    <h1>Sign in</h1>
+    <p>The secure AuthService session boundary is being connected in the next migration slice.</p>
+    <form method="post" autocomplete="on">
+        <label for="email">Email</label>
+        <input id="email" name="email" type="email" autocomplete="username" required />
+        <label for="password">Password</label>
+        <input id="password" name="password" type="password" autocomplete="current-password" required />
+        <button type="submit" disabled aria-describedby="migration-note">Sign in</button>
+        <small id="migration-note">Sign-in remains disabled until the server-side token store is validated.</small>
+    </form>
+</section>
+

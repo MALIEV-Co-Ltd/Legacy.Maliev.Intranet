@@ -1,0 +1,12 @@
+@page "/"
+@attribute [Microsoft.AspNetCore.Authorization.AllowAnonymous]
+@{
+    ViewData["Title"] = "Home";
+}
+<section class="hero">
+    <p class="eyebrow">Internal operations</p>
+    <h1>MALIEV Intranet</h1>
+    <p>Secure access for MALIEV staff workflows.</p>
+    <a class="button" asp-page="/Login">Sign in</a>
+</section>
+

@@ -1,0 +1,10 @@
+@page
+@{
+    ViewData["Title"] = "Workflow migration";
+}
+<section class="panel">
+    <p class="eyebrow">Legacy workflow</p>
+    <h1>@Request.Path.Value?.Trim('/').Replace('/', ' ')</h1>
+    <p>This protected route is preserved while its typed service workflow is migrated and validated.</p>
+    <p class="correlation">Correlation ID: <code>@HttpContext.TraceIdentifier</code></p>
+</section>

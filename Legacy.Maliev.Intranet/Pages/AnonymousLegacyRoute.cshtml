@@ -1,0 +1,11 @@
+@page
+@attribute [Microsoft.AspNetCore.Authorization.AllowAnonymous]
+@{
+    ViewData["Title"] = "Account recovery migration";
+}
+<section class="panel narrow">
+    <p class="eyebrow">Employee identity</p>
+    <h1>@Request.Path.Value?.Trim('/').Replace('/', ' ')</h1>
+    <p>This account-recovery route is preserved while its secure AuthService contract is migrated and validated.</p>
+    <p class="correlation">Correlation ID: <code>@HttpContext.TraceIdentifier</code></p>
+</section>

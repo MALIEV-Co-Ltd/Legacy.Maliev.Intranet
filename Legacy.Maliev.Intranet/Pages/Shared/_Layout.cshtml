@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex,nofollow,noarchive" />
+    <title>@ViewData["Title"] - MALIEV Intranet</title>
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+</head>
+<body>
+    <header class="topbar">
+        <a class="brand" asp-page="/Index" aria-label="MALIEV Intranet home">MALIEV <span>Intranet</span></a>
+        @if (User.Identity?.IsAuthenticated == true)
+        {
+            <nav aria-label="Primary">
+                <a asp-page="/Dashboard">Dashboard</a>
+                <a href="/QuotationRequests/Index">Requests</a>
+                <a href="/Orders/Index">Orders</a>
+                <a href="/Customers/Index">Customers</a>
+            </nav>
+        }
+    </header>
+    <main id="main-content" class="shell">
+        @RenderBody()
+    </main>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>
+

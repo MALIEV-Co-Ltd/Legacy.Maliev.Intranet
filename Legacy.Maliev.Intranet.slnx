@@ -1,0 +1,5 @@
+<Solution>
+  <Project Path="Legacy.Maliev.Intranet/Legacy.Maliev.Intranet.csproj" />
+  <Project Path="Legacy.Maliev.Intranet.Tests/Legacy.Maliev.Intranet.Tests.csproj" />
+</Solution>
+
