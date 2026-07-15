@@ -1,0 +1,8 @@
+@page "{id:int}"
+@model Legacy.Maliev.Intranet.Pages.PurchaseOrders.ViewModel
+@{ ViewData["Title"] = $"Purchase order {Model.Order.Id}"; }
+<section class="panel"><p class="eyebrow">Procurement</p><div class="page-heading"><h1>Purchase order @Model.Order.Id</h1>@foreach(var file in Model.Downloads){<a class="button" href="@file.Uri" target="_blank" rel="noopener">Download PDF</a>}</div>
+@if(TempData["Error"] is string error){<p class="validation">@error</p>}
+<dl class="details"><dt>Supplier</dt><dd>@(Model.Supplier?.Name ?? "-")</dd><dt>Supplier contact</dt><dd>@(Model.Order.SupplierContactPerson ?? "-")</dd><dt>Ordered by</dt><dd>@(Model.Employee?.FullName ?? "-")</dd><dt>Shipping method</dt><dd>@(Model.Order.ShippingMethod ?? "-")</dd><dt>FOB</dt><dd>@(Model.Order.Fob ?? "-")</dd><dt>Terms</dt><dd>@(Model.Order.Terms ?? "-")</dd><dt>Notes</dt><dd>@(Model.Order.Notes ?? "-")</dd><dt>Created</dt><dd>@Model.Order.CreatedDate?.ToString("u")</dd></dl>
+<div class="table-scroll"><table><thead><tr><th>Part number</th><th>Description</th><th>Unit price</th><th>Quantity</th><th>Subtotal</th></tr></thead><tbody>@foreach(var item in Model.Items){<tr><td>@item.PartNumber</td><td>@item.Description</td><td>@item.UnitPrice?.ToString("N2") THB</td><td>@item.Quantity</td><td>@((item.Subtotal ?? (item.Quantity * item.UnitPrice))?.ToString("N2")) THB</td></tr>}</tbody></table></div>
+<form method="post" asp-page-handler="Delete" asp-route-id="@Model.Order.Id" onsubmit="return confirm('Delete this purchase order, its PDF and all line items?');"><button class="danger">Delete purchase order</button></form></section>

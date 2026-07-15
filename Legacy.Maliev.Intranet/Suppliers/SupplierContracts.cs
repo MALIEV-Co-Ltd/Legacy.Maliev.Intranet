@@ -114,4 +114,29 @@ public interface ILegacyProcurementClient
     Task UpdateSupplierAddressAsync(int addressId, UpsertSupplierAddressRequest request, string token, CancellationToken cancellationToken);
     /// <summary>Deletes a supplier.</summary>
     Task DeleteSupplierAsync(int id, string token, CancellationToken cancellationToken);
+
+    /// <summary>Gets a purchase-order page.</summary>
+    Task<PaginatedResponse<PurchaseOrderResponse>?> GetPurchaseOrdersAsync(PurchaseOrderSortType sort, string? search, int index, int size, string token, CancellationToken cancellationToken);
+    /// <summary>Gets one purchase order.</summary>
+    Task<PurchaseOrderResponse?> GetPurchaseOrderAsync(int id, string token, CancellationToken cancellationToken);
+    /// <summary>Creates an idempotent purchase order.</summary>
+    Task<PurchaseOrderResponse> CreatePurchaseOrderAsync(UpsertPurchaseOrderRequest request, string token, CancellationToken cancellationToken);
+    /// <summary>Deletes a purchase order.</summary>
+    Task DeletePurchaseOrderAsync(int id, string token, CancellationToken cancellationToken);
+    /// <summary>Gets the reusable purchase-order addresses.</summary>
+    Task<IReadOnlyList<PurchaseOrderAddressResponse>> GetPurchaseOrderAddressesAsync(string token, CancellationToken cancellationToken);
+    /// <summary>Gets one purchase-order address.</summary>
+    Task<PurchaseOrderAddressResponse?> GetPurchaseOrderAddressAsync(int id, string token, CancellationToken cancellationToken);
+    /// <summary>Gets a purchase order's line items.</summary>
+    Task<IReadOnlyList<OrderItemResponse>> GetOrderItemsAsync(int purchaseOrderId, string token, CancellationToken cancellationToken);
+    /// <summary>Creates a line item.</summary>
+    Task<OrderItemResponse> CreateOrderItemAsync(UpsertOrderItemRequest request, string token, CancellationToken cancellationToken);
+    /// <summary>Deletes a line item.</summary>
+    Task DeleteOrderItemAsync(int id, string token, CancellationToken cancellationToken);
+    /// <summary>Gets a purchase order's linked files.</summary>
+    Task<IReadOnlyList<PurchaseOrderFileResponse>> GetPurchaseOrderFilesAsync(int purchaseOrderId, string token, CancellationToken cancellationToken);
+    /// <summary>Links a clean cloud object to a purchase order.</summary>
+    Task<PurchaseOrderFileResponse> CreatePurchaseOrderFileAsync(int purchaseOrderId, string bucket, string objectName, string token, CancellationToken cancellationToken);
+    /// <summary>Deletes a purchase-order file record.</summary>
+    Task DeletePurchaseOrderFileAsync(int id, string token, CancellationToken cancellationToken);
 }

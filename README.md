@@ -12,7 +12,7 @@ Migration rules:
 - expose useful downstream failure UX and correlation IDs;
 - deploy only to the existing GKE cluster in `maliev-legacy`, after the complete migration and staging gates pass.
 
-The customer, employee, material, and supplier domains are completed typed workflow slices:
+The customer, employee, material, supplier, and purchase-order domains are completed typed workflow slices:
 
 - `/Customers/Index` preserves search, sorting, bounded pagination, and profile links;
 - `/Customers/View` reads the profile projection from CustomerService;
@@ -26,7 +26,11 @@ The customer, employee, material, and supplier domains are completed typed workf
 - `/Suppliers/Index` preserves supplier search, sorting, and bounded pagination through ProcurementService;
 - `/Suppliers/Create` idempotently creates a supplier and its owned address with compensating rollback;
 - `/Suppliers/View` updates supplier/address data and performs deletion through a CSRF-protected POST.
+- `/PurchaseOrders/Index` preserves search, sorting, pagination, and employee display names;
+- `/PurchaseOrders/Create` idempotently creates the order and line items, renders the bilingual document through the QuestPDF DocumentService, passes the PDF through FileService quarantine and malware scanning before GCS promotion, then records ProcurementService file metadata;
+- `/PurchaseOrders/View` reads the complete order, line items, employee/supplier projections, and clean-object signed URLs, while deletion uses a CSRF-protected POST and removes dependants before the parent;
+- failed create workflows compensate in reverse order so metadata, cloud objects, line items, and the parent order are not orphaned.
 
-The remaining 30 route workflows render an explicit migration state until their domain
+The remaining 27 route workflows render an explicit migration state until their domain
 workflow is fully wired and tested. This repository must not be deployed before all
 of those route gates are complete.

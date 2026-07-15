@@ -123,6 +123,7 @@ public sealed partial class MaterialPageContractTests
         public UpsertMaterialRequest? CreatedRequest { get; private set; }
         public Task<PaginatedMaterialResponse?> GetMaterialsAsync(MaterialSortType sort, string? search, int index, int size, string accessToken, CancellationToken cancellationToken) { LastAccessToken = accessToken; return Task.FromResult<PaginatedMaterialResponse?>(new([Material], 1, 1, 1, false, false)); }
         public Task<MaterialResponse?> GetMaterialAsync(int id, string accessToken, CancellationToken cancellationToken) { LastAccessToken = accessToken; return Task.FromResult<MaterialResponse?>(id == 42 ? Material : null); }
+        public Task<IReadOnlyList<CountryResponse>> GetCountriesAsync(string accessToken, CancellationToken cancellationToken) => Task.FromResult<IReadOnlyList<CountryResponse>>([new(66, "Thailand", "Asia", "+66", "TH", "THA", null, null)]);
         public Task<IReadOnlyList<MaterialGroupResponse>> GetMaterialGroupsAsync(string accessToken, CancellationToken cancellationToken) => Task.FromResult<IReadOnlyList<MaterialGroupResponse>>([new(1, "Steel", null, null, null)]);
         public Task<IReadOnlyList<CurrencyResponse>> GetCurrenciesAsync(string accessToken, CancellationToken cancellationToken) => Task.FromResult<IReadOnlyList<CurrencyResponse>>([new(1, "THB", "Thai baht", null, null)]);
         public Task<IReadOnlyList<ColorResponse>> GetColorsAsync(string accessToken, CancellationToken cancellationToken) => Task.FromResult<IReadOnlyList<ColorResponse>>([new(1, "Black", null, null)]);

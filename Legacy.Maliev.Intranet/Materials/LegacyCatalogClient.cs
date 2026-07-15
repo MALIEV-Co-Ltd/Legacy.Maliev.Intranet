@@ -8,6 +8,9 @@ namespace Legacy.Maliev.Intranet.Materials;
 public sealed class LegacyCatalogClient(HttpClient httpClient) : ILegacyCatalogClient
 {
     /// <inheritdoc />
+    public Task<IReadOnlyList<CountryResponse>> GetCountriesAsync(string accessToken, CancellationToken cancellationToken) =>
+        GetListAsync<CountryResponse>("/Countries", accessToken, cancellationToken);
+    /// <inheritdoc />
     public Task<PaginatedMaterialResponse?> GetMaterialsAsync(MaterialSortType sort, string? search, int index, int size, string accessToken, CancellationToken cancellationToken) =>
         GetOptionalAsync<PaginatedMaterialResponse>($"/Materials?sort={sort}&search={Uri.EscapeDataString(search ?? string.Empty)}&index={index}&size={size}", accessToken, cancellationToken);
     /// <inheritdoc />
