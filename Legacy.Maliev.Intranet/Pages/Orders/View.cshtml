@@ -1,0 +1,52 @@
+@page
+@model Legacy.Maliev.Intranet.Pages.Orders.ViewModel
+@{ ViewData["Title"] = $"Order #{Model.Order?.Id}"; }
+<section class="panel">
+    <p class="eyebrow">Operations</p>
+    <div class="page-heading"><h1>Order #@Model.Order?.Id</h1><span><a asp-page="/Orders/Index">All orders</a> · <a asp-page-handler="Label" asp-route-id="@Model.Order?.Id">Order label PDF</a></span></div>
+    @if (TempData["Notice"] is string notice) { <p role="status">@notice</p> }
+    @if (TempData["Warning"] is string warning) { <p role="alert">@warning</p> }
+    <div asp-validation-summary="ModelOnly" class="validation-summary"></div>
+    <form method="post" asp-page-handler="Update" asp-route-id="@Model.Order?.Id" class="form-grid">
+        <input name="Input.ModifiedDate" value="@Model.Input.ModifiedDate?.ToUniversalTime().ToString("O")" type="hidden" />
+        <label>Customer ID <input asp-for="Input.CustomerId" type="number" min="1" /></label>
+        <label>Assigned employee <select asp-for="Input.EmployeeId"><option value="">Unassigned</option>@foreach (var item in Model.ReferenceData.Employees) { <option value="@item.Id">@item.FullName</option> }</select></label>
+        <label>Order name <input asp-for="Input.Name" /></label>
+        <label>Process <select asp-for="Input.ProcessId">@foreach (var item in Model.ReferenceData.Processes) { <option value="@item.Id">@item.Name</option> }</select></label>
+        <label>Quantity <input asp-for="Input.Quantity" type="number" min="1" /></label>
+        <label>Manufactured <input asp-for="Input.Manufactured" type="number" min="0" /></label>
+        <label>Material <select asp-for="Input.MaterialId"><option value="">No material</option>@foreach (var item in Model.ReferenceData.Materials) { <option value="@item.Id">@item.Name</option> }</select></label>
+        <label>Color <select asp-for="Input.ColorId"><option value="">No color</option>@foreach (var item in Model.ReferenceData.Colors) { <option value="@item.Id">@item.Name</option> }</select></label>
+        <label>Surface finish <select asp-for="Input.SurfaceFinishId"><option value="">No finish</option>@foreach (var item in Model.ReferenceData.SurfaceFinishes) { <option value="@item.Id">@item.Name</option> }</select></label>
+        <label>Unit price <input asp-for="Input.UnitPrice" type="number" min="0" step="0.01" /></label>
+        <label>Discount % <input asp-for="Input.DiscountPercent" type="number" min="0" max="100" step="0.01" /></label>
+        <label>Currency <select asp-for="Input.CurrencyId"><option value="">No currency</option>@foreach (var item in Model.ReferenceData.Currencies) { <option value="@item.Id">@item.ShortName</option> }</select></label>
+        <label>Lead time (days) <input asp-for="Input.LeadTime" type="number" min="0" /></label>
+        <label>Promised date <input asp-for="Input.PromisedDate" type="date" /></label>
+        <label>Finished date <input asp-for="Input.FinishedDate" type="date" /></label>
+        <label>Tracking number <input asp-for="Input.TrackingNumber" /></label>
+        <label class="full-width">Requirements <textarea asp-for="Input.Description" rows="5"></textarea></label>
+        <label class="full-width">Internal comment <textarea asp-for="Input.Comment" rows="4"></textarea></label>
+        <label><input asp-for="Input.AllowSocialMedia" /> Content may be published</label>
+        <label><input asp-for="Input.AllowCancellation" /> Customer may cancel</label>
+        <label><input asp-for="Input.AllowPayment" /> Payment enabled</label>
+        <button type="submit">Save order</button>
+    </form>
+</section>
+
+<section class="panel" aria-labelledby="order-status-heading">
+    <h2 id="order-status-heading">Status</h2>
+    <form method="post" asp-page-handler="Status" asp-route-id="@Model.Order?.Id" class="filters">
+        <label>Next status <select name="statusId">@foreach (var item in Model.Statuses) { <option value="@item.Id">@item.Name</option> }</select></label>
+        <button type="submit">Apply status</button>
+    </form>
+    <ol>@foreach (var item in Model.History.OrderByDescending(value => value.CreatedDate)) { <li><strong>@item.Name</strong> @item.CreatedDate?.ToString("u")</li> }</ol>
+</section>
+
+<section class="panel" aria-labelledby="order-files-heading">
+    <h2 id="order-files-heading">Files</h2>
+    <form method="post" asp-page-handler="Upload" asp-route-id="@Model.Order?.Id" enctype="multipart/form-data" class="filters">
+        <label>Upload files <input asp-for="Files" type="file" multiple /></label><button type="submit">Upload and scan</button>
+    </form>
+    <ul>@foreach (var file in Model.Downloads) { <li><a href="@file.Uri" rel="noopener">@file.ObjectName</a> <form method="post" asp-page-handler="RemoveFile" asp-route-id="@Model.Order?.Id" asp-route-fileId="@file.FileId" class="inline-form"><button type="submit">Remove</button></form></li> }</ul>
+</section>
