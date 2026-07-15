@@ -12,4 +12,12 @@ Migration rules:
 - expose useful downstream failure UX and correlation IDs;
 - deploy only to the existing GKE cluster in `maliev-legacy`, after the complete migration and staging gates pass.
 
-Protected routes currently render an explicit migration state until their domain workflow is fully wired and tested. This repository must not be deployed before those route gates are complete.
+The customer domain is now the first completed typed workflow slice:
+
+- `/Customers/Index` preserves search, sorting, bounded pagination, and profile links;
+- `/Customers/View` reads the profile projection from CustomerService;
+- `/Customers/Create` creates the profile in CustomerService and the identity in AuthService, sends the password only in JSON, and compensates by deleting the profile if identity creation fails.
+
+The remaining protected routes render an explicit migration state until their domain
+workflow is fully wired and tested. This repository must not be deployed before all
+of those route gates are complete.

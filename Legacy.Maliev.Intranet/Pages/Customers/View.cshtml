@@ -1,0 +1,20 @@
+@page
+@model Legacy.Maliev.Intranet.Pages.Customers.ViewModel
+@{
+    ViewData["Title"] = Model.Customer.FullName;
+}
+<section class="panel">
+    <p class="eyebrow">Customer #@Model.Customer.Id</p>
+    <h1>@Model.Customer.FullName</h1>
+    <dl class="details">
+        <dt>Email</dt><dd>@Model.Customer.Email</dd>
+        <dt>Telephone</dt><dd>@Model.Customer.Telephone</dd>
+        <dt>Mobile</dt><dd>@Model.Customer.Mobile</dd>
+        <dt>Fax</dt><dd>@Model.Customer.Fax</dd>
+        <dt>Date of birth</dt><dd>@Model.Customer.DateOfBirth?.ToString("yyyy-MM-dd")</dd>
+        <dt>Company</dt><dd>@Model.Customer.Company?.Name</dd>
+        <dt>Billing address</dt><dd>@Model.Customer.BillingAddress?.AddressLine1</dd>
+        <dt>Shipping address</dt><dd>@Model.Customer.ShippingAddress?.AddressLine1</dd>
+    </dl>
+    <a asp-page="/Customers/Index">Back to customers</a>
+</section>
