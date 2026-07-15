@@ -1,11 +1,11 @@
-using System.Net;
-using System.Text.RegularExpressions;
 using Legacy.Maliev.Intranet.Auth;
 using Legacy.Maliev.Intranet.Customers;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using System.Net;
+using System.Text.RegularExpressions;
 
 namespace Legacy.Maliev.Intranet.Tests;
 

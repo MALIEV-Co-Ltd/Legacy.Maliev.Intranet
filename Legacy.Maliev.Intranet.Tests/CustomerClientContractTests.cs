@@ -1,8 +1,8 @@
+using Legacy.Maliev.Intranet.Auth;
+using Legacy.Maliev.Intranet.Customers;
 using System.Net;
 using System.Text;
 using System.Text.Json;
-using Legacy.Maliev.Intranet.Auth;
-using Legacy.Maliev.Intranet.Customers;
 
 namespace Legacy.Maliev.Intranet.Tests;
 

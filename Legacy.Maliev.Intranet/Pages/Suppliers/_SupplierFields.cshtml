@@ -1,0 +1,13 @@
+@model Legacy.Maliev.Intranet.Suppliers.SupplierInput
+<fieldset><legend>Supplier</legend>
+<label>Name <input asp-for="Name" /></label><span asp-validation-for="Name" class="validation"></span>
+<label>Website <input asp-for="Website" type="url" /></label><label>Tax number <input asp-for="TaxNumber" /></label>
+<label>Email <input asp-for="Email" type="email" /></label><label>Telephone <input asp-for="Telephone" /></label>
+<label>Mobile <input asp-for="Mobile" /></label><label>Fax <input asp-for="Fax" /></label>
+<label>Note <textarea asp-for="Note"></textarea></label></fieldset>
+<fieldset><legend>Address</legend>
+<label>Building <input asp-for="Building" /></label><label>Address line 1 <input asp-for="Address1" /></label>
+<span asp-validation-for="Address1" class="validation"></span><label>Address line 2 <input asp-for="Address2" /></label>
+<label>City <input asp-for="City" /></label><label>State <input asp-for="State" /></label>
+<label>Postal code <input asp-for="PostalCode" /></label><label>Country ID <input asp-for="CountryId" type="number" min="1" /></label>
+<span asp-validation-for="CountryId" class="validation"></span></fieldset>

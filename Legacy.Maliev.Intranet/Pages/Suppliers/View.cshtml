@@ -1,0 +1,4 @@
+@page
+@model Legacy.Maliev.Intranet.Pages.Suppliers.ViewModel
+@{ ViewData["Title"] = $"Supplier #{Model.SupplierId}"; }
+<section class="panel"><p class="eyebrow">Supplier #@Model.SupplierId</p><h1>@Model.Input.Name</h1><form method="post" class="customer-form"><div asp-validation-summary="ModelOnly" class="validation"></div><partial name="_SupplierFields" for="Input" /><button>Save supplier</button></form><form method="post" asp-page-handler="Delete"><button>Delete supplier</button></form><a asp-page="/Suppliers/Index">Back to suppliers</a></section>
