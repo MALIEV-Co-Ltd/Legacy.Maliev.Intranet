@@ -47,6 +47,8 @@ public enum MaterialSortType
 public sealed record MaterialGroupResponse(int Id, string Name, string? Description, DateTime? CreatedDate, DateTime? ModifiedDate);
 /// <summary>Currency projection.</summary>
 public sealed record CurrencyResponse(int Id, string ShortName, string LongName, DateTime? CreatedDate, DateTime? ModifiedDate);
+/// <summary>Country projection.</summary>
+public sealed record CountryResponse(int Id, string Name, string? Continent, string? CountryCode, string? Iso2, string? Iso3, DateTime? CreatedDate, DateTime? ModifiedDate);
 /// <summary>Color projection.</summary>
 public sealed record ColorResponse(int Id, string Name, DateTime? CreatedDate, DateTime? ModifiedDate);
 /// <summary>Surface-finish projection.</summary>
@@ -207,6 +209,8 @@ public sealed record PaginatedMaterialResponse(
 /// <summary>Typed boundary for the extracted CatalogService.</summary>
 public interface ILegacyCatalogClient
 {
+    /// <summary>Gets all countries.</summary>
+    Task<IReadOnlyList<CountryResponse>> GetCountriesAsync(string accessToken, CancellationToken cancellationToken);
     /// <summary>Gets a bounded material page.</summary>
     Task<PaginatedMaterialResponse?> GetMaterialsAsync(MaterialSortType sort, string? search, int index, int size, string accessToken, CancellationToken cancellationToken);
     /// <summary>Gets one material.</summary>

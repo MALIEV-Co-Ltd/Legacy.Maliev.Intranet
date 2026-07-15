@@ -19,7 +19,7 @@ h1 { margin: .25rem 0 1rem; font-size: clamp(2.4rem, 6vw, 5.4rem); line-height: 
 .button, button { display: inline-block; margin-top: 1rem; padding: .8rem 1.2rem; background: #3769dd; color: white; border: 0; text-decoration: none; font: inherit; }
 button:disabled { opacity: .5; cursor: not-allowed; }
 form { display: grid; gap: .6rem; margin-top: 2rem; }
-input, select { width: 100%; padding: .8rem; border: 1px solid #3a455e; background: #0d1119; color: white; font: inherit; }
+input, select, textarea { width: 100%; padding: .8rem; border: 1px solid #3a455e; background: #0d1119; color: white; font: inherit; }
 small { color: #9aa6ba; }
 .correlation { color: #9aa6ba; margin-top: 2rem; }
 .page-heading, .pager { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
@@ -32,8 +32,13 @@ th, td { padding: .85rem; border-bottom: 1px solid #283044; text-align: left; }
 th { color: #9aa6ba; font-size: .75rem; text-transform: uppercase; letter-spacing: .08em; }
 .pager { margin-top: 1.5rem; }
 .customer-form { max-width: 680px; }
+.purchase-order-form fieldset { border: 1px solid #283044; padding: 1rem; display: grid; gap: .75rem; }
+.purchase-order-form legend { color: #80a7ff; font-weight: 700; }
+.form-columns, .order-item { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
+.order-item { grid-template-columns: 1fr 2fr 1fr 1fr; padding: 1rem 0; border-bottom: 1px solid #283044; }
+.secondary { background: #283044; }.danger { background: #a52a2a; }
 .details { display: grid; grid-template-columns: minmax(8rem, 12rem) 1fr; gap: .75rem 1.5rem; }
 .details dt { color: #9aa6ba; }
 .details dd { margin: 0; }
 @media (max-width: 720px) { nav { display: none; } .shell { padding: 4vh 0; } }
-@media (max-width: 720px) { .filters { grid-template-columns: 1fr; } .page-heading, .pager { align-items: flex-start; flex-direction: column; } .details { grid-template-columns: 1fr; gap: .25rem; } .details dd { margin-bottom: 1rem; } }
+@media (max-width: 720px) { .filters, .form-columns, .order-item { grid-template-columns: 1fr; } .page-heading, .pager { align-items: flex-start; flex-direction: column; } .details { grid-template-columns: 1fr; gap: .25rem; } .details dd { margin-bottom: 1rem; } }

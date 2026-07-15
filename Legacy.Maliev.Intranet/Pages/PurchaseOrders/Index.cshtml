@@ -1,0 +1,8 @@
+@page
+@model Legacy.Maliev.Intranet.Pages.PurchaseOrders.IndexModel
+@{ ViewData["Title"] = "Purchase orders"; }
+<section class="panel"><p class="eyebrow">Procurement</p><div class="page-heading"><h1>Purchase orders</h1><a class="button" asp-page="/PurchaseOrders/Create">Create purchase order</a></div>
+<form method="get" class="filters"><label>Search <input asp-for="Search" type="search" /></label><label>Sort <select asp-for="Sort" asp-items="Html.GetEnumSelectList<Legacy.Maliev.Intranet.Suppliers.PurchaseOrderSortType>()"></select></label><label>Per page <input asp-for="Size" type="number" min="1" max="250" /></label><button>Apply</button></form>
+<div class="table-scroll"><table><thead><tr><th>ID</th><th>Employee</th><th>FOB</th><th>Terms</th><th>Shipping</th><th>Created</th></tr></thead><tbody>
+@foreach(var order in Model.Results.Items){<tr><td><a asp-page="/PurchaseOrders/View" asp-route-id="@order.Id">@order.Id</a></td><td>@(order.EmployeeId is int employeeId && Model.EmployeeNames.TryGetValue(employeeId, out var name) ? name : "-")</td><td>@(order.Fob ?? "-")</td><td>@(order.Terms ?? "-")</td><td>@(order.ShippingMethod ?? "-")</td><td>@order.CreatedDate?.ToString("u")</td></tr>}
+</tbody></table></div><div class="pager"><span>@Model.Results.TotalRecords record(s), @Model.Results.TotalPages page(s)</span><span>@if(Model.Results.HasPreviousPage){<a asp-route-index="@(Model.Results.PageIndex - 1)" asp-route-size="@Model.Size" asp-route-search="@Model.Search" asp-route-sort="@Model.Sort">Previous</a>} @if(Model.Results.HasNextPage){<a asp-route-index="@(Model.Results.PageIndex + 1)" asp-route-size="@Model.Size" asp-route-search="@Model.Search" asp-route-sort="@Model.Sort">Next</a>}</span></div></section>

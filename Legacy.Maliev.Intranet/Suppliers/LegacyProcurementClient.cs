@@ -34,6 +34,44 @@ public sealed class LegacyProcurementClient(HttpClient httpClient) : ILegacyProc
     public Task UpdateSupplierAddressAsync(int id, UpsertSupplierAddressRequest payload, string token, CancellationToken cancellationToken) => SendAsync(HttpMethod.Put, $"/suppliers/addresses/{id}", token, payload, cancellationToken);
     /// <inheritdoc />
     public Task DeleteSupplierAsync(int id, string token, CancellationToken cancellationToken) => SendAsync(HttpMethod.Delete, $"/Suppliers/{id}", token, null, cancellationToken);
+    /// <inheritdoc />
+    public Task<PaginatedResponse<PurchaseOrderResponse>?> GetPurchaseOrdersAsync(PurchaseOrderSortType sort, string? search, int index, int size, string token, CancellationToken cancellationToken) => GetAsync<PaginatedResponse<PurchaseOrderResponse>>($"/PurchaseOrders?sort={sort}&search={Uri.EscapeDataString(search ?? string.Empty)}&index={index}&size={size}", token, cancellationToken);
+    /// <inheritdoc />
+    public Task<PurchaseOrderResponse?> GetPurchaseOrderAsync(int id, string token, CancellationToken cancellationToken) => GetAsync<PurchaseOrderResponse>($"/PurchaseOrders/{id}", token, cancellationToken);
+    /// <inheritdoc />
+    public async Task<PurchaseOrderResponse> CreatePurchaseOrderAsync(UpsertPurchaseOrderRequest payload, string token, CancellationToken cancellationToken)
+    {
+        using var request = Create(HttpMethod.Post, "/PurchaseOrders", token, payload); request.Headers.Add("Idempotency-Key", Guid.NewGuid().ToString("D"));
+        using var response = await httpClient.SendAsync(request, cancellationToken); response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<PurchaseOrderResponse>(cancellationToken) ?? throw new InvalidOperationException("Empty purchase-order response.");
+    }
+    /// <inheritdoc />
+    public Task DeletePurchaseOrderAsync(int id, string token, CancellationToken cancellationToken) => SendAsync(HttpMethod.Delete, $"/PurchaseOrders/{id}", token, null, cancellationToken);
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<PurchaseOrderAddressResponse>> GetPurchaseOrderAddressesAsync(string token, CancellationToken cancellationToken) => await GetAsync<List<PurchaseOrderAddressResponse>>("/purchaseorders/addresses", token, cancellationToken) ?? [];
+    /// <inheritdoc />
+    public Task<PurchaseOrderAddressResponse?> GetPurchaseOrderAddressAsync(int id, string token, CancellationToken cancellationToken) => GetAsync<PurchaseOrderAddressResponse>($"/purchaseorders/addresses/{id}", token, cancellationToken);
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<OrderItemResponse>> GetOrderItemsAsync(int id, string token, CancellationToken cancellationToken) => await GetAsync<List<OrderItemResponse>>($"/purchaseorders/{id}/orderitems", token, cancellationToken) ?? [];
+    /// <inheritdoc />
+    public async Task<OrderItemResponse> CreateOrderItemAsync(UpsertOrderItemRequest payload, string token, CancellationToken cancellationToken)
+    {
+        using var request = Create(HttpMethod.Post, "/purchaseorders/orderitems", token, payload); using var response = await httpClient.SendAsync(request, cancellationToken); response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<OrderItemResponse>(cancellationToken) ?? throw new InvalidOperationException("Empty order-item response.");
+    }
+    /// <inheritdoc />
+    public Task DeleteOrderItemAsync(int id, string token, CancellationToken cancellationToken) => SendAsync(HttpMethod.Delete, $"/purchaseorders/orderitems/{id}", token, null, cancellationToken);
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<PurchaseOrderFileResponse>> GetPurchaseOrderFilesAsync(int id, string token, CancellationToken cancellationToken) => await GetAsync<List<PurchaseOrderFileResponse>>($"/purchaseorders/{id}/files", token, cancellationToken) ?? [];
+    /// <inheritdoc />
+    public async Task<PurchaseOrderFileResponse> CreatePurchaseOrderFileAsync(int id, string bucket, string objectName, string token, CancellationToken cancellationToken)
+    {
+        var uri = $"/purchaseorders/{id}/files?bucket={Uri.EscapeDataString(bucket)}&objectName={Uri.EscapeDataString(objectName)}";
+        using var request = Create(HttpMethod.Post, uri, token, null); using var response = await httpClient.SendAsync(request, cancellationToken); response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<PurchaseOrderFileResponse>(cancellationToken) ?? throw new InvalidOperationException("Empty purchase-order file response.");
+    }
+    /// <inheritdoc />
+    public Task DeletePurchaseOrderFileAsync(int id, string token, CancellationToken cancellationToken) => SendAsync(HttpMethod.Delete, $"/purchaseorders/files/{id}", token, null, cancellationToken);
 
     private async Task<T?> GetAsync<T>(string uri, string token, CancellationToken cancellationToken)
     {

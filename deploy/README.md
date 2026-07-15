@@ -7,8 +7,8 @@ These manifests are planning artifacts only. Deployment stays disabled until eve
 - Server-side employee sessions use the existing shared legacy Redis, not a new cache.
 - The BFF has no database and no direct CloudNativePG or SQL Server access.
 - Runtime endpoints and Redis configuration are projected from the one `maliev-legacy-secrets` JSON secret.
+- Purchase-order workflows require the internal `Services__Procurement`, `Services__Catalog`, `Services__Employee`, `Services__Document`, and `Services__File` endpoints; no Google service-account key is mounted because FileService owns GCS through Workload Identity.
 - The placeholder image digest must never deploy; GitOps receives only a scanned immutable digest.
 - One small replica preserves cluster capacity until measured load proves a different setting is safe without additional cost.
 
 The authoritative ingress, secret projection and environment overlay belong in `MALIEV-Co-Ltd/maliev-gitops` after the migration is complete.
-
