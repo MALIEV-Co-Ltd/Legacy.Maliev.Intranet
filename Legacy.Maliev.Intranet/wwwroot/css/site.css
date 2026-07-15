@@ -7,6 +7,9 @@ a { color: inherit; }
 .brand span, .eyebrow { color: #80a7ff; }
 nav { display: flex; gap: 1.25rem; }
 nav a { color: #cbd5e1; text-decoration: none; }
+.inline-form { display: inline; margin: 0; }
+.link-button { margin: 0; padding: 0; background: transparent; color: #cbd5e1; cursor: pointer; }
+.validation { color: #ff9a9a; }
 .shell { width: min(1120px, 90vw); margin: 0 auto; padding: 8vh 0; }
 .hero, .panel { padding: clamp(2rem, 6vw, 5rem); border: 1px solid #283044; background: rgba(17, 22, 32, .88); box-shadow: 0 24px 90px rgba(0,0,0,.28); }
 .narrow { max-width: 520px; margin: 0 auto; }
@@ -20,4 +23,3 @@ input { width: 100%; padding: .8rem; border: 1px solid #3a455e; background: #0d1
 small { color: #9aa6ba; }
 .correlation { color: #9aa6ba; margin-top: 2rem; }
 @media (max-width: 720px) { nav { display: none; } .shell { padding: 4vh 0; } }
-

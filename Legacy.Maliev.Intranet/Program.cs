@@ -1,4 +1,5 @@
 using Legacy.Maliev.Intranet;
+using Legacy.Maliev.Intranet.Auth;
 using Maliev.Aspire.ServiceDefaults;
 using Microsoft.AspNetCore.Authentication.Cookies;
 
@@ -6,7 +7,24 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.AddServiceDefaults();
 builder.AddStandardMiddleware(options => options.EnableRequestLogging = true);
+if (builder.Environment.IsEnvironment("Testing"))
+{
+    builder.Services.AddDistributedMemoryCache();
+}
+else
+{
+    builder.AddRedisDistributedCache("legacy-intranet:");
+}
 builder.Services.AddProblemDetails();
+builder.Services.AddSingleton(TimeProvider.System);
+builder.Services.AddSingleton<DistributedTicketStore>();
+builder.Services.AddScoped<EmployeeSessionService>();
+builder.Services.AddHttpClient<ILegacyAuthClient, LegacyAuthClient>(client =>
+{
+    client.BaseAddress = new Uri(builder.Configuration["Services:Auth"]
+        ?? throw new InvalidOperationException("Services:Auth is required."));
+    client.Timeout = TimeSpan.FromSeconds(10);
+});
 builder.Services
     .AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
     .AddCookie(options =>
@@ -22,6 +40,8 @@ builder.Services
         options.ExpireTimeSpan = TimeSpan.FromHours(8);
         options.SlidingExpiration = false;
     });
+builder.Services.AddOptions<CookieAuthenticationOptions>(CookieAuthenticationDefaults.AuthenticationScheme)
+    .Configure<DistributedTicketStore>((options, store) => options.SessionStore = store);
 builder.Services.AddAuthorizationBuilder().SetFallbackPolicy(
     new Microsoft.AspNetCore.Authorization.AuthorizationPolicyBuilder()
         .RequireAuthenticatedUser()
@@ -52,6 +72,11 @@ app.UseAuthentication();
 app.UseAuthorization();
 app.MapDefaultEndpoints("intranet");
 app.MapRazorPages();
+app.MapPost("/Logout", async (HttpContext context, EmployeeSessionService sessions, CancellationToken cancellationToken) =>
+{
+    await sessions.SignOutAsync(context, cancellationToken);
+    return Results.LocalRedirect("/Login");
+}).RequireAuthorization();
 
 await app.RunAsync();
 

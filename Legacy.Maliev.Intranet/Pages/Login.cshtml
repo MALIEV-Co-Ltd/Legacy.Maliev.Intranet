@@ -1,4 +1,5 @@
 @page
+@model LoginModel
 @attribute [Microsoft.AspNetCore.Authorization.AllowAnonymous]
 @{
     ViewData["Title"] = "Sign in";
@@ -6,14 +7,15 @@
 <section class="panel narrow">
     <p class="eyebrow">Staff access</p>
     <h1>Sign in</h1>
-    <p>The secure AuthService session boundary is being connected in the next migration slice.</p>
+    <p>Credentials are sent only to the legacy Auth service. Tokens remain in the server-side session store.</p>
+    <div asp-validation-summary="All" class="validation" role="alert"></div>
     <form method="post" autocomplete="on">
         <label for="email">Email</label>
-        <input id="email" name="email" type="email" autocomplete="username" required />
+        <input id="email" asp-for="Email" type="email" autocomplete="username" required />
         <label for="password">Password</label>
-        <input id="password" name="password" type="password" autocomplete="current-password" required />
-        <button type="submit" disabled aria-describedby="migration-note">Sign in</button>
-        <small id="migration-note">Sign-in remains disabled until the server-side token store is validated.</small>
+        <input id="password" asp-for="Password" type="password" autocomplete="current-password" required />
+        <input asp-for="ReturnUrl" type="hidden" />
+        <button type="submit">Sign in</button>
+        <small>Sessions are non-persistent and expire after eight hours.</small>
     </form>
 </section>
-

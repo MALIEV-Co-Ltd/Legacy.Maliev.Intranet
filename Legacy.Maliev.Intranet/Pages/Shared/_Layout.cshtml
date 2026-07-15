@@ -17,6 +17,9 @@
                 <a href="/QuotationRequests/Index">Requests</a>
                 <a href="/Orders/Index">Orders</a>
                 <a href="/Customers/Index">Customers</a>
+                <form method="post" action="/Logout" class="inline-form">
+                    <button type="submit" class="link-button">Sign out</button>
+                </form>
             </nav>
         }
     </header>
@@ -26,4 +29,3 @@
     @await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>
-
