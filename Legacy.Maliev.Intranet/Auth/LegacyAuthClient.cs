@@ -77,6 +77,28 @@ public sealed class LegacyAuthClient(HttpClient httpClient, ILogger<LegacyAuthCl
         return await response.Content.ReadFromJsonAsync<CustomerIdentityResponse>(cancellationToken);
     }
 
+    /// <inheritdoc />
+    public async Task<EmployeeIdentityResponse?> CreateEmployeeIdentityAsync(
+        int databaseId,
+        CreateEmployeeIdentityRequest identity,
+        string accessToken,
+        CancellationToken cancellationToken)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Post, $"/auth/v1/employee-identities/{databaseId}")
+        {
+            Content = JsonContent.Create(identity),
+        };
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+        using var response = await httpClient.SendAsync(request, cancellationToken);
+        if (response.StatusCode == HttpStatusCode.Conflict)
+        {
+            return null;
+        }
+
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<EmployeeIdentityResponse>(cancellationToken);
+    }
+
     private static bool TryReadEmployee(string accessToken, out EmployeeIdentity? identity)
     {
         identity = null;

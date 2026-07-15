@@ -1,0 +1,27 @@
+@page
+@model Legacy.Maliev.Intranet.Pages.Employees.CreateModel
+@{
+    ViewData["Title"] = "Create employee";
+}
+<section class="panel">
+    <p class="eyebrow">Employee profile and account</p>
+    <h1>Create employee</h1>
+    <p>The password is sent only to AuthService in an encrypted server-to-server request and is never placed in a URL.</p>
+    <form method="post" class="customer-form">
+        <div asp-validation-summary="ModelOnly" class="validation"></div>
+        <label>First name <input asp-for="Input.FirstName" autocomplete="given-name" /></label>
+        <span asp-validation-for="Input.FirstName" class="validation"></span>
+        <label>Last name <input asp-for="Input.LastName" autocomplete="family-name" /></label>
+        <span asp-validation-for="Input.LastName" class="validation"></span>
+        <label>Email <input asp-for="Input.Email" autocomplete="email" /></label>
+        <span asp-validation-for="Input.Email" class="validation"></span>
+        <label>Password <input asp-for="Input.Password" autocomplete="new-password" /></label>
+        <span asp-validation-for="Input.Password" class="validation"></span>
+        <label>Confirm password <input asp-for="Input.ConfirmPassword" autocomplete="new-password" /></label>
+        <span asp-validation-for="Input.ConfirmPassword" class="validation"></span>
+        <label>Phone number <input asp-for="Input.PhoneNumber" autocomplete="tel" /></label>
+        <label>Role ID <input asp-for="Input.RoleId" type="number" min="1" /></label>
+        <label>Date of birth <input asp-for="Input.DateOfBirth" /></label>
+        <button type="submit">Create employee</button>
+    </form>
+</section>

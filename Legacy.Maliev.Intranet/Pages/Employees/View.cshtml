@@ -1,0 +1,17 @@
+@page
+@model Legacy.Maliev.Intranet.Pages.Employees.ViewModel
+@{
+    ViewData["Title"] = Model.Employee.FullName;
+}
+<section class="panel">
+    <p class="eyebrow">Employee #@Model.Employee.Id</p>
+    <h1>@Model.Employee.FullName</h1>
+    <dl class="details">
+        <dt>Email</dt><dd>@Model.Employee.Email</dd>
+        <dt>Phone number</dt><dd>@Model.Employee.PhoneNumber</dd>
+        <dt>Date of birth</dt><dd>@Model.Employee.DateOfBirth?.ToString("yyyy-MM-dd")</dd>
+        <dt>Role</dt><dd>@Model.Employee.Role?.Name</dd>
+        <dt>Address</dt><dd>@Model.Employee.HomeAddress?.AddressLine1</dd>
+    </dl>
+    <a asp-page="/Employees/Index">Back to employees</a>
+</section>

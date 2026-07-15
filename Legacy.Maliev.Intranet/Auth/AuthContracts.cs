@@ -48,6 +48,28 @@ public sealed record CustomerIdentityResponse(
     string? FaxNumber,
     string? MobileNumber);
 
+/// <summary>Creates an employee identity with the password carried only in JSON.</summary>
+public sealed record CreateEmployeeIdentityRequest(
+    string UserName,
+    string Email,
+    string Password,
+    bool EmailConfirmed,
+    string? PhoneNumber);
+
+/// <summary>Safe employee identity response with all security material excluded.</summary>
+public sealed record EmployeeIdentityResponse(
+    string Id,
+    string? UserName,
+    string? Email,
+    bool EmailConfirmed,
+    string? PhoneNumber,
+    bool PhoneNumberConfirmed,
+    bool TwoFactorEnabled,
+    DateTimeOffset? LockoutEnd,
+    bool LockoutEnabled,
+    int AccessFailedCount,
+    int DatabaseID);
+
 /// <summary>Calls the independently deployed legacy Auth service.</summary>
 public interface ILegacyAuthClient
 {
@@ -64,6 +86,13 @@ public interface ILegacyAuthClient
     Task<CustomerIdentityResponse?> CreateCustomerIdentityAsync(
         int databaseId,
         CreateCustomerIdentityRequest request,
+        string accessToken,
+        CancellationToken cancellationToken);
+
+    /// <summary>Creates an AuthService-owned employee identity as an employee.</summary>
+    Task<EmployeeIdentityResponse?> CreateEmployeeIdentityAsync(
+        int databaseId,
+        CreateEmployeeIdentityRequest request,
         string accessToken,
         CancellationToken cancellationToken);
 }
