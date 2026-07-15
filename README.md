@@ -30,8 +30,10 @@ The customer, employee, material, supplier, purchase-order, and order-list domai
 - `/PurchaseOrders/Create` idempotently creates the order and line items, renders the bilingual document through the QuestPDF DocumentService, passes the PDF through FileService quarantine and malware scanning before GCS promotion, then records ProcurementService file metadata;
 - `/PurchaseOrders/View` reads the complete order, line items, employee/supplier projections, and clean-object signed URLs, while deletion uses a CSRF-protected POST and removes dependants before the parent;
 - `/Orders/Index` preserves search, supported sorting, bounded pagination, the pending working set, employee/process labels, and the signed-in employee's assignment view through OrderService;
+- `/Orders/Create` validates the customer and complete order payload, creates the initial status idempotently, streams attachments through FileService quarantine/malware scanning, compensates partial writes, and optionally sends the modern NotificationService confirmation;
+- `/Orders/View` preserves complete edits with ModifiedDate concurrency, permitted status transitions, Accepted cancellation locking, signed clean-file downloads/removal, and QuestPDF order-label rendering;
 - failed create workflows compensate in reverse order so metadata, cloud objects, line items, and the parent order are not orphaned.
 
-The remaining 26 route workflows render an explicit migration state until their domain
+The remaining 24 route workflows render an explicit migration state until their domain
 workflow is fully wired and tested. This repository must not be deployed before all
 of those route gates are complete.

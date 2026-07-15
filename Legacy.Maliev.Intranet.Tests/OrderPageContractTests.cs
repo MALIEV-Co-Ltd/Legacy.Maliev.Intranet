@@ -99,6 +99,19 @@ public sealed partial class OrderPageContractTests
         public Task<IReadOnlyList<ProcessResponse>> GetProcessesAsync(string token, CancellationToken cancellationToken) =>
             Task.FromResult<IReadOnlyList<ProcessResponse>>([new(3, 1, "FDM", null, null)]);
 
+        public Task<OrderResponse?> GetOrderAsync(int id, string token, CancellationToken cancellationToken) => Task.FromResult<OrderResponse?>(Completed);
+        public Task<OrderResponse> CreateOrderAsync(UpsertOrderRequest request, string token, CancellationToken cancellationToken) => Task.FromResult(Completed);
+        public Task UpdateOrderAsync(int id, UpsertOrderRequest request, DateTimeOffset? expectedModifiedDate, string token, CancellationToken cancellationToken) => Task.CompletedTask;
+        public Task DeleteOrderAsync(int id, string token, CancellationToken cancellationToken) => Task.CompletedTask;
+        public Task CreateNewOrderStatusAsync(int orderId, string token, CancellationToken cancellationToken) => Task.CompletedTask;
+        public Task<OrderStatusResponse?> GetLatestStatusAsync(int orderId, string token, CancellationToken cancellationToken) => Task.FromResult<OrderStatusResponse?>(null);
+        public Task<IReadOnlyList<OrderStatusHistoryResponse>> GetStatusHistoryAsync(int orderId, string token, CancellationToken cancellationToken) => Task.FromResult<IReadOnlyList<OrderStatusHistoryResponse>>([]);
+        public Task<IReadOnlyList<OrderStatusResponse>> GetAvailableStatusesAsync(int currentStatusId, string token, CancellationToken cancellationToken) => Task.FromResult<IReadOnlyList<OrderStatusResponse>>([]);
+        public Task TransitionOrderAsync(int orderId, int statusId, string token, CancellationToken cancellationToken) => Task.CompletedTask;
+        public Task<IReadOnlyList<OrderFileResponse>> GetOrderFilesAsync(int orderId, string token, CancellationToken cancellationToken) => Task.FromResult<IReadOnlyList<OrderFileResponse>>([]);
+        public Task<OrderFileResponse> CreateOrderFileAsync(int orderId, string bucket, string objectName, string token, CancellationToken cancellationToken) => Task.FromResult(new OrderFileResponse(1, orderId, bucket, objectName));
+        public Task DeleteOrderFileAsync(int fileId, string token, CancellationToken cancellationToken) => Task.CompletedTask;
+
         private static OrderResponse Order(int id, int? employeeId, string name) => new(
             id, 42, employeeId, name, null, 3, null, null, null, 5, 2, 3, 125m, 10m,
             562.50m, 1, 3, new DateTime(2030, 7, 20), null, null, null, true, true, true,

@@ -1,0 +1,26 @@
+@page
+@model Legacy.Maliev.Intranet.Pages.Orders.CreateModel
+@{ ViewData["Title"] = "Create order"; }
+<section class="panel">
+    <p class="eyebrow">Operations</p>
+    <div class="page-heading"><h1>Create order</h1><a asp-page="/Orders/Index">Back to orders</a></div>
+    <div asp-validation-summary="ModelOnly" class="validation-summary"></div>
+    <form method="post" enctype="multipart/form-data" class="form-grid">
+        <label>Customer ID <input asp-for="Input.CustomerId" type="number" min="1" /></label>
+        @if (Model.Customer is not null)
+        {
+            <p><strong>@Model.Customer.FullName</strong><br />@Model.Customer.Email</p>
+        }
+        <label>Order name <input asp-for="Input.Name" /></label>
+        <label>Quantity <input asp-for="Input.Quantity" type="number" min="1" /></label>
+        <label>Process <select asp-for="Input.ProcessId"><option value="">Select a process</option>@foreach (var item in Model.ReferenceData.Processes) { <option value="@item.Id">@item.Name</option> }</select></label>
+        <label>Material <select asp-for="Input.MaterialId"><option value="">No material</option>@foreach (var item in Model.ReferenceData.Materials) { <option value="@item.Id">@item.Name</option> }</select></label>
+        <label>Color <select asp-for="Input.ColorId"><option value="">No color</option>@foreach (var item in Model.ReferenceData.Colors) { <option value="@item.Id">@item.Name</option> }</select></label>
+        <label>Surface finish <select asp-for="Input.SurfaceFinishId"><option value="">No surface finish</option>@foreach (var item in Model.ReferenceData.SurfaceFinishes) { <option value="@item.Id">@item.Name</option> }</select></label>
+        <label class="full-width">Requirements <textarea asp-for="Input.Description" rows="7" maxlength="500"></textarea></label>
+        <label class="full-width">Files <input asp-for="Files" type="file" multiple /></label>
+        <label><input asp-for="Input.SendConfirmationEmail" /> Send customer confirmation</label>
+        <label><input asp-for="Input.AllowSocialMedia" /> Content may be published</label>
+        <button type="submit">Create order</button>
+    </form>
+</section>

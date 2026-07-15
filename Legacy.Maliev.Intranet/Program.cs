@@ -8,8 +8,12 @@ using Legacy.Maliev.Intranet.PurchaseOrders;
 using Legacy.Maliev.Intranet.Suppliers;
 using Maliev.Aspire.ServiceDefaults;
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Http.Features;
 
 var builder = WebApplication.CreateBuilder(args);
+const long maximumUploadBytes = 200L * 1024L * 1024L;
+builder.Services.Configure<FormOptions>(options => options.MultipartBodyLengthLimit = maximumUploadBytes);
+builder.WebHost.ConfigureKestrel(options => options.Limits.MaxRequestBodySize = maximumUploadBytes);
 
 builder.AddServiceDefaults();
 builder.AddStandardMiddleware(options => options.EnableRequestLogging = true);
@@ -23,9 +27,20 @@ else
 }
 builder.Services.AddProblemDetails();
 builder.Services.AddSingleton(TimeProvider.System);
+builder.Services.AddOptions<ServiceAuthenticationOptions>()
+    .Bind(builder.Configuration.GetSection("ServiceAuthentication"));
+builder.Services.AddSingleton<IServiceAccessTokenProvider, ServiceAccessTokenProvider>();
+builder.Services.AddTransient<LegacyServiceAuthenticationHandler>();
 builder.Services.AddSingleton<DistributedTicketStore>();
 builder.Services.AddScoped<EmployeeSessionService>();
+builder.Services.AddScoped<OrderReferenceDataLoader>();
 builder.Services.AddHttpClient<ILegacyAuthClient, LegacyAuthClient>(client =>
+{
+    client.BaseAddress = new Uri(builder.Configuration["Services:Auth"]
+        ?? throw new InvalidOperationException("Services:Auth is required."));
+    client.Timeout = TimeSpan.FromSeconds(10);
+}).AddStandardResilienceHandler();
+builder.Services.AddHttpClient("service-auth", client =>
 {
     client.BaseAddress = new Uri(builder.Configuration["Services:Auth"]
         ?? throw new InvalidOperationException("Services:Auth is required."));
@@ -36,43 +51,55 @@ builder.Services.AddHttpClient<ILegacyCustomerClient, LegacyCustomerClient>(clie
     client.BaseAddress = new Uri(builder.Configuration["Services:Customer"]
         ?? throw new InvalidOperationException("Services:Customer is required."));
     client.Timeout = TimeSpan.FromSeconds(10);
-}).AddStandardResilienceHandler();
+}).AddHttpMessageHandler<LegacyServiceAuthenticationHandler>().AddStandardResilienceHandler();
 builder.Services.AddHttpClient<ILegacyEmployeeClient, LegacyEmployeeClient>(client =>
 {
     client.BaseAddress = new Uri(builder.Configuration["Services:Employee"]
         ?? throw new InvalidOperationException("Services:Employee is required."));
     client.Timeout = TimeSpan.FromSeconds(10);
-}).AddStandardResilienceHandler();
+}).AddHttpMessageHandler<LegacyServiceAuthenticationHandler>().AddStandardResilienceHandler();
 builder.Services.AddHttpClient<ILegacyCatalogClient, LegacyCatalogClient>(client =>
 {
     client.BaseAddress = new Uri(builder.Configuration["Services:Catalog"]
         ?? throw new InvalidOperationException("Services:Catalog is required."));
     client.Timeout = TimeSpan.FromSeconds(10);
-}).AddStandardResilienceHandler();
+}).AddHttpMessageHandler<LegacyServiceAuthenticationHandler>().AddStandardResilienceHandler();
 builder.Services.AddHttpClient<ILegacyProcurementClient, LegacyProcurementClient>(client =>
 {
     client.BaseAddress = new Uri(builder.Configuration["Services:Procurement"]
         ?? throw new InvalidOperationException("Services:Procurement is required."));
     client.Timeout = TimeSpan.FromSeconds(10);
-}).AddStandardResilienceHandler();
+}).AddHttpMessageHandler<LegacyServiceAuthenticationHandler>().AddStandardResilienceHandler();
 builder.Services.AddHttpClient<ILegacyOrderClient, LegacyOrderClient>(client =>
 {
     client.BaseAddress = new Uri(builder.Configuration["Services:Order"]
         ?? throw new InvalidOperationException("Services:Order is required."));
     client.Timeout = TimeSpan.FromSeconds(10);
-}).AddStandardResilienceHandler();
+}).AddHttpMessageHandler<LegacyServiceAuthenticationHandler>().AddStandardResilienceHandler();
 builder.Services.AddHttpClient<IPurchaseOrderDocumentClient, PurchaseOrderDocumentClient>(client =>
 {
     client.BaseAddress = new Uri(builder.Configuration["Services:Document"]
         ?? throw new InvalidOperationException("Services:Document is required."));
     client.Timeout = TimeSpan.FromSeconds(30);
-}).AddStandardResilienceHandler();
+}).AddHttpMessageHandler<LegacyServiceAuthenticationHandler>().AddStandardResilienceHandler();
+builder.Services.AddHttpClient<IOrderDocumentClient, OrderDocumentClient>(client =>
+{
+    client.BaseAddress = new Uri(builder.Configuration["Services:Document"]
+        ?? throw new InvalidOperationException("Services:Document is required."));
+    client.Timeout = TimeSpan.FromSeconds(30);
+}).AddHttpMessageHandler<LegacyServiceAuthenticationHandler>().AddStandardResilienceHandler();
 builder.Services.AddHttpClient<ILegacyFileClient, LegacyFileClient>(client =>
 {
     client.BaseAddress = new Uri(builder.Configuration["Services:File"]
         ?? throw new InvalidOperationException("Services:File is required."));
     client.Timeout = TimeSpan.FromMinutes(3);
-}).AddStandardResilienceHandler();
+}).AddHttpMessageHandler<LegacyServiceAuthenticationHandler>().AddStandardResilienceHandler();
+builder.Services.AddHttpClient<ILegacyOrderNotificationClient, LegacyOrderNotificationClient>(client =>
+{
+    client.BaseAddress = new Uri(builder.Configuration["Services:Notification"]
+        ?? throw new InvalidOperationException("Services:Notification is required."));
+    client.Timeout = TimeSpan.FromSeconds(10);
+}).AddHttpMessageHandler<LegacyServiceAuthenticationHandler>().AddStandardResilienceHandler();
 builder.Services
     .AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
     .AddCookie(options =>
@@ -109,7 +136,7 @@ builder.Services.AddRazorPages(options =>
                  !route.StartsWith("/Customers/", StringComparison.OrdinalIgnoreCase) &&
                  !route.StartsWith("/Employees/", StringComparison.OrdinalIgnoreCase) &&
                  !route.StartsWith("/Materials/", StringComparison.OrdinalIgnoreCase) &&
-                 route is not "/Orders/Index" &&
+                 !route.StartsWith("/Orders/", StringComparison.OrdinalIgnoreCase) &&
                  !route.StartsWith("/PurchaseOrders/", StringComparison.OrdinalIgnoreCase) &&
                  !route.StartsWith("/Suppliers/", StringComparison.OrdinalIgnoreCase) &&
                  route is not "/Dashboard" and not "/AccessDenied"))

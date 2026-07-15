@@ -20,6 +20,29 @@ public sealed class LegacyFileClient(HttpClient httpClient) : ILegacyFileClient
         return result.Object.Single();
     }
     /// <inheritdoc />
+    public async Task<IReadOnlyList<UploadObjectResponse>> UploadOrderFilesAsync(int customerId, IReadOnlyList<IFormFile> files, string token, CancellationToken cancellationToken)
+    {
+        if (files.Count == 0) return [];
+        using var content = new MultipartFormDataContent();
+        foreach (var upload in files.Where(value => value.Length > 0))
+        {
+            var file = new StreamContent(upload.OpenReadStream());
+            file.Headers.ContentType = MediaTypeHeaderValue.TryParse(upload.ContentType, out var mediaType)
+                ? mediaType
+                : new MediaTypeHeaderValue("application/octet-stream");
+            content.Add(file, "files", Path.GetFileName(upload.FileName));
+        }
+
+        var path = $"uploads/{customerId}/{DateTime.UtcNow:yyyy-MM-dd}";
+        using var request = Create(HttpMethod.Post, $"/Uploads?bucket=maliev.com&path={Uri.EscapeDataString(path)}", token);
+        request.Content = content;
+        using var response = await httpClient.SendAsync(request, cancellationToken);
+        response.EnsureSuccessStatusCode();
+        var result = await response.Content.ReadFromJsonAsync<UploadResultResponse>(cancellationToken)
+            ?? throw new InvalidOperationException("Empty FileService response.");
+        return result.Object;
+    }
+    /// <inheritdoc />
     public async Task<Uri?> GetSignedUrlAsync(string bucket, string objectName, string token, CancellationToken cancellationToken)
     {
         using var request = Create(HttpMethod.Get, $"/uploads/SignedUrl?bucket={Uri.EscapeDataString(bucket)}&objectName={Uri.EscapeDataString(objectName)}", token);
@@ -43,6 +66,8 @@ public interface ILegacyFileClient
 {
     /// <summary>Uploads and scans a generated PDF.</summary>
     Task<UploadObjectResponse> UploadPdfAsync(int purchaseOrderId, byte[] pdf, string token, CancellationToken cancellationToken);
+    /// <summary>Streams customer order files through FileService quarantine and malware scanning.</summary>
+    Task<IReadOnlyList<UploadObjectResponse>> UploadOrderFilesAsync(int customerId, IReadOnlyList<IFormFile> files, string token, CancellationToken cancellationToken);
     /// <summary>Gets a signed URL for a known-clean object.</summary>
     Task<Uri?> GetSignedUrlAsync(string bucket, string objectName, string token, CancellationToken cancellationToken);
     /// <summary>Deletes a cloud object.</summary>
