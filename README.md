@@ -1,6 +1,19 @@
 # Legacy.Maliev.Intranet
 
-Public .NET 10 server-side BFF replacing the tightly coupled private legacy Intranet.
+Public .NET 10 migration target replacing the tightly coupled private legacy Intranet.
+
+The approved employee UI architecture is being introduced alongside the compatibility
+application so routes can move independently without a flag-day rewrite:
+
+- `Legacy.Maliev.Intranet.Client` is the standalone Blazor WebAssembly employee UI and uses MudBlazor;
+- `Legacy.Maliev.Intranet.Bff` is the same-origin cookie, CSRF, authorization, proxy, upload, and SignalR boundary;
+- `Legacy.Maliev.Intranet.Contracts` contains browser-safe BFF DTOs only;
+- `Legacy.Maliev.Intranet` remains the Razor Pages compatibility host until every route passes parity gates.
+
+Service credentials, access/refresh tokens, and session tickets must never enter the WASM
+client. The BFF must remain free of domain business logic and must authorize every server
+endpoint. Razor routes are removed only after route, authorization, DTO, and browser parity
+are proven for the replacement feature assembly.
 
 Migration rules:
 
