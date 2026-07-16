@@ -1,4 +1,5 @@
 @inherits LayoutComponentBase
+@inject EmployeeSessionClient SessionClient
 
 <MudThemeProvider />
 <MudPopoverProvider />
@@ -8,8 +9,36 @@
 <MudLayout>
     <MudAppBar Elevation="0">
         <MudText Typo="Typo.h6">MALIEV Intranet</MudText>
+        <MudSpacer />
+        @if (!sessionLoaded)
+        {
+            <MudText Typo="Typo.body2">Checking session…</MudText>
+        }
+        else if (session is null)
+        {
+            <MudText Typo="Typo.body2">Session unavailable</MudText>
+        }
+        else if (session.IsAuthenticated)
+        {
+            <MudText Typo="Typo.body2">@session.DisplayName</MudText>
+        }
+        else
+        {
+            <MudText Typo="Typo.body2">Sign in required</MudText>
+        }
     </MudAppBar>
     <MudMainContent Class="pa-6">
         @Body
     </MudMainContent>
 </MudLayout>
+
+@code {
+    private EmployeeSessionSummary? session;
+    private bool sessionLoaded;
+
+    protected override async Task OnInitializedAsync()
+    {
+        session = await SessionClient.GetAsync();
+        sessionLoaded = true;
+    }
+}
