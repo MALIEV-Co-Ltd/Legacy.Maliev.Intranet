@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Antiforgery;
 
 var builder = WebApplication.CreateBuilder(args);
+builder.WebHost.UseStaticWebAssets();
 builder.AddServiceDefaults();
 builder.AddStandardMiddleware(options => options.EnableRequestLogging = true);
 builder.Services.AddProblemDetails();
@@ -38,10 +39,14 @@ builder.Services.AddAuthorizationBuilder().SetFallbackPolicy(
 
 var app = builder.Build();
 app.UseStandardMiddleware();
+app.UseBlazorFrameworkFiles();
+app.UseStaticFiles();
+app.UseRouting();
 app.UseAuthentication();
 app.UseAuthorization();
 app.UseAntiforgery();
 app.MapDefaultEndpoints("intranet-bff");
+app.MapStaticAssets().AllowAnonymous();
 
 app.MapGet("/bff/session", (HttpContext context, IAntiforgery antiforgery) =>
 {
@@ -60,6 +65,8 @@ app.MapPost("/bff/logout", async (HttpContext context) =>
     await context.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
     return Results.NoContent();
 }).AddEndpointFilter<AntiforgeryValidationFilter>().RequireAuthorization();
+
+app.MapFallbackToFile("index.html").AllowAnonymous();
 
 await app.RunAsync();
 
