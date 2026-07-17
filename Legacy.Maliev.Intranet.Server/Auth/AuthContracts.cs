@@ -2,11 +2,21 @@ using System.ComponentModel.DataAnnotations;
 
 namespace Legacy.Maliev.Intranet.Auth;
 
-/// <summary>Compatibility permissions projected only after a legacy employee token is fully validated.</summary>
+/// <summary>Stable permission names used by the employee BFF authorization policies.</summary>
 public static class LegacyEmployeePermissions
 {
-    /// <summary>Preserves the legacy employee-wide read boundary for the materials catalog migration.</summary>
+    /// <summary>Allows reading the legacy materials catalog.</summary>
     public const string CatalogMaterialsRead = "legacy-catalog.materials.read";
+}
+
+/// <summary>Explicit removable grants that preserve employee-wide authorization during legacy rollout.</summary>
+public sealed class LegacyEmployeeCompatibilityOptions
+{
+    /// <summary>Gets the configuration section for temporary employee compatibility grants.</summary>
+    public const string SectionName = "LegacyEmployeeCompatibility";
+
+    /// <summary>Gets or sets whether validated employees receive the legacy-wide materials read grant.</summary>
+    public bool GrantCatalogMaterialsRead { get; set; } = true;
 }
 
 /// <summary>Employee login credentials sent only from the BFF to AuthService.</summary>

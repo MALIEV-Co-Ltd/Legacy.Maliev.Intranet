@@ -24,7 +24,7 @@ public sealed class BffMaterialsProxyContractTests
     public async Task AuthorizedEmployee_ForwardsExactQueryAndServerOnlyBearerToken()
     {
         var downstream = new RecordingCatalogHandler(HttpStatusCode.OK, MaterialPageJson);
-        await using var factory = new MaterialsBffFactory(downstream, hasPermission: true);
+        await using var factory = new MaterialsBffFactory(downstream, hasPermission: true, compatibilityGrant: false);
         using var client = CreateClient(factory);
         await SignInAsync(client);
 
@@ -44,7 +44,7 @@ public sealed class BffMaterialsProxyContractTests
     public async Task EmployeeWithoutExactPermission_IsForbiddenBeforeCatalogCall()
     {
         var downstream = new RecordingCatalogHandler(HttpStatusCode.OK, MaterialPageJson);
-        await using var factory = new MaterialsBffFactory(downstream, hasPermission: false);
+        await using var factory = new MaterialsBffFactory(downstream, hasPermission: false, compatibilityGrant: false);
         using var client = CreateClient(factory);
         await SignInAsync(client);
 
@@ -52,6 +52,20 @@ public sealed class BffMaterialsProxyContractTests
 
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
         Assert.Null(downstream.PathAndQuery);
+    }
+
+    [Fact]
+    public async Task LegacyEmployeeWithoutTokenPermission_CompatibilityGrantAllowsCatalogRead()
+    {
+        var downstream = new RecordingCatalogHandler(HttpStatusCode.OK, MaterialPageJson);
+        await using var factory = new MaterialsBffFactory(downstream, hasPermission: false, compatibilityGrant: true);
+        using var client = CreateClient(factory);
+        await SignInAsync(client);
+
+        using var response = await client.GetAsync("/bff/catalog/materials");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.NotNull(downstream.PathAndQuery);
     }
 
     [Fact]
@@ -135,7 +149,10 @@ public sealed class BffMaterialsProxyContractTests
         response.EnsureSuccessStatusCode();
     }
 
-    private sealed class MaterialsBffFactory(RecordingCatalogHandler downstream, bool hasPermission)
+    private sealed class MaterialsBffFactory(
+        RecordingCatalogHandler downstream,
+        bool hasPermission,
+        bool compatibilityGrant = true)
         : WebApplicationFactory<BffProgram>
     {
         protected override void ConfigureWebHost(IWebHostBuilder builder)
@@ -144,6 +161,9 @@ public sealed class BffMaterialsProxyContractTests
             TestJwtConfiguration.Configure(builder);
             builder.UseSetting("Services:Auth", "http://auth/");
             builder.UseSetting("Services:Catalog", "http://catalog/");
+            builder.UseSetting(
+                "LegacyEmployeeCompatibility:GrantCatalogMaterialsRead",
+                compatibilityGrant.ToString());
             builder.ConfigureServices(services =>
             {
                 services.RemoveAll<ILegacyAuthClient>();

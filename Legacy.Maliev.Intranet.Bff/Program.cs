@@ -25,6 +25,8 @@ builder.Services.AddLegacyAccessTokenValidation(
     validateOnStart: !builder.Environment.IsEnvironment("Testing"));
 builder.Services.AddSingleton<DistributedTicketStore>();
 builder.Services.AddScoped<EmployeeSessionService>();
+builder.Services.AddOptions<LegacyEmployeeCompatibilityOptions>()
+    .Bind(builder.Configuration.GetSection(LegacyEmployeeCompatibilityOptions.SectionName));
 builder.Services.AddHttpClient<CatalogMaterialsProxy>(client =>
 {
     client.BaseAddress = new Uri(builder.Configuration["Services:Catalog"]

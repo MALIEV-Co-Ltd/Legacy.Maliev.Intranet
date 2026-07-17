@@ -9,6 +9,7 @@ using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Time.Testing;
 using System.Net;
 using System.Security.Claims;
@@ -175,6 +176,30 @@ public sealed partial class EmployeeSessionContractTests
     }
 
     [Fact]
+    public async Task GetAccessToken_RefreshWithCompatibilityGrantDisabled_RemovesTheLegacyGrant()
+    {
+        var auth = new StubAuthClient
+        {
+            RefreshResult = new AuthTokenResponse(
+                "rotated-access-token",
+                "rotated-refresh-token",
+                "Bearer",
+                900,
+                Now.AddDays(14)),
+            RefreshPermissions = [],
+        };
+        var authentication = new RecordingAuthenticationService(
+            CreateTokenProperties(Now.AddMinutes(1)),
+            [new Claim("permissions", LegacyEmployeePermissions.CatalogMaterialsRead)]);
+        var sessions = CreateSessionService(auth, compatibilityGrant: false);
+
+        await sessions.GetAccessTokenAsync(CreateHttpContext(authentication), CancellationToken.None);
+
+        Assert.DoesNotContain(authentication.CurrentPrincipal!.Claims, claim =>
+            claim.Type == "permissions" && claim.Value == LegacyEmployeePermissions.CatalogMaterialsRead);
+    }
+
+    [Fact]
     public async Task GetAccessToken_WhenRefreshFails_ClearsLocalSession()
     {
         var auth = new StubAuthClient();
@@ -272,11 +297,17 @@ public sealed partial class EmployeeSessionContractTests
         return new DefaultHttpContext { RequestServices = services };
     }
 
-    private static EmployeeSessionService CreateSessionService(ILegacyAuthClient authClient) =>
+    private static EmployeeSessionService CreateSessionService(
+        ILegacyAuthClient authClient,
+        bool compatibilityGrant = true) =>
         new(
             authClient,
             new FakeTimeProvider(Now),
-            NullLogger<EmployeeSessionService>.Instance);
+            NullLogger<EmployeeSessionService>.Instance,
+            Options.Create(new LegacyEmployeeCompatibilityOptions
+            {
+                GrantCatalogMaterialsRead = compatibilityGrant,
+            }));
 
     [GeneratedRegex("name=\"__RequestVerificationToken\"[^>]*value=\"([^\"]+)\"", RegexOptions.CultureInvariant)]
     private static partial Regex AntiForgeryToken();

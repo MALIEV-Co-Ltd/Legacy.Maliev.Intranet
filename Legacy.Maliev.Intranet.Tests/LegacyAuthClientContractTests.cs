@@ -43,7 +43,7 @@ public sealed class LegacyAuthClientContractTests : IDisposable
     }
 
     [Fact]
-    public async Task Login_LegacyEmployeeTokenWithoutPermissions_ProjectsCatalogReadCompatibilityPermission()
+    public async Task Login_LegacyEmployeeTokenWithoutPermissions_RemainsPermissionlessAfterValidation()
     {
         var client = CreateClient(new LoginResponseHandler(CreateSignedToken(includeCatalogPermission: false)));
 
@@ -53,9 +53,7 @@ public sealed class LegacyAuthClientContractTests : IDisposable
             CancellationToken.None);
 
         Assert.True(result.Succeeded);
-        Assert.Equal(
-            ["legacy-catalog.materials.read"],
-            result.Identity?.Permissions);
+        Assert.Empty(result.Identity?.Permissions ?? []);
     }
 
     [Theory]

@@ -99,7 +99,6 @@ public sealed class LegacyAccessTokenValidator : ILegacyAccessTokenValidator, ID
             var permissions = principal.FindAll("permissions")
                 .Select(claim => claim.Value)
                 .Where(permission => !string.IsNullOrWhiteSpace(permission))
-                .Append(LegacyEmployeePermissions.CatalogMaterialsRead)
                 .Distinct(StringComparer.Ordinal)
                 .ToArray();
             identity = new EmployeeIdentity(id, name, email, permissions);
