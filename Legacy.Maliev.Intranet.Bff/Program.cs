@@ -6,6 +6,7 @@ using Legacy.Maliev.Intranet.Bff.Catalog;
 using Legacy.Maliev.Intranet.Bff.Customers;
 using Legacy.Maliev.Intranet.Bff.Employees;
 using Legacy.Maliev.Intranet.Bff.Orders;
+using Legacy.Maliev.Intranet.Server.Orders;
 using Maliev.Aspire.ServiceDefaults;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
@@ -135,6 +136,41 @@ builder.Services.AddHttpClient<OrdersProxy>(client =>
                 (int)response.StatusCode >= StatusCodes.Status500InternalServerError),
     });
 });
+builder.Services.AddHttpClient<OrderDetailProxy>(client =>
+{
+    client.BaseAddress = new Uri(builder.Configuration["Services:Order"]
+        ?? throw new InvalidOperationException("Services:Order is required."));
+    client.Timeout = TimeSpan.FromSeconds(30);
+}).RemoveAllResilienceHandlers()
+    .AddHttpMessageHandler<LegacyServiceAuthenticationHandler>();
+builder.Services.AddHttpClient<OrderCatalogReferenceProxy>(client =>
+{
+    client.BaseAddress = new Uri(builder.Configuration["Services:Catalog"]
+        ?? throw new InvalidOperationException("Services:Catalog is required."));
+    client.Timeout = TimeSpan.FromSeconds(30);
+}).AddHttpMessageHandler<LegacyServiceAuthenticationHandler>().AddStandardResilienceHandler();
+builder.Services.AddHttpClient<OrderEmployeeReferenceProxy>(client =>
+{
+    client.BaseAddress = new Uri(builder.Configuration["Services:Employee"]
+        ?? throw new InvalidOperationException("Services:Employee is required."));
+    client.Timeout = TimeSpan.FromSeconds(30);
+}).AddHttpMessageHandler<LegacyServiceAuthenticationHandler>().AddStandardResilienceHandler();
+builder.Services.AddHttpClient<OrderFileProxy>(client =>
+{
+    client.BaseAddress = new Uri(builder.Configuration["Services:File"]
+        ?? "https+http://legacy-maliev-file-service");
+    client.Timeout = TimeSpan.FromMinutes(5);
+}).RemoveAllResilienceHandlers()
+    .AddHttpMessageHandler<LegacyServiceAuthenticationHandler>();
+builder.Services.AddHttpClient<OrderDocumentProxy>(client =>
+{
+    client.BaseAddress = new Uri(builder.Configuration["Services:Document"]
+        ?? "https+http://legacy-maliev-document-service");
+    client.Timeout = TimeSpan.FromSeconds(30);
+}).RemoveAllResilienceHandlers()
+    .AddHttpMessageHandler<LegacyServiceAuthenticationHandler>();
+builder.Services.AddScoped<OrderDetailAggregator>();
+builder.Services.AddScoped<OrderFileWorkflow>();
 builder.Services.AddHttpClient<CatalogMaterialsProxy>(client =>
 {
     client.BaseAddress = new Uri(builder.Configuration["Services:Catalog"]
@@ -255,6 +291,27 @@ builder.Services.AddAuthorizationBuilder()
     .AddPolicy(LegacyEmployeePermissions.OrderCatalogRead, policy => policy
         .RequireAuthenticatedUser()
         .RequireClaim("permissions", LegacyEmployeePermissions.OrderCatalogRead))
+    .AddPolicy(LegacyEmployeePermissions.OrdersUpdate, policy => policy
+        .RequireAuthenticatedUser()
+        .RequireClaim("permissions", LegacyEmployeePermissions.OrdersUpdate))
+    .AddPolicy(LegacyEmployeePermissions.OrderStatusRead, policy => policy
+        .RequireAuthenticatedUser()
+        .RequireClaim("permissions", LegacyEmployeePermissions.OrderStatusRead))
+    .AddPolicy(LegacyEmployeePermissions.OrderStatusWrite, policy => policy
+        .RequireAuthenticatedUser()
+        .RequireClaim("permissions", LegacyEmployeePermissions.OrderStatusWrite))
+    .AddPolicy(LegacyEmployeePermissions.OrderFilesRead, policy => policy
+        .RequireAuthenticatedUser()
+        .RequireClaim("permissions", LegacyEmployeePermissions.OrderFilesRead)
+        .RequireClaim("permissions", LegacyEmployeePermissions.FileUploadsRead))
+    .AddPolicy(LegacyEmployeePermissions.OrderFilesWrite, policy => policy
+        .RequireAuthenticatedUser()
+        .RequireClaim("permissions", LegacyEmployeePermissions.OrderFilesWrite)
+        .RequireClaim("permissions", LegacyEmployeePermissions.FileUploadsCreate))
+    .AddPolicy(LegacyEmployeePermissions.OrderFilesDelete, policy => policy
+        .RequireAuthenticatedUser()
+        .RequireClaim("permissions", LegacyEmployeePermissions.OrderFilesDelete)
+        .RequireClaim("permissions", LegacyEmployeePermissions.FileUploadsDelete))
     .AddPolicy("legacy-catalog.materials.read", policy => policy
         .RequireAuthenticatedUser()
         .RequireClaim("permissions", "legacy-catalog.materials.read"))
@@ -340,6 +397,88 @@ app.MapGet("/bff/order-processes", (
     CancellationToken cancellationToken) =>
     OrdersEndpointMapper.MapProcessesAsync(orders.GetProcessesAsync, context, cancellationToken))
     .RequireAuthorization(LegacyEmployeePermissions.OrderCatalogRead);
+
+app.MapGet("/bff/orders/{id:int}", (
+    int id,
+    OrderDetailAggregator aggregator,
+    CancellationToken cancellationToken) =>
+    OrderDetailEndpointMapper.GetAsync(id, aggregator, cancellationToken))
+    .RequireAuthorization(policy =>
+    {
+        policy.RequireClaim("permissions", LegacyEmployeePermissions.OrdersRead);
+        policy.RequireClaim("permissions", LegacyEmployeePermissions.OrderCatalogRead);
+        policy.RequireClaim("permissions", LegacyEmployeePermissions.EmployeesList);
+        policy.RequireClaim("permissions", LegacyEmployeePermissions.CatalogMaterialsRead);
+        policy.RequireClaim("permissions", LegacyEmployeePermissions.OrderStatusRead);
+        policy.RequireClaim("permissions", LegacyEmployeePermissions.OrderFilesRead);
+        policy.RequireClaim("permissions", LegacyEmployeePermissions.FileUploadsRead);
+    });
+
+app.MapPut("/bff/orders/{id:int}", (
+    int id,
+    OrderUpdateRequest input,
+    OrderDetailProxy orders,
+    HttpContext context,
+    CancellationToken cancellationToken) =>
+    OrderDetailEndpointMapper.UpdateAsync(id, input, orders, context, cancellationToken))
+    .AddEndpointFilter<AntiforgeryValidationFilter>()
+    .RequireAuthorization(LegacyEmployeePermissions.OrdersUpdate);
+
+app.MapPost("/bff/orders/{id:int}/status/{statusId:int}", (
+    int id,
+    int statusId,
+    HttpRequest request,
+    OrderDetailProxy orders,
+    HttpContext context,
+    CancellationToken cancellationToken) =>
+    OrderDetailEndpointMapper.TransitionAsync(
+        id,
+        statusId,
+        request.Headers["Idempotency-Key"].FirstOrDefault(),
+        orders,
+        context,
+        cancellationToken))
+    .AddEndpointFilter<AntiforgeryValidationFilter>()
+    .RequireAuthorization(LegacyEmployeePermissions.OrderStatusWrite);
+
+app.MapPost("/bff/orders/{id:int}/files", (
+    int id,
+    HttpRequest request,
+    OrderDetailProxy orders,
+    OrderFileProxy files,
+    OrderFileWorkflow workflow,
+    ILogger<OrderFileWorkflow> logger,
+    CancellationToken cancellationToken) =>
+    OrderDetailEndpointMapper.UploadAsync(id, request, orders, files, workflow, logger, cancellationToken))
+    .AddEndpointFilter<AntiforgeryValidationFilter>()
+    .WithMetadata(new Microsoft.AspNetCore.Mvc.RequestSizeLimitAttribute(200L * 1024 * 1024))
+    .WithMetadata(new Microsoft.AspNetCore.Mvc.RequestFormLimitsAttribute { MultipartBodyLengthLimit = 200L * 1024 * 1024 })
+    .RequireAuthorization(LegacyEmployeePermissions.OrderFilesWrite);
+
+app.MapDelete("/bff/orders/{id:int}/files/{fileId:int}", (
+    int id,
+    int fileId,
+    OrderDetailProxy orders,
+    OrderFileProxy files,
+    OrderFileWorkflow workflow,
+    ILogger<OrderFileWorkflow> logger,
+    CancellationToken cancellationToken) =>
+    OrderDetailEndpointMapper.RemoveFileAsync(id, fileId, orders, files, workflow, logger, cancellationToken))
+    .AddEndpointFilter<AntiforgeryValidationFilter>()
+    .RequireAuthorization(LegacyEmployeePermissions.OrderFilesDelete);
+
+app.MapGet("/bff/orders/{id:int}/label", (
+    int id,
+    OrderDetailAggregator aggregator,
+    OrderDocumentProxy documents,
+    CancellationToken cancellationToken) =>
+    OrderDetailEndpointMapper.LabelAsync(id, aggregator, documents, cancellationToken))
+    .RequireAuthorization(policy =>
+    {
+        policy.RequireClaim("permissions", LegacyEmployeePermissions.OrdersRead);
+        policy.RequireClaim("permissions", LegacyEmployeePermissions.OrderCatalogRead);
+        policy.RequireClaim("permissions", LegacyEmployeePermissions.CatalogMaterialsRead);
+    });
 
 app.MapPost("/bff/login", async (
     EmployeeSignInRequest request,
