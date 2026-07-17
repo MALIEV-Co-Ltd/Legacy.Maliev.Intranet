@@ -3,6 +3,7 @@
 @inject HttpClient Http
 @inject NavigationManager Navigation
 @inject IStringLocalizer<MaterialDetail> Text
+@inject IStringLocalizer<MaterialCreate> Fields
 
 <PageTitle>@Text["PageTitle", Id]</PageTitle>
 
@@ -14,13 +15,26 @@
     {
         <MudProgressLinear Indeterminate="true" Color="Color.Primary" aria-label="@Text["Loading"]" />
     }
+    else if (notFound)
+    {
+        <MudAlert Severity="Severity.Info">@error</MudAlert>
+    }
     else if (!string.IsNullOrWhiteSpace(error))
     {
-        <MudAlert Severity="@(notFound ? Severity.Info : Severity.Error)">@error</MudAlert>
+        <MudAlert Severity="Severity.Error">@error</MudAlert>
     }
     else if (material is not null)
     {
-        <MudPaper Class="pa-4" Elevation="1">
+        @if (!string.IsNullOrWhiteSpace(error))
+        {
+            <MudAlert Severity="Severity.Error" Class="mb-4">@error</MudAlert>
+        }
+        @if (!string.IsNullOrWhiteSpace(notification))
+        {
+            <MudAlert Severity="Severity.Success" Class="mb-4">@notification</MudAlert>
+        }
+
+        <MudPaper Class="pa-4 mb-4" Elevation="1">
             <MudGrid Spacing="3">
                 <MudItem xs="12" sm="6"><MudText Typo="Typo.caption">@Text["Id"]</MudText><MudText>@material.Id</MudText></MudItem>
                 <MudItem xs="12" sm="6"><MudText Typo="Typo.caption">@Text["Group"]</MudText><MudText>@ValueOrUnavailable(material.MaterialGroup?.Name)</MudText></MudItem>
@@ -31,25 +45,108 @@
                 <MudItem xs="12" sm="6"><MudText Typo="Typo.caption">@Text["Printable"]</MudText><MudText>@Text[material.Printable ? "Yes" : "No"]</MudText></MudItem>
             </MudGrid>
         </MudPaper>
-    }
 
-    <MudButton Href="/Materials/Index" Variant="Variant.Text" Class="mt-4">
-        @Text["BackToMaterials"]
-    </MudButton>
+        <MudForm @ref="form" Model="@model" @bind-IsValid="formValid">
+            <MudPaper Class="pa-4 mb-4" Elevation="1">
+                <MudText Typo="Typo.h6" HtmlTag="h2" Class="mb-3">@Fields["BasicInformation"]</MudText>
+                <MudGrid Spacing="3">
+                    <MudItem xs="12" md="6"><MudTextField @bind-Value="model.Name" For="@(() => model.Name)" Label="@Fields["Name"]" Required="true" MaxLength="50" /></MudItem>
+                    <MudItem xs="12" md="6">
+                        <MudSelect T="int" @bind-Value="model.MaterialGroupId" For="@(() => model.MaterialGroupId)" Label="@Fields["MaterialGroup"]" Required="true">
+                            @foreach (var group in materialGroups)
+                            {
+                                <MudSelectItem T="int" Value="@group.Id">@group.Name</MudSelectItem>
+                            }
+                        </MudSelect>
+                    </MudItem>
+                    <MudItem xs="12" md="6"><MudTextField @bind-Value="model.MaterialNumber" Label="@Fields["MaterialNumber"]" /></MudItem>
+                    <MudItem xs="12" md="6"><MudTextField @bind-Value="model.ManufacturerReference" Label="@Fields["ManufacturerReference"]" /></MudItem>
+                    <MudItem xs="12" md="6"><MudNumericField T="decimal?" @bind-Value="model.PricePerKilogram" Label="@Fields["PricePerKilogram"]" /></MudItem>
+                    <MudItem xs="12" md="6">
+                        <MudSelect T="int?" @bind-Value="model.CurrencyId" For="@(() => model.CurrencyId)" Label="@Fields["Currency"]" Clearable="true">
+                            @foreach (var currency in currencies)
+                            {
+                                <MudSelectItem T="int?" Value="@((int?)currency.Id)">@currency.ShortName</MudSelectItem>
+                            }
+                        </MudSelect>
+                    </MudItem>
+                    <MudItem xs="12"><MudTextField @bind-Value="model.Url" For="@(() => model.Url)" Label="@Fields["DatasheetUrl"]" InputType="InputType.Url" /></MudItem>
+                    <MudItem xs="12"><MudTextField @bind-Value="model.Comment" Label="@Fields["Comment"]" Lines="3" /></MudItem>
+                </MudGrid>
+            </MudPaper>
+
+            <MudPaper Class="pa-4 mb-4" Elevation="1">
+                <MudText Typo="Typo.h6" HtmlTag="h2" Class="mb-3">@Fields["MechanicalProperties"]</MudText>
+                <MudGrid Spacing="3">
+                    <MudItem xs="12" md="6"><MudNumericField T="decimal?" @bind-Value="model.DensityKilogramPerCubicMeter" Label="@Fields["Density"]" /></MudItem>
+                    <MudItem xs="12" md="6"><MudNumericField T="decimal?" @bind-Value="model.ThermalConductivityWattPerMeterKelvin" Label="@Fields["ThermalConductivity"]" /></MudItem>
+                    <MudItem xs="12" md="6"><MudNumericField T="decimal?" @bind-Value="model.TensileStrengthUltimateGigaPascal" Label="@Fields["UltimateTensileStrength"]" /></MudItem>
+                    <MudItem xs="12" md="6"><MudNumericField T="decimal?" @bind-Value="model.TensileStrengthYieldMegaPascal" Label="@Fields["YieldTensileStrength"]" /></MudItem>
+                    <MudItem xs="12" md="6"><MudNumericField T="decimal?" @bind-Value="model.ShearModulusGigaPascal" Label="@Fields["ShearModulus"]" /></MudItem>
+                    <MudItem xs="12" md="6"><MudNumericField T="decimal?" @bind-Value="model.MachinabilityPercent" Label="@Fields["MachinabilityPercent"]" /></MudItem>
+                    <MudItem xs="12" md="6"><MudNumericField T="decimal?" @bind-Value="model.HardnessBrinell" Label="@Fields["HardnessBrinell"]" /></MudItem>
+                    <MudItem xs="12" md="6"><MudNumericField T="decimal?" @bind-Value="model.HardnessKnoop" Label="@Fields["HardnessKnoop"]" /></MudItem>
+                    <MudItem xs="12" md="6"><MudNumericField T="decimal?" @bind-Value="model.HardnessRockwellA" Label="@Fields["HardnessRockwellA"]" /></MudItem>
+                    <MudItem xs="12" md="6"><MudNumericField T="decimal?" @bind-Value="model.HardnessRockwellB" Label="@Fields["HardnessRockwellB"]" /></MudItem>
+                    <MudItem xs="12" md="6"><MudNumericField T="decimal?" @bind-Value="model.HardnessRockwellC" Label="@Fields["HardnessRockwellC"]" /></MudItem>
+                    <MudItem xs="12" md="6"><MudNumericField T="decimal?" @bind-Value="model.HardnessVickers" Label="@Fields["HardnessVickers"]" /></MudItem>
+                </MudGrid>
+            </MudPaper>
+
+            <MudPaper Class="pa-4 mb-4" Elevation="1">
+                <MudText Typo="Typo.h6" HtmlTag="h2" Class="mb-3">@Fields["MaterialIdentification"]</MudText>
+                <MudGrid Spacing="3">
+                    <MudItem xs="12" sm="6" md="4"><MudTextField @bind-Value="model.Aisi" Label="@Fields["Aisi"]" /></MudItem>
+                    <MudItem xs="12" sm="6" md="4"><MudTextField @bind-Value="model.Din" Label="@Fields["Din"]" /></MudItem>
+                    <MudItem xs="12" sm="6" md="4"><MudTextField @bind-Value="model.Bts" Label="@Fields["Bts"]" /></MudItem>
+                    <MudItem xs="12" sm="6" md="4"><MudTextField @bind-Value="model.Jis" Label="@Fields["Jis"]" /></MudItem>
+                    <MudItem xs="12" sm="6" md="4"><MudTextField @bind-Value="model.Uns" Label="@Fields["Uns"]" /></MudItem>
+                    <MudItem xs="12" sm="6" md="4"><MudTextField @bind-Value="model.En" Label="@Fields["En"]" /></MudItem>
+                    <MudItem xs="12" sm="6" md="4"><MudTextField @bind-Value="model.Afnor" Label="@Fields["Afnor"]" /></MudItem>
+                    <MudItem xs="12" sm="6" md="4"><MudTextField @bind-Value="model.Uni" Label="@Fields["Uni"]" /></MudItem>
+                    <MudItem xs="12" sm="6" md="4"><MudTextField @bind-Value="model.Sis" Label="@Fields["Sis"]" /></MudItem>
+                    <MudItem xs="12" sm="6" md="4"><MudTextField @bind-Value="model.Sae" Label="@Fields["Sae"]" /></MudItem>
+                    <MudItem xs="12" sm="6" md="4"><MudTextField @bind-Value="model.Astm" Label="@Fields["Astm"]" /></MudItem>
+                    <MudItem xs="12" sm="6" md="4"><MudTextField @bind-Value="model.Ams" Label="@Fields["Ams"]" /></MudItem>
+                </MudGrid>
+            </MudPaper>
+
+            <MudPaper Class="pa-4 mb-4" Elevation="1">
+                <MudText Typo="Typo.h6" HtmlTag="h2" Class="mb-3">@Fields["ProcessCompatibility"]</MudText>
+                <MudCheckBox T="bool" @bind-Value="model.Machinable" Label="@Fields["Machinable"]" />
+                <MudCheckBox T="bool" @bind-Value="model.Printable" Label="@Fields["Printable"]" />
+            </MudPaper>
+
+            <MudStack Row="true" Spacing="2">
+                <MudButton ButtonType="ButtonType.Button" Variant="Variant.Filled" Color="Color.Primary" Disabled="@submitting" OnClick="SubmitAsync">
+                    @(submitting ? Text["Saving"] : Text["SaveMaterial"])
+                </MudButton>
+                <MudButton Href="/Materials/Index" Variant="Variant.Text" Disabled="@submitting">@Text["BackToMaterials"]</MudButton>
+            </MudStack>
+        </MudForm>
+    }
 </MudContainer>
 
 @code {
     [SupplyParameterFromQuery(Name = "id")] public int Id { get; set; }
 
+    private readonly CatalogMaterialUpsertRequest model = new();
     private CatalogMaterialDetail? material;
+    private IReadOnlyList<CatalogMaterialGroup> materialGroups = [];
+    private IReadOnlyList<CatalogCurrency> currencies = [];
+    private MudForm? form;
     private string? error;
+    private string? notification;
+    private bool formValid;
     private bool loading;
     private bool notFound;
+    private bool submitting;
 
     protected override async Task OnParametersSetAsync()
     {
         material = null;
         error = null;
+        notification = null;
         notFound = false;
 
         if (Id <= 0)
@@ -62,43 +159,34 @@
         loading = true;
         try
         {
-            using var response = await Http.GetAsync($"/bff/catalog/materials/{Id}");
-            if (response.StatusCode == HttpStatusCode.Unauthorized)
+            var detailTask = LoadMaterialAsync();
+            var groupsTask = LoadLookupAsync<CatalogMaterialGroup>("/bff/catalog/material-groups");
+            var currenciesTask = LoadLookupAsync<CatalogCurrency>("/bff/catalog/currencies");
+            await Task.WhenAll(detailTask, groupsTask, currenciesTask);
+            material = await detailTask;
+            materialGroups = await groupsTask;
+            currencies = await currenciesTask;
+            if (material is not null)
             {
-                Navigation.NavigateTo($"/Login?returnUrl={Uri.EscapeDataString(Navigation.ToBaseRelativePath(Navigation.Uri))}");
-                return;
+                CopyToModel(material);
             }
-
-            if (response.StatusCode == HttpStatusCode.Forbidden)
-            {
-                error = Text["Forbidden"];
-                return;
-            }
-
-            if (response.StatusCode == HttpStatusCode.NotFound)
-            {
-                notFound = true;
-                error = Text["MaterialNotFound"];
-                return;
-            }
-
-            if (response.StatusCode == HttpStatusCode.TooManyRequests)
-            {
-                error = Text["RateLimited"];
-                return;
-            }
-
-            if (!response.IsSuccessStatusCode)
-            {
-                error = Text["Unavailable"];
-                return;
-            }
-
-            material = await response.Content.ReadFromJsonAsync<CatalogMaterialDetail>();
-            if (material is null)
-            {
-                error = Text["InvalidResponse"];
-            }
+        }
+        catch (UnauthorizedAccessException)
+        {
+            NavigateToLogin();
+        }
+        catch (MaterialNotFoundException)
+        {
+            notFound = true;
+            error = Text["MaterialNotFound"];
+        }
+        catch (CatalogForbiddenException)
+        {
+            error = Text["Forbidden"];
+        }
+        catch (CatalogRateLimitedException)
+        {
+            error = Text["RateLimited"];
         }
         catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException)
         {
@@ -110,10 +198,106 @@
         }
     }
 
-    private string ValueOrUnavailable(string? value) =>
-        string.IsNullOrWhiteSpace(value) ? Text["NotAvailable"] : value;
+    private async Task<CatalogMaterialDetail> LoadMaterialAsync()
+    {
+        using var response = await Http.GetAsync($"/bff/catalog/materials/{Id}");
+        if (response.StatusCode == HttpStatusCode.Unauthorized) throw new UnauthorizedAccessException();
+        if (response.StatusCode == HttpStatusCode.Forbidden) throw new CatalogForbiddenException();
+        if (response.StatusCode == HttpStatusCode.NotFound) throw new MaterialNotFoundException();
+        if (response.StatusCode == HttpStatusCode.TooManyRequests) throw new CatalogRateLimitedException();
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<CatalogMaterialDetail>()
+            ?? throw new System.Text.Json.JsonException("The Catalog detail response was empty.");
+    }
 
-    private string DensityOrUnavailable() => material?.DensityKilogramPerCubicMeter is decimal density
-        ? density.ToString(System.Globalization.CultureInfo.CurrentCulture)
-        : Text["NotAvailable"];
+    private async Task<IReadOnlyList<T>> LoadLookupAsync<T>(string path)
+    {
+        using var response = await Http.GetAsync(path);
+        if (response.StatusCode == HttpStatusCode.Unauthorized) throw new UnauthorizedAccessException();
+        if (response.StatusCode == HttpStatusCode.Forbidden) throw new CatalogForbiddenException();
+        if (response.StatusCode == HttpStatusCode.TooManyRequests) throw new CatalogRateLimitedException();
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<IReadOnlyList<T>>() ?? [];
+    }
+
+    private async Task SubmitAsync()
+    {
+        if (submitting || form is null) return;
+        await form.ValidateAsync();
+        if (!formValid)
+        {
+            error = Text["ValidationFailed"];
+            return;
+        }
+
+        submitting = true;
+        error = null;
+        notification = null;
+        try
+        {
+            var session = await Http.GetFromJsonAsync<EmployeeSessionSummary>("/bff/session");
+            if (string.IsNullOrWhiteSpace(session?.CsrfToken))
+            {
+                error = Text["SaveFailed"];
+                return;
+            }
+
+            using var request = new HttpRequestMessage(HttpMethod.Put, $"/bff/catalog/materials/{Id}")
+            {
+                Content = JsonContent.Create(model),
+            };
+            request.Headers.Add("X-CSRF-TOKEN", session.CsrfToken);
+            using var response = await Http.SendAsync(request);
+            if (response.StatusCode == HttpStatusCode.Unauthorized) { NavigateToLogin(); return; }
+            if (response.StatusCode == HttpStatusCode.Forbidden) { error = Text["Forbidden"]; return; }
+            if (response.StatusCode == HttpStatusCode.NotFound) { notFound = true; error = Text["MaterialNotFound"]; return; }
+            if (response.StatusCode == HttpStatusCode.BadRequest) { error = Text["ValidationFailed"]; return; }
+            if (response.StatusCode == HttpStatusCode.Conflict) { error = Text["Conflict"]; return; }
+            if (response.StatusCode == HttpStatusCode.TooManyRequests) { error = Text["RateLimited"]; return; }
+            if (!response.IsSuccessStatusCode) { error = Text["SaveFailed"]; return; }
+
+            notification = Text["MaterialSaved"];
+            CopyToSummary();
+        }
+        catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException)
+        {
+            error = Text["SaveFailed"];
+        }
+        finally
+        {
+            submitting = false;
+        }
+    }
+
+    private void CopyToModel(CatalogMaterialDetail value)
+    {
+        model.MaterialGroupId = value.MaterialGroupId; model.Machinable = value.Machinable; model.Printable = value.Printable; model.Name = value.Name;
+        model.Aisi = value.Aisi; model.Din = value.Din; model.Bts = value.Bts; model.Jis = value.Jis; model.Uns = value.Uns; model.En = value.En;
+        model.Afnor = value.Afnor; model.Uni = value.Uni; model.Sis = value.Sis; model.Sae = value.Sae; model.Astm = value.Astm; model.Ams = value.Ams;
+        model.MaterialNumber = value.MaterialNumber; model.ManufacturerReference = value.ManufacturerReference; model.HardnessBrinell = value.HardnessBrinell;
+        model.HardnessKnoop = value.HardnessKnoop; model.HardnessRockwellA = value.HardnessRockwellA; model.HardnessRockwellB = value.HardnessRockwellB;
+        model.HardnessRockwellC = value.HardnessRockwellC; model.HardnessVickers = value.HardnessVickers; model.DensityKilogramPerCubicMeter = value.DensityKilogramPerCubicMeter;
+        model.TensileStrengthUltimateGigaPascal = value.TensileStrengthUltimateGigaPascal; model.TensileStrengthYieldMegaPascal = value.TensileStrengthYieldMegaPascal;
+        model.MachinabilityPercent = value.MachinabilityPercent; model.ShearModulusGigaPascal = value.ShearModulusGigaPascal;
+        model.ThermalConductivityWattPerMeterKelvin = value.ThermalConductivityWattPerMeterKelvin; model.Url = value.Url;
+        model.PricePerKilogram = value.PricePerKilogram; model.CurrencyId = value.CurrencyId; model.Comment = value.Comment;
+    }
+
+    private void CopyToSummary() => material = material! with
+    {
+        MaterialGroupId = model.MaterialGroupId,
+        MaterialGroup = materialGroups.FirstOrDefault(group => group.Id == model.MaterialGroupId),
+        Machinable = model.Machinable,
+        Printable = model.Printable,
+        Name = model.Name,
+        MaterialNumber = model.MaterialNumber,
+        DensityKilogramPerCubicMeter = model.DensityKilogramPerCubicMeter,
+    };
+
+    private void NavigateToLogin() => Navigation.NavigateTo($"/Login?returnUrl={Uri.EscapeDataString(Navigation.ToBaseRelativePath(Navigation.Uri))}");
+    private string ValueOrUnavailable(string? value) => string.IsNullOrWhiteSpace(value) ? Text["NotAvailable"] : value;
+    private string DensityOrUnavailable() => material?.DensityKilogramPerCubicMeter is decimal density ? density.ToString(System.Globalization.CultureInfo.CurrentCulture) : Text["NotAvailable"];
+    private sealed class MaterialNotFoundException : Exception;
+    private sealed class CatalogForbiddenException : Exception;
+    private sealed class CatalogRateLimitedException : Exception;
 }

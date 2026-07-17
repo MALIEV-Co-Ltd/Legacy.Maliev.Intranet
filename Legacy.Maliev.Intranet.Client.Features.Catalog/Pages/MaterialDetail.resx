@@ -24,4 +24,10 @@
   <data name="RateLimited" xml:space="preserve"><value>Catalog requests are temporarily limited. Wait and try again.</value></data>
   <data name="Unavailable" xml:space="preserve"><value>The material catalog is temporarily unavailable.</value></data>
   <data name="InvalidResponse" xml:space="preserve"><value>The material catalog returned an invalid response.</value></data>
+  <data name="SaveMaterial" xml:space="preserve"><value>Save material</value></data>
+  <data name="Saving" xml:space="preserve"><value>Saving...</value></data>
+  <data name="MaterialSaved" xml:space="preserve"><value>Material saved.</value></data>
+  <data name="SaveFailed" xml:space="preserve"><value>The material could not be saved. Try again.</value></data>
+  <data name="ValidationFailed" xml:space="preserve"><value>Correct the highlighted fields before saving.</value></data>
+  <data name="Conflict" xml:space="preserve"><value>The material changed while you were editing it. Reload the page and try again.</value></data>
 </root>
