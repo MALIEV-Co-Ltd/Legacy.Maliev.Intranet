@@ -5,6 +5,13 @@ namespace Legacy.Maliev.Intranet.Bff.Customers;
 /// <summary>Forwards customer list requests without exposing the service credential to the browser.</summary>
 public sealed class CustomersProxy(HttpClient httpClient)
 {
+    /// <summary>Gets one complete customer profile from CustomerService.</summary>
+    public async Task<HttpResponseMessage> GetByIdAsync(int id, CancellationToken cancellationToken)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Get, $"/customers/{id}");
+        return await httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+    }
+
     /// <summary>Gets the requested customer page from CustomerService.</summary>
     public Task<HttpResponseMessage> GetAsync(
         CustomerListSort sort,

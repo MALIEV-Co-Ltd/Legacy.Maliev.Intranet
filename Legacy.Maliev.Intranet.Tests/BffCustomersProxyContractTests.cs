@@ -184,6 +184,213 @@ public sealed class BffCustomersProxyContractTests
     }
 
     [Fact]
+    public async Task Detail_AuthorizedEmployee_ForwardsExactIdAndServerOnlyBearerToken()
+    {
+        var downstream = new RecordingCustomerHandler(HttpStatusCode.OK, CustomerDetailJson);
+        await using var factory = new CustomersBffFactory(
+            downstream,
+            hasPermission: true,
+            hasReadPermission: true);
+        using var client = CreateClient(factory);
+        await SignInAsync(client);
+
+        using var response = await client.GetAsync("/bff/customers/42");
+        var json = await response.Content.ReadAsStringAsync();
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal("/customers/42", downstream.PathAndQuery);
+        Assert.Equal("Bearer signed-service-token", downstream.Authorization);
+        Assert.Contains("\"fullName\":\"Ada Lovelace\"", json, StringComparison.Ordinal);
+        Assert.Contains("\"taxNumber\":\"TH-123\"", json, StringComparison.Ordinal);
+        Assert.Contains("\"billingAddress\"", json, StringComparison.Ordinal);
+        Assert.Contains("\"shippingAddress\"", json, StringComparison.Ordinal);
+        Assert.DoesNotContain("server-only-access-token", json, StringComparison.Ordinal);
+        Assert.DoesNotContain("signed-service-token", json, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Detail_EmployeeWithoutExactReadPermission_IsForbiddenBeforeDownstreamCall()
+    {
+        var downstream = new RecordingCustomerHandler(HttpStatusCode.OK, CustomerDetailJson);
+        await using var factory = new CustomersBffFactory(
+            downstream,
+            hasPermission: true,
+            hasReadPermission: false);
+        using var client = CreateClient(factory);
+        await SignInAsync(client);
+
+        using var response = await client.GetAsync("/bff/customers/42");
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+        Assert.Null(downstream.PathAndQuery);
+    }
+
+    [Fact]
+    public async Task Detail_AnonymousRequest_IsUnauthorizedBeforeDownstreamCall()
+    {
+        var downstream = new RecordingCustomerHandler(HttpStatusCode.OK, CustomerDetailJson);
+        await using var factory = new CustomersBffFactory(
+            downstream,
+            hasPermission: true,
+            hasReadPermission: true);
+        using var client = CreateClient(factory);
+
+        using var response = await client.GetAsync("/bff/customers/42");
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        Assert.Null(downstream.PathAndQuery);
+    }
+
+    [Theory]
+    [InlineData(HttpStatusCode.Unauthorized)]
+    [InlineData(HttpStatusCode.Forbidden)]
+    [InlineData(HttpStatusCode.NotFound)]
+    public async Task Detail_ExpectedDownstreamStatus_IsPreserved(HttpStatusCode statusCode)
+    {
+        var downstream = new RecordingCustomerHandler(statusCode, "{}");
+        await using var factory = new CustomersBffFactory(
+            downstream,
+            hasPermission: true,
+            hasReadPermission: true);
+        using var client = CreateClient(factory);
+        await SignInAsync(client);
+
+        using var response = await client.GetAsync("/bff/customers/42");
+
+        Assert.Equal(statusCode, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Detail_RateLimit_PreservesBoundedRetryAfterWithoutRetry()
+    {
+        var downstream = new RecordingCustomerHandler(
+            HttpStatusCode.TooManyRequests,
+            "{}",
+            retryAfterSeconds: 2);
+        await using var factory = new CustomersBffFactory(
+            downstream,
+            hasPermission: true,
+            hasReadPermission: true);
+        using var client = CreateClient(factory);
+        await SignInAsync(client);
+
+        using var response = await client.GetAsync("/bff/customers/42");
+
+        Assert.Equal(HttpStatusCode.TooManyRequests, response.StatusCode);
+        Assert.Equal(TimeSpan.FromSeconds(2), response.Headers.RetryAfter?.Delta);
+        Assert.Equal(1, downstream.RequestCount);
+    }
+
+    [Fact]
+    public async Task Detail_InvalidPayload_IsBadGatewayWithoutLeakingPayload()
+    {
+        var downstream = new RecordingCustomerHandler(HttpStatusCode.OK, "customer-secret-not-json");
+        await using var factory = new CustomersBffFactory(
+            downstream,
+            hasPermission: true,
+            hasReadPermission: true);
+        using var client = CreateClient(factory);
+        await SignInAsync(client);
+
+        using var response = await client.GetAsync("/bff/customers/42");
+        var body = await response.Content.ReadAsStringAsync();
+
+        Assert.Equal(HttpStatusCode.BadGateway, response.StatusCode);
+        Assert.DoesNotContain("customer-secret-not-json", body, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Detail_MismatchedCustomerId_IsBadGateway()
+    {
+        var downstream = new RecordingCustomerHandler(
+            HttpStatusCode.OK,
+            CustomerDetailJson.Replace("\"Id\":42", "\"Id\":99", StringComparison.Ordinal));
+        await using var factory = new CustomersBffFactory(
+            downstream,
+            hasPermission: true,
+            hasReadPermission: true);
+        using var client = CreateClient(factory);
+        await SignInAsync(client);
+
+        using var response = await client.GetAsync("/bff/customers/42");
+
+        Assert.Equal(HttpStatusCode.BadGateway, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Detail_MissingRequiredProfileFields_IsBadGateway()
+    {
+        var downstream = new RecordingCustomerHandler(
+            HttpStatusCode.OK,
+            CustomerDetailJson.Replace("\"FullName\":\"Ada Lovelace\",", string.Empty, StringComparison.Ordinal));
+        await using var factory = new CustomersBffFactory(
+            downstream,
+            hasPermission: true,
+            hasReadPermission: true);
+        using var client = CreateClient(factory);
+        await SignInAsync(client);
+
+        using var response = await client.GetAsync("/bff/customers/42");
+
+        Assert.Equal(HttpStatusCode.BadGateway, response.StatusCode);
+    }
+
+    [Theory]
+    [MemberData(nameof(TransportFailures))]
+    public async Task Detail_TransportFailure_IsServiceUnavailable(Exception exception)
+    {
+        var downstream = new RecordingCustomerHandler(HttpStatusCode.OK, "{}", exception: exception);
+        await using var factory = new CustomersBffFactory(
+            downstream,
+            hasPermission: true,
+            hasReadPermission: true);
+        using var client = CreateClient(factory);
+        await SignInAsync(client);
+
+        using var response = await client.GetAsync("/bff/customers/42");
+
+        Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Detail_SignedLeastPrivilegeServiceToken_PassesCustomerPermissionPipeline()
+    {
+        using var signingKey = RSA.Create(2048);
+        await using var customer = await StartCustomerPermissionPipelineAsync(signingKey);
+        var serviceToken = CreateSignedToken(signingKey, includeCustomerReadPermission: true);
+        await using var factory = new CustomersBffFactory(
+            customer.GetTestServer().CreateHandler(),
+            hasPermission: true,
+            serviceToken,
+            hasReadPermission: true);
+        using var client = CreateClient(factory);
+        await SignInAsync(client);
+
+        using var response = await client.GetAsync("/bff/customers/42");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Detail_ServiceTokenWithoutReadPermission_IsForbidden()
+    {
+        using var signingKey = RSA.Create(2048);
+        await using var customer = await StartCustomerPermissionPipelineAsync(signingKey);
+        var serviceToken = CreateSignedToken(signingKey);
+        await using var factory = new CustomersBffFactory(
+            customer.GetTestServer().CreateHandler(),
+            hasPermission: true,
+            serviceToken,
+            hasReadPermission: true);
+        using var client = CreateClient(factory);
+        await SignInAsync(client);
+
+        using var response = await client.GetAsync("/bff/customers/42");
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
+    [Fact]
     public async Task Create_ValidCsrfAndPermission_CreatesProfileAndIdentityWithServerToken()
     {
         var profile = new RecordingWorkflowHandler(
@@ -477,7 +684,8 @@ public sealed class BffCustomersProxyContractTests
         string serviceToken = "signed-service-token",
         bool hasCreatePermission = false,
         HttpMessageHandler? profileDownstream = null,
-        HttpMessageHandler? identityDownstream = null)
+        HttpMessageHandler? identityDownstream = null,
+        bool hasReadPermission = false)
         : WebApplicationFactory<BffProgram>
     {
         protected override void ConfigureWebHost(IWebHostBuilder builder)
@@ -490,7 +698,7 @@ public sealed class BffCustomersProxyContractTests
             builder.ConfigureServices(services =>
             {
                 services.RemoveAll<ILegacyAuthClient>();
-                services.AddSingleton<ILegacyAuthClient>(new CustomersAuthClient(hasPermission, hasCreatePermission));
+                services.AddSingleton<ILegacyAuthClient>(new CustomersAuthClient(hasPermission, hasCreatePermission, hasReadPermission));
                 services.RemoveAll<IServiceAccessTokenProvider>();
                 services.AddSingleton<IServiceAccessTokenProvider>(new CustomersServiceTokenProvider(serviceToken));
                 services.AddHttpClient<CustomersProxy>()
@@ -515,7 +723,7 @@ public sealed class BffCustomersProxyContractTests
         }
     }
 
-    private sealed class CustomersAuthClient(bool hasPermission, bool hasCreatePermission) : ILegacyAuthClient
+    private sealed class CustomersAuthClient(bool hasPermission, bool hasCreatePermission, bool hasReadPermission) : ILegacyAuthClient
     {
         public Task<EmployeeLoginResult> LoginAsync(string email, string password, CancellationToken cancellationToken) =>
             Task.FromResult(new EmployeeLoginResult(
@@ -528,6 +736,7 @@ public sealed class BffCustomersProxyContractTests
                     [
                         .. hasPermission ? ["legacy-customer.customers.list"] : Array.Empty<string>(),
                         .. hasCreatePermission ? ["legacy-customer.customers.create"] : Array.Empty<string>(),
+                        .. hasReadPermission ? ["legacy-customer.customers.read"] : Array.Empty<string>(),
                     ])));
 
         public Task<EmployeeRefreshResult?> RefreshAsync(string refreshToken, CancellationToken cancellationToken) => Task.FromResult<EmployeeRefreshResult?>(null);
@@ -609,6 +818,9 @@ public sealed class BffCustomersProxyContractTests
     private const string CustomerPageJson =
         """{"Items":[{"Id":42,"FirstName":"Ada","LastName":"Lovelace","FullName":"Ada Lovelace","Email":"ada@example.com","Company":{"Id":7,"Name":"Analytical Engines Ltd"}}],"PageIndex":2,"TotalPages":4,"TotalRecords":75,"HasNextPage":true,"HasPreviousPage":true}""";
 
+    private const string CustomerDetailJson =
+        """{"Id":42,"FirstName":"Ada","LastName":"Lovelace","FullName":"Ada Lovelace","Telephone":"+66 2 123 4567","Mobile":"+66 81 234 5678","Fax":"+66 2 765 4321","Email":"ada@example.com","DateOfBirth":"1815-12-10T00:00:00","CompanyId":7,"BillingAddressId":13,"ShippingAddressId":14,"CreatedDate":"2026-01-02T03:04:05Z","ModifiedDate":"2026-07-16T07:08:09Z","BillingAddress":{"Id":13,"Building":"A","AddressLine1":"1 Logic Road","AddressLine2":"Floor 2","City":"Bangkok","State":"Bangkok","PostalCode":"10110","CountryId":211,"CreatedDate":"2026-01-02T03:04:05Z","ModifiedDate":null},"Company":{"Id":7,"Name":"Analytical Engines Ltd","TaxNumber":"TH-123","Registrar":"Bangkok","CreatedDate":"2026-01-02T03:04:05Z","ModifiedDate":null},"ShippingAddress":{"Id":14,"Building":null,"AddressLine1":"2 Engine Road","AddressLine2":null,"City":"Bangkok","State":"Bangkok","PostalCode":"10120","CountryId":211,"CreatedDate":"2026-01-02T03:04:05Z","ModifiedDate":null}}""";
+
     private static async Task<WebApplication> StartCustomerPermissionPipelineAsync(RSA signingKey)
     {
         var builder = WebApplication.CreateBuilder(new WebApplicationOptions
@@ -628,6 +840,8 @@ public sealed class BffCustomersProxyContractTests
         app.UseAuthorization();
         app.MapGet("/customers", () => Results.Text(CustomerPageJson, "application/json"))
             .RequireAuthorization($"Permission:{LegacyEmployeePermissions.CustomersList}");
+        app.MapGet("/customers/{id:int}", () => Results.Text(CustomerDetailJson, "application/json"))
+            .RequireAuthorization("Permission:legacy-customer.customers.read");
         await app.StartAsync();
         return app;
     }
@@ -637,7 +851,8 @@ public sealed class BffCustomersProxyContractTests
         bool includeCustomerListPermission = false,
         bool includeCustomerCreatePermission = false,
         bool includeCustomerDeletePermission = false,
-        bool includeIdentityCreatePermission = false)
+        bool includeIdentityCreatePermission = false,
+        bool includeCustomerReadPermission = false)
     {
         var claims = new List<Claim>
         {
@@ -659,6 +874,10 @@ public sealed class BffCustomersProxyContractTests
         if (includeIdentityCreatePermission)
         {
             claims.Add(new Claim("permissions", "legacy-auth.customer-identities.create"));
+        }
+        if (includeCustomerReadPermission)
+        {
+            claims.Add(new Claim("permissions", "legacy-customer.customers.read"));
         }
 
         var key = new RsaSecurityKey(signingKey) { KeyId = "customer-contract-key" };
