@@ -10,7 +10,7 @@
     <MudText Typo="Typo.overline">@Text["Procurement"]</MudText>
     <div class="d-flex flex-wrap align-center justify-space-between gap-3 mb-4">
         <MudText Typo="Typo.h4" HtmlTag="h1">@Text["Suppliers"]</MudText>
-        <MudButton Href="/Suppliers/Create" Variant="Variant.Filled" Color="Color.Primary">@Text["CreateSupplier"]</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="OpenCreate">@Text["CreateSupplier"]</MudButton>
     </div>
 
     <MudPaper Class="pa-4 mb-4">
@@ -49,7 +49,11 @@
                 <MudTh>@Text["Telephone"]</MudTh>
             </HeaderContent>
             <RowTemplate>
-                <MudTd DataLabel="@Text["Id"]"><MudLink Href="@($"/Suppliers/View?id={context.Id}")">@context.Id</MudLink></MudTd>
+                <MudTd DataLabel="@Text["Id"]">
+                    <a href="@($"/Suppliers/View?id={context.Id}")"
+                       @onclick="@(() => OpenSupplier(context.Id))"
+                       @onclick:preventDefault="true">@context.Id</a>
+                </MudTd>
                 <MudTd DataLabel="@Text["Name"]">@ValueOrFallback(context.Name)</MudTd>
                 <MudTd DataLabel="@Text["Email"]">@ValueOrFallback(context.Email)</MudTd>
                 <MudTd DataLabel="@Text["Telephone"]">@ValueOrFallback(context.Telephone)</MudTd>
@@ -81,7 +85,7 @@
     {
         Index = Math.Max(1, Index);
         Size = Math.Clamp(Size, 1, 250);
-        currentSort = Enum.TryParse<SupplierListSort>(SortQuery, ignoreCase: true, out var parsedSort)
+        currentSort = Enum.TryParse<SupplierListSort>(SortQuery, ignoreCase: true, out var parsedSort) && Enum.IsDefined(parsedSort)
             ? parsedSort
             : SupplierListSort.SupplierId_Descending;
         searchInput = Search;
@@ -148,6 +152,10 @@
     private Task ApplyFiltersAsync() => NavigateAsync(1, searchInput, sortInput, sizeInput);
     private Task PreviousPageAsync() => NavigateAsync(Math.Max(1, Index - 1), Search, currentSort, Size);
     private Task NextPageAsync() => NavigateAsync(Index + 1, Search, currentSort, Size);
+
+    private void OpenCreate() => Navigation.NavigateTo("/Suppliers/Create", forceLoad: true);
+
+    private void OpenSupplier(int id) => Navigation.NavigateTo($"/Suppliers/View?id={id}", forceLoad: true);
 
     private Task NavigateAsync(int index, string? search, SupplierListSort sort, int size)
     {

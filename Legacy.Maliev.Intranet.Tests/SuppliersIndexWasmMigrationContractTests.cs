@@ -30,10 +30,14 @@ public sealed class SuppliersIndexWasmMigrationContractTests
         Assert.Contains("MudTable", page, StringComparison.Ordinal);
         Assert.Contains("/Suppliers/Create", page, StringComparison.Ordinal);
         Assert.Contains("/Suppliers/View?id=", page, StringComparison.Ordinal);
+        Assert.Contains("Navigation.NavigateTo(\"/Suppliers/Create\", forceLoad: true)", page, StringComparison.Ordinal);
+        Assert.Contains("Navigation.NavigateTo($\"/Suppliers/View?id={id}\", forceLoad: true)", page, StringComparison.Ordinal);
+        Assert.Equal(2, CountOccurrences(page, "forceLoad: true"));
         Assert.Contains("HttpStatusCode.Unauthorized", page, StringComparison.Ordinal);
         Assert.Contains("HttpStatusCode.Forbidden", page, StringComparison.Ordinal);
         Assert.Contains("HttpStatusCode.TooManyRequests", page, StringComparison.Ordinal);
         Assert.Contains("Math.Clamp", page, StringComparison.Ordinal);
+        Assert.Contains("Enum.IsDefined(parsedSort)", page, StringComparison.Ordinal);
         Assert.Contains("Uri.EscapeDataString", page, StringComparison.Ordinal);
 
         Assert.Contains("Legacy.Maliev.Intranet.Client.Features.Procurement.wasm", app, StringComparison.Ordinal);
@@ -48,6 +52,10 @@ public sealed class SuppliersIndexWasmMigrationContractTests
         Assert.DoesNotContain("jquery", page, StringComparison.OrdinalIgnoreCase);
         Assert.True(File.Exists(Path.Combine(root, "Legacy.Maliev.Intranet", "Pages", "Suppliers", "Index.cshtml")),
             "The compatibility Razor fallback must remain in this slice.");
+        Assert.True(File.Exists(Path.Combine(root, "Legacy.Maliev.Intranet", "Pages", "Suppliers", "Create.cshtml")),
+            "Create must retain its Razor fallback while only the index route is migrated.");
+        Assert.True(File.Exists(Path.Combine(root, "Legacy.Maliev.Intranet", "Pages", "Suppliers", "View.cshtml")),
+            "View must retain its Razor fallback while only the index route is migrated.");
     }
 
     [Fact]
@@ -90,4 +98,7 @@ public sealed class SuppliersIndexWasmMigrationContractTests
 
         return directory?.FullName ?? throw new DirectoryNotFoundException("Could not find repository root.");
     }
+
+    private static int CountOccurrences(string value, string search) =>
+        value.Split(search, StringSplitOptions.None).Length - 1;
 }
