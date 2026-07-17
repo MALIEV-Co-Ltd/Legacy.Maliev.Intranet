@@ -14,3 +14,7 @@ body {
     position: fixed;
     right: 0;
 }
+
+.employee-login {
+    padding-block: clamp(1.5rem, 8vh, 5rem);
+}

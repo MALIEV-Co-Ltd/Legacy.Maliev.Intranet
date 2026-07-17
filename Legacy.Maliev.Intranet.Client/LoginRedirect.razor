@@ -1,0 +1,22 @@
+@inject NavigationManager Navigation
+
+<MudStack AlignItems="AlignItems.Center" Spacing="2" Class="pa-6">
+    <MudProgressCircular Indeterminate="true" Color="Color.Primary" />
+    <MudText Typo="Typo.body2">Redirecting to employee sign in…</MudText>
+</MudStack>
+
+@code {
+    protected override void OnAfterRender(bool firstRender)
+    {
+        if (!firstRender)
+        {
+            return;
+        }
+
+        var relativePath = Navigation.ToBaseRelativePath(Navigation.Uri);
+        var returnPath = "/" + relativePath;
+        Navigation.NavigateTo(
+            $"/Login?returnUrl={Uri.EscapeDataString(returnPath)}",
+            new NavigationOptions { ReplaceHistoryEntry = true });
+    }
+}

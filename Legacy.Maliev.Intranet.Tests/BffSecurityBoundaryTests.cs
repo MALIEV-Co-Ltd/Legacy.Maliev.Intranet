@@ -58,6 +58,8 @@ public sealed class BffSecurityBoundaryTests
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
             builder.UseEnvironment("Testing");
+            TestJwtConfiguration.Configure(builder);
+            builder.UseSetting("Services:Auth", "http://auth/");
             builder.ConfigureServices(services => services
                 .AddAuthentication(options =>
                 {

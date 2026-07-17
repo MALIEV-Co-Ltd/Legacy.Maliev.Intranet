@@ -22,6 +22,16 @@ public sealed record EmployeeIdentity(string Id, string UserName, string? Email)
 /// <summary>Result of a generic employee authentication attempt.</summary>
 public sealed record EmployeeLoginResult(bool Succeeded, AuthTokenResponse? Tokens, EmployeeIdentity? Identity);
 
+/// <summary>Validated rotated employee tokens and the identity bound to the new access token.</summary>
+public sealed record EmployeeRefreshResult(AuthTokenResponse Tokens, EmployeeIdentity Identity);
+
+/// <summary>Indicates that AuthService throttled an employee authentication request.</summary>
+public sealed class LegacyAuthRateLimitedException(int? retryAfterSeconds) : Exception("Employee authentication was rate limited.")
+{
+    /// <summary>Gets the bounded Retry-After delay supplied by AuthService, when present.</summary>
+    public int? RetryAfterSeconds { get; } = retryAfterSeconds;
+}
+
 /// <summary>Creates a customer identity with the password carried only in JSON.</summary>
 public sealed record CreateCustomerIdentityRequest(
     string UserName,
@@ -77,7 +87,7 @@ public interface ILegacyAuthClient
     Task<EmployeeLoginResult> LoginAsync(string email, string password, CancellationToken cancellationToken);
 
     /// <summary>Rotates a single-use refresh token.</summary>
-    Task<AuthTokenResponse?> RefreshAsync(string refreshToken, CancellationToken cancellationToken);
+    Task<EmployeeRefreshResult?> RefreshAsync(string refreshToken, CancellationToken cancellationToken);
 
     /// <summary>Revokes the complete refresh-token family.</summary>
     Task RevokeAsync(string refreshToken, CancellationToken cancellationToken);

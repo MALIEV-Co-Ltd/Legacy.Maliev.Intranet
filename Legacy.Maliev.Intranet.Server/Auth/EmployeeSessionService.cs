@@ -1,10 +1,16 @@
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Logging;
+using System.Security.Claims;
 
 namespace Legacy.Maliev.Intranet.Auth;
 
 /// <summary>Creates, refreshes and revokes server-side employee sessions.</summary>
-public sealed class EmployeeSessionService(ILegacyAuthClient authClient, TimeProvider timeProvider)
+public sealed class EmployeeSessionService(
+    ILegacyAuthClient authClient,
+    TimeProvider timeProvider,
+    ILogger<EmployeeSessionService> logger)
 {
     private const string AccessToken = "legacy_access_token";
     private const string RefreshToken = "legacy_refresh_token";
@@ -63,18 +69,21 @@ public sealed class EmployeeSessionService(ILegacyAuthClient authClient, TimePro
         }
 
         var refreshed = await authClient.RefreshAsync(refreshToken, cancellationToken);
-        if (refreshed is null)
+        var expectedEmployeeId = result.Principal?.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (refreshed is null ||
+            string.IsNullOrWhiteSpace(expectedEmployeeId) ||
+            !string.Equals(refreshed.Identity.Id, expectedEmployeeId, StringComparison.Ordinal))
         {
             await context.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
             return null;
         }
 
-        StoreTokens(result.Properties, refreshed);
+        StoreTokens(result.Properties, refreshed.Tokens);
         await context.SignInAsync(
             CookieAuthenticationDefaults.AuthenticationScheme,
             result.Principal!,
             result.Properties);
-        return refreshed.AccessToken;
+        return refreshed.Tokens.AccessToken;
     }
 
     /// <summary>Revokes the refresh family and always clears the local session.</summary>
@@ -88,9 +97,9 @@ public sealed class EmployeeSessionService(ILegacyAuthClient authClient, TimePro
             {
                 await authClient.RevokeAsync(refreshToken, cancellationToken);
             }
-            catch (HttpRequestException)
+            catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException)
             {
-                // Local sign-out must still complete; AuthService emits the actionable failure log.
+                logger.LogWarning(exception, "Refresh-token revocation was unavailable during employee sign-out.");
             }
         }
 

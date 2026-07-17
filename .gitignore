@@ -7,4 +7,4 @@ TestResults/
 *.pem
 *.key
 .env
-
+.worktrees/

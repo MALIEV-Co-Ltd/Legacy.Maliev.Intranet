@@ -139,7 +139,7 @@ public sealed partial class MaterialPageContractTests
     private sealed class StubAuthClient : ILegacyAuthClient
     {
         public Task<EmployeeLoginResult> LoginAsync(string email, string password, CancellationToken cancellationToken) => Task.FromResult(new EmployeeLoginResult(true, new("employee-access-token", "refresh", "Bearer", 900, DateTimeOffset.UtcNow.AddDays(1)), new("id", email, email)));
-        public Task<AuthTokenResponse?> RefreshAsync(string refreshToken, CancellationToken cancellationToken) => Task.FromResult<AuthTokenResponse?>(null);
+        public Task<EmployeeRefreshResult?> RefreshAsync(string refreshToken, CancellationToken cancellationToken) => Task.FromResult<EmployeeRefreshResult?>(null);
         public Task RevokeAsync(string refreshToken, CancellationToken cancellationToken) => Task.CompletedTask;
         public Task<CustomerIdentityResponse?> CreateCustomerIdentityAsync(int databaseId, CreateCustomerIdentityRequest request, string accessToken, CancellationToken cancellationToken) => Task.FromResult<CustomerIdentityResponse?>(null);
         public Task<EmployeeIdentityResponse?> CreateEmployeeIdentityAsync(int databaseId, CreateEmployeeIdentityRequest request, string accessToken, CancellationToken cancellationToken) => Task.FromResult<EmployeeIdentityResponse?>(null);

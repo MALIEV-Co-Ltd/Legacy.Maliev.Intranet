@@ -142,7 +142,7 @@ public sealed partial class EmployeePageContractTests
                 new AuthTokenResponse("employee-access-token", "employee-refresh-token", "Bearer", 900, DateTimeOffset.UtcNow.AddDays(14)),
                 new EmployeeIdentity("employee-id", email, email)));
 
-        public Task<AuthTokenResponse?> RefreshAsync(string refreshToken, CancellationToken cancellationToken) => Task.FromResult<AuthTokenResponse?>(null);
+        public Task<EmployeeRefreshResult?> RefreshAsync(string refreshToken, CancellationToken cancellationToken) => Task.FromResult<EmployeeRefreshResult?>(null);
         public Task RevokeAsync(string refreshToken, CancellationToken cancellationToken) => Task.CompletedTask;
         public Task<CustomerIdentityResponse?> CreateCustomerIdentityAsync(int databaseId, CreateCustomerIdentityRequest request, string accessToken, CancellationToken cancellationToken) => Task.FromResult<CustomerIdentityResponse?>(null);
 

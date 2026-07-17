@@ -1,0 +1,107 @@
+@page "/Login"
+@inject EmployeeAuthenticationClient AuthenticationClient
+@inject NavigationManager Navigation
+
+<PageTitle>Employee sign in - MALIEV Intranet</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Small" Class="employee-login">
+    <MudPaper Class="pa-6" Elevation="1">
+        <MudText Typo="Typo.h4" HtmlTag="h1" Class="mb-2">Employee sign in</MudText>
+        <MudText Typo="Typo.body1" Class="mb-6">Use your MALIEV employee account to continue.</MudText>
+
+        @if (!string.IsNullOrWhiteSpace(errorMessage))
+        {
+            <MudAlert Severity="Severity.Error" Class="mb-4" Dense="true">@errorMessage</MudAlert>
+        }
+
+        @if (isSubmitting)
+        {
+            <MudProgressLinear Indeterminate="true" Color="Color.Primary" Class="mb-4" />
+        }
+
+        <MudForm @ref="form" @bind-IsValid="isValid">
+            <MudTextField T="string"
+                          @bind-Value="model.Email"
+                          Label="Email"
+                          InputType="InputType.Email"
+                          autocomplete="email"
+                          Required="true"
+                          RequiredError="Email is required."
+                          Disabled="isSubmitting"
+                          FullWidth="true"
+                          Class="mb-3" />
+            <MudTextField T="string"
+                          @bind-Value="model.Password"
+                          Label="Password"
+                          InputType="InputType.Password"
+                          autocomplete="current-password"
+                          Required="true"
+                          RequiredError="Password is required."
+                          Disabled="isSubmitting"
+                          FullWidth="true"
+                          Class="mb-4" />
+            <MudButton Variant="Variant.Filled"
+                       Color="Color.Primary"
+                       ButtonType="ButtonType.Button"
+                       OnClick="SubmitAsync"
+                       Disabled="isSubmitting"
+                       FullWidth="true">
+                Sign in
+            </MudButton>
+        </MudForm>
+    </MudPaper>
+</MudContainer>
+
+@code {
+    private readonly EmployeeLoginForm model = new();
+    private MudForm? form;
+    private bool isValid;
+    private bool isSubmitting;
+    private string? errorMessage;
+
+    [SupplyParameterFromQuery(Name = "returnUrl")]
+    public string? ReturnUrl { get; set; }
+
+    private async Task SubmitAsync()
+    {
+        if (isSubmitting || form is null)
+        {
+            return;
+        }
+
+        await form.ValidateAsync();
+        if (!isValid)
+        {
+            return;
+        }
+
+        isSubmitting = true;
+        errorMessage = null;
+        var requestPassword = model.Password;
+        model.Password = string.Empty;
+        try
+        {
+            var result = await AuthenticationClient.SignInAsync(model.Email.Trim(), requestPassword, ReturnUrl);
+            requestPassword = string.Empty;
+            if (result.Succeeded && result.RedirectUrl is not null)
+            {
+                Navigation.NavigateTo(result.RedirectUrl, forceLoad: true);
+                return;
+            }
+
+            errorMessage = result.ErrorMessage ?? "Employee sign-in is temporarily unavailable.";
+        }
+        finally
+        {
+            requestPassword = string.Empty;
+            isSubmitting = false;
+        }
+    }
+
+    private sealed class EmployeeLoginForm
+    {
+        public string Email { get; set; } = string.Empty;
+
+        public string Password { get; set; } = string.Empty;
+    }
+}

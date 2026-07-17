@@ -3,10 +3,12 @@ using Legacy.Maliev.Intranet.Contracts;
 
 namespace Legacy.Maliev.Intranet.Client;
 
-internal sealed class EmployeeSessionClient(
+/// <summary>Reads the browser-safe employee session projection from the same-origin BFF.</summary>
+public sealed class EmployeeSessionClient(
     HttpClient httpClient,
     ILogger<EmployeeSessionClient> logger)
 {
+    /// <summary>Gets the current opaque-cookie-backed employee session projection.</summary>
     public async Task<EmployeeSessionSummary?> GetAsync(CancellationToken cancellationToken = default)
     {
         try
