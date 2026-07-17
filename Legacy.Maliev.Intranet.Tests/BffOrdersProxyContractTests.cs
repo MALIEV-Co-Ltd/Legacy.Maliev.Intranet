@@ -15,6 +15,28 @@ namespace Legacy.Maliev.Intranet.Tests;
 public sealed class BffOrdersProxyContractTests
 {
     [Fact]
+    public async Task SessionProjection_UsesStableDatabaseIdWhenUserNameAndEmailDiffer()
+    {
+        var downstream = new RecordingOrderHandler(OrderPageJson);
+        await using var factory = new OrdersBffFactory(
+            downstream,
+            ordersRead: true,
+            catalogRead: true,
+            userName: "employee-user",
+            email: "employee@maliev.com",
+            legacyDatabaseId: 7);
+        using var client = CreateClient(factory);
+        await SignInAsync(client);
+
+        using var response = await client.GetAsync("/bff/session");
+        var session = await response.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>();
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal("employee-user", session.GetProperty("displayName").GetString());
+        Assert.Equal(7, session.GetProperty("legacyDatabaseId").GetInt32());
+    }
+
+    [Fact]
     public async Task AuthorizedEmployee_ForwardsOrderQueriesAndServerOnlyToken()
     {
         var downstream = new RecordingOrderHandler(OrderPageJson);
@@ -50,8 +72,14 @@ public sealed class BffOrdersProxyContractTests
 
         downstream.Body = ProcessesJson;
         using var processes = await client.GetAsync("/bff/order-processes");
+        var processJson = await processes.Content.ReadAsStringAsync();
         Assert.Equal(HttpStatusCode.OK, processes.StatusCode);
         Assert.Equal("/orders/processes", downstream.PathAndQuery);
+        Assert.Contains("\"id\":3", processJson, StringComparison.Ordinal);
+        Assert.Contains("\"name\":\"FDM\"", processJson, StringComparison.Ordinal);
+        Assert.DoesNotContain("categoryId", processJson, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("createdDate", processJson, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("modifiedDate", processJson, StringComparison.OrdinalIgnoreCase);
     }
 
     [Theory]
@@ -191,7 +219,13 @@ public sealed class BffOrdersProxyContractTests
         response.EnsureSuccessStatusCode();
     }
 
-    private sealed class OrdersBffFactory(HttpMessageHandler downstream, bool ordersRead, bool catalogRead)
+    private sealed class OrdersBffFactory(
+        HttpMessageHandler downstream,
+        bool ordersRead,
+        bool catalogRead,
+        string userName = "employee@maliev.com",
+        string email = "employee@maliev.com",
+        int? legacyDatabaseId = 7)
         : WebApplicationFactory<BffProgram>
     {
         protected override void ConfigureWebHost(IWebHostBuilder builder)
@@ -206,7 +240,12 @@ public sealed class BffOrdersProxyContractTests
             builder.ConfigureServices(services =>
             {
                 services.RemoveAll<ILegacyAuthClient>();
-                services.AddSingleton<ILegacyAuthClient>(new OrdersAuthClient(ordersRead, catalogRead));
+                services.AddSingleton<ILegacyAuthClient>(new OrdersAuthClient(
+                    ordersRead,
+                    catalogRead,
+                    userName,
+                    email,
+                    legacyDatabaseId));
                 services.RemoveAll<IServiceAccessTokenProvider>();
                 var tokenProvider = new OrdersServiceTokenProvider();
                 services.AddSingleton<IServiceAccessTokenProvider>(tokenProvider);
@@ -243,20 +282,26 @@ public sealed class BffOrdersProxyContractTests
         }
     }
 
-    private sealed class OrdersAuthClient(bool ordersRead, bool catalogRead) : ILegacyAuthClient
+    private sealed class OrdersAuthClient(
+        bool ordersRead,
+        bool catalogRead,
+        string userName,
+        string email,
+        int? legacyDatabaseId) : ILegacyAuthClient
     {
-        public Task<EmployeeLoginResult> LoginAsync(string email, string password, CancellationToken cancellationToken) =>
+        public Task<EmployeeLoginResult> LoginAsync(string loginEmail, string password, CancellationToken cancellationToken) =>
             Task.FromResult(new EmployeeLoginResult(
                 true,
                 new AuthTokenResponse("server-only-access-token", "server-only-refresh-token", "Bearer", 900, DateTimeOffset.UtcNow.AddDays(1)),
                 new EmployeeIdentity(
                     "employee-id",
-                    email,
+                    userName,
                     email,
                     [
                         .. ordersRead ? ["legacy.orders.read"] : Array.Empty<string>(),
                         .. catalogRead ? ["legacy.order-catalog.read"] : Array.Empty<string>(),
-                    ])));
+                    ],
+                    legacyDatabaseId)));
 
         public Task<EmployeeRefreshResult?> RefreshAsync(string refreshToken, CancellationToken cancellationToken) => Task.FromResult<EmployeeRefreshResult?>(null);
         public Task RevokeAsync(string refreshToken, CancellationToken cancellationToken) => Task.CompletedTask;

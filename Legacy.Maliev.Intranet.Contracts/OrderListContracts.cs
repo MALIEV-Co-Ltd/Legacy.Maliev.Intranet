@@ -43,7 +43,4 @@ public sealed record OrderListPage(
 /// <summary>Browser-safe process label returned by OrderService.</summary>
 public sealed record OrderProcessItem(
     int Id,
-    int CategoryId,
-    string Name,
-    DateTime? CreatedDate,
-    DateTime? ModifiedDate);
+    string Name);

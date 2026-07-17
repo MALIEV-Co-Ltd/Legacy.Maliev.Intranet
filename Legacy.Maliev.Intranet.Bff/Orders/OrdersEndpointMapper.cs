@@ -101,7 +101,7 @@ internal static class OrdersEndpointMapper
             {
                 var processes = await response.Content.ReadFromJsonAsync<List<OrderProcessItem>>(cancellationToken);
                 var invalid = processes is null || processes.Any(process =>
-                    process.Id < 1 || process.CategoryId < 1 || string.IsNullOrWhiteSpace(process.Name));
+                    process.Id < 1 || string.IsNullOrWhiteSpace(process.Name));
                 return invalid ? InvalidResponse() : Results.Ok(processes);
             }
             catch (System.Text.Json.JsonException)

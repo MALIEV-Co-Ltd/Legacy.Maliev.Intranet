@@ -56,7 +56,8 @@ public sealed record EmployeeIdentity(
     string Id,
     string UserName,
     string? Email,
-    IReadOnlyList<string>? Permissions = null);
+    IReadOnlyList<string>? Permissions = null,
+    int? LegacyDatabaseId = null);
 
 /// <summary>Result of a generic employee authentication attempt.</summary>
 public sealed record EmployeeLoginResult(bool Succeeded, AuthTokenResponse? Tokens, EmployeeIdentity? Identity);

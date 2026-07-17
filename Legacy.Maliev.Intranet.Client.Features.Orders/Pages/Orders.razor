@@ -175,9 +175,7 @@
 
             employeeNames = employees.Items.ToDictionary(value => value.Id, value => value.FullName);
             processNames = processes.ToDictionary(value => value.Id, value => value.Name);
-            var employeeId = employees.Items.FirstOrDefault(value =>
-                string.Equals(value.Email, session.DisplayName, StringComparison.OrdinalIgnoreCase))?.Id;
-            AssignedOrders = employeeId is null
+            AssignedOrders = session.LegacyDatabaseId is not int employeeId
                 ? []
                 : pending.Items.Where(value => value.EmployeeId == employeeId).ToArray();
             UnassignedOrders = pending.Items.Where(value => value.EmployeeId is null).ToArray();

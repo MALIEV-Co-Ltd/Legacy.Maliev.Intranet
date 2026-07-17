@@ -35,6 +35,7 @@ public sealed class LegacyAuthClientContractTests : IDisposable
         Assert.Equal("employee-id", result.Identity?.Id);
         Assert.Equal("employee@maliev.com", result.Identity?.UserName);
         Assert.Equal("employee@maliev.com", result.Identity?.Email);
+        Assert.Equal(7, result.Identity?.LegacyDatabaseId);
         Assert.Contains("legacy-catalog.materials.read", result.Identity?.Permissions ?? []);
         Assert.Equal("/auth/v1/login", handler.RequestUri?.AbsolutePath);
         Assert.Equal("employee@maliev.com", handler.RequestJson?.GetProperty("userName").GetString());
@@ -54,6 +55,24 @@ public sealed class LegacyAuthClientContractTests : IDisposable
 
         Assert.True(result.Succeeded);
         Assert.Empty(result.Identity?.Permissions ?? []);
+    }
+
+    [Theory]
+    [InlineData("0")]
+    [InlineData("-1")]
+    [InlineData("not-an-integer")]
+    public async Task Login_InvalidLegacyDatabaseId_IsRejected(string legacyDatabaseId)
+    {
+        var client = CreateClient(new LoginResponseHandler(CreateSignedToken(legacyDatabaseId: legacyDatabaseId)));
+
+        var result = await client.LoginAsync(
+            "employee@maliev.com",
+            "request-only-password",
+            CancellationToken.None);
+
+        Assert.False(result.Succeeded);
+        Assert.Null(result.Identity);
+        Assert.Null(result.Tokens);
     }
 
     [Theory]
@@ -173,7 +192,8 @@ public sealed class LegacyAuthClientContractTests : IDisposable
         string audience = Audience,
         string identityKind = "employee",
         DateTime? expires = null,
-        bool includeCatalogPermission = true)
+        bool includeCatalogPermission = true,
+        string? legacyDatabaseId = "7")
     {
         var now = DateTime.UtcNow;
         var tokenExpires = expires ?? now.AddMinutes(15);
@@ -182,7 +202,7 @@ public sealed class LegacyAuthClientContractTests : IDisposable
         var token = new JwtSecurityToken(
             issuer,
             audience,
-            CreateClaims(identityKind, includeCatalogPermission),
+            CreateClaims(identityKind, includeCatalogPermission, legacyDatabaseId),
             notBefore,
             tokenExpires,
             new SigningCredentials(key, SecurityAlgorithms.RsaSha256));
@@ -213,7 +233,10 @@ public sealed class LegacyAuthClientContractTests : IDisposable
         return new JwtSecurityTokenHandler().WriteToken(token);
     }
 
-    private static Claim[] CreateClaims(string identityKind, bool includeCatalogPermission = true)
+    private static Claim[] CreateClaims(
+        string identityKind,
+        bool includeCatalogPermission = true,
+        string? legacyDatabaseId = "7")
     {
         var claims = new List<Claim>
         {
@@ -222,6 +245,10 @@ public sealed class LegacyAuthClientContractTests : IDisposable
         new Claim(JwtRegisteredClaimNames.Email, "employee@maliev.com"),
         new Claim("identity_kind", identityKind),
         };
+        if (legacyDatabaseId is not null)
+        {
+            claims.Add(new Claim("legacy_database_id", legacyDatabaseId));
+        }
         if (includeCatalogPermission)
         {
             claims.Add(new Claim("permissions", "legacy-catalog.materials.read"));

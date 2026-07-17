@@ -289,7 +289,14 @@ app.MapGet("/bff/session", (HttpContext context, IAntiforgery antiforgery) =>
         context.User.FindFirstValue(ClaimTypes.NameIdentifier),
         identity?.Name,
         context.User.FindAll(ClaimTypes.Role).Select(claim => claim.Value).ToArray(),
-        tokens.RequestToken));
+        tokens.RequestToken,
+        int.TryParse(
+            context.User.FindFirstValue(EmployeeSessionService.LegacyDatabaseIdClaim),
+            NumberStyles.None,
+            CultureInfo.InvariantCulture,
+            out var legacyDatabaseId) && legacyDatabaseId > 0
+                ? legacyDatabaseId
+                : null));
 }).AllowAnonymous();
 
 app.MapGet("/bff/orders", (

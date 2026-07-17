@@ -31,6 +31,8 @@ public sealed class OrdersIndexWasmMigrationContractTests
         Assert.Contains("/bff/order-processes", page, StringComparison.Ordinal);
         Assert.Contains("/bff/employees", page, StringComparison.Ordinal);
         Assert.Contains("/bff/session", page, StringComparison.Ordinal);
+        Assert.Contains("session.LegacyDatabaseId", page, StringComparison.Ordinal);
+        Assert.DoesNotContain("session.DisplayName", page, StringComparison.Ordinal);
         Assert.Contains("Task.WhenAll", page, StringComparison.Ordinal);
         Assert.Contains("AssignedOrders", page, StringComparison.Ordinal);
         Assert.Contains("UnassignedOrders", page, StringComparison.Ordinal);
@@ -79,7 +81,7 @@ public sealed class OrdersIndexWasmMigrationContractTests
             ["HasNextPage", "HasPreviousPage", "Items", "PageIndex", "TotalPages", "TotalRecords"],
             pageType.GetProperties().Select(property => property.Name).Order(StringComparer.Ordinal).ToArray());
         Assert.Equal(
-            ["CategoryId", "CreatedDate", "Id", "ModifiedDate", "Name"],
+            ["Id", "Name"],
             processType.GetProperties().Select(property => property.Name).Order(StringComparer.Ordinal).ToArray());
 
         const string json = """{"items":[{"id":84,"customerId":42,"employeeId":7,"name":"Thai fixture","description":"ไม้เอก ไม้โท","processId":3,"materialId":5,"surfaceFinishId":6,"colorId":4,"quantity":2,"manufactured":1,"remaining":1,"unitPrice":125,"discountPercent":10,"subtotal":225,"currencyId":1,"leadTime":3,"promisedDate":"2030-07-20T00:00:00","finishedDate":null,"turnaround":null,"comment":"note","allowSocialMedia":false,"allowCancellation":true,"allowPayment":false,"trackingNumber":"TRACK-1","createdDate":"2030-07-15T00:00:00","modifiedDate":null}],"pageIndex":1,"totalPages":1,"totalRecords":1,"hasNextPage":false,"hasPreviousPage":false}""";
