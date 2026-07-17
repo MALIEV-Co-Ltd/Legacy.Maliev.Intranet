@@ -28,6 +28,194 @@ namespace Legacy.Maliev.Intranet.Tests;
 
 public sealed class BffMaterialsProxyContractTests
 {
+    [Theory]
+    [InlineData("/bff/catalog/material-groups", "/materials/MaterialGroups", "Steel")]
+    [InlineData("/bff/catalog/currencies", "/Currencies", "THB")]
+    public async Task AuthorizedEmployee_LookupsStayServerAuthenticated(
+        string bffPath,
+        string catalogPath,
+        string expectedValue)
+    {
+        var downstream = new RecordingCatalogHandler(
+            HttpStatusCode.OK,
+            expectedValue == "Steel"
+                ? "[{\"Id\":7,\"Name\":\"Steel\",\"Description\":\"Metal\"}]"
+                : "[{\"Id\":1,\"ShortName\":\"THB\",\"LongName\":\"Thai Baht\"}]");
+        await using var factory = new MaterialsBffFactory(downstream, hasPermission: true, compatibilityGrant: false);
+        using var client = CreateClient(factory);
+        await SignInAsync(client);
+
+        using var response = await client.GetAsync(bffPath);
+        var body = await response.Content.ReadAsStringAsync();
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal(catalogPath, downstream.PathAndQuery);
+        Assert.Equal("Bearer signed-service-token", downstream.Authorization);
+        Assert.Contains(expectedValue, body, StringComparison.Ordinal);
+        Assert.DoesNotContain("Description", body, StringComparison.Ordinal);
+        Assert.DoesNotContain("LongName", body, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task CreateWithoutCsrf_IsRejectedBeforeCatalogCall()
+    {
+        var downstream = new RecordingCatalogHandler(HttpStatusCode.OK, "{\"Id\":42}");
+        await using var factory = new MaterialsBffFactory(
+            downstream,
+            hasPermission: true,
+            compatibilityGrant: false,
+            hasCreatePermission: true);
+        using var client = CreateClient(factory);
+        await SignInAsync(client);
+
+        using var response = await client.PostAsJsonAsync("/bff/catalog/materials", ValidCreateRequest);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal(0, downstream.RequestCount);
+    }
+
+    [Fact]
+    public async Task ReadOnlyEmployee_CreateIsForbiddenBeforeCatalogCall()
+    {
+        var downstream = new RecordingCatalogHandler(HttpStatusCode.OK, "{\"Id\":42}");
+        await using var factory = new MaterialsBffFactory(
+            downstream,
+            hasPermission: true,
+            compatibilityGrant: false,
+            hasCreatePermission: false);
+        using var client = CreateClient(factory);
+        await SignInAsync(client);
+        var csrf = await GetCsrfAsync(client);
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/bff/catalog/materials")
+        {
+            Content = JsonContent.Create(ValidCreateRequest),
+        };
+        request.Headers.Add("X-CSRF-TOKEN", csrf);
+
+        using var response = await client.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+        Assert.Equal(0, downstream.RequestCount);
+    }
+
+    [Fact]
+    public async Task InvalidCreate_IsRejectedByServerValidationBeforeCatalogCall()
+    {
+        var downstream = new RecordingCatalogHandler(HttpStatusCode.OK, "{\"Id\":42}");
+        await using var factory = new MaterialsBffFactory(
+            downstream,
+            hasPermission: true,
+            compatibilityGrant: false,
+            hasCreatePermission: true);
+        using var client = CreateClient(factory);
+        await SignInAsync(client);
+        var csrf = await GetCsrfAsync(client);
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/bff/catalog/materials")
+        {
+            Content = JsonContent.Create(new Legacy.Maliev.Intranet.Contracts.CatalogMaterialUpsertRequest
+            {
+                Name = string.Empty,
+                MaterialGroupId = 0,
+            }),
+        };
+        request.Headers.Add("X-CSRF-TOKEN", csrf);
+
+        using var response = await client.SendAsync(request);
+        var body = await response.Content.ReadAsStringAsync();
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal(0, downstream.RequestCount);
+        Assert.Contains("materialGroupId", body, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("name", body, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task ValidCreate_ForwardsCompleteJsonWithServerTokenAndReturnsCreatedId()
+    {
+        var downstream = new RecordingCatalogHandler(HttpStatusCode.OK, "{\"Id\":42}");
+        await using var factory = new MaterialsBffFactory(
+            downstream,
+            hasPermission: true,
+            compatibilityGrant: false,
+            hasCreatePermission: true);
+        using var client = CreateClient(factory);
+        await SignInAsync(client);
+        var csrf = await GetCsrfAsync(client);
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/bff/catalog/materials")
+        {
+            Content = JsonContent.Create(ValidCreateRequest),
+        };
+        request.Headers.Add("X-CSRF-TOKEN", csrf);
+
+        using var response = await client.SendAsync(request);
+        var body = await response.Content.ReadAsStringAsync();
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal(HttpMethod.Post, downstream.Method);
+        Assert.Equal("/Materials", downstream.PathAndQuery);
+        Assert.Equal("Bearer signed-service-token", downstream.Authorization);
+        Assert.Contains("\"materialGroupId\":7", downstream.Body, StringComparison.Ordinal);
+        Assert.Contains("\"name\":\"4140\"", downstream.Body, StringComparison.Ordinal);
+        Assert.Contains("\"thermalConductivityWattPerMeterKelvin\":42", downstream.Body, StringComparison.Ordinal);
+        Assert.Contains("\"id\":42", body, StringComparison.Ordinal);
+        Assert.DoesNotContain("server-only", body, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task InvalidCreateResponse_IsBadGatewayWithoutLeakingCatalogPayload()
+    {
+        var downstream = new RecordingCatalogHandler(HttpStatusCode.OK, "not-json");
+        await using var factory = new MaterialsBffFactory(
+            downstream,
+            hasPermission: true,
+            compatibilityGrant: false,
+            hasCreatePermission: true);
+        using var client = CreateClient(factory);
+        await SignInAsync(client);
+        var csrf = await GetCsrfAsync(client);
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/bff/catalog/materials")
+        {
+            Content = JsonContent.Create(ValidCreateRequest),
+        };
+        request.Headers.Add("X-CSRF-TOKEN", csrf);
+
+        using var response = await client.SendAsync(request);
+        var body = await response.Content.ReadAsStringAsync();
+
+        Assert.Equal(HttpStatusCode.BadGateway, response.StatusCode);
+        Assert.DoesNotContain("not-json", body, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task CreateWithSignedCatalogServiceToken_PassesCatalogPermissionPipeline()
+    {
+        using var signingKey = RSA.Create(2048);
+        await using var catalog = await StartCatalogPermissionPipelineAsync(signingKey);
+        var serviceToken = CreateSignedToken(
+            signingKey,
+            "service",
+            includeCatalogPermission: true,
+            includeCatalogCreatePermission: true);
+        await using var factory = new MaterialsBffFactory(
+            catalog.GetTestServer().CreateHandler(),
+            hasPermission: true,
+            compatibilityGrant: false,
+            serviceToken,
+            hasCreatePermission: true);
+        using var client = CreateClient(factory);
+        await SignInAsync(client);
+        var csrf = await GetCsrfAsync(client);
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/bff/catalog/materials")
+        {
+            Content = JsonContent.Create(ValidCreateRequest),
+        };
+        request.Headers.Add("X-CSRF-TOKEN", csrf);
+
+        using var response = await client.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+    }
+
     [Fact]
     public async Task AuthorizedEmployee_DetailForwardsExactIdAndServerOnlyBearerToken()
     {
@@ -402,11 +590,21 @@ public sealed class BffMaterialsProxyContractTests
         response.EnsureSuccessStatusCode();
     }
 
+    private static async Task<string> GetCsrfAsync(HttpClient client)
+    {
+        using var response = await client.GetAsync("/bff/session");
+        response.EnsureSuccessStatusCode();
+        var session = await response.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>();
+        return session.GetProperty("csrfToken").GetString()
+            ?? throw new InvalidOperationException("The BFF did not issue an antiforgery request token.");
+    }
+
     private sealed class MaterialsBffFactory(
         HttpMessageHandler downstream,
         bool hasPermission,
         bool compatibilityGrant = false,
-        string serviceToken = "signed-service-token")
+        string serviceToken = "signed-service-token",
+        bool hasCreatePermission = false)
         : WebApplicationFactory<BffProgram>
     {
         protected override void ConfigureWebHost(IWebHostBuilder builder)
@@ -421,7 +619,7 @@ public sealed class BffMaterialsProxyContractTests
             builder.ConfigureServices(services =>
             {
                 services.RemoveAll<ILegacyAuthClient>();
-                services.AddSingleton<ILegacyAuthClient>(new MaterialsAuthClient(hasPermission));
+                services.AddSingleton<ILegacyAuthClient>(new MaterialsAuthClient(hasPermission, hasCreatePermission));
                 services.RemoveAll<IServiceAccessTokenProvider>();
                 services.AddSingleton<IServiceAccessTokenProvider>(new MaterialsServiceTokenProvider(serviceToken));
                 services.AddHttpClient<CatalogMaterialsProxy>()
@@ -440,13 +638,20 @@ public sealed class BffMaterialsProxyContractTests
         }
     }
 
-    private sealed class MaterialsAuthClient(bool hasPermission) : ILegacyAuthClient
+    private sealed class MaterialsAuthClient(bool hasPermission, bool hasCreatePermission) : ILegacyAuthClient
     {
         public Task<EmployeeLoginResult> LoginAsync(string email, string password, CancellationToken cancellationToken) =>
             Task.FromResult(new EmployeeLoginResult(
                 true,
                 new AuthTokenResponse("server-only-access-token", "server-only-refresh-token", "Bearer", 900, DateTimeOffset.UtcNow.AddDays(1)),
-                new EmployeeIdentity("employee-id", email, email, hasPermission ? ["legacy-catalog.materials.read"] : [])));
+                new EmployeeIdentity(
+                    "employee-id",
+                    email,
+                    email,
+                    [
+                        .. hasPermission ? ["legacy-catalog.materials.read"] : Array.Empty<string>(),
+                        .. hasCreatePermission ? ["legacy-catalog.materials.create"] : Array.Empty<string>(),
+                    ])));
         public Task<EmployeeRefreshResult?> RefreshAsync(string refreshToken, CancellationToken cancellationToken) => Task.FromResult<EmployeeRefreshResult?>(null);
         public Task RevokeAsync(string refreshToken, CancellationToken cancellationToken) => Task.CompletedTask;
         public Task<CustomerIdentityResponse?> CreateCustomerIdentityAsync(int databaseId, CreateCustomerIdentityRequest request, string accessToken, CancellationToken cancellationToken) => Task.FromResult<CustomerIdentityResponse?>(null);
@@ -461,18 +666,24 @@ public sealed class BffMaterialsProxyContractTests
     {
         public string? PathAndQuery { get; private set; }
         public string? Authorization { get; private set; }
+        public HttpMethod? Method { get; private set; }
+        public string? Body { get; private set; }
         public int RequestCount { get; private set; }
 
-        protected override Task<HttpResponseMessage> SendAsync(
+        protected override async Task<HttpResponseMessage> SendAsync(
             HttpRequestMessage request,
             CancellationToken cancellationToken)
         {
             RequestCount++;
             PathAndQuery = request.RequestUri?.PathAndQuery;
             Authorization = request.Headers.Authorization?.ToString();
+            Method = request.Method;
+            Body = request.Content is null
+                ? null
+                : await request.Content.ReadAsStringAsync(cancellationToken);
             if (exception is not null)
             {
-                return Task.FromException<HttpResponseMessage>(exception);
+                throw exception;
             }
 
             var response = new HttpResponseMessage(statusCode)
@@ -487,7 +698,7 @@ public sealed class BffMaterialsProxyContractTests
                 });
             }
 
-            return Task.FromResult(response);
+            return response;
         }
     }
 
@@ -507,6 +718,19 @@ public sealed class BffMaterialsProxyContractTests
 
     private const string MaterialDetailJson =
         """{"Id":42,"MaterialGroupId":7,"Machinable":true,"Printable":false,"Name":"4140","MaterialNumber":"AISI 4140","DensityKilogramPerCubicMeter":7850,"MaterialGroup":{"Id":7,"Name":"Steel"}}""";
+
+    private static readonly Legacy.Maliev.Intranet.Contracts.CatalogMaterialUpsertRequest ValidCreateRequest = new()
+    {
+        MaterialGroupId = 7,
+        Machinable = true,
+        Printable = false,
+        Name = "4140",
+        MaterialNumber = "AISI 4140",
+        DensityKilogramPerCubicMeter = 7850m,
+        ThermalConductivityWattPerMeterKelvin = 42m,
+        CurrencyId = 1,
+        PricePerKilogram = 100m,
+    };
 
     private static async Task<WebApplication> StartCatalogPermissionPipelineAsync(RSA signingKey)
     {
@@ -529,11 +753,17 @@ public sealed class BffMaterialsProxyContractTests
             .RequireAuthorization($"Permission:{LegacyEmployeePermissions.CatalogMaterialsRead}");
         app.MapGet("/Materials/{id:int}", (int id) => Results.Text(MaterialDetailJson, "application/json"))
             .RequireAuthorization($"Permission:{LegacyEmployeePermissions.CatalogMaterialsRead}");
+        app.MapPost("/Materials", () => Results.Text("{\"Id\":42}", "application/json"))
+            .RequireAuthorization("Permission:legacy-catalog.materials.create");
         await app.StartAsync();
         return app;
     }
 
-    private static string CreateSignedToken(RSA signingKey, string identityKind, bool includeCatalogPermission)
+    private static string CreateSignedToken(
+        RSA signingKey,
+        string identityKind,
+        bool includeCatalogPermission,
+        bool includeCatalogCreatePermission = false)
     {
         var claims = new List<Claim>
         {
@@ -543,6 +773,10 @@ public sealed class BffMaterialsProxyContractTests
         if (includeCatalogPermission)
         {
             claims.Add(new Claim("permissions", LegacyEmployeePermissions.CatalogMaterialsRead));
+        }
+        if (includeCatalogCreatePermission)
+        {
+            claims.Add(new Claim("permissions", "legacy-catalog.materials.create"));
         }
 
         var key = new RsaSecurityKey(signingKey) { KeyId = "catalog-contract-key" };
