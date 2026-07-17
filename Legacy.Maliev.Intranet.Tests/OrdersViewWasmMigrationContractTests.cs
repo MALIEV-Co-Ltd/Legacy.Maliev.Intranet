@@ -23,7 +23,7 @@ public sealed class OrdersViewWasmMigrationContractTests
         Assert.Equal(
             [
                 "AllowCancellation", "AllowPayment", "AllowSocialMedia", "ColorId", "Comment", "CurrencyId",
-                "CustomerId", "Description", "DiscountPercent", "EmployeeId", "FinishedDate", "LeadTime",
+                "Description", "DiscountPercent", "EmployeeId", "FinishedDate", "LeadTime",
                 "Manufactured", "MaterialId", "ModifiedDate", "Name", "ProcessId", "PromisedDate", "Quantity",
                 "SurfaceFinishId", "TrackingNumber", "UnitPrice",
             ],
@@ -48,6 +48,11 @@ public sealed class OrdersViewWasmMigrationContractTests
         Assert.Contains("MudProgress", page, StringComparison.Ordinal);
         Assert.Contains("MudAlert", page, StringComparison.Ordinal);
         Assert.Contains("MudForm", page, StringComparison.Ordinal);
+        Assert.Contains("Label=\"@Text[\"CustomerId\"]\"", page, StringComparison.Ordinal);
+        Assert.Contains("ReadOnly=\"true\"", page, StringComparison.Ordinal);
+        Assert.DoesNotContain("@bind-Value=\"edit.CustomerId\"", page, StringComparison.Ordinal);
+        Assert.Contains("page.Order.CustomerId is int customerId", page, StringComparison.Ordinal);
+        Assert.Contains("/Customers/View?id={customerId}", page, StringComparison.Ordinal);
         Assert.Contains("/bff/orders/", page, StringComparison.Ordinal);
         Assert.Contains("X-CSRF-TOKEN", page, StringComparison.Ordinal);
         Assert.Contains("HttpStatusCode.Conflict", page, StringComparison.Ordinal);
@@ -78,8 +83,25 @@ public sealed class OrdersViewWasmMigrationContractTests
         Assert.Contains("LegacyEmployeePermissions.OrderStatusWrite", program, StringComparison.Ordinal);
         Assert.Contains("X-Expected-Modified-Date", proxy, StringComparison.Ordinal);
         Assert.Contains("Idempotency-Key", proxy, StringComparison.Ordinal);
+        Assert.DoesNotContain("input.CustomerId", proxy, StringComparison.Ordinal);
         Assert.DoesNotContain("AllowCancellation = false", program, StringComparison.Ordinal);
         Assert.DoesNotContain("Accepted", program, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void OrdersViewStatus_SeparatesCurrentStatusFromAvailableTransitions()
+    {
+        var root = FindRoot();
+        var contracts = typeof(Legacy.Maliev.Intranet.Contracts.OrderListItem).Assembly;
+        var pageType = contracts.GetType("Legacy.Maliev.Intranet.Contracts.OrderDetailPage");
+        var page = File.ReadAllText(Path.Combine(root, "Legacy.Maliev.Intranet.Client.Features.Orders", "Pages", "OrderDetail.razor"));
+
+        Assert.NotNull(pageType?.GetProperty("CurrentStatus"));
+        Assert.NotNull(pageType?.GetProperty("AvailableStatuses"));
+        Assert.Null(pageType?.GetProperty("Statuses"));
+        Assert.Contains("page.CurrentStatus", page, StringComparison.Ordinal);
+        Assert.Contains("page.AvailableStatuses", page, StringComparison.Ordinal);
+        Assert.Contains("selectedStatus = null", page, StringComparison.Ordinal);
     }
 
     [Fact]

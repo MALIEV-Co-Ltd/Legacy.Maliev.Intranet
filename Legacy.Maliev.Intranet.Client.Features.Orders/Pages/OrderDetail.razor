@@ -32,7 +32,15 @@ else if (page is not null)
 
     <MudForm @ref="form" Model="edit">
         <MudGrid>
-            <MudItem xs="12" md="6"><MudNumericField T="int" Label="@Text["CustomerId"]" @bind-Value="edit.CustomerId" Min="1" Required="true" /></MudItem>
+            <MudItem xs="12" md="6">
+                <div class="d-flex align-end gap-2">
+                    <MudTextField Label="@Text["CustomerId"]" Value="@(page.Order.CustomerId?.ToString(CultureInfo.CurrentCulture) ?? "-")" ReadOnly="true" />
+                    @if (page.Order.CustomerId is int customerId)
+                    {
+                        <MudButton Href="@($"/Customers/View?id={customerId}")" Variant="Variant.Outlined">@Text["CustomerInfo"]</MudButton>
+                    }
+                </div>
+            </MudItem>
             <MudItem xs="12" md="6">
                 <MudSelect T="int?" Label="@Text["Employee"]" @bind-Value="edit.EmployeeId" Clearable="true">
                     @foreach (var item in page.Employees) { <MudSelectItem T="int?" Value="@((int?)item.Id)">@item.Name</MudSelectItem> }
@@ -84,9 +92,10 @@ else if (page is not null)
 
     <MudPaper Class="pa-4 mt-4">
         <MudText Typo="Typo.h5" HtmlTag="h2">@Text["Status"]</MudText>
+        <MudText Class="mt-2">@Text["CurrentStatus"]: @(page.CurrentStatus?.Name ?? "-")</MudText>
         <div class="d-flex flex-wrap gap-2 align-end my-3">
             <MudSelect T="int?" Label="@Text["NextStatus"]" @bind-Value="selectedStatus">
-                @foreach (var status in page.Statuses) { <MudSelectItem T="int?" Value="@((int?)status.Id)">@status.Name</MudSelectItem> }
+                @foreach (var status in page.AvailableStatuses) { <MudSelectItem T="int?" Value="@((int?)status.Id)">@status.Name</MudSelectItem> }
             </MudSelect>
             <MudButton OnClick="TransitionAsync" Disabled="@(submitting || selectedStatus is null)" Variant="Variant.Filled">@Text["ApplyStatus"]</MudButton>
         </div>
@@ -138,7 +147,7 @@ else if (page is not null)
             page = await response.Content.ReadFromJsonAsync<OrderDetailPage>();
             if (page is null) { error = Text["InvalidResponse"]; return; }
             edit = OrderEditModel.From(page.Order);
-            selectedStatus = page.Statuses.FirstOrDefault()?.Id;
+            selectedStatus = null;
         }
         catch (HttpRequestException) { error = Text["Unavailable"]; }
         finally { loading = false; }
@@ -213,7 +222,6 @@ else if (page is not null)
 
     private sealed class OrderEditModel
     {
-        public int CustomerId { get; set; }
         public int? EmployeeId { get; set; }
         public string Name { get; set; } = string.Empty;
         public string? Description { get; set; }
@@ -235,7 +243,7 @@ else if (page is not null)
         public bool AllowPayment { get; set; }
         public string? TrackingNumber { get; set; }
         public DateTime? ModifiedDate { get; set; }
-        public static OrderEditModel From(OrderDetailItem value) => new() { CustomerId = value.CustomerId ?? 0, EmployeeId = value.EmployeeId, Name = value.Name ?? string.Empty, Description = value.Description, ProcessId = value.ProcessId, MaterialId = value.MaterialId, SurfaceFinishId = value.SurfaceFinishId, ColorId = value.ColorId, Quantity = value.Quantity, Manufactured = value.Manufactured, UnitPrice = value.UnitPrice, DiscountPercent = value.DiscountPercent, CurrencyId = value.CurrencyId, LeadTime = value.LeadTime, PromisedDate = value.PromisedDate, FinishedDate = value.FinishedDate, Comment = value.Comment, AllowSocialMedia = value.AllowSocialMedia, AllowCancellation = value.AllowCancellation, AllowPayment = value.AllowPayment, TrackingNumber = value.TrackingNumber, ModifiedDate = value.ModifiedDate };
-        public OrderUpdateRequest ToRequest() => new(CustomerId, EmployeeId, Name, Description, ProcessId, MaterialId, SurfaceFinishId, ColorId, Quantity, Manufactured, UnitPrice, DiscountPercent, CurrencyId, LeadTime, PromisedDate, FinishedDate, Comment, AllowSocialMedia, AllowCancellation, AllowPayment, TrackingNumber, ModifiedDate);
+        public static OrderEditModel From(OrderDetailItem value) => new() { EmployeeId = value.EmployeeId, Name = value.Name ?? string.Empty, Description = value.Description, ProcessId = value.ProcessId, MaterialId = value.MaterialId, SurfaceFinishId = value.SurfaceFinishId, ColorId = value.ColorId, Quantity = value.Quantity, Manufactured = value.Manufactured, UnitPrice = value.UnitPrice, DiscountPercent = value.DiscountPercent, CurrencyId = value.CurrencyId, LeadTime = value.LeadTime, PromisedDate = value.PromisedDate, FinishedDate = value.FinishedDate, Comment = value.Comment, AllowSocialMedia = value.AllowSocialMedia, AllowCancellation = value.AllowCancellation, AllowPayment = value.AllowPayment, TrackingNumber = value.TrackingNumber, ModifiedDate = value.ModifiedDate };
+        public OrderUpdateRequest ToRequest() => new(EmployeeId, Name, Description, ProcessId, MaterialId, SurfaceFinishId, ColorId, Quantity, Manufactured, UnitPrice, DiscountPercent, CurrencyId, LeadTime, PromisedDate, FinishedDate, Comment, AllowSocialMedia, AllowCancellation, AllowPayment, TrackingNumber, ModifiedDate);
     }
 }

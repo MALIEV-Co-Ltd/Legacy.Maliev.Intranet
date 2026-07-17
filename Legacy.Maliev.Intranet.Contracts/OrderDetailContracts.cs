@@ -34,7 +34,6 @@ public sealed record OrderDetailItem(
 
 /// <summary>Validated complete OrderService update payload plus its optimistic-concurrency token.</summary>
 public sealed record OrderUpdateRequest(
-    [property: Range(1, int.MaxValue)] int CustomerId,
     [property: Range(1, int.MaxValue)] int? EmployeeId,
     [property: Required, StringLength(256)] string Name,
     [property: StringLength(500)] string? Description,
@@ -81,6 +80,7 @@ public sealed record OrderDetailPage(
     IReadOnlyList<OrderLookupItem> SurfaceFinishes,
     IReadOnlyList<OrderCurrencyItem> Currencies,
     IReadOnlyList<OrderLookupItem> Employees,
-    IReadOnlyList<OrderStatusItem> Statuses,
+    OrderStatusItem? CurrentStatus,
+    IReadOnlyList<OrderStatusItem> AvailableStatuses,
     IReadOnlyList<OrderStatusHistoryItem> History,
     IReadOnlyList<OrderFileItem> Files);

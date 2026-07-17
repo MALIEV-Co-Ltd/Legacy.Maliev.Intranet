@@ -31,14 +31,21 @@ public sealed class OrderFileWorkflow(ILogger<OrderFileWorkflow> logger)
         }
         catch
         {
+            using var cleanup = new CancellationTokenSource(TimeSpan.FromSeconds(10));
             foreach (var item in linked)
             {
-                await TryCompensateAsync("unlink order-file metadata", item.Id, () => unlink(item, cancellationToken));
+                await TryCompensateAsync(
+                    "unlink order-file metadata",
+                    item.Id,
+                    () => unlink(item, cleanup.Token));
             }
 
             foreach (var item in stored)
             {
-                await TryCompensateAsync("delete stored order file", item.Id, () => delete(item, cancellationToken));
+                await TryCompensateAsync(
+                    "delete stored order file",
+                    item.Id,
+                    () => delete(item, cleanup.Token));
             }
 
             throw;
@@ -70,7 +77,7 @@ public sealed class OrderFileWorkflow(ILogger<OrderFileWorkflow> logger)
         {
             await compensate();
         }
-        catch (HttpRequestException exception)
+        catch (Exception exception) when (exception is not OutOfMemoryException and not StackOverflowException and not AccessViolationException)
         {
             logger.LogError(exception, "Failed to {CompensationOperation} for file {FileId} after an order-file workflow failure.", operation, fileId);
         }

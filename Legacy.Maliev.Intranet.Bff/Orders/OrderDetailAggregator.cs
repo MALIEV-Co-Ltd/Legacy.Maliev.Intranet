@@ -26,7 +26,9 @@ public sealed class OrderDetailAggregator(
         var latestResponseTask = orders.GetLatestStatusAsync(id, cancellationToken);
         var historyResponseTask = orders.GetStatusHistoryAsync(id, cancellationToken);
         var fileResponseTask = orders.GetFilesAsync(id, cancellationToken);
-        await Task.WhenAll(orderResponseTask, processesResponseTask, materialsTask, colorsTask, finishesTask, currenciesTask, employeesTask, latestResponseTask, historyResponseTask, fileResponseTask);
+        await AwaitAllAndDisposeResponsesOnFailureAsync(
+            [orderResponseTask, processesResponseTask, materialsTask, colorsTask, finishesTask, currenciesTask, employeesTask, latestResponseTask, historyResponseTask, fileResponseTask],
+            [orderResponseTask, processesResponseTask, latestResponseTask, historyResponseTask, fileResponseTask]);
 
         using var orderResponse = await orderResponseTask;
         if (orderResponse.StatusCode == HttpStatusCode.NotFound) return null;
@@ -71,7 +73,8 @@ public sealed class OrderDetailAggregator(
             await finishesTask,
             await currenciesTask,
             await employeesTask,
-            latest is null ? available : [latest, .. available.Where(item => item.Id != latest.Id)],
+            latest,
+            latest is null ? available : available.Where(item => item.Id != latest.Id).ToArray(),
             history,
             resolvedFiles.Where(item => item.Uri is not null).ToArray());
     }
@@ -84,7 +87,9 @@ public sealed class OrderDetailAggregator(
         var materialsTask = catalog.GetMaterialsAsync(cancellationToken);
         var colorsTask = catalog.GetColorsAsync(cancellationToken);
         var finishesTask = catalog.GetSurfaceFinishesAsync(cancellationToken);
-        await Task.WhenAll(orderResponseTask, processesResponseTask, materialsTask, colorsTask, finishesTask);
+        await AwaitAllAndDisposeResponsesOnFailureAsync(
+            [orderResponseTask, processesResponseTask, materialsTask, colorsTask, finishesTask],
+            [orderResponseTask, processesResponseTask]);
 
         using var orderResponse = await orderResponseTask;
         if (orderResponse.StatusCode == HttpStatusCode.NotFound) return null;
@@ -103,6 +108,7 @@ public sealed class OrderDetailAggregator(
             await finishesTask,
             [],
             [],
+            null,
             [],
             [],
             []);
@@ -122,5 +128,24 @@ public sealed class OrderDetailAggregator(
     {
         response.EnsureSuccessStatusCode();
         return await response.Content.ReadFromJsonAsync<T>(cancellationToken);
+    }
+
+    private static async Task AwaitAllAndDisposeResponsesOnFailureAsync(
+        IReadOnlyList<Task> tasks,
+        IReadOnlyList<Task<HttpResponseMessage>> responseTasks)
+    {
+        try
+        {
+            await Task.WhenAll(tasks);
+        }
+        catch
+        {
+            foreach (var responseTask in responseTasks.Where(task => task.IsCompletedSuccessfully))
+            {
+                responseTask.Result.Dispose();
+            }
+
+            throw;
+        }
     }
 }

@@ -68,7 +68,7 @@ public sealed class BffOrderDetailContractTests
         var csrf = await SignInAsync(client);
         var payload = new
         {
-            customerId = 42,
+            customerId = 999,
             employeeId = 7,
             name = "Updated fixture",
             description = "ไม้เอก ไม้โท",
@@ -104,7 +104,53 @@ public sealed class BffOrderDetailContractTests
         var forwarded = Assert.Single(downstream.Requests, item => item.Path == "/Orders/84" && item.Method == "PUT");
         Assert.Equal("2030-07-15T08:30:00.0000000Z", forwarded.ExpectedModifiedDate);
         Assert.Contains("\"name\":\"Updated fixture\"", forwarded.Body, StringComparison.Ordinal);
+        Assert.Contains("\"customerId\":42", forwarded.Body, StringComparison.Ordinal);
         Assert.DoesNotContain("modifiedDate", forwarded.Body, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task Update_NullCustomerOrder_PreservesNullAndIgnoresAttemptedReassignment()
+    {
+        var downstream = new OrderDetailHandler(customerId: null);
+        await using var factory = new OrderDetailBffFactory(downstream, AllPermissions);
+        using var client = CreateClient(factory);
+        var csrf = await SignInAsync(client);
+        using var request = new HttpRequestMessage(HttpMethod.Put, "/bff/orders/84")
+        {
+            Content = JsonContent.Create(new
+            {
+                customerId = 999,
+                employeeId = (int?)null,
+                name = "Null customer fixture",
+                description = (string?)null,
+                processId = 3,
+                materialId = (int?)null,
+                surfaceFinishId = (int?)null,
+                colorId = (int?)null,
+                quantity = 1,
+                manufactured = 0,
+                unitPrice = (decimal?)null,
+                discountPercent = (decimal?)null,
+                currencyId = (int?)null,
+                leadTime = (int?)null,
+                promisedDate = (DateTime?)null,
+                finishedDate = (DateTime?)null,
+                comment = (string?)null,
+                allowSocialMedia = false,
+                allowCancellation = true,
+                allowPayment = false,
+                trackingNumber = (string?)null,
+                modifiedDate = "2030-07-15T08:30:00Z",
+            }),
+        };
+        request.Headers.Add("X-CSRF-TOKEN", csrf);
+
+        using var response = await client.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+        var forwarded = Assert.Single(downstream.Requests, item => item.Path == "/Orders/84" && item.Method == "PUT");
+        Assert.Contains("\"customerId\":null", forwarded.Body, StringComparison.Ordinal);
+        Assert.DoesNotContain("999", forwarded.Body, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -250,7 +296,7 @@ public sealed class BffOrderDetailContractTests
         public Task<EmployeeIdentityResponse?> CreateEmployeeIdentityAsync(int databaseId, CreateEmployeeIdentityRequest request, string accessToken, CancellationToken cancellationToken) => Task.FromResult<EmployeeIdentityResponse?>(null);
     }
 
-    private sealed class OrderDetailHandler : HttpMessageHandler
+    private sealed class OrderDetailHandler(int? customerId = 42) : HttpMessageHandler
     {
         public ConcurrentBag<RecordedRequest> Requests { get; } = [];
 
@@ -279,7 +325,9 @@ public sealed class BffOrderDetailContractTests
             var path = request.RequestUri?.PathAndQuery ?? string.Empty;
             return Json(path switch
             {
-                "/Orders/84" => OrderJson,
+                "/Orders/84" => customerId is null
+                    ? OrderJson.Replace("\"CustomerId\":42", "\"CustomerId\":null", StringComparison.Ordinal)
+                    : OrderJson.Replace("\"CustomerId\":42", $"\"CustomerId\":{customerId.Value}", StringComparison.Ordinal),
                 "/orders/processes" => """[{"Id":3,"Name":"FDM"}]""",
                 var value when value.StartsWith("/Materials?", StringComparison.Ordinal) => """{"Items":[{"Id":5,"Name":"PLA"}]}""",
                 "/materials/Colors" => """[{"Id":4,"Name":"Black"}]""",

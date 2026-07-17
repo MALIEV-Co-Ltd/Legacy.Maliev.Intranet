@@ -12,13 +12,17 @@ public sealed class OrderDetailProxy(HttpClient httpClient)
         SendAsync(new HttpRequestMessage(HttpMethod.Get, $"/Orders/{id}"), cancellationToken);
 
     /// <summary>Updates one complete order with optimistic concurrency.</summary>
-    public Task<HttpResponseMessage> UpdateAsync(int id, OrderUpdateRequest input, CancellationToken cancellationToken)
+    public Task<HttpResponseMessage> UpdateAsync(
+        int id,
+        int? customerId,
+        OrderUpdateRequest input,
+        CancellationToken cancellationToken)
     {
         var request = new HttpRequestMessage(HttpMethod.Put, $"/Orders/{id}")
         {
             Content = JsonContent.Create(new
             {
-                input.CustomerId,
+                CustomerId = customerId,
                 input.EmployeeId,
                 input.Name,
                 input.Description,

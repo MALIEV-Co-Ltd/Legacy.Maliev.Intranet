@@ -45,7 +45,12 @@ internal static class OrderDetailEndpointMapper
 
         try
         {
-            using var response = await orders.UpdateAsync(id, input, cancellationToken);
+            using var currentResponse = await orders.GetAsync(id, cancellationToken);
+            if (currentResponse.StatusCode == HttpStatusCode.NotFound) return Results.NotFound();
+            currentResponse.EnsureSuccessStatusCode();
+            var current = await currentResponse.Content.ReadFromJsonAsync<OrderDetailItem>(cancellationToken)
+                ?? throw new InvalidDataException("OrderService returned an empty order.");
+            using var response = await orders.UpdateAsync(id, current.CustomerId, input, cancellationToken);
             return MapWriteResponse(response, context);
         }
         catch (Exception exception) when (IsBoundedFailure(exception, cancellationToken))
