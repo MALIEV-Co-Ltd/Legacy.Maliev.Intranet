@@ -1,0 +1,23 @@
+using System.Net.Http.Headers;
+using Legacy.Maliev.Intranet.Contracts;
+
+namespace Legacy.Maliev.Intranet.Bff.Catalog;
+
+/// <summary>Forwards the browser-safe material list request to CatalogService without business logic.</summary>
+public sealed class CatalogMaterialsProxy(HttpClient httpClient)
+{
+    /// <summary>Gets the requested material page with the employee token kept server-side.</summary>
+    public Task<HttpResponseMessage> GetAsync(
+        CatalogMaterialSort sort,
+        string? search,
+        int index,
+        int size,
+        string accessToken,
+        CancellationToken cancellationToken)
+    {
+        var path = $"/Materials?sort={sort}&search={Uri.EscapeDataString(search ?? string.Empty)}&index={index}&size={size}";
+        var request = new HttpRequestMessage(HttpMethod.Get, path);
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+        return httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+    }
+}

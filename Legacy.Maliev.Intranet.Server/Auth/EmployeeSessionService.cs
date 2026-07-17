@@ -24,13 +24,15 @@ public sealed class EmployeeSessionService(
             throw new InvalidOperationException("A validated employee login is required.");
         }
 
-        var claims = new[]
+        var claims = new List<System.Security.Claims.Claim>
         {
             new System.Security.Claims.Claim(System.Security.Claims.ClaimTypes.NameIdentifier, login.Identity.Id),
             new System.Security.Claims.Claim(System.Security.Claims.ClaimTypes.Name, login.Identity.UserName),
             new System.Security.Claims.Claim(System.Security.Claims.ClaimTypes.Email, login.Identity.Email ?? login.Identity.UserName),
             new System.Security.Claims.Claim("identity_kind", "employee"),
         };
+        claims.AddRange((login.Identity.Permissions ?? [])
+            .Select(permission => new System.Security.Claims.Claim("permissions", permission)));
         var principal = new System.Security.Claims.ClaimsPrincipal(
             new System.Security.Claims.ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme));
         var properties = new AuthenticationProperties
@@ -79,9 +81,18 @@ public sealed class EmployeeSessionService(
         }
 
         StoreTokens(result.Properties, refreshed.Tokens);
+        var refreshedClaims = result.Principal!.Claims
+            .Where(claim => !string.Equals(claim.Type, "permissions", StringComparison.Ordinal))
+            .Concat((refreshed.Identity.Permissions ?? [])
+                .Select(permission => new Claim("permissions", permission)));
+        var refreshedPrincipal = new ClaimsPrincipal(new ClaimsIdentity(
+            refreshedClaims,
+            CookieAuthenticationDefaults.AuthenticationScheme,
+            ClaimTypes.Name,
+            ClaimTypes.Role));
         await context.SignInAsync(
             CookieAuthenticationDefaults.AuthenticationScheme,
-            result.Principal!,
+            refreshedPrincipal,
             result.Properties);
         return refreshed.Tokens.AccessToken;
     }

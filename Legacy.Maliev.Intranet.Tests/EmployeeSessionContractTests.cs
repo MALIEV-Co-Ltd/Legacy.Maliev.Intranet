@@ -149,6 +149,32 @@ public sealed partial class EmployeeSessionContractTests
     }
 
     [Fact]
+    public async Task GetAccessToken_RefreshReplacesPermissionClaimsFromValidatedToken()
+    {
+        var auth = new StubAuthClient
+        {
+            RefreshResult = new AuthTokenResponse(
+                "rotated-access-token",
+                "rotated-refresh-token",
+                "Bearer",
+                900,
+                Now.AddDays(14)),
+            RefreshPermissions = ["legacy-catalog.materials.read"],
+        };
+        var authentication = new RecordingAuthenticationService(
+            CreateTokenProperties(Now.AddMinutes(1)),
+            [new Claim("permissions", "legacy-catalog.materials.write")]);
+        var sessions = CreateSessionService(auth);
+
+        await sessions.GetAccessTokenAsync(CreateHttpContext(authentication), CancellationToken.None);
+
+        Assert.Contains(authentication.CurrentPrincipal!.Claims, claim =>
+            claim.Type == "permissions" && claim.Value == "legacy-catalog.materials.read");
+        Assert.DoesNotContain(authentication.CurrentPrincipal.Claims, claim =>
+            claim.Type == "permissions" && claim.Value == "legacy-catalog.materials.write");
+    }
+
+    [Fact]
     public async Task GetAccessToken_WhenRefreshFails_ClearsLocalSession()
     {
         var auth = new StubAuthClient();
@@ -288,6 +314,8 @@ public sealed partial class EmployeeSessionContractTests
 
         public string RefreshEmployeeId { get; set; } = "employee-id";
 
+        public IReadOnlyList<string> RefreshPermissions { get; init; } = [];
+
         public Task<EmployeeLoginResult> LoginAsync(
             string email,
             string password,
@@ -308,7 +336,7 @@ public sealed partial class EmployeeSessionContractTests
                 ? null
                 : new EmployeeRefreshResult(
                     RefreshResult,
-                    new EmployeeIdentity(RefreshEmployeeId, "employee@maliev.com", "employee@maliev.com")));
+                    new EmployeeIdentity(RefreshEmployeeId, "employee@maliev.com", "employee@maliev.com", RefreshPermissions)));
         }
 
         public Task RevokeAsync(string refreshToken, CancellationToken cancellationToken)
@@ -332,18 +360,23 @@ public sealed partial class EmployeeSessionContractTests
 
     private sealed class RecordingAuthenticationService : IAuthenticationService
     {
-        private readonly ClaimsPrincipal principal = new(new ClaimsIdentity(
-            [new Claim(ClaimTypes.NameIdentifier, "employee-id")],
-            CookieAuthenticationDefaults.AuthenticationScheme));
+        private ClaimsPrincipal principal;
 
-        public RecordingAuthenticationService(AuthenticationProperties properties)
+        public RecordingAuthenticationService(
+            AuthenticationProperties properties,
+            IEnumerable<Claim>? additionalClaims = null)
         {
             CurrentProperties = properties;
+            principal = new ClaimsPrincipal(new ClaimsIdentity(
+                [new Claim(ClaimTypes.NameIdentifier, "employee-id"), .. additionalClaims ?? []],
+                CookieAuthenticationDefaults.AuthenticationScheme));
         }
 
         public AuthenticationProperties? CurrentProperties { get; private set; }
 
         public bool SignedOut { get; private set; }
+
+        public ClaimsPrincipal? CurrentPrincipal => SignedOut ? null : principal;
 
         public Task<AuthenticateResult> AuthenticateAsync(HttpContext context, string? scheme)
         {
@@ -374,6 +407,7 @@ public sealed partial class EmployeeSessionContractTests
             ClaimsPrincipal signedInPrincipal,
             AuthenticationProperties? properties)
         {
+            principal = signedInPrincipal;
             CurrentProperties = properties;
             SignedOut = false;
             return Task.CompletedTask;

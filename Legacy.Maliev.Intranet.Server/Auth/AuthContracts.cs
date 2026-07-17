@@ -2,6 +2,13 @@ using System.ComponentModel.DataAnnotations;
 
 namespace Legacy.Maliev.Intranet.Auth;
 
+/// <summary>Compatibility permissions projected only after a legacy employee token is fully validated.</summary>
+public static class LegacyEmployeePermissions
+{
+    /// <summary>Preserves the legacy employee-wide read boundary for the materials catalog migration.</summary>
+    public const string CatalogMaterialsRead = "legacy-catalog.materials.read";
+}
+
 /// <summary>Employee login credentials sent only from the BFF to AuthService.</summary>
 public sealed record EmployeeLoginRequest(
     [property: Required, EmailAddress, StringLength(320)] string UserName,
@@ -17,7 +24,11 @@ public sealed record AuthTokenResponse(
     DateTimeOffset RefreshExpiresAt);
 
 /// <summary>Authenticated employee claims decoded from the validated access token.</summary>
-public sealed record EmployeeIdentity(string Id, string UserName, string? Email);
+public sealed record EmployeeIdentity(
+    string Id,
+    string UserName,
+    string? Email,
+    IReadOnlyList<string>? Permissions = null);
 
 /// <summary>Result of a generic employee authentication attempt.</summary>
 public sealed record EmployeeLoginResult(bool Succeeded, AuthTokenResponse? Tokens, EmployeeIdentity? Identity);
