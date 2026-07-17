@@ -217,6 +217,173 @@ public sealed class BffMaterialsProxyContractTests
     }
 
     [Fact]
+    public async Task UpdateWithoutCsrf_IsRejectedBeforeCatalogCall()
+    {
+        var downstream = new RecordingCatalogHandler(HttpStatusCode.NoContent, string.Empty);
+        await using var factory = new MaterialsBffFactory(
+            downstream,
+            hasPermission: true,
+            compatibilityGrant: false,
+            hasUpdatePermission: true);
+        using var client = CreateClient(factory);
+        await SignInAsync(client);
+
+        using var response = await client.PutAsJsonAsync("/bff/catalog/materials/42", ValidCreateRequest);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal(0, downstream.RequestCount);
+    }
+
+    [Fact]
+    public async Task EmployeeWithoutUpdatePermission_IsForbiddenBeforeCatalogCall()
+    {
+        var downstream = new RecordingCatalogHandler(HttpStatusCode.NoContent, string.Empty);
+        await using var factory = new MaterialsBffFactory(
+            downstream,
+            hasPermission: true,
+            compatibilityGrant: false,
+            hasUpdatePermission: false);
+        using var client = CreateClient(factory);
+        await SignInAsync(client);
+        var csrf = await GetCsrfAsync(client);
+        using var request = new HttpRequestMessage(HttpMethod.Put, "/bff/catalog/materials/42")
+        {
+            Content = JsonContent.Create(ValidCreateRequest),
+        };
+        request.Headers.Add("X-CSRF-TOKEN", csrf);
+
+        using var response = await client.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+        Assert.Equal(0, downstream.RequestCount);
+    }
+
+    [Fact]
+    public async Task ValidUpdate_ForwardsCompleteJsonWithServerTokenAndPreservesNoContent()
+    {
+        var downstream = new RecordingCatalogHandler(HttpStatusCode.NoContent, string.Empty);
+        await using var factory = new MaterialsBffFactory(
+            downstream,
+            hasPermission: true,
+            compatibilityGrant: false,
+            hasUpdatePermission: true);
+        using var client = CreateClient(factory);
+        await SignInAsync(client);
+        var csrf = await GetCsrfAsync(client);
+        using var request = new HttpRequestMessage(HttpMethod.Put, "/bff/catalog/materials/42")
+        {
+            Content = JsonContent.Create(ValidCreateRequest),
+        };
+        request.Headers.Add("X-CSRF-TOKEN", csrf);
+
+        using var response = await client.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+        Assert.Equal(HttpMethod.Put, downstream.Method);
+        Assert.Equal("/Materials/42", downstream.PathAndQuery);
+        Assert.Equal("Bearer signed-service-token", downstream.Authorization);
+        Assert.Contains("\"materialGroupId\":7", downstream.Body, StringComparison.Ordinal);
+        Assert.Contains("\"name\":\"4140\"", downstream.Body, StringComparison.Ordinal);
+        Assert.Contains("\"thermalConductivityWattPerMeterKelvin\":42", downstream.Body, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task InvalidUpdate_IsRejectedByServerValidationBeforeCatalogCall()
+    {
+        var downstream = new RecordingCatalogHandler(HttpStatusCode.NoContent, string.Empty);
+        await using var factory = new MaterialsBffFactory(downstream, true, false, hasUpdatePermission: true);
+        using var client = CreateClient(factory);
+        await SignInAsync(client);
+        var csrf = await GetCsrfAsync(client);
+        using var request = new HttpRequestMessage(HttpMethod.Put, "/bff/catalog/materials/42")
+        {
+            Content = JsonContent.Create(new Legacy.Maliev.Intranet.Contracts.CatalogMaterialUpsertRequest()),
+        };
+        request.Headers.Add("X-CSRF-TOKEN", csrf);
+
+        using var response = await client.SendAsync(request);
+        var body = await response.Content.ReadAsStringAsync();
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal(0, downstream.RequestCount);
+        Assert.Contains("materialGroupId", body, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("name", body, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Theory]
+    [InlineData(HttpStatusCode.BadRequest)]
+    [InlineData(HttpStatusCode.NotFound)]
+    [InlineData(HttpStatusCode.Conflict)]
+    public async Task Update_PreservesActionableCatalogStatus(HttpStatusCode catalogStatus)
+    {
+        var downstream = new RecordingCatalogHandler(catalogStatus, "{}");
+        await using var factory = new MaterialsBffFactory(downstream, true, false, hasUpdatePermission: true);
+        using var client = CreateClient(factory);
+        await SignInAsync(client);
+        var csrf = await GetCsrfAsync(client);
+        using var request = new HttpRequestMessage(HttpMethod.Put, "/bff/catalog/materials/42")
+        {
+            Content = JsonContent.Create(ValidCreateRequest),
+        };
+        request.Headers.Add("X-CSRF-TOKEN", csrf);
+
+        using var response = await client.SendAsync(request);
+
+        Assert.Equal(catalogStatus, response.StatusCode);
+        Assert.Equal(1, downstream.RequestCount);
+    }
+
+    [Fact]
+    public async Task UpdateRateLimit_PreservesStatusAndBoundedRetryAfter()
+    {
+        var downstream = new RecordingCatalogHandler(HttpStatusCode.TooManyRequests, "{}", retryAfterSeconds: 1);
+        await using var factory = new MaterialsBffFactory(downstream, true, false, hasUpdatePermission: true);
+        using var client = CreateClient(factory);
+        await SignInAsync(client);
+        var csrf = await GetCsrfAsync(client);
+        using var request = new HttpRequestMessage(HttpMethod.Put, "/bff/catalog/materials/42")
+        {
+            Content = JsonContent.Create(ValidCreateRequest),
+        };
+        request.Headers.Add("X-CSRF-TOKEN", csrf);
+
+        using var response = await client.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.TooManyRequests, response.StatusCode);
+        Assert.Equal(TimeSpan.FromSeconds(1), response.Headers.RetryAfter?.Delta);
+    }
+
+    [Fact]
+    public async Task UpdateWithSignedCatalogServiceToken_PassesCatalogPermissionPipeline()
+    {
+        using var signingKey = RSA.Create(2048);
+        await using var catalog = await StartCatalogPermissionPipelineAsync(signingKey);
+        var serviceToken = CreateSignedToken(
+            signingKey,
+            "service",
+            includeCatalogPermission: true,
+            includeCatalogUpdatePermission: true);
+        await using var factory = new MaterialsBffFactory(
+            catalog.GetTestServer().CreateHandler(),
+            true,
+            false,
+            serviceToken,
+            hasUpdatePermission: true);
+        using var client = CreateClient(factory);
+        await SignInAsync(client);
+        var csrf = await GetCsrfAsync(client);
+        using var request = new HttpRequestMessage(HttpMethod.Put, "/bff/catalog/materials/42")
+        {
+            Content = JsonContent.Create(ValidCreateRequest),
+        };
+        request.Headers.Add("X-CSRF-TOKEN", csrf);
+
+        using var response = await client.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+    }
+
+    [Fact]
     public async Task AuthorizedEmployee_DetailForwardsExactIdAndServerOnlyBearerToken()
     {
         var downstream = new RecordingCatalogHandler(HttpStatusCode.OK, MaterialDetailJson);
@@ -604,7 +771,8 @@ public sealed class BffMaterialsProxyContractTests
         bool hasPermission,
         bool compatibilityGrant = false,
         string serviceToken = "signed-service-token",
-        bool hasCreatePermission = false)
+        bool hasCreatePermission = false,
+        bool hasUpdatePermission = false)
         : WebApplicationFactory<BffProgram>
     {
         protected override void ConfigureWebHost(IWebHostBuilder builder)
@@ -619,7 +787,7 @@ public sealed class BffMaterialsProxyContractTests
             builder.ConfigureServices(services =>
             {
                 services.RemoveAll<ILegacyAuthClient>();
-                services.AddSingleton<ILegacyAuthClient>(new MaterialsAuthClient(hasPermission, hasCreatePermission));
+                services.AddSingleton<ILegacyAuthClient>(new MaterialsAuthClient(hasPermission, hasCreatePermission, hasUpdatePermission));
                 services.RemoveAll<IServiceAccessTokenProvider>();
                 services.AddSingleton<IServiceAccessTokenProvider>(new MaterialsServiceTokenProvider(serviceToken));
                 services.AddHttpClient<CatalogMaterialsProxy>()
@@ -638,7 +806,7 @@ public sealed class BffMaterialsProxyContractTests
         }
     }
 
-    private sealed class MaterialsAuthClient(bool hasPermission, bool hasCreatePermission) : ILegacyAuthClient
+    private sealed class MaterialsAuthClient(bool hasPermission, bool hasCreatePermission, bool hasUpdatePermission) : ILegacyAuthClient
     {
         public Task<EmployeeLoginResult> LoginAsync(string email, string password, CancellationToken cancellationToken) =>
             Task.FromResult(new EmployeeLoginResult(
@@ -651,6 +819,7 @@ public sealed class BffMaterialsProxyContractTests
                     [
                         .. hasPermission ? ["legacy-catalog.materials.read"] : Array.Empty<string>(),
                         .. hasCreatePermission ? ["legacy-catalog.materials.create"] : Array.Empty<string>(),
+                        .. hasUpdatePermission ? ["legacy-catalog.materials.update"] : Array.Empty<string>(),
                     ])));
         public Task<EmployeeRefreshResult?> RefreshAsync(string refreshToken, CancellationToken cancellationToken) => Task.FromResult<EmployeeRefreshResult?>(null);
         public Task RevokeAsync(string refreshToken, CancellationToken cancellationToken) => Task.CompletedTask;
@@ -755,6 +924,8 @@ public sealed class BffMaterialsProxyContractTests
             .RequireAuthorization($"Permission:{LegacyEmployeePermissions.CatalogMaterialsRead}");
         app.MapPost("/Materials", () => Results.Text("{\"Id\":42}", "application/json"))
             .RequireAuthorization("Permission:legacy-catalog.materials.create");
+        app.MapPut("/Materials/{id:int}", () => Results.NoContent())
+            .RequireAuthorization("Permission:legacy-catalog.materials.update");
         await app.StartAsync();
         return app;
     }
@@ -763,7 +934,8 @@ public sealed class BffMaterialsProxyContractTests
         RSA signingKey,
         string identityKind,
         bool includeCatalogPermission,
-        bool includeCatalogCreatePermission = false)
+        bool includeCatalogCreatePermission = false,
+        bool includeCatalogUpdatePermission = false)
     {
         var claims = new List<Claim>
         {
@@ -777,6 +949,10 @@ public sealed class BffMaterialsProxyContractTests
         if (includeCatalogCreatePermission)
         {
             claims.Add(new Claim("permissions", "legacy-catalog.materials.create"));
+        }
+        if (includeCatalogUpdatePermission)
+        {
+            claims.Add(new Claim("permissions", "legacy-catalog.materials.update"));
         }
 
         var key = new RsaSecurityKey(signingKey) { KeyId = "catalog-contract-key" };

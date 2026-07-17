@@ -135,6 +135,9 @@ builder.Services.AddAuthorizationBuilder()
     .AddPolicy("legacy-catalog.materials.create", policy => policy
         .RequireAuthenticatedUser()
         .RequireClaim("permissions", "legacy-catalog.materials.create"))
+    .AddPolicy("legacy-catalog.materials.update", policy => policy
+        .RequireAuthenticatedUser()
+        .RequireClaim("permissions", "legacy-catalog.materials.update"))
     .SetFallbackPolicy(new Microsoft.AspNetCore.Authorization.AuthorizationPolicyBuilder()
         .RequireAuthenticatedUser()
         .Build());
@@ -440,6 +443,47 @@ app.MapGet("/bff/catalog/materials/{id:int}", async (
     }
 }).RequireAuthorization("legacy-catalog.materials.read");
 
+app.MapPut("/bff/catalog/materials/{id:int}", async (
+    int id,
+    CatalogMaterialUpsertRequest request,
+    HttpContext context,
+    CatalogMaterialsProxy catalog,
+    CancellationToken cancellationToken) =>
+{
+    if (id <= 0)
+    {
+        return Results.NotFound();
+    }
+
+    var validationResults = new List<ValidationResult>();
+    if (!Validator.TryValidateObject(request, new ValidationContext(request), validationResults, true))
+    {
+        var errors = validationResults
+            .SelectMany(result => result.MemberNames.DefaultIfEmpty(string.Empty)
+                .Select(member => new
+                {
+                    member = string.IsNullOrEmpty(member)
+                        ? member
+                        : System.Text.Json.JsonNamingPolicy.CamelCase.ConvertName(member),
+                    message = result.ErrorMessage ?? "The value is invalid.",
+                }))
+            .GroupBy(error => error.member, StringComparer.Ordinal)
+            .ToDictionary(
+                group => group.Key,
+                group => group.Select(error => error.message).Distinct(StringComparer.Ordinal).ToArray(),
+                StringComparer.Ordinal);
+        return Results.ValidationProblem(errors);
+    }
+
+    return await ProxyCatalogNoContentAsync(
+        token => catalog.UpdateAsync(id, request, token),
+        context,
+        cancellationToken,
+        preserveBadRequest: true);
+})
+    .AddEndpointFilter<AntiforgeryValidationFilter>()
+    .RequireAuthorization("legacy-catalog.materials.update");
+
 app.MapFallbackToFile("index.html").AllowAnonymous();
 
 await app.RunAsync();
@@ -508,6 +552,60 @@ static async Task<IResult> ProxyCatalogJsonAsync<T>(
         {
             return Results.Problem(statusCode: StatusCodes.Status502BadGateway, title: "Invalid Catalog response");
         }
+    }
+}
+
+static async Task<IResult> ProxyCatalogNoContentAsync(
+    Func<CancellationToken, Task<HttpResponseMessage>> send,
+    HttpContext context,
+    CancellationToken cancellationToken,
+    bool preserveBadRequest = false)
+{
+    HttpResponseMessage response;
+    try
+    {
+        response = await send(cancellationToken);
+    }
+    catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+    {
+        return Results.Problem(statusCode: StatusCodes.Status503ServiceUnavailable, title: "Catalog unavailable");
+    }
+    catch (HttpRequestException)
+    {
+        return Results.Problem(statusCode: StatusCodes.Status503ServiceUnavailable, title: "Catalog unavailable");
+    }
+
+    using (response)
+    {
+        if (response.StatusCode == System.Net.HttpStatusCode.RequestTimeout)
+        {
+            return Results.Problem(statusCode: StatusCodes.Status503ServiceUnavailable, title: "Catalog unavailable");
+        }
+
+        if (response.StatusCode == System.Net.HttpStatusCode.TooManyRequests)
+        {
+            var retryAfter = response.Headers.RetryAfter?.Delta;
+            if (retryAfter.HasValue && retryAfter.Value > TimeSpan.Zero && retryAfter.Value <= TimeSpan.FromHours(1))
+            {
+                context.Response.Headers.RetryAfter = ((int)Math.Ceiling(retryAfter.Value.TotalSeconds))
+                    .ToString(CultureInfo.InvariantCulture);
+            }
+
+            return Results.StatusCode(StatusCodes.Status429TooManyRequests);
+        }
+
+        if (response.StatusCode is System.Net.HttpStatusCode.Unauthorized or
+            System.Net.HttpStatusCode.Forbidden or
+            System.Net.HttpStatusCode.NotFound or
+            System.Net.HttpStatusCode.Conflict ||
+            preserveBadRequest && response.StatusCode == System.Net.HttpStatusCode.BadRequest)
+        {
+            return Results.StatusCode((int)response.StatusCode);
+        }
+
+        return response.IsSuccessStatusCode
+            ? Results.NoContent()
+            : Results.Problem(statusCode: StatusCodes.Status503ServiceUnavailable, title: "Catalog unavailable");
     }
 }
 

@@ -19,6 +19,13 @@ public sealed class CatalogMaterialsProxy(HttpClient httpClient)
         CancellationToken cancellationToken) =>
         SendAsync(HttpMethod.Post, "/Materials", request, cancellationToken);
 
+    /// <summary>Updates a complete material while the service credential remains server-side.</summary>
+    public Task<HttpResponseMessage> UpdateAsync(
+        int id,
+        CatalogMaterialUpsertRequest request,
+        CancellationToken cancellationToken) =>
+        SendAsync(HttpMethod.Put, $"/Materials/{id}", request, cancellationToken);
+
     /// <summary>Gets one read-only material projection with the service token kept server-side.</summary>
     public Task<HttpResponseMessage> GetByIdAsync(int id, CancellationToken cancellationToken)
     {

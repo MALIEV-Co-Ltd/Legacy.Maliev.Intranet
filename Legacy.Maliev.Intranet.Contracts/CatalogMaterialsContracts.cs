@@ -84,15 +84,45 @@ public sealed record CatalogMaterialListItem(
     decimal? DensityKilogramPerCubicMeter,
     CatalogMaterialGroup? MaterialGroup);
 
-/// <summary>Browser-safe read-only material detail matching the legacy display semantics.</summary>
+/// <summary>Browser-safe material detail preserving the complete legacy editor wire contract.</summary>
 public sealed record CatalogMaterialDetail(
     int Id,
     int MaterialGroupId,
     bool Machinable,
     bool Printable,
     string Name,
+    string? Aisi,
+    string? Din,
+    string? Bts,
+    string? Jis,
+    string? Uns,
+    string? En,
+    string? Afnor,
+    string? Uni,
+    string? Sis,
+    string? Sae,
+    string? Astm,
+    string? Ams,
     string? MaterialNumber,
+    string? ManufacturerReference,
+    decimal? HardnessBrinell,
+    decimal? HardnessKnoop,
+    decimal? HardnessRockwellA,
+    decimal? HardnessRockwellB,
+    decimal? HardnessRockwellC,
+    decimal? HardnessVickers,
     decimal? DensityKilogramPerCubicMeter,
+    decimal? TensileStrengthUltimateGigaPascal,
+    decimal? TensileStrengthYieldMegaPascal,
+    decimal? MachinabilityPercent,
+    decimal? ShearModulusGigaPascal,
+    decimal? ThermalConductivityWattPerMeterKelvin,
+    string? Url,
+    decimal? PricePerKilogram,
+    int? CurrencyId,
+    string? Comment,
+    DateTime? CreatedDate,
+    DateTime? ModifiedDate,
     CatalogMaterialGroup? MaterialGroup);
 
 /// <summary>Browser-safe legacy-compatible material page.</summary>
