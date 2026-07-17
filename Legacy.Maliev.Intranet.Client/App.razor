@@ -28,7 +28,9 @@
             ? "Legacy.Maliev.Intranet.Client.Features.Catalog.wasm"
             : context.Path.StartsWith("Customers/", StringComparison.OrdinalIgnoreCase)
                 ? "Legacy.Maliev.Intranet.Client.Features.Customers.wasm"
-                : null;
+                : context.Path.StartsWith("Employees/", StringComparison.OrdinalIgnoreCase)
+                    ? "Legacy.Maliev.Intranet.Client.Features.Employees.wasm"
+                    : null;
         if (assemblyName is not null && loadedFeatureAssemblies.Add(assemblyName))
         {
             context.CancellationToken.ThrowIfCancellationRequested();
