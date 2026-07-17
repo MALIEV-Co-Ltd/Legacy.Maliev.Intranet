@@ -1,0 +1,202 @@
+@page "/Customers/View"
+@attribute [Authorize]
+@inject HttpClient Http
+@inject NavigationManager Navigation
+@inject IStringLocalizer<CustomerView> Text
+
+<PageTitle>@(customer is null ? Text["PageTitle"] : Text["CustomerPageTitle", customer.FullName])</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large">
+    @if (loading)
+    {
+        <MudProgressLinear Indeterminate="true" Color="Color.Primary" aria-live="polite" aria-label="@Text["Loading"]" />
+    }
+    else if (!string.IsNullOrWhiteSpace(error))
+    {
+        <MudAlert Severity="errorSeverity" Class="mb-4" aria-live="assertive">@error</MudAlert>
+        <MudButton Href="/Customers/Index" Variant="Variant.Text">@Text["BackToCustomers"]</MudButton>
+    }
+    else if (customer is not null)
+    {
+        <MudText Typo="Typo.overline">@Text["CustomerNumber", customer.Id]</MudText>
+        <MudText Typo="Typo.h4" HtmlTag="h1" Class="mb-4">@customer.FullName</MudText>
+
+        <MudGrid Spacing="3">
+            <MudItem xs="12" md="6">
+                <section>
+                <MudPaper Class="pa-4">
+                    <MudText Typo="Typo.h6" HtmlTag="h2" Class="mb-3">@Text["Contact"]</MudText>
+                    <dl class="details">
+                        <dt>@Text["Email"]</dt>
+                        <dd><a href="mailto:@customer.Email">@customer.Email</a></dd>
+                        <dt>@Text["Telephone"]</dt><dd>@Display(customer.Telephone)</dd>
+                        <dt>@Text["Mobile"]</dt><dd>@Display(customer.Mobile)</dd>
+                        <dt>@Text["Fax"]</dt><dd>@Display(customer.Fax)</dd>
+                        <dt>@Text["DateOfBirth"]</dt><dd>@DisplayDate(customer.DateOfBirth)</dd>
+                    </dl>
+                </MudPaper>
+                </section>
+            </MudItem>
+
+            <MudItem xs="12" md="6">
+                <section>
+                <MudPaper Class="pa-4">
+                    <MudText Typo="Typo.h6" HtmlTag="h2" Class="mb-3">@Text["Company"]</MudText>
+                    @if (customer.Company is null)
+                    {
+                        <MudText>@Text["NotAvailable"]</MudText>
+                    }
+                    else
+                    {
+                        <dl class="details">
+                            <dt>@Text["CompanyName"]</dt><dd>@customer.Company.Name</dd>
+                            <dt>@Text["TaxNumber"]</dt><dd>@Display(customer.Company.TaxNumber)</dd>
+                            <dt>@Text["Registrar"]</dt><dd>@Display(customer.Company.Registrar)</dd>
+                        </dl>
+                    }
+                </MudPaper>
+                </section>
+            </MudItem>
+
+            <MudItem xs="12" md="6">
+                <section>
+                <MudPaper Class="pa-4">
+                    <MudText Typo="Typo.h6" HtmlTag="h2" Class="mb-3">@Text["BillingAddress"]</MudText>
+                    <address>@DisplayAddress(customer.BillingAddress)</address>
+                </MudPaper>
+                </section>
+            </MudItem>
+
+            <MudItem xs="12" md="6">
+                <section>
+                <MudPaper Class="pa-4">
+                    <MudText Typo="Typo.h6" HtmlTag="h2" Class="mb-3">@Text["ShippingAddress"]</MudText>
+                    <address>@DisplayAddress(customer.ShippingAddress)</address>
+                </MudPaper>
+                </section>
+            </MudItem>
+
+            <MudItem xs="12">
+                <section>
+                <MudPaper Class="pa-4">
+                    <MudText Typo="Typo.h6" HtmlTag="h2" Class="mb-3">@Text["RecordInformation"]</MudText>
+                    <dl class="details">
+                        <dt>@Text["CreatedDate"]</dt><dd>@DisplayDateTime(customer.CreatedDate)</dd>
+                        <dt>@Text["ModifiedDate"]</dt><dd>@DisplayDateTime(customer.ModifiedDate)</dd>
+                    </dl>
+                </MudPaper>
+                </section>
+            </MudItem>
+        </MudGrid>
+
+        <MudButton Href="/Customers/Index" Variant="Variant.Text" Class="mt-4">@Text["BackToCustomers"]</MudButton>
+    }
+</MudContainer>
+
+@code {
+    [SupplyParameterFromQuery(Name = "id")] public int Id { get; set; }
+
+    private CustomerDetail? customer;
+    private string? error;
+    private Severity errorSeverity = Severity.Error;
+    private bool loading;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        customer = null;
+        error = null;
+        errorSeverity = Severity.Error;
+        if (Id <= 0)
+        {
+            error = Text["NotFound"];
+            errorSeverity = Severity.Warning;
+            return;
+        }
+
+        loading = true;
+        try
+        {
+            using var response = await Http.GetAsync($"/bff/customers/{Id}");
+            if (response.StatusCode == HttpStatusCode.Unauthorized)
+            {
+                NavigateToLogin();
+                return;
+            }
+
+            if (response.StatusCode == HttpStatusCode.Forbidden)
+            {
+                error = Text["Forbidden"];
+                return;
+            }
+
+            if (response.StatusCode == HttpStatusCode.NotFound)
+            {
+                error = Text["NotFound"];
+                errorSeverity = Severity.Warning;
+                return;
+            }
+
+            if (response.StatusCode == HttpStatusCode.TooManyRequests)
+            {
+                error = Text["RateLimited"];
+                return;
+            }
+
+            if (response.StatusCode == HttpStatusCode.BadGateway)
+            {
+                error = Text["InvalidResponse"];
+                return;
+            }
+
+            if (!response.IsSuccessStatusCode)
+            {
+                error = Text["Unavailable"];
+                return;
+            }
+
+            customer = await response.Content.ReadFromJsonAsync<CustomerDetail>();
+            if (customer is null || customer.Id != Id)
+            {
+                customer = null;
+                error = Text["InvalidResponse"];
+            }
+        }
+        catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException)
+        {
+            error = Text["Unavailable"];
+        }
+        finally
+        {
+            loading = false;
+        }
+    }
+
+    private string Display(string? value) => string.IsNullOrWhiteSpace(value) ? Text["NotAvailable"] : value;
+
+    private string DisplayDate(DateTime? value) => value?.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture)
+        ?? Text["NotAvailable"];
+
+    private string DisplayDateTime(DateTime? value) => value?.ToString("yyyy-MM-dd HH:mm", System.Globalization.CultureInfo.InvariantCulture)
+        ?? Text["NotAvailable"];
+
+    private string DisplayAddress(CustomerAddressDetail? address)
+    {
+        if (address is null)
+        {
+            return Text["NotAvailable"];
+        }
+
+        return string.Join(", ", new[]
+        {
+            address.Building,
+            address.AddressLine1,
+            address.AddressLine2,
+            address.City,
+            address.State,
+            address.PostalCode,
+        }.Where(value => !string.IsNullOrWhiteSpace(value)));
+    }
+
+    private void NavigateToLogin() => Navigation.NavigateTo(
+        $"/Login?returnUrl={Uri.EscapeDataString(Navigation.ToBaseRelativePath(Navigation.Uri))}");
+}
