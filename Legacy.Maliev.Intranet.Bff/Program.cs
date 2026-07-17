@@ -4,6 +4,7 @@ using Legacy.Maliev.Intranet.Auth;
 using Legacy.Maliev.Intranet.Contracts;
 using Legacy.Maliev.Intranet.Bff.Catalog;
 using Legacy.Maliev.Intranet.Bff.Customers;
+using Legacy.Maliev.Intranet.Bff.Employees;
 using Maliev.Aspire.ServiceDefaults;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
@@ -57,6 +58,29 @@ builder.Services.AddHttpClient<CustomersProxy>(client =>
 }).RemoveAllResilienceHandlers()
     .AddHttpMessageHandler<LegacyServiceAuthenticationHandler>()
     .AddResilienceHandler("customer-list", pipeline =>
+{
+    pipeline.AddRetry(new Microsoft.Extensions.Http.Resilience.HttpRetryStrategyOptions
+    {
+        MaxRetryAttempts = 2,
+        Delay = TimeSpan.FromMilliseconds(200),
+        BackoffType = Polly.DelayBackoffType.Exponential,
+        UseJitter = true,
+        ShouldRetryAfterHeader = false,
+        ShouldHandle = new Polly.PredicateBuilder<HttpResponseMessage>()
+            .Handle<HttpRequestException>()
+            .Handle<Polly.Timeout.TimeoutRejectedException>()
+            .HandleResult(response => response.StatusCode == System.Net.HttpStatusCode.RequestTimeout ||
+                (int)response.StatusCode >= StatusCodes.Status500InternalServerError),
+    });
+});
+builder.Services.AddHttpClient<EmployeesProxy>(client =>
+{
+    client.BaseAddress = new Uri(builder.Configuration["Services:Employee"]
+        ?? throw new InvalidOperationException("Services:Employee is required."));
+    client.Timeout = TimeSpan.FromSeconds(10);
+}).RemoveAllResilienceHandlers()
+    .AddHttpMessageHandler<LegacyServiceAuthenticationHandler>()
+    .AddResilienceHandler("employee-list", pipeline =>
 {
     pipeline.AddRetry(new Microsoft.Extensions.Http.Resilience.HttpRetryStrategyOptions
     {
@@ -177,6 +201,9 @@ builder.Services.AddAuthorizationBuilder()
     .AddPolicy(LegacyEmployeePermissions.CustomersList, policy => policy
         .RequireAuthenticatedUser()
         .RequireClaim("permissions", LegacyEmployeePermissions.CustomersList))
+    .AddPolicy(LegacyEmployeePermissions.EmployeesList, policy => policy
+        .RequireAuthenticatedUser()
+        .RequireClaim("permissions", LegacyEmployeePermissions.EmployeesList))
     .AddPolicy("legacy-catalog.materials.read", policy => policy
         .RequireAuthenticatedUser()
         .RequireClaim("permissions", "legacy-catalog.materials.read"))
@@ -493,6 +520,86 @@ app.MapPost("/bff/customers", async (
 })
     .AddEndpointFilter<AntiforgeryValidationFilter>()
     .RequireAuthorization(LegacyEmployeePermissions.CustomersCreate);
+
+app.MapGet("/bff/employees", async (
+    EmployeeListSort? sort,
+    string? search,
+    int? index,
+    int? size,
+    HttpContext context,
+    EmployeesProxy employees,
+    CancellationToken cancellationToken) =>
+{
+    var normalizedSort = sort ?? EmployeeListSort.EmployeeId_Descending;
+    var normalizedIndex = Math.Max(1, index ?? 1);
+    var normalizedSize = Math.Clamp(size ?? 25, 1, 250);
+    HttpResponseMessage response;
+    try
+    {
+        response = await employees.GetAsync(
+            normalizedSort,
+            search,
+            normalizedIndex,
+            normalizedSize,
+            cancellationToken);
+    }
+    catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+    {
+        return Results.Problem(statusCode: StatusCodes.Status503ServiceUnavailable, title: "EmployeeService unavailable");
+    }
+    catch (HttpRequestException)
+    {
+        return Results.Problem(statusCode: StatusCodes.Status503ServiceUnavailable, title: "EmployeeService unavailable");
+    }
+
+    using (response)
+    {
+        if (response.StatusCode == System.Net.HttpStatusCode.RequestTimeout)
+        {
+            return Results.Problem(statusCode: StatusCodes.Status503ServiceUnavailable, title: "EmployeeService unavailable");
+        }
+
+        if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+        {
+            return Results.Ok(new EmployeeListPage([], normalizedIndex, 0, 0, false, normalizedIndex > 1));
+        }
+
+        if (response.StatusCode == System.Net.HttpStatusCode.TooManyRequests)
+        {
+            var retryAfter = response.Headers.RetryAfter?.Delta;
+            if (retryAfter.HasValue && retryAfter.Value > TimeSpan.Zero && retryAfter.Value <= TimeSpan.FromHours(1))
+            {
+                context.Response.Headers.RetryAfter = ((int)Math.Ceiling(retryAfter.Value.TotalSeconds))
+                    .ToString(CultureInfo.InvariantCulture);
+            }
+
+            return Results.StatusCode(StatusCodes.Status429TooManyRequests);
+        }
+
+        if (response.StatusCode is System.Net.HttpStatusCode.Unauthorized or System.Net.HttpStatusCode.Forbidden)
+        {
+            return Results.StatusCode((int)response.StatusCode);
+        }
+
+        if (!response.IsSuccessStatusCode)
+        {
+            return Results.Problem(statusCode: StatusCodes.Status503ServiceUnavailable, title: "EmployeeService unavailable");
+        }
+
+        try
+        {
+            var page = await response.Content.ReadFromJsonAsync<EmployeeListPage>(cancellationToken);
+            return page is null || page.Items is null
+                ? Results.Problem(statusCode: StatusCodes.Status502BadGateway, title: "Invalid EmployeeService response")
+                : Results.Ok(page);
+        }
+        catch (System.Text.Json.JsonException)
+        {
+            return Results.Problem(statusCode: StatusCodes.Status502BadGateway, title: "Invalid EmployeeService response");
+        }
+    }
+})
+    .RequireAuthorization(LegacyEmployeePermissions.EmployeesList);
 
 app.MapGet("/bff/catalog/materials", async (
     CatalogMaterialSort? sort,
