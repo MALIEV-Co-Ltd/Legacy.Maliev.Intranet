@@ -16,7 +16,7 @@ public sealed class LegacyEmployeeCompatibilityOptions
     public const string SectionName = "LegacyEmployeeCompatibility";
 
     /// <summary>Gets or sets whether validated employees receive the legacy-wide materials read grant.</summary>
-    public bool GrantCatalogMaterialsRead { get; set; } = true;
+    public bool GrantCatalogMaterialsRead { get; set; }
 }
 
 /// <summary>Employee login credentials sent only from the BFF to AuthService.</summary>

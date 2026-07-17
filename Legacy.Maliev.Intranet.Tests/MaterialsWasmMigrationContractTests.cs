@@ -25,8 +25,9 @@ public sealed class MaterialsWasmMigrationContractTests
 
         Assert.Contains("legacy-catalog.materials.read", bffProgram, StringComparison.Ordinal);
         Assert.Contains("MapGet(\"/bff/catalog/materials\"", bffProgram, StringComparison.Ordinal);
-        Assert.Contains("GetAccessTokenAsync", bffProgram, StringComparison.Ordinal);
+        Assert.Contains("IServiceAccessTokenProvider", bffProgram, StringComparison.Ordinal);
         Assert.Contains("Services:Catalog", bffProgram, StringComparison.Ordinal);
+        Assert.Contains("AddHttpMessageHandler<LegacyServiceAuthenticationHandler>()", bffProgram, StringComparison.Ordinal);
         Assert.DoesNotContain("DbContext", bffProgram, StringComparison.Ordinal);
 
         Assert.Contains("AdditionalAssemblies", app, StringComparison.Ordinal);

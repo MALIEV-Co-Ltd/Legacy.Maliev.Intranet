@@ -23,6 +23,37 @@ public sealed partial class EmployeeSessionContractTests
     private static readonly DateTimeOffset Now = new(2030, 7, 15, 0, 0, 0, TimeSpan.Zero);
 
     [Fact]
+    public void CompatibilityCatalogGrant_DefaultsToDisabled()
+    {
+        Assert.False(new LegacyEmployeeCompatibilityOptions().GrantCatalogMaterialsRead);
+    }
+
+    [Fact]
+    public async Task SignIn_ValidatedCatalogPermissionSurvivesWhenCompatibilityGrantIsDisabled()
+    {
+        var authentication = new RecordingAuthenticationService(new AuthenticationProperties());
+        var sessions = CreateSessionService(new StubAuthClient(), compatibilityGrant: false);
+        var login = new EmployeeLoginResult(
+            true,
+            new AuthTokenResponse(
+                StubAuthClient.AccessToken,
+                StubAuthClient.RefreshToken,
+                "Bearer",
+                900,
+                Now.AddDays(14)),
+            new EmployeeIdentity(
+                "employee-id",
+                "employee@maliev.com",
+                "employee@maliev.com",
+                [LegacyEmployeePermissions.CatalogMaterialsRead]));
+
+        await sessions.SignInAsync(CreateHttpContext(authentication), login);
+
+        Assert.Contains(authentication.CurrentPrincipal!.Claims, claim =>
+            claim.Type == "permissions" && claim.Value == LegacyEmployeePermissions.CatalogMaterialsRead);
+    }
+
+    [Fact]
     public async Task SuccessfulLogin_CookieContainsOnlyOpaqueTicketKeyAndUnlocksProtectedRoute()
     {
         var auth = new StubAuthClient();

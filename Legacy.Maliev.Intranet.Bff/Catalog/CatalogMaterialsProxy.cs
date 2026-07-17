@@ -1,4 +1,3 @@
-using System.Net.Http.Headers;
 using Legacy.Maliev.Intranet.Contracts;
 
 namespace Legacy.Maliev.Intranet.Bff.Catalog;
@@ -12,12 +11,10 @@ public sealed class CatalogMaterialsProxy(HttpClient httpClient)
         string? search,
         int index,
         int size,
-        string accessToken,
         CancellationToken cancellationToken)
     {
         var path = $"/Materials?sort={sort}&search={Uri.EscapeDataString(search ?? string.Empty)}&index={index}&size={size}";
         var request = new HttpRequestMessage(HttpMethod.Get, path);
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
         return httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
     }
 }

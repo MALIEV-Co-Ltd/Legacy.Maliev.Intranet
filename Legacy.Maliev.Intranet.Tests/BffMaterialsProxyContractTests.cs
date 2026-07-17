@@ -2,17 +2,25 @@ extern alias Bff;
 
 using System.Net;
 using System.Security.Claims;
+using System.Security.Cryptography;
 using System.Text;
 using System.Text.Encodings.Web;
 using System.Net.Http.Json;
+using System.IdentityModel.Tokens.Jwt;
 using Legacy.Maliev.Intranet.Auth;
 using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.AspNetCore.TestHost;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Microsoft.IdentityModel.Tokens;
 using BffProgram = Bff::Program;
 using CatalogMaterialsProxy = Bff::Legacy.Maliev.Intranet.Bff.Catalog.CatalogMaterialsProxy;
 
@@ -34,7 +42,7 @@ public sealed class BffMaterialsProxyContractTests
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Equal("/Materials?sort=MaterialName_Ascending&search=tool%20steel&index=2&size=25", downstream.PathAndQuery);
-        Assert.Equal("Bearer server-only-access-token", downstream.Authorization);
+        Assert.Equal("Bearer signed-service-token", downstream.Authorization);
         Assert.Contains("\"pageIndex\":2", json, StringComparison.Ordinal);
         Assert.Contains("\"name\":\"4140\"", json, StringComparison.Ordinal);
         Assert.DoesNotContain("server-only-access-token", json, StringComparison.Ordinal);
@@ -101,15 +109,16 @@ public sealed class BffMaterialsProxyContractTests
     [Fact]
     public async Task CatalogRateLimit_PreservesStatusAndBoundedRetryAfter()
     {
-        var downstream = new RecordingCatalogHandler(HttpStatusCode.TooManyRequests, "{}", retryAfterSeconds: 75);
+        var downstream = new RecordingCatalogHandler(HttpStatusCode.TooManyRequests, "{}", retryAfterSeconds: 1);
         await using var factory = new MaterialsBffFactory(downstream, hasPermission: true);
         using var client = CreateClient(factory);
         await SignInAsync(client);
 
         using var response = await client.GetAsync("/bff/catalog/materials");
 
+        Assert.Equal(1, downstream.RequestCount);
         Assert.Equal(HttpStatusCode.TooManyRequests, response.StatusCode);
-        Assert.Equal(TimeSpan.FromSeconds(75), response.Headers.RetryAfter?.Delta);
+        Assert.Equal(TimeSpan.FromSeconds(1), response.Headers.RetryAfter?.Delta);
     }
 
     [Fact]
@@ -125,6 +134,94 @@ public sealed class BffMaterialsProxyContractTests
 
         Assert.Equal(HttpStatusCode.BadGateway, response.StatusCode);
         Assert.DoesNotContain("not-json", body, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task CatalogTransportFailure_IsMappedToServiceUnavailable()
+    {
+        var downstream = new RecordingCatalogHandler(
+            HttpStatusCode.OK,
+            "{}",
+            exception: new HttpRequestException("catalog unavailable"));
+        await using var factory = new MaterialsBffFactory(downstream, hasPermission: true, compatibilityGrant: false);
+        using var client = CreateClient(factory);
+        await SignInAsync(client);
+
+        using var response = await client.GetAsync("/bff/catalog/materials");
+
+        Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task CatalogNonCallerTimeout_IsMappedToServiceUnavailable()
+    {
+        var downstream = new RecordingCatalogHandler(
+            HttpStatusCode.OK,
+            "{}",
+            exception: new TaskCanceledException("catalog timeout"));
+        await using var factory = new MaterialsBffFactory(downstream, hasPermission: true, compatibilityGrant: false);
+        using var client = CreateClient(factory);
+        await SignInAsync(client);
+
+        using var response = await client.GetAsync("/bff/catalog/materials");
+
+        Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task CallerCancellation_IsNotTranslatedIntoAServiceUnavailableResponse()
+    {
+        await using var factory = new MaterialsBffFactory(
+            new CallerCancellationHandler(),
+            hasPermission: true,
+            compatibilityGrant: false);
+        using var client = CreateClient(factory);
+        await SignInAsync(client);
+        using var cancellation = new CancellationTokenSource(TimeSpan.FromMilliseconds(250));
+
+        var exception = await Record.ExceptionAsync(() =>
+            client.GetAsync("/bff/catalog/materials", cancellation.Token));
+
+        Assert.IsAssignableFrom<OperationCanceledException>(exception);
+        Assert.True(cancellation.IsCancellationRequested);
+    }
+
+    [Fact]
+    public async Task AuthorizedCookie_WithSignedCatalogServiceToken_PassesCatalogPermissionPipeline()
+    {
+        using var signingKey = RSA.Create(2048);
+        await using var catalog = await StartCatalogPermissionPipelineAsync(signingKey);
+        var serviceToken = CreateSignedToken(signingKey, "service", includeCatalogPermission: true);
+        await using var factory = new MaterialsBffFactory(
+            catalog.GetTestServer().CreateHandler(),
+            hasPermission: true,
+            compatibilityGrant: false,
+            serviceToken);
+        using var client = CreateClient(factory);
+        await SignInAsync(client);
+
+        using var response = await client.GetAsync("/bff/catalog/materials");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task AuthorizedCookie_WithEmployeeTokenWithoutCatalogPermission_IsRejectedByCatalogPipeline()
+    {
+        using var signingKey = RSA.Create(2048);
+        await using var catalog = await StartCatalogPermissionPipelineAsync(signingKey);
+        var employeeToken = CreateSignedToken(signingKey, "employee", includeCatalogPermission: false);
+        await using var factory = new MaterialsBffFactory(
+            catalog.GetTestServer().CreateHandler(),
+            hasPermission: true,
+            compatibilityGrant: false,
+            employeeToken);
+        using var client = CreateClient(factory);
+        await SignInAsync(client);
+
+        using var response = await client.GetAsync("/bff/catalog/materials");
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
     }
 
     private static HttpClient CreateClient(WebApplicationFactory<BffProgram> factory) =>
@@ -150,9 +247,10 @@ public sealed class BffMaterialsProxyContractTests
     }
 
     private sealed class MaterialsBffFactory(
-        RecordingCatalogHandler downstream,
+        HttpMessageHandler downstream,
         bool hasPermission,
-        bool compatibilityGrant = true)
+        bool compatibilityGrant = false,
+        string serviceToken = "signed-service-token")
         : WebApplicationFactory<BffProgram>
     {
         protected override void ConfigureWebHost(IWebHostBuilder builder)
@@ -168,12 +266,21 @@ public sealed class BffMaterialsProxyContractTests
             {
                 services.RemoveAll<ILegacyAuthClient>();
                 services.AddSingleton<ILegacyAuthClient>(new MaterialsAuthClient(hasPermission));
-                services.RemoveAll<CatalogMaterialsProxy>();
-                services.AddSingleton(new CatalogMaterialsProxy(new HttpClient(downstream)
-                {
-                    BaseAddress = new Uri("http://catalog/"),
-                }));
+                services.RemoveAll<IServiceAccessTokenProvider>();
+                services.AddSingleton<IServiceAccessTokenProvider>(new MaterialsServiceTokenProvider(serviceToken));
+                services.AddHttpClient<CatalogMaterialsProxy>()
+                    .ConfigurePrimaryHttpMessageHandler(() => downstream);
             });
+        }
+    }
+
+    private sealed class MaterialsServiceTokenProvider(string serviceToken) : IServiceAccessTokenProvider
+    {
+        public ValueTask<string?> GetAccessTokenAsync(CancellationToken cancellationToken) =>
+            ValueTask.FromResult<string?>(serviceToken);
+
+        public void Invalidate(string token)
+        {
         }
     }
 
@@ -193,17 +300,25 @@ public sealed class BffMaterialsProxyContractTests
     private sealed class RecordingCatalogHandler(
         HttpStatusCode statusCode,
         string body,
-        int? retryAfterSeconds = null) : HttpMessageHandler
+        int? retryAfterSeconds = null,
+        Exception? exception = null) : HttpMessageHandler
     {
         public string? PathAndQuery { get; private set; }
         public string? Authorization { get; private set; }
+        public int RequestCount { get; private set; }
 
         protected override Task<HttpResponseMessage> SendAsync(
             HttpRequestMessage request,
             CancellationToken cancellationToken)
         {
+            RequestCount++;
             PathAndQuery = request.RequestUri?.PathAndQuery;
             Authorization = request.Headers.Authorization?.ToString();
+            if (exception is not null)
+            {
+                return Task.FromException<HttpResponseMessage>(exception);
+            }
+
             var response = new HttpResponseMessage(statusCode)
             {
                 Content = new StringContent(body, Encoding.UTF8, "application/json"),
@@ -220,6 +335,63 @@ public sealed class BffMaterialsProxyContractTests
         }
     }
 
+    private sealed class CallerCancellationHandler : HttpMessageHandler
+    {
+        protected override async Task<HttpResponseMessage> SendAsync(
+            HttpRequestMessage request,
+            CancellationToken cancellationToken)
+        {
+            await Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken);
+            throw new InvalidOperationException("The caller cancellation should stop the request.");
+        }
+    }
+
     private const string MaterialPageJson =
         """{"Items":[{"Id":42,"MaterialGroupId":1,"Machinable":true,"Printable":false,"Name":"4140","MaterialNumber":"4140","DensityKilogramPerCubicMeter":7850,"MaterialGroup":{"Id":1,"Name":"Steel"}}],"PageIndex":2,"TotalPages":4,"TotalRecords":75,"HasNextPage":true,"HasPreviousPage":true}""";
+
+    private static async Task<WebApplication> StartCatalogPermissionPipelineAsync(RSA signingKey)
+    {
+        var builder = WebApplication.CreateBuilder(new WebApplicationOptions
+        {
+            EnvironmentName = "Production",
+        });
+        builder.WebHost.UseTestServer();
+        builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["Jwt:Issuer"] = "https://auth.test",
+            ["Jwt:Audience"] = "legacy-test",
+            ["Jwt:PublicKey"] = Convert.ToBase64String(Encoding.UTF8.GetBytes(signingKey.ExportSubjectPublicKeyInfoPem())),
+        });
+        builder.AddJwtAuthentication();
+        var app = builder.Build();
+        app.UseAuthentication();
+        app.UseAuthorization();
+        app.MapGet("/Materials", () => Results.Text(MaterialPageJson, "application/json"))
+            .RequireAuthorization($"Permission:{LegacyEmployeePermissions.CatalogMaterialsRead}");
+        await app.StartAsync();
+        return app;
+    }
+
+    private static string CreateSignedToken(RSA signingKey, string identityKind, bool includeCatalogPermission)
+    {
+        var claims = new List<Claim>
+        {
+            new(JwtRegisteredClaimNames.Sub, "subject-id"),
+            new("identity_kind", identityKind),
+        };
+        if (includeCatalogPermission)
+        {
+            claims.Add(new Claim("permissions", LegacyEmployeePermissions.CatalogMaterialsRead));
+        }
+
+        var key = new RsaSecurityKey(signingKey) { KeyId = "catalog-contract-key" };
+        var token = new JwtSecurityToken(
+            "https://auth.test",
+            "legacy-test",
+            claims,
+            DateTime.UtcNow.AddMinutes(-1),
+            DateTime.UtcNow.AddMinutes(10),
+            new SigningCredentials(key, SecurityAlgorithms.RsaSha256));
+        return new JwtSecurityTokenHandler().WriteToken(token);
+    }
 }
