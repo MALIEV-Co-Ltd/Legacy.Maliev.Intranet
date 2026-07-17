@@ -18,16 +18,22 @@
 
 @code {
     private readonly List<System.Reflection.Assembly> lazyAssemblies = [];
+    private readonly HashSet<string> loadedFeatureAssemblies = new(StringComparer.Ordinal);
 
     [Inject] private Microsoft.AspNetCore.Components.WebAssembly.Services.LazyAssemblyLoader AssemblyLoader { get; set; } = default!;
 
     private async Task LoadFeatureAssemblyAsync(Microsoft.AspNetCore.Components.Routing.NavigationContext context)
     {
-        if (context.Path.StartsWith("Materials/", StringComparison.OrdinalIgnoreCase) && lazyAssemblies.Count == 0)
+        var assemblyName = context.Path.StartsWith("Materials/", StringComparison.OrdinalIgnoreCase)
+            ? "Legacy.Maliev.Intranet.Client.Features.Catalog.wasm"
+            : context.Path.StartsWith("Customers/", StringComparison.OrdinalIgnoreCase)
+                ? "Legacy.Maliev.Intranet.Client.Features.Customers.wasm"
+                : null;
+        if (assemblyName is not null && loadedFeatureAssemblies.Add(assemblyName))
         {
             context.CancellationToken.ThrowIfCancellationRequested();
             lazyAssemblies.AddRange(await AssemblyLoader.LoadAssembliesAsync(
-                ["Legacy.Maliev.Intranet.Client.Features.Catalog.wasm"]));
+                [assemblyName]));
             context.CancellationToken.ThrowIfCancellationRequested();
         }
     }

@@ -1,0 +1,162 @@
+@page "/Customers/Index"
+@attribute [Authorize]
+@inject HttpClient Http
+@inject NavigationManager Navigation
+@inject IStringLocalizer<Customers> Text
+
+<PageTitle>@Text["PageTitle"]</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge">
+    <MudText Typo="Typo.overline">@Text["Profiles"]</MudText>
+    <div class="d-flex flex-wrap align-center justify-space-between gap-3 mb-4">
+        <MudText Typo="Typo.h4" HtmlTag="h1">@Text["Customers"]</MudText>
+        <MudButton Href="/Customers/Create" Variant="Variant.Filled" Color="Color.Primary">
+            @Text["CreateCustomer"]
+        </MudButton>
+    </div>
+
+    <MudPaper Class="pa-4 mb-4">
+        <div class="d-flex flex-wrap gap-3 align-end">
+            <MudTextField T="string" @bind-Value="searchInput" Label="@Text["Search"]"
+                          Variant="Variant.Outlined" Immediate="true" />
+            <MudSelect T="CustomerListSort" @bind-Value="sortInput" Label="@Text["Sort"]"
+                       Variant="Variant.Outlined">
+                @foreach (var option in Enum.GetValues<CustomerListSort>())
+                {
+                    <MudSelectItem Value="option">@Text[option.ToString()]</MudSelectItem>
+                }
+            </MudSelect>
+            <MudNumericField T="int" @bind-Value="sizeInput" Label="@Text["PerPage"]"
+                             Min="1" Max="250" Variant="Variant.Outlined" />
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="ApplyFiltersAsync">
+                @Text["Apply"]
+            </MudButton>
+        </div>
+    </MudPaper>
+
+    @if (loading)
+    {
+        <MudProgressLinear Indeterminate="true" Color="Color.Primary" aria-label="@Text["Loading"]" />
+    }
+    else if (!string.IsNullOrWhiteSpace(error))
+    {
+        <MudAlert Severity="Severity.Error">@error</MudAlert>
+    }
+    else if (page is null || page.Items.Count == 0)
+    {
+        <MudAlert Severity="Severity.Info">@Text["Empty"]</MudAlert>
+    }
+    else
+    {
+        <MudTable Items="page.Items" Hover="true" Breakpoint="Breakpoint.Sm" Elevation="1">
+            <HeaderContent>
+                <MudTh>@Text["Id"]</MudTh>
+                <MudTh>@Text["Name"]</MudTh>
+                <MudTh>@Text["Email"]</MudTh>
+                <MudTh>@Text["Company"]</MudTh>
+                <MudTh><span class="visually-hidden">@Text["Actions"]</span></MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd DataLabel="@Text["Id"]">@context.Id</MudTd>
+                <MudTd DataLabel="@Text["Name"]">@context.FullName</MudTd>
+                <MudTd DataLabel="@Text["Email"]">@context.Email</MudTd>
+                <MudTd DataLabel="@Text["Company"]">@context.Company?.Name</MudTd>
+                <MudTd DataLabel="@Text["Actions"]">
+                    <MudLink Href="@($"/Customers/View?id={context.Id}")">@Text["View"]</MudLink>
+                </MudTd>
+            </RowTemplate>
+        </MudTable>
+        <nav class="d-flex flex-wrap align-center justify-space-between gap-3 mt-4" aria-label="@Text["CustomerPages"]">
+            <MudButton Disabled="@(!page.HasPreviousPage)" OnClick="PreviousPageAsync">@Text["Previous"]</MudButton>
+            <MudText aria-live="polite">@Text["PageSummary", page.PageIndex, page.TotalPages, page.TotalRecords]</MudText>
+            <MudButton Disabled="@(!page.HasNextPage)" OnClick="NextPageAsync">@Text["Next"]</MudButton>
+        </nav>
+    }
+</MudContainer>
+
+@code {
+    [SupplyParameterFromQuery(Name = "search")] public string? Search { get; set; }
+    [SupplyParameterFromQuery(Name = "sort")] public string? SortQuery { get; set; }
+    [SupplyParameterFromQuery(Name = "index")] public int Index { get; set; } = 1;
+    [SupplyParameterFromQuery(Name = "size")] public int Size { get; set; } = 25;
+
+    private CustomerListPage? page;
+    private string? error;
+    private bool loading;
+    private string? searchInput;
+    private CustomerListSort sortInput;
+    private CustomerListSort currentSort = CustomerListSort.CustomerCreatedDate_Descending;
+    private int sizeInput;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        Index = Math.Max(1, Index);
+        Size = Math.Clamp(Size, 1, 250);
+        currentSort = Enum.TryParse<CustomerListSort>(SortQuery, ignoreCase: true, out var parsedSort)
+            ? parsedSort
+            : CustomerListSort.CustomerCreatedDate_Descending;
+        searchInput = Search;
+        sortInput = currentSort;
+        sizeInput = Size;
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        loading = true;
+        error = null;
+        try
+        {
+            var uri = $"/bff/customers?sort={currentSort}&search={Uri.EscapeDataString(Search ?? string.Empty)}&index={Index}&size={Size}";
+            using var response = await Http.GetAsync(uri);
+            if (response.StatusCode == HttpStatusCode.Unauthorized)
+            {
+                Navigation.NavigateTo($"/Login?returnUrl={Uri.EscapeDataString(Navigation.ToBaseRelativePath(Navigation.Uri))}");
+                return;
+            }
+
+            if (response.StatusCode == HttpStatusCode.Forbidden)
+            {
+                error = Text["Forbidden"];
+                return;
+            }
+
+            if (response.StatusCode == HttpStatusCode.TooManyRequests)
+            {
+                error = Text["RateLimited"];
+                return;
+            }
+
+            if (!response.IsSuccessStatusCode)
+            {
+                error = Text["Unavailable"];
+                return;
+            }
+
+            page = await response.Content.ReadFromJsonAsync<CustomerListPage>();
+            if (page is null)
+            {
+                error = Text["InvalidResponse"];
+            }
+        }
+        catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException)
+        {
+            error = Text["Unavailable"];
+        }
+        finally
+        {
+            loading = false;
+        }
+    }
+
+    private Task ApplyFiltersAsync() => NavigateAsync(1, searchInput, sortInput, sizeInput);
+    private Task PreviousPageAsync() => NavigateAsync(Math.Max(1, Index - 1), Search, currentSort, Size);
+    private Task NextPageAsync() => NavigateAsync(Index + 1, Search, currentSort, Size);
+
+    private Task NavigateAsync(int index, string? search, CustomerListSort sort, int size)
+    {
+        var uri = $"/Customers/Index?search={Uri.EscapeDataString(search ?? string.Empty)}&sort={sort}&index={index}&size={Math.Clamp(size, 1, 250)}";
+        Navigation.NavigateTo(uri);
+        return Task.CompletedTask;
+    }
+}

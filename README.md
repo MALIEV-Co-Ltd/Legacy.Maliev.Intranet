@@ -23,6 +23,13 @@ remains claim-faithful, and sign-in/refresh rebuild server-side cookie permissio
 validated token plus only that explicitly configured rollback grant. Catalog calls still use
 the separate least-privilege `legacy-intranet` service token and never forward employee tokens.
 
+The lazy `/Customers/Index` rollout requires `Legacy.Maliev.AuthService` commit `aa75fd55`
+or later, which issues the canonical `legacy-customer.customers.list` permission on employee
+login and refresh JWTs. The BFF requires that exact claim on the opaque employee cookie and
+replaces the employee token with the separate `legacy-intranet` service token before calling
+CustomerService. AppHost grants the same exact list permission to that service identity; neither
+the employee access token nor the machine credential is exposed to WebAssembly.
+
 Migration rules:
 
 - preserve all 42 historical staff routes and validated workflows;
