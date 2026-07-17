@@ -75,9 +75,12 @@ public sealed class DataProtectionContractTests
         Assert.Contains("legacy:intranet:data-protection-keys", registration, StringComparison.Ordinal);
         Assert.Contains("DataProtection:CertificatePfxBase64", registration, StringComparison.Ordinal);
         Assert.Contains("DataProtection:CertificatePassword", registration, StringComparison.Ordinal);
+        Assert.Contains("LegacyDataProtectionResources", registration, StringComparison.Ordinal);
+        Assert.Contains("RedisXmlRepository", registration, StringComparison.Ordinal);
         Assert.Contains("ProtectKeysWithCertificate", registration, StringComparison.Ordinal);
-        Assert.Contains("PersistKeysToStackExchangeRedis", registration, StringComparison.Ordinal);
+        Assert.Contains("AddSingleton(_ => resources)", registration, StringComparison.Ordinal);
         Assert.Contains("ConnectionMultiplexerFactory", registration, StringComparison.Ordinal);
+        Assert.DoesNotContain("AddSingleton<IConnectionMultiplexer>(redis)", registration, StringComparison.Ordinal);
 
         foreach (var host in new[] { "Legacy.Maliev.Intranet", "Legacy.Maliev.Intranet.Bff" })
         {
@@ -85,6 +88,27 @@ public sealed class DataProtectionContractTests
             Assert.Contains("AddLegacyIntranetDataProtection", program, StringComparison.Ordinal);
             Assert.DoesNotContain("AddRedisDistributedCache", program, StringComparison.Ordinal);
         }
+    }
+
+    [Fact]
+    public void ContinuousIntegration_RequiresTheRealRedisContinuityTest()
+    {
+        var root = FindRoot();
+        var workflow = File.ReadAllText(Path.Combine(root, ".github", "workflows", "_build-and-test.yml"));
+        var testProject = File.ReadAllText(Path.Combine(
+            root,
+            "Legacy.Maliev.Intranet.Tests",
+            "Legacy.Maliev.Intranet.Tests.csproj"));
+        var integrationTest = File.ReadAllText(Path.Combine(
+            root,
+            "Legacy.Maliev.Intranet.Tests",
+            "Integration",
+            "RedisDataProtectionIntegrationTests.cs"));
+
+        Assert.Contains("docker info", workflow, StringComparison.Ordinal);
+        Assert.Contains("Testcontainers.Redis", testProject, StringComparison.Ordinal);
+        Assert.Contains("redis:7.4.5-alpine", integrationTest, StringComparison.Ordinal);
+        Assert.DoesNotContain("Skip =", integrationTest, StringComparison.Ordinal);
     }
 
     [Fact]

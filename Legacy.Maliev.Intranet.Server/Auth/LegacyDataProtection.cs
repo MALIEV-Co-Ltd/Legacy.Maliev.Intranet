@@ -1,10 +1,12 @@
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using Microsoft.AspNetCore.DataProtection;
+using Microsoft.AspNetCore.DataProtection.KeyManagement;
 using Microsoft.Extensions.Caching.StackExchangeRedis;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.AspNetCore.DataProtection.StackExchangeRedis;
 using StackExchange.Redis;
 
 namespace Legacy.Maliev.Intranet.Auth;
@@ -50,26 +52,51 @@ public static class LegacyDataProtection
                 "A Data Protection certificate is required to encrypt the shared Redis key ring.");
         }
 
-        var certificate = LoadCertificate(certificatePfxBase64, certificatePassword);
-        builder.Services.AddSingleton(certificate);
-        dataProtection.ProtectKeysWithCertificate(certificate);
-
         var redisOptions = ConfigurationOptions.Parse(redisConnectionString);
         redisOptions.AbortOnConnectFail = false;
         redisOptions.ConnectRetry = 5;
         redisOptions.ConnectTimeout = 10_000;
         redisOptions.AsyncTimeout = 10_000;
         redisOptions.SyncTimeout = 10_000;
-        var redis = ConnectionMultiplexer.Connect(redisOptions);
-        builder.Services.AddSingleton<IConnectionMultiplexer>(redis);
-        builder.Services.AddStackExchangeRedisCache(options =>
-        {
-            options.ConnectionMultiplexerFactory = () => Task.FromResult<IConnectionMultiplexer>(redis);
-            options.InstanceName = CacheInstanceName;
-        });
-        dataProtection.PersistKeysToStackExchangeRedis(redis, KeyRingKey);
+        var resources = CreateResources(certificatePfxBase64, certificatePassword, redisOptions);
+        builder.Services.AddSingleton(_ => resources);
+        builder.Services.AddStackExchangeRedisCache(_ => { });
+        builder.Services.AddOptions<RedisCacheOptions>()
+            .Configure<LegacyDataProtectionResources>((options, resources) =>
+            {
+                options.ConnectionMultiplexerFactory = () =>
+                    Task.FromResult(resources.Redis);
+                options.InstanceName = CacheInstanceName;
+            });
+        builder.Services.AddOptions<KeyManagementOptions>()
+            .Configure<LegacyDataProtectionResources>((options, resources) =>
+            {
+                options.XmlRepository = new RedisXmlRepository(
+                    () => resources.Redis.GetDatabase(),
+                    KeyRingKey);
+            });
+        dataProtection.ProtectKeysWithCertificate(resources.Certificate);
 
         return builder;
+    }
+
+    private static LegacyDataProtectionResources CreateResources(
+        string certificatePfxBase64,
+        string certificatePassword,
+        ConfigurationOptions redisOptions)
+    {
+        var certificate = LoadCertificate(certificatePfxBase64, certificatePassword);
+        try
+        {
+            return new LegacyDataProtectionResources(
+                certificate,
+                ConnectionMultiplexer.Connect(redisOptions));
+        }
+        catch
+        {
+            certificate.Dispose();
+            throw;
+        }
     }
 
     private static X509Certificate2 LoadCertificate(string pfxBase64, string password)
