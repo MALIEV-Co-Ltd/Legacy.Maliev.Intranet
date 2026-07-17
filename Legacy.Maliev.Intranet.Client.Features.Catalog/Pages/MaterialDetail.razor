@@ -1,0 +1,119 @@
+@page "/Materials/View"
+@attribute [Authorize]
+@inject HttpClient Http
+@inject NavigationManager Navigation
+@inject IStringLocalizer<MaterialDetail> Text
+
+<PageTitle>@Text["PageTitle", Id]</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large">
+    <MudText Typo="Typo.overline">@Text["Catalog"]</MudText>
+    <MudText Typo="Typo.h4" HtmlTag="h1" Class="mb-4">@Text["Material", Id]</MudText>
+
+    @if (loading)
+    {
+        <MudProgressLinear Indeterminate="true" Color="Color.Primary" aria-label="@Text["Loading"]" />
+    }
+    else if (!string.IsNullOrWhiteSpace(error))
+    {
+        <MudAlert Severity="@(notFound ? Severity.Info : Severity.Error)">@error</MudAlert>
+    }
+    else if (material is not null)
+    {
+        <MudPaper Class="pa-4" Elevation="1">
+            <MudGrid Spacing="3">
+                <MudItem xs="12" sm="6"><MudText Typo="Typo.caption">@Text["Id"]</MudText><MudText>@material.Id</MudText></MudItem>
+                <MudItem xs="12" sm="6"><MudText Typo="Typo.caption">@Text["Group"]</MudText><MudText>@ValueOrUnavailable(material.MaterialGroup?.Name)</MudText></MudItem>
+                <MudItem xs="12" sm="6"><MudText Typo="Typo.caption">@Text["Name"]</MudText><MudText>@material.Name</MudText></MudItem>
+                <MudItem xs="12" sm="6"><MudText Typo="Typo.caption">@Text["Number"]</MudText><MudText>@ValueOrUnavailable(material.MaterialNumber)</MudText></MudItem>
+                <MudItem xs="12" sm="6"><MudText Typo="Typo.caption">@Text["Density"]</MudText><MudText>@DensityOrUnavailable()</MudText></MudItem>
+                <MudItem xs="12" sm="6"><MudText Typo="Typo.caption">@Text["Machinable"]</MudText><MudText>@Text[material.Machinable ? "Yes" : "No"]</MudText></MudItem>
+                <MudItem xs="12" sm="6"><MudText Typo="Typo.caption">@Text["Printable"]</MudText><MudText>@Text[material.Printable ? "Yes" : "No"]</MudText></MudItem>
+            </MudGrid>
+        </MudPaper>
+    }
+
+    <MudButton Href="/Materials/Index" Variant="Variant.Text" Class="mt-4">
+        @Text["BackToMaterials"]
+    </MudButton>
+</MudContainer>
+
+@code {
+    [SupplyParameterFromQuery(Name = "id")] public int Id { get; set; }
+
+    private CatalogMaterialDetail? material;
+    private string? error;
+    private bool loading;
+    private bool notFound;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        material = null;
+        error = null;
+        notFound = false;
+
+        if (Id <= 0)
+        {
+            notFound = true;
+            error = Text["MaterialNotFound"];
+            return;
+        }
+
+        loading = true;
+        try
+        {
+            using var response = await Http.GetAsync($"/bff/catalog/materials/{Id}");
+            if (response.StatusCode == HttpStatusCode.Unauthorized)
+            {
+                Navigation.NavigateTo($"/Login?returnUrl={Uri.EscapeDataString(Navigation.ToBaseRelativePath(Navigation.Uri))}");
+                return;
+            }
+
+            if (response.StatusCode == HttpStatusCode.Forbidden)
+            {
+                error = Text["Forbidden"];
+                return;
+            }
+
+            if (response.StatusCode == HttpStatusCode.NotFound)
+            {
+                notFound = true;
+                error = Text["MaterialNotFound"];
+                return;
+            }
+
+            if (response.StatusCode == HttpStatusCode.TooManyRequests)
+            {
+                error = Text["RateLimited"];
+                return;
+            }
+
+            if (!response.IsSuccessStatusCode)
+            {
+                error = Text["Unavailable"];
+                return;
+            }
+
+            material = await response.Content.ReadFromJsonAsync<CatalogMaterialDetail>();
+            if (material is null)
+            {
+                error = Text["InvalidResponse"];
+            }
+        }
+        catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException)
+        {
+            error = Text["Unavailable"];
+        }
+        finally
+        {
+            loading = false;
+        }
+    }
+
+    private string ValueOrUnavailable(string? value) =>
+        string.IsNullOrWhiteSpace(value) ? Text["NotAvailable"] : value;
+
+    private string DensityOrUnavailable() => material?.DensityKilogramPerCubicMeter is decimal density
+        ? density.ToString(System.Globalization.CultureInfo.CurrentCulture)
+        : Text["NotAvailable"];
+}
