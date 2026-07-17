@@ -23,6 +23,11 @@ public static class LegacyEmployeePermissions
     public const string EmployeesRead = "legacy-employee.employees.read";
     /// <summary>Allows an authenticated employee to read legacy orders.</summary>
     public const string OrdersRead = "legacy.orders.read";
+    /// <summary>
+    /// Allows an employee to create a legacy order. AuthService issue #41 owns interactive login and refresh issuance;
+    /// the existing AppHost service-token topology already grants this exact permission.
+    /// </summary>
+    public const string OrdersCreate = "legacy.orders.create";
     /// <summary>Allows an authenticated employee to read legacy order catalog labels.</summary>
     public const string OrderCatalogRead = "legacy.order-catalog.read";
     /// <summary>Allows an authenticated employee to update legacy orders.</summary>

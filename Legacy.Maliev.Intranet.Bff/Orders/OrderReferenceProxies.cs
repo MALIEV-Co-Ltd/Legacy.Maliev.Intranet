@@ -25,6 +25,14 @@ public sealed class OrderCatalogReferenceProxy(HttpClient httpClient)
     public Task<IReadOnlyList<OrderLookupItem>> GetSurfaceFinishesAsync(CancellationToken cancellationToken) =>
         GetListAsync<OrderLookupItem>("/materials/SurfaceFinishes", cancellationToken);
 
+    /// <summary>Gets colors supported by one material.</summary>
+    public Task<IReadOnlyList<OrderLookupItem>> GetMaterialColorsAsync(int materialId, CancellationToken cancellationToken) =>
+        GetListAsync<OrderLookupItem>($"/materials/{materialId}/colors", cancellationToken);
+
+    /// <summary>Gets surface finishes supported by one material.</summary>
+    public Task<IReadOnlyList<OrderLookupItem>> GetMaterialSurfaceFinishesAsync(int materialId, CancellationToken cancellationToken) =>
+        GetListAsync<OrderLookupItem>($"/materials/{materialId}/surfacefinishes", cancellationToken);
+
     /// <summary>Gets currency lookup values.</summary>
     public Task<IReadOnlyList<OrderCurrencyItem>> GetCurrenciesAsync(CancellationToken cancellationToken) =>
         GetListAsync<OrderCurrencyItem>("/Currencies", cancellationToken);

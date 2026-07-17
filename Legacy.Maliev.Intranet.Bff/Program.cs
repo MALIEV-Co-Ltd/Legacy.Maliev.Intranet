@@ -167,6 +167,13 @@ builder.Services.AddHttpClient<OrderDetailProxy>(client =>
     client.Timeout = TimeSpan.FromSeconds(30);
 }).RemoveAllResilienceHandlers()
     .AddHttpMessageHandler<LegacyServiceAuthenticationHandler>();
+builder.Services.AddHttpClient<OrderCreateProxy>(client =>
+{
+    client.BaseAddress = new Uri(builder.Configuration["Services:Order"]
+        ?? throw new InvalidOperationException("Services:Order is required."));
+    client.Timeout = TimeSpan.FromSeconds(30);
+}).RemoveAllResilienceHandlers()
+    .AddHttpMessageHandler<LegacyServiceAuthenticationHandler>();
 builder.Services.AddHttpClient<OrderCatalogReferenceProxy>(client =>
 {
     client.BaseAddress = new Uri(builder.Configuration["Services:Catalog"]
@@ -193,8 +200,24 @@ builder.Services.AddHttpClient<OrderDocumentProxy>(client =>
     client.Timeout = TimeSpan.FromSeconds(30);
 }).RemoveAllResilienceHandlers()
     .AddHttpMessageHandler<LegacyServiceAuthenticationHandler>();
+builder.Services.AddHttpClient<OrderNotificationProxy>(client =>
+{
+    client.BaseAddress = new Uri(builder.Configuration["Services:Notification"]
+        ?? "https+http://legacy-maliev-notification-service");
+    client.Timeout = TimeSpan.FromSeconds(30);
+}).RemoveAllResilienceHandlers()
+    .AddHttpMessageHandler<LegacyServiceAuthenticationHandler>();
 builder.Services.AddScoped<OrderDetailAggregator>();
 builder.Services.AddScoped<OrderFileWorkflow>();
+if (builder.Environment.IsEnvironment("Testing"))
+{
+    builder.Services.AddSingleton<IOrderCreationStateStore, InMemoryOrderCreationStateStore>();
+}
+else
+{
+    builder.Services.AddSingleton<IOrderCreationStateStore, RedisOrderCreationStateStore>();
+}
+builder.Services.AddScoped<OrderCreationWorkflow>();
 builder.Services.AddHttpClient<CatalogMaterialsProxy>(client =>
 {
     client.BaseAddress = new Uri(builder.Configuration["Services:Catalog"]
@@ -312,6 +335,9 @@ builder.Services.AddAuthorizationBuilder()
     .AddPolicy(LegacyEmployeePermissions.OrdersRead, policy => policy
         .RequireAuthenticatedUser()
         .RequireClaim("permissions", LegacyEmployeePermissions.OrdersRead))
+    .AddPolicy(LegacyEmployeePermissions.OrdersCreate, policy => policy
+        .RequireAuthenticatedUser()
+        .RequireClaim("permissions", LegacyEmployeePermissions.OrdersCreate))
     .AddPolicy(LegacyEmployeePermissions.OrderCatalogRead, policy => policy
         .RequireAuthenticatedUser()
         .RequireClaim("permissions", LegacyEmployeePermissions.OrderCatalogRead))
@@ -444,6 +470,63 @@ app.MapGet("/bff/order-processes", (
     CancellationToken cancellationToken) =>
     OrdersEndpointMapper.MapProcessesAsync(orders.GetProcessesAsync, context, cancellationToken))
     .RequireAuthorization(LegacyEmployeePermissions.OrderCatalogRead);
+
+app.MapGet("/bff/orders/create", (
+    int? customerId,
+    OrdersProxy orders,
+    OrderCatalogReferenceProxy catalog,
+    CustomersProxy customers,
+    CancellationToken cancellationToken) =>
+    OrderCreateEndpointMapper.GetAsync(customerId, orders, catalog, customers, cancellationToken))
+    .RequireAuthorization(policy =>
+    {
+        policy.RequireClaim("permissions", LegacyEmployeePermissions.OrdersCreate);
+        policy.RequireClaim("permissions", LegacyEmployeePermissions.OrderCatalogRead);
+        policy.RequireClaim("permissions", LegacyEmployeePermissions.CustomersRead);
+        policy.RequireClaim("permissions", LegacyEmployeePermissions.CatalogMaterialsRead);
+    });
+
+app.MapGet("/bff/orders/create/materials/{materialId:int}", (
+    int materialId,
+    OrderCatalogReferenceProxy catalog,
+    CancellationToken cancellationToken) =>
+    OrderCreateEndpointMapper.GetMaterialOptionsAsync(materialId, catalog, cancellationToken))
+    .RequireAuthorization(policy =>
+    {
+        policy.RequireClaim("permissions", LegacyEmployeePermissions.OrdersCreate);
+        policy.RequireClaim("permissions", LegacyEmployeePermissions.CatalogMaterialsRead);
+    });
+
+app.MapPost("/bff/orders", (
+    HttpRequest request,
+    HttpContext context,
+    CustomersProxy customers,
+    OrdersProxy orderReferences,
+    OrderCatalogReferenceProxy catalog,
+    OrderCreateProxy orders,
+    OrderDetailProxy orderFiles,
+    OrderFileProxy files,
+    OrderNotificationProxy notifications,
+    OrderCreationWorkflow workflow,
+    ILogger<OrderCreationWorkflow> logger,
+    CancellationToken cancellationToken) =>
+    OrderCreateEndpointMapper.CreateAsync(
+        request,
+        context,
+        customers,
+        orderReferences,
+        catalog,
+        orders,
+        orderFiles,
+        files,
+        notifications,
+        workflow,
+        logger,
+        cancellationToken))
+    .AddEndpointFilter<AntiforgeryValidationFilter>()
+    .WithMetadata(new Microsoft.AspNetCore.Mvc.RequestSizeLimitAttribute(201L * 1024 * 1024))
+    .WithMetadata(new Microsoft.AspNetCore.Mvc.RequestFormLimitsAttribute { MultipartBodyLengthLimit = 201L * 1024 * 1024 })
+    .RequireAuthorization(LegacyEmployeePermissions.OrdersCreate);
 
 app.MapGet("/bff/orders/{id:int}", (
     int id,
