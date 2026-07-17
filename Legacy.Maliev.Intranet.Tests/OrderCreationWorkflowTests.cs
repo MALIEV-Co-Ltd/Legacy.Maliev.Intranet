@@ -2,6 +2,7 @@ using Legacy.Maliev.Intranet.Contracts;
 using Legacy.Maliev.Intranet.Server.Orders;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Time.Testing;
 
 namespace Legacy.Maliev.Intranet.Tests;
 
@@ -24,7 +25,7 @@ public sealed class OrderCreationWorkflowTests
             "customer@example.com",
             [new FormFile(Stream.Null, 0, 1, "files", "fixture.stl")],
             (_, key, _) => { attemptKey = key; calls.Add("create"); return Task.FromResult(84); },
-            (customerId, _, key, _) => { Assert.Equal(attemptKey, key); calls.Add($"upload:{customerId}"); return Task.FromResult<IReadOnlyList<StoredOrderFile>>([stored]); },
+            (customerId, _, _, key, _) => { Assert.Equal(attemptKey, key); calls.Add($"upload:{customerId}"); return Task.FromResult<IReadOnlyList<StoredOrderFile>>([stored]); },
             (orderId, _, _) => { calls.Add($"link:{orderId}"); return Task.FromResult(11); },
             (orderId, key, _) => { Assert.Equal(attemptKey, key); calls.Add($"status:{orderId}"); return Task.CompletedTask; },
             (email, orderId, _) => { calls.Add($"notify:{email}:{orderId}"); return Task.CompletedTask; },
@@ -60,7 +61,7 @@ public sealed class OrderCreationWorkflowTests
             "customer@example.com",
             [new FormFile(Stream.Null, 0, 1, "files", "fixture.stl")],
             (_, _, _) => Task.FromResult(84),
-            (_, _, _, _) => Task.FromResult<IReadOnlyList<StoredOrderFile>>(stored),
+            (_, _, _, _, _) => Task.FromResult<IReadOnlyList<StoredOrderFile>>(stored),
             (_, file, _) => Task.FromResult(file.ObjectName.EndsWith("one.stl", StringComparison.Ordinal) ? 11 : 12),
             (_, _, _) => { callerCancellation.Cancel(); throw new HttpRequestException("status failed"); },
             (_, _, _) => throw new InvalidOperationException("notification must not run"),
@@ -99,7 +100,7 @@ public sealed class OrderCreationWorkflowTests
             "customer@example.com",
             [],
             (_, _, _) => Task.FromResult(84),
-            (_, _, _, _) => throw new InvalidOperationException("upload must not run"),
+            (_, _, _, _, _) => throw new InvalidOperationException("upload must not run"),
             (_, _, _) => throw new InvalidOperationException("link must not run"),
             (_, _, _) => Task.CompletedTask,
             (_, _, _) => throw new HttpRequestException("notification failed"),
@@ -117,13 +118,13 @@ public sealed class OrderCreationWorkflowTests
     public async Task ExactRetry_ReplaysCompletedResultWithoutRepeatingAnyBoundary()
     {
         var store = new InMemoryOrderCreationStateStore();
-        var workflow = new OrderCreationWorkflow(NullLogger<OrderCreationWorkflow>.Instance, store);
+        var workflow = new OrderCreationWorkflow(NullLogger<OrderCreationWorkflow>.Instance, store, TimeProvider.System);
         var calls = new Dictionary<string, int>(StringComparer.Ordinal);
         var file = new FormFile(Stream.Null, 0, 1, "files", "fixture.stl");
         Task<OrderCreatedResult> Execute() => workflow.CreateAsync(
             "workflow-replay", "same-fingerprint", Input, "customer@example.com", [file],
             (_, _, _) => { Increment("create"); return Task.FromResult(84); },
-            (_, _, _, _) => { Increment("upload"); return Task.FromResult<IReadOnlyList<StoredOrderFile>>([new(0, 0, "bucket", "object")]); },
+            (_, _, _, _, _) => { Increment("upload"); return Task.FromResult<IReadOnlyList<StoredOrderFile>>([new(0, 0, "bucket", "object")]); },
             (_, _, _) => { Increment("link"); return Task.FromResult(11); },
             (_, _, _) => { Increment("status"); return Task.CompletedTask; },
             (_, _, _) => { Increment("notify"); return Task.CompletedTask; },
@@ -155,7 +156,7 @@ public sealed class OrderCreationWorkflowTests
         Task<OrderCreatedResult> Execute() => workflow.CreateAsync(
             "workflow-compensated", "same-fingerprint", Input with { SendConfirmationEmail = false }, null, [],
             (_, key, _) => { attemptKeys.Add(key); return Task.FromResult(84); },
-            (_, _, _, _) => Task.FromResult<IReadOnlyList<StoredOrderFile>>([]),
+            (_, _, _, _, _) => Task.FromResult<IReadOnlyList<StoredOrderFile>>([]),
             (_, _, _) => Task.FromResult(0),
             (_, _, _) => ++statusCalls == 1 ? throw new HttpRequestException("definitive status failure") : Task.CompletedTask,
             (_, _, _) => Task.CompletedTask,
@@ -183,7 +184,7 @@ public sealed class OrderCreationWorkflowTests
         Task<OrderCreatedResult> Execute() => workflow.CreateAsync(
             "workflow-status-unknown", "same-fingerprint", Input with { SendConfirmationEmail = false }, null, [],
             (_, key, _) => { createCalls++; attemptKey = key; return Task.FromResult(84); },
-            (_, _, _, _) => Task.FromResult<IReadOnlyList<StoredOrderFile>>([]),
+            (_, _, _, _, _) => Task.FromResult<IReadOnlyList<StoredOrderFile>>([]),
             (_, _, _) => Task.FromResult(0),
             (_, key, _) =>
             {
@@ -221,7 +222,7 @@ public sealed class OrderCreationWorkflowTests
                 if (++createCalls == 1) throw new OrderCreationOutcomeUnknownException("lost create response");
                 return Task.FromResult(84);
             },
-            (_, _, _, _) => Task.FromResult<IReadOnlyList<StoredOrderFile>>([]),
+            (_, _, _, _, _) => Task.FromResult<IReadOnlyList<StoredOrderFile>>([]),
             (_, _, _) => Task.FromResult(0),
             (_, _, _) => Task.CompletedTask,
             (_, _, _) => Task.CompletedTask,
@@ -257,7 +258,7 @@ public sealed class OrderCreationWorkflowTests
                 }
                 return Task.FromResult(84);
             },
-            (_, _, _, _) => Task.FromResult<IReadOnlyList<StoredOrderFile>>([]),
+            (_, _, _, _, _) => Task.FromResult<IReadOnlyList<StoredOrderFile>>([]),
             (_, _, _) => Task.FromResult(0),
             (_, _, _) => Task.CompletedTask,
             (_, _, _) => Task.CompletedTask,
@@ -287,7 +288,7 @@ public sealed class OrderCreationWorkflowTests
         Task<OrderCreatedResult> Execute() => workflow.CreateAsync(
             $"workflow-interrupted-{timeout}", "same-fingerprint", Input with { SendConfirmationEmail = false }, null, [],
             (_, key, _) => { createCalls++; attemptKey = key; return Task.FromResult(84); },
-            (_, _, _, _) => Task.FromResult<IReadOnlyList<StoredOrderFile>>([]),
+            (_, _, _, _, _) => Task.FromResult<IReadOnlyList<StoredOrderFile>>([]),
             (_, _, _) => Task.FromResult(0),
             (_, key, _) =>
             {
@@ -325,7 +326,7 @@ public sealed class OrderCreationWorkflowTests
             "workflow-upload-unknown", "same-fingerprint", Input, "customer@example.com",
             [new FormFile(Stream.Null, 0, 1, "files", "fixture.stl")],
             (_, _, _) => Task.FromResult(84),
-            (_, _, key, _) =>
+            (_, _, _, key, _) =>
             {
                 attemptKeys.Add(key);
                 if (++uploadCalls == 1) throw new OrderCreationOutcomeUnknownException("lost upload response");
@@ -359,7 +360,7 @@ public sealed class OrderCreationWorkflowTests
             "workflow-upload-503", "same-fingerprint", Input, "customer@example.com",
             [new FormFile(Stream.Null, 0, 1, "files", "fixture.stl")],
             (_, _, _) => Task.FromResult(84),
-            (_, _, key, _) =>
+            (_, _, _, key, _) =>
             {
                 attemptKeys.Add(key);
                 if (++uploadCalls == 1)
@@ -385,7 +386,45 @@ public sealed class OrderCreationWorkflowTests
         Assert.Equal(0, deleteCalls);
     }
 
-    private static OrderCreationWorkflow CreateWorkflow() => new(
+    [Fact]
+    public async Task UploadRetryAcrossUtcMidnight_ReusesPersistedAttemptAndPath()
+    {
+        var clock = new FakeTimeProvider(new DateTimeOffset(2026, 7, 17, 23, 59, 0, TimeSpan.Zero));
+        var workflow = CreateWorkflow(clock);
+        var attemptKeys = new List<string>();
+        var uploadPaths = new List<string>();
+        var uploadCalls = 0;
+        Task<OrderCreatedResult> Execute() => workflow.CreateAsync(
+            "workflow-upload-midnight", "same-fingerprint", Input, "customer@example.com",
+            [new FormFile(Stream.Null, 0, 1, "files", "fixture.stl")],
+            (_, _, _) => Task.FromResult(84),
+            (_, _, path, key, _) =>
+            {
+                uploadPaths.Add(path);
+                attemptKeys.Add(key);
+                if (++uploadCalls == 1) throw new OrderCreationOutcomeUnknownException("lost upload response");
+                return Task.FromResult<IReadOnlyList<StoredOrderFile>>([new(0, 0, "maliev.com", "orders/42/fixture.stl")]);
+            },
+            (_, _, _) => Task.FromResult(11),
+            (_, _, _) => Task.CompletedTask,
+            (_, _, _) => Task.CompletedTask,
+            (_, _) => Task.CompletedTask,
+            (_, _) => Task.CompletedTask,
+            (_, _) => Task.CompletedTask,
+            CancellationToken.None);
+
+        await Assert.ThrowsAsync<OrderCreationOutcomeUnknownException>(Execute);
+        clock.Advance(TimeSpan.FromDays(1));
+        var result = await Execute();
+
+        Assert.Equal(84, result.Id);
+        Assert.Equal(attemptKeys[0], attemptKeys[1]);
+        Assert.Equal(uploadPaths[0], uploadPaths[1]);
+        Assert.Equal("uploads/42/2026-07-17", uploadPaths[0]);
+    }
+
+    private static OrderCreationWorkflow CreateWorkflow(TimeProvider? timeProvider = null) => new(
         NullLogger<OrderCreationWorkflow>.Instance,
-        new InMemoryOrderCreationStateStore());
+        new InMemoryOrderCreationStateStore(),
+        timeProvider ?? TimeProvider.System);
 }

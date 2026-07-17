@@ -149,11 +149,11 @@ internal static class OrderCreateEndpointMapper
                             exception);
                     }
                 },
-                async (customerId, selectedFiles, idempotencyKey, token) =>
+                async (customerId, selectedFiles, uploadPath, idempotencyKey, token) =>
                 {
                     try
                     {
-                        using var response = await files.UploadAsync(customerId, selectedFiles, idempotencyKey, token);
+                        using var response = await files.UploadAsync(customerId, selectedFiles, uploadPath, idempotencyKey, token);
                         if (response.StatusCode == HttpStatusCode.Conflict)
                         {
                             var problem = await response.Content.ReadFromJsonAsync<Microsoft.AspNetCore.Mvc.ProblemDetails>(token);

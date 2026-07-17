@@ -50,7 +50,8 @@ public sealed record OrderCreationCheckpoint(
     IReadOnlyList<StoredOrderFile> StoredFiles,
     IReadOnlyList<int> LinkedFileIds,
     int LinkedFileCount,
-    Legacy.Maliev.Intranet.Contracts.OrderCreatedResult? Result);
+    Legacy.Maliev.Intranet.Contracts.OrderCreatedResult? Result,
+    string? UploadPath = null);
 
 /// <summary>Redis implementation backed by the Intranet's existing shared connection.</summary>
 public sealed class RedisOrderCreationStateStore(

@@ -10,7 +10,8 @@ namespace Legacy.Maliev.Intranet.Server.Orders;
 /// <summary>Coordinates the durable, replay-safe cross-service order creation saga.</summary>
 public sealed class OrderCreationWorkflow(
     ILogger<OrderCreationWorkflow> logger,
-    IOrderCreationStateStore stateStore)
+    IOrderCreationStateStore stateStore,
+    TimeProvider timeProvider)
 {
     private const string NotificationWarning = "Order created, but the confirmation notification failed.";
 
@@ -45,7 +46,7 @@ public sealed class OrderCreationWorkflow(
         string? customerEmail,
         IReadOnlyList<IFormFile> files,
         Func<OrderCreateRequest, string, CancellationToken, Task<int>> CreateOrder,
-        Func<int, IReadOnlyList<IFormFile>, string, CancellationToken, Task<IReadOnlyList<StoredOrderFile>>> UploadFiles,
+        Func<int, IReadOnlyList<IFormFile>, string, string, CancellationToken, Task<IReadOnlyList<StoredOrderFile>>> UploadFiles,
         Func<int, StoredOrderFile, CancellationToken, Task<int>> CreateOrderFile,
         Func<int, string, CancellationToken, Task> CreateInitialStatus,
         Func<string, int, CancellationToken, Task> SendNotification,
@@ -79,7 +80,7 @@ public sealed class OrderCreationWorkflow(
         string? customerEmail,
         IReadOnlyList<IFormFile> files,
         Func<OrderCreateRequest, string, CancellationToken, Task<int>> createOrder,
-        Func<int, IReadOnlyList<IFormFile>, string, CancellationToken, Task<IReadOnlyList<StoredOrderFile>>> uploadFiles,
+        Func<int, IReadOnlyList<IFormFile>, string, string, CancellationToken, Task<IReadOnlyList<StoredOrderFile>>> uploadFiles,
         Func<int, StoredOrderFile, CancellationToken, Task<int>> createOrderFile,
         Func<int, string, CancellationToken, Task> createInitialStatus,
         Func<string, int, CancellationToken, Task> sendNotification,
@@ -120,7 +121,8 @@ public sealed class OrderCreationWorkflow(
                 [],
                 [],
                 0,
-                null);
+                null,
+                $"uploads/{input.CustomerId}/{timeProvider.GetUtcNow():yyyy-MM-dd}");
             await stateStore.SetAsync(workflowKey, state, cancellationToken);
         }
         try
@@ -134,9 +136,14 @@ public sealed class OrderCreationWorkflow(
 
             if (files.Count > 0 && state.StoredFiles.Count == 0)
             {
+                if (string.IsNullOrWhiteSpace(state.UploadPath))
+                {
+                    throw new OrderCreationOutcomeUnknownException(
+                        "The persisted upload path is unavailable; the prior FileService fingerprint cannot be proven.");
+                }
                 state = state with { Phase = OrderCreationPhase.Uploading };
                 await stateStore.SetAsync(workflowKey, state, cancellationToken);
-                var stored = await uploadFiles(input.CustomerId, files, state.DownstreamAttemptId, cancellationToken);
+                var stored = await uploadFiles(input.CustomerId, files, state.UploadPath, state.DownstreamAttemptId, cancellationToken);
                 state = state with { Phase = OrderCreationPhase.Active, StoredFiles = stored };
                 await stateStore.SetAsync(workflowKey, state, cancellationToken);
             }
