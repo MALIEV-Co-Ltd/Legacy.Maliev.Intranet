@@ -37,6 +37,17 @@ public sealed record CatalogMaterialListItem(
     decimal? DensityKilogramPerCubicMeter,
     CatalogMaterialGroup? MaterialGroup);
 
+/// <summary>Browser-safe read-only material detail matching the legacy display semantics.</summary>
+public sealed record CatalogMaterialDetail(
+    int Id,
+    int MaterialGroupId,
+    bool Machinable,
+    bool Printable,
+    string Name,
+    string? MaterialNumber,
+    decimal? DensityKilogramPerCubicMeter,
+    CatalogMaterialGroup? MaterialGroup);
+
 /// <summary>Browser-safe legacy-compatible material page.</summary>
 public sealed record CatalogMaterialPage(
     IReadOnlyList<CatalogMaterialListItem> Items,

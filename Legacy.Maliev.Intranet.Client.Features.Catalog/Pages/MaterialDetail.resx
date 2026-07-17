@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
+  <data name="PageTitle" xml:space="preserve"><value>Material {0} - MALIEV Intranet</value></data>
+  <data name="Catalog" xml:space="preserve"><value>Catalog</value></data>
+  <data name="Material" xml:space="preserve"><value>Material {0}</value></data>
+  <data name="Loading" xml:space="preserve"><value>Loading material</value></data>
+  <data name="Id" xml:space="preserve"><value>ID</value></data>
+  <data name="Group" xml:space="preserve"><value>Group</value></data>
+  <data name="Name" xml:space="preserve"><value>Name</value></data>
+  <data name="Number" xml:space="preserve"><value>Number</value></data>
+  <data name="Density" xml:space="preserve"><value>Density</value></data>
+  <data name="Machinable" xml:space="preserve"><value>Machinable</value></data>
+  <data name="Printable" xml:space="preserve"><value>Printable</value></data>
+  <data name="Yes" xml:space="preserve"><value>Yes</value></data>
+  <data name="No" xml:space="preserve"><value>No</value></data>
+  <data name="NotAvailable" xml:space="preserve"><value>Not available</value></data>
+  <data name="MaterialNotFound" xml:space="preserve"><value>The requested material was not found.</value></data>
+  <data name="BackToMaterials" xml:space="preserve"><value>Back to materials</value></data>
+  <data name="Forbidden" xml:space="preserve"><value>You do not have permission to view this material.</value></data>
+  <data name="RateLimited" xml:space="preserve"><value>Catalog requests are temporarily limited. Wait and try again.</value></data>
+  <data name="Unavailable" xml:space="preserve"><value>The material catalog is temporarily unavailable.</value></data>
+  <data name="InvalidResponse" xml:space="preserve"><value>The material catalog returned an invalid response.</value></data>
+</root>
