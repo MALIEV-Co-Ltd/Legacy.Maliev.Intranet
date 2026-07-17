@@ -15,5 +15,6 @@
   <ItemGroup>
     <ProjectReference Include="..\Legacy.Maliev.Intranet.Client\Legacy.Maliev.Intranet.Client.csproj" />
     <ProjectReference Include="..\Legacy.Maliev.Intranet.Contracts\Legacy.Maliev.Intranet.Contracts.csproj" />
+    <ProjectReference Include="..\Legacy.Maliev.Intranet.Server\Legacy.Maliev.Intranet.Server.csproj" />
   </ItemGroup>
 </Project>
