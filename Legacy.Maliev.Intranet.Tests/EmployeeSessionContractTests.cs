@@ -9,6 +9,7 @@ using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Time.Testing;
 using System.Net;
 using System.Security.Claims;
@@ -20,6 +21,37 @@ namespace Legacy.Maliev.Intranet.Tests;
 public sealed partial class EmployeeSessionContractTests
 {
     private static readonly DateTimeOffset Now = new(2030, 7, 15, 0, 0, 0, TimeSpan.Zero);
+
+    [Fact]
+    public void CompatibilityCatalogGrant_DefaultsToDisabled()
+    {
+        Assert.False(new LegacyEmployeeCompatibilityOptions().GrantCatalogMaterialsRead);
+    }
+
+    [Fact]
+    public async Task SignIn_ValidatedCatalogPermissionSurvivesWhenCompatibilityGrantIsDisabled()
+    {
+        var authentication = new RecordingAuthenticationService(new AuthenticationProperties());
+        var sessions = CreateSessionService(new StubAuthClient(), compatibilityGrant: false);
+        var login = new EmployeeLoginResult(
+            true,
+            new AuthTokenResponse(
+                StubAuthClient.AccessToken,
+                StubAuthClient.RefreshToken,
+                "Bearer",
+                900,
+                Now.AddDays(14)),
+            new EmployeeIdentity(
+                "employee-id",
+                "employee@maliev.com",
+                "employee@maliev.com",
+                [LegacyEmployeePermissions.CatalogMaterialsRead]));
+
+        await sessions.SignInAsync(CreateHttpContext(authentication), login);
+
+        Assert.Contains(authentication.CurrentPrincipal!.Claims, claim =>
+            claim.Type == "permissions" && claim.Value == LegacyEmployeePermissions.CatalogMaterialsRead);
+    }
 
     [Fact]
     public async Task SuccessfulLogin_CookieContainsOnlyOpaqueTicketKeyAndUnlocksProtectedRoute()
@@ -149,6 +181,56 @@ public sealed partial class EmployeeSessionContractTests
     }
 
     [Fact]
+    public async Task GetAccessToken_RefreshReplacesPermissionClaimsFromValidatedToken()
+    {
+        var auth = new StubAuthClient
+        {
+            RefreshResult = new AuthTokenResponse(
+                "rotated-access-token",
+                "rotated-refresh-token",
+                "Bearer",
+                900,
+                Now.AddDays(14)),
+            RefreshPermissions = ["legacy-catalog.materials.read"],
+        };
+        var authentication = new RecordingAuthenticationService(
+            CreateTokenProperties(Now.AddMinutes(1)),
+            [new Claim("permissions", "legacy-catalog.materials.write")]);
+        var sessions = CreateSessionService(auth);
+
+        await sessions.GetAccessTokenAsync(CreateHttpContext(authentication), CancellationToken.None);
+
+        Assert.Contains(authentication.CurrentPrincipal!.Claims, claim =>
+            claim.Type == "permissions" && claim.Value == "legacy-catalog.materials.read");
+        Assert.DoesNotContain(authentication.CurrentPrincipal.Claims, claim =>
+            claim.Type == "permissions" && claim.Value == "legacy-catalog.materials.write");
+    }
+
+    [Fact]
+    public async Task GetAccessToken_RefreshWithCompatibilityGrantDisabled_RemovesTheLegacyGrant()
+    {
+        var auth = new StubAuthClient
+        {
+            RefreshResult = new AuthTokenResponse(
+                "rotated-access-token",
+                "rotated-refresh-token",
+                "Bearer",
+                900,
+                Now.AddDays(14)),
+            RefreshPermissions = [],
+        };
+        var authentication = new RecordingAuthenticationService(
+            CreateTokenProperties(Now.AddMinutes(1)),
+            [new Claim("permissions", LegacyEmployeePermissions.CatalogMaterialsRead)]);
+        var sessions = CreateSessionService(auth, compatibilityGrant: false);
+
+        await sessions.GetAccessTokenAsync(CreateHttpContext(authentication), CancellationToken.None);
+
+        Assert.DoesNotContain(authentication.CurrentPrincipal!.Claims, claim =>
+            claim.Type == "permissions" && claim.Value == LegacyEmployeePermissions.CatalogMaterialsRead);
+    }
+
+    [Fact]
     public async Task GetAccessToken_WhenRefreshFails_ClearsLocalSession()
     {
         var auth = new StubAuthClient();
@@ -246,11 +328,17 @@ public sealed partial class EmployeeSessionContractTests
         return new DefaultHttpContext { RequestServices = services };
     }
 
-    private static EmployeeSessionService CreateSessionService(ILegacyAuthClient authClient) =>
+    private static EmployeeSessionService CreateSessionService(
+        ILegacyAuthClient authClient,
+        bool compatibilityGrant = true) =>
         new(
             authClient,
             new FakeTimeProvider(Now),
-            NullLogger<EmployeeSessionService>.Instance);
+            NullLogger<EmployeeSessionService>.Instance,
+            Options.Create(new LegacyEmployeeCompatibilityOptions
+            {
+                GrantCatalogMaterialsRead = compatibilityGrant,
+            }));
 
     [GeneratedRegex("name=\"__RequestVerificationToken\"[^>]*value=\"([^\"]+)\"", RegexOptions.CultureInvariant)]
     private static partial Regex AntiForgeryToken();
@@ -288,6 +376,8 @@ public sealed partial class EmployeeSessionContractTests
 
         public string RefreshEmployeeId { get; set; } = "employee-id";
 
+        public IReadOnlyList<string> RefreshPermissions { get; init; } = [];
+
         public Task<EmployeeLoginResult> LoginAsync(
             string email,
             string password,
@@ -308,7 +398,7 @@ public sealed partial class EmployeeSessionContractTests
                 ? null
                 : new EmployeeRefreshResult(
                     RefreshResult,
-                    new EmployeeIdentity(RefreshEmployeeId, "employee@maliev.com", "employee@maliev.com")));
+                    new EmployeeIdentity(RefreshEmployeeId, "employee@maliev.com", "employee@maliev.com", RefreshPermissions)));
         }
 
         public Task RevokeAsync(string refreshToken, CancellationToken cancellationToken)
@@ -332,18 +422,23 @@ public sealed partial class EmployeeSessionContractTests
 
     private sealed class RecordingAuthenticationService : IAuthenticationService
     {
-        private readonly ClaimsPrincipal principal = new(new ClaimsIdentity(
-            [new Claim(ClaimTypes.NameIdentifier, "employee-id")],
-            CookieAuthenticationDefaults.AuthenticationScheme));
+        private ClaimsPrincipal principal;
 
-        public RecordingAuthenticationService(AuthenticationProperties properties)
+        public RecordingAuthenticationService(
+            AuthenticationProperties properties,
+            IEnumerable<Claim>? additionalClaims = null)
         {
             CurrentProperties = properties;
+            principal = new ClaimsPrincipal(new ClaimsIdentity(
+                [new Claim(ClaimTypes.NameIdentifier, "employee-id"), .. additionalClaims ?? []],
+                CookieAuthenticationDefaults.AuthenticationScheme));
         }
 
         public AuthenticationProperties? CurrentProperties { get; private set; }
 
         public bool SignedOut { get; private set; }
+
+        public ClaimsPrincipal? CurrentPrincipal => SignedOut ? null : principal;
 
         public Task<AuthenticateResult> AuthenticateAsync(HttpContext context, string? scheme)
         {
@@ -374,6 +469,7 @@ public sealed partial class EmployeeSessionContractTests
             ClaimsPrincipal signedInPrincipal,
             AuthenticationProperties? properties)
         {
+            principal = signedInPrincipal;
             CurrentProperties = properties;
             SignedOut = false;
             return Task.CompletedTask;

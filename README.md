@@ -15,6 +15,14 @@ client. The BFF must remain free of domain business logic and must authorize eve
 endpoint. Razor routes are removed only after route, authorization, DTO, and browser parity
 are proven for the replacement feature assembly.
 
+The standalone BFF Materials rollout requires `Legacy.Maliev.AuthService` commit `647c21c6`
+or later, which issues `legacy-catalog.materials.read` on validated employee login and refresh
+tokens. `LegacyEmployeeCompatibility:GrantCatalogMaterialsRead` defaults to `false`; set it to
+`true` only as an emergency rollback to the prior employee-wide read boundary. JWT validation
+remains claim-faithful, and sign-in/refresh rebuild server-side cookie permissions from the
+validated token plus only that explicitly configured rollback grant. Catalog calls still use
+the separate least-privilege `legacy-intranet` service token and never forward employee tokens.
+
 Migration rules:
 
 - preserve all 42 historical staff routes and validated workflows;

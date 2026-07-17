@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using System.Security.Claims;
 
 namespace Legacy.Maliev.Intranet.Auth;
@@ -10,7 +11,8 @@ namespace Legacy.Maliev.Intranet.Auth;
 public sealed class EmployeeSessionService(
     ILegacyAuthClient authClient,
     TimeProvider timeProvider,
-    ILogger<EmployeeSessionService> logger)
+    ILogger<EmployeeSessionService> logger,
+    IOptions<LegacyEmployeeCompatibilityOptions> compatibilityOptions)
 {
     private const string AccessToken = "legacy_access_token";
     private const string RefreshToken = "legacy_refresh_token";
@@ -24,13 +26,14 @@ public sealed class EmployeeSessionService(
             throw new InvalidOperationException("A validated employee login is required.");
         }
 
-        var claims = new[]
+        var claims = new List<System.Security.Claims.Claim>
         {
             new System.Security.Claims.Claim(System.Security.Claims.ClaimTypes.NameIdentifier, login.Identity.Id),
             new System.Security.Claims.Claim(System.Security.Claims.ClaimTypes.Name, login.Identity.UserName),
             new System.Security.Claims.Claim(System.Security.Claims.ClaimTypes.Email, login.Identity.Email ?? login.Identity.UserName),
             new System.Security.Claims.Claim("identity_kind", "employee"),
         };
+        claims.AddRange(CreatePermissionClaims(login.Identity.Permissions));
         var principal = new System.Security.Claims.ClaimsPrincipal(
             new System.Security.Claims.ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme));
         var properties = new AuthenticationProperties
@@ -79,9 +82,17 @@ public sealed class EmployeeSessionService(
         }
 
         StoreTokens(result.Properties, refreshed.Tokens);
+        var refreshedClaims = result.Principal!.Claims
+            .Where(claim => !string.Equals(claim.Type, "permissions", StringComparison.Ordinal))
+            .Concat(CreatePermissionClaims(refreshed.Identity.Permissions));
+        var refreshedPrincipal = new ClaimsPrincipal(new ClaimsIdentity(
+            refreshedClaims,
+            CookieAuthenticationDefaults.AuthenticationScheme,
+            ClaimTypes.Name,
+            ClaimTypes.Role));
         await context.SignInAsync(
             CookieAuthenticationDefaults.AuthenticationScheme,
-            result.Principal!,
+            refreshedPrincipal,
             result.Properties);
         return refreshed.Tokens.AccessToken;
     }
@@ -118,5 +129,19 @@ public sealed class EmployeeSessionService(
                 Value = timeProvider.GetUtcNow().AddSeconds(tokens.ExpiresIn).ToString("O"),
             },
         ]);
+    }
+
+    private IEnumerable<Claim> CreatePermissionClaims(IReadOnlyList<string>? validatedPermissions)
+    {
+        var permissions = validatedPermissions ?? [];
+        if (compatibilityOptions.Value.GrantCatalogMaterialsRead)
+        {
+            permissions = [.. permissions, LegacyEmployeePermissions.CatalogMaterialsRead];
+        }
+
+        return permissions
+            .Where(permission => !string.IsNullOrWhiteSpace(permission))
+            .Distinct(StringComparer.Ordinal)
+            .Select(permission => new Claim("permissions", permission));
     }
 }

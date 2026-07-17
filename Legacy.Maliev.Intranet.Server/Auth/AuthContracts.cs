@@ -2,6 +2,23 @@ using System.ComponentModel.DataAnnotations;
 
 namespace Legacy.Maliev.Intranet.Auth;
 
+/// <summary>Stable permission names used by the employee BFF authorization policies.</summary>
+public static class LegacyEmployeePermissions
+{
+    /// <summary>Allows reading the legacy materials catalog.</summary>
+    public const string CatalogMaterialsRead = "legacy-catalog.materials.read";
+}
+
+/// <summary>Explicit removable grants that preserve employee-wide authorization during legacy rollout.</summary>
+public sealed class LegacyEmployeeCompatibilityOptions
+{
+    /// <summary>Gets the configuration section for temporary employee compatibility grants.</summary>
+    public const string SectionName = "LegacyEmployeeCompatibility";
+
+    /// <summary>Gets or sets whether validated employees receive the legacy-wide materials read grant.</summary>
+    public bool GrantCatalogMaterialsRead { get; set; }
+}
+
 /// <summary>Employee login credentials sent only from the BFF to AuthService.</summary>
 public sealed record EmployeeLoginRequest(
     [property: Required, EmailAddress, StringLength(320)] string UserName,
@@ -17,7 +34,11 @@ public sealed record AuthTokenResponse(
     DateTimeOffset RefreshExpiresAt);
 
 /// <summary>Authenticated employee claims decoded from the validated access token.</summary>
-public sealed record EmployeeIdentity(string Id, string UserName, string? Email);
+public sealed record EmployeeIdentity(
+    string Id,
+    string UserName,
+    string? Email,
+    IReadOnlyList<string>? Permissions = null);
 
 /// <summary>Result of a generic employee authentication attempt.</summary>
 public sealed record EmployeeLoginResult(bool Succeeded, AuthTokenResponse? Tokens, EmployeeIdentity? Identity);

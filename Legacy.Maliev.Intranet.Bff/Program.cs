@@ -2,6 +2,7 @@ using System.Security.Claims;
 using Legacy.Maliev.Intranet.Bff;
 using Legacy.Maliev.Intranet.Auth;
 using Legacy.Maliev.Intranet.Contracts;
+using Legacy.Maliev.Intranet.Bff.Catalog;
 using Maliev.Aspire.ServiceDefaults;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
@@ -9,7 +10,9 @@ using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.RateLimiting;
 using System.ComponentModel.DataAnnotations;
 using System.Globalization;
+using System.Net.Http.Json;
 using System.Threading.RateLimiting;
+using Polly;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.WebHost.UseStaticWebAssets();
@@ -23,6 +26,43 @@ builder.Services.AddLegacyAccessTokenValidation(
     validateOnStart: !builder.Environment.IsEnvironment("Testing"));
 builder.Services.AddSingleton<DistributedTicketStore>();
 builder.Services.AddScoped<EmployeeSessionService>();
+builder.Services.AddOptions<LegacyEmployeeCompatibilityOptions>()
+    .Bind(builder.Configuration.GetSection(LegacyEmployeeCompatibilityOptions.SectionName));
+builder.Services.AddOptions<ServiceAuthenticationOptions>()
+    .Bind(builder.Configuration.GetSection("ServiceAuthentication"));
+builder.Services.AddSingleton<IServiceAccessTokenProvider, ServiceAccessTokenProvider>();
+builder.Services.AddTransient<LegacyServiceAuthenticationHandler>();
+#pragma warning disable EXTEXP0001 // Replace the inherited global pipeline with the Catalog-specific 429 contract.
+builder.Services.AddHttpClient<CatalogMaterialsProxy>(client =>
+{
+    client.BaseAddress = new Uri(builder.Configuration["Services:Catalog"]
+        ?? throw new InvalidOperationException("Services:Catalog is required."));
+    client.Timeout = TimeSpan.FromSeconds(10);
+}).RemoveAllResilienceHandlers()
+    .AddHttpMessageHandler<LegacyServiceAuthenticationHandler>()
+    .AddResilienceHandler("catalog-materials", pipeline =>
+{
+    pipeline.AddRetry(new Microsoft.Extensions.Http.Resilience.HttpRetryStrategyOptions
+    {
+        MaxRetryAttempts = 2,
+        Delay = TimeSpan.FromMilliseconds(200),
+        BackoffType = Polly.DelayBackoffType.Exponential,
+        UseJitter = true,
+        ShouldRetryAfterHeader = false,
+        ShouldHandle = new Polly.PredicateBuilder<HttpResponseMessage>()
+            .Handle<HttpRequestException>()
+            .Handle<Polly.Timeout.TimeoutRejectedException>()
+            .HandleResult(response => response.StatusCode == System.Net.HttpStatusCode.RequestTimeout ||
+                (int)response.StatusCode >= StatusCodes.Status500InternalServerError),
+    });
+});
+#pragma warning restore EXTEXP0001
+builder.Services.AddHttpClient("service-auth", client =>
+{
+    client.BaseAddress = new Uri(builder.Configuration["Services:Auth"]
+        ?? throw new InvalidOperationException("Services:Auth is required."));
+    client.Timeout = TimeSpan.FromSeconds(10);
+}).AddStandardResilienceHandler();
 builder.Services.AddHttpClient<ILegacyAuthClient, LegacyAuthClient>(client =>
 {
     client.BaseAddress = new Uri(builder.Configuration["Services:Auth"]
@@ -88,8 +128,11 @@ builder.Services
     });
 builder.Services.AddOptions<CookieAuthenticationOptions>(CookieAuthenticationDefaults.AuthenticationScheme)
     .Configure<DistributedTicketStore>((options, store) => options.SessionStore = store);
-builder.Services.AddAuthorizationBuilder().SetFallbackPolicy(
-    new Microsoft.AspNetCore.Authorization.AuthorizationPolicyBuilder()
+builder.Services.AddAuthorizationBuilder()
+    .AddPolicy("legacy-catalog.materials.read", policy => policy
+        .RequireAuthenticatedUser()
+        .RequireClaim("permissions", "legacy-catalog.materials.read"))
+    .SetFallbackPolicy(new Microsoft.AspNetCore.Authorization.AuthorizationPolicyBuilder()
         .RequireAuthenticatedUser()
         .Build());
 
@@ -188,6 +231,84 @@ app.MapPost("/bff/logout", async (
     await sessions.SignOutAsync(context, cancellationToken);
     return Results.NoContent();
 }).AddEndpointFilter<AntiforgeryValidationFilter>().RequireAuthorization();
+
+app.MapGet("/bff/catalog/materials", async (
+    CatalogMaterialSort? sort,
+    string? search,
+    int? index,
+    int? size,
+    HttpContext context,
+    CatalogMaterialsProxy catalog,
+    CancellationToken cancellationToken) =>
+{
+    var normalizedSort = sort ?? CatalogMaterialSort.MaterialId_Descending;
+    var normalizedIndex = Math.Max(1, index ?? 1);
+    var normalizedSize = Math.Clamp(size ?? 100, 1, 250);
+    HttpResponseMessage response;
+    try
+    {
+        response = await catalog.GetAsync(
+            normalizedSort,
+            search,
+            normalizedIndex,
+            normalizedSize,
+            cancellationToken);
+    }
+    catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+    {
+        return Results.Problem(statusCode: StatusCodes.Status503ServiceUnavailable, title: "Catalog unavailable");
+    }
+    catch (HttpRequestException)
+    {
+        return Results.Problem(statusCode: StatusCodes.Status503ServiceUnavailable, title: "Catalog unavailable");
+    }
+
+    using (response)
+    {
+        if (response.StatusCode == System.Net.HttpStatusCode.RequestTimeout)
+        {
+            return Results.Problem(statusCode: StatusCodes.Status503ServiceUnavailable, title: "Catalog unavailable");
+        }
+
+        if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+        {
+            return Results.Ok(new CatalogMaterialPage([], normalizedIndex, 0, 0, false, normalizedIndex > 1));
+        }
+
+        if (response.StatusCode == System.Net.HttpStatusCode.TooManyRequests)
+        {
+            var retryAfter = response.Headers.RetryAfter?.Delta;
+            if (retryAfter.HasValue && retryAfter.Value > TimeSpan.Zero && retryAfter.Value <= TimeSpan.FromHours(1))
+            {
+                context.Response.Headers.RetryAfter = ((int)Math.Ceiling(retryAfter.Value.TotalSeconds)).ToString(CultureInfo.InvariantCulture);
+            }
+
+            return Results.StatusCode(StatusCodes.Status429TooManyRequests);
+        }
+
+        if (response.StatusCode is System.Net.HttpStatusCode.Unauthorized or System.Net.HttpStatusCode.Forbidden)
+        {
+            return Results.StatusCode((int)response.StatusCode);
+        }
+
+        if (!response.IsSuccessStatusCode)
+        {
+            return Results.Problem(statusCode: StatusCodes.Status503ServiceUnavailable, title: "Catalog unavailable");
+        }
+
+        try
+        {
+            var page = await response.Content.ReadFromJsonAsync<CatalogMaterialPage>(cancellationToken);
+            return page is null
+                ? Results.Problem(statusCode: StatusCodes.Status502BadGateway, title: "Invalid Catalog response")
+                : Results.Ok(page);
+        }
+        catch (System.Text.Json.JsonException)
+        {
+            return Results.Problem(statusCode: StatusCodes.Status502BadGateway, title: "Invalid Catalog response");
+        }
+    }
+}).RequireAuthorization("legacy-catalog.materials.read");
 
 app.MapFallbackToFile("index.html").AllowAnonymous();
 

@@ -35,10 +35,25 @@ public sealed class LegacyAuthClientContractTests : IDisposable
         Assert.Equal("employee-id", result.Identity?.Id);
         Assert.Equal("employee@maliev.com", result.Identity?.UserName);
         Assert.Equal("employee@maliev.com", result.Identity?.Email);
+        Assert.Contains("legacy-catalog.materials.read", result.Identity?.Permissions ?? []);
         Assert.Equal("/auth/v1/login", handler.RequestUri?.AbsolutePath);
         Assert.Equal("employee@maliev.com", handler.RequestJson?.GetProperty("userName").GetString());
         Assert.Equal("request-only-password", handler.RequestJson?.GetProperty("password").GetString());
         Assert.Equal(1, handler.RequestJson?.GetProperty("identityKind").GetInt32());
+    }
+
+    [Fact]
+    public async Task Login_LegacyEmployeeTokenWithoutPermissions_RemainsPermissionlessAfterValidation()
+    {
+        var client = CreateClient(new LoginResponseHandler(CreateSignedToken(includeCatalogPermission: false)));
+
+        var result = await client.LoginAsync(
+            "employee@maliev.com",
+            "request-only-password",
+            CancellationToken.None);
+
+        Assert.True(result.Succeeded);
+        Assert.Empty(result.Identity?.Permissions ?? []);
     }
 
     [Theory]
@@ -157,7 +172,8 @@ public sealed class LegacyAuthClientContractTests : IDisposable
         string issuer = Issuer,
         string audience = Audience,
         string identityKind = "employee",
-        DateTime? expires = null)
+        DateTime? expires = null,
+        bool includeCatalogPermission = true)
     {
         var now = DateTime.UtcNow;
         var tokenExpires = expires ?? now.AddMinutes(15);
@@ -166,7 +182,7 @@ public sealed class LegacyAuthClientContractTests : IDisposable
         var token = new JwtSecurityToken(
             issuer,
             audience,
-            CreateClaims(identityKind),
+            CreateClaims(identityKind, includeCatalogPermission),
             notBefore,
             tokenExpires,
             new SigningCredentials(key, SecurityAlgorithms.RsaSha256));
@@ -197,13 +213,22 @@ public sealed class LegacyAuthClientContractTests : IDisposable
         return new JwtSecurityTokenHandler().WriteToken(token);
     }
 
-    private static Claim[] CreateClaims(string identityKind) =>
-    [
+    private static Claim[] CreateClaims(string identityKind, bool includeCatalogPermission = true)
+    {
+        var claims = new List<Claim>
+        {
         new Claim(JwtRegisteredClaimNames.Sub, "employee-id"),
         new Claim(JwtRegisteredClaimNames.Name, "employee@maliev.com"),
         new Claim(JwtRegisteredClaimNames.Email, "employee@maliev.com"),
         new Claim("identity_kind", identityKind),
-    ];
+        };
+        if (includeCatalogPermission)
+        {
+            claims.Add(new Claim("permissions", "legacy-catalog.materials.read"));
+        }
+
+        return [.. claims];
+    }
 
     public void Dispose() => signingKey.Dispose();
 

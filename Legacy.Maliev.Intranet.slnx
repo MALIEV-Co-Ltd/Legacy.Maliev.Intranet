@@ -1,6 +1,7 @@
 <Solution>
   <Project Path="Legacy.Maliev.Intranet.Bff/Legacy.Maliev.Intranet.Bff.csproj" />
   <Project Path="Legacy.Maliev.Intranet.Client/Legacy.Maliev.Intranet.Client.csproj" />
+  <Project Path="Legacy.Maliev.Intranet.Client.Features.Catalog/Legacy.Maliev.Intranet.Client.Features.Catalog.csproj" />
   <Project Path="Legacy.Maliev.Intranet.Contracts/Legacy.Maliev.Intranet.Contracts.csproj" />
   <Project Path="Legacy.Maliev.Intranet.Server/Legacy.Maliev.Intranet.Server.csproj" />
   <Project Path="Legacy.Maliev.Intranet/Legacy.Maliev.Intranet.csproj" />

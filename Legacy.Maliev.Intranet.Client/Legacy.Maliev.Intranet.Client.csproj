@@ -12,5 +12,7 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Legacy.Maliev.Intranet.Contracts\Legacy.Maliev.Intranet.Contracts.csproj" />
+    <ProjectReference Include="..\Legacy.Maliev.Intranet.Client.Features.Catalog\Legacy.Maliev.Intranet.Client.Features.Catalog.csproj" />
+    <BlazorWebAssemblyLazyLoad Include="Legacy.Maliev.Intranet.Client.Features.Catalog.wasm" />
   </ItemGroup>
 </Project>

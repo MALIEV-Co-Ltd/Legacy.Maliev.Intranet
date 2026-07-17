@@ -96,7 +96,12 @@ public sealed class LegacyAccessTokenValidator : ILegacyAccessTokenValidator, ID
                 return false;
             }
 
-            identity = new EmployeeIdentity(id, name, email);
+            var permissions = principal.FindAll("permissions")
+                .Select(claim => claim.Value)
+                .Where(permission => !string.IsNullOrWhiteSpace(permission))
+                .Distinct(StringComparer.Ordinal)
+                .ToArray();
+            identity = new EmployeeIdentity(id, name, email, permissions);
             return true;
         }
         catch (Exception exception) when (exception is SecurityTokenException or ArgumentException)
