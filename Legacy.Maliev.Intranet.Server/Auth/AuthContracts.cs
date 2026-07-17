@@ -43,6 +43,8 @@ public static class LegacyEmployeePermissions
     public const string FileUploadsRead = "legacy-file.uploads.read";
     /// <summary>Allows an authenticated employee to delete a legacy order file from storage.</summary>
     public const string FileUploadsDelete = "legacy-file.uploads.delete";
+    /// <summary>Allows an authenticated employee to list legacy suppliers.</summary>
+    public const string SuppliersRead = "legacy-procurement.suppliers.read";
 }
 
 /// <summary>Explicit removable grants that preserve employee-wide authorization during legacy rollout.</summary>

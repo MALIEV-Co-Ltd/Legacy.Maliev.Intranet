@@ -5,6 +5,7 @@
   <Project Path="Legacy.Maliev.Intranet.Client.Features.Customers/Legacy.Maliev.Intranet.Client.Features.Customers.csproj" />
   <Project Path="Legacy.Maliev.Intranet.Client.Features.Employees/Legacy.Maliev.Intranet.Client.Features.Employees.csproj" />
   <Project Path="Legacy.Maliev.Intranet.Client.Features.Orders/Legacy.Maliev.Intranet.Client.Features.Orders.csproj" />
+  <Project Path="Legacy.Maliev.Intranet.Client.Features.Procurement/Legacy.Maliev.Intranet.Client.Features.Procurement.csproj" />
   <Project Path="Legacy.Maliev.Intranet.Contracts/Legacy.Maliev.Intranet.Contracts.csproj" />
   <Project Path="Legacy.Maliev.Intranet.Server/Legacy.Maliev.Intranet.Server.csproj" />
   <Project Path="Legacy.Maliev.Intranet/Legacy.Maliev.Intranet.csproj" />

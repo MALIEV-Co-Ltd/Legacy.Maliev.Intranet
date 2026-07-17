@@ -6,6 +6,7 @@ using Legacy.Maliev.Intranet.Bff.Catalog;
 using Legacy.Maliev.Intranet.Bff.Customers;
 using Legacy.Maliev.Intranet.Bff.Employees;
 using Legacy.Maliev.Intranet.Bff.Orders;
+using Legacy.Maliev.Intranet.Bff.Procurement;
 using Legacy.Maliev.Intranet.Server.Orders;
 using Maliev.Aspire.ServiceDefaults;
 using Microsoft.AspNetCore.Authentication;
@@ -121,6 +122,29 @@ builder.Services.AddHttpClient<OrdersProxy>(client =>
 }).RemoveAllResilienceHandlers()
     .AddHttpMessageHandler<LegacyServiceAuthenticationHandler>()
     .AddResilienceHandler("order-index", pipeline =>
+{
+    pipeline.AddRetry(new Microsoft.Extensions.Http.Resilience.HttpRetryStrategyOptions
+    {
+        MaxRetryAttempts = 2,
+        Delay = TimeSpan.FromMilliseconds(200),
+        BackoffType = Polly.DelayBackoffType.Exponential,
+        UseJitter = true,
+        ShouldRetryAfterHeader = false,
+        ShouldHandle = new Polly.PredicateBuilder<HttpResponseMessage>()
+            .Handle<HttpRequestException>()
+            .Handle<Polly.Timeout.TimeoutRejectedException>()
+            .HandleResult(response => response.StatusCode == System.Net.HttpStatusCode.RequestTimeout ||
+                (int)response.StatusCode >= StatusCodes.Status500InternalServerError),
+    });
+});
+builder.Services.AddHttpClient<SuppliersProxy>(client =>
+{
+    client.BaseAddress = new Uri(builder.Configuration["Services:Procurement"]
+        ?? throw new InvalidOperationException("Services:Procurement is required."));
+    client.Timeout = TimeSpan.FromSeconds(10);
+}).RemoveAllResilienceHandlers()
+    .AddHttpMessageHandler<LegacyServiceAuthenticationHandler>()
+    .AddResilienceHandler("supplier-index", pipeline =>
 {
     pipeline.AddRetry(new Microsoft.Extensions.Http.Resilience.HttpRetryStrategyOptions
     {
@@ -312,6 +336,9 @@ builder.Services.AddAuthorizationBuilder()
         .RequireAuthenticatedUser()
         .RequireClaim("permissions", LegacyEmployeePermissions.OrderFilesDelete)
         .RequireClaim("permissions", LegacyEmployeePermissions.FileUploadsDelete))
+    .AddPolicy(LegacyEmployeePermissions.SuppliersRead, policy => policy
+        .RequireAuthenticatedUser()
+        .RequireClaim("permissions", LegacyEmployeePermissions.SuppliersRead))
     .AddPolicy("legacy-catalog.materials.read", policy => policy
         .RequireAuthenticatedUser()
         .RequireClaim("permissions", "legacy-catalog.materials.read"))
@@ -375,6 +402,26 @@ app.MapGet("/bff/orders", (
         cancellationToken);
 })
     .RequireAuthorization(LegacyEmployeePermissions.OrdersRead);
+
+app.MapGet("/bff/suppliers", (
+    SupplierListSort? sort,
+    string? search,
+    int? index,
+    int? size,
+    HttpContext context,
+    SuppliersProxy suppliers,
+    CancellationToken cancellationToken) =>
+{
+    var normalizedSort = sort ?? SupplierListSort.SupplierId_Descending;
+    var normalizedIndex = Math.Max(1, index ?? 1);
+    var normalizedSize = Math.Clamp(size ?? 100, 1, 250);
+    return SuppliersEndpointMapper.MapPageAsync(
+        token => suppliers.GetAsync(normalizedSort, search, normalizedIndex, normalizedSize, token),
+        normalizedIndex,
+        context,
+        cancellationToken);
+})
+    .RequireAuthorization(LegacyEmployeePermissions.SuppliersRead);
 
 app.MapGet("/bff/orders/pending", (
     int? size,

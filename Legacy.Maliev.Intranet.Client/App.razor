@@ -32,7 +32,9 @@
                     ? "Legacy.Maliev.Intranet.Client.Features.Employees.wasm"
                     : context.Path.StartsWith("Orders/", StringComparison.OrdinalIgnoreCase)
                         ? "Legacy.Maliev.Intranet.Client.Features.Orders.wasm"
-                        : null;
+                        : context.Path.StartsWith("Suppliers/", StringComparison.OrdinalIgnoreCase)
+                            ? "Legacy.Maliev.Intranet.Client.Features.Procurement.wasm"
+                            : null;
         if (assemblyName is not null && loadedFeatureAssemblies.Add(assemblyName))
         {
             context.CancellationToken.ThrowIfCancellationRequested();
