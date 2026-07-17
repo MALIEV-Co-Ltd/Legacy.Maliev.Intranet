@@ -1,0 +1,251 @@
+@page "/Orders/Index"
+@attribute [Authorize]
+@inject HttpClient Http
+@inject NavigationManager Navigation
+@inject IStringLocalizer<Orders> Text
+
+<PageTitle>@Text["PageTitle"]</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge">
+    <MudText Typo="Typo.overline">@Text["Operations"]</MudText>
+    <div class="d-flex flex-wrap align-center justify-space-between gap-3 mb-4">
+        <MudText Typo="Typo.h4" HtmlTag="h1">@Text["Orders"]</MudText>
+        <MudButton Href="/Orders/Create" Variant="Variant.Filled" Color="Color.Primary">@Text["CreateOrder"]</MudButton>
+    </div>
+
+    <MudPaper Class="pa-4 mb-4">
+        <div class="d-flex flex-wrap gap-3 align-end">
+            <MudTextField T="string" @bind-Value="searchInput" Label="@Text["Search"]" Variant="Variant.Outlined" Immediate="true" />
+            <MudSelect T="OrderListSort" @bind-Value="sortInput" Label="@Text["Sort"]" Variant="Variant.Outlined">
+                @foreach (var option in Enum.GetValues<OrderListSort>())
+                {
+                    <MudSelectItem Value="option">@Text[option.ToString()]</MudSelectItem>
+                }
+            </MudSelect>
+            <MudNumericField T="int" @bind-Value="sizeInput" Label="@Text["PerPage"]" Min="1" Max="250" Variant="Variant.Outlined" />
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="ApplyFiltersAsync">@Text["Apply"]</MudButton>
+        </div>
+    </MudPaper>
+
+    @if (loading)
+    {
+        <MudProgressLinear Indeterminate="true" Color="Color.Primary" aria-label="@Text["Loading"]" />
+    }
+    else if (!string.IsNullOrWhiteSpace(error))
+    {
+        <MudAlert Severity="Severity.Error" aria-live="assertive">@error</MudAlert>
+    }
+    else
+    {
+        @foreach (var section in Sections)
+        {
+            <MudPaper Class="pa-4 mb-4" Elevation="1">
+                <div class="d-flex flex-wrap align-center justify-space-between gap-3 mb-3">
+                    <MudText Typo="Typo.h5" HtmlTag="h2">@section.Title</MudText>
+                    @if (section.ShowCount)
+                    {
+                        <MudText>@Text["OrderCount", section.Items.Count]</MudText>
+                    }
+                </div>
+                @if (section.Items.Count == 0)
+                {
+                    <MudAlert Severity="Severity.Info">@Text["Empty"]</MudAlert>
+                }
+                else
+                {
+                    <MudTable Items="section.Items" Hover="true" Breakpoint="Breakpoint.Sm" Elevation="0">
+                        <HeaderContent>
+                            <MudTh>@Text["Id"]</MudTh>
+                            <MudTh>@Text["Customer"]</MudTh>
+                            <MudTh>@Text["Process"]</MudTh>
+                            <MudTh>@Text["Name"]</MudTh>
+                            <MudTh>@Text["Quantity"]</MudTh>
+                            <MudTh>@Text["Manufactured"]</MudTh>
+                            <MudTh>@Text["Remaining"]</MudTh>
+                            <MudTh>@Text["Employee"]</MudTh>
+                            <MudTh>@Text["Subtotal"]</MudTh>
+                            <MudTh>@Text["Promised"]</MudTh>
+                        </HeaderContent>
+                        <RowTemplate>
+                            <MudTd DataLabel="@Text["Id"]"><MudLink Href="@($"/Orders/View?id={context.Id}")">@context.Id</MudLink></MudTd>
+                            <MudTd DataLabel="@Text["Customer"]">@ValueOrFallback(context.CustomerId)</MudTd>
+                            <MudTd DataLabel="@Text["Process"]">@ProcessName(context.ProcessId)</MudTd>
+                            <MudTd DataLabel="@Text["Name"]">
+                                @ValueOrFallback(context.Name)
+                                @if (!context.AllowSocialMedia)
+                                {
+                                    <MudChip T="string" Size="MudBlazor.Size.Small" Color="Color.Warning" Class="ml-2">@Text["Confidential"]</MudChip>
+                                }
+                            </MudTd>
+                            <MudTd DataLabel="@Text["Quantity"]">@context.Quantity</MudTd>
+                            <MudTd DataLabel="@Text["Manufactured"]">@context.Manufactured</MudTd>
+                            <MudTd DataLabel="@Text["Remaining"]">@ValueOrFallback(context.Remaining)</MudTd>
+                            <MudTd DataLabel="@Text["Employee"]">@EmployeeName(context.EmployeeId)</MudTd>
+                            <MudTd DataLabel="@Text["Subtotal"]">@FormatAmount(context.Subtotal)</MudTd>
+                            <MudTd DataLabel="@Text["Promised"]">@FormatDate(context.PromisedDate)</MudTd>
+                        </RowTemplate>
+                    </MudTable>
+                }
+            </MudPaper>
+        }
+
+        @if (Page is not null)
+        {
+            <nav class="d-flex flex-wrap align-center justify-space-between gap-3 mt-4" aria-label="@Text["OrderPages"]">
+                <MudButton Disabled="@(!Page.HasPreviousPage)" OnClick="PreviousPageAsync">@Text["Previous"]</MudButton>
+                <MudText aria-live="polite">@Text["PageSummary", Page.PageIndex, Page.TotalPages, Page.TotalRecords]</MudText>
+                <MudButton Disabled="@(!Page.HasNextPage)" OnClick="NextPageAsync">@Text["Next"]</MudButton>
+            </nav>
+        }
+    }
+</MudContainer>
+
+@code {
+    private const int PendingWorkingSetSize = 1000;
+
+    [SupplyParameterFromQuery(Name = "search")] public string? Search { get; set; }
+    [SupplyParameterFromQuery(Name = "sort")] public string? SortQuery { get; set; }
+    [SupplyParameterFromQuery(Name = "index")] public int Index { get; set; } = 1;
+    [SupplyParameterFromQuery(Name = "size")] public int Size { get; set; } = 25;
+
+    private OrderListPage? Page { get; set; }
+    private IReadOnlyList<OrderListItem> AssignedOrders { get; set; } = [];
+    private IReadOnlyList<OrderListItem> UnassignedOrders { get; set; } = [];
+    private IReadOnlyDictionary<int, string> employeeNames = new Dictionary<int, string>();
+    private IReadOnlyDictionary<int, string> processNames = new Dictionary<int, string>();
+    private string? error;
+    private bool loading;
+    private string? searchInput;
+    private OrderListSort sortInput;
+    private OrderListSort currentSort = OrderListSort.OrderCreatedDate_Descending;
+    private int sizeInput;
+
+    private IReadOnlyList<OrderSection> Sections =>
+    [
+        new(Text["AssignedToMe"], AssignedOrders, true),
+        new(Text["AwaitingAssignment"], UnassignedOrders, true),
+        new(Text["AllOrders"], Page?.Items ?? [], false),
+    ];
+
+    protected override async Task OnParametersSetAsync()
+    {
+        Index = Math.Max(1, Index);
+        Size = Math.Clamp(Size, 1, 250);
+        currentSort = Enum.TryParse<OrderListSort>(SortQuery, ignoreCase: true, out var parsedSort)
+            ? parsedSort
+            : OrderListSort.OrderCreatedDate_Descending;
+        searchInput = Search;
+        sortInput = currentSort;
+        sizeInput = Size;
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        loading = true;
+        error = null;
+        Page = null;
+        AssignedOrders = [];
+        UnassignedOrders = [];
+        HttpResponseMessage[]? responses = null;
+        try
+        {
+            var pageTask = Http.GetAsync($"/bff/orders?sort={currentSort}&search={Uri.EscapeDataString(Search ?? string.Empty)}&index={Index}&size={Size}");
+            var pendingTask = Http.GetAsync($"/bff/orders/pending?size={PendingWorkingSetSize}");
+            var processesTask = Http.GetAsync("/bff/order-processes");
+            var employeesTask = Http.GetAsync("/bff/employees?sort=EmployeeId_Ascending&search=&index=1&size=250");
+            var sessionTask = Http.GetAsync("/bff/session");
+            responses = await Task.WhenAll(pageTask, pendingTask, processesTask, employeesTask, sessionTask);
+
+            if (HandleFailure(responses))
+            {
+                return;
+            }
+
+            Page = await responses[0].Content.ReadFromJsonAsync<OrderListPage>();
+            var pending = await responses[1].Content.ReadFromJsonAsync<OrderListPage>();
+            var processes = await responses[2].Content.ReadFromJsonAsync<List<OrderProcessItem>>();
+            var employees = await responses[3].Content.ReadFromJsonAsync<EmployeeListPage>();
+            var session = await responses[4].Content.ReadFromJsonAsync<EmployeeSessionSummary>();
+            if (Page?.Items is null || pending?.Items is null || processes is null || employees?.Items is null || session is null)
+            {
+                error = Text["InvalidResponse"];
+                return;
+            }
+
+            employeeNames = employees.Items.ToDictionary(value => value.Id, value => value.FullName);
+            processNames = processes.ToDictionary(value => value.Id, value => value.Name);
+            AssignedOrders = session.LegacyDatabaseId is not int employeeId
+                ? []
+                : pending.Items.Where(value => value.EmployeeId == employeeId).ToArray();
+            UnassignedOrders = pending.Items.Where(value => value.EmployeeId is null).ToArray();
+        }
+        catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException)
+        {
+            error = Text["Unavailable"];
+        }
+        finally
+        {
+            if (responses is not null)
+            {
+                foreach (var response in responses)
+                {
+                    response.Dispose();
+                }
+            }
+
+            loading = false;
+        }
+    }
+
+    private bool HandleFailure(IEnumerable<HttpResponseMessage> responses)
+    {
+        var failed = responses.FirstOrDefault(response => !response.IsSuccessStatusCode);
+        if (failed is null)
+        {
+            return false;
+        }
+
+        if (failed.StatusCode == HttpStatusCode.Unauthorized)
+        {
+            Navigation.NavigateTo($"/Login?returnUrl={Uri.EscapeDataString(Navigation.ToBaseRelativePath(Navigation.Uri))}");
+        }
+        else if (failed.StatusCode == HttpStatusCode.Forbidden)
+        {
+            error = Text["Forbidden"];
+        }
+        else if (failed.StatusCode == HttpStatusCode.TooManyRequests)
+        {
+            error = Text["RateLimited"];
+        }
+        else if (failed.StatusCode == HttpStatusCode.BadGateway)
+        {
+            error = Text["InvalidResponse"];
+        }
+        else
+        {
+            error = Text["Unavailable"];
+        }
+
+        return true;
+    }
+
+    private Task ApplyFiltersAsync() => NavigateAsync(1, searchInput, sortInput, sizeInput);
+    private Task PreviousPageAsync() => NavigateAsync(Math.Max(1, Index - 1), Search, currentSort, Size);
+    private Task NextPageAsync() => NavigateAsync(Index + 1, Search, currentSort, Size);
+
+    private Task NavigateAsync(int index, string? search, OrderListSort sort, int size)
+    {
+        Navigation.NavigateTo($"/Orders/Index?search={Uri.EscapeDataString(search ?? string.Empty)}&sort={sort}&index={index}&size={Math.Clamp(size, 1, 250)}");
+        return Task.CompletedTask;
+    }
+
+    private string ProcessName(int id) => processNames.TryGetValue(id, out var name) ? name : id.ToString(CultureInfo.InvariantCulture);
+    private string EmployeeName(int? id) => id is int value && employeeNames.TryGetValue(value, out var name) ? name : "-";
+    private static string ValueOrFallback(string? value) => string.IsNullOrWhiteSpace(value) ? "-" : value;
+    private static string ValueOrFallback(int? value) => value?.ToString(CultureInfo.InvariantCulture) ?? "-";
+    private static string FormatAmount(decimal? value) => value?.ToString("N2", CultureInfo.CurrentCulture) ?? "-";
+    private static string FormatDate(DateTime? value) => value?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) ?? "-";
+
+    private sealed record OrderSection(string Title, IReadOnlyList<OrderListItem> Items, bool ShowCount);
+}

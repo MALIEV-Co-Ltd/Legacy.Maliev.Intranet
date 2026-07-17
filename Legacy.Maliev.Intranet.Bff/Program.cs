@@ -5,6 +5,7 @@ using Legacy.Maliev.Intranet.Contracts;
 using Legacy.Maliev.Intranet.Bff.Catalog;
 using Legacy.Maliev.Intranet.Bff.Customers;
 using Legacy.Maliev.Intranet.Bff.Employees;
+using Legacy.Maliev.Intranet.Bff.Orders;
 using Maliev.Aspire.ServiceDefaults;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
@@ -96,6 +97,29 @@ builder.Services.AddHttpClient<EmployeesProxy>(client =>
 }).RemoveAllResilienceHandlers()
     .AddHttpMessageHandler<LegacyServiceAuthenticationHandler>()
     .AddResilienceHandler("employee-list", pipeline =>
+{
+    pipeline.AddRetry(new Microsoft.Extensions.Http.Resilience.HttpRetryStrategyOptions
+    {
+        MaxRetryAttempts = 2,
+        Delay = TimeSpan.FromMilliseconds(200),
+        BackoffType = Polly.DelayBackoffType.Exponential,
+        UseJitter = true,
+        ShouldRetryAfterHeader = false,
+        ShouldHandle = new Polly.PredicateBuilder<HttpResponseMessage>()
+            .Handle<HttpRequestException>()
+            .Handle<Polly.Timeout.TimeoutRejectedException>()
+            .HandleResult(response => response.StatusCode == System.Net.HttpStatusCode.RequestTimeout ||
+                (int)response.StatusCode >= StatusCodes.Status500InternalServerError),
+    });
+});
+builder.Services.AddHttpClient<OrdersProxy>(client =>
+{
+    client.BaseAddress = new Uri(builder.Configuration["Services:Order"]
+        ?? throw new InvalidOperationException("Services:Order is required."));
+    client.Timeout = TimeSpan.FromSeconds(10);
+}).RemoveAllResilienceHandlers()
+    .AddHttpMessageHandler<LegacyServiceAuthenticationHandler>()
+    .AddResilienceHandler("order-index", pipeline =>
 {
     pipeline.AddRetry(new Microsoft.Extensions.Http.Resilience.HttpRetryStrategyOptions
     {
@@ -225,6 +249,12 @@ builder.Services.AddAuthorizationBuilder()
     .AddPolicy(LegacyEmployeePermissions.EmployeesRead, policy => policy
         .RequireAuthenticatedUser()
         .RequireClaim("permissions", LegacyEmployeePermissions.EmployeesRead))
+    .AddPolicy(LegacyEmployeePermissions.OrdersRead, policy => policy
+        .RequireAuthenticatedUser()
+        .RequireClaim("permissions", LegacyEmployeePermissions.OrdersRead))
+    .AddPolicy(LegacyEmployeePermissions.OrderCatalogRead, policy => policy
+        .RequireAuthenticatedUser()
+        .RequireClaim("permissions", LegacyEmployeePermissions.OrderCatalogRead))
     .AddPolicy("legacy-catalog.materials.read", policy => policy
         .RequireAuthenticatedUser()
         .RequireClaim("permissions", "legacy-catalog.materials.read"))
@@ -259,8 +289,57 @@ app.MapGet("/bff/session", (HttpContext context, IAntiforgery antiforgery) =>
         context.User.FindFirstValue(ClaimTypes.NameIdentifier),
         identity?.Name,
         context.User.FindAll(ClaimTypes.Role).Select(claim => claim.Value).ToArray(),
-        tokens.RequestToken));
+        tokens.RequestToken,
+        int.TryParse(
+            context.User.FindFirstValue(EmployeeSessionService.LegacyDatabaseIdClaim),
+            NumberStyles.None,
+            CultureInfo.InvariantCulture,
+            out var legacyDatabaseId) && legacyDatabaseId > 0
+                ? legacyDatabaseId
+                : null));
 }).AllowAnonymous();
+
+app.MapGet("/bff/orders", (
+    OrderListSort? sort,
+    string? search,
+    int? index,
+    int? size,
+    HttpContext context,
+    OrdersProxy orders,
+    CancellationToken cancellationToken) =>
+{
+    var normalizedSort = sort ?? OrderListSort.OrderCreatedDate_Descending;
+    var normalizedIndex = Math.Max(1, index ?? 1);
+    var normalizedSize = Math.Clamp(size ?? 25, 1, 250);
+    return OrdersEndpointMapper.MapPageAsync(
+        token => orders.GetAsync(normalizedSort, search, normalizedIndex, normalizedSize, token),
+        normalizedIndex,
+        context,
+        cancellationToken);
+})
+    .RequireAuthorization(LegacyEmployeePermissions.OrdersRead);
+
+app.MapGet("/bff/orders/pending", (
+    int? size,
+    HttpContext context,
+    OrdersProxy orders,
+    CancellationToken cancellationToken) =>
+{
+    var normalizedSize = Math.Clamp(size ?? 1000, 1, 1000);
+    return OrdersEndpointMapper.MapPageAsync(
+        token => orders.GetPendingAsync(normalizedSize, token),
+        1,
+        context,
+        cancellationToken);
+})
+    .RequireAuthorization(LegacyEmployeePermissions.OrdersRead);
+
+app.MapGet("/bff/order-processes", (
+    HttpContext context,
+    OrdersProxy orders,
+    CancellationToken cancellationToken) =>
+    OrdersEndpointMapper.MapProcessesAsync(orders.GetProcessesAsync, context, cancellationToken))
+    .RequireAuthorization(LegacyEmployeePermissions.OrderCatalogRead);
 
 app.MapPost("/bff/login", async (
     EmployeeSignInRequest request,

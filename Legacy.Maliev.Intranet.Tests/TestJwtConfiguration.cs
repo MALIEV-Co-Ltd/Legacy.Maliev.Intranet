@@ -13,6 +13,7 @@ internal static class TestJwtConfiguration
         builder.UseSetting("Jwt:Audience", "legacy-test");
         builder.UseSetting("Jwt:PublicKeyPem", PublicKeyPem);
         builder.UseSetting("Jwt:KeyId", "test-signing-key");
+        builder.UseSetting("Services:Order", "http://order/");
     }
 
     private static string CreatePublicKeyPem()

@@ -21,6 +21,10 @@ public static class LegacyEmployeePermissions
     public const string EmployeesCreate = "legacy-employee.employees.create";
     /// <summary>Allows reading one complete legacy employee profile.</summary>
     public const string EmployeesRead = "legacy-employee.employees.read";
+    /// <summary>Allows an authenticated employee to read legacy orders.</summary>
+    public const string OrdersRead = "legacy.orders.read";
+    /// <summary>Allows an authenticated employee to read legacy order catalog labels.</summary>
+    public const string OrderCatalogRead = "legacy.order-catalog.read";
 }
 
 /// <summary>Explicit removable grants that preserve employee-wide authorization during legacy rollout.</summary>
@@ -52,7 +56,8 @@ public sealed record EmployeeIdentity(
     string Id,
     string UserName,
     string? Email,
-    IReadOnlyList<string>? Permissions = null);
+    IReadOnlyList<string>? Permissions = null,
+    int? LegacyDatabaseId = null);
 
 /// <summary>Result of a generic employee authentication attempt.</summary>
 public sealed record EmployeeLoginResult(bool Succeeded, AuthTokenResponse? Tokens, EmployeeIdentity? Identity);

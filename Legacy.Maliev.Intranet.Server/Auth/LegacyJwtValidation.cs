@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using System.Globalization;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Cryptography;
 using Microsoft.Extensions.Configuration;
@@ -91,9 +92,26 @@ public sealed class LegacyAccessTokenValidator : ILegacyAccessTokenValidator, ID
             var id = principal.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
             var name = principal.FindFirst(JwtRegisteredClaimNames.Name)?.Value;
             var email = principal.FindFirst(JwtRegisteredClaimNames.Email)?.Value;
+            var legacyDatabaseIdValue = principal.FindFirst("legacy_database_id")?.Value;
             if (string.IsNullOrWhiteSpace(id) || string.IsNullOrWhiteSpace(name))
             {
                 return false;
+            }
+
+            int? legacyDatabaseId = null;
+            if (!string.IsNullOrWhiteSpace(legacyDatabaseIdValue))
+            {
+                if (!int.TryParse(
+                        legacyDatabaseIdValue,
+                        NumberStyles.None,
+                        CultureInfo.InvariantCulture,
+                        out var parsedLegacyDatabaseId) ||
+                    parsedLegacyDatabaseId < 1)
+                {
+                    return false;
+                }
+
+                legacyDatabaseId = parsedLegacyDatabaseId;
             }
 
             var permissions = principal.FindAll("permissions")
@@ -101,7 +119,7 @@ public sealed class LegacyAccessTokenValidator : ILegacyAccessTokenValidator, ID
                 .Where(permission => !string.IsNullOrWhiteSpace(permission))
                 .Distinct(StringComparer.Ordinal)
                 .ToArray();
-            identity = new EmployeeIdentity(id, name, email, permissions);
+            identity = new EmployeeIdentity(id, name, email, permissions, legacyDatabaseId);
             return true;
         }
         catch (Exception exception) when (exception is SecurityTokenException or ArgumentException)

@@ -6,4 +6,5 @@ public sealed record EmployeeSessionSummary(
     string? EmployeeId,
     string? DisplayName,
     IReadOnlyList<string> Roles,
-    string? CsrfToken);
+    string? CsrfToken,
+    int? LegacyDatabaseId = null);

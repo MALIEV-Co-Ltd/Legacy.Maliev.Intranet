@@ -14,6 +14,9 @@ public sealed class EmployeeSessionService(
     ILogger<EmployeeSessionService> logger,
     IOptions<LegacyEmployeeCompatibilityOptions> compatibilityOptions)
 {
+    /// <summary>Stable legacy employee database identifier carried only after AuthService validation.</summary>
+    public const string LegacyDatabaseIdClaim = "legacy_database_id";
+
     private const string AccessToken = "legacy_access_token";
     private const string RefreshToken = "legacy_refresh_token";
     private const string AccessExpiresAt = "legacy_access_expires_at";
@@ -26,14 +29,7 @@ public sealed class EmployeeSessionService(
             throw new InvalidOperationException("A validated employee login is required.");
         }
 
-        var claims = new List<System.Security.Claims.Claim>
-        {
-            new System.Security.Claims.Claim(System.Security.Claims.ClaimTypes.NameIdentifier, login.Identity.Id),
-            new System.Security.Claims.Claim(System.Security.Claims.ClaimTypes.Name, login.Identity.UserName),
-            new System.Security.Claims.Claim(System.Security.Claims.ClaimTypes.Email, login.Identity.Email ?? login.Identity.UserName),
-            new System.Security.Claims.Claim("identity_kind", "employee"),
-        };
-        claims.AddRange(CreatePermissionClaims(login.Identity.Permissions));
+        var claims = CreateIdentityClaims(login.Identity).ToList();
         var principal = new System.Security.Claims.ClaimsPrincipal(
             new System.Security.Claims.ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme));
         var properties = new AuthenticationProperties
@@ -82,9 +78,7 @@ public sealed class EmployeeSessionService(
         }
 
         StoreTokens(result.Properties, refreshed.Tokens);
-        var refreshedClaims = result.Principal!.Claims
-            .Where(claim => !string.Equals(claim.Type, "permissions", StringComparison.Ordinal))
-            .Concat(CreatePermissionClaims(refreshed.Identity.Permissions));
+        var refreshedClaims = CreateIdentityClaims(refreshed.Identity);
         var refreshedPrincipal = new ClaimsPrincipal(new ClaimsIdentity(
             refreshedClaims,
             CookieAuthenticationDefaults.AuthenticationScheme,
@@ -143,5 +137,24 @@ public sealed class EmployeeSessionService(
             .Where(permission => !string.IsNullOrWhiteSpace(permission))
             .Distinct(StringComparer.Ordinal)
             .Select(permission => new Claim("permissions", permission));
+    }
+
+    private IEnumerable<Claim> CreateIdentityClaims(EmployeeIdentity identity)
+    {
+        yield return new Claim(ClaimTypes.NameIdentifier, identity.Id);
+        yield return new Claim(ClaimTypes.Name, identity.UserName);
+        yield return new Claim(ClaimTypes.Email, identity.Email ?? identity.UserName);
+        yield return new Claim("identity_kind", "employee");
+        if (identity.LegacyDatabaseId is int legacyDatabaseId and > 0)
+        {
+            yield return new Claim(
+                LegacyDatabaseIdClaim,
+                legacyDatabaseId.ToString(System.Globalization.CultureInfo.InvariantCulture));
+        }
+
+        foreach (var permission in CreatePermissionClaims(identity.Permissions))
+        {
+            yield return permission;
+        }
     }
 }
