@@ -1,0 +1,115 @@
+@page "/Employees/View"
+@attribute [Authorize]
+@inject HttpClient Http
+@inject NavigationManager Navigation
+@inject IStringLocalizer<EmployeeView> Text
+
+<PageTitle>@(detail is null ? Text["PageTitle"] : Text["EmployeePageTitle", detail.FullName])</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Medium">
+    @if (loading)
+    {
+        <MudProgressLinear Indeterminate="true" Color="Color.Primary" aria-label="@Text["Loading"]" />
+    }
+    else if (!string.IsNullOrWhiteSpace(error))
+    {
+        <MudAlert Severity="@(notFound ? Severity.Warning : Severity.Error)" aria-live="assertive">@error</MudAlert>
+        <MudButton Href="/Employees/Index" Variant="Variant.Text" Class="mt-4">@Text["BackToEmployees"]</MudButton>
+    }
+    else if (detail is not null)
+    {
+        <MudText Typo="Typo.overline">@Text["EmployeeNumber", detail.Id]</MudText>
+        <MudText Typo="Typo.h4" HtmlTag="h1" Class="mb-4">@detail.FullName</MudText>
+        <MudPaper Class="pa-4" Elevation="1">
+            <dl class="details">
+                <dt>@Text["Email"]</dt>
+                <dd>@detail.Email</dd>
+                <dt>@Text["PhoneNumber"]</dt>
+                <dd>@ValueOrFallback(detail.PhoneNumber)</dd>
+                <dt>@Text["DateOfBirth"]</dt>
+                <dd>@FormatDate(detail.DateOfBirth)</dd>
+                <dt>@Text["Role"]</dt>
+                <dd>@ValueOrFallback(detail.Role?.Name)</dd>
+                <dt>@Text["Address"]</dt>
+                <dd>@ValueOrFallback(detail.HomeAddress?.AddressLine1)</dd>
+            </dl>
+        </MudPaper>
+        <MudButton Href="/Employees/Index" Variant="Variant.Text" Class="mt-4">@Text["BackToEmployees"]</MudButton>
+    }
+</MudContainer>
+
+@code {
+    [SupplyParameterFromQuery(Name = "id")]
+    public int Id { get; set; }
+
+    private EmployeeDetail? detail;
+    private string? error;
+    private bool loading;
+    private bool notFound;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        loading = true;
+        detail = null;
+        error = null;
+        notFound = false;
+        try
+        {
+            using var response = await Http.GetAsync($"/bff/employees/{Id}");
+            if (response.StatusCode == HttpStatusCode.Unauthorized)
+            {
+                Navigation.NavigateTo($"/Login?returnUrl={Uri.EscapeDataString(Navigation.ToBaseRelativePath(Navigation.Uri))}");
+                return;
+            }
+
+            if (response.StatusCode == HttpStatusCode.Forbidden)
+            {
+                error = Text["Forbidden"];
+                return;
+            }
+
+            if (response.StatusCode == HttpStatusCode.NotFound)
+            {
+                notFound = true;
+                error = Text["NotFound"];
+                return;
+            }
+
+            if (response.StatusCode == HttpStatusCode.TooManyRequests)
+            {
+                error = Text["RateLimited"];
+                return;
+            }
+
+            if (response.StatusCode == HttpStatusCode.BadGateway)
+            {
+                error = Text["InvalidResponse"];
+                return;
+            }
+
+            if (!response.IsSuccessStatusCode)
+            {
+                error = Text["Unavailable"];
+                return;
+            }
+
+            detail = await response.Content.ReadFromJsonAsync<EmployeeDetail>();
+            if (detail is null || detail.Id != Id)
+            {
+                error = Text["InvalidResponse"];
+            }
+        }
+        catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException)
+        {
+            error = Text["Unavailable"];
+        }
+        finally
+        {
+            loading = false;
+        }
+    }
+
+    private string ValueOrFallback(string? value) => string.IsNullOrWhiteSpace(value) ? Text["NotProvided"] : value;
+
+    private string FormatDate(DateTime? value) => value?.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture) ?? Text["NotProvided"];
+}

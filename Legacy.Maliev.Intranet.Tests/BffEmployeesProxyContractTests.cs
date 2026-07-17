@@ -157,6 +157,145 @@ public sealed class BffEmployeesProxyContractTests
         Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
     }
 
+    [Fact]
+    public async Task Detail_AuthorizedEmployee_ForwardsExactIdAndServerOnlyBearerToken()
+    {
+        var downstream = new RecordingEmployeeHandler(HttpStatusCode.OK, EmployeeDetailJson);
+        await using var factory = new EmployeesBffFactory(downstream, hasPermission: true, hasReadPermission: true);
+        using var client = CreateClient(factory);
+        await SignInAsync(client);
+
+        using var response = await client.GetAsync("/bff/employees/42");
+        var json = await response.Content.ReadAsStringAsync();
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal("/employees/42", downstream.PathAndQuery);
+        Assert.Equal("Bearer signed-service-token", downstream.Authorization);
+        Assert.Contains("\"fullName\":\"Ada Lovelace\"", json, StringComparison.Ordinal);
+        Assert.Contains("\"phoneNumber\":\"+66 81 234 5678\"", json, StringComparison.Ordinal);
+        Assert.Contains("\"homeAddress\":", json, StringComparison.Ordinal);
+        Assert.Contains("\"role\":", json, StringComparison.Ordinal);
+        Assert.DoesNotContain("server-only-access-token", json, StringComparison.Ordinal);
+        Assert.DoesNotContain("signed-service-token", json, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Detail_EmployeeWithoutExactReadPermission_IsForbiddenBeforeDownstreamCall()
+    {
+        var downstream = new RecordingEmployeeHandler(HttpStatusCode.OK, EmployeeDetailJson);
+        await using var factory = new EmployeesBffFactory(downstream, hasPermission: true, hasReadPermission: false);
+        using var client = CreateClient(factory);
+        await SignInAsync(client);
+
+        using var response = await client.GetAsync("/bff/employees/42");
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+        Assert.Null(downstream.PathAndQuery);
+    }
+
+    [Fact]
+    public async Task Detail_AnonymousRequest_IsUnauthorizedBeforeDownstreamCall()
+    {
+        var downstream = new RecordingEmployeeHandler(HttpStatusCode.OK, EmployeeDetailJson);
+        await using var factory = new EmployeesBffFactory(downstream, hasPermission: true, hasReadPermission: true);
+        using var client = CreateClient(factory);
+
+        using var response = await client.GetAsync("/bff/employees/42");
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        Assert.Null(downstream.PathAndQuery);
+    }
+
+    [Theory]
+    [InlineData(HttpStatusCode.Unauthorized)]
+    [InlineData(HttpStatusCode.Forbidden)]
+    [InlineData(HttpStatusCode.NotFound)]
+    public async Task Detail_ExpectedDownstreamStatus_IsPreserved(HttpStatusCode statusCode)
+    {
+        var downstream = new RecordingEmployeeHandler(statusCode, "{}");
+        await using var factory = new EmployeesBffFactory(downstream, hasPermission: true, hasReadPermission: true);
+        using var client = CreateClient(factory);
+        await SignInAsync(client);
+
+        using var response = await client.GetAsync("/bff/employees/42");
+
+        Assert.Equal(statusCode, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Detail_RateLimit_PreservesBoundedRetryAfterWithoutRetry()
+    {
+        var downstream = new RecordingEmployeeHandler(HttpStatusCode.TooManyRequests, "{}", retryAfterSeconds: 2);
+        await using var factory = new EmployeesBffFactory(downstream, hasPermission: true, hasReadPermission: true);
+        using var client = CreateClient(factory);
+        await SignInAsync(client);
+
+        using var response = await client.GetAsync("/bff/employees/42");
+
+        Assert.Equal(HttpStatusCode.TooManyRequests, response.StatusCode);
+        Assert.Equal(TimeSpan.FromSeconds(2), response.Headers.RetryAfter?.Delta);
+        Assert.Equal(1, downstream.RequestCount);
+    }
+
+    [Fact]
+    public async Task Detail_InvalidPayload_IsBadGatewayWithoutLeakingPayload()
+    {
+        var downstream = new RecordingEmployeeHandler(HttpStatusCode.OK, "employee-secret-not-json");
+        await using var factory = new EmployeesBffFactory(downstream, hasPermission: true, hasReadPermission: true);
+        using var client = CreateClient(factory);
+        await SignInAsync(client);
+
+        using var response = await client.GetAsync("/bff/employees/42");
+        var body = await response.Content.ReadAsStringAsync();
+
+        Assert.Equal(HttpStatusCode.BadGateway, response.StatusCode);
+        Assert.DoesNotContain("employee-secret-not-json", body, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Detail_MismatchedEmployeeId_IsBadGateway()
+    {
+        var downstream = new RecordingEmployeeHandler(
+            HttpStatusCode.OK,
+            EmployeeDetailJson.Replace("\"Id\":42", "\"Id\":99", StringComparison.Ordinal));
+        await using var factory = new EmployeesBffFactory(downstream, hasPermission: true, hasReadPermission: true);
+        using var client = CreateClient(factory);
+        await SignInAsync(client);
+
+        using var response = await client.GetAsync("/bff/employees/42");
+
+        Assert.Equal(HttpStatusCode.BadGateway, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Detail_MissingRequiredProfileField_IsBadGateway()
+    {
+        var downstream = new RecordingEmployeeHandler(
+            HttpStatusCode.OK,
+            EmployeeDetailJson.Replace("\"FullName\":\"Ada Lovelace\",", string.Empty, StringComparison.Ordinal));
+        await using var factory = new EmployeesBffFactory(downstream, hasPermission: true, hasReadPermission: true);
+        using var client = CreateClient(factory);
+        await SignInAsync(client);
+
+        using var response = await client.GetAsync("/bff/employees/42");
+
+        Assert.Equal(HttpStatusCode.BadGateway, response.StatusCode);
+    }
+
+    [Theory]
+    [MemberData(nameof(TransportFailures))]
+    public async Task Detail_TransportFailure_IsMappedToServiceUnavailable(Exception exception)
+    {
+        var downstream = new RecordingEmployeeHandler(HttpStatusCode.OK, "{}", exception: exception);
+        await using var factory = new EmployeesBffFactory(downstream, hasPermission: true, hasReadPermission: true);
+        using var client = CreateClient(factory);
+        await SignInAsync(client);
+
+        using var response = await client.GetAsync("/bff/employees/42");
+
+        Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
+    }
+
     public static TheoryData<Exception> TransportFailures => new()
     {
         new HttpRequestException("employee unavailable"),
@@ -189,7 +328,7 @@ public sealed class BffEmployeesProxyContractTests
         response.EnsureSuccessStatusCode();
     }
 
-    private sealed class EmployeesBffFactory(HttpMessageHandler downstream, bool hasPermission)
+    private sealed class EmployeesBffFactory(HttpMessageHandler downstream, bool hasPermission, bool hasReadPermission = false)
         : WebApplicationFactory<BffProgram>
     {
         protected override void ConfigureWebHost(IWebHostBuilder builder)
@@ -203,7 +342,7 @@ public sealed class BffEmployeesProxyContractTests
             builder.ConfigureServices(services =>
             {
                 services.RemoveAll<ILegacyAuthClient>();
-                services.AddSingleton<ILegacyAuthClient>(new EmployeesAuthClient(hasPermission));
+                services.AddSingleton<ILegacyAuthClient>(new EmployeesAuthClient(hasPermission, hasReadPermission));
                 services.RemoveAll<IServiceAccessTokenProvider>();
                 var tokenProvider = new EmployeesServiceTokenProvider();
                 services.AddSingleton<IServiceAccessTokenProvider>(tokenProvider);
@@ -249,7 +388,7 @@ public sealed class BffEmployeesProxyContractTests
         }
     }
 
-    private sealed class EmployeesAuthClient(bool hasPermission) : ILegacyAuthClient
+    private sealed class EmployeesAuthClient(bool hasPermission, bool hasReadPermission) : ILegacyAuthClient
     {
         public Task<EmployeeLoginResult> LoginAsync(string email, string password, CancellationToken cancellationToken) =>
             Task.FromResult(new EmployeeLoginResult(
@@ -264,7 +403,10 @@ public sealed class BffEmployeesProxyContractTests
                     "employee-id",
                     email,
                     email,
-                    hasPermission ? ["legacy-employee.employees.list"] : [])));
+                    [
+                        .. hasPermission ? ["legacy-employee.employees.list"] : Array.Empty<string>(),
+                        .. hasReadPermission ? ["legacy-employee.employees.read"] : Array.Empty<string>(),
+                    ])));
 
         public Task<EmployeeRefreshResult?> RefreshAsync(string refreshToken, CancellationToken cancellationToken) =>
             Task.FromResult<EmployeeRefreshResult?>(null);
@@ -321,4 +463,7 @@ public sealed class BffEmployeesProxyContractTests
 
     private const string EmployeePageJson =
         """{"Items":[{"Id":42,"RoleId":7,"FirstName":"Ada","LastName":"Lovelace","FullName":"Ada Lovelace","PhoneNumber":null,"Email":"ada@example.com","DateOfBirth":null,"HomeAddressId":null,"CreatedDate":null,"ModifiedDate":null,"HomeAddress":null,"Role":{"Id":7,"Name":"Engineer","Description":null,"CreatedDate":null,"ModifiedDate":null}}],"PageIndex":2,"TotalPages":4,"TotalRecords":75,"HasNextPage":true,"HasPreviousPage":true}""";
+
+    private const string EmployeeDetailJson =
+        """{"Id":42,"RoleId":7,"FirstName":"Ada","LastName":"Lovelace","FullName":"Ada Lovelace","PhoneNumber":"+66 81 234 5678","Email":"ada@example.com","DateOfBirth":"1815-12-10T00:00:00","HomeAddressId":13,"CreatedDate":"2026-01-02T03:04:05Z","ModifiedDate":"2026-07-16T07:08:09Z","HomeAddress":{"Id":13,"Building":"A","AddressLine1":"1 Logic Road","AddressLine2":"Floor 2","City":"Bangkok","State":"Bangkok","PostalCode":"10110","CountryId":211,"CreatedDate":"2026-01-02T03:04:05Z","ModifiedDate":null},"Role":{"Id":7,"Name":"Engineer","Description":"Builds analytical engines","CreatedDate":"2026-01-02T03:04:05Z","ModifiedDate":null}}""";
 }
