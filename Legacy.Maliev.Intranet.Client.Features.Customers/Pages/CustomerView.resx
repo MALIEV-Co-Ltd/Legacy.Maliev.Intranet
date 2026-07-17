@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
+  <data name="PageTitle" xml:space="preserve"><value>Customer profile - MALIEV Intranet</value></data>
+  <data name="CustomerPageTitle" xml:space="preserve"><value>{0} - MALIEV Intranet</value></data>
+  <data name="Loading" xml:space="preserve"><value>Loading customer profile</value></data>
+  <data name="CustomerNumber" xml:space="preserve"><value>Customer #{0}</value></data>
+  <data name="Contact" xml:space="preserve"><value>Contact</value></data>
+  <data name="Email" xml:space="preserve"><value>Email</value></data>
+  <data name="Telephone" xml:space="preserve"><value>Telephone</value></data>
+  <data name="Mobile" xml:space="preserve"><value>Mobile</value></data>
+  <data name="Fax" xml:space="preserve"><value>Fax</value></data>
+  <data name="DateOfBirth" xml:space="preserve"><value>Date of birth</value></data>
+  <data name="Company" xml:space="preserve"><value>Company</value></data>
+  <data name="CompanyName" xml:space="preserve"><value>Name</value></data>
+  <data name="TaxNumber" xml:space="preserve"><value>Tax number</value></data>
+  <data name="Registrar" xml:space="preserve"><value>Registrar</value></data>
+  <data name="BillingAddress" xml:space="preserve"><value>Billing address</value></data>
+  <data name="ShippingAddress" xml:space="preserve"><value>Shipping address</value></data>
+  <data name="RecordInformation" xml:space="preserve"><value>Record information</value></data>
+  <data name="CreatedDate" xml:space="preserve"><value>Created</value></data>
+  <data name="ModifiedDate" xml:space="preserve"><value>Last modified</value></data>
+  <data name="BackToCustomers" xml:space="preserve"><value>Back to customers</value></data>
+  <data name="NotAvailable" xml:space="preserve"><value>Not available</value></data>
+  <data name="Forbidden" xml:space="preserve"><value>You do not have permission to view this customer.</value></data>
+  <data name="NotFound" xml:space="preserve"><value>The requested customer was not found.</value></data>
+  <data name="RateLimited" xml:space="preserve"><value>Too many requests were submitted. Wait a moment and try again.</value></data>
+  <data name="InvalidResponse" xml:space="preserve"><value>CustomerService returned an invalid profile response.</value></data>
+  <data name="Unavailable" xml:space="preserve"><value>The customer profile is temporarily unavailable.</value></data>
+</root>

@@ -168,6 +168,9 @@ builder.Services
 builder.Services.AddOptions<CookieAuthenticationOptions>(CookieAuthenticationDefaults.AuthenticationScheme)
     .Configure<DistributedTicketStore>((options, store) => options.SessionStore = store);
 builder.Services.AddAuthorizationBuilder()
+    .AddPolicy(LegacyEmployeePermissions.CustomersRead, policy => policy
+        .RequireAuthenticatedUser()
+        .RequireClaim("permissions", LegacyEmployeePermissions.CustomersRead))
     .AddPolicy(LegacyEmployeePermissions.CustomersCreate, policy => policy
         .RequireAuthenticatedUser()
         .RequireClaim("permissions", LegacyEmployeePermissions.CustomersCreate))
@@ -361,6 +364,80 @@ app.MapGet("/bff/customers", async (
     }
 })
     .RequireAuthorization(LegacyEmployeePermissions.CustomersList);
+
+app.MapGet("/bff/customers/{id:int}", async (
+    int id,
+    HttpContext context,
+    CustomersProxy customers,
+    CancellationToken cancellationToken) =>
+{
+    HttpResponseMessage response;
+    try
+    {
+        response = await customers.GetByIdAsync(id, cancellationToken);
+    }
+    catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+    {
+        return Results.Problem(statusCode: StatusCodes.Status503ServiceUnavailable, title: "CustomerService unavailable");
+    }
+    catch (HttpRequestException)
+    {
+        return Results.Problem(statusCode: StatusCodes.Status503ServiceUnavailable, title: "CustomerService unavailable");
+    }
+
+    using (response)
+    {
+        if (response.StatusCode == System.Net.HttpStatusCode.RequestTimeout)
+        {
+            return Results.Problem(statusCode: StatusCodes.Status503ServiceUnavailable, title: "CustomerService unavailable");
+        }
+
+        if (response.StatusCode is System.Net.HttpStatusCode.Unauthorized or
+            System.Net.HttpStatusCode.Forbidden or
+            System.Net.HttpStatusCode.NotFound)
+        {
+            return Results.StatusCode((int)response.StatusCode);
+        }
+
+        if (response.StatusCode == System.Net.HttpStatusCode.TooManyRequests)
+        {
+            var retryAfter = response.Headers.RetryAfter?.Delta;
+            if (retryAfter.HasValue && retryAfter.Value > TimeSpan.Zero && retryAfter.Value <= TimeSpan.FromHours(1))
+            {
+                context.Response.Headers.RetryAfter = ((int)Math.Ceiling(retryAfter.Value.TotalSeconds)).ToString(CultureInfo.InvariantCulture);
+            }
+
+            return Results.StatusCode(StatusCodes.Status429TooManyRequests);
+        }
+
+        if (!response.IsSuccessStatusCode)
+        {
+            return Results.Problem(statusCode: StatusCodes.Status503ServiceUnavailable, title: "CustomerService unavailable");
+        }
+
+        try
+        {
+            var customer = await response.Content.ReadFromJsonAsync<CustomerDetail>(cancellationToken);
+            var invalid = customer is null ||
+                customer.Id != id ||
+                string.IsNullOrWhiteSpace(customer.FirstName) ||
+                string.IsNullOrWhiteSpace(customer.LastName) ||
+                string.IsNullOrWhiteSpace(customer.FullName) ||
+                string.IsNullOrWhiteSpace(customer.Email) ||
+                (customer.Company is not null && string.IsNullOrWhiteSpace(customer.Company.Name)) ||
+                (customer.BillingAddress is not null && string.IsNullOrWhiteSpace(customer.BillingAddress.AddressLine1)) ||
+                (customer.ShippingAddress is not null && string.IsNullOrWhiteSpace(customer.ShippingAddress.AddressLine1));
+            return invalid
+                ? Results.Problem(statusCode: StatusCodes.Status502BadGateway, title: "Invalid CustomerService response")
+                : Results.Ok(customer);
+        }
+        catch (System.Text.Json.JsonException)
+        {
+            return Results.Problem(statusCode: StatusCodes.Status502BadGateway, title: "Invalid CustomerService response");
+        }
+    }
+})
+    .RequireAuthorization(LegacyEmployeePermissions.CustomersRead);
 
 app.MapPost("/bff/customers", async (
     CreateCustomerAccountRequest request,
