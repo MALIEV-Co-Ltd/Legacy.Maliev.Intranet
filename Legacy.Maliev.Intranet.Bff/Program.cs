@@ -3,6 +3,7 @@ using Legacy.Maliev.Intranet.Bff;
 using Legacy.Maliev.Intranet.Auth;
 using Legacy.Maliev.Intranet.Contracts;
 using Legacy.Maliev.Intranet.Bff.Catalog;
+using Legacy.Maliev.Intranet.Bff.Customers;
 using Maliev.Aspire.ServiceDefaults;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
@@ -32,7 +33,30 @@ builder.Services.AddOptions<ServiceAuthenticationOptions>()
     .Bind(builder.Configuration.GetSection("ServiceAuthentication"));
 builder.Services.AddSingleton<IServiceAccessTokenProvider, ServiceAccessTokenProvider>();
 builder.Services.AddTransient<LegacyServiceAuthenticationHandler>();
-#pragma warning disable EXTEXP0001 // Replace the inherited global pipeline with the Catalog-specific 429 contract.
+#pragma warning disable EXTEXP0001 // Replace inherited pipelines with explicit downstream 429 contracts.
+builder.Services.AddHttpClient<CustomersProxy>(client =>
+{
+    client.BaseAddress = new Uri(builder.Configuration["Services:Customer"]
+        ?? throw new InvalidOperationException("Services:Customer is required."));
+    client.Timeout = TimeSpan.FromSeconds(10);
+}).RemoveAllResilienceHandlers()
+    .AddHttpMessageHandler<LegacyServiceAuthenticationHandler>()
+    .AddResilienceHandler("customer-list", pipeline =>
+{
+    pipeline.AddRetry(new Microsoft.Extensions.Http.Resilience.HttpRetryStrategyOptions
+    {
+        MaxRetryAttempts = 2,
+        Delay = TimeSpan.FromMilliseconds(200),
+        BackoffType = Polly.DelayBackoffType.Exponential,
+        UseJitter = true,
+        ShouldRetryAfterHeader = false,
+        ShouldHandle = new Polly.PredicateBuilder<HttpResponseMessage>()
+            .Handle<HttpRequestException>()
+            .Handle<Polly.Timeout.TimeoutRejectedException>()
+            .HandleResult(response => response.StatusCode == System.Net.HttpStatusCode.RequestTimeout ||
+                (int)response.StatusCode >= StatusCodes.Status500InternalServerError),
+    });
+});
 builder.Services.AddHttpClient<CatalogMaterialsProxy>(client =>
 {
     client.BaseAddress = new Uri(builder.Configuration["Services:Catalog"]
@@ -129,6 +153,9 @@ builder.Services
 builder.Services.AddOptions<CookieAuthenticationOptions>(CookieAuthenticationDefaults.AuthenticationScheme)
     .Configure<DistributedTicketStore>((options, store) => options.SessionStore = store);
 builder.Services.AddAuthorizationBuilder()
+    .AddPolicy(LegacyEmployeePermissions.CustomersList, policy => policy
+        .RequireAuthenticatedUser()
+        .RequireClaim("permissions", LegacyEmployeePermissions.CustomersList))
     .AddPolicy("legacy-catalog.materials.read", policy => policy
         .RequireAuthenticatedUser()
         .RequireClaim("permissions", "legacy-catalog.materials.read"))
@@ -237,6 +264,85 @@ app.MapPost("/bff/logout", async (
     await sessions.SignOutAsync(context, cancellationToken);
     return Results.NoContent();
 }).AddEndpointFilter<AntiforgeryValidationFilter>().RequireAuthorization();
+
+app.MapGet("/bff/customers", async (
+    CustomerListSort? sort,
+    string? search,
+    int? index,
+    int? size,
+    HttpContext context,
+    CustomersProxy customers,
+    CancellationToken cancellationToken) =>
+{
+    var normalizedSort = sort ?? CustomerListSort.CustomerCreatedDate_Descending;
+    var normalizedIndex = Math.Max(1, index ?? 1);
+    var normalizedSize = Math.Clamp(size ?? 25, 1, 250);
+    HttpResponseMessage response;
+    try
+    {
+        response = await customers.GetAsync(
+            normalizedSort,
+            search,
+            normalizedIndex,
+            normalizedSize,
+            cancellationToken);
+    }
+    catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+    {
+        return Results.Problem(statusCode: StatusCodes.Status503ServiceUnavailable, title: "CustomerService unavailable");
+    }
+    catch (HttpRequestException)
+    {
+        return Results.Problem(statusCode: StatusCodes.Status503ServiceUnavailable, title: "CustomerService unavailable");
+    }
+
+    using (response)
+    {
+        if (response.StatusCode == System.Net.HttpStatusCode.RequestTimeout)
+        {
+            return Results.Problem(statusCode: StatusCodes.Status503ServiceUnavailable, title: "CustomerService unavailable");
+        }
+
+        if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+        {
+            return Results.Ok(new CustomerListPage([], normalizedIndex, 0, 0, false, normalizedIndex > 1));
+        }
+
+        if (response.StatusCode == System.Net.HttpStatusCode.TooManyRequests)
+        {
+            var retryAfter = response.Headers.RetryAfter?.Delta;
+            if (retryAfter.HasValue && retryAfter.Value > TimeSpan.Zero && retryAfter.Value <= TimeSpan.FromHours(1))
+            {
+                context.Response.Headers.RetryAfter = ((int)Math.Ceiling(retryAfter.Value.TotalSeconds)).ToString(CultureInfo.InvariantCulture);
+            }
+
+            return Results.StatusCode(StatusCodes.Status429TooManyRequests);
+        }
+
+        if (response.StatusCode is System.Net.HttpStatusCode.Unauthorized or System.Net.HttpStatusCode.Forbidden)
+        {
+            return Results.StatusCode((int)response.StatusCode);
+        }
+
+        if (!response.IsSuccessStatusCode)
+        {
+            return Results.Problem(statusCode: StatusCodes.Status503ServiceUnavailable, title: "CustomerService unavailable");
+        }
+
+        try
+        {
+            var page = await response.Content.ReadFromJsonAsync<CustomerListPage>(cancellationToken);
+            return page is null
+                ? Results.Problem(statusCode: StatusCodes.Status502BadGateway, title: "Invalid CustomerService response")
+                : Results.Ok(page);
+        }
+        catch (System.Text.Json.JsonException)
+        {
+            return Results.Problem(statusCode: StatusCodes.Status502BadGateway, title: "Invalid CustomerService response");
+        }
+    }
+})
+    .RequireAuthorization(LegacyEmployeePermissions.CustomersList);
 
 app.MapGet("/bff/catalog/materials", async (
     CatalogMaterialSort? sort,
