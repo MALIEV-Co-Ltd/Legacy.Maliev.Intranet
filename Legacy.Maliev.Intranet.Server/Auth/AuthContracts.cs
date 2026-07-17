@@ -19,6 +19,8 @@ public static class LegacyEmployeePermissions
     public const string EmployeesList = "legacy-employee.employees.list";
     /// <summary>Allows creating a legacy employee profile and its authentication identity.</summary>
     public const string EmployeesCreate = "legacy-employee.employees.create";
+    /// <summary>Allows reading one complete legacy employee profile.</summary>
+    public const string EmployeesRead = "legacy-employee.employees.read";
 }
 
 /// <summary>Explicit removable grants that preserve employee-wide authorization during legacy rollout.</summary>

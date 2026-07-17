@@ -222,6 +222,9 @@ builder.Services.AddAuthorizationBuilder()
     .AddPolicy(LegacyEmployeePermissions.EmployeesCreate, policy => policy
         .RequireAuthenticatedUser()
         .RequireClaim("permissions", LegacyEmployeePermissions.EmployeesCreate))
+    .AddPolicy(LegacyEmployeePermissions.EmployeesRead, policy => policy
+        .RequireAuthenticatedUser()
+        .RequireClaim("permissions", LegacyEmployeePermissions.EmployeesRead))
     .AddPolicy("legacy-catalog.materials.read", policy => policy
         .RequireAuthenticatedUser()
         .RequireClaim("permissions", "legacy-catalog.materials.read"))
@@ -593,6 +596,78 @@ app.MapPost("/bff/employees", async (
 })
     .AddEndpointFilter<AntiforgeryValidationFilter>()
     .RequireAuthorization(LegacyEmployeePermissions.EmployeesCreate);
+
+app.MapGet("/bff/employees/{id:int}", async (
+    int id,
+    HttpContext context,
+    EmployeesProxy employees,
+    CancellationToken cancellationToken) =>
+{
+    HttpResponseMessage response;
+    try
+    {
+        response = await employees.GetByIdAsync(id, cancellationToken);
+    }
+    catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+    {
+        return Results.Problem(statusCode: StatusCodes.Status503ServiceUnavailable, title: "EmployeeService unavailable");
+    }
+    catch (HttpRequestException)
+    {
+        return Results.Problem(statusCode: StatusCodes.Status503ServiceUnavailable, title: "EmployeeService unavailable");
+    }
+
+    using (response)
+    {
+        if (response.StatusCode == System.Net.HttpStatusCode.RequestTimeout)
+        {
+            return Results.Problem(statusCode: StatusCodes.Status503ServiceUnavailable, title: "EmployeeService unavailable");
+        }
+
+        if (response.StatusCode == System.Net.HttpStatusCode.TooManyRequests)
+        {
+            var retryAfter = response.Headers.RetryAfter?.Delta;
+            if (retryAfter.HasValue && retryAfter.Value > TimeSpan.Zero && retryAfter.Value <= TimeSpan.FromHours(1))
+            {
+                context.Response.Headers.RetryAfter = ((int)Math.Ceiling(retryAfter.Value.TotalSeconds))
+                    .ToString(CultureInfo.InvariantCulture);
+            }
+
+            return Results.StatusCode(StatusCodes.Status429TooManyRequests);
+        }
+
+        if (response.StatusCode is System.Net.HttpStatusCode.Unauthorized or
+            System.Net.HttpStatusCode.Forbidden or
+            System.Net.HttpStatusCode.NotFound)
+        {
+            return Results.StatusCode((int)response.StatusCode);
+        }
+
+        if (!response.IsSuccessStatusCode)
+        {
+            return Results.Problem(statusCode: StatusCodes.Status503ServiceUnavailable, title: "EmployeeService unavailable");
+        }
+
+        try
+        {
+            var employee = await response.Content.ReadFromJsonAsync<EmployeeDetail>(cancellationToken);
+            var invalid = employee is null ||
+                employee.Id != id ||
+                string.IsNullOrWhiteSpace(employee.FirstName) ||
+                string.IsNullOrWhiteSpace(employee.LastName) ||
+                string.IsNullOrWhiteSpace(employee.FullName) ||
+                string.IsNullOrWhiteSpace(employee.Email);
+            return invalid
+                ? Results.Problem(statusCode: StatusCodes.Status502BadGateway, title: "Invalid EmployeeService response")
+                : Results.Ok(employee);
+        }
+        catch (System.Text.Json.JsonException)
+        {
+            return Results.Problem(statusCode: StatusCodes.Status502BadGateway, title: "Invalid EmployeeService response");
+        }
+    }
+})
+    .RequireAuthorization(LegacyEmployeePermissions.EmployeesRead);
 
 app.MapGet("/bff/employees", async (
     EmployeeListSort? sort,
