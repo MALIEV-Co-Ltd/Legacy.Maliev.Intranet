@@ -17,6 +17,8 @@ public static class LegacyEmployeePermissions
     public const string CatalogMaterialsCreate = "legacy-catalog.materials.create";
     /// <summary>Allows listing and searching legacy employee profiles.</summary>
     public const string EmployeesList = "legacy-employee.employees.list";
+    /// <summary>Allows creating a legacy employee profile and its authentication identity.</summary>
+    public const string EmployeesCreate = "legacy-employee.employees.create";
 }
 
 /// <summary>Explicit removable grants that preserve employee-wide authorization during legacy rollout.</summary>
