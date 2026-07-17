@@ -33,7 +33,22 @@ builder.Services.AddOptions<ServiceAuthenticationOptions>()
     .Bind(builder.Configuration.GetSection("ServiceAuthentication"));
 builder.Services.AddSingleton<IServiceAccessTokenProvider, ServiceAccessTokenProvider>();
 builder.Services.AddTransient<LegacyServiceAuthenticationHandler>();
+builder.Services.AddScoped<Legacy.Maliev.Intranet.Customers.CustomerAccountCreationService>();
 #pragma warning disable EXTEXP0001 // Replace inherited pipelines with explicit downstream 429 contracts.
+builder.Services.AddHttpClient<Legacy.Maliev.Intranet.Customers.ICustomerProfileCreationClient, Legacy.Maliev.Intranet.Customers.CustomerProfileCreationClient>(client =>
+{
+    client.BaseAddress = new Uri(builder.Configuration["Services:Customer"]
+        ?? throw new InvalidOperationException("Services:Customer is required."));
+    client.Timeout = TimeSpan.FromSeconds(10);
+}).RemoveAllResilienceHandlers()
+    .AddHttpMessageHandler<LegacyServiceAuthenticationHandler>();
+builder.Services.AddHttpClient<Legacy.Maliev.Intranet.Customers.ICustomerIdentityCreationClient, Legacy.Maliev.Intranet.Customers.CustomerIdentityCreationClient>(client =>
+{
+    client.BaseAddress = new Uri(builder.Configuration["Services:Auth"]
+        ?? throw new InvalidOperationException("Services:Auth is required."));
+    client.Timeout = TimeSpan.FromSeconds(10);
+}).RemoveAllResilienceHandlers()
+    .AddHttpMessageHandler<LegacyServiceAuthenticationHandler>();
 builder.Services.AddHttpClient<CustomersProxy>(client =>
 {
     client.BaseAddress = new Uri(builder.Configuration["Services:Customer"]
@@ -153,6 +168,9 @@ builder.Services
 builder.Services.AddOptions<CookieAuthenticationOptions>(CookieAuthenticationDefaults.AuthenticationScheme)
     .Configure<DistributedTicketStore>((options, store) => options.SessionStore = store);
 builder.Services.AddAuthorizationBuilder()
+    .AddPolicy(LegacyEmployeePermissions.CustomersCreate, policy => policy
+        .RequireAuthenticatedUser()
+        .RequireClaim("permissions", LegacyEmployeePermissions.CustomersCreate))
     .AddPolicy(LegacyEmployeePermissions.CustomersList, policy => policy
         .RequireAuthenticatedUser()
         .RequireClaim("permissions", LegacyEmployeePermissions.CustomersList))
@@ -343,6 +361,61 @@ app.MapGet("/bff/customers", async (
     }
 })
     .RequireAuthorization(LegacyEmployeePermissions.CustomersList);
+
+app.MapPost("/bff/customers", async (
+    CreateCustomerAccountRequest request,
+    HttpContext context,
+    Legacy.Maliev.Intranet.Customers.CustomerAccountCreationService workflow,
+    CancellationToken cancellationToken) =>
+{
+    var validationResults = new List<ValidationResult>();
+    if (!Validator.TryValidateObject(request, new ValidationContext(request), validationResults, true))
+    {
+        var errors = validationResults
+            .SelectMany(result => result.MemberNames.DefaultIfEmpty(string.Empty)
+                .Select(member => new
+                {
+                    member = string.IsNullOrEmpty(member)
+                        ? member
+                        : System.Text.Json.JsonNamingPolicy.CamelCase.ConvertName(member),
+                    message = result.ErrorMessage ?? "The value is invalid.",
+                }))
+            .GroupBy(error => error.member, StringComparer.Ordinal)
+            .ToDictionary(
+                group => group.Key,
+                group => group.Select(error => error.message).Distinct(StringComparer.Ordinal).ToArray(),
+                StringComparer.Ordinal);
+        return Results.ValidationProblem(errors);
+    }
+
+    var result = await workflow.CreateAsync(request, cancellationToken);
+    if (result.Status == Legacy.Maliev.Intranet.Customers.CustomerAccountCreationStatus.RateLimited &&
+        result.RetryAfter is { } retryAfter)
+    {
+        context.Response.Headers.RetryAfter = ((int)Math.Ceiling(retryAfter.TotalSeconds)).ToString(CultureInfo.InvariantCulture);
+    }
+
+    return result.Status switch
+    {
+        Legacy.Maliev.Intranet.Customers.CustomerAccountCreationStatus.Created when result.CustomerId is { } customerId =>
+            Results.Created($"/Customers/View?id={customerId}", new CreatedCustomerAccount(customerId)),
+        Legacy.Maliev.Intranet.Customers.CustomerAccountCreationStatus.BadRequest =>
+            Results.Problem(statusCode: StatusCodes.Status400BadRequest, title: "Customer data was rejected"),
+        Legacy.Maliev.Intranet.Customers.CustomerAccountCreationStatus.Unauthorized =>
+            Results.StatusCode(StatusCodes.Status401Unauthorized),
+        Legacy.Maliev.Intranet.Customers.CustomerAccountCreationStatus.Forbidden =>
+            Results.StatusCode(StatusCodes.Status403Forbidden),
+        Legacy.Maliev.Intranet.Customers.CustomerAccountCreationStatus.Conflict =>
+            Results.Problem(statusCode: StatusCodes.Status409Conflict, title: "Customer identity already exists"),
+        Legacy.Maliev.Intranet.Customers.CustomerAccountCreationStatus.RateLimited =>
+            Results.StatusCode(StatusCodes.Status429TooManyRequests),
+        Legacy.Maliev.Intranet.Customers.CustomerAccountCreationStatus.BadGateway =>
+            Results.Problem(statusCode: StatusCodes.Status502BadGateway, title: "Invalid customer service response"),
+        _ => Results.Problem(statusCode: StatusCodes.Status503ServiceUnavailable, title: "Customer creation unavailable"),
+    };
+})
+    .AddEndpointFilter<AntiforgeryValidationFilter>()
+    .RequireAuthorization(LegacyEmployeePermissions.CustomersCreate);
 
 app.MapGet("/bff/catalog/materials", async (
     CatalogMaterialSort? sort,
