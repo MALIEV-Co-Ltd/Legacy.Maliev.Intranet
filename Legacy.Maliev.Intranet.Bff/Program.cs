@@ -160,6 +160,29 @@ builder.Services.AddHttpClient<SuppliersProxy>(client =>
                 (int)response.StatusCode >= StatusCodes.Status500InternalServerError),
     });
 });
+builder.Services.AddHttpClient<PurchaseOrdersProxy>(client =>
+{
+    client.BaseAddress = new Uri(builder.Configuration["Services:Procurement"]
+        ?? throw new InvalidOperationException("Services:Procurement is required."));
+    client.Timeout = TimeSpan.FromSeconds(10);
+}).RemoveAllResilienceHandlers()
+    .AddHttpMessageHandler<LegacyServiceAuthenticationHandler>()
+    .AddResilienceHandler("purchase-order-index", pipeline =>
+{
+    pipeline.AddRetry(new Microsoft.Extensions.Http.Resilience.HttpRetryStrategyOptions
+    {
+        MaxRetryAttempts = 2,
+        Delay = TimeSpan.FromMilliseconds(200),
+        BackoffType = Polly.DelayBackoffType.Exponential,
+        UseJitter = true,
+        ShouldRetryAfterHeader = false,
+        ShouldHandle = new Polly.PredicateBuilder<HttpResponseMessage>()
+            .Handle<HttpRequestException>()
+            .Handle<Polly.Timeout.TimeoutRejectedException>()
+            .HandleResult(response => response.StatusCode == System.Net.HttpStatusCode.RequestTimeout ||
+                (int)response.StatusCode >= StatusCodes.Status500InternalServerError),
+    });
+});
 builder.Services.AddHttpClient<OrderDetailProxy>(client =>
 {
     client.BaseAddress = new Uri(builder.Configuration["Services:Order"]
@@ -365,6 +388,9 @@ builder.Services.AddAuthorizationBuilder()
     .AddPolicy(LegacyEmployeePermissions.SuppliersRead, policy => policy
         .RequireAuthenticatedUser()
         .RequireClaim("permissions", LegacyEmployeePermissions.SuppliersRead))
+    .AddPolicy(LegacyEmployeePermissions.PurchaseOrdersRead, policy => policy
+        .RequireAuthenticatedUser()
+        .RequireClaim("permissions", LegacyEmployeePermissions.PurchaseOrdersRead))
     .AddPolicy("legacy-catalog.materials.read", policy => policy
         .RequireAuthenticatedUser()
         .RequireClaim("permissions", "legacy-catalog.materials.read"))
@@ -448,6 +474,28 @@ app.MapGet("/bff/suppliers", (
         cancellationToken);
 })
     .RequireAuthorization(LegacyEmployeePermissions.SuppliersRead);
+
+app.MapGet("/bff/purchase-orders", (
+    PurchaseOrderListSort? sort,
+    string? search,
+    int? index,
+    int? size,
+    HttpContext context,
+    PurchaseOrdersProxy purchaseOrders,
+    CancellationToken cancellationToken) =>
+{
+    var normalizedSort = sort is { } requestedSort && Enum.IsDefined(requestedSort)
+        ? requestedSort
+        : PurchaseOrderListSort.PurchaseOrderId_Descending;
+    var normalizedIndex = Math.Max(1, index ?? 1);
+    var normalizedSize = Math.Clamp(size ?? 25, 1, 250);
+    return PurchaseOrdersEndpointMapper.MapPageAsync(
+        token => purchaseOrders.GetAsync(normalizedSort, search, normalizedIndex, normalizedSize, token),
+        normalizedIndex,
+        context,
+        cancellationToken);
+})
+    .RequireAuthorization(LegacyEmployeePermissions.PurchaseOrdersRead);
 
 app.MapGet("/bff/orders/pending", (
     int? size,
