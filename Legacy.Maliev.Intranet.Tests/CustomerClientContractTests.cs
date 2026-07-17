@@ -30,6 +30,8 @@ public sealed class CustomerClientContractTests
         var handler = new RecordingHandler(HttpStatusCode.Created,
             """{"Id":"identity-id","UserName":"ada@example.com","Email":"ada@example.com","EmailConfirmed":true,"PhoneNumber":null,"PhoneNumberConfirmed":false,"TwoFactorEnabled":false,"LockoutEnd":null,"LockoutEnabled":true,"AccessFailedCount":0,"DatabaseID":42,"FaxNumber":null,"MobileNumber":null}""");
         var client = new LegacyAuthClient(new HttpClient(handler) { BaseAddress = new("http://auth/") },
+            new TestAccessTokenValidator(),
+            TimeProvider.System,
             Microsoft.Extensions.Logging.Abstractions.NullLogger<LegacyAuthClient>.Instance);
 
         var result = await client.CreateCustomerIdentityAsync(

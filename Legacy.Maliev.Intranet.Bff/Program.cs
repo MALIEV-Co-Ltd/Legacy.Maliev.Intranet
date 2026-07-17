@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.RateLimiting;
 using System.ComponentModel.DataAnnotations;
+using System.Globalization;
 using System.Threading.RateLimiting;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -24,6 +25,9 @@ else
 }
 builder.Services.AddProblemDetails();
 builder.Services.AddSingleton(TimeProvider.System);
+builder.Services.AddLegacyAccessTokenValidation(
+    builder.Configuration,
+    validateOnStart: !builder.Environment.IsEnvironment("Testing"));
 builder.Services.AddSingleton<DistributedTicketStore>();
 builder.Services.AddScoped<EmployeeSessionService>();
 builder.Services.AddHttpClient<ILegacyAuthClient, LegacyAuthClient>(client =>
@@ -66,6 +70,28 @@ builder.Services
         options.AccessDeniedPath = "/AccessDenied";
         options.ExpireTimeSpan = TimeSpan.FromHours(8);
         options.SlidingExpiration = false;
+        options.Events.OnRedirectToLogin = context =>
+        {
+            if (context.Request.Path.StartsWithSegments("/bff"))
+            {
+                context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+                return Task.CompletedTask;
+            }
+
+            context.Response.Redirect(context.RedirectUri);
+            return Task.CompletedTask;
+        };
+        options.Events.OnRedirectToAccessDenied = context =>
+        {
+            if (context.Request.Path.StartsWithSegments("/bff"))
+            {
+                context.Response.StatusCode = StatusCodes.Status403Forbidden;
+                return Task.CompletedTask;
+            }
+
+            context.Response.Redirect(context.RedirectUri);
+            return Task.CompletedTask;
+        };
     });
 builder.Services.AddOptions<CookieAuthenticationOptions>(CookieAuthenticationDefaults.AuthenticationScheme)
     .Configure<DistributedTicketStore>((options, store) => options.SessionStore = store);
@@ -124,6 +150,18 @@ app.MapPost("/bff/login", async (
     try
     {
         login = await authClient.LoginAsync(request.Email.Trim(), request.Password, cancellationToken);
+    }
+    catch (LegacyAuthRateLimitedException exception)
+    {
+        if (exception.RetryAfterSeconds is { } retryAfterSeconds)
+        {
+            context.Response.Headers.RetryAfter = retryAfterSeconds.ToString(CultureInfo.InvariantCulture);
+        }
+
+        return Results.Problem(
+            title: "Authentication throttled",
+            detail: "Too many sign-in attempts. Wait and try again.",
+            statusCode: StatusCodes.Status429TooManyRequests);
     }
     catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException)
     {

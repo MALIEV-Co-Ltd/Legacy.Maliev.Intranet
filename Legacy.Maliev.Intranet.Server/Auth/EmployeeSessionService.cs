@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
+using System.Security.Claims;
 
 namespace Legacy.Maliev.Intranet.Auth;
 
@@ -68,18 +69,21 @@ public sealed class EmployeeSessionService(
         }
 
         var refreshed = await authClient.RefreshAsync(refreshToken, cancellationToken);
-        if (refreshed is null)
+        var expectedEmployeeId = result.Principal?.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (refreshed is null ||
+            string.IsNullOrWhiteSpace(expectedEmployeeId) ||
+            !string.Equals(refreshed.Identity.Id, expectedEmployeeId, StringComparison.Ordinal))
         {
             await context.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
             return null;
         }
 
-        StoreTokens(result.Properties, refreshed);
+        StoreTokens(result.Properties, refreshed.Tokens);
         await context.SignInAsync(
             CookieAuthenticationDefaults.AuthenticationScheme,
             result.Principal!,
             result.Properties);
-        return refreshed.AccessToken;
+        return refreshed.Tokens.AccessToken;
     }
 
     /// <summary>Revokes the refresh family and always clears the local session.</summary>

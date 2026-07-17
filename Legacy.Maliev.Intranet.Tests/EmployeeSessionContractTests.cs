@@ -1,6 +1,7 @@
 using Legacy.Maliev.Intranet.Auth;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -11,6 +12,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Time.Testing;
 using System.Net;
 using System.Security.Claims;
+using System.Text;
 using System.Text.RegularExpressions;
 
 namespace Legacy.Maliev.Intranet.Tests;
@@ -60,9 +62,11 @@ public sealed partial class EmployeeSessionContractTests
         var services = new ServiceCollection();
         services.AddDistributedMemoryCache();
         await using var provider = services.BuildServiceProvider();
+        var cache = provider.GetRequiredService<IDistributedCache>();
         var store = new DistributedTicketStore(
-            provider.GetRequiredService<IDistributedCache>(),
-            new FakeTimeProvider(Now));
+            cache,
+            new FakeTimeProvider(Now),
+            new EphemeralDataProtectionProvider());
         var properties = new AuthenticationProperties { ExpiresUtc = Now.AddHours(1) };
         properties.StoreTokens(
         [
@@ -78,13 +82,44 @@ public sealed partial class EmployeeSessionContractTests
             CookieAuthenticationDefaults.AuthenticationScheme);
 
         var key = await store.StoreAsync(ticket);
+        var rawTicket = await cache.GetAsync(key);
         var restored = await store.RetrieveAsync(key);
 
         Assert.StartsWith("legacy-intranet:session:", key, StringComparison.Ordinal);
         Assert.DoesNotContain(StubAuthClient.AccessToken, key, StringComparison.Ordinal);
         Assert.DoesNotContain(StubAuthClient.RefreshToken, key, StringComparison.Ordinal);
+        Assert.NotNull(rawTicket);
+        var rawText = Encoding.UTF8.GetString(rawTicket);
+        Assert.DoesNotContain(StubAuthClient.AccessToken, rawText, StringComparison.Ordinal);
+        Assert.DoesNotContain(StubAuthClient.RefreshToken, rawText, StringComparison.Ordinal);
         Assert.Equal(StubAuthClient.AccessToken, restored?.Properties.GetTokenValue("legacy_access_token"));
         Assert.Equal(StubAuthClient.RefreshToken, restored?.Properties.GetTokenValue("legacy_refresh_token"));
+    }
+
+    [Fact]
+    public async Task DistributedTicketStore_TamperedCiphertextFailsClosedAndIsRemoved()
+    {
+        var services = new ServiceCollection();
+        services.AddDistributedMemoryCache();
+        await using var provider = services.BuildServiceProvider();
+        var cache = provider.GetRequiredService<IDistributedCache>();
+        var store = new DistributedTicketStore(
+            cache,
+            new FakeTimeProvider(Now),
+            new EphemeralDataProtectionProvider());
+        var ticket = new AuthenticationTicket(
+            new ClaimsPrincipal(new ClaimsIdentity(
+                [new Claim(ClaimTypes.NameIdentifier, "employee-id")],
+                CookieAuthenticationDefaults.AuthenticationScheme)),
+            new AuthenticationProperties { ExpiresUtc = Now.AddHours(1) },
+            CookieAuthenticationDefaults.AuthenticationScheme);
+        var key = await store.StoreAsync(ticket);
+        await cache.SetAsync(key, [1, 2, 3, 4]);
+
+        var restored = await store.RetrieveAsync(key);
+
+        Assert.Null(restored);
+        Assert.Null(await cache.GetAsync(key));
     }
 
     [Fact]
@@ -128,6 +163,29 @@ public sealed partial class EmployeeSessionContractTests
     }
 
     [Fact]
+    public async Task GetAccessToken_WhenRefreshSubjectChanges_ClearsLocalSession()
+    {
+        var auth = new StubAuthClient
+        {
+            RefreshResult = new AuthTokenResponse(
+                "rotated-access-token",
+                "rotated-refresh-token",
+                "Bearer",
+                900,
+                Now.AddDays(14)),
+        };
+        var authentication = new RecordingAuthenticationService(CreateTokenProperties(Now.AddMinutes(1)));
+        var context = CreateHttpContext(authentication);
+        auth.RefreshEmployeeId = "different-employee";
+        var sessions = CreateSessionService(auth);
+
+        var accessToken = await sessions.GetAccessTokenAsync(context, CancellationToken.None);
+
+        Assert.Null(accessToken);
+        Assert.True(authentication.SignedOut);
+    }
+
+    [Fact]
     public async Task SignOut_WhenRevokeIsUnavailable_StillClearsLocalSession()
     {
         var auth = new StubAuthClient { RevokeException = new HttpRequestException("unavailable") };
@@ -139,6 +197,29 @@ public sealed partial class EmployeeSessionContractTests
 
         Assert.Equal(StubAuthClient.RefreshToken, auth.RevokedRefreshToken);
         Assert.True(authentication.SignedOut);
+    }
+
+    [Fact]
+    public async Task SignIn_UsesEightHourNonPersistentServerSession()
+    {
+        var authentication = new RecordingAuthenticationService(new AuthenticationProperties());
+        var context = CreateHttpContext(authentication);
+        var sessions = CreateSessionService(new StubAuthClient());
+        var login = new EmployeeLoginResult(
+            true,
+            new AuthTokenResponse(
+                StubAuthClient.AccessToken,
+                StubAuthClient.RefreshToken,
+                "Bearer",
+                900,
+                Now.AddDays(14)),
+            new EmployeeIdentity("employee-id", "employee@maliev.com", "employee@maliev.com"));
+
+        await sessions.SignInAsync(context, login);
+
+        Assert.False(authentication.CurrentProperties?.IsPersistent);
+        Assert.Equal(Now, authentication.CurrentProperties?.IssuedUtc);
+        Assert.Equal(Now.AddHours(8), authentication.CurrentProperties?.ExpiresUtc);
     }
 
     private static AuthenticationProperties CreateTokenProperties(DateTimeOffset accessExpiresAt)
@@ -166,7 +247,10 @@ public sealed partial class EmployeeSessionContractTests
     }
 
     private static EmployeeSessionService CreateSessionService(ILegacyAuthClient authClient) =>
-        new(authClient, new FakeTimeProvider(Now), NullLogger<EmployeeSessionService>.Instance);
+        new(
+            authClient,
+            new FakeTimeProvider(Now),
+            NullLogger<EmployeeSessionService>.Instance);
 
     [GeneratedRegex("name=\"__RequestVerificationToken\"[^>]*value=\"([^\"]+)\"", RegexOptions.CultureInvariant)]
     private static partial Regex AntiForgeryToken();
@@ -176,6 +260,7 @@ public sealed partial class EmployeeSessionContractTests
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
             builder.UseEnvironment("Testing");
+            TestJwtConfiguration.Configure(builder);
             builder.ConfigureServices(services =>
             {
                 services.RemoveAll<ILegacyAuthClient>();
@@ -201,6 +286,8 @@ public sealed partial class EmployeeSessionContractTests
 
         public string? RevokedRefreshToken { get; private set; }
 
+        public string RefreshEmployeeId { get; set; } = "employee-id";
+
         public Task<EmployeeLoginResult> LoginAsync(
             string email,
             string password,
@@ -214,10 +301,14 @@ public sealed partial class EmployeeSessionContractTests
                 new EmployeeIdentity("employee-id", email, email)));
         }
 
-        public Task<AuthTokenResponse?> RefreshAsync(string refreshToken, CancellationToken cancellationToken)
+        public Task<EmployeeRefreshResult?> RefreshAsync(string refreshToken, CancellationToken cancellationToken)
         {
             RefreshedRefreshToken = refreshToken;
-            return Task.FromResult(RefreshResult);
+            return Task.FromResult(RefreshResult is null
+                ? null
+                : new EmployeeRefreshResult(
+                    RefreshResult,
+                    new EmployeeIdentity(RefreshEmployeeId, "employee@maliev.com", "employee@maliev.com")));
         }
 
         public Task RevokeAsync(string refreshToken, CancellationToken cancellationToken)

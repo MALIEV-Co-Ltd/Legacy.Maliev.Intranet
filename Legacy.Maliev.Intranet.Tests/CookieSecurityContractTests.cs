@@ -20,6 +20,7 @@ public sealed class CookieSecurityContractTests
         using var factory = new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
         {
             builder.UseEnvironment(environment);
+            TestJwtConfiguration.Configure(builder);
             builder.UseSetting("ConnectionStrings:redis", "localhost:6379");
             builder.UseSetting("Services:Auth", "http://auth/");
             builder.UseSetting("Services:Catalog", "http://catalog/");

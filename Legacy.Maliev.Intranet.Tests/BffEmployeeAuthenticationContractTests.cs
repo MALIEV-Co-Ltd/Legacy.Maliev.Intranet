@@ -188,6 +188,28 @@ public sealed class BffEmployeeAuthenticationContractTests
     }
 
     [Fact]
+    public async Task Login_WhenAuthServiceRateLimits_PreservesBoundedRetryAfter()
+    {
+        var auth = new StubAuthClient { LoginException = new LegacyAuthRateLimitedException(75) };
+        await using var factory = new EmployeeBffFactory(auth);
+        using var client = CreateClient(factory);
+        var csrfToken = await GetCsrfTokenAsync(client);
+        using var request = CreateLoginRequest(
+            csrfToken,
+            "employee@maliev.com",
+            "correct-password",
+            "/Dashboard");
+
+        using var response = await client.SendAsync(request);
+        var body = await response.Content.ReadAsStringAsync();
+
+        Assert.Equal(HttpStatusCode.TooManyRequests, response.StatusCode);
+        Assert.Equal(TimeSpan.FromSeconds(75), response.Headers.RetryAfter?.Delta);
+        Assert.Contains("Too many sign-in attempts. Wait and try again.", body, StringComparison.Ordinal);
+        Assert.DoesNotContain("correct-password", body, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task Logout_ValidCsrf_RevokesRefreshFamilyAndAlwaysClearsSession()
     {
         var auth = new StubAuthClient();
@@ -240,6 +262,22 @@ public sealed class BffEmployeeAuthenticationContractTests
         Assert.False(session.RootElement.GetProperty("isAuthenticated").GetBoolean());
     }
 
+    [Fact]
+    public async Task Logout_AnonymousRequestWithValidCsrf_IsUnauthorizedWithoutCallingRevoke()
+    {
+        var auth = new StubAuthClient();
+        await using var factory = new EmployeeBffFactory(auth);
+        using var client = CreateClient(factory);
+        var csrfToken = await GetCsrfTokenAsync(client);
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/bff/logout");
+        request.Headers.Add("X-CSRF-TOKEN", csrfToken);
+
+        using var response = await client.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        Assert.Null(auth.RevokedRefreshToken);
+    }
+
     private static HttpClient CreateClient(WebApplicationFactory<BffProgram> factory) =>
         factory.CreateClient(new WebApplicationFactoryClientOptions
         {
@@ -276,6 +314,7 @@ public sealed class BffEmployeeAuthenticationContractTests
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
             builder.UseEnvironment("Testing");
+            TestJwtConfiguration.Configure(builder);
             builder.ConfigureServices(services =>
             {
                 services.RemoveAll<ILegacyAuthClient>();
@@ -326,8 +365,8 @@ public sealed class BffEmployeeAuthenticationContractTests
                 : new EmployeeLoginResult(false, null, null));
         }
 
-        public Task<AuthTokenResponse?> RefreshAsync(string refreshToken, CancellationToken cancellationToken) =>
-            Task.FromResult<AuthTokenResponse?>(null);
+        public Task<EmployeeRefreshResult?> RefreshAsync(string refreshToken, CancellationToken cancellationToken) =>
+            Task.FromResult<EmployeeRefreshResult?>(null);
 
         public Task RevokeAsync(string refreshToken, CancellationToken cancellationToken)
         {

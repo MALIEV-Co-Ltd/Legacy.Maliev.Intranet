@@ -27,6 +27,9 @@ else
 }
 builder.Services.AddProblemDetails();
 builder.Services.AddSingleton(TimeProvider.System);
+builder.Services.AddLegacyAccessTokenValidation(
+    builder.Configuration,
+    validateOnStart: !builder.Environment.IsEnvironment("Testing"));
 builder.Services.AddOptions<ServiceAuthenticationOptions>()
     .Bind(builder.Configuration.GetSection("ServiceAuthentication"));
 builder.Services.AddSingleton<IServiceAccessTokenProvider, ServiceAccessTokenProvider>();
