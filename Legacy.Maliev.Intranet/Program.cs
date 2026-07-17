@@ -17,14 +17,7 @@ builder.WebHost.ConfigureKestrel(options => options.Limits.MaxRequestBodySize = 
 
 builder.AddServiceDefaults();
 builder.AddStandardMiddleware(options => options.EnableRequestLogging = true);
-if (builder.Environment.IsEnvironment("Testing"))
-{
-    builder.Services.AddDistributedMemoryCache();
-}
-else
-{
-    builder.AddRedisDistributedCache("legacy-intranet:");
-}
+builder.AddLegacyIntranetDataProtection();
 builder.Services.AddProblemDetails();
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddLegacyAccessTokenValidation(
@@ -110,9 +103,7 @@ builder.Services
         options.Cookie.Name = "__Host-Legacy.Maliev.Intranet";
         options.Cookie.HttpOnly = true;
         options.Cookie.SameSite = SameSiteMode.Lax;
-        options.Cookie.SecurePolicy = builder.Environment.IsDevelopment() || builder.Environment.IsEnvironment("Testing")
-            ? CookieSecurePolicy.SameAsRequest
-            : CookieSecurePolicy.Always;
+        options.Cookie.SecurePolicy = LegacyCookieSecurity.ResolveSecurePolicy(builder.Environment.EnvironmentName);
         options.LoginPath = "/Login";
         options.AccessDeniedPath = "/AccessDenied";
         options.ExpireTimeSpan = TimeSpan.FromHours(8);

@@ -15,14 +15,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.WebHost.UseStaticWebAssets();
 builder.AddServiceDefaults();
 builder.AddStandardMiddleware(options => options.EnableRequestLogging = true);
-if (builder.Environment.IsEnvironment("Testing"))
-{
-    builder.Services.AddDistributedMemoryCache();
-}
-else
-{
-    builder.AddRedisDistributedCache("legacy-intranet:");
-}
+builder.AddLegacyIntranetDataProtection();
 builder.Services.AddProblemDetails();
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddLegacyAccessTokenValidation(

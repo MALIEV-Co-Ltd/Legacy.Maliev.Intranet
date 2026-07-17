@@ -1,3 +1,4 @@
+using Legacy.Maliev.Intranet.Auth;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
@@ -17,9 +18,15 @@ public sealed class CookieSecurityContractTests
         string environment,
         CookieSecurePolicy expected)
     {
+        Assert.Equal(expected, LegacyCookieSecurity.ResolveSecurePolicy(environment));
+    }
+
+    [Fact]
+    public void SessionCookie_UsesSecureDefaultsInTestingHost()
+    {
         using var factory = new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
         {
-            builder.UseEnvironment(environment);
+            builder.UseEnvironment("Testing");
             TestJwtConfiguration.Configure(builder);
             builder.UseSetting("ConnectionStrings:redis", "localhost:6379");
             builder.UseSetting("Services:Auth", "http://auth/");
@@ -37,7 +44,7 @@ public sealed class CookieSecurityContractTests
             .GetRequiredService<IOptionsMonitor<CookieAuthenticationOptions>>()
             .Get(CookieAuthenticationDefaults.AuthenticationScheme);
 
-        Assert.Equal(expected, options.Cookie.SecurePolicy);
+        Assert.Equal(CookieSecurePolicy.SameAsRequest, options.Cookie.SecurePolicy);
         Assert.True(options.Cookie.HttpOnly);
         Assert.Equal(SameSiteMode.Lax, options.Cookie.SameSite);
     }
