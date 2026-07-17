@@ -484,7 +484,9 @@ app.MapGet("/bff/purchase-orders", (
     PurchaseOrdersProxy purchaseOrders,
     CancellationToken cancellationToken) =>
 {
-    var normalizedSort = sort ?? PurchaseOrderListSort.PurchaseOrderId_Descending;
+    var normalizedSort = sort is { } requestedSort && Enum.IsDefined(requestedSort)
+        ? requestedSort
+        : PurchaseOrderListSort.PurchaseOrderId_Descending;
     var normalizedIndex = Math.Max(1, index ?? 1);
     var normalizedSize = Math.Clamp(size ?? 25, 1, 250);
     return PurchaseOrdersEndpointMapper.MapPageAsync(

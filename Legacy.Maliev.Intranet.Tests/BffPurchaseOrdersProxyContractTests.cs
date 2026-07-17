@@ -86,7 +86,7 @@ public sealed class BffPurchaseOrdersProxyContractTests
         using var client = CreateClient(factory);
         await SignInAsync(client);
 
-        using var response = await client.GetAsync("/bff/purchase-orders?index=-2&size=999");
+        using var response = await client.GetAsync("/bff/purchase-orders?sort=999&index=-2&size=999");
         var json = await response.Content.ReadAsStringAsync();
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
