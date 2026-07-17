@@ -276,5 +276,6 @@ public sealed class OrderCreationWorkflow(
 
     private static bool IsCancellationOrTimeout(Exception exception) =>
         exception is OperationCanceledException ||
+        exception is HttpRequestException { StatusCode: not null } request && (int)request.StatusCode.Value >= 500 ||
         string.Equals(exception.GetType().FullName, "Polly.Timeout.TimeoutRejectedException", StringComparison.Ordinal);
 }

@@ -156,6 +156,26 @@ public sealed class BffOrderCreateContractTests
         Assert.Equal(creates[0].IdempotencyKey, creates[1].IdempotencyKey);
     }
 
+    [Fact]
+    public async Task ServerErrorAfterOrderCommit_RetriesSameDownstreamAttemptWithoutCompensation()
+    {
+        var downstream = new OrderCreateHandler(firstCreateStatus: HttpStatusCode.ServiceUnavailable);
+        await using var factory = new OrderCreateBffFactory(downstream, [LegacyEmployeePermissions.OrdersCreate]);
+        using var client = CreateClient(factory);
+        var csrf = await SignInAsync(client);
+        var browserWorkflow = Guid.NewGuid().ToString("D");
+
+        using var uncertain = await SendCreateAsync(client, csrf, browserWorkflow);
+        using var replay = await SendCreateAsync(client, csrf, browserWorkflow);
+
+        Assert.Equal(HttpStatusCode.ServiceUnavailable, uncertain.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, replay.StatusCode);
+        var creates = downstream.Requests.Where(item => item.Method == "POST" && item.Path == "/Orders").ToArray();
+        Assert.Equal(2, creates.Length);
+        Assert.Equal(creates[0].IdempotencyKey, creates[1].IdempotencyKey);
+        Assert.DoesNotContain(downstream.Requests, item => item.Method == "DELETE");
+    }
+
     private static HttpClient CreateClient(WebApplicationFactory<BffProgram> factory) => factory.CreateClient(new()
     {
         AllowAutoRedirect = false,
@@ -256,7 +276,8 @@ public sealed class BffOrderCreateContractTests
     private sealed class OrderCreateHandler(
         bool customerExists = true,
         string customerEmail = "customer@example.com",
-        bool loseFirstCreateResponse = false) : HttpMessageHandler
+        bool loseFirstCreateResponse = false,
+        HttpStatusCode? firstCreateStatus = null) : HttpMessageHandler
     {
         private int createCalls;
         public ConcurrentBag<RecordedRequest> Requests { get; } = [];
@@ -284,10 +305,12 @@ public sealed class BffOrderCreateContractTests
             if (request.Method == HttpMethod.Get && path == "/materials/5/surfacefinishes") return Json("[{\"Id\":6,\"Name\":\"As printed\"}]");
             if (request.Method == HttpMethod.Post && path == "/Orders")
             {
-                if (loseFirstCreateResponse && Interlocked.Increment(ref createCalls) == 1)
+                var call = Interlocked.Increment(ref createCalls);
+                if (loseFirstCreateResponse && call == 1)
                 {
                     throw new HttpRequestException("response lost after commit");
                 }
+                if (firstCreateStatus is not null && call == 1) return new(firstCreateStatus.Value);
                 return Json("{\"Id\":84}", HttpStatusCode.Created);
             }
             if (request.Method == HttpMethod.Get && path == "/OrderStatuses/New") return Json("{\"Id\":1,\"Name\":\"New\"}");

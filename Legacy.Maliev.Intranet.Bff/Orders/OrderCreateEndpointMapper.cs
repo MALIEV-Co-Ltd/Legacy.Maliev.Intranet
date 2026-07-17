@@ -136,7 +136,7 @@ internal static class OrderCreateEndpointMapper
                         return (await response.Content.ReadFromJsonAsync<CreatedOrder>(token)
                             ?? throw new InvalidDataException("OrderService returned an empty order.")).Id;
                     }
-                    catch (HttpRequestException exception) when (exception.StatusCode is null)
+                    catch (HttpRequestException exception) when (IsAmbiguousServerFailure(exception))
                     {
                         throw new OrderCreationOutcomeUnknownException(
                             "The OrderService create outcome will be replayed with the same downstream attempt key.",
@@ -159,7 +159,7 @@ internal static class OrderCreateEndpointMapper
                             ?? throw new InvalidDataException("FileService returned an empty upload result.");
                         return uploaded.Object.Select(item => new StoredOrderFile(0, 0, item.Bucket, item.ObjectName, item.Uri)).ToArray();
                     }
-                    catch (HttpRequestException exception) when (exception.StatusCode is null)
+                    catch (HttpRequestException exception) when (IsAmbiguousServerFailure(exception))
                     {
                         throw new OrderCreationOutcomeUnknownException(
                             "The FileService upload outcome cannot be safely replayed.",
@@ -320,6 +320,9 @@ internal static class OrderCreateEndpointMapper
 
     private static bool IsCancellationOrTimeout(Exception exception) =>
         exception is OperationCanceledException or Polly.Timeout.TimeoutRejectedException;
+
+    private static bool IsAmbiguousServerFailure(HttpRequestException exception) =>
+        exception.StatusCode is null || (int)exception.StatusCode.Value >= StatusCodes.Status500InternalServerError;
 
     private static IResult Unavailable() => Results.Problem(
         statusCode: StatusCodes.Status503ServiceUnavailable,
