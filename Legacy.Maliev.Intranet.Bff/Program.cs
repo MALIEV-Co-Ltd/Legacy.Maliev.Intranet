@@ -310,6 +310,61 @@ app.MapGet("/bff/catalog/materials", async (
     }
 }).RequireAuthorization("legacy-catalog.materials.read");
 
+app.MapGet("/bff/catalog/material-groups", (
+    HttpContext context,
+    CatalogMaterialsProxy catalog,
+    CancellationToken cancellationToken) =>
+    ProxyCatalogJsonAsync<IReadOnlyList<CatalogMaterialGroup>>(
+        catalog.GetMaterialGroupsAsync,
+        context,
+        cancellationToken))
+    .RequireAuthorization("legacy-catalog.materials.read");
+
+app.MapGet("/bff/catalog/currencies", (
+    HttpContext context,
+    CatalogMaterialsProxy catalog,
+    CancellationToken cancellationToken) =>
+    ProxyCatalogJsonAsync<IReadOnlyList<CatalogCurrency>>(
+        catalog.GetCurrenciesAsync,
+        context,
+        cancellationToken))
+    .RequireAuthorization("legacy-catalog.materials.read");
+
+app.MapPost("/bff/catalog/materials", async (
+    CatalogMaterialUpsertRequest request,
+    HttpContext context,
+    CatalogMaterialsProxy catalog,
+    CancellationToken cancellationToken) =>
+{
+    var validationResults = new List<ValidationResult>();
+    if (!Validator.TryValidateObject(request, new ValidationContext(request), validationResults, true))
+    {
+        var errors = validationResults
+            .SelectMany(result => result.MemberNames.DefaultIfEmpty(string.Empty)
+                .Select(member => new
+                {
+                    member = string.IsNullOrEmpty(member)
+                        ? member
+                        : System.Text.Json.JsonNamingPolicy.CamelCase.ConvertName(member),
+                    message = result.ErrorMessage ?? "The value is invalid.",
+                }))
+            .GroupBy(error => error.member, StringComparer.Ordinal)
+            .ToDictionary(
+                group => group.Key,
+                group => group.Select(error => error.message).Distinct(StringComparer.Ordinal).ToArray(),
+                StringComparer.Ordinal);
+        return Results.ValidationProblem(errors);
+    }
+
+    return await ProxyCatalogJsonAsync<CatalogCreatedMaterial>(
+        token => catalog.CreateAsync(request, token),
+        context,
+        cancellationToken,
+        preserveBadRequest: true);
+})
+    .AddEndpointFilter<AntiforgeryValidationFilter>()
+    .RequireAuthorization("legacy-catalog.materials.read");
+
 app.MapGet("/bff/catalog/materials/{id:int}", async (
     int id,
     HttpContext context,
@@ -385,6 +440,73 @@ app.MapGet("/bff/catalog/materials/{id:int}", async (
 app.MapFallbackToFile("index.html").AllowAnonymous();
 
 await app.RunAsync();
+
+static async Task<IResult> ProxyCatalogJsonAsync<T>(
+    Func<CancellationToken, Task<HttpResponseMessage>> send,
+    HttpContext context,
+    CancellationToken cancellationToken,
+    bool preserveBadRequest = false)
+{
+    HttpResponseMessage response;
+    try
+    {
+        response = await send(cancellationToken);
+    }
+    catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+    {
+        return Results.Problem(statusCode: StatusCodes.Status503ServiceUnavailable, title: "Catalog unavailable");
+    }
+    catch (HttpRequestException)
+    {
+        return Results.Problem(statusCode: StatusCodes.Status503ServiceUnavailable, title: "Catalog unavailable");
+    }
+
+    using (response)
+    {
+        if (response.StatusCode == System.Net.HttpStatusCode.RequestTimeout)
+        {
+            return Results.Problem(statusCode: StatusCodes.Status503ServiceUnavailable, title: "Catalog unavailable");
+        }
+
+        if (response.StatusCode == System.Net.HttpStatusCode.TooManyRequests)
+        {
+            var retryAfter = response.Headers.RetryAfter?.Delta;
+            if (retryAfter.HasValue && retryAfter.Value > TimeSpan.Zero && retryAfter.Value <= TimeSpan.FromHours(1))
+            {
+                context.Response.Headers.RetryAfter = ((int)Math.Ceiling(retryAfter.Value.TotalSeconds))
+                    .ToString(CultureInfo.InvariantCulture);
+            }
+
+            return Results.StatusCode(StatusCodes.Status429TooManyRequests);
+        }
+
+        if (response.StatusCode is System.Net.HttpStatusCode.Unauthorized or
+            System.Net.HttpStatusCode.Forbidden or
+            System.Net.HttpStatusCode.NotFound or
+            System.Net.HttpStatusCode.Conflict ||
+            (preserveBadRequest && response.StatusCode == System.Net.HttpStatusCode.BadRequest))
+        {
+            return Results.StatusCode((int)response.StatusCode);
+        }
+
+        if (!response.IsSuccessStatusCode)
+        {
+            return Results.Problem(statusCode: StatusCodes.Status503ServiceUnavailable, title: "Catalog unavailable");
+        }
+
+        try
+        {
+            var value = await response.Content.ReadFromJsonAsync<T>(cancellationToken);
+            return value is null
+                ? Results.Problem(statusCode: StatusCodes.Status502BadGateway, title: "Invalid Catalog response")
+                : Results.Ok(value);
+        }
+        catch (System.Text.Json.JsonException)
+        {
+            return Results.Problem(statusCode: StatusCodes.Status502BadGateway, title: "Invalid Catalog response");
+        }
+    }
+}
 
 /// <summary>Same-origin security and proxy boundary for the legacy Intranet WASM client.</summary>
 public partial class Program;
