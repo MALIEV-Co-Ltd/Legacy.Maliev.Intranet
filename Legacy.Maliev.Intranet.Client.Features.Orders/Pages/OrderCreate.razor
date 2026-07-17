@@ -1,0 +1,229 @@
+@page "/Orders/Create"
+@attribute [Authorize]
+@inject HttpClient Http
+@inject NavigationManager Navigation
+@inject IStringLocalizer<OrderCreate> Text
+
+<PageTitle>@Text["PageTitle"]</PageTitle>
+
+@if (loading)
+{
+    <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+    <MudText Class="mt-2">@Text["Loading"]</MudText>
+}
+else
+{
+    <div class="d-flex flex-wrap align-center justify-space-between gap-3 mb-4">
+        <MudText Typo="Typo.h4" HtmlTag="h1">@Text["Heading"]</MudText>
+        <MudButton Href="/Orders/Index" Variant="Variant.Outlined">@Text["BackToOrders"]</MudButton>
+    </div>
+
+    @if (!string.IsNullOrWhiteSpace(error))
+    {
+        <MudAlert Severity="Severity.Error" Class="mb-4">@error</MudAlert>
+    }
+    @if (!string.IsNullOrWhiteSpace(notice))
+    {
+        <MudAlert Severity="Severity.Warning" Class="mb-4">
+            @notice
+            @if (createdOrderId is int orderId)
+            {
+                <MudLink Href="@($"/Orders/View?id={orderId}")" Class="ms-2">@Text["ViewOrder"]</MudLink>
+            }
+        </MudAlert>
+    }
+
+    <MudForm @ref="form" Model="model">
+        <MudGrid>
+            <MudItem xs="12" md="4">
+                <MudNumericField T="int" Label="@Text["CustomerId"]" @bind-Value="model.CustomerId" Min="1" Required="true" />
+            </MudItem>
+            <MudItem xs="12" md="8" Class="d-flex align-end gap-2">
+                <MudButton OnClick="LookupCustomerAsync" Disabled="@submitting" Variant="Variant.Outlined">@Text["FindCustomer"]</MudButton>
+                @if (createPage?.Customer is not null)
+                {
+                    <MudText>@createPage.Customer.FullName · @createPage.Customer.Email</MudText>
+                }
+                else if (customerLookupAttempted)
+                {
+                    <MudText Color="Color.Error">@Text["CustomerNotFound"]</MudText>
+                }
+            </MudItem>
+            <MudItem xs="12"><MudTextField Label="@Text["Name"]" @bind-Value="model.Name" Required="true" MaxLength="256" /></MudItem>
+            <MudItem xs="12" md="6">
+                <MudSelect T="int" Label="@Text["Process"]" @bind-Value="model.ProcessId" Required="true">
+                    @foreach (var item in createPage?.Processes ?? []) { <MudSelectItem T="int" Value="@item.Id">@item.Name</MudSelectItem> }
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12" md="6">
+                <MudSelect T="int?" Label="@Text["Material"]" @bind-Value="model.MaterialId" @bind-Value:after="LoadMaterialOptionsAsync" Clearable="true">
+                    @foreach (var item in createPage?.Materials ?? []) { <MudSelectItem T="int?" Value="@((int?)item.Id)">@item.Name</MudSelectItem> }
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12" md="6">
+                <MudSelect T="int?" Label="@Text["Color"]" @bind-Value="model.ColorId" Clearable="true" Disabled="@(model.MaterialId is null)">
+                    @foreach (var item in materialOptions.Colors) { <MudSelectItem T="int?" Value="@((int?)item.Id)">@item.Name</MudSelectItem> }
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12" md="6">
+                <MudSelect T="int?" Label="@Text["SurfaceFinish"]" @bind-Value="model.SurfaceFinishId" Clearable="true" Disabled="@(model.MaterialId is null)">
+                    @foreach (var item in materialOptions.SurfaceFinishes) { <MudSelectItem T="int?" Value="@((int?)item.Id)">@item.Name</MudSelectItem> }
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12" md="4"><MudNumericField T="int" Label="@Text["Quantity"]" @bind-Value="model.Quantity" Min="1" Required="true" /></MudItem>
+            <MudItem xs="12"><MudTextField Label="@Text["Requirements"]" @bind-Value="model.Description" Lines="5" MaxLength="500" /></MudItem>
+            <MudItem xs="12" md="6"><MudCheckBox T="bool" Label="@Text["SendConfirmationEmail"]" @bind-Value="model.SendConfirmationEmail" /></MudItem>
+            <MudItem xs="12" md="6"><MudCheckBox T="bool" Label="@Text["AllowSocialMedia"]" @bind-Value="model.AllowSocialMedia" /></MudItem>
+            <MudItem xs="12">
+                <MudText Typo="Typo.h6">@Text["Files"]</MudText>
+                <InputFile OnChange="SelectFiles" multiple />
+                @if (uploads.Count > 0) { <MudText Typo="Typo.caption">@Text["SelectedFiles", uploads.Count]</MudText> }
+            </MudItem>
+            <MudItem xs="12">
+                <MudButton OnClick="CreateAsync" Disabled="@submitting" Variant="Variant.Filled" Color="Color.Primary">
+                    @(submitting ? Text["Creating"] : Text["Create"])
+                </MudButton>
+            </MudItem>
+        </MudGrid>
+    </MudForm>
+}
+
+@code {
+    [SupplyParameterFromQuery(Name = "customerId")] public int? CustomerId { get; set; }
+
+    private const long MaxUploadBytes = 200L * 1024 * 1024;
+    private readonly Guid createAttemptId = Guid.NewGuid();
+    private readonly List<IBrowserFile> uploads = [];
+    private MudForm? form;
+    private OrderCreatePage? createPage;
+    private OrderMaterialOptions materialOptions = new([], []);
+    private EmployeeSessionSummary? session;
+    private CreateModel model = new();
+    private bool loading = true;
+    private bool submitting;
+    private bool customerLookupAttempted;
+    private int? createdOrderId;
+    private string? error;
+    private string? notice;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (CustomerId is > 0) model.CustomerId = CustomerId.Value;
+        await LoadAsync(CustomerId);
+    }
+
+    private async Task LoadAsync(int? customerId)
+    {
+        loading = true;
+        error = null;
+        try
+        {
+            session = await Http.GetFromJsonAsync<EmployeeSessionSummary>("/bff/session");
+            var path = customerId is > 0 ? $"/bff/orders/create?customerId={customerId.Value}" : "/bff/orders/create";
+            using var response = await Http.GetAsync(path);
+            if (response.StatusCode == HttpStatusCode.Unauthorized)
+            {
+                Navigation.NavigateTo($"/Login?returnUrl={Uri.EscapeDataString(Navigation.ToBaseRelativePath(Navigation.Uri))}");
+                return;
+            }
+            if (!response.IsSuccessStatusCode) { error = ErrorFor(response.StatusCode); return; }
+            createPage = await response.Content.ReadFromJsonAsync<OrderCreatePage>();
+            if (createPage is null) { error = Text["InvalidResponse"]; return; }
+            customerLookupAttempted = customerId is > 0;
+            if (createPage.Customer is not null) model.CustomerId = createPage.Customer.Id;
+            if (model.ProcessId == 0 && createPage.Processes.Count > 0) model.ProcessId = createPage.Processes[0].Id;
+        }
+        catch (HttpRequestException) { error = Text["Unavailable"]; }
+        finally { loading = false; }
+    }
+
+    private Task LookupCustomerAsync() => LoadAsync(model.CustomerId > 0 ? model.CustomerId : null);
+
+    private async Task LoadMaterialOptionsAsync()
+    {
+        model.ColorId = null;
+        model.SurfaceFinishId = null;
+        materialOptions = new([], []);
+        if (model.MaterialId is not int materialId) return;
+        try
+        {
+            using var response = await Http.GetAsync($"/bff/orders/create/materials/{materialId}");
+            if (!response.IsSuccessStatusCode) { error = ErrorFor(response.StatusCode); return; }
+            materialOptions = await response.Content.ReadFromJsonAsync<OrderMaterialOptions>() ?? new([], []);
+        }
+        catch (HttpRequestException) { error = Text["Unavailable"]; }
+    }
+
+    private void SelectFiles(InputFileChangeEventArgs args)
+    {
+        uploads.Clear();
+        uploads.AddRange(args.GetMultipleFiles());
+    }
+
+    private async Task CreateAsync()
+    {
+        if (form is null || session?.CsrfToken is null) return;
+        await form.ValidateAsync();
+        if (!form.IsValid) return;
+        if (createPage?.Customer?.Id != model.CustomerId) { error = Text["ValidateCustomer"]; return; }
+        if (uploads.Sum(file => file.Size) > MaxUploadBytes) { error = Text["FilesTooLarge"]; return; }
+
+        submitting = true;
+        error = null;
+        notice = null;
+        try
+        {
+            using var content = new MultipartFormDataContent("----maliev-order-create");
+            content.Add(JsonContent.Create(model.ToRequest()), "request");
+            foreach (var upload in uploads)
+            {
+                var file = new StreamContent(upload.OpenReadStream(MaxUploadBytes));
+                file.Headers.ContentType = new(upload.ContentType);
+                content.Add(file, "files", upload.Name);
+            }
+            using var request = new HttpRequestMessage(HttpMethod.Post, "/bff/orders") { Content = content };
+            request.Headers.Add("X-CSRF-TOKEN", session.CsrfToken);
+            request.Headers.Add("Idempotency-Key", createAttemptId.ToString("D"));
+            using var response = await Http.SendAsync(request);
+            if (!response.IsSuccessStatusCode) { error = ErrorFor(response.StatusCode); return; }
+            var result = await response.Content.ReadFromJsonAsync<OrderCreatedResult>();
+            if (result is null) { error = Text["InvalidResponse"]; return; }
+            if (string.IsNullOrWhiteSpace(result.Warning))
+            {
+                Navigation.NavigateTo($"/Orders/View?id={result.Id}");
+                return;
+            }
+            createdOrderId = result.Id;
+            notice = Text["NotificationWarning"];
+        }
+        catch (HttpRequestException) { error = Text["Unavailable"]; }
+        finally { submitting = false; }
+    }
+
+    private string ErrorFor(HttpStatusCode status) => status switch
+    {
+        HttpStatusCode.BadRequest => Text["InvalidRequest"],
+        HttpStatusCode.Forbidden => Text["Forbidden"],
+        HttpStatusCode.NotFound => Text["CustomerNotFound"],
+        HttpStatusCode.TooManyRequests => Text["RateLimited"],
+        _ => Text["Unavailable"],
+    };
+
+    private sealed class CreateModel
+    {
+        public int CustomerId { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public string? Description { get; set; }
+        public int ProcessId { get; set; }
+        public int? MaterialId { get; set; }
+        public int? SurfaceFinishId { get; set; }
+        public int? ColorId { get; set; }
+        public int Quantity { get; set; } = 1;
+        public bool SendConfirmationEmail { get; set; } = true;
+        public bool AllowSocialMedia { get; set; }
+
+        public OrderCreateRequest ToRequest() => new(
+            CustomerId, Name, Description, ProcessId, MaterialId, SurfaceFinishId, ColorId,
+            Quantity, SendConfirmationEmail, AllowSocialMedia);
+    }
+}

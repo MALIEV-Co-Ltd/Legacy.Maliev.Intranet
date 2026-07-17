@@ -11,6 +11,28 @@ public sealed class OrderFileProxy(HttpClient httpClient)
         int customerId,
         IReadOnlyList<IFormFile> uploads,
         CancellationToken cancellationToken)
+        => await UploadAsync(customerId, uploads, null, cancellationToken);
+
+    /// <summary>Uploads files with a durable workflow identity for replay-safe FileService implementations.</summary>
+    public async Task<HttpResponseMessage> UploadAsync(
+        int customerId,
+        IReadOnlyList<IFormFile> uploads,
+        string? idempotencyKey,
+        CancellationToken cancellationToken)
+        => await UploadAsync(
+            customerId,
+            uploads,
+            $"uploads/{customerId}/{DateTime.UtcNow:yyyy-MM-dd}",
+            idempotencyKey,
+            cancellationToken);
+
+    /// <summary>Uploads files with the exact path and workflow identity persisted by a durable saga.</summary>
+    public async Task<HttpResponseMessage> UploadAsync(
+        int customerId,
+        IReadOnlyList<IFormFile> uploads,
+        string uploadPath,
+        string? idempotencyKey,
+        CancellationToken cancellationToken)
     {
         using var content = new MultipartFormDataContent();
         foreach (var upload in uploads.Where(file => file.Length > 0))
@@ -22,13 +44,13 @@ public sealed class OrderFileProxy(HttpClient httpClient)
             content.Add(stream, "files", Path.GetFileName(upload.FileName));
         }
 
-        var path = $"uploads/{customerId}/{DateTime.UtcNow:yyyy-MM-dd}";
         using var request = new HttpRequestMessage(
             HttpMethod.Post,
-            $"/Uploads?bucket=maliev.com&path={Uri.EscapeDataString(path)}")
+            $"/Uploads?bucket=maliev.com&path={Uri.EscapeDataString(uploadPath)}")
         {
             Content = content,
         };
+        if (!string.IsNullOrWhiteSpace(idempotencyKey)) request.Headers.Add("Idempotency-Key", idempotencyKey);
         return await httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
     }
 
