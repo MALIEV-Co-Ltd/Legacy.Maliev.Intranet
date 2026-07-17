@@ -25,6 +25,24 @@ public static class LegacyEmployeePermissions
     public const string OrdersRead = "legacy.orders.read";
     /// <summary>Allows an authenticated employee to read legacy order catalog labels.</summary>
     public const string OrderCatalogRead = "legacy.order-catalog.read";
+    /// <summary>Allows an authenticated employee to update legacy orders.</summary>
+    public const string OrdersUpdate = "legacy.orders.update";
+    /// <summary>Allows an authenticated employee to read order-file metadata and clean-object links.</summary>
+    public const string OrderFilesRead = "legacy.order-files.read";
+    /// <summary>Allows an authenticated employee to link scanned files to an order.</summary>
+    public const string OrderFilesWrite = "legacy.order-files.write";
+    /// <summary>Allows an authenticated employee to remove an order-owned file.</summary>
+    public const string OrderFilesDelete = "legacy.order-files.delete";
+    /// <summary>Allows an authenticated employee to read order status and transition options.</summary>
+    public const string OrderStatusRead = "legacy.order-status.read";
+    /// <summary>Allows an authenticated employee to transition an order status.</summary>
+    public const string OrderStatusWrite = "legacy.order-status.write";
+    /// <summary>Allows an authenticated employee to upload a scanned legacy order file.</summary>
+    public const string FileUploadsCreate = "legacy-file.uploads.create";
+    /// <summary>Allows an authenticated employee to resolve a clean legacy order file.</summary>
+    public const string FileUploadsRead = "legacy-file.uploads.read";
+    /// <summary>Allows an authenticated employee to delete a legacy order file from storage.</summary>
+    public const string FileUploadsDelete = "legacy-file.uploads.delete";
 }
 
 /// <summary>Explicit removable grants that preserve employee-wide authorization during legacy rollout.</summary>
