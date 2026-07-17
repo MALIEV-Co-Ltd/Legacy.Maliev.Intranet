@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Options;
 using System.Net.Http.Json;
+using Microsoft.Extensions.Logging;
 using System.Text.Json.Serialization;
 
 namespace Legacy.Maliev.Intranet.Auth;
