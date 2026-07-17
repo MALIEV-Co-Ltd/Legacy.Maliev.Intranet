@@ -65,16 +65,19 @@ public sealed class OrderCreateProxy(HttpClient httpClient)
             response.Dispose();
             return new HttpResponseMessage(System.Net.HttpStatusCode.NoContent);
         }
-        catch (Exception exception) when (exception is HttpRequestException or Polly.Timeout.TimeoutRejectedException)
+        catch (Exception exception) when (
+            exception is HttpRequestException or OperationCanceledException or Polly.Timeout.TimeoutRejectedException)
         {
+            using var reconciliationToken = new CancellationTokenSource(TimeSpan.FromSeconds(10));
             try
             {
-                if (await HasStatusAsync(id, status.Id, cancellationToken))
+                if (await HasStatusAsync(id, status.Id, reconciliationToken.Token))
                 {
                     return new HttpResponseMessage(System.Net.HttpStatusCode.NoContent);
                 }
             }
-            catch (Exception reconciliation) when (reconciliation is HttpRequestException or Polly.Timeout.TimeoutRejectedException)
+            catch (Exception reconciliation) when (
+                reconciliation is HttpRequestException or OperationCanceledException or Polly.Timeout.TimeoutRejectedException)
             {
                 throw new Legacy.Maliev.Intranet.Server.Orders.OrderCreationOutcomeUnknownException(
                     "The initial order-status outcome could not be reconciled.",

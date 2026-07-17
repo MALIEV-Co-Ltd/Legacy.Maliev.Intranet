@@ -142,18 +142,30 @@ internal static class OrderCreateEndpointMapper
                             "The OrderService create outcome will be replayed with the same downstream attempt key.",
                             exception);
                     }
+                    catch (Exception exception) when (IsCancellationOrTimeout(exception))
+                    {
+                        throw new OrderCreationOutcomeUnknownException(
+                            "The OrderService create outcome will be replayed with the same downstream attempt key.",
+                            exception);
+                    }
                 },
-                async (customerId, selectedFiles, token) =>
+                async (customerId, selectedFiles, idempotencyKey, token) =>
                 {
                     try
                     {
-                        using var response = await files.UploadAsync(customerId, selectedFiles, token);
+                        using var response = await files.UploadAsync(customerId, selectedFiles, idempotencyKey, token);
                         response.EnsureSuccessStatusCode();
                         var uploaded = await response.Content.ReadFromJsonAsync<OrderUploadResult>(token)
                             ?? throw new InvalidDataException("FileService returned an empty upload result.");
                         return uploaded.Object.Select(item => new StoredOrderFile(0, 0, item.Bucket, item.ObjectName, item.Uri)).ToArray();
                     }
                     catch (HttpRequestException exception) when (exception.StatusCode is null)
+                    {
+                        throw new OrderCreationOutcomeUnknownException(
+                            "The FileService upload outcome cannot be safely replayed.",
+                            exception);
+                    }
+                    catch (Exception exception) when (IsCancellationOrTimeout(exception))
                     {
                         throw new OrderCreationOutcomeUnknownException(
                             "The FileService upload outcome cannot be safely replayed.",
@@ -264,16 +276,19 @@ internal static class OrderCreateEndpointMapper
             return (await response.Content.ReadFromJsonAsync<StoredOrderFile>(cancellationToken)
                 ?? throw new InvalidDataException("OrderService returned an empty file record.")).Id;
         }
-        catch (Exception exception) when (exception is HttpRequestException or Polly.Timeout.TimeoutRejectedException)
+        catch (Exception exception) when (
+            exception is HttpRequestException or OperationCanceledException or Polly.Timeout.TimeoutRejectedException)
         {
+            using var reconciliation = new CancellationTokenSource(TimeSpan.FromSeconds(10));
             try
             {
-                existing = await FindOrderFileAsync(orderId, stored, orders, cancellationToken);
+                existing = await FindOrderFileAsync(orderId, stored, orders, reconciliation.Token);
                 if (existing is not null) return existing.Id;
             }
-            catch (Exception reconciliation) when (reconciliation is HttpRequestException or Polly.Timeout.TimeoutRejectedException)
+            catch (Exception reconciliationFailure) when (
+                reconciliationFailure is HttpRequestException or OperationCanceledException or Polly.Timeout.TimeoutRejectedException)
             {
-                throw new OrderCreationOutcomeUnknownException("The order-file link outcome could not be reconciled.", reconciliation);
+                throw new OrderCreationOutcomeUnknownException("The order-file link outcome could not be reconciled.", reconciliationFailure);
             }
             throw new OrderCreationOutcomeUnknownException("The order-file link outcome is not yet visible.", exception);
         }
@@ -302,6 +317,9 @@ internal static class OrderCreateEndpointMapper
     private static bool IsBoundedFailure(Exception exception, CancellationToken cancellationToken) =>
         exception is HttpRequestException or InvalidDataException or JsonException or Polly.Timeout.TimeoutRejectedException or StackExchange.Redis.RedisException ||
         exception is OperationCanceledException && !cancellationToken.IsCancellationRequested;
+
+    private static bool IsCancellationOrTimeout(Exception exception) =>
+        exception is OperationCanceledException or Polly.Timeout.TimeoutRejectedException;
 
     private static IResult Unavailable() => Results.Problem(
         statusCode: StatusCodes.Status503ServiceUnavailable,

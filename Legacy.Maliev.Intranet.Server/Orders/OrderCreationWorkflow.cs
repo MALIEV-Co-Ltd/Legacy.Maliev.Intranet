@@ -45,7 +45,7 @@ public sealed class OrderCreationWorkflow(
         string? customerEmail,
         IReadOnlyList<IFormFile> files,
         Func<OrderCreateRequest, string, CancellationToken, Task<int>> CreateOrder,
-        Func<int, IReadOnlyList<IFormFile>, CancellationToken, Task<IReadOnlyList<StoredOrderFile>>> UploadFiles,
+        Func<int, IReadOnlyList<IFormFile>, string, CancellationToken, Task<IReadOnlyList<StoredOrderFile>>> UploadFiles,
         Func<int, StoredOrderFile, CancellationToken, Task<int>> CreateOrderFile,
         Func<int, string, CancellationToken, Task> CreateInitialStatus,
         Func<string, int, CancellationToken, Task> SendNotification,
@@ -79,7 +79,7 @@ public sealed class OrderCreationWorkflow(
         string? customerEmail,
         IReadOnlyList<IFormFile> files,
         Func<OrderCreateRequest, string, CancellationToken, Task<int>> createOrder,
-        Func<int, IReadOnlyList<IFormFile>, CancellationToken, Task<IReadOnlyList<StoredOrderFile>>> uploadFiles,
+        Func<int, IReadOnlyList<IFormFile>, string, CancellationToken, Task<IReadOnlyList<StoredOrderFile>>> uploadFiles,
         Func<int, StoredOrderFile, CancellationToken, Task<int>> createOrderFile,
         Func<int, string, CancellationToken, Task> createInitialStatus,
         Func<string, int, CancellationToken, Task> sendNotification,
@@ -142,7 +142,7 @@ public sealed class OrderCreationWorkflow(
             {
                 state = state with { Phase = OrderCreationPhase.Uploading };
                 await stateStore.SetAsync(workflowKey, state, cancellationToken);
-                var stored = await uploadFiles(input.CustomerId, files, cancellationToken);
+                var stored = await uploadFiles(input.CustomerId, files, state.DownstreamAttemptId, cancellationToken);
                 state = state with { Phase = OrderCreationPhase.Active, StoredFiles = stored };
                 await stateStore.SetAsync(workflowKey, state, cancellationToken);
             }
@@ -179,6 +179,12 @@ public sealed class OrderCreationWorkflow(
         catch (OrderCreationOutcomeUnknownException)
         {
             throw;
+        }
+        catch (Exception exception) when (IsCancellationOrTimeout(exception))
+        {
+            throw new OrderCreationOutcomeUnknownException(
+                "The request ended after the durable workflow started; its checkpoint was retained for same-key reconciliation.",
+                exception);
         }
         catch
         {
@@ -267,4 +273,8 @@ public sealed class OrderCreationWorkflow(
 
     private static bool IsNonfatal(Exception exception) =>
         exception is not OutOfMemoryException and not StackOverflowException and not AccessViolationException;
+
+    private static bool IsCancellationOrTimeout(Exception exception) =>
+        exception is OperationCanceledException ||
+        string.Equals(exception.GetType().FullName, "Polly.Timeout.TimeoutRejectedException", StringComparison.Ordinal);
 }
