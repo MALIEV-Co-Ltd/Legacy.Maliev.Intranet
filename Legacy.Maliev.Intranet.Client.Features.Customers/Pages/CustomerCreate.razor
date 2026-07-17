@@ -1,0 +1,139 @@
+@page "/Customers/Create"
+@attribute [Authorize]
+@inject HttpClient Http
+@inject NavigationManager Navigation
+@inject IStringLocalizer<CustomerCreate> Text
+
+<PageTitle>@Text["PageTitle"]</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Medium">
+    <MudText Typo="Typo.overline">@Text["ProfileAndAccount"]</MudText>
+    <MudText Typo="Typo.h4" HtmlTag="h1" Class="mb-4">@Text["CreateCustomer"]</MudText>
+    @if (!string.IsNullOrWhiteSpace(error))
+    {
+        <MudAlert Severity="Severity.Error" Class="mb-4" aria-live="assertive">@error</MudAlert>
+    }
+    <MudForm @ref="form" Model="@model" @bind-IsValid="formValid">
+        <MudTextField @bind-Value="model.FirstName" For="@(() => model.FirstName)" Label="@Text["FirstName"]" Required="true" />
+        <MudTextField @bind-Value="model.LastName" For="@(() => model.LastName)" Label="@Text["LastName"]" Required="true" />
+        <MudTextField @bind-Value="model.Email" For="@(() => model.Email)" Label="@Text["Email"]" InputType="InputType.Email" Required="true" />
+        <MudTextField @bind-Value="model.Password" For="@(() => model.Password)" Label="@Text["Password"]" InputType="InputType.Password" Required="true" />
+        <MudTextField @bind-Value="model.ConfirmPassword" For="@(() => model.ConfirmPassword)" Label="@Text["ConfirmPassword"]" InputType="InputType.Password" Required="true" />
+        <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mb-2">@Text["PasswordPrivacy"]</MudText>
+        <MudTextField @bind-Value="model.Telephone" For="@(() => model.Telephone)" Label="@Text["Telephone"]" InputType="InputType.Telephone" />
+        <MudTextField @bind-Value="model.Mobile" For="@(() => model.Mobile)" Label="@Text["Mobile"]" InputType="InputType.Telephone" />
+        <MudTextField @bind-Value="model.Fax" For="@(() => model.Fax)" Label="@Text["Fax"]" />
+        <MudDatePicker @bind-Date="model.DateOfBirth" For="@(() => model.DateOfBirth)" Label="@Text["DateOfBirth"]" />
+        <MudStack Row="true" Spacing="2" Class="mt-4">
+            <MudButton ButtonType="ButtonType.Button" Variant="Variant.Filled" Color="Color.Primary" Disabled="@submitting" OnClick="SubmitAsync">
+                @(submitting ? Text["Submitting"] : Text["CreateCustomer"])
+            </MudButton>
+            <MudButton Href="/Customers/Index" Variant="Variant.Text" Disabled="@submitting">@Text["Cancel"]</MudButton>
+        </MudStack>
+    </MudForm>
+</MudContainer>
+
+@code {
+    private readonly CreateCustomerAccountRequest model = new();
+    private MudForm? form;
+    private bool formValid;
+    private bool submitting;
+    private string? error;
+
+    private async Task SubmitAsync()
+    {
+        if (submitting || form is null)
+        {
+            return;
+        }
+
+        await form.ValidateAsync();
+        if (!formValid)
+        {
+            error = Text["ValidationFailed"];
+            return;
+        }
+
+        submitting = true;
+        error = null;
+        try
+        {
+            using var sessionResponse = await Http.GetAsync("/bff/session");
+            if (sessionResponse.StatusCode == HttpStatusCode.Unauthorized)
+            {
+                NavigateToLogin();
+                return;
+            }
+
+            sessionResponse.EnsureSuccessStatusCode();
+            var session = await sessionResponse.Content.ReadFromJsonAsync<EmployeeSessionSummary>();
+            if (string.IsNullOrWhiteSpace(session?.CsrfToken))
+            {
+                error = Text["CreateFailed"];
+                return;
+            }
+
+            using var request = new HttpRequestMessage(HttpMethod.Post, "/bff/customers")
+            {
+                Content = JsonContent.Create(model),
+            };
+            request.Headers.Add("X-CSRF-TOKEN", session.CsrfToken);
+            using var response = await Http.SendAsync(request);
+            if (response.StatusCode == HttpStatusCode.Unauthorized)
+            {
+                NavigateToLogin();
+                return;
+            }
+
+            if (response.StatusCode == HttpStatusCode.Forbidden)
+            {
+                error = Text["Forbidden"];
+                return;
+            }
+
+            if (response.StatusCode == HttpStatusCode.BadRequest)
+            {
+                error = Text["ValidationFailed"];
+                return;
+            }
+
+            if (response.StatusCode == HttpStatusCode.Conflict)
+            {
+                error = Text["Conflict"];
+                return;
+            }
+
+            if (response.StatusCode == HttpStatusCode.TooManyRequests)
+            {
+                error = Text["RateLimited"];
+                return;
+            }
+
+            if (!response.IsSuccessStatusCode)
+            {
+                error = Text["CreateFailed"];
+                return;
+            }
+
+            var created = await response.Content.ReadFromJsonAsync<CreatedCustomerAccount>();
+            if (created is null || created.Id <= 0)
+            {
+                error = Text["InvalidResponse"];
+                return;
+            }
+
+            Navigation.NavigateTo($"/Customers/View?id={created.Id}");
+        }
+        catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException)
+        {
+            error = Text["CreateFailed"];
+        }
+        finally
+        {
+            submitting = false;
+        }
+    }
+
+    private void NavigateToLogin() => Navigation.NavigateTo(
+        $"/Login?returnUrl={Uri.EscapeDataString(Navigation.ToBaseRelativePath(Navigation.Uri))}");
+}
