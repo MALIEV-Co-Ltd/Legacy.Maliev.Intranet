@@ -176,6 +176,61 @@ public sealed class BffOrderCreateContractTests
         Assert.DoesNotContain(downstream.Requests, item => item.Method == "DELETE");
     }
 
+    [Fact]
+    public async Task LostFileUploadResponse_ReplaysSameDownstreamAttemptAndCompletes()
+    {
+        var downstream = new OrderCreateHandler(loseFirstUploadResponse: true);
+        await using var factory = new OrderCreateBffFactory(downstream, [LegacyEmployeePermissions.OrdersCreate]);
+        using var client = CreateClient(factory);
+        var csrf = await SignInAsync(client);
+        var browserWorkflow = Guid.NewGuid().ToString("D");
+
+        using var uncertain = await SendCreateAsync(client, csrf, browserWorkflow, includeFile: true);
+        using var replay = await SendCreateAsync(client, csrf, browserWorkflow, includeFile: true);
+
+        Assert.Equal(HttpStatusCode.ServiceUnavailable, uncertain.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, replay.StatusCode);
+        var uploads = downstream.Requests.Where(item => item.Method == "POST" && item.Path == "/Uploads").ToArray();
+        Assert.Equal(2, uploads.Length);
+        Assert.Equal(uploads[0].IdempotencyKey, uploads[1].IdempotencyKey);
+        Assert.DoesNotContain(downstream.Requests, item => item.Method == "DELETE");
+    }
+
+    [Theory]
+    [InlineData("Upload in progress", HttpStatusCode.Conflict)]
+    [InlineData("Upload outcome unknown", HttpStatusCode.ServiceUnavailable)]
+    public async Task RetryableFileUploadState_RetainsAttemptAndCompletesOnRetry(string title, HttpStatusCode firstStatus)
+    {
+        var downstream = new OrderCreateHandler(firstUploadStatus: firstStatus, firstUploadTitle: title);
+        await using var factory = new OrderCreateBffFactory(downstream, [LegacyEmployeePermissions.OrdersCreate]);
+        using var client = CreateClient(factory);
+        var csrf = await SignInAsync(client);
+        var browserWorkflow = Guid.NewGuid().ToString("D");
+
+        using var pending = await SendCreateAsync(client, csrf, browserWorkflow, includeFile: true);
+        using var replay = await SendCreateAsync(client, csrf, browserWorkflow, includeFile: true);
+
+        Assert.Equal(firstStatus, pending.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, replay.StatusCode);
+        var uploads = downstream.Requests.Where(item => item.Method == "POST" && item.Path == "/Uploads").ToArray();
+        Assert.Equal(2, uploads.Length);
+        Assert.Equal(uploads[0].IdempotencyKey, uploads[1].IdempotencyKey);
+        Assert.DoesNotContain(downstream.Requests, item => item.Method == "DELETE");
+    }
+
+    [Fact]
+    public async Task FileUploadReplayConflict_IsReturnedAsConflict()
+    {
+        var downstream = new OrderCreateHandler(firstUploadStatus: HttpStatusCode.Conflict, firstUploadTitle: "Upload replay conflict");
+        await using var factory = new OrderCreateBffFactory(downstream, [LegacyEmployeePermissions.OrdersCreate]);
+        using var client = CreateClient(factory);
+        var csrf = await SignInAsync(client);
+
+        using var response = await SendCreateAsync(client, csrf, Guid.NewGuid().ToString("D"), includeFile: true);
+
+        Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+    }
+
     private static HttpClient CreateClient(WebApplicationFactory<BffProgram> factory) => factory.CreateClient(new()
     {
         AllowAutoRedirect = false,
@@ -203,10 +258,15 @@ public sealed class BffOrderCreateContractTests
         HttpClient client,
         string? csrf,
         string workflowId,
-        OrderCreateRequest? input = null)
+        OrderCreateRequest? input = null,
+        bool includeFile = false)
     {
         using var content = new MultipartFormDataContent("----maliev-order-create-test");
         content.Add(JsonContent.Create(input ?? new OrderCreateRequest(42, "Thai fixture", "ไม้เอก ไม้โท", 3, 5, 6, 4, 2, true, false)), "request");
+        if (includeFile)
+        {
+            content.Add(new ByteArrayContent([1, 2, 3]), "files", "fixture.stl");
+        }
         var request = new HttpRequestMessage(HttpMethod.Post, "/bff/orders") { Content = content };
         request.Headers.Add("Idempotency-Key", workflowId);
         if (csrf is not null) request.Headers.Add("X-CSRF-TOKEN", csrf);
@@ -277,9 +337,13 @@ public sealed class BffOrderCreateContractTests
         bool customerExists = true,
         string customerEmail = "customer@example.com",
         bool loseFirstCreateResponse = false,
-        HttpStatusCode? firstCreateStatus = null) : HttpMessageHandler
+        HttpStatusCode? firstCreateStatus = null,
+        bool loseFirstUploadResponse = false,
+        HttpStatusCode? firstUploadStatus = null,
+        string? firstUploadTitle = null) : HttpMessageHandler
     {
         private int createCalls;
+        private int uploadCalls;
         public ConcurrentBag<RecordedRequest> Requests { get; } = [];
 
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
@@ -313,6 +377,19 @@ public sealed class BffOrderCreateContractTests
                 if (firstCreateStatus is not null && call == 1) return new(firstCreateStatus.Value);
                 return Json("{\"Id\":84}", HttpStatusCode.Created);
             }
+            if (request.Method == HttpMethod.Post && path == "/Uploads")
+            {
+                var call = Interlocked.Increment(ref uploadCalls);
+                if (loseFirstUploadResponse && call == 1) throw new HttpRequestException("upload response lost after commit");
+                if (firstUploadStatus is not null && call == 1)
+                {
+                    return Json($"{{\"status\":{(int)firstUploadStatus.Value},\"title\":\"{firstUploadTitle}\"}}", firstUploadStatus.Value);
+                }
+                return Json("{\"Object\":[{\"Bucket\":\"maliev.com\",\"ObjectName\":\"orders/42/fixture.stl\",\"Uri\":\"https://storage.test/fixture\"}]}", HttpStatusCode.Created);
+            }
+            if (request.Method == HttpMethod.Get && path == "/orders/84/files") return Json("[]");
+            if (request.Method == HttpMethod.Post && path == "/orders/84/files") return Json("{\"Id\":11,\"OrderId\":84,\"Bucket\":\"maliev.com\",\"ObjectName\":\"orders/42/fixture.stl\"}", HttpStatusCode.Created);
+            if (request.Method == HttpMethod.Delete && path == "/Orders/84") return new(HttpStatusCode.NoContent);
             if (request.Method == HttpMethod.Get && path == "/OrderStatuses/New") return Json("{\"Id\":1,\"Name\":\"New\"}");
             if (request.Method == HttpMethod.Get && path == "/orderstatuses/Histories/84") return Json("[]");
             if (request.Method == HttpMethod.Post && path == "/orderstatuses/Histories/84/1") return new(HttpStatusCode.NoContent);

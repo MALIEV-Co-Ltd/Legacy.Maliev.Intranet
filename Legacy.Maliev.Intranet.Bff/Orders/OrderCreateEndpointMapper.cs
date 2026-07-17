@@ -154,6 +154,24 @@ internal static class OrderCreateEndpointMapper
                     try
                     {
                         using var response = await files.UploadAsync(customerId, selectedFiles, idempotencyKey, token);
+                        if (response.StatusCode == HttpStatusCode.Conflict)
+                        {
+                            var problem = await response.Content.ReadFromJsonAsync<Microsoft.AspNetCore.Mvc.ProblemDetails>(token);
+                            if (string.Equals(problem?.Title, "Upload replay conflict", StringComparison.Ordinal))
+                            {
+                                throw new OrderCreationConflictException();
+                            }
+                            if (string.Equals(problem?.Title, "Upload in progress", StringComparison.Ordinal))
+                            {
+                                throw new OrderCreationBusyException();
+                            }
+                            throw new OrderCreationOutcomeUnknownException("The FileService replay state was not recognized.");
+                        }
+                        if ((int)response.StatusCode >= StatusCodes.Status500InternalServerError)
+                        {
+                            throw new OrderCreationOutcomeUnknownException(
+                                "The FileService upload outcome will be replayed with the same downstream attempt key.");
+                        }
                         response.EnsureSuccessStatusCode();
                         var uploaded = await response.Content.ReadFromJsonAsync<OrderUploadResult>(token)
                             ?? throw new InvalidDataException("FileService returned an empty upload result.");
@@ -162,13 +180,13 @@ internal static class OrderCreateEndpointMapper
                     catch (HttpRequestException exception) when (IsAmbiguousServerFailure(exception))
                     {
                         throw new OrderCreationOutcomeUnknownException(
-                            "The FileService upload outcome cannot be safely replayed.",
+                            "The FileService upload outcome will be replayed with the same downstream attempt key.",
                             exception);
                     }
                     catch (Exception exception) when (IsCancellationOrTimeout(exception))
                     {
                         throw new OrderCreationOutcomeUnknownException(
-                            "The FileService upload outcome cannot be safely replayed.",
+                            "The FileService upload outcome will be replayed with the same downstream attempt key.",
                             exception);
                     }
                 },

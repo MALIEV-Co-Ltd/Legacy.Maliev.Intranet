@@ -110,12 +110,6 @@ public sealed class OrderCreationWorkflow(
             state = null;
         }
 
-        if (state?.Phase == OrderCreationPhase.Uploading)
-        {
-            throw new OrderCreationOutcomeUnknownException(
-                "The prior FileService upload outcome cannot be replayed until its idempotency contract is available.");
-        }
-
         if (state is null)
         {
             state = new(
@@ -177,6 +171,10 @@ public sealed class OrderCreationWorkflow(
             }
         }
         catch (OrderCreationOutcomeUnknownException)
+        {
+            throw;
+        }
+        catch (OrderCreationBusyException)
         {
             throw;
         }

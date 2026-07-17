@@ -315,45 +315,21 @@ public sealed class OrderCreationWorkflowTests
     }
 
     [Fact]
-    public async Task UnknownUploadOutcome_IsFailClosedAndNeverRepeated()
+    public async Task UnknownUploadOutcome_RetriesSamePersistedAttemptWithoutCompensation()
     {
         var workflow = CreateWorkflow();
         var uploadCalls = 0;
         var deleteCalls = 0;
+        var attemptKeys = new List<string>();
         Task<OrderCreatedResult> Execute() => workflow.CreateAsync(
             "workflow-upload-unknown", "same-fingerprint", Input, "customer@example.com",
             [new FormFile(Stream.Null, 0, 1, "files", "fixture.stl")],
             (_, _, _) => Task.FromResult(84),
-            (_, _, _, _) => { uploadCalls++; throw new OrderCreationOutcomeUnknownException("lost upload response"); },
-            (_, _, _) => Task.FromResult(0),
-            (_, _, _) => Task.CompletedTask,
-            (_, _, _) => Task.CompletedTask,
-            (_, _) => { deleteCalls++; return Task.CompletedTask; },
-            (_, _) => { deleteCalls++; return Task.CompletedTask; },
-            (_, _) => { deleteCalls++; return Task.CompletedTask; },
-            CancellationToken.None);
-
-        await Assert.ThrowsAsync<OrderCreationOutcomeUnknownException>(Execute);
-        await Assert.ThrowsAsync<OrderCreationOutcomeUnknownException>(Execute);
-
-        Assert.Equal(1, uploadCalls);
-        Assert.Equal(0, deleteCalls);
-    }
-
-    [Fact]
-    public async Task ServerErrorAfterUploadWrite_IsFailClosedAndNeverCompensated()
-    {
-        var workflow = CreateWorkflow();
-        var uploadCalls = 0;
-        var deleteCalls = 0;
-        Task<OrderCreatedResult> Execute() => workflow.CreateAsync(
-            "workflow-upload-503", "same-fingerprint", Input, "customer@example.com",
-            [new FormFile(Stream.Null, 0, 1, "files", "fixture.stl")],
-            (_, _, _) => Task.FromResult(84),
-            (_, _, _, _) =>
+            (_, _, key, _) =>
             {
-                uploadCalls++;
-                throw new HttpRequestException("server failed after upload", null, System.Net.HttpStatusCode.BadGateway);
+                attemptKeys.Add(key);
+                if (++uploadCalls == 1) throw new OrderCreationOutcomeUnknownException("lost upload response");
+                return Task.FromResult<IReadOnlyList<StoredOrderFile>>([new(0, 0, "maliev.com", "orders/42/fixture.stl")]);
             },
             (_, _, _) => Task.FromResult(0),
             (_, _, _) => Task.CompletedTask,
@@ -364,9 +340,48 @@ public sealed class OrderCreationWorkflowTests
             CancellationToken.None);
 
         await Assert.ThrowsAsync<OrderCreationOutcomeUnknownException>(Execute);
-        await Assert.ThrowsAsync<OrderCreationOutcomeUnknownException>(Execute);
+        var result = await Execute();
 
-        Assert.Equal(1, uploadCalls);
+        Assert.Equal(84, result.Id);
+        Assert.Equal(2, uploadCalls);
+        Assert.Equal(attemptKeys[0], attemptKeys[1]);
+        Assert.Equal(0, deleteCalls);
+    }
+
+    [Fact]
+    public async Task ServerErrorAfterUploadWrite_RetriesSamePersistedAttemptWithoutCompensation()
+    {
+        var workflow = CreateWorkflow();
+        var uploadCalls = 0;
+        var deleteCalls = 0;
+        var attemptKeys = new List<string>();
+        Task<OrderCreatedResult> Execute() => workflow.CreateAsync(
+            "workflow-upload-503", "same-fingerprint", Input, "customer@example.com",
+            [new FormFile(Stream.Null, 0, 1, "files", "fixture.stl")],
+            (_, _, _) => Task.FromResult(84),
+            (_, _, key, _) =>
+            {
+                attemptKeys.Add(key);
+                if (++uploadCalls == 1)
+                {
+                    throw new HttpRequestException("server failed after upload", null, System.Net.HttpStatusCode.BadGateway);
+                }
+                return Task.FromResult<IReadOnlyList<StoredOrderFile>>([new(0, 0, "maliev.com", "orders/42/fixture.stl")]);
+            },
+            (_, _, _) => Task.FromResult(0),
+            (_, _, _) => Task.CompletedTask,
+            (_, _, _) => Task.CompletedTask,
+            (_, _) => { deleteCalls++; return Task.CompletedTask; },
+            (_, _) => { deleteCalls++; return Task.CompletedTask; },
+            (_, _) => { deleteCalls++; return Task.CompletedTask; },
+            CancellationToken.None);
+
+        await Assert.ThrowsAsync<OrderCreationOutcomeUnknownException>(Execute);
+        var result = await Execute();
+
+        Assert.Equal(84, result.Id);
+        Assert.Equal(2, uploadCalls);
+        Assert.Equal(attemptKeys[0], attemptKeys[1]);
         Assert.Equal(0, deleteCalls);
     }
 
