@@ -1,0 +1,241 @@
+@page "/Orders/View"
+@attribute [Authorize]
+@inject HttpClient Http
+@inject NavigationManager Navigation
+@inject IStringLocalizer<OrderDetail> Text
+
+<PageTitle>@Text["PageTitle", Id ?? 0]</PageTitle>
+
+@if (loading)
+{
+    <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+    <MudText Class="mt-2">@Text["Loading"]</MudText>
+}
+else if (!string.IsNullOrWhiteSpace(error))
+{
+    <MudAlert Severity="Severity.Error">@error</MudAlert>
+}
+else if (page is not null)
+{
+    <div class="d-flex flex-wrap align-center justify-space-between gap-3 mb-4">
+        <MudText Typo="Typo.h4" HtmlTag="h1">@Text["OrderHeading", page.Order.Id]</MudText>
+        <div class="d-flex gap-2">
+            <MudButton Href="/Orders/Index" Variant="Variant.Outlined">@Text["BackToOrders"]</MudButton>
+            <MudButton Href="@($"/bff/orders/{page.Order.Id}/label")" Target="_blank" Variant="Variant.Outlined">@Text["OrderLabel"]</MudButton>
+        </div>
+    </div>
+
+    @if (!string.IsNullOrWhiteSpace(notice))
+    {
+        <MudAlert Severity="Severity.Success" Class="mb-4">@notice</MudAlert>
+    }
+
+    <MudForm @ref="form" Model="edit">
+        <MudGrid>
+            <MudItem xs="12" md="6"><MudNumericField T="int" Label="@Text["CustomerId"]" @bind-Value="edit.CustomerId" Min="1" Required="true" /></MudItem>
+            <MudItem xs="12" md="6">
+                <MudSelect T="int?" Label="@Text["Employee"]" @bind-Value="edit.EmployeeId" Clearable="true">
+                    @foreach (var item in page.Employees) { <MudSelectItem T="int?" Value="@((int?)item.Id)">@item.Name</MudSelectItem> }
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12"><MudTextField Label="@Text["Name"]" @bind-Value="edit.Name" Required="true" /></MudItem>
+            <MudItem xs="12" md="4"><MudNumericField T="int" Label="@Text["Quantity"]" @bind-Value="edit.Quantity" Min="1" Required="true" /></MudItem>
+            <MudItem xs="12" md="4"><MudNumericField T="int" Label="@Text["Manufactured"]" @bind-Value="edit.Manufactured" Min="0" Required="true" /></MudItem>
+            <MudItem xs="12" md="4"><MudTextField Label="@Text["Remaining"]" Value="@(page.Order.Remaining?.ToString(CultureInfo.CurrentCulture) ?? "-")" ReadOnly="true" /></MudItem>
+            <MudItem xs="12" md="6">
+                <MudSelect T="int" Label="@Text["Process"]" @bind-Value="edit.ProcessId" Required="true">
+                    @foreach (var item in page.Processes) { <MudSelectItem T="int" Value="@item.Id">@item.Name</MudSelectItem> }
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12" md="6">
+                <MudSelect T="int?" Label="@Text["Material"]" @bind-Value="edit.MaterialId" Clearable="true">
+                    @foreach (var item in page.Materials) { <MudSelectItem T="int?" Value="@((int?)item.Id)">@item.Name</MudSelectItem> }
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12" md="6">
+                <MudSelect T="int?" Label="@Text["Color"]" @bind-Value="edit.ColorId" Clearable="true">
+                    @foreach (var item in page.Colors) { <MudSelectItem T="int?" Value="@((int?)item.Id)">@item.Name</MudSelectItem> }
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12" md="6">
+                <MudSelect T="int?" Label="@Text["SurfaceFinish"]" @bind-Value="edit.SurfaceFinishId" Clearable="true">
+                    @foreach (var item in page.SurfaceFinishes) { <MudSelectItem T="int?" Value="@((int?)item.Id)">@item.Name</MudSelectItem> }
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12" md="4"><MudNumericField T="decimal?" Label="@Text["UnitPrice"]" @bind-Value="edit.UnitPrice" Min="0" /></MudItem>
+            <MudItem xs="12" md="4"><MudNumericField T="decimal?" Label="@Text["Discount"]" @bind-Value="edit.DiscountPercent" Min="0" Max="100" /></MudItem>
+            <MudItem xs="12" md="4">
+                <MudSelect T="int?" Label="@Text["Currency"]" @bind-Value="edit.CurrencyId" Clearable="true">
+                    @foreach (var item in page.Currencies) { <MudSelectItem T="int?" Value="@((int?)item.Id)">@item.ShortName</MudSelectItem> }
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12" md="4"><MudNumericField T="int?" Label="@Text["LeadTime"]" @bind-Value="edit.LeadTime" Min="0" /></MudItem>
+            <MudItem xs="12" md="4"><MudDatePicker Label="@Text["PromisedDate"]" @bind-Date="edit.PromisedDate" /></MudItem>
+            <MudItem xs="12" md="4"><MudDatePicker Label="@Text["FinishedDate"]" @bind-Date="edit.FinishedDate" /></MudItem>
+            <MudItem xs="12"><MudTextField Label="@Text["TrackingNumber"]" @bind-Value="edit.TrackingNumber" /></MudItem>
+            <MudItem xs="12"><MudTextField Label="@Text["Requirements"]" @bind-Value="edit.Description" Lines="5" /></MudItem>
+            <MudItem xs="12"><MudTextField Label="@Text["Comment"]" @bind-Value="edit.Comment" Lines="4" /></MudItem>
+            <MudItem xs="12" md="4"><MudCheckBox T="bool" Label="@Text["AllowSocialMedia"]" @bind-Value="edit.AllowSocialMedia" /></MudItem>
+            <MudItem xs="12" md="4"><MudCheckBox T="bool" Label="@Text["AllowCancellation"]" @bind-Value="edit.AllowCancellation" /></MudItem>
+            <MudItem xs="12" md="4"><MudCheckBox T="bool" Label="@Text["AllowPayment"]" @bind-Value="edit.AllowPayment" /></MudItem>
+            <MudItem xs="12"><MudButton OnClick="SaveAsync" Disabled="@submitting" Variant="Variant.Filled" Color="Color.Primary">@Text["Save"]</MudButton></MudItem>
+        </MudGrid>
+    </MudForm>
+
+    <MudPaper Class="pa-4 mt-4">
+        <MudText Typo="Typo.h5" HtmlTag="h2">@Text["Status"]</MudText>
+        <div class="d-flex flex-wrap gap-2 align-end my-3">
+            <MudSelect T="int?" Label="@Text["NextStatus"]" @bind-Value="selectedStatus">
+                @foreach (var status in page.Statuses) { <MudSelectItem T="int?" Value="@((int?)status.Id)">@status.Name</MudSelectItem> }
+            </MudSelect>
+            <MudButton OnClick="TransitionAsync" Disabled="@(submitting || selectedStatus is null)" Variant="Variant.Filled">@Text["ApplyStatus"]</MudButton>
+        </div>
+        <MudList T="string">@foreach (var item in page.History.OrderByDescending(value => value.CreatedDate)) { <MudListItem T="string">@item.Name · @item.CreatedDate?.ToString("u")</MudListItem> }</MudList>
+    </MudPaper>
+
+    <MudPaper Class="pa-4 mt-4">
+        <MudText Typo="Typo.h5" HtmlTag="h2">@Text["Files"]</MudText>
+        <InputFile OnChange="SelectFiles" multiple class="mt-3" />
+        <MudButton OnClick="UploadAsync" Disabled="@(submitting || uploads.Count == 0)" Class="my-3">@Text["Upload"]</MudButton>
+        <MudList T="OrderFileItem">
+            @foreach (var file in page.Files)
+            {
+                <MudListItem T="OrderFileItem" Value="file">
+                    <MudLink Href="@file.Uri?.ToString()" Target="_blank">@file.ObjectName</MudLink>
+                    <MudIconButton Icon="@Icons.Material.Filled.Delete" OnClick="() => RemoveFileAsync(file.Id)" Disabled="@submitting" />
+                </MudListItem>
+            }
+        </MudList>
+    </MudPaper>
+}
+
+@code {
+    [SupplyParameterFromQuery(Name = "id")] public int? Id { get; set; }
+    private MudForm? form;
+    private OrderDetailPage? page;
+    private OrderEditModel edit = new();
+    private EmployeeSessionSummary? session;
+    private readonly List<IBrowserFile> uploads = [];
+    private int? selectedStatus;
+    private bool loading = true;
+    private bool submitting;
+    private string? error;
+    private string? notice;
+
+    protected override async Task OnParametersSetAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        loading = true; error = null;
+        if (Id is not > 0) { error = Text["InvalidId"]; loading = false; return; }
+        try
+        {
+            session = await Http.GetFromJsonAsync<EmployeeSessionSummary>("/bff/session");
+            using var response = await Http.GetAsync($"/bff/orders/{Id.Value}");
+            if (response.StatusCode == HttpStatusCode.Unauthorized) { Navigation.NavigateTo($"/Login?returnUrl={Uri.EscapeDataString(Navigation.ToBaseRelativePath(Navigation.Uri))}"); return; }
+            if (response.StatusCode == HttpStatusCode.NotFound) { error = Text["NotFound"]; return; }
+            if (!response.IsSuccessStatusCode) { error = ErrorFor(response.StatusCode); return; }
+            page = await response.Content.ReadFromJsonAsync<OrderDetailPage>();
+            if (page is null) { error = Text["InvalidResponse"]; return; }
+            edit = OrderEditModel.From(page.Order);
+            selectedStatus = page.Statuses.FirstOrDefault()?.Id;
+        }
+        catch (HttpRequestException) { error = Text["Unavailable"]; }
+        finally { loading = false; }
+    }
+
+    private async Task SaveAsync()
+    {
+        if (page is null || session?.CsrfToken is null || form is null) return;
+        await form.ValidateAsync(); if (!form.IsValid) return;
+        await SendWriteAsync(HttpMethod.Put, $"/bff/orders/{page.Order.Id}", JsonContent.Create(edit.ToRequest()), Text["OrderSaved"]);
+    }
+
+    private async Task TransitionAsync()
+    {
+        if (page is null || selectedStatus is null) return;
+        using var request = WriteRequest(HttpMethod.Post, $"/bff/orders/{page.Order.Id}/status/{selectedStatus.Value}");
+        request.Headers.Add("Idempotency-Key", Guid.NewGuid().ToString("D"));
+        await SendAsync(request, Text["StatusSaved"]);
+    }
+
+    private void SelectFiles(InputFileChangeEventArgs args) { uploads.Clear(); uploads.AddRange(args.GetMultipleFiles()); }
+
+    private async Task UploadAsync()
+    {
+        if (page is null || session?.CsrfToken is null || uploads.Count == 0) return;
+        using var content = new MultipartFormDataContent("----maliev-order-upload");
+        foreach (var upload in uploads)
+        {
+            var file = new StreamContent(upload.OpenReadStream(200 * 1024 * 1024));
+            file.Headers.ContentType = new(upload.ContentType);
+            content.Add(file, "files", upload.Name);
+        }
+        using var request = WriteRequest(HttpMethod.Post, $"/bff/orders/{page.Order.Id}/files");
+        request.Content = content; // multipart/form-data
+        await SendAsync(request, Text["FilesUploaded"]);
+    }
+
+    private async Task RemoveFileAsync(int fileId)
+    {
+        if (page is null) return;
+        using var request = WriteRequest(HttpMethod.Delete, $"/bff/orders/{page.Order.Id}/files/{fileId}");
+        await SendAsync(request, Text["FileRemoved"]);
+    }
+
+    private async Task SendWriteAsync(HttpMethod method, string path, HttpContent content, string success)
+    {
+        using var request = WriteRequest(method, path); request.Content = content; await SendAsync(request, success);
+    }
+
+    private HttpRequestMessage WriteRequest(HttpMethod method, string path)
+    {
+        var request = new HttpRequestMessage(method, path);
+        if (!string.IsNullOrWhiteSpace(session?.CsrfToken)) request.Headers.Add("X-CSRF-TOKEN", session.CsrfToken);
+        return request;
+    }
+
+    private async Task SendAsync(HttpRequestMessage request, string success)
+    {
+        submitting = true; error = null; notice = null;
+        try
+        {
+            using var response = await Http.SendAsync(request);
+            if (response.StatusCode == HttpStatusCode.Conflict) { error = Text["Conflict"]; return; }
+            if (!response.IsSuccessStatusCode) { error = ErrorFor(response.StatusCode); return; }
+            notice = success; uploads.Clear(); await LoadAsync();
+        }
+        catch (HttpRequestException) { error = Text["Unavailable"]; }
+        finally { submitting = false; }
+    }
+
+    private string ErrorFor(HttpStatusCode status) => status switch { HttpStatusCode.Forbidden => Text["Forbidden"], HttpStatusCode.TooManyRequests => Text["RateLimited"], HttpStatusCode.BadGateway => Text["InvalidResponse"], _ => Text["Unavailable"] };
+
+    private sealed class OrderEditModel
+    {
+        public int CustomerId { get; set; }
+        public int? EmployeeId { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public string? Description { get; set; }
+        public int ProcessId { get; set; }
+        public int? MaterialId { get; set; }
+        public int? SurfaceFinishId { get; set; }
+        public int? ColorId { get; set; }
+        public int Quantity { get; set; }
+        public int Manufactured { get; set; }
+        public decimal? UnitPrice { get; set; }
+        public decimal? DiscountPercent { get; set; }
+        public int? CurrencyId { get; set; }
+        public int? LeadTime { get; set; }
+        public DateTime? PromisedDate { get; set; }
+        public DateTime? FinishedDate { get; set; }
+        public string? Comment { get; set; }
+        public bool AllowSocialMedia { get; set; }
+        public bool AllowCancellation { get; set; }
+        public bool AllowPayment { get; set; }
+        public string? TrackingNumber { get; set; }
+        public DateTime? ModifiedDate { get; set; }
+        public static OrderEditModel From(OrderDetailItem value) => new() { CustomerId = value.CustomerId ?? 0, EmployeeId = value.EmployeeId, Name = value.Name ?? string.Empty, Description = value.Description, ProcessId = value.ProcessId, MaterialId = value.MaterialId, SurfaceFinishId = value.SurfaceFinishId, ColorId = value.ColorId, Quantity = value.Quantity, Manufactured = value.Manufactured, UnitPrice = value.UnitPrice, DiscountPercent = value.DiscountPercent, CurrencyId = value.CurrencyId, LeadTime = value.LeadTime, PromisedDate = value.PromisedDate, FinishedDate = value.FinishedDate, Comment = value.Comment, AllowSocialMedia = value.AllowSocialMedia, AllowCancellation = value.AllowCancellation, AllowPayment = value.AllowPayment, TrackingNumber = value.TrackingNumber, ModifiedDate = value.ModifiedDate };
+        public OrderUpdateRequest ToRequest() => new(CustomerId, EmployeeId, Name, Description, ProcessId, MaterialId, SurfaceFinishId, ColorId, Quantity, Manufactured, UnitPrice, DiscountPercent, CurrencyId, LeadTime, PromisedDate, FinishedDate, Comment, AllowSocialMedia, AllowCancellation, AllowPayment, TrackingNumber, ModifiedDate);
+    }
+}
