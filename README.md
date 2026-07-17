@@ -38,6 +38,13 @@ from a service identity with `legacy-auth.customer-identities.create`. It also r
 that Auth permission only to `legacy-intranet`. The BFF sends passwords only in the AuthService
 JSON body, never the customer profile, URL, response, or browser-visible service credential.
 
+The lazy `/Customers/View` rollout requires `Legacy.Maliev.AuthService` commit
+`dd4eff994116bb41ca0a0a1947aeb81241a8e196` or later, which issues the employee cookie's
+exact `legacy-customer.customers.read` permission on login and refresh. `Legacy.Maliev.AppHost`
+grants the same read permission to the separate `legacy-intranet` service identity. The BFF
+validates the complete CustomerService detail projection and never exposes either token to
+WebAssembly.
+
 Migration rules:
 
 - preserve all 42 historical staff routes and validated workflows;
