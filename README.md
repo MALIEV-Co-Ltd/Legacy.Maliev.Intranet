@@ -30,6 +30,14 @@ replaces the employee token with the separate `legacy-intranet` service token be
 CustomerService. AppHost grants the same exact list permission to that service identity; neither
 the employee access token nor the machine credential is exposed to WebAssembly.
 
+The lazy `/Customers/Create` rollout requires `Legacy.Maliev.AuthService` commit
+`b4a51aa19a712fcc10c87ef8ba36fb63ae1d32df` or later, which issues the employee cookie's
+exact `legacy-customer.customers.create` permission and accepts the identity-creation POST only
+from a service identity with `legacy-auth.customer-identities.create`. It also requires
+`Legacy.Maliev.AppHost` commit `8ffded2e1470af47cca9de25fa6680e11cc7abda` or later, which grants
+that Auth permission only to `legacy-intranet`. The BFF sends passwords only in the AuthService
+JSON body, never the customer profile, URL, response, or browser-visible service credential.
+
 Migration rules:
 
 - preserve all 42 historical staff routes and validated workflows;
