@@ -58,6 +58,7 @@ public sealed class MaterialsCreateWasmMigrationContractTests
         Assert.True(File.Exists(resourcePath), "The Materials/Create localization resource is missing.");
         var page = File.ReadAllText(pagePath);
         var resource = File.ReadAllText(resourcePath);
+        var bffProgram = File.ReadAllText(Path.Combine(root, "Legacy.Maliev.Intranet.Bff", "Program.cs"));
 
         Assert.Contains("@page \"/Materials/Create\"", page, StringComparison.Ordinal);
         Assert.Contains("@attribute [Authorize]", page, StringComparison.Ordinal);
@@ -73,6 +74,8 @@ public sealed class MaterialsCreateWasmMigrationContractTests
         Assert.Contains("Text[\"CreateMaterial\"]", page, StringComparison.Ordinal);
         Assert.Contains("CreateMaterial", resource, StringComparison.Ordinal);
         Assert.Contains("CreateFailed", resource, StringComparison.Ordinal);
+        Assert.Contains("legacy-catalog.materials.create", bffProgram, StringComparison.Ordinal);
+        Assert.Contains("RequireAuthorization(\"legacy-catalog.materials.create\")", bffProgram, StringComparison.Ordinal);
 
         Assert.True(
             File.Exists(Path.Combine(root, "Legacy.Maliev.Intranet", "Pages", "Materials", "Create.cshtml")),

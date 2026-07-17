@@ -132,6 +132,9 @@ builder.Services.AddAuthorizationBuilder()
     .AddPolicy("legacy-catalog.materials.read", policy => policy
         .RequireAuthenticatedUser()
         .RequireClaim("permissions", "legacy-catalog.materials.read"))
+    .AddPolicy("legacy-catalog.materials.create", policy => policy
+        .RequireAuthenticatedUser()
+        .RequireClaim("permissions", "legacy-catalog.materials.create"))
     .SetFallbackPolicy(new Microsoft.AspNetCore.Authorization.AuthorizationPolicyBuilder()
         .RequireAuthenticatedUser()
         .Build());
@@ -363,7 +366,7 @@ app.MapPost("/bff/catalog/materials", async (
         preserveBadRequest: true);
 })
     .AddEndpointFilter<AntiforgeryValidationFilter>()
-    .RequireAuthorization("legacy-catalog.materials.read");
+    .RequireAuthorization("legacy-catalog.materials.create");
 
 app.MapGet("/bff/catalog/materials/{id:int}", async (
     int id,

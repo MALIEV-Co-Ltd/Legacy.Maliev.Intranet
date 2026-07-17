@@ -60,7 +60,11 @@ public sealed class BffMaterialsProxyContractTests
     public async Task CreateWithoutCsrf_IsRejectedBeforeCatalogCall()
     {
         var downstream = new RecordingCatalogHandler(HttpStatusCode.OK, "{\"Id\":42}");
-        await using var factory = new MaterialsBffFactory(downstream, hasPermission: true, compatibilityGrant: false);
+        await using var factory = new MaterialsBffFactory(
+            downstream,
+            hasPermission: true,
+            compatibilityGrant: false,
+            hasCreatePermission: true);
         using var client = CreateClient(factory);
         await SignInAsync(client);
 
@@ -71,10 +75,14 @@ public sealed class BffMaterialsProxyContractTests
     }
 
     [Fact]
-    public async Task CreateWithoutCatalogPermission_IsForbiddenBeforeCatalogCall()
+    public async Task ReadOnlyEmployee_CreateIsForbiddenBeforeCatalogCall()
     {
         var downstream = new RecordingCatalogHandler(HttpStatusCode.OK, "{\"Id\":42}");
-        await using var factory = new MaterialsBffFactory(downstream, hasPermission: false, compatibilityGrant: false);
+        await using var factory = new MaterialsBffFactory(
+            downstream,
+            hasPermission: true,
+            compatibilityGrant: false,
+            hasCreatePermission: false);
         using var client = CreateClient(factory);
         await SignInAsync(client);
         var csrf = await GetCsrfAsync(client);
@@ -94,7 +102,11 @@ public sealed class BffMaterialsProxyContractTests
     public async Task InvalidCreate_IsRejectedByServerValidationBeforeCatalogCall()
     {
         var downstream = new RecordingCatalogHandler(HttpStatusCode.OK, "{\"Id\":42}");
-        await using var factory = new MaterialsBffFactory(downstream, hasPermission: true, compatibilityGrant: false);
+        await using var factory = new MaterialsBffFactory(
+            downstream,
+            hasPermission: true,
+            compatibilityGrant: false,
+            hasCreatePermission: true);
         using var client = CreateClient(factory);
         await SignInAsync(client);
         var csrf = await GetCsrfAsync(client);
@@ -121,7 +133,11 @@ public sealed class BffMaterialsProxyContractTests
     public async Task ValidCreate_ForwardsCompleteJsonWithServerTokenAndReturnsCreatedId()
     {
         var downstream = new RecordingCatalogHandler(HttpStatusCode.OK, "{\"Id\":42}");
-        await using var factory = new MaterialsBffFactory(downstream, hasPermission: true, compatibilityGrant: false);
+        await using var factory = new MaterialsBffFactory(
+            downstream,
+            hasPermission: true,
+            compatibilityGrant: false,
+            hasCreatePermission: true);
         using var client = CreateClient(factory);
         await SignInAsync(client);
         var csrf = await GetCsrfAsync(client);
@@ -149,7 +165,11 @@ public sealed class BffMaterialsProxyContractTests
     public async Task InvalidCreateResponse_IsBadGatewayWithoutLeakingCatalogPayload()
     {
         var downstream = new RecordingCatalogHandler(HttpStatusCode.OK, "not-json");
-        await using var factory = new MaterialsBffFactory(downstream, hasPermission: true, compatibilityGrant: false);
+        await using var factory = new MaterialsBffFactory(
+            downstream,
+            hasPermission: true,
+            compatibilityGrant: false,
+            hasCreatePermission: true);
         using var client = CreateClient(factory);
         await SignInAsync(client);
         var csrf = await GetCsrfAsync(client);
@@ -171,12 +191,17 @@ public sealed class BffMaterialsProxyContractTests
     {
         using var signingKey = RSA.Create(2048);
         await using var catalog = await StartCatalogPermissionPipelineAsync(signingKey);
-        var serviceToken = CreateSignedToken(signingKey, "service", includeCatalogPermission: true);
+        var serviceToken = CreateSignedToken(
+            signingKey,
+            "service",
+            includeCatalogPermission: true,
+            includeCatalogCreatePermission: true);
         await using var factory = new MaterialsBffFactory(
             catalog.GetTestServer().CreateHandler(),
             hasPermission: true,
             compatibilityGrant: false,
-            serviceToken);
+            serviceToken,
+            hasCreatePermission: true);
         using var client = CreateClient(factory);
         await SignInAsync(client);
         var csrf = await GetCsrfAsync(client);
@@ -578,7 +603,8 @@ public sealed class BffMaterialsProxyContractTests
         HttpMessageHandler downstream,
         bool hasPermission,
         bool compatibilityGrant = false,
-        string serviceToken = "signed-service-token")
+        string serviceToken = "signed-service-token",
+        bool hasCreatePermission = false)
         : WebApplicationFactory<BffProgram>
     {
         protected override void ConfigureWebHost(IWebHostBuilder builder)
@@ -593,7 +619,7 @@ public sealed class BffMaterialsProxyContractTests
             builder.ConfigureServices(services =>
             {
                 services.RemoveAll<ILegacyAuthClient>();
-                services.AddSingleton<ILegacyAuthClient>(new MaterialsAuthClient(hasPermission));
+                services.AddSingleton<ILegacyAuthClient>(new MaterialsAuthClient(hasPermission, hasCreatePermission));
                 services.RemoveAll<IServiceAccessTokenProvider>();
                 services.AddSingleton<IServiceAccessTokenProvider>(new MaterialsServiceTokenProvider(serviceToken));
                 services.AddHttpClient<CatalogMaterialsProxy>()
@@ -612,13 +638,20 @@ public sealed class BffMaterialsProxyContractTests
         }
     }
 
-    private sealed class MaterialsAuthClient(bool hasPermission) : ILegacyAuthClient
+    private sealed class MaterialsAuthClient(bool hasPermission, bool hasCreatePermission) : ILegacyAuthClient
     {
         public Task<EmployeeLoginResult> LoginAsync(string email, string password, CancellationToken cancellationToken) =>
             Task.FromResult(new EmployeeLoginResult(
                 true,
                 new AuthTokenResponse("server-only-access-token", "server-only-refresh-token", "Bearer", 900, DateTimeOffset.UtcNow.AddDays(1)),
-                new EmployeeIdentity("employee-id", email, email, hasPermission ? ["legacy-catalog.materials.read"] : [])));
+                new EmployeeIdentity(
+                    "employee-id",
+                    email,
+                    email,
+                    [
+                        .. hasPermission ? ["legacy-catalog.materials.read"] : Array.Empty<string>(),
+                        .. hasCreatePermission ? ["legacy-catalog.materials.create"] : Array.Empty<string>(),
+                    ])));
         public Task<EmployeeRefreshResult?> RefreshAsync(string refreshToken, CancellationToken cancellationToken) => Task.FromResult<EmployeeRefreshResult?>(null);
         public Task RevokeAsync(string refreshToken, CancellationToken cancellationToken) => Task.CompletedTask;
         public Task<CustomerIdentityResponse?> CreateCustomerIdentityAsync(int databaseId, CreateCustomerIdentityRequest request, string accessToken, CancellationToken cancellationToken) => Task.FromResult<CustomerIdentityResponse?>(null);
@@ -721,12 +754,16 @@ public sealed class BffMaterialsProxyContractTests
         app.MapGet("/Materials/{id:int}", (int id) => Results.Text(MaterialDetailJson, "application/json"))
             .RequireAuthorization($"Permission:{LegacyEmployeePermissions.CatalogMaterialsRead}");
         app.MapPost("/Materials", () => Results.Text("{\"Id\":42}", "application/json"))
-            .RequireAuthorization($"Permission:{LegacyEmployeePermissions.CatalogMaterialsRead}");
+            .RequireAuthorization("Permission:legacy-catalog.materials.create");
         await app.StartAsync();
         return app;
     }
 
-    private static string CreateSignedToken(RSA signingKey, string identityKind, bool includeCatalogPermission)
+    private static string CreateSignedToken(
+        RSA signingKey,
+        string identityKind,
+        bool includeCatalogPermission,
+        bool includeCatalogCreatePermission = false)
     {
         var claims = new List<Claim>
         {
@@ -736,6 +773,10 @@ public sealed class BffMaterialsProxyContractTests
         if (includeCatalogPermission)
         {
             claims.Add(new Claim("permissions", LegacyEmployeePermissions.CatalogMaterialsRead));
+        }
+        if (includeCatalogCreatePermission)
+        {
+            claims.Add(new Claim("permissions", "legacy-catalog.materials.create"));
         }
 
         var key = new RsaSecurityKey(signingKey) { KeyId = "catalog-contract-key" };
