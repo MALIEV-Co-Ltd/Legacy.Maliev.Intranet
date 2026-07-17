@@ -1,0 +1,233 @@
+@page "/Materials/Create"
+@attribute [Authorize]
+@inject HttpClient Http
+@inject NavigationManager Navigation
+@inject IStringLocalizer<MaterialCreate> Text
+
+<PageTitle>@Text["PageTitle"]</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large">
+    <MudText Typo="Typo.overline">@Text["Catalog"]</MudText>
+    <MudText Typo="Typo.h4" HtmlTag="h1" Class="mb-4">@Text["CreateMaterial"]</MudText>
+
+    @if (loading)
+    {
+        <MudProgressLinear Indeterminate="true" Color="Color.Primary" aria-label="@Text["Loading"]" />
+    }
+    else
+    {
+        @if (!string.IsNullOrWhiteSpace(error))
+        {
+            <MudAlert Severity="Severity.Error" Class="mb-4">@error</MudAlert>
+        }
+
+        <MudForm @ref="form" Model="@model" @bind-IsValid="formValid">
+            <MudPaper Class="pa-4 mb-4" Elevation="1">
+                <MudText Typo="Typo.h6" HtmlTag="h2" Class="mb-3">@Text["BasicInformation"]</MudText>
+                <MudGrid Spacing="3">
+                    <MudItem xs="12" md="6">
+                        <MudTextField @bind-Value="model.Name" For="@(() => model.Name)" Label="@Text["Name"]" Required="true" MaxLength="50" />
+                    </MudItem>
+                    <MudItem xs="12" md="6">
+                        <MudSelect T="int" @bind-Value="model.MaterialGroupId" For="@(() => model.MaterialGroupId)" Label="@Text["MaterialGroup"]" Required="true">
+                            @foreach (var group in materialGroups)
+                            {
+                                <MudSelectItem T="int" Value="@group.Id">@group.Name</MudSelectItem>
+                            }
+                        </MudSelect>
+                    </MudItem>
+                    <MudItem xs="12" md="6"><MudTextField @bind-Value="model.MaterialNumber" Label="@Text["MaterialNumber"]" /></MudItem>
+                    <MudItem xs="12" md="6"><MudTextField @bind-Value="model.ManufacturerReference" Label="@Text["ManufacturerReference"]" /></MudItem>
+                    <MudItem xs="12" md="6"><MudNumericField T="decimal?" @bind-Value="model.PricePerKilogram" Label="@Text["PricePerKilogram"]" /></MudItem>
+                    <MudItem xs="12" md="6">
+                        <MudSelect T="int?" @bind-Value="model.CurrencyId" For="@(() => model.CurrencyId)" Label="@Text["Currency"]" Clearable="true">
+                            @foreach (var currency in currencies)
+                            {
+                                <MudSelectItem T="int?" Value="@((int?)currency.Id)">@currency.ShortName</MudSelectItem>
+                            }
+                        </MudSelect>
+                    </MudItem>
+                    <MudItem xs="12"><MudTextField @bind-Value="model.Url" For="@(() => model.Url)" Label="@Text["DatasheetUrl"]" InputType="InputType.Url" /></MudItem>
+                    <MudItem xs="12"><MudTextField @bind-Value="model.Comment" Label="@Text["Comment"]" Lines="3" /></MudItem>
+                </MudGrid>
+            </MudPaper>
+
+            <MudPaper Class="pa-4 mb-4" Elevation="1">
+                <MudText Typo="Typo.h6" HtmlTag="h2" Class="mb-3">@Text["MechanicalProperties"]</MudText>
+                <MudGrid Spacing="3">
+                    <MudItem xs="12" md="6"><MudNumericField T="decimal?" @bind-Value="model.DensityKilogramPerCubicMeter" Label="@Text["Density"]" /></MudItem>
+                    <MudItem xs="12" md="6"><MudNumericField T="decimal?" @bind-Value="model.ThermalConductivityWattPerMeterKelvin" Label="@Text["ThermalConductivity"]" /></MudItem>
+                    <MudItem xs="12" md="6"><MudNumericField T="decimal?" @bind-Value="model.TensileStrengthUltimateGigaPascal" Label="@Text["UltimateTensileStrength"]" /></MudItem>
+                    <MudItem xs="12" md="6"><MudNumericField T="decimal?" @bind-Value="model.TensileStrengthYieldMegaPascal" Label="@Text["YieldTensileStrength"]" /></MudItem>
+                    <MudItem xs="12" md="6"><MudNumericField T="decimal?" @bind-Value="model.ShearModulusGigaPascal" Label="@Text["ShearModulus"]" /></MudItem>
+                    <MudItem xs="12" md="6"><MudNumericField T="decimal?" @bind-Value="model.MachinabilityPercent" Label="@Text["MachinabilityPercent"]" /></MudItem>
+                    <MudItem xs="12" md="6"><MudNumericField T="decimal?" @bind-Value="model.HardnessBrinell" Label="@Text["HardnessBrinell"]" /></MudItem>
+                    <MudItem xs="12" md="6"><MudNumericField T="decimal?" @bind-Value="model.HardnessKnoop" Label="@Text["HardnessKnoop"]" /></MudItem>
+                    <MudItem xs="12" md="6"><MudNumericField T="decimal?" @bind-Value="model.HardnessRockwellA" Label="@Text["HardnessRockwellA"]" /></MudItem>
+                    <MudItem xs="12" md="6"><MudNumericField T="decimal?" @bind-Value="model.HardnessRockwellB" Label="@Text["HardnessRockwellB"]" /></MudItem>
+                    <MudItem xs="12" md="6"><MudNumericField T="decimal?" @bind-Value="model.HardnessRockwellC" Label="@Text["HardnessRockwellC"]" /></MudItem>
+                    <MudItem xs="12" md="6"><MudNumericField T="decimal?" @bind-Value="model.HardnessVickers" Label="@Text["HardnessVickers"]" /></MudItem>
+                </MudGrid>
+            </MudPaper>
+
+            <MudPaper Class="pa-4 mb-4" Elevation="1">
+                <MudText Typo="Typo.h6" HtmlTag="h2" Class="mb-3">@Text["MaterialIdentification"]</MudText>
+                <MudGrid Spacing="3">
+                    <MudItem xs="12" sm="6" md="4"><MudTextField @bind-Value="model.Aisi" Label="@Text["Aisi"]" /></MudItem>
+                    <MudItem xs="12" sm="6" md="4"><MudTextField @bind-Value="model.Din" Label="@Text["Din"]" /></MudItem>
+                    <MudItem xs="12" sm="6" md="4"><MudTextField @bind-Value="model.Bts" Label="@Text["Bts"]" /></MudItem>
+                    <MudItem xs="12" sm="6" md="4"><MudTextField @bind-Value="model.Jis" Label="@Text["Jis"]" /></MudItem>
+                    <MudItem xs="12" sm="6" md="4"><MudTextField @bind-Value="model.Uns" Label="@Text["Uns"]" /></MudItem>
+                    <MudItem xs="12" sm="6" md="4"><MudTextField @bind-Value="model.En" Label="@Text["En"]" /></MudItem>
+                    <MudItem xs="12" sm="6" md="4"><MudTextField @bind-Value="model.Afnor" Label="@Text["Afnor"]" /></MudItem>
+                    <MudItem xs="12" sm="6" md="4"><MudTextField @bind-Value="model.Uni" Label="@Text["Uni"]" /></MudItem>
+                    <MudItem xs="12" sm="6" md="4"><MudTextField @bind-Value="model.Sis" Label="@Text["Sis"]" /></MudItem>
+                    <MudItem xs="12" sm="6" md="4"><MudTextField @bind-Value="model.Sae" Label="@Text["Sae"]" /></MudItem>
+                    <MudItem xs="12" sm="6" md="4"><MudTextField @bind-Value="model.Astm" Label="@Text["Astm"]" /></MudItem>
+                    <MudItem xs="12" sm="6" md="4"><MudTextField @bind-Value="model.Ams" Label="@Text["Ams"]" /></MudItem>
+                </MudGrid>
+            </MudPaper>
+
+            <MudPaper Class="pa-4 mb-4" Elevation="1">
+                <MudText Typo="Typo.h6" HtmlTag="h2" Class="mb-3">@Text["ProcessCompatibility"]</MudText>
+                <MudCheckBox T="bool" @bind-Value="model.Machinable" Label="@Text["Machinable"]" />
+                <MudCheckBox T="bool" @bind-Value="model.Printable" Label="@Text["Printable"]" />
+            </MudPaper>
+
+            <MudStack Row="true" Spacing="2">
+                <MudButton ButtonType="ButtonType.Button" Variant="Variant.Filled" Color="Color.Primary" Disabled="@submitting" OnClick="SubmitAsync">
+                    @(submitting ? Text["Submitting"] : Text["CreateMaterial"])
+                </MudButton>
+                <MudButton Href="/Materials/Index" Variant="Variant.Text" Disabled="@submitting">@Text["Cancel"]</MudButton>
+            </MudStack>
+        </MudForm>
+    }
+</MudContainer>
+
+@code {
+    private readonly CatalogMaterialUpsertRequest model = new();
+    private IReadOnlyList<CatalogMaterialGroup> materialGroups = [];
+    private IReadOnlyList<CatalogCurrency> currencies = [];
+    private MudForm? form;
+    private bool formValid;
+    private bool loading = true;
+    private bool submitting;
+    private string? error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            materialGroups = await LoadLookupAsync<CatalogMaterialGroup>("/bff/catalog/material-groups");
+            currencies = await LoadLookupAsync<CatalogCurrency>("/bff/catalog/currencies");
+        }
+        catch (UnauthorizedAccessException)
+        {
+            NavigateToLogin();
+        }
+        catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException)
+        {
+            error = Text["LookupsUnavailable"];
+        }
+        finally
+        {
+            loading = false;
+        }
+    }
+
+    private async Task<IReadOnlyList<T>> LoadLookupAsync<T>(string path)
+    {
+        using var response = await Http.GetAsync(path);
+        if (response.StatusCode == HttpStatusCode.Unauthorized)
+        {
+            throw new UnauthorizedAccessException();
+        }
+
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<IReadOnlyList<T>>() ?? [];
+    }
+
+    private async Task SubmitAsync()
+    {
+        if (submitting || form is null)
+        {
+            return;
+        }
+
+        await form.ValidateAsync();
+        if (!formValid)
+        {
+            error = Text["ValidationFailed"];
+            return;
+        }
+
+        submitting = true;
+        error = null;
+        try
+        {
+            var session = await Http.GetFromJsonAsync<EmployeeSessionSummary>("/bff/session");
+            if (string.IsNullOrWhiteSpace(session?.CsrfToken))
+            {
+                error = Text["CreateFailed"];
+                return;
+            }
+
+            using var request = new HttpRequestMessage(HttpMethod.Post, "/bff/catalog/materials")
+            {
+                Content = JsonContent.Create(model),
+            };
+            request.Headers.Add("X-CSRF-TOKEN", session.CsrfToken);
+            using var response = await Http.SendAsync(request);
+
+            if (response.StatusCode == HttpStatusCode.Unauthorized)
+            {
+                NavigateToLogin();
+                return;
+            }
+
+            if (response.StatusCode == HttpStatusCode.Forbidden)
+            {
+                error = Text["Forbidden"];
+                return;
+            }
+
+            if (response.StatusCode == HttpStatusCode.BadRequest)
+            {
+                error = Text["ValidationFailed"];
+                return;
+            }
+
+            if (response.StatusCode == HttpStatusCode.TooManyRequests)
+            {
+                error = Text["RateLimited"];
+                return;
+            }
+
+            if (!response.IsSuccessStatusCode)
+            {
+                error = Text["CreateFailed"];
+                return;
+            }
+
+            var created = await response.Content.ReadFromJsonAsync<CatalogCreatedMaterial>();
+            if (created is null || created.Id <= 0)
+            {
+                error = Text["InvalidResponse"];
+                return;
+            }
+
+            Navigation.NavigateTo($"/Materials/View?id={created.Id}");
+        }
+        catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException)
+        {
+            error = Text["CreateFailed"];
+        }
+        finally
+        {
+            submitting = false;
+        }
+    }
+
+    private void NavigateToLogin() => Navigation.NavigateTo(
+        $"/Login?returnUrl={Uri.EscapeDataString(Navigation.ToBaseRelativePath(Navigation.Uri))}");
+}

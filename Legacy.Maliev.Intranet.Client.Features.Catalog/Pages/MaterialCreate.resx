@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
+  <data name="PageTitle" xml:space="preserve"><value>Create material - MALIEV Intranet</value></data>
+  <data name="Catalog" xml:space="preserve"><value>Catalog</value></data>
+  <data name="CreateMaterial" xml:space="preserve"><value>Create material</value></data>
+  <data name="Loading" xml:space="preserve"><value>Loading material editor</value></data>
+  <data name="BasicInformation" xml:space="preserve"><value>Basic information</value></data>
+  <data name="Name" xml:space="preserve"><value>Name</value></data>
+  <data name="MaterialGroup" xml:space="preserve"><value>Material group</value></data>
+  <data name="MaterialNumber" xml:space="preserve"><value>Material number</value></data>
+  <data name="ManufacturerReference" xml:space="preserve"><value>Manufacturer reference</value></data>
+  <data name="PricePerKilogram" xml:space="preserve"><value>Price per kilogram</value></data>
+  <data name="Currency" xml:space="preserve"><value>Currency</value></data>
+  <data name="DatasheetUrl" xml:space="preserve"><value>Datasheet URL</value></data>
+  <data name="Comment" xml:space="preserve"><value>Comment</value></data>
+  <data name="MechanicalProperties" xml:space="preserve"><value>Mechanical properties</value></data>
+  <data name="Density" xml:space="preserve"><value>Density (kg/m³)</value></data>
+  <data name="ThermalConductivity" xml:space="preserve"><value>Thermal conductivity (W/m-K)</value></data>
+  <data name="UltimateTensileStrength" xml:space="preserve"><value>Ultimate tensile strength (GPa)</value></data>
+  <data name="YieldTensileStrength" xml:space="preserve"><value>Yield tensile strength (MPa)</value></data>
+  <data name="ShearModulus" xml:space="preserve"><value>Shear modulus (GPa)</value></data>
+  <data name="MachinabilityPercent" xml:space="preserve"><value>Machinability (%)</value></data>
+  <data name="HardnessBrinell" xml:space="preserve"><value>Hardness Brinell</value></data>
+  <data name="HardnessKnoop" xml:space="preserve"><value>Hardness Knoop</value></data>
+  <data name="HardnessRockwellA" xml:space="preserve"><value>Hardness Rockwell A</value></data>
+  <data name="HardnessRockwellB" xml:space="preserve"><value>Hardness Rockwell B</value></data>
+  <data name="HardnessRockwellC" xml:space="preserve"><value>Hardness Rockwell C</value></data>
+  <data name="HardnessVickers" xml:space="preserve"><value>Hardness Vickers</value></data>
+  <data name="MaterialIdentification" xml:space="preserve"><value>Material identification</value></data>
+  <data name="Aisi" xml:space="preserve"><value>AISI</value></data>
+  <data name="Din" xml:space="preserve"><value>DIN</value></data>
+  <data name="Bts" xml:space="preserve"><value>BTS</value></data>
+  <data name="Jis" xml:space="preserve"><value>JIS</value></data>
+  <data name="Uns" xml:space="preserve"><value>UNS</value></data>
+  <data name="En" xml:space="preserve"><value>EN</value></data>
+  <data name="Afnor" xml:space="preserve"><value>AFNOR</value></data>
+  <data name="Uni" xml:space="preserve"><value>UNI</value></data>
+  <data name="Sis" xml:space="preserve"><value>SIS</value></data>
+  <data name="Sae" xml:space="preserve"><value>SAE</value></data>
+  <data name="Astm" xml:space="preserve"><value>ASTM</value></data>
+  <data name="Ams" xml:space="preserve"><value>AMS</value></data>
+  <data name="ProcessCompatibility" xml:space="preserve"><value>Process compatibility</value></data>
+  <data name="Machinable" xml:space="preserve"><value>CNC machinable</value></data>
+  <data name="Printable" xml:space="preserve"><value>3D printable</value></data>
+  <data name="Submitting" xml:space="preserve"><value>Creating material...</value></data>
+  <data name="Cancel" xml:space="preserve"><value>Cancel</value></data>
+  <data name="LookupsUnavailable" xml:space="preserve"><value>Material groups and currencies are temporarily unavailable.</value></data>
+  <data name="ValidationFailed" xml:space="preserve"><value>Check the highlighted fields and try again.</value></data>
+  <data name="CreateFailed" xml:space="preserve"><value>The material could not be created. Please retry.</value></data>
+  <data name="Forbidden" xml:space="preserve"><value>You do not have permission to create materials.</value></data>
+  <data name="RateLimited" xml:space="preserve"><value>Catalog requests are temporarily limited. Wait and try again.</value></data>
+  <data name="InvalidResponse" xml:space="preserve"><value>The material catalog returned an invalid response.</value></data>
+</root>
