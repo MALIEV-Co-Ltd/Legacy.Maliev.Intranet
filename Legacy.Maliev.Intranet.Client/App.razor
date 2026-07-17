@@ -1,5 +1,5 @@
 <CascadingAuthenticationState>
-    <Router AppAssembly="@typeof(App).Assembly">
+    <Router AppAssembly="@typeof(App).Assembly" AdditionalAssemblies="@lazyAssemblies" OnNavigateAsync="LoadFeatureAssemblyAsync">
         <Found Context="routeData">
             <AuthorizeRouteView RouteData="routeData" DefaultLayout="@typeof(Layout.MainLayout)">
                 <NotAuthorized>
@@ -15,3 +15,20 @@
         </NotFound>
     </Router>
 </CascadingAuthenticationState>
+
+@code {
+    private readonly List<System.Reflection.Assembly> lazyAssemblies = [];
+
+    [Inject] private Microsoft.AspNetCore.Components.WebAssembly.Services.LazyAssemblyLoader AssemblyLoader { get; set; } = default!;
+
+    private async Task LoadFeatureAssemblyAsync(Microsoft.AspNetCore.Components.Routing.NavigationContext context)
+    {
+        if (context.Path.StartsWith("Materials/", StringComparison.OrdinalIgnoreCase) && lazyAssemblies.Count == 0)
+        {
+            context.CancellationToken.ThrowIfCancellationRequested();
+            lazyAssemblies.AddRange(await AssemblyLoader.LoadAssembliesAsync(
+                ["Legacy.Maliev.Intranet.Client.Features.Catalog.wasm"]));
+            context.CancellationToken.ThrowIfCancellationRequested();
+        }
+    }
+}
