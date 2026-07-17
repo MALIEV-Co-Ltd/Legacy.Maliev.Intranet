@@ -310,6 +310,78 @@ app.MapGet("/bff/catalog/materials", async (
     }
 }).RequireAuthorization("legacy-catalog.materials.read");
 
+app.MapGet("/bff/catalog/materials/{id:int}", async (
+    int id,
+    HttpContext context,
+    CatalogMaterialsProxy catalog,
+    CancellationToken cancellationToken) =>
+{
+    if (id <= 0)
+    {
+        return Results.NotFound();
+    }
+
+    HttpResponseMessage response;
+    try
+    {
+        response = await catalog.GetByIdAsync(id, cancellationToken);
+    }
+    catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+    {
+        return Results.Problem(statusCode: StatusCodes.Status503ServiceUnavailable, title: "Catalog unavailable");
+    }
+    catch (HttpRequestException)
+    {
+        return Results.Problem(statusCode: StatusCodes.Status503ServiceUnavailable, title: "Catalog unavailable");
+    }
+
+    using (response)
+    {
+        if (response.StatusCode == System.Net.HttpStatusCode.RequestTimeout)
+        {
+            return Results.Problem(statusCode: StatusCodes.Status503ServiceUnavailable, title: "Catalog unavailable");
+        }
+
+        if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+        {
+            return Results.NotFound();
+        }
+
+        if (response.StatusCode == System.Net.HttpStatusCode.TooManyRequests)
+        {
+            var retryAfter = response.Headers.RetryAfter?.Delta;
+            if (retryAfter.HasValue && retryAfter.Value > TimeSpan.Zero && retryAfter.Value <= TimeSpan.FromHours(1))
+            {
+                context.Response.Headers.RetryAfter = ((int)Math.Ceiling(retryAfter.Value.TotalSeconds)).ToString(CultureInfo.InvariantCulture);
+            }
+
+            return Results.StatusCode(StatusCodes.Status429TooManyRequests);
+        }
+
+        if (response.StatusCode is System.Net.HttpStatusCode.Unauthorized or System.Net.HttpStatusCode.Forbidden)
+        {
+            return Results.StatusCode((int)response.StatusCode);
+        }
+
+        if (!response.IsSuccessStatusCode)
+        {
+            return Results.Problem(statusCode: StatusCodes.Status503ServiceUnavailable, title: "Catalog unavailable");
+        }
+
+        try
+        {
+            var detail = await response.Content.ReadFromJsonAsync<CatalogMaterialDetail>(cancellationToken);
+            return detail is null
+                ? Results.Problem(statusCode: StatusCodes.Status502BadGateway, title: "Invalid Catalog response")
+                : Results.Ok(detail);
+        }
+        catch (System.Text.Json.JsonException)
+        {
+            return Results.Problem(statusCode: StatusCodes.Status502BadGateway, title: "Invalid Catalog response");
+        }
+    }
+}).RequireAuthorization("legacy-catalog.materials.read");
+
 app.MapFallbackToFile("index.html").AllowAnonymous();
 
 await app.RunAsync();

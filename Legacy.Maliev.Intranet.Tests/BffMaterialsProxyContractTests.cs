@@ -29,6 +29,162 @@ namespace Legacy.Maliev.Intranet.Tests;
 public sealed class BffMaterialsProxyContractTests
 {
     [Fact]
+    public async Task AuthorizedEmployee_DetailForwardsExactIdAndServerOnlyBearerToken()
+    {
+        var downstream = new RecordingCatalogHandler(HttpStatusCode.OK, MaterialDetailJson);
+        await using var factory = new MaterialsBffFactory(downstream, hasPermission: true, compatibilityGrant: false);
+        using var client = CreateClient(factory);
+        await SignInAsync(client);
+
+        using var response = await client.GetAsync("/bff/catalog/materials/42");
+        var json = await response.Content.ReadAsStringAsync();
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal("/Materials/42", downstream.PathAndQuery);
+        Assert.Equal("Bearer signed-service-token", downstream.Authorization);
+        Assert.Contains("\"id\":42", json, StringComparison.Ordinal);
+        Assert.Contains("\"materialGroup\":{\"id\":7,\"name\":\"Steel\"}", json, StringComparison.Ordinal);
+        Assert.DoesNotContain("server-only-access-token", json, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task DetailEmployeeWithoutExactPermission_IsForbiddenBeforeCatalogCall()
+    {
+        var downstream = new RecordingCatalogHandler(HttpStatusCode.OK, MaterialDetailJson);
+        await using var factory = new MaterialsBffFactory(downstream, hasPermission: false, compatibilityGrant: false);
+        using var client = CreateClient(factory);
+        await SignInAsync(client);
+
+        using var response = await client.GetAsync("/bff/catalog/materials/42");
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+        Assert.Null(downstream.PathAndQuery);
+    }
+
+    [Fact]
+    public async Task AnonymousDetailRequest_IsUnauthorizedBeforeCatalogCall()
+    {
+        var downstream = new RecordingCatalogHandler(HttpStatusCode.OK, MaterialDetailJson);
+        await using var factory = new MaterialsBffFactory(downstream, hasPermission: true);
+        using var client = CreateClient(factory);
+
+        using var response = await client.GetAsync("/bff/catalog/materials/42");
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        Assert.Null(downstream.PathAndQuery);
+    }
+
+    [Fact]
+    public async Task DetailNotFound_IsPreserved()
+    {
+        var downstream = new RecordingCatalogHandler(HttpStatusCode.NotFound, "{}");
+        await using var factory = new MaterialsBffFactory(downstream, hasPermission: true);
+        using var client = CreateClient(factory);
+        await SignInAsync(client);
+
+        using var response = await client.GetAsync("/bff/catalog/materials/404");
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        Assert.Equal("/Materials/404", downstream.PathAndQuery);
+    }
+
+    [Fact]
+    public async Task InvalidDetailId_IsNotFoundWithoutCallingCatalog()
+    {
+        var downstream = new RecordingCatalogHandler(HttpStatusCode.OK, MaterialDetailJson);
+        await using var factory = new MaterialsBffFactory(downstream, hasPermission: true);
+        using var client = CreateClient(factory);
+        await SignInAsync(client);
+
+        using var response = await client.GetAsync("/bff/catalog/materials/0");
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        Assert.Equal(0, downstream.RequestCount);
+    }
+
+    [Theory]
+    [InlineData(HttpStatusCode.Unauthorized)]
+    [InlineData(HttpStatusCode.Forbidden)]
+    public async Task DetailDownstreamAuthFailure_IsPreserved(HttpStatusCode statusCode)
+    {
+        var downstream = new RecordingCatalogHandler(statusCode, "{}");
+        await using var factory = new MaterialsBffFactory(downstream, hasPermission: true);
+        using var client = CreateClient(factory);
+        await SignInAsync(client);
+
+        using var response = await client.GetAsync("/bff/catalog/materials/42");
+
+        Assert.Equal(statusCode, response.StatusCode);
+        Assert.Equal(1, downstream.RequestCount);
+    }
+
+    [Fact]
+    public async Task DetailRateLimit_PreservesStatusAndBoundedRetryAfter()
+    {
+        var downstream = new RecordingCatalogHandler(HttpStatusCode.TooManyRequests, "{}", retryAfterSeconds: 1);
+        await using var factory = new MaterialsBffFactory(downstream, hasPermission: true);
+        using var client = CreateClient(factory);
+        await SignInAsync(client);
+
+        using var response = await client.GetAsync("/bff/catalog/materials/42");
+
+        Assert.Equal(HttpStatusCode.TooManyRequests, response.StatusCode);
+        Assert.Equal(TimeSpan.FromSeconds(1), response.Headers.RetryAfter?.Delta);
+    }
+
+    [Fact]
+    public async Task InvalidDetailPayload_IsMappedToBadGatewayWithoutLeakingThePayload()
+    {
+        var downstream = new RecordingCatalogHandler(HttpStatusCode.OK, "not-json");
+        await using var factory = new MaterialsBffFactory(downstream, hasPermission: true);
+        using var client = CreateClient(factory);
+        await SignInAsync(client);
+
+        using var response = await client.GetAsync("/bff/catalog/materials/42");
+        var body = await response.Content.ReadAsStringAsync();
+
+        Assert.Equal(HttpStatusCode.BadGateway, response.StatusCode);
+        Assert.DoesNotContain("not-json", body, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task DetailTransportFailure_IsMappedToServiceUnavailable()
+    {
+        var downstream = new RecordingCatalogHandler(
+            HttpStatusCode.OK,
+            "{}",
+            exception: new HttpRequestException("catalog unavailable"));
+        await using var factory = new MaterialsBffFactory(downstream, hasPermission: true, compatibilityGrant: false);
+        using var client = CreateClient(factory);
+        await SignInAsync(client);
+
+        using var response = await client.GetAsync("/bff/catalog/materials/42");
+
+        Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task DetailWithSignedCatalogServiceToken_PassesCatalogPermissionPipeline()
+    {
+        using var signingKey = RSA.Create(2048);
+        await using var catalog = await StartCatalogPermissionPipelineAsync(signingKey);
+        var serviceToken = CreateSignedToken(signingKey, "service", includeCatalogPermission: true);
+        await using var factory = new MaterialsBffFactory(
+            catalog.GetTestServer().CreateHandler(),
+            hasPermission: true,
+            compatibilityGrant: false,
+            serviceToken);
+        using var client = CreateClient(factory);
+        await SignInAsync(client);
+
+        using var response = await client.GetAsync("/bff/catalog/materials/42");
+        var body = await response.Content.ReadAsStringAsync();
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Contains("\"id\":42", body, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task AuthorizedEmployee_ForwardsExactQueryAndServerOnlyBearerToken()
     {
         var downstream = new RecordingCatalogHandler(HttpStatusCode.OK, MaterialPageJson);
@@ -349,6 +505,9 @@ public sealed class BffMaterialsProxyContractTests
     private const string MaterialPageJson =
         """{"Items":[{"Id":42,"MaterialGroupId":1,"Machinable":true,"Printable":false,"Name":"4140","MaterialNumber":"4140","DensityKilogramPerCubicMeter":7850,"MaterialGroup":{"Id":1,"Name":"Steel"}}],"PageIndex":2,"TotalPages":4,"TotalRecords":75,"HasNextPage":true,"HasPreviousPage":true}""";
 
+    private const string MaterialDetailJson =
+        """{"Id":42,"MaterialGroupId":7,"Machinable":true,"Printable":false,"Name":"4140","MaterialNumber":"AISI 4140","DensityKilogramPerCubicMeter":7850,"MaterialGroup":{"Id":7,"Name":"Steel"}}""";
+
     private static async Task<WebApplication> StartCatalogPermissionPipelineAsync(RSA signingKey)
     {
         var builder = WebApplication.CreateBuilder(new WebApplicationOptions
@@ -367,6 +526,8 @@ public sealed class BffMaterialsProxyContractTests
         app.UseAuthentication();
         app.UseAuthorization();
         app.MapGet("/Materials", () => Results.Text(MaterialPageJson, "application/json"))
+            .RequireAuthorization($"Permission:{LegacyEmployeePermissions.CatalogMaterialsRead}");
+        app.MapGet("/Materials/{id:int}", (int id) => Results.Text(MaterialDetailJson, "application/json"))
             .RequireAuthorization($"Permission:{LegacyEmployeePermissions.CatalogMaterialsRead}");
         await app.StartAsync();
         return app;
