@@ -71,6 +71,31 @@ public sealed class BlazorWasmArchitectureContractTests
     }
 
     [Fact]
+    public void Client_DashboardRouteRequiresEmployeeSessionAndReturnsAnonymousUsersToLogin()
+    {
+        var root = FindRoot();
+        var dashboardPath = Path.Combine(root, "Legacy.Maliev.Intranet.Client", "Pages", "Dashboard.razor");
+
+        Assert.True(File.Exists(dashboardPath), "The approved post-login Dashboard route is missing.");
+        var dashboard = File.ReadAllText(dashboardPath);
+        Assert.Contains("@page \"/Dashboard\"", dashboard, StringComparison.Ordinal);
+        Assert.Contains("@attribute [Authorize]", dashboard, StringComparison.Ordinal);
+        Assert.Contains("<PageTitle>", dashboard, StringComparison.Ordinal);
+        Assert.Contains("HtmlTag=\"h1\"", dashboard, StringComparison.Ordinal);
+        Assert.DoesNotContain("DbContext", dashboard, StringComparison.Ordinal);
+        Assert.DoesNotContain("AccessToken", dashboard, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("RefreshToken", dashboard, StringComparison.OrdinalIgnoreCase);
+
+        var app = File.ReadAllText(Path.Combine(root, "Legacy.Maliev.Intranet.Client", "App.razor"));
+        var redirect = File.ReadAllText(Path.Combine(root, "Legacy.Maliev.Intranet.Client", "LoginRedirect.razor"));
+        Assert.Contains("CascadingAuthenticationState", app, StringComparison.Ordinal);
+        Assert.Contains("AuthorizeRouteView", app, StringComparison.Ordinal);
+        Assert.Contains("<NotAuthorized>", app, StringComparison.Ordinal);
+        Assert.Contains("<LoginRedirect", app, StringComparison.Ordinal);
+        Assert.Contains("/Login?returnUrl=", redirect, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Bff_OwnsCookieCsrfAndServerAuthorizationWithoutDomainBusinessLogic()
     {
         var root = FindRoot();
