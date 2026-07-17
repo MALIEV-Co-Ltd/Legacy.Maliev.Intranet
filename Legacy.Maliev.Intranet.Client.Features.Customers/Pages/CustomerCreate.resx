@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
+  <data name="PageTitle" xml:space="preserve"><value>Create customer - MALIEV Intranet</value></data>
+  <data name="ProfileAndAccount" xml:space="preserve"><value>Customer profile and account</value></data>
+  <data name="CreateCustomer" xml:space="preserve"><value>Create customer</value></data>
+  <data name="FirstName" xml:space="preserve"><value>First name</value></data>
+  <data name="LastName" xml:space="preserve"><value>Last name</value></data>
+  <data name="Email" xml:space="preserve"><value>Email</value></data>
+  <data name="Password" xml:space="preserve"><value>Password</value></data>
+  <data name="ConfirmPassword" xml:space="preserve"><value>Confirm password</value></data>
+  <data name="PasswordPrivacy" xml:space="preserve"><value>The password is sent only to the authentication service and is never stored in the customer profile.</value></data>
+  <data name="Telephone" xml:space="preserve"><value>Telephone</value></data>
+  <data name="Mobile" xml:space="preserve"><value>Mobile</value></data>
+  <data name="Fax" xml:space="preserve"><value>Fax</value></data>
+  <data name="DateOfBirth" xml:space="preserve"><value>Date of birth</value></data>
+  <data name="Submitting" xml:space="preserve"><value>Creating…</value></data>
+  <data name="Cancel" xml:space="preserve"><value>Cancel</value></data>
+  <data name="ValidationFailed" xml:space="preserve"><value>Review the highlighted fields and try again.</value></data>
+  <data name="Forbidden" xml:space="preserve"><value>You do not have permission to create customers.</value></data>
+  <data name="Conflict" xml:space="preserve"><value>An account already exists for this email address.</value></data>
+  <data name="RateLimited" xml:space="preserve"><value>Too many requests were submitted. Wait a moment and try again.</value></data>
+  <data name="CreateFailed" xml:space="preserve"><value>The customer could not be created. No password was stored. Please retry.</value></data>
+  <data name="InvalidResponse" xml:space="preserve"><value>The customer services returned an invalid response.</value></data>
+</root>
