@@ -39,6 +39,7 @@ builder.Services.AddSingleton<IServiceAccessTokenProvider, ServiceAccessTokenPro
 builder.Services.AddTransient<LegacyServiceAuthenticationHandler>();
 builder.Services.AddScoped<Legacy.Maliev.Intranet.Customers.CustomerAccountCreationService>();
 builder.Services.AddScoped<Legacy.Maliev.Intranet.Employees.EmployeeAccountCreationService>();
+builder.Services.AddScoped<Legacy.Maliev.Intranet.Suppliers.SupplierCreationService>();
 #pragma warning disable EXTEXP0001 // Replace inherited pipelines with explicit downstream 429 contracts.
 builder.Services.AddHttpClient<Legacy.Maliev.Intranet.Customers.ICustomerProfileCreationClient, Legacy.Maliev.Intranet.Customers.CustomerProfileCreationClient>(client =>
 {
@@ -65,6 +66,20 @@ builder.Services.AddHttpClient<Legacy.Maliev.Intranet.Employees.IEmployeeIdentit
 {
     client.BaseAddress = new Uri(builder.Configuration["Services:Auth"]
         ?? throw new InvalidOperationException("Services:Auth is required."));
+    client.Timeout = TimeSpan.FromSeconds(10);
+}).RemoveAllResilienceHandlers()
+    .AddHttpMessageHandler<LegacyServiceAuthenticationHandler>();
+builder.Services.AddHttpClient<Legacy.Maliev.Intranet.Suppliers.ISupplierProfileCreationClient, SupplierProfileCreationClient>(client =>
+{
+    client.BaseAddress = new Uri(builder.Configuration["Services:Procurement"]
+        ?? throw new InvalidOperationException("Services:Procurement is required."));
+    client.Timeout = TimeSpan.FromSeconds(10);
+}).RemoveAllResilienceHandlers()
+    .AddHttpMessageHandler<LegacyServiceAuthenticationHandler>();
+builder.Services.AddHttpClient<Legacy.Maliev.Intranet.Suppliers.ISupplierAddressCreationClient, SupplierAddressCreationClient>(client =>
+{
+    client.BaseAddress = new Uri(builder.Configuration["Services:Procurement"]
+        ?? throw new InvalidOperationException("Services:Procurement is required."));
     client.Timeout = TimeSpan.FromSeconds(10);
 }).RemoveAllResilienceHandlers()
     .AddHttpMessageHandler<LegacyServiceAuthenticationHandler>();
@@ -388,6 +403,9 @@ builder.Services.AddAuthorizationBuilder()
     .AddPolicy(LegacyEmployeePermissions.SuppliersRead, policy => policy
         .RequireAuthenticatedUser()
         .RequireClaim("permissions", LegacyEmployeePermissions.SuppliersRead))
+    .AddPolicy(LegacyEmployeePermissions.SuppliersCreate, policy => policy
+        .RequireAuthenticatedUser()
+        .RequireClaim("permissions", LegacyEmployeePermissions.SuppliersCreate))
     .AddPolicy(LegacyEmployeePermissions.PurchaseOrdersRead, policy => policy
         .RequireAuthenticatedUser()
         .RequireClaim("permissions", LegacyEmployeePermissions.PurchaseOrdersRead))
@@ -474,6 +492,52 @@ app.MapGet("/bff/suppliers", (
         cancellationToken);
 })
     .RequireAuthorization(LegacyEmployeePermissions.SuppliersRead);
+
+app.MapPost("/bff/suppliers", async (
+    SupplierCreateRequest request,
+    HttpContext context,
+    Legacy.Maliev.Intranet.Suppliers.SupplierCreationService workflow,
+    CancellationToken cancellationToken) =>
+{
+    var validationResults = new List<ValidationResult>();
+    if (!Validator.TryValidateObject(request, new ValidationContext(request), validationResults, true))
+    {
+        var errors = validationResults
+            .SelectMany(result => result.MemberNames.DefaultIfEmpty(string.Empty)
+                .Select(member => new
+                {
+                    member = string.IsNullOrEmpty(member) ? member : System.Text.Json.JsonNamingPolicy.CamelCase.ConvertName(member),
+                    message = result.ErrorMessage ?? "The value is invalid.",
+                }))
+            .GroupBy(error => error.member, StringComparer.Ordinal)
+            .ToDictionary(group => group.Key, group => group.Select(error => error.message).Distinct(StringComparer.Ordinal).ToArray(), StringComparer.Ordinal);
+        return Results.ValidationProblem(errors);
+    }
+
+    var result = await workflow.CreateAsync(request, cancellationToken);
+    if (result.Status == Legacy.Maliev.Intranet.Suppliers.SupplierCreationStatus.RateLimited && result.RetryAfter is { } retryAfter)
+    {
+        context.Response.Headers.RetryAfter = ((int)Math.Ceiling(retryAfter.TotalSeconds)).ToString(CultureInfo.InvariantCulture);
+    }
+
+    return result.Status switch
+    {
+        Legacy.Maliev.Intranet.Suppliers.SupplierCreationStatus.Created when result.SupplierId is { } supplierId =>
+            Results.Created($"/Suppliers/View?id={supplierId}", new CreatedSupplier(supplierId)),
+        Legacy.Maliev.Intranet.Suppliers.SupplierCreationStatus.BadRequest =>
+            Results.Problem(statusCode: StatusCodes.Status400BadRequest, title: "Supplier data was rejected"),
+        Legacy.Maliev.Intranet.Suppliers.SupplierCreationStatus.Unauthorized => Results.Unauthorized(),
+        Legacy.Maliev.Intranet.Suppliers.SupplierCreationStatus.Forbidden => Results.StatusCode(StatusCodes.Status403Forbidden),
+        Legacy.Maliev.Intranet.Suppliers.SupplierCreationStatus.Conflict =>
+            Results.Problem(statusCode: StatusCodes.Status409Conflict, title: "Supplier already exists"),
+        Legacy.Maliev.Intranet.Suppliers.SupplierCreationStatus.RateLimited => Results.StatusCode(StatusCodes.Status429TooManyRequests),
+        Legacy.Maliev.Intranet.Suppliers.SupplierCreationStatus.BadGateway =>
+            Results.Problem(statusCode: StatusCodes.Status502BadGateway, title: "Invalid ProcurementService response"),
+        _ => Results.Problem(statusCode: StatusCodes.Status503ServiceUnavailable, title: "Supplier creation unavailable"),
+    };
+})
+    .AddEndpointFilter<AntiforgeryValidationFilter>()
+    .RequireAuthorization(LegacyEmployeePermissions.SuppliersCreate);
 
 app.MapGet("/bff/purchase-orders", (
     PurchaseOrderListSort? sort,

@@ -1,0 +1,97 @@
+@page "/Suppliers/Create"
+@attribute [Authorize]
+@inject HttpClient Http
+@inject NavigationManager Navigation
+@inject IStringLocalizer<SupplierCreate> Text
+
+<PageTitle>@Text["PageTitle"]</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Medium">
+    <MudText Typo="Typo.overline">@Text["Procurement"]</MudText>
+    <MudText Typo="Typo.h4" HtmlTag="h1" Class="mb-4">@Text["CreateSupplier"]</MudText>
+    @if (!string.IsNullOrWhiteSpace(error))
+    {
+        <MudAlert Severity="Severity.Error" Class="mb-4" aria-live="assertive">@error</MudAlert>
+    }
+    <MudForm @ref="form" Model="@model" @bind-IsValid="formValid">
+        <MudText Typo="Typo.h6" HtmlTag="h2">@Text["Supplier"]</MudText>
+        <MudTextField @bind-Value="model.Name" For="@(() => model.Name)" Label="@Text["Name"]" Required="true" />
+        <MudTextField @bind-Value="model.Website" For="@(() => model.Website)" Label="@Text["Website"]" InputType="InputType.Url" />
+        <MudTextField @bind-Value="model.TaxNumber" For="@(() => model.TaxNumber)" Label="@Text["TaxNumber"]" />
+        <MudTextField @bind-Value="model.Email" For="@(() => model.Email)" Label="@Text["Email"]" InputType="InputType.Email" />
+        <MudTextField @bind-Value="model.Telephone" For="@(() => model.Telephone)" Label="@Text["Telephone"]" InputType="InputType.Telephone" />
+        <MudTextField @bind-Value="model.Mobile" For="@(() => model.Mobile)" Label="@Text["Mobile"]" InputType="InputType.Telephone" />
+        <MudTextField @bind-Value="model.Fax" For="@(() => model.Fax)" Label="@Text["Fax"]" />
+        <MudTextField @bind-Value="model.Note" For="@(() => model.Note)" Label="@Text["Note"]" Lines="3" />
+
+        <MudText Typo="Typo.h6" HtmlTag="h2" Class="mt-5">@Text["Address"]</MudText>
+        <MudTextField @bind-Value="model.Building" For="@(() => model.Building)" Label="@Text["Building"]" />
+        <MudTextField @bind-Value="model.Address1" For="@(() => model.Address1)" Label="@Text["Address1"]" Required="true" />
+        <MudTextField @bind-Value="model.Address2" For="@(() => model.Address2)" Label="@Text["Address2"]" />
+        <MudTextField @bind-Value="model.City" For="@(() => model.City)" Label="@Text["City"]" />
+        <MudTextField @bind-Value="model.State" For="@(() => model.State)" Label="@Text["State"]" />
+        <MudTextField @bind-Value="model.PostalCode" For="@(() => model.PostalCode)" Label="@Text["PostalCode"]" />
+        <MudNumericField @bind-Value="model.CountryId" For="@(() => model.CountryId)" Label="@Text["CountryId"]" Min="1" Required="true" />
+
+        <MudStack Row="true" Spacing="2" Class="mt-4">
+            <MudButton ButtonType="ButtonType.Button" Variant="Variant.Filled" Color="Color.Primary" Disabled="@submitting" OnClick="SubmitAsync">
+                @(submitting ? Text["Submitting"] : Text["CreateSupplier"])
+            </MudButton>
+            <MudButton Href="/Suppliers/Index" Variant="Variant.Text" Disabled="@submitting">@Text["Cancel"]</MudButton>
+        </MudStack>
+    </MudForm>
+</MudContainer>
+
+@code {
+    private readonly SupplierCreateRequest model = new();
+    private MudForm? form;
+    private bool formValid;
+    private bool submitting;
+    private string? error;
+
+    private async Task SubmitAsync()
+    {
+        if (submitting || form is null) return;
+        await form.ValidateAsync();
+        if (!formValid)
+        {
+            error = Text["ValidationFailed"];
+            return;
+        }
+
+        submitting = true;
+        error = null;
+        try
+        {
+            using var sessionResponse = await Http.GetAsync("/bff/session");
+            if (sessionResponse.StatusCode == HttpStatusCode.Unauthorized) { NavigateToLogin(); return; }
+            sessionResponse.EnsureSuccessStatusCode();
+            var session = await sessionResponse.Content.ReadFromJsonAsync<EmployeeSessionSummary>();
+            if (string.IsNullOrWhiteSpace(session?.CsrfToken)) { error = Text["CreateFailed"]; return; }
+
+            using var request = new HttpRequestMessage(HttpMethod.Post, "/bff/suppliers") { Content = JsonContent.Create(model) };
+            request.Headers.Add("X-CSRF-TOKEN", session.CsrfToken);
+            using var response = await Http.SendAsync(request);
+            if (response.StatusCode == HttpStatusCode.Unauthorized) { NavigateToLogin(); return; }
+            if (response.StatusCode == HttpStatusCode.Forbidden) { error = Text["Forbidden"]; return; }
+            if (response.StatusCode == HttpStatusCode.BadRequest) { error = Text["ValidationFailed"]; return; }
+            if (response.StatusCode == HttpStatusCode.Conflict) { error = Text["Conflict"]; return; }
+            if (response.StatusCode == HttpStatusCode.TooManyRequests) { error = Text["RateLimited"]; return; }
+            if (!response.IsSuccessStatusCode) { error = Text["CreateFailed"]; return; }
+
+            var created = await response.Content.ReadFromJsonAsync<CreatedSupplier>();
+            if (created is null || created.Id <= 0) { error = Text["InvalidResponse"]; return; }
+            Navigation.NavigateTo($"/Suppliers/View?id={created.Id}");
+        }
+        catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException)
+        {
+            error = Text["CreateFailed"];
+        }
+        finally
+        {
+            submitting = false;
+        }
+    }
+
+    private void NavigateToLogin() => Navigation.NavigateTo($"/Login?returnUrl={Uri.EscapeDataString(Navigation.ToBaseRelativePath(Navigation.Uri))}");
+}

@@ -153,7 +153,7 @@
     private Task PreviousPageAsync() => NavigateAsync(Math.Max(1, Index - 1), Search, currentSort, Size);
     private Task NextPageAsync() => NavigateAsync(Index + 1, Search, currentSort, Size);
 
-    private void OpenCreate() => Navigation.NavigateTo("/Suppliers/Create", forceLoad: true);
+    private void OpenCreate() => Navigation.NavigateTo("/Suppliers/Create");
 
     private void OpenSupplier(int id) => Navigation.NavigateTo($"/Suppliers/View?id={id}", forceLoad: true);
 
