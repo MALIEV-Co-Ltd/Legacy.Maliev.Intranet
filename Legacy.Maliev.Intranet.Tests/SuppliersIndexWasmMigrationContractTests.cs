@@ -31,8 +31,8 @@ public sealed class SuppliersIndexWasmMigrationContractTests
         Assert.Contains("/Suppliers/Create", page, StringComparison.Ordinal);
         Assert.Contains("/Suppliers/View?id=", page, StringComparison.Ordinal);
         Assert.Contains("Navigation.NavigateTo(\"/Suppliers/Create\")", page, StringComparison.Ordinal);
-        Assert.Contains("Navigation.NavigateTo($\"/Suppliers/View?id={id}\", forceLoad: true)", page, StringComparison.Ordinal);
-        Assert.Equal(1, CountOccurrences(page, "forceLoad: true"));
+        Assert.Contains("Navigation.NavigateTo($\"/Suppliers/View?id={id}\")", page, StringComparison.Ordinal);
+        Assert.Equal(0, CountOccurrences(page, "forceLoad: true"));
         Assert.Contains("HttpStatusCode.Unauthorized", page, StringComparison.Ordinal);
         Assert.Contains("HttpStatusCode.Forbidden", page, StringComparison.Ordinal);
         Assert.Contains("HttpStatusCode.TooManyRequests", page, StringComparison.Ordinal);
