@@ -437,6 +437,9 @@ builder.Services.AddAuthorizationBuilder()
     .AddPolicy(LegacyEmployeePermissions.AccountingRead, policy => policy
         .RequireAuthenticatedUser()
         .RequireClaim("permissions", LegacyEmployeePermissions.AccountingRead))
+    .AddPolicy(LegacyEmployeePermissions.AccountingCreate, policy => policy
+        .RequireAuthenticatedUser()
+        .RequireClaim("permissions", LegacyEmployeePermissions.AccountingCreate))
     .AddPolicy(LegacyEmployeePermissions.AccountingUpdate, policy => policy
         .RequireAuthenticatedUser()
         .RequireClaim("permissions", LegacyEmployeePermissions.AccountingUpdate))
@@ -687,6 +690,20 @@ app.MapGet("/bff/finances/{id:int}", (int id, FinanceDetailAggregator aggregator
         policy.RequireClaim("permissions", LegacyEmployeePermissions.AccountingRead);
         policy.RequireClaim("permissions", LegacyEmployeePermissions.AccountingFilesRead);
         policy.RequireClaim("permissions", LegacyEmployeePermissions.FileUploadsRead);
+    });
+app.MapGet("/bff/finances/create", (FinancesProxy finances, OrderEmployeeReferenceProxy employees, OrderCatalogReferenceProxy catalog, CancellationToken cancellationToken) =>
+    FinanceCreateEndpointMapper.GetAsync(finances, employees, catalog, cancellationToken))
+    .RequireAuthorization(LegacyEmployeePermissions.AccountingRead);
+app.MapPost("/bff/finances", (HttpContext context, FinancesProxy finances, FinanceFileProxy files, FinanceFileWorkflow workflow, ILogger<FinanceFileWorkflow> logger, CancellationToken cancellationToken) =>
+    FinanceCreateEndpointMapper.CreateAsync(context, finances, files, workflow, logger, cancellationToken))
+    .AddEndpointFilter<AntiforgeryValidationFilter>()
+    .RequireAuthorization(policy =>
+    {
+        policy.RequireClaim("permissions", LegacyEmployeePermissions.AccountingCreate);
+        policy.RequireClaim("permissions", LegacyEmployeePermissions.AccountingFilesWrite);
+        policy.RequireClaim("permissions", LegacyEmployeePermissions.AccountingFilesDelete);
+        policy.RequireClaim("permissions", LegacyEmployeePermissions.FileUploadsCreate);
+        policy.RequireClaim("permissions", LegacyEmployeePermissions.FileUploadsDelete);
     });
 app.MapPut("/bff/finances/{id:int}", (int id, FinancePaymentUpdateRequest input, FinancesProxy finances, HttpContext context, CancellationToken cancellationToken) =>
     FinanceDetailEndpointMapper.UpdateAsync(id, input, finances, context, cancellationToken))

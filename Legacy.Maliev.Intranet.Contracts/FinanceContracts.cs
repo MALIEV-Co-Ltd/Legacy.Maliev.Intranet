@@ -104,3 +104,27 @@ public sealed record FinancePaymentUpdateRequest(
     string? TransactionNumber,
     DateTime? PaymentDate,
     DateTime? ModifiedDate);
+
+/// <summary>Lookup projection for creating a Finance payment.</summary>
+public sealed record FinanceCreatePage(
+    IReadOnlyList<FinanceLookupItem> Employees,
+    IReadOnlyList<FinanceLookupItem> Directions,
+    IReadOnlyList<FinanceLookupItem> Types,
+    IReadOnlyList<FinanceLookupItem> Methods,
+    IReadOnlyList<CatalogCurrency> Currencies);
+
+/// <summary>Validated create-payment payload.</summary>
+public sealed record FinancePaymentCreateRequest(
+    int EmployeeId,
+    int PaymentDirectionId,
+    int PaymentTypeId,
+    string Description,
+    int PaymentMethodId,
+    decimal Amount,
+    int CurrencyId,
+    string? Recipient,
+    string? TransactionNumber,
+    DateTime PaymentDate);
+
+/// <summary>Result of a completed Finance creation workflow.</summary>
+public sealed record FinancePaymentCreatedResult(int Id);

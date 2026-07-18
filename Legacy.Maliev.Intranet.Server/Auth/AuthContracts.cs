@@ -7,6 +7,8 @@ public static class LegacyEmployeePermissions
 {
     /// <summary>Allows an authenticated employee to read legacy accounting records and summaries.</summary>
     public const string AccountingRead = "legacy.accounting.read";
+    /// <summary>Allows creating legacy accounting records.</summary>
+    public const string AccountingCreate = "legacy.accounting.create";
     /// <summary>Allows updating legacy accounting records.</summary>
     public const string AccountingUpdate = "legacy.accounting.update";
     /// <summary>Allows deleting legacy accounting records.</summary>

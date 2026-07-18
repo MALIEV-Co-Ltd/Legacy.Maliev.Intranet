@@ -15,7 +15,8 @@ public sealed class FinanceFileWorkflow(ILogger<FinanceFileWorkflow> logger)
         Func<int, FinanceStoredFile, CancellationToken, Task<FinanceFileItem>> link,
         Func<FinanceFileItem, CancellationToken, Task> unlink,
         Func<FinanceStoredFile, CancellationToken, Task> delete,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        Func<Exception, bool>? shouldCompensate = null)
     {
         var stored = await upload(files, cancellationToken);
         var linked = new List<FinanceFileItem>();
@@ -28,7 +29,7 @@ public sealed class FinanceFileWorkflow(ILogger<FinanceFileWorkflow> logger)
 
             return linked;
         }
-        catch
+        catch (Exception exception) when (shouldCompensate?.Invoke(exception) ?? true)
         {
             using var cleanup = new CancellationTokenSource(TimeSpan.FromSeconds(10));
             foreach (var item in linked)
