@@ -1,0 +1,221 @@
+@page "/Invoices/Index"
+@attribute [Authorize]
+@inject HttpClient Http
+@inject NavigationManager Navigation
+@inject IStringLocalizer<Invoices> Text
+
+<PageTitle>@Text["PageTitle"]</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge">
+    <MudText Typo="Typo.overline">@Text["Accounting"]</MudText>
+    <div class="d-flex flex-wrap align-center justify-space-between gap-3 mb-4">
+        <MudText Typo="Typo.h4" HtmlTag="h1">@Text["Invoices"]</MudText>
+        <MudButton Href="/Invoices/Create" Variant="Variant.Filled" Color="Color.Primary">@Text["Create"]</MudButton>
+    </div>
+
+    <MudPaper Class="pa-4 mb-4">
+        <div class="d-flex flex-wrap gap-3 align-end">
+            <MudTextField T="string" @bind-Value="searchInput" Label="@Text["Search"]" Variant="Variant.Outlined" Immediate="true" />
+            <MudSelect T="InvoiceListSort" @bind-Value="sortInput" Label="@Text["Sort"]" Variant="Variant.Outlined">
+                @foreach (var option in Enum.GetValues<InvoiceListSort>())
+                {
+                    <MudSelectItem T="InvoiceListSort" Value="option">@Text[option.ToString()]</MudSelectItem>
+                }
+            </MudSelect>
+            <MudSelect T="int" @bind-Value="sizeInput" Label="@Text["PerPage"]" Variant="Variant.Outlined">
+                <MudSelectItem T="int" Value="50">50</MudSelectItem>
+                <MudSelectItem T="int" Value="100">100</MudSelectItem>
+                <MudSelectItem T="int" Value="150">150</MudSelectItem>
+            </MudSelect>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="ApplyFiltersAsync">@Text["Apply"]</MudButton>
+        </div>
+    </MudPaper>
+
+    @if (loading)
+    {
+        <MudProgressLinear Indeterminate="true" Color="Color.Primary" aria-label="@Text["Loading"]" />
+    }
+    else if (!string.IsNullOrWhiteSpace(error))
+    {
+        <MudAlert Severity="Severity.Error" aria-live="assertive">@error</MudAlert>
+    }
+    else
+    {
+        @foreach (var section in Sections)
+        {
+            <MudPaper Class="pa-4 mb-4" Elevation="1">
+                <MudText Typo="Typo.h6" HtmlTag="h2" Class="mb-2">@section.Title</MudText>
+                <MudText Typo="Typo.caption" Class="mb-3">
+                    @Text["RecordsSummary", section.Page.TotalRecords, section.Page.TotalPages]
+                    @if (!section.Paid)
+                    {
+                        <span> · @Text["OutstandingSummary", FormatMoney(section.Page.Items.Sum(invoice => invoice.Outstanding), section.Page.Items.FirstOrDefault()?.Currency)]</span>
+                    }
+                </MudText>
+                @if (section.Page.Items.Count == 0)
+                {
+                    <MudAlert Severity="Severity.Info">@section.EmptyMessage</MudAlert>
+                }
+                else
+                {
+                    <MudTable Items="section.Page.Items" Hover="true" Breakpoint="Breakpoint.Sm" Elevation="0">
+                        <HeaderContent>
+                            <MudTh>@Text["Id"]</MudTh>
+                            <MudTh>@Text["CustomerId"]</MudTh>
+                            <MudTh>@Text["Number"]</MudTh>
+                            <MudTh>@Text["Paid"]</MudTh>
+                            <MudTh>@Text["ReceiptId"]</MudTh>
+                            <MudTh>@Text["PurchaseOrder"]</MudTh>
+                            <MudTh>@Text["Subtotal"]</MudTh>
+                            <MudTh>@Text["Vat"]</MudTh>
+                            <MudTh>@Text["Total"]</MudTh>
+                            <MudTh>@Text["WithholdingTax"]</MudTh>
+                            <MudTh>@Text["Outstanding"]</MudTh>
+                            <MudTh>@Text["PaymentDate"]</MudTh>
+                            <MudTh>@Text["CreatedDate"]</MudTh>
+                        </HeaderContent>
+                        <RowTemplate Context="invoice">
+                            <MudTd DataLabel="@Text["Id"]"><MudLink Href="@($"/Invoices/View?id={invoice.Id}")">@invoice.Id</MudLink></MudTd>
+                            <MudTd DataLabel="@Text["CustomerId"]"><MudLink Href="@($"/Customers/View?id={invoice.CustomerId}")">@invoice.CustomerId</MudLink></MudTd>
+                            <MudTd DataLabel="@Text["Number"]">@invoice.Number</MudTd>
+                            <MudTd DataLabel="@Text["Paid"]">@(invoice.IsPaid ? Text["Yes"] : Text["No"])</MudTd>
+                            <MudTd DataLabel="@Text["ReceiptId"]">@(invoice.ReceiptId?.ToString(CultureInfo.InvariantCulture) ?? "-")</MudTd>
+                            <MudTd DataLabel="@Text["PurchaseOrder"]">@ValueOrFallback(invoice.PurchaseOrderNumber)</MudTd>
+                            <MudTd DataLabel="@Text["Subtotal"]">@FormatMoney(invoice.Subtotal, invoice.Currency)</MudTd>
+                            <MudTd DataLabel="@Text["Vat"]">@FormatMoney(invoice.Vat, invoice.Currency)</MudTd>
+                            <MudTd DataLabel="@Text["Total"]">@FormatMoney(invoice.Total, invoice.Currency)</MudTd>
+                            <MudTd DataLabel="@Text["WithholdingTax"]">@FormatMoney(invoice.WithholdingTax, invoice.Currency, negate: true)</MudTd>
+                            <MudTd DataLabel="@Text["Outstanding"]"><strong>@FormatMoney(invoice.Outstanding, invoice.Currency)</strong></MudTd>
+                            <MudTd DataLabel="@Text["PaymentDate"]">@FormatDate(invoice.PaymentDate)</MudTd>
+                            <MudTd DataLabel="@Text["CreatedDate"]">@FormatDate(invoice.CreatedDate)</MudTd>
+                        </RowTemplate>
+                    </MudTable>
+                }
+            </MudPaper>
+        }
+
+        <nav class="d-flex flex-wrap align-center justify-space-between gap-3" aria-label="@Text["InvoicePages"]">
+            <MudButton Disabled="@(!HasPreviousPage)" OnClick="PreviousPageAsync">@Text["Previous"]</MudButton>
+            <MudText aria-live="polite">@Text["PageSummary", Index, TotalPages, TotalRecords]</MudText>
+            <MudButton Disabled="@(!HasNextPage)" OnClick="NextPageAsync">@Text["Next"]</MudButton>
+        </nav>
+    }
+</MudContainer>
+
+@code {
+    [SupplyParameterFromQuery(Name = "search")] public string? Search { get; set; }
+    [SupplyParameterFromQuery(Name = "sort")] public string? SortQuery { get; set; }
+    [SupplyParameterFromQuery(Name = "index")] public int Index { get; set; } = 1;
+    [SupplyParameterFromQuery(Name = "size")] public int Size { get; set; } = 50;
+
+    private static readonly InvoiceListPage EmptyPage = new([], 1, 0, 0, false, false);
+    private InvoiceListPage paidInvoices = EmptyPage;
+    private InvoiceListPage unpaidInvoices = EmptyPage;
+    private InvoiceListSort currentSort = InvoiceListSort.InvoiceCreatedDate_Descending;
+    private InvoiceListSort sortInput;
+    private string? searchInput;
+    private int sizeInput = 50;
+    private bool loading;
+    private string? error;
+
+    private IReadOnlyList<(string Title, string EmptyMessage, bool Paid, InvoiceListPage Page)> Sections =>
+    [
+        (Text["UnpaidInvoices"], Text["NoUnpaidInvoices"], false, unpaidInvoices),
+        (Text["PaidInvoices"], Text["NoPaidInvoices"], true, paidInvoices),
+    ];
+    private int TotalPages => Math.Max(paidInvoices.TotalPages, unpaidInvoices.TotalPages);
+    private int TotalRecords => paidInvoices.TotalRecords + unpaidInvoices.TotalRecords;
+    private bool HasPreviousPage => paidInvoices.HasPreviousPage || unpaidInvoices.HasPreviousPage;
+    private bool HasNextPage => paidInvoices.HasNextPage || unpaidInvoices.HasNextPage;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        Index = Math.Max(1, Index);
+        Size = Size is 50 or 100 or 150 ? Size : 50;
+        currentSort = Enum.TryParse<InvoiceListSort>(SortQuery, true, out var parsed)
+            ? parsed
+            : InvoiceListSort.InvoiceCreatedDate_Descending;
+        searchInput = Search;
+        sortInput = currentSort;
+        sizeInput = Size;
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        loading = true;
+        error = null;
+        HttpResponseMessage[]? responses = null;
+        try
+        {
+            var query = $"sort={currentSort}&search={Uri.EscapeDataString(Search ?? string.Empty)}&index={Index}&size={Size}";
+            responses = await Task.WhenAll(
+                Http.GetAsync($"/bff/invoices?{query}&paid=true"),
+                Http.GetAsync($"/bff/invoices?{query}&paid=false"));
+            if (HandleFailure(responses))
+            {
+                return;
+            }
+
+            paidInvoices = await responses[0].Content.ReadFromJsonAsync<InvoiceListPage>() ?? EmptyPage;
+            unpaidInvoices = await responses[1].Content.ReadFromJsonAsync<InvoiceListPage>() ?? EmptyPage;
+        }
+        catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException)
+        {
+            error = Text["Unavailable"];
+        }
+        finally
+        {
+            if (responses is not null)
+            {
+                foreach (var response in responses)
+                {
+                    response.Dispose();
+                }
+            }
+
+            loading = false;
+        }
+    }
+
+    private bool HandleFailure(IEnumerable<HttpResponseMessage> responses)
+    {
+        var failed = responses.FirstOrDefault(response => !response.IsSuccessStatusCode);
+        if (failed is null)
+        {
+            return false;
+        }
+
+        if (failed.StatusCode == HttpStatusCode.Unauthorized)
+        {
+            Navigation.NavigateTo($"/Login?returnUrl={Uri.EscapeDataString(Navigation.ToBaseRelativePath(Navigation.Uri))}");
+        }
+        else
+        {
+            error = failed.StatusCode switch
+            {
+                HttpStatusCode.Forbidden => Text["Forbidden"],
+                HttpStatusCode.TooManyRequests => Text["RateLimited"],
+                HttpStatusCode.BadGateway => Text["InvalidResponse"],
+                _ => Text["Unavailable"],
+            };
+        }
+
+        return true;
+    }
+
+    private Task ApplyFiltersAsync() => NavigateAsync(1, searchInput, sortInput, sizeInput);
+    private Task PreviousPageAsync() => NavigateAsync(Math.Max(1, Index - 1), Search, currentSort, Size);
+    private Task NextPageAsync() => NavigateAsync(Index + 1, Search, currentSort, Size);
+
+    private Task NavigateAsync(int index, string? search, InvoiceListSort sort, int size)
+    {
+        Navigation.NavigateTo($"/Invoices/Index?search={Uri.EscapeDataString(search ?? string.Empty)}&sort={sort}&index={index}&size={size}");
+        return Task.CompletedTask;
+    }
+
+    private static string FormatMoney(decimal? value, string? currency, bool negate = false) =>
+        value is null ? "-" : $"{(negate ? -value.Value : value.Value):N2} {ValueOrFallback(currency)}";
+    private static string FormatDate(DateTime? value) => value?.ToLocalTime().ToString("g", CultureInfo.CurrentCulture) ?? "-";
+    private static string ValueOrFallback(string? value) => string.IsNullOrWhiteSpace(value) ? "-" : value;
+}
