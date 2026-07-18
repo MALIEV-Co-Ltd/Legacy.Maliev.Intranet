@@ -50,6 +50,8 @@ public static class LegacyEmployeePermissions
     public const string FileUploadsDelete = "legacy-file.uploads.delete";
     /// <summary>Allows an authenticated employee to list legacy suppliers.</summary>
     public const string SuppliersRead = "legacy-procurement.suppliers.read";
+    /// <summary>Allows an authenticated employee to create a supplier and owned address.</summary>
+    public const string SuppliersCreate = "legacy-procurement.suppliers.create";
     /// <summary>Allows an authenticated employee to list legacy purchase orders.</summary>
     public const string PurchaseOrdersRead = "legacy-procurement.purchase-orders.read";
 }
