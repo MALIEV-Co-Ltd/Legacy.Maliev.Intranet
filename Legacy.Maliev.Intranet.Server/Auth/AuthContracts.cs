@@ -5,6 +5,8 @@ namespace Legacy.Maliev.Intranet.Auth;
 /// <summary>Stable permission names used by the employee BFF authorization policies.</summary>
 public static class LegacyEmployeePermissions
 {
+    /// <summary>Allows an authenticated employee to read legacy accounting records and summaries.</summary>
+    public const string AccountingRead = "legacy.accounting.read";
     /// <summary>Allows reading one complete legacy customer profile.</summary>
     public const string CustomersRead = "legacy-customer.customers.read";
     /// <summary>Allows creating a legacy customer profile and its authentication identity.</summary>

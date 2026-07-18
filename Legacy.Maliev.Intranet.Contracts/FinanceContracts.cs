@@ -1,0 +1,70 @@
+namespace Legacy.Maliev.Intranet.Contracts;
+
+/// <summary>Legacy payment sort values preserved by the Finance index route.</summary>
+public enum FinancePaymentSort
+{
+    /// <summary>Newest created payment first.</summary>
+    PaymentCreatedDate_Descending,
+    /// <summary>Oldest created payment first.</summary>
+    PaymentCreatedDate_Ascending,
+    /// <summary>Payment identifier ascending.</summary>
+    PaymentId_Ascending,
+    /// <summary>Payment identifier descending.</summary>
+    PaymentId_Descending,
+    /// <summary>Payment date ascending.</summary>
+    PaymentDate_Ascending,
+    /// <summary>Payment date descending.</summary>
+    PaymentDate_Descending,
+    /// <summary>Direction ascending.</summary>
+    PaymentDirection_Ascending,
+    /// <summary>Direction descending.</summary>
+    PaymentDirection_Descending,
+    /// <summary>Type ascending.</summary>
+    PaymentType_Ascending,
+    /// <summary>Type descending.</summary>
+    PaymentType_Descending,
+    /// <summary>Method ascending.</summary>
+    PaymentMethod_Ascending,
+    /// <summary>Method descending.</summary>
+    PaymentMethod_Descending,
+    /// <summary>Recipient ascending.</summary>
+    Recipient_Ascending,
+    /// <summary>Recipient descending.</summary>
+    Recipient_Descending,
+}
+
+/// <summary>Browser-safe payment row with no service navigation properties.</summary>
+public sealed record FinancePaymentItem(
+    int Id,
+    int? EmployeeId,
+    int PaymentDirectionId,
+    int PaymentTypeId,
+    string? Description,
+    int PaymentMethodId,
+    decimal Amount,
+    int? CurrencyId,
+    string? Recipient,
+    string? TransactionNumber,
+    DateTime? PaymentDate,
+    DateTime? CreatedDate,
+    DateTime? ModifiedDate);
+
+/// <summary>Browser-safe page of legacy payments.</summary>
+public sealed record FinancePaymentPage(
+    IReadOnlyList<FinancePaymentItem> Items,
+    int PageIndex,
+    int TotalPages,
+    int TotalRecords,
+    bool HasNextPage,
+    bool HasPreviousPage);
+
+/// <summary>One currency-specific amount and period delta.</summary>
+public sealed record FinanceSummaryDetail(
+    string CurrencyId,
+    decimal CurrentAmount,
+    decimal PreviousAmount,
+    decimal DeltaAmount,
+    decimal DeltaPercent);
+
+/// <summary>Finance summary projected from AccountingService.</summary>
+public sealed record FinanceSummary(IReadOnlyList<FinanceSummaryDetail> Details);
