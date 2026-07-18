@@ -297,6 +297,15 @@ builder.Services.AddHttpClient<QuotationsProxy>(client =>
                 (int)response.StatusCode >= StatusCodes.Status500InternalServerError),
     });
 });
+builder.Services.AddHttpClient<QuotationFileProxy>(client =>
+{
+    client.BaseAddress = new Uri(builder.Configuration["Services:File"]
+        ?? "https+http://legacy-maliev-file-service");
+    client.Timeout = TimeSpan.FromSeconds(10);
+}).RemoveAllResilienceHandlers()
+    .AddHttpMessageHandler<LegacyServiceAuthenticationHandler>()
+    .AddStandardResilienceHandler();
+builder.Services.AddScoped<QuotationDetailAggregator>();
 builder.Services.AddHttpClient<SuppliersProxy>(client =>
 {
     client.BaseAddress = new Uri(builder.Configuration["Services:Procurement"]
@@ -800,6 +809,18 @@ app.MapGet("/bff/quotations/stats", (
     CancellationToken cancellationToken) =>
     QuotationsEndpointMapper.MapStatsAsync(quotations.GetStatsAsync, context, cancellationToken))
     .RequireAuthorization(LegacyEmployeePermissions.QuotationsRead);
+
+app.MapGet("/bff/quotations/{id:int}", QuotationsEndpointMapper.MapDetailAsync)
+    .RequireAuthorization(policy => policy
+        .RequireAuthenticatedUser()
+        .RequireClaim("permissions", LegacyEmployeePermissions.QuotationsRead)
+        .RequireClaim("permissions", LegacyEmployeePermissions.CustomersRead)
+        .RequireClaim("permissions", LegacyEmployeePermissions.EmployeesRead)
+        .RequireClaim("permissions", LegacyEmployeePermissions.CatalogCurrenciesRead)
+        .RequireClaim("permissions", LegacyEmployeePermissions.AccountingRead)
+        .RequireClaim("permissions", LegacyEmployeePermissions.QuotationOrdersRead)
+        .RequireClaim("permissions", LegacyEmployeePermissions.QuotationFilesRead)
+        .RequireClaim("permissions", LegacyEmployeePermissions.FileUploadsRead));
 
 app.MapGet("/bff/finances", (
     string? sort,

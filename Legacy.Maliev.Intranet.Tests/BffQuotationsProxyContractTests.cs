@@ -77,6 +77,33 @@ public sealed class BffQuotationsProxyContractTests
         Assert.DoesNotContain("quotation-secret-not-json", body, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public async Task Detail_MissingSupportingReadPermissions_IsForbiddenBeforeDownstream()
+    {
+        var downstream = new RecordingHandler(QuotationPageJson);
+        await using var factory = new QuotationBffFactory(downstream, quotationRead: true);
+        using var client = CreateClient(factory);
+        await SignInAsync(client);
+
+        using var response = await client.GetAsync("/bff/quotations/84");
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+        Assert.Null(downstream.PathAndQuery);
+    }
+
+    [Fact]
+    public async Task AnonymousDetail_IsUnauthorizedBeforeDownstream()
+    {
+        var downstream = new RecordingHandler(QuotationPageJson);
+        await using var factory = new QuotationBffFactory(downstream, quotationRead: true);
+        using var client = CreateClient(factory);
+
+        using var response = await client.GetAsync("/bff/quotations/84");
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        Assert.Null(downstream.PathAndQuery);
+    }
+
     private static HttpClient CreateClient(WebApplicationFactory<BffProgram> factory) =>
         factory.CreateClient(new WebApplicationFactoryClientOptions
         {

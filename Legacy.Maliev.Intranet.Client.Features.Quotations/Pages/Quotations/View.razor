@@ -1,0 +1,63 @@
+@page "/Quotations/View"
+@attribute [Authorize]
+@inject HttpClient Http
+@inject NavigationManager Navigation
+@inject IStringLocalizer<View> Text
+
+<PageTitle>@Text["PageTitle", Id ?? 0]</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large">
+    @if (loading)
+    {
+        <MudProgressLinear Indeterminate="true" Color="Color.Primary" aria-label="@Text["Loading"]" />
+    }
+    else if (!string.IsNullOrWhiteSpace(error))
+    {
+        <MudAlert Severity="Severity.Error" aria-live="assertive">@error</MudAlert>
+    }
+    else if (page is not null)
+    {
+        <div class="d-flex flex-wrap align-center justify-space-between gap-3 mb-4">
+            <div><MudText Typo="Typo.overline">@Text["Sales"]</MudText><MudText Typo="Typo.h4" HtmlTag="h1">@Text["Heading", page.Quotation.Id]</MudText></div>
+            <MudButton Href="/Quotations/Index" Variant="Variant.Outlined">@Text["Back"]</MudButton>
+        </div>
+
+        <MudAlert Severity="Severity.Info" Class="mb-4">@Text["ReadOnlyNotice"]</MudAlert>
+        <MudGrid>
+            <MudItem xs="12" md="6"><MudPaper Class="pa-4 h-100"><MudText Typo="Typo.h6" HtmlTag="h2">@Text["Quotation"]</MudText><MudList T="string" Dense="true"><MudListItem>@Text["Created", FormatDate(page.Quotation.CreatedDate)]</MudListItem><MudListItem>@Text["Modified", FormatDate(page.Quotation.ModifiedDate)]</MudListItem><MudListItem>@Text["Employee", page.Employee?.FullName ?? "-"]</MudListItem><MudListItem>@Text["Period", page.Quotation.Period]</MudListItem><MudListItem>@Text["Expiration", FormatDate(page.Quotation.ExpirationDate)]</MudListItem><MudListItem>@Text["Decision", Decision(page.Quotation.Accepted)]</MudListItem></MudList><MudText Typo="Typo.body2" Class="mt-2">@Value(page.Quotation.Comment)</MudText></MudPaper></MudItem>
+            <MudItem xs="12" md="6"><MudPaper Class="pa-4 h-100"><MudText Typo="Typo.h6" HtmlTag="h2">@Text["Customer"]</MudText>@if(page.Customer is null){<MudText>-</MudText>}else{<MudList T="string" Dense="true"><MudListItem><MudLink Href="@($"/Customers/View?id={page.Customer.Id}")">@(page.Customer.FullName)</MudLink></MudListItem><MudListItem>@(page.Customer.Email)</MudListItem><MudListItem>@Value(page.Customer.Telephone)</MudListItem><MudListItem>@Value(page.Customer.Mobile)</MudListItem><MudListItem>@Value(page.Customer.Fax)</MudListItem></MudList>}</MudPaper></MudItem>
+            <MudItem xs="12"><MudPaper Class="pa-4"><MudText Typo="Typo.h6" HtmlTag="h2">@Text["Pricing"]</MudText><MudGrid><MudItem xs="6" md="3"><MudText>@Text["Subtotal"]</MudText><strong>@Money(page.Quotation.Subtotal)</strong></MudItem><MudItem xs="6" md="3"><MudText>@Text["Vat"]</MudText><strong>@Money(page.Quotation.Vat)</strong></MudItem><MudItem xs="6" md="3"><MudText>@Text["Withholding"]</MudText><strong>@Money(-(page.Quotation.WithholdingTax ?? 0m))</strong></MudItem><MudItem xs="6" md="3"><MudText>@Text["Total"]</MudText><strong>@Money(page.Quotation.QuotedAmount ?? page.Quotation.Total)</strong></MudItem></MudGrid>@if(page.Invoice is not null){<MudText Class="mt-3">@Text["Invoice"] <MudLink Href="@($"/Invoices/View?id={page.Invoice.Id}")">@(page.Invoice.Number)</MudLink></MudText>}</MudPaper></MudItem>
+            <MudItem xs="12" md="6"><MudPaper Class="pa-4 h-100"><MudText Typo="Typo.h6" HtmlTag="h2">@Text["Orders"]</MudText>@if(page.Orders.Count==0){<MudText>@Text["NoOrders"]</MudText>}else{<MudList T="QuotationOrderLink">@foreach(var order in page.Orders){<MudListItem T="QuotationOrderLink" Value="order"><MudLink Href="@($"/Orders/View?id={order.OrderId}")">@Text["Order", order.OrderId]</MudLink></MudListItem>}</MudList>}</MudPaper></MudItem>
+            <MudItem xs="12" md="6"><MudPaper Class="pa-4 h-100"><MudText Typo="Typo.h6" HtmlTag="h2">@Text["Files"]</MudText>@if(page.Files.Count==0){<MudText>@Text["NoFiles"]</MudText>}else{<MudList T="QuotationFile">@foreach(var file in page.Files){<MudListItem T="QuotationFile" Value="file">@if(file.Uri is null){<MudText>@file.ObjectName</MudText>}else{<MudLink Href="@file.Uri.ToString()" Target="_blank">@file.ObjectName</MudLink>}</MudListItem>}</MudList>}</MudPaper></MudItem>
+        </MudGrid>
+    }
+</MudContainer>
+
+@code {
+    [SupplyParameterFromQuery(Name = "id")] public int? Id { get; set; }
+    private QuotationDetailPage? page;
+    private bool loading = true;
+    private string? error;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        loading = true; error = null;
+        if (Id is not > 0) { error = Text["InvalidId"]; loading = false; return; }
+        try
+        {
+            using var response = await Http.GetAsync($"/bff/quotations/{Id.Value}");
+            if (response.StatusCode == HttpStatusCode.Unauthorized) { Navigation.NavigateTo($"/Login?returnUrl={Uri.EscapeDataString(Navigation.ToBaseRelativePath(Navigation.Uri))}"); return; }
+            if (response.StatusCode == HttpStatusCode.NotFound) { error = Text["NotFound"]; return; }
+            if (!response.IsSuccessStatusCode) { error = response.StatusCode == HttpStatusCode.Forbidden ? Text["Forbidden"] : Text["Unavailable"]; return; }
+            page = await response.Content.ReadFromJsonAsync<QuotationDetailPage>();
+            if (page is null) error = Text["InvalidResponse"];
+        }
+        catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException) { error = Text["Unavailable"]; }
+        finally { loading = false; }
+    }
+
+    private string Money(decimal value) => $"{value:N2} {page?.Currency.ShortName}";
+    private string Decision(bool? value) => value switch { true => Text["Accepted"], false => Text["Declined"], null => Text["Open"] };
+    private static string FormatDate(DateTime? value) => value?.ToLocalTime().ToString("g", CultureInfo.CurrentCulture) ?? "-";
+    private static string Value(string? value) => string.IsNullOrWhiteSpace(value) ? "-" : value;
+}
