@@ -43,6 +43,8 @@ builder.Services.AddScoped<Legacy.Maliev.Intranet.Suppliers.SupplierCreationServ
 builder.Services.AddScoped<Legacy.Maliev.Intranet.Suppliers.SupplierManagementService>();
 builder.Services.AddScoped<Legacy.Maliev.Intranet.PurchaseOrders.PurchaseOrderCreationService>();
 builder.Services.AddScoped<Legacy.Maliev.Intranet.PurchaseOrders.IPurchaseOrderCreationGateway, PurchaseOrderCreationGateway>();
+builder.Services.AddScoped<Legacy.Maliev.Intranet.PurchaseOrders.PurchaseOrderDetailService>();
+builder.Services.AddScoped<Legacy.Maliev.Intranet.PurchaseOrders.IPurchaseOrderDetailGateway, PurchaseOrderDetailGateway>();
 #pragma warning disable EXTEXP0001 // Replace inherited pipelines with explicit downstream 429 contracts.
 builder.Services.AddHttpClient<Legacy.Maliev.Intranet.Customers.ICustomerProfileCreationClient, Legacy.Maliev.Intranet.Customers.CustomerProfileCreationClient>(client =>
 {
@@ -437,6 +439,9 @@ builder.Services.AddAuthorizationBuilder()
     .AddPolicy(LegacyEmployeePermissions.PurchaseOrdersCreate, policy => policy
         .RequireAuthenticatedUser()
         .RequireClaim("permissions", LegacyEmployeePermissions.PurchaseOrdersCreate))
+    .AddPolicy(LegacyEmployeePermissions.PurchaseOrdersDelete, policy => policy
+        .RequireAuthenticatedUser()
+        .RequireClaim("permissions", LegacyEmployeePermissions.PurchaseOrdersDelete))
     .AddPolicy("legacy-catalog.materials.read", policy => policy
         .RequireAuthenticatedUser()
         .RequireClaim("permissions", "legacy-catalog.materials.read"))
@@ -666,6 +671,31 @@ app.MapPost("/bff/purchase-orders", async (
 })
     .AddEndpointFilter<AntiforgeryValidationFilter>()
     .RequireAuthorization(LegacyEmployeePermissions.PurchaseOrdersCreate);
+
+app.MapGet("/bff/purchase-orders/{id:int}", async (
+    int id,
+    HttpContext context,
+    Legacy.Maliev.Intranet.PurchaseOrders.PurchaseOrderDetailService service,
+    CancellationToken cancellationToken) =>
+{
+    var result = await service.GetAsync(id, cancellationToken);
+    SetPurchaseOrderRetryAfter(context, result.Status, result.RetryAfter);
+    return PurchaseOrderDetailResult(result.Status, result.Detail);
+})
+    .RequireAuthorization(LegacyEmployeePermissions.PurchaseOrdersRead);
+
+app.MapDelete("/bff/purchase-orders/{id:int}", async (
+    int id,
+    HttpContext context,
+    Legacy.Maliev.Intranet.PurchaseOrders.PurchaseOrderDetailService service,
+    CancellationToken cancellationToken) =>
+{
+    var result = await service.DeleteAsync(id, cancellationToken);
+    SetPurchaseOrderRetryAfter(context, result.Status, result.RetryAfter);
+    return PurchaseOrderDetailResult(result.Status, success: Results.NoContent());
+})
+    .AddEndpointFilter<AntiforgeryValidationFilter>()
+    .RequireAuthorization(LegacyEmployeePermissions.PurchaseOrdersDelete);
 
 app.MapGet("/bff/orders/pending", (
     int? size,
@@ -1580,6 +1610,28 @@ static Dictionary<string, string[]> ValidatePurchaseOrder(PurchaseOrderCreateReq
     return failures.GroupBy(value => value.member, StringComparer.Ordinal)
         .ToDictionary(group => group.Key, group => group.Select(value => value.message).Distinct(StringComparer.Ordinal).ToArray(), StringComparer.Ordinal);
 }
+
+static void SetPurchaseOrderRetryAfter(HttpContext context, Legacy.Maliev.Intranet.PurchaseOrders.PurchaseOrderDetailStatus status, TimeSpan? retryAfter)
+{
+    if (status == Legacy.Maliev.Intranet.PurchaseOrders.PurchaseOrderDetailStatus.RateLimited && retryAfter is { } delay)
+        context.Response.Headers.RetryAfter = ((int)Math.Ceiling(delay.TotalSeconds)).ToString(CultureInfo.InvariantCulture);
+}
+
+static IResult PurchaseOrderDetailResult(
+    Legacy.Maliev.Intranet.PurchaseOrders.PurchaseOrderDetailStatus status,
+    PurchaseOrderDetail? detail = null,
+    IResult? success = null) => status switch
+    {
+        Legacy.Maliev.Intranet.PurchaseOrders.PurchaseOrderDetailStatus.Success => success ?? (detail is null ? Results.Problem(statusCode: 502) : Results.Ok(detail)),
+        Legacy.Maliev.Intranet.PurchaseOrders.PurchaseOrderDetailStatus.NotFound => Results.NotFound(),
+        Legacy.Maliev.Intranet.PurchaseOrders.PurchaseOrderDetailStatus.BadRequest => Results.BadRequest(),
+        Legacy.Maliev.Intranet.PurchaseOrders.PurchaseOrderDetailStatus.Unauthorized => Results.Unauthorized(),
+        Legacy.Maliev.Intranet.PurchaseOrders.PurchaseOrderDetailStatus.Forbidden => Results.StatusCode(403),
+        Legacy.Maliev.Intranet.PurchaseOrders.PurchaseOrderDetailStatus.RateLimited => Results.StatusCode(429),
+        Legacy.Maliev.Intranet.PurchaseOrders.PurchaseOrderDetailStatus.BadGateway => Results.Problem(statusCode: 502),
+        Legacy.Maliev.Intranet.PurchaseOrders.PurchaseOrderDetailStatus.PartialFailure => Results.Problem(statusCode: 503, title: "Deletion stopped safely; retry is required"),
+        _ => Results.Problem(statusCode: 503),
+    };
 
 static void AddFailures(object value, string prefix, ICollection<(string member, string message)> failures)
 {

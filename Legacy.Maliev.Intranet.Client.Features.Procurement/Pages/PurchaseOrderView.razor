@@ -1,0 +1,126 @@
+@page "/PurchaseOrders/View"
+@attribute [Authorize]
+@inject HttpClient Http
+@inject NavigationManager Navigation
+@inject IStringLocalizer<PurchaseOrderView> Text
+
+<PageTitle>@(detail is null ? Text["PageTitle"] : Text["PageTitleWithId", detail.Id])</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large">
+    @if (loading)
+    {
+        <MudProgressLinear Indeterminate="true" Color="Color.Primary" aria-label="@Text["Loading"]" />
+    }
+    else if (notFound)
+    {
+        <MudAlert Severity="Severity.Warning">@Text["NotFound"]</MudAlert>
+        <MudButton Href="/PurchaseOrders/Index" Class="mt-3">@Text["Back"]</MudButton>
+    }
+    else if (detail is not null)
+    {
+        <MudText Typo="Typo.overline">@Text["Procurement"]</MudText>
+        <div class="d-flex flex-wrap align-center justify-space-between gap-3 mb-4">
+            <MudText Typo="Typo.h4" HtmlTag="h1">@Text["PurchaseOrder", detail.Id]</MudText>
+            <MudStack Row="true" Spacing="2">
+                @foreach (var download in detail.Downloads)
+                {
+                    <MudButton Href="@download.Url.AbsoluteUri" Target="_blank" Rel="noopener" Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Download">@Text["DownloadPdf"]</MudButton>
+                }
+                <MudButton Color="Color.Error" Variant="Variant.Filled" OnClick="@(() => confirmDelete = true)">@Text["Delete"]</MudButton>
+            </MudStack>
+        </div>
+        @if (!string.IsNullOrWhiteSpace(error))
+        {
+            <MudAlert Severity="Severity.Error" Class="mb-4" aria-live="assertive">@error</MudAlert>
+        }
+        <MudPaper Class="pa-4 mb-4">
+            <MudGrid>
+                <MudItem xs="12" md="6"><MudText Typo="Typo.caption">@Text["Supplier"]</MudText><MudText>@Value(detail.SupplierName)</MudText></MudItem>
+                <MudItem xs="12" md="6"><MudText Typo="Typo.caption">@Text["SupplierContact"]</MudText><MudText>@Value(detail.SupplierContactPerson)</MudText></MudItem>
+                <MudItem xs="12" md="6"><MudText Typo="Typo.caption">@Text["OrderedBy"]</MudText><MudText>@Value(detail.OrderedBy)</MudText></MudItem>
+                <MudItem xs="12" md="6"><MudText Typo="Typo.caption">@Text["ShippingMethod"]</MudText><MudText>@Value(detail.ShippingMethod)</MudText></MudItem>
+                <MudItem xs="12" md="4"><MudText Typo="Typo.caption">@Text["Fob"]</MudText><MudText>@Value(detail.Fob)</MudText></MudItem>
+                <MudItem xs="12" md="4"><MudText Typo="Typo.caption">@Text["Terms"]</MudText><MudText>@Value(detail.Terms)</MudText></MudItem>
+                <MudItem xs="12" md="4"><MudText Typo="Typo.caption">@Text["Created"]</MudText><MudText>@FormatDate(detail.CreatedDate)</MudText></MudItem>
+                <MudItem xs="12"><MudText Typo="Typo.caption">@Text["Notes"]</MudText><MudText>@Value(detail.Notes)</MudText></MudItem>
+            </MudGrid>
+        </MudPaper>
+        <MudTable Items="detail.Items" Hover="true" Breakpoint="Breakpoint.Sm" Elevation="1">
+            <HeaderContent><MudTh>@Text["PartNumber"]</MudTh><MudTh>@Text["Description"]</MudTh><MudTh>@Text["UnitPrice"]</MudTh><MudTh>@Text["Quantity"]</MudTh><MudTh>@Text["Subtotal"]</MudTh></HeaderContent>
+            <RowTemplate>
+                <MudTd DataLabel="@Text["PartNumber"]">@Value(context.PartNumber)</MudTd>
+                <MudTd DataLabel="@Text["Description"]">@Value(context.Description)</MudTd>
+                <MudTd DataLabel="@Text["UnitPrice"]">@Money(context.UnitPrice)</MudTd>
+                <MudTd DataLabel="@Text["Quantity"]">@context.Quantity</MudTd>
+                <MudTd DataLabel="@Text["Subtotal"]">@Money(context.Subtotal)</MudTd>
+            </RowTemplate>
+        </MudTable>
+        <MudDialog @bind-Visible="confirmDelete">
+            <TitleContent><MudText Typo="Typo.h6">@Text["ConfirmDeleteTitle"]</MudText></TitleContent>
+            <DialogContent><MudText>@Text["ConfirmDeleteBody"]</MudText></DialogContent>
+            <DialogActions>
+                <MudButton Disabled="@deleting" OnClick="@(() => confirmDelete = false)">@Text["Cancel"]</MudButton>
+                <MudButton Disabled="@deleting" Color="Color.Error" Variant="Variant.Filled" OnClick="DeleteAsync">@(deleting ? Text["Deleting"] : Text["Delete"])</MudButton>
+            </DialogActions>
+        </MudDialog>
+    }
+</MudContainer>
+
+@code {
+    [SupplyParameterFromQuery(Name = "id")] public int Id { get; set; }
+    private PurchaseOrderDetail? detail;
+    private bool loading = true;
+    private bool notFound;
+    private bool confirmDelete;
+    private bool deleting;
+    private string? error;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        loading = true; notFound = false; error = null; detail = null;
+        if (Id <= 0) { notFound = true; loading = false; return; }
+        try
+        {
+            using var response = await Http.GetAsync($"/bff/purchase-orders/{Id}");
+            if (response.StatusCode == HttpStatusCode.Unauthorized) { NavigateToLogin(); return; }
+            if (response.StatusCode == HttpStatusCode.Forbidden) { error = Text["Forbidden"]; return; }
+            if (response.StatusCode == HttpStatusCode.NotFound) { notFound = true; return; }
+            if (response.StatusCode == HttpStatusCode.TooManyRequests) { error = Text["RateLimited"]; return; }
+            if (!response.IsSuccessStatusCode) { error = Text["Unavailable"]; return; }
+            detail = await response.Content.ReadFromJsonAsync<PurchaseOrderDetail>();
+            if (detail is null || detail.Id != Id) error = Text["InvalidResponse"];
+        }
+        catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException) { error = Text["Unavailable"]; }
+        finally { loading = false; }
+    }
+
+    private async Task DeleteAsync()
+    {
+        if (deleting) return;
+        deleting = true; error = null;
+        try
+        {
+            using var sessionResponse = await Http.GetAsync("/bff/session");
+            if (sessionResponse.StatusCode == HttpStatusCode.Unauthorized) { NavigateToLogin(); return; }
+            sessionResponse.EnsureSuccessStatusCode();
+            var session = await sessionResponse.Content.ReadFromJsonAsync<EmployeeSessionSummary>();
+            if (string.IsNullOrWhiteSpace(session?.CsrfToken)) { error = Text["DeleteFailed"]; return; }
+            using var request = new HttpRequestMessage(HttpMethod.Delete, $"/bff/purchase-orders/{Id}");
+            request.Headers.Add("X-CSRF-TOKEN", session.CsrfToken);
+            using var response = await Http.SendAsync(request);
+            if (response.StatusCode == HttpStatusCode.Unauthorized) { NavigateToLogin(); return; }
+            if (response.StatusCode == HttpStatusCode.Forbidden) { error = Text["ForbiddenDelete"]; return; }
+            if (response.StatusCode == HttpStatusCode.NotFound) { Navigation.NavigateTo("/PurchaseOrders/Index"); return; }
+            if (response.StatusCode == HttpStatusCode.TooManyRequests) { error = Text["RateLimited"]; return; }
+            if (!response.IsSuccessStatusCode) { error = Text["DeleteFailed"]; return; }
+            Navigation.NavigateTo("/PurchaseOrders/Index");
+        }
+        catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException) { error = Text["DeleteFailed"]; }
+        finally { deleting = false; confirmDelete = false; }
+    }
+
+    private string Value(string? value) => string.IsNullOrWhiteSpace(value) ? "-" : value;
+    private static string Money(decimal value) => $"{value:N2} THB";
+    private static string FormatDate(DateTime? value) => value?.ToString("u", CultureInfo.InvariantCulture) ?? "-";
+    private void NavigateToLogin() => Navigation.NavigateTo($"/Login?returnUrl={Uri.EscapeDataString(Navigation.ToBaseRelativePath(Navigation.Uri))}");
+}

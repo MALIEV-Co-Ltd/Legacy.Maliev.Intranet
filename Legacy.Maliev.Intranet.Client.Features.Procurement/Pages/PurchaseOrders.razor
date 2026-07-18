@@ -180,7 +180,7 @@
     private Task PreviousPageAsync() => NavigateAsync(Math.Max(1, Index - 1), Search, currentSort, Size);
     private Task NextPageAsync() => NavigateAsync(Index + 1, Search, currentSort, Size);
     private void OpenCreate() => Navigation.NavigateTo("/PurchaseOrders/Create");
-    private void OpenPurchaseOrder(int id) => Navigation.NavigateTo($"/PurchaseOrders/View?id={id}", forceLoad: true);
+    private void OpenPurchaseOrder(int id) => Navigation.NavigateTo($"/PurchaseOrders/View?id={id}");
 
     private Task NavigateAsync(int index, string? search, PurchaseOrderListSort sort, int size)
     {

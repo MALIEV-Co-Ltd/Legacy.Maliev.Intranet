@@ -172,7 +172,7 @@
             if (!response.IsSuccessStatusCode) { error = Text["CreateFailed"]; return; }
             var created = await response.Content.ReadFromJsonAsync<CreatedPurchaseOrder>();
             if (created is null || created.Id <= 0) { error = Text["InvalidResponse"]; return; }
-            Navigation.NavigateTo($"/PurchaseOrders/View?id={created.Id}", forceLoad: true);
+            Navigation.NavigateTo($"/PurchaseOrders/View?id={created.Id}");
         }
         catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException)
         {

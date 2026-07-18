@@ -57,8 +57,8 @@ public sealed class PurchaseOrdersCreateWasmMigrationContractTests
         Assert.Contains("HttpStatusCode.Forbidden", page, StringComparison.Ordinal);
         Assert.Contains("HttpStatusCode.Conflict", page, StringComparison.Ordinal);
         Assert.Contains("HttpStatusCode.TooManyRequests", page, StringComparison.Ordinal);
-        Assert.Contains("Navigation.NavigateTo($\"/PurchaseOrders/View?id={created.Id}\", forceLoad: true)", page, StringComparison.Ordinal);
-        Assert.Equal(1, page.Split("forceLoad: true", StringSplitOptions.None).Length - 1);
+        Assert.Contains("Navigation.NavigateTo($\"/PurchaseOrders/View?id={created.Id}\")", page, StringComparison.Ordinal);
+        Assert.DoesNotContain("forceLoad: true", page, StringComparison.Ordinal);
         Assert.DoesNotContain("jquery", page, StringComparison.OrdinalIgnoreCase);
 
         Assert.Contains("legacy-procurement.purchase-orders.create", auth, StringComparison.Ordinal);
