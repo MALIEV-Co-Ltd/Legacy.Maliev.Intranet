@@ -1,0 +1,101 @@
+@page "/Finances/NetProfitChart"
+@attribute [Authorize]
+@inject HttpClient Http
+@inject NavigationManager Navigation
+@inject IStringLocalizer<NetProfitChart> Text
+
+<PageTitle>@Text["PageTitle"]</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge">
+    <div class="d-flex flex-wrap align-center justify-space-between gap-3 mb-4">
+        <div>
+            <MudText Typo="Typo.overline">@Text["Accounting"]</MudText>
+            <MudText Typo="Typo.h4" HtmlTag="h1">@Text["Title", Year]</MudText>
+        </div>
+        <MudButton Href="/Finances/Index" Variant="Variant.Outlined">@Text["Back"]</MudButton>
+    </div>
+
+    @if (loading)
+    {
+        <MudProgressLinear Indeterminate="true" Color="Color.Primary" aria-label="@Text["Loading"]" />
+    }
+    else if (!string.IsNullOrWhiteSpace(error))
+    {
+        <MudAlert Severity="Severity.Error" aria-live="assertive">@error</MudAlert>
+    }
+    else if (chartData is null || chartData.Labels.Length == 0)
+    {
+        <MudAlert Severity="Severity.Info">@Text["NoData", Year]</MudAlert>
+    }
+    else
+    {
+        <MudGrid>
+            <MudItem xs="12">
+                <MudPaper Class="pa-4" Elevation="1">
+                    <MudText Typo="Typo.h6" HtmlTag="h2" Class="mb-3">@Text["Cumulative"]</MudText>
+                    <MudChart T="double" ChartType="ChartType.Line" ChartSeries="@cumulativeSeries" ChartLabels="@chartData.Labels" Width="100%" Height="360px" />
+                </MudPaper>
+            </MudItem>
+            <MudItem xs="12">
+                <MudPaper Class="pa-4" Elevation="1">
+                    <MudText Typo="Typo.h6" HtmlTag="h2" Class="mb-3">@Text["Daily"]</MudText>
+                    <MudChart T="double" ChartType="ChartType.Bar" ChartSeries="@dailySeries" ChartLabels="@chartData.Labels" Width="100%" Height="360px" />
+                </MudPaper>
+            </MudItem>
+        </MudGrid>
+    }
+</MudContainer>
+
+@code {
+    [SupplyParameterFromQuery(Name = "year")] public int? RequestedYear { get; set; }
+
+    private int Year { get; set; }
+    private FinanceNetIncomeChartData? chartData;
+    private List<ChartSeries<double>> cumulativeSeries = [];
+    private List<ChartSeries<double>> dailySeries = [];
+    private bool loading;
+    private string? error;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        Year = Math.Clamp(RequestedYear ?? DateTime.UtcNow.Year, 1900, DateTime.UtcNow.Year + 1);
+        loading = true;
+        error = null;
+        try
+        {
+            var trend = await FinanceChartDataClient.LoadAsync(Http, Year, includeExpense: false);
+            chartData = FinanceChartSeries.BuildNetIncome(trend.Income);
+            cumulativeSeries = [new ChartSeries<double> { Name = Text["NetIncome"], Data = chartData.CumulativeAmounts }];
+            dailySeries = [new ChartSeries<double> { Name = Text["Amount"], Data = chartData.DailyAmounts }];
+        }
+        catch (FinanceChartDataException exception)
+        {
+            HandleFailure(exception.StatusCode);
+        }
+        catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException)
+        {
+            error = Text["Unavailable"];
+        }
+        finally
+        {
+            loading = false;
+        }
+    }
+
+    private void HandleFailure(HttpStatusCode? statusCode)
+    {
+        if (statusCode == HttpStatusCode.Unauthorized)
+        {
+            Navigation.NavigateTo($"/Login?returnUrl={Uri.EscapeDataString(Navigation.ToBaseRelativePath(Navigation.Uri))}");
+            return;
+        }
+
+        error = statusCode switch
+        {
+            HttpStatusCode.Forbidden => Text["Forbidden"],
+            HttpStatusCode.TooManyRequests => Text["RateLimited"],
+            HttpStatusCode.BadGateway => Text["InvalidResponse"],
+            _ => Text["Unavailable"],
+        };
+    }
+}
