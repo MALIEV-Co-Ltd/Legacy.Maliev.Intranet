@@ -1,0 +1,188 @@
+@page "/Invoices/Create"
+@attribute [Authorize]
+@inject HttpClient Http
+@inject NavigationManager Navigation
+@inject IStringLocalizer<InvoiceCreate> Text
+
+<PageTitle>@Text["PageTitle"]</PageTitle>
+
+<div class="d-flex flex-wrap align-center justify-space-between gap-3 mb-4">
+    <MudText Typo="Typo.h4" HtmlTag="h1">@Text["Heading"]</MudText>
+    <MudButton Href="/Invoices/Index" Variant="Variant.Outlined">@Text["Back"]</MudButton>
+</div>
+
+@if (!string.IsNullOrWhiteSpace(error)) { <MudAlert Severity="Severity.Error" Class="mb-4">@error</MudAlert> }
+@if (pendingRequest is not null) { <MudAlert Severity="Severity.Warning" Class="mb-4">@Text["PendingRetry"]</MudAlert> }
+
+<MudPaper Class="pa-4 mb-4" Outlined="true">
+    <MudText Typo="Typo.h6" HtmlTag="h2" Class="mb-3">@Text["Quotation"]</MudText>
+    <div class="d-flex flex-wrap align-end gap-3">
+        <MudNumericField T="int" Label="@Text["QuotationId"]" @bind-Value="quotationId" Min="1" Immediate="true" />
+        <MudButton OnClick="LoadPreviewAsync" Disabled="@(loading || submitting || quotationId <= 0)" Variant="Variant.Filled" Color="Color.Primary">
+            @(loading ? Text["Loading"] : Text["LoadQuotation"])
+        </MudButton>
+    </div>
+</MudPaper>
+
+@if (preview is not null)
+{
+    <MudForm @ref="form" Model="model">
+        <MudPaper Class="pa-4 mb-4" Outlined="true">
+            <MudText Typo="Typo.h6" HtmlTag="h2" Class="mb-3">@Text["InvoiceData"]</MudText>
+            <MudGrid>
+                <MudItem xs="12" md="4"><MudTextField Label="@Text["InvoiceNumber"]" @bind-Value="model.InvoiceNumber" Required="true" MaxLength="100" /></MudItem>
+                <MudItem xs="12" md="4"><MudNumericField T="int" Label="@Text["CustomerId"]" Value="preview.CustomerId" ReadOnly="true" /></MudItem>
+                <MudItem xs="12" md="4"><MudTextField Label="@Text["SalesPerson"]" Value="preview.SalesPerson" ReadOnly="true" /></MudItem>
+                <MudItem xs="12" md="4"><MudTextField Label="@Text["PurchaseOrderNumber"]" @bind-Value="model.PurchaseOrderNumber" MaxLength="250" /></MudItem>
+                <MudItem xs="12" md="4"><MudTextField Label="@Text["Requisitioner"]" @bind-Value="model.Requisitioner" MaxLength="250" /></MudItem>
+                <MudItem xs="12" md="4"><MudTextField Label="@Text["ShippedVia"]" @bind-Value="model.ShippedVia" MaxLength="250" /></MudItem>
+                <MudItem xs="12" md="4"><MudTextField Label="@Text["Fob"]" @bind-Value="model.Fob" MaxLength="250" /></MudItem>
+                <MudItem xs="12" md="4"><MudTextField Label="@Text["Terms"]" @bind-Value="model.Terms" MaxLength="250" /></MudItem>
+                <MudItem xs="12" md="4"><MudTextField Label="@Text["Currency"]" Value="preview.Currency" ReadOnly="true" /></MudItem>
+                <MudItem xs="12" md="6"><MudTextField Label="@Text["TaxIdentification"]" @bind-Value="model.TaxIdentification" MaxLength="250" /></MudItem>
+                <MudItem xs="12" md="6"><MudTextField Label="@Text["CommercialRegistration"]" @bind-Value="model.CommercialRegistration" MaxLength="250" /></MudItem>
+            </MudGrid>
+        </MudPaper>
+
+        <MudGrid Class="mb-4">
+            <MudItem xs="12" md="6">@AddressEditor(Text["Billing"], model.BillingAddress, false)</MudItem>
+            <MudItem xs="12" md="6">@AddressEditor(Text["Shipping"], model.ShippingAddress, true)</MudItem>
+        </MudGrid>
+
+        <MudPaper Class="pa-4 mb-4" Outlined="true">
+            <MudText Typo="Typo.h6" HtmlTag="h2" Class="mb-3">@Text["OrderItems"]</MudText>
+            <MudTable Items="preview.OrderItems" Dense="true" Hover="true">
+                <HeaderContent><MudTh>@Text["Description"]</MudTh><MudTh>@Text["UnitPrice"]</MudTh><MudTh>@Text["Quantity"]</MudTh><MudTh>@Text["Subtotal"]</MudTh></HeaderContent>
+                <RowTemplate><MudTd DataLabel="@Text["Description"]">@context.Description</MudTd><MudTd DataLabel="@Text["UnitPrice"]">@Money(context.UnitPrice)</MudTd><MudTd DataLabel="@Text["Quantity"]">@context.Quantity</MudTd><MudTd DataLabel="@Text["Subtotal"]">@Money(context.Subtotal)</MudTd></RowTemplate>
+            </MudTable>
+        </MudPaper>
+
+        <MudPaper Class="pa-4 mb-4" Outlined="true">
+            <MudGrid>
+                <MudItem xs="12" md="7"><MudTextField Label="@Text["Comment"]" @bind-Value="model.Comment" Lines="7" MaxLength="2000" /></MudItem>
+                <MudItem xs="12" md="5">
+                    <MudNumericField T="decimal" Label="@Text["Subtotal"]" Value="preview.Subtotal" ReadOnly="true" />
+                    <MudNumericField T="decimal" Label="@Text["Vat"]" Value="preview.Vat" ReadOnly="true" />
+                    <MudNumericField T="decimal" Label="@Text["Total"]" Value="preview.Total" ReadOnly="true" />
+                    <MudNumericField T="decimal" Label="@Text["WithholdingTax"]" Value="@(model.DeductWithholdingTax ? preview.AvailableWithholdingTax : 0m)" ReadOnly="true" />
+                    <MudNumericField T="decimal" Label="@Text["Outstanding"]" Value="@Outstanding" ReadOnly="true" />
+                    <MudCheckBox T="bool" Label="@Text["DeductWithholdingTax"]" @bind-Value="model.DeductWithholdingTax" />
+                    <MudCheckBox T="bool" Label="@Text["SendEmail"]" @bind-Value="model.SendEmail" />
+                </MudItem>
+            </MudGrid>
+        </MudPaper>
+        <MudButton OnClick="CreateAsync" Disabled="submitting" Variant="Variant.Filled" Color="Color.Primary" FullWidth="true">
+            @(submitting ? Text["Creating"] : Text["Create"])
+        </MudButton>
+    </MudForm>
+}
+
+@code {
+    [SupplyParameterFromQuery(Name = "quotationId")] public int? QuotationIdInput { get; set; }
+    private MudForm? form;
+    private EmployeeSessionSummary? session;
+    private InvoiceCreationPreview? preview;
+    private CreateModel model = new();
+    private int quotationId;
+    private bool loading;
+    private bool submitting;
+    private string? error;
+    private Guid operationId = Guid.NewGuid();
+    private CreateInvoiceFromQuotationRequest? pendingRequest;
+    private decimal Outstanding => preview is null ? 0m : preview.Total - (model.DeductWithholdingTax ? preview.AvailableWithholdingTax : 0m);
+
+    protected override async Task OnInitializedAsync()
+    {
+        try { session = await Http.GetFromJsonAsync<EmployeeSessionSummary>("/bff/session"); }
+        catch (Exception exception) when (exception is HttpRequestException or System.Text.Json.JsonException) { error = Text["Unavailable"]; }
+        if (QuotationIdInput is > 0) { quotationId = QuotationIdInput.Value; await LoadPreviewAsync(); }
+    }
+
+    private async Task LoadPreviewAsync()
+    {
+        if (quotationId <= 0) return;
+        loading = true; error = null;
+        try
+        {
+            using var response = await Http.GetAsync($"/bff/invoices/from-quotation/{quotationId}/preview");
+            if (!response.IsSuccessStatusCode) { error = ErrorFor(response.StatusCode); preview = null; return; }
+            preview = await response.Content.ReadFromJsonAsync<InvoiceCreationPreview>();
+            if (preview is null) { error = Text["InvalidResponse"]; return; }
+            model = CreateModel.From(preview);
+            operationId = Guid.NewGuid();
+            pendingRequest = null;
+        }
+        catch (Exception exception) when (exception is HttpRequestException or System.Text.Json.JsonException) { error = Text["Unavailable"]; }
+        finally { loading = false; }
+    }
+
+    private async Task CreateAsync()
+    {
+        if (form is null || session?.CsrfToken is null || preview is null) return;
+        await form.ValidateAsync(); if (!form.IsValid) return;
+        submitting = true; error = null;
+        try
+        {
+            pendingRequest ??= model.ToRequest();
+            using var request = new HttpRequestMessage(HttpMethod.Post, $"/bff/invoices/from-quotation/{preview.QuotationId}") { Content = JsonContent.Create(pendingRequest) };
+            request.Headers.Add("X-CSRF-TOKEN", session.CsrfToken);
+            request.Headers.Add("Idempotency-Key", operationId.ToString("D"));
+            using var response = await Http.SendAsync(request);
+            if (!response.IsSuccessStatusCode)
+            {
+                var uncertain = response.StatusCode is HttpStatusCode.BadGateway or HttpStatusCode.ServiceUnavailable or HttpStatusCode.GatewayTimeout or HttpStatusCode.RequestTimeout;
+                error = uncertain ? Text["RetrySafe"] : ErrorFor(response.StatusCode);
+                if (!uncertain) { pendingRequest = null; operationId = Guid.NewGuid(); }
+                return;
+            }
+            var result = await response.Content.ReadFromJsonAsync<InvoiceCreationResult>();
+            if (result is null) { error = Text["InvalidResponse"]; return; }
+            Navigation.NavigateTo($"/Invoices/View?id={result.InvoiceId}");
+        }
+        catch (HttpRequestException) { error = Text["RetrySafe"]; }
+        finally { submitting = false; }
+    }
+
+    private RenderFragment AddressEditor(string heading, AddressModel address, bool telephone) => builder =>
+    {
+        var sequence = 0;
+        builder.OpenComponent<MudPaper>(sequence++); builder.AddAttribute(sequence++, "Class", "pa-4"); builder.AddAttribute(sequence++, "Outlined", true);
+        builder.AddAttribute(sequence++, "ChildContent", (RenderFragment)(content =>
+        {
+            var index = 0;
+            content.OpenComponent<MudText>(index++); content.AddAttribute(index++, "Typo", Typo.h6); content.AddAttribute(index++, "ChildContent", (RenderFragment)(x => x.AddContent(0, heading))); content.CloseComponent();
+            Field(content, ref index, Text["Recipient"], address.Recipient, value => address.Recipient = value);
+            if (telephone) Field(content, ref index, Text["Telephone"], address.Telephone, value => address.Telephone = value);
+            Field(content, ref index, Text["Company"], address.Company, value => address.Company = value); Field(content, ref index, Text["Building"], address.Building, value => address.Building = value);
+            Field(content, ref index, Text["Line1"], address.Line1, value => address.Line1 = value); Field(content, ref index, Text["Line2"], address.Line2, value => address.Line2 = value);
+            Field(content, ref index, Text["City"], address.City, value => address.City = value); Field(content, ref index, Text["State"], address.State, value => address.State = value);
+            Field(content, ref index, Text["PostalCode"], address.PostalCode, value => address.PostalCode = value); Field(content, ref index, Text["Country"], address.Country, value => address.Country = value);
+        })); builder.CloseComponent();
+    };
+
+    private static void Field(RenderTreeBuilder builder, ref int sequence, string label, string? value, Action<string?> changed)
+    {
+        builder.OpenComponent<MudTextField<string>>(sequence++); builder.AddAttribute(sequence++, "Label", label); builder.AddAttribute(sequence++, "Value", value);
+        builder.AddAttribute(sequence++, "ValueChanged", EventCallback.Factory.Create<string?>(changed.Target!, changed)); builder.AddAttribute(sequence++, "MaxLength", 250); builder.CloseComponent();
+    }
+
+    private string Money(decimal? value) => value is null ? "-" : $"{value:N2} {preview?.Currency}";
+    private string ErrorFor(HttpStatusCode status) => status switch { HttpStatusCode.BadRequest => Text["InvalidRequest"], HttpStatusCode.Forbidden => Text["Forbidden"], HttpStatusCode.NotFound => Text["NotFound"], HttpStatusCode.Conflict => Text["Conflict"], HttpStatusCode.TooManyRequests => Text["RateLimited"], _ => Text["Unavailable"] };
+
+    private sealed class CreateModel
+    {
+        public string InvoiceNumber { get; set; } = string.Empty; public string? Comment { get; set; } public string? PurchaseOrderNumber { get; set; }
+        public string? Requisitioner { get; set; } public string? ShippedVia { get; set; } public string? Fob { get; set; } public string? Terms { get; set; }
+        public AddressModel BillingAddress { get; set; } = new(); public AddressModel ShippingAddress { get; set; } = new();
+        public string? TaxIdentification { get; set; } public string? CommercialRegistration { get; set; } public bool DeductWithholdingTax { get; set; } = true; public bool SendEmail { get; set; } = true;
+        public static CreateModel From(InvoiceCreationPreview value) => new() { InvoiceNumber = value.InvoiceNumber, Comment = value.Comment, ShippedVia = value.ShippedVia, Fob = value.Fob, Terms = value.Terms, BillingAddress = AddressModel.From(value.BillingAddress), ShippingAddress = AddressModel.From(value.ShippingAddress), TaxIdentification = value.TaxIdentification, CommercialRegistration = value.CommercialRegistration, DeductWithholdingTax = value.AvailableWithholdingTax > 0m };
+        public CreateInvoiceFromQuotationRequest ToRequest() => new(InvoiceNumber, Comment, PurchaseOrderNumber, Requisitioner, ShippedVia, Fob, Terms, BillingAddress.ToContract(), ShippingAddress.ToContract(), TaxIdentification, CommercialRegistration, DeductWithholdingTax, SendEmail);
+    }
+    private sealed class AddressModel
+    {
+        public string? Recipient { get; set; } public string? Company { get; set; } public string? Building { get; set; } public string? Line1 { get; set; } public string? Line2 { get; set; }
+        public string? City { get; set; } public string? State { get; set; } public string? PostalCode { get; set; } public string? Country { get; set; } public string? Telephone { get; set; }
+        public static AddressModel From(InvoiceCreationAddress value) => new() { Recipient = value.Recipient, Company = value.Company, Building = value.Building, Line1 = value.Line1, Line2 = value.Line2, City = value.City, State = value.State, PostalCode = value.PostalCode, Country = value.Country, Telephone = value.Telephone };
+        public InvoiceCreationAddress ToContract() => new(Recipient, Company, Building, Line1, Line2, City, State, PostalCode, Country, Telephone);
+    }
+}

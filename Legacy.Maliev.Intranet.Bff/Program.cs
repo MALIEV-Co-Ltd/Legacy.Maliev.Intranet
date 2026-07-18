@@ -237,6 +237,13 @@ builder.Services.AddHttpClient<InvoiceDetailProxy>(client =>
     client.Timeout = TimeSpan.FromSeconds(10);
 }).RemoveAllResilienceHandlers()
     .AddHttpMessageHandler<LegacyServiceAuthenticationHandler>();
+builder.Services.AddHttpClient<InvoiceCreationProxy>(client =>
+{
+    client.BaseAddress = new Uri(builder.Configuration["Services:Accounting"]
+        ?? "https+http://legacy-maliev-accounting-service");
+    client.Timeout = TimeSpan.FromSeconds(45);
+}).RemoveAllResilienceHandlers()
+    .AddHttpMessageHandler<LegacyServiceAuthenticationHandler>();
 builder.Services.AddHttpClient<InvoiceFileProxy>(client =>
 {
     client.BaseAddress = new Uri(builder.Configuration["Services:File"]
@@ -788,6 +795,11 @@ app.MapDelete("/bff/invoices/{id:int}/receipt", InvoiceReceiptEndpointMapper.Rem
 app.MapPost("/bff/invoices/{id:int}/receipt/email", InvoiceReceiptEndpointMapper.EmailAsync)
     .AddEndpointFilter<AntiforgeryValidationFilter>()
     .RequireAuthorization(LegacyEmployeePermissions.AccountingUpdate);
+app.MapGet("/bff/invoices/from-quotation/{quotationId:int}/preview", InvoiceCreationEndpointMapper.PreviewAsync)
+    .RequireAuthorization(LegacyEmployeePermissions.AccountingCreate);
+app.MapPost("/bff/invoices/from-quotation/{quotationId:int}", InvoiceCreationEndpointMapper.CreateAsync)
+    .AddEndpointFilter<AntiforgeryValidationFilter>()
+    .RequireAuthorization(LegacyEmployeePermissions.AccountingCreate);
 
 app.MapGet("/bff/quotation-requests", (
     QuotationRequestSort? sort,
