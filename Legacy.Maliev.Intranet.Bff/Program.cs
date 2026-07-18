@@ -205,6 +205,29 @@ builder.Services.AddHttpClient<FinancesProxy>(client =>
                 (int)response.StatusCode >= StatusCodes.Status500InternalServerError),
     });
 });
+builder.Services.AddHttpClient<InvoicesProxy>(client =>
+{
+    client.BaseAddress = new Uri(builder.Configuration["Services:Accounting"]
+        ?? "https+http://legacy-maliev-accounting-service");
+    client.Timeout = TimeSpan.FromSeconds(10);
+}).RemoveAllResilienceHandlers()
+    .AddHttpMessageHandler<LegacyServiceAuthenticationHandler>()
+    .AddResilienceHandler("invoice-index", pipeline =>
+{
+    pipeline.AddRetry(new Microsoft.Extensions.Http.Resilience.HttpRetryStrategyOptions
+    {
+        MaxRetryAttempts = 2,
+        Delay = TimeSpan.FromMilliseconds(200),
+        BackoffType = Polly.DelayBackoffType.Exponential,
+        UseJitter = true,
+        ShouldRetryAfterHeader = false,
+        ShouldHandle = new Polly.PredicateBuilder<HttpResponseMessage>()
+            .Handle<HttpRequestException>()
+            .Handle<Polly.Timeout.TimeoutRejectedException>()
+            .HandleResult(response => response.StatusCode == System.Net.HttpStatusCode.RequestTimeout ||
+                (int)response.StatusCode >= StatusCodes.Status500InternalServerError),
+    });
+});
 builder.Services.AddHttpClient<SuppliersProxy>(client =>
 {
     client.BaseAddress = new Uri(builder.Configuration["Services:Procurement"]
@@ -594,6 +617,26 @@ app.MapPost("/bff/employee-recovery/email-confirmation/complete", EmployeeRecove
     .AddEndpointFilter<AntiforgeryValidationFilter>()
     .RequireRateLimiting("employee-recovery")
     .AllowAnonymous();
+
+app.MapGet("/bff/invoices", (
+    InvoiceListSort? sort,
+    string? search,
+    int? index,
+    int? size,
+    bool? paid,
+    HttpContext context,
+    InvoicesProxy invoices,
+    CancellationToken cancellationToken) =>
+{
+    var normalizedSort = sort ?? InvoiceListSort.InvoiceCreatedDate_Descending;
+    var normalizedIndex = Math.Max(1, index ?? 1);
+    var normalizedSize = Math.Clamp(size ?? 50, 1, 150);
+    return InvoicesEndpointMapper.MapPageAsync(
+        token => invoices.GetPageAsync(normalizedSort, search, normalizedIndex, normalizedSize, paid ?? false, token),
+        normalizedIndex,
+        context,
+        cancellationToken);
+}).RequireAuthorization(LegacyEmployeePermissions.AccountingRead);
 
 app.MapGet("/bff/finances", (
     string? sort,

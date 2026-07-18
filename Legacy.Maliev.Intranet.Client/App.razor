@@ -30,6 +30,8 @@
                 ? "Legacy.Maliev.Intranet.Client.Features.Diagnostics.wasm"
                 : context.Path.StartsWith("Finances/", StringComparison.OrdinalIgnoreCase)
                     ? "Legacy.Maliev.Intranet.Client.Features.Accounting.wasm"
+                    : context.Path.StartsWith("Invoices/", StringComparison.OrdinalIgnoreCase)
+                        ? "Legacy.Maliev.Intranet.Client.Features.Accounting.wasm"
                     : context.Path.StartsWith("Customers/", StringComparison.OrdinalIgnoreCase)
                         ? "Legacy.Maliev.Intranet.Client.Features.Customers.wasm"
                 : context.Path.StartsWith("Employees/", StringComparison.OrdinalIgnoreCase)
