@@ -1,0 +1,237 @@
+@page "/Quotations/Estimate"
+@attribute [Authorize]
+@inject IStringLocalizer<Estimate> Text
+
+<PageTitle>@Text["PageTitle"]</PageTitle>
+
+<MudStack Spacing="3">
+    <MudBreadcrumbs Items="Breadcrumbs" />
+    <MudText Typo="Typo.h1">@Text["Heading"]</MudText>
+    <MudText Typo="Typo.body1">@Text["Description"]</MudText>
+
+    <MudTabs Elevation="1" Rounded="true">
+        <MudTabPanel Text="@Text["Printing"]">
+            <MudAlert Severity="Severity.Info">@Text["ComingSoon"]</MudAlert>
+        </MudTabPanel>
+        <MudTabPanel Text="@Text["CncMachining"]">
+            <MudGrid Spacing="3">
+                <MudItem xs="12" lg="8">
+                    <MudStack Spacing="3">
+                        <MudPaper Class="pa-4" Elevation="1">
+                            <MudText Typo="Typo.h2" Class="mb-3">@Text["Machine"]</MudText>
+                            <MudGrid>
+                                <MudItem xs="12" md="6"><MudNumericField T="decimal" @bind-Value="model.MachineCost" @bind-Value:after="Recalculate" Label="@Text["MachineCost"]" Min="0" /></MudItem>
+                                <MudItem xs="12" md="6"><MudNumericField T="decimal" @bind-Value="model.ReturnOnInvestmentYears" @bind-Value:after="Recalculate" Label="@Text["RoiYears"]" Min="0" Max="100" Step="0.5m" /></MudItem>
+                                <MudItem xs="12" md="6"><MudNumericField T="int" @bind-Value="model.WeekdaysPerMonth" @bind-Value:after="Recalculate" Label="@Text["WeekdaysPerMonth"]" Min="1" Max="31" /></MudItem>
+                                <MudItem xs="12" md="6"><MudNumericField T="int" @bind-Value="model.WorkingHoursPerDay" @bind-Value:after="Recalculate" Label="@Text["WorkingHoursPerDay"]" Min="1" Max="24" /></MudItem>
+                                <MudItem xs="12"><MudNumericField T="decimal" Value="machineCostPerHour" ValueChanged="SetMachineCostPerHour" Label="@Text["MachineCostPerHour"]" Min="0" HelperText="@Text["ManualOverride"]" /></MudItem>
+                            </MudGrid>
+                            <MudText Typo="Typo.caption">@Text["RoiBreakdown", calculated.ReturnOnInvestmentMonths, calculated.ReturnOnInvestmentDays, calculated.ReturnOnInvestmentHours]</MudText>
+                        </MudPaper>
+
+                        <MudPaper Class="pa-4" Elevation="1">
+                            <MudText Typo="Typo.h2" Class="mb-3">@Text["Job"]</MudText>
+                            <MudGrid>
+                                <MudItem xs="12" md="4"><MudNumericField T="int" @bind-Value="model.PartCount" @bind-Value:after="Recalculate" Label="@Text["PartCount"]" Min="1" /></MudItem>
+                                <MudItem xs="6" md="4"><MudNumericField T="int" @bind-Value="model.TimePerPartHours" @bind-Value:after="Recalculate" Label="@Text["Hours"]" Min="0" /></MudItem>
+                                <MudItem xs="6" md="4"><MudNumericField T="int" @bind-Value="model.TimePerPartMinutes" @bind-Value:after="Recalculate" Label="@Text["Minutes"]" Min="0" Max="59" /></MudItem>
+                                <MudItem xs="12"><MudNumericField T="decimal" Value="machineCost" ValueChanged="SetMachineCost" Label="@Text["MachineCostAllParts"]" Min="0" HelperText="@Text["MachineHours", calculated.TimePerPartHours, calculated.TotalMachiningHours]" /></MudItem>
+                            </MudGrid>
+                        </MudPaper>
+
+                        <MudPaper Class="pa-4" Elevation="1">
+                            <MudText Typo="Typo.h2" Class="mb-3">@Text["Material"]</MudText>
+                            <MudGrid>
+                                <MudItem xs="12" sm="4"><MudNumericField T="decimal" @bind-Value="model.StockLengthMillimetres" @bind-Value:after="Recalculate" Label="@Text["StockX"]" Min="0" /></MudItem>
+                                <MudItem xs="12" sm="4"><MudNumericField T="decimal" @bind-Value="model.StockWidthMillimetres" @bind-Value:after="Recalculate" Label="@Text["StockY"]" Min="0" /></MudItem>
+                                <MudItem xs="12" sm="4"><MudNumericField T="decimal" @bind-Value="model.StockHeightMillimetres" @bind-Value:after="Recalculate" Label="@Text["StockZ"]" Min="0" /></MudItem>
+                                <MudItem xs="12" md="4"><MudNumericField T="decimal" @bind-Value="model.StockCostPerKilogram" @bind-Value:after="Recalculate" Label="@Text["StockCostPerKilogram"]" Min="0" /></MudItem>
+                                <MudItem xs="12" md="4"><MudNumericField T="decimal" @bind-Value="model.StockWeightKilograms" @bind-Value:after="Recalculate" Label="@Text["StockWeight"]" Min="0" /></MudItem>
+                                <MudItem xs="12" md="4"><MudNumericField T="decimal" @bind-Value="model.StockMarkupPercent" @bind-Value:after="Recalculate" Label="@Text["StockMarkup"]" Min="0" Max="100" /></MudItem>
+                                <MudItem xs="12" md="6"><MudNumericField T="decimal" Value="materialCostPerPart" ValueChanged="SetMaterialCostPerPart" Label="@Text["MaterialCostPerPart"]" Min="0" HelperText="@Text["ManualOverride"]" /></MudItem>
+                                <MudItem xs="12" md="6"><MudNumericField T="decimal" Value="materialCost" ValueChanged="SetMaterialCost" Label="@Text["MaterialCostAllParts"]" Min="0" HelperText="@Text["StockVolume", calculated.StockVolumeCubicMillimetres]" /></MudItem>
+                            </MudGrid>
+                        </MudPaper>
+
+                        <MudPaper Class="pa-4" Elevation="1">
+                            <MudText Typo="Typo.h2" Class="mb-3">@Text["Electricity"]</MudText>
+                            <MudGrid>
+                                <MudItem xs="12" md="4"><MudNumericField T="decimal" @bind-Value="model.MaximumPowerKilowatts" @bind-Value:after="Recalculate" Label="@Text["MaximumPower"]" Min="0" /></MudItem>
+                                <MudItem xs="12" md="4"><MudNumericField T="decimal" @bind-Value="model.ElectricityBaseCost" @bind-Value:after="Recalculate" Label="@Text["ElectricityBaseCost"]" Min="0" /></MudItem>
+                                <MudItem xs="12" md="4"><MudNumericField T="decimal" @bind-Value="model.ElectricityCostPerKilowattHour" @bind-Value:after="Recalculate" Label="@Text["CostPerKwh"]" Min="0" /></MudItem>
+                                <MudItem xs="12"><MudNumericField T="decimal" Value="electricityCost" ValueChanged="SetElectricityCost" Label="@Text["ElectricityCost"]" Min="0" HelperText="@Text["PowerConsumption", calculated.TotalPowerConsumptionKilowattHours]" /></MudItem>
+                            </MudGrid>
+                        </MudPaper>
+
+                        <MudPaper Class="pa-4" Elevation="1">
+                            <MudText Typo="Typo.h2" Class="mb-3">@Text["Setup"]</MudText>
+                            <MudGrid>
+                                <MudItem xs="12" md="6"><MudNumericField T="int" @bind-Value="model.NumberOfSetups" @bind-Value:after="Recalculate" Label="@Text["NumberOfSetups"]" Min="0" /></MudItem>
+                                <MudItem xs="12" md="6"><MudNumericField T="decimal" @bind-Value="model.CostPerSetup" @bind-Value:after="Recalculate" Label="@Text["CostPerSetup"]" Min="0" /></MudItem>
+                                <MudItem xs="12"><MudNumericField T="decimal" Value="setupCost" ValueChanged="SetSetupCost" Label="@Text["SetupCostAllParts"]" Min="0" HelperText="@Text["SetupCostPerPart", calculated.SetupCostPerPart]" /></MudItem>
+                            </MudGrid>
+                        </MudPaper>
+                    </MudStack>
+                </MudItem>
+
+                <MudItem xs="12" lg="4">
+                    <MudPaper Class="pa-4" Elevation="2">
+                        <div aria-live="polite">
+                            <MudText Typo="Typo.h2" Class="mb-3">@Text["Summary"]</MudText>
+                            <MudSimpleTable Dense="true" Hover="false">
+                                <tbody>
+                                    <tr><th scope="row">@Text["MachineCost"]</th><td class="text-end">@machineCost.ToString("N2", CultureInfo.CurrentCulture)</td></tr>
+                                    <tr><th scope="row">@Text["MaterialCost"]</th><td class="text-end">@materialCost.ToString("N2", CultureInfo.CurrentCulture)</td></tr>
+                                    <tr><th scope="row">@Text["ElectricityCost"]</th><td class="text-end">@electricityCost.ToString("N2", CultureInfo.CurrentCulture)</td></tr>
+                                    <tr><th scope="row">@Text["SetupCost"]</th><td class="text-end">@setupCost.ToString("N2", CultureInfo.CurrentCulture)</td></tr>
+                                </tbody>
+                                <tfoot><tr><th scope="row">@Text["GrandTotal"]</th><td class="text-end fw-bold">@GrandTotal.ToString("N2", CultureInfo.CurrentCulture)</td></tr></tfoot>
+                            </MudSimpleTable>
+                        </div>
+                        <MudButton Class="mt-4" Variant="Variant.Outlined" OnClick="Reset">@Text["Reset"]</MudButton>
+                    </MudPaper>
+                </MudItem>
+            </MudGrid>
+        </MudTabPanel>
+        <MudTabPanel Text="@Text["Scanning"]">
+            <MudAlert Severity="Severity.Info">@Text["ComingSoon"]</MudAlert>
+        </MudTabPanel>
+        <MudTabPanel Text="@Text["Designing"]">
+            <MudAlert Severity="Severity.Info">@Text["ComingSoon"]</MudAlert>
+        </MudTabPanel>
+    </MudTabs>
+</MudStack>
+
+@code {
+    private IReadOnlyList<BreadcrumbItem> Breadcrumbs =>
+    [
+        new(Text["Sales"], href: null, disabled: true),
+        new(Text["Quotations"], href: "/Quotations"),
+        new(Text["Estimate"], href: null, disabled: true),
+    ];
+
+    private EstimateFormModel model = EstimateFormModel.LegacyDefaults();
+    private CncEstimateResult calculated = CncEstimateCalculator.Calculate(CncEstimateInput.LegacyDefaults);
+    private decimal machineCostPerHour;
+    private decimal machineCost;
+    private decimal materialCostPerPart;
+    private decimal materialCost;
+    private decimal electricityCost;
+    private decimal setupCost;
+
+    private decimal GrandTotal => Math.Round(machineCost + materialCost + electricityCost + setupCost, 2, MidpointRounding.AwayFromZero);
+
+    protected override void OnInitialized() => ApplyCalculatedValues();
+
+    private void Recalculate()
+    {
+        calculated = CncEstimateCalculator.Calculate(model.ToInput());
+        ApplyCalculatedValues();
+    }
+
+    private void ApplyCalculatedValues()
+    {
+        machineCostPerHour = calculated.MachineCostPerHour;
+        machineCost = calculated.MachineCost;
+        materialCostPerPart = calculated.MaterialCostPerPart;
+        materialCost = calculated.MaterialCost;
+        electricityCost = calculated.ElectricityCost;
+        setupCost = calculated.SetupCost;
+    }
+
+    private void SetMachineCostPerHour(decimal value)
+    {
+        machineCostPerHour = Math.Max(0m, value);
+        machineCost = Round(machineCostPerHour * calculated.TotalMachiningHours);
+    }
+
+    private void SetMachineCost(decimal value) => machineCost = Math.Max(0m, value);
+
+    private void SetMaterialCostPerPart(decimal value)
+    {
+        materialCostPerPart = Math.Max(0m, value);
+        materialCost = Round(materialCostPerPart * Math.Max(0, model.PartCount));
+    }
+
+    private void SetMaterialCost(decimal value) => materialCost = Math.Max(0m, value);
+
+    private void SetElectricityCost(decimal value) => electricityCost = Math.Max(0m, value);
+
+    private void SetSetupCost(decimal value) => setupCost = Math.Max(0m, value);
+
+    private void Reset()
+    {
+        model = EstimateFormModel.LegacyDefaults();
+        Recalculate();
+    }
+
+    private static decimal Round(decimal value) => Math.Round(value, 2, MidpointRounding.AwayFromZero);
+
+    private sealed class EstimateFormModel
+    {
+        public decimal MachineCost { get; set; }
+        public decimal ReturnOnInvestmentYears { get; set; }
+        public int WeekdaysPerMonth { get; set; }
+        public int WorkingHoursPerDay { get; set; }
+        public int PartCount { get; set; }
+        public int TimePerPartHours { get; set; }
+        public int TimePerPartMinutes { get; set; }
+        public decimal StockLengthMillimetres { get; set; }
+        public decimal StockWidthMillimetres { get; set; }
+        public decimal StockHeightMillimetres { get; set; }
+        public decimal StockCostPerKilogram { get; set; }
+        public decimal StockWeightKilograms { get; set; }
+        public decimal StockMarkupPercent { get; set; }
+        public decimal MaximumPowerKilowatts { get; set; }
+        public decimal ElectricityBaseCost { get; set; }
+        public decimal ElectricityCostPerKilowattHour { get; set; }
+        public int NumberOfSetups { get; set; }
+        public decimal CostPerSetup { get; set; }
+
+        public static EstimateFormModel LegacyDefaults()
+        {
+            var value = CncEstimateInput.LegacyDefaults;
+            return new()
+            {
+                MachineCost = value.MachineCost,
+                ReturnOnInvestmentYears = value.ReturnOnInvestmentYears,
+                WeekdaysPerMonth = value.WeekdaysPerMonth,
+                WorkingHoursPerDay = value.WorkingHoursPerDay,
+                PartCount = value.PartCount,
+                TimePerPartHours = value.TimePerPartHours,
+                TimePerPartMinutes = value.TimePerPartMinutes,
+                StockLengthMillimetres = value.StockLengthMillimetres,
+                StockWidthMillimetres = value.StockWidthMillimetres,
+                StockHeightMillimetres = value.StockHeightMillimetres,
+                StockCostPerKilogram = value.StockCostPerKilogram,
+                StockWeightKilograms = value.StockWeightKilograms,
+                StockMarkupPercent = value.StockMarkupPercent,
+                MaximumPowerKilowatts = value.MaximumPowerKilowatts,
+                ElectricityBaseCost = value.ElectricityBaseCost,
+                ElectricityCostPerKilowattHour = value.ElectricityCostPerKilowattHour,
+                NumberOfSetups = value.NumberOfSetups,
+                CostPerSetup = value.CostPerSetup,
+            };
+        }
+
+        public CncEstimateInput ToInput() => new(
+            MachineCost,
+            ReturnOnInvestmentYears,
+            WeekdaysPerMonth,
+            WorkingHoursPerDay,
+            PartCount,
+            TimePerPartHours,
+            TimePerPartMinutes,
+            StockLengthMillimetres,
+            StockWidthMillimetres,
+            StockHeightMillimetres,
+            StockCostPerKilogram,
+            StockWeightKilograms,
+            StockMarkupPercent,
+            MaximumPowerKilowatts,
+            ElectricityBaseCost,
+            ElectricityCostPerKilowattHour,
+            NumberOfSetups,
+            CostPerSetup);
+    }
+}
