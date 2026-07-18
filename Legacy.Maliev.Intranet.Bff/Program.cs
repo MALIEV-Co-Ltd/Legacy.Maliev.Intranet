@@ -10,6 +10,7 @@ using Legacy.Maliev.Intranet.Bff.Employees;
 using Legacy.Maliev.Intranet.Bff.Orders;
 using Legacy.Maliev.Intranet.Bff.Procurement;
 using Legacy.Maliev.Intranet.Server.Orders;
+using Legacy.Maliev.Intranet.Server.Accounting;
 using Maliev.Aspire.ServiceDefaults;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
@@ -294,6 +295,15 @@ builder.Services.AddHttpClient<OrderFileProxy>(client =>
     client.Timeout = TimeSpan.FromMinutes(5);
 }).RemoveAllResilienceHandlers()
     .AddHttpMessageHandler<LegacyServiceAuthenticationHandler>();
+builder.Services.AddHttpClient<FinanceFileProxy>(client =>
+{
+    client.BaseAddress = new Uri(builder.Configuration["Services:File"]
+        ?? "https+http://legacy-maliev-file-service");
+    client.Timeout = TimeSpan.FromMinutes(5);
+}).RemoveAllResilienceHandlers()
+    .AddHttpMessageHandler<LegacyServiceAuthenticationHandler>();
+builder.Services.AddScoped<FinanceDetailAggregator>();
+builder.Services.AddScoped<FinanceFileWorkflow>();
 builder.Services.AddHttpClient<OrderDocumentProxy>(client =>
 {
     client.BaseAddress = new Uri(builder.Configuration["Services:Document"]
@@ -427,6 +437,24 @@ builder.Services.AddAuthorizationBuilder()
     .AddPolicy(LegacyEmployeePermissions.AccountingRead, policy => policy
         .RequireAuthenticatedUser()
         .RequireClaim("permissions", LegacyEmployeePermissions.AccountingRead))
+    .AddPolicy(LegacyEmployeePermissions.AccountingUpdate, policy => policy
+        .RequireAuthenticatedUser()
+        .RequireClaim("permissions", LegacyEmployeePermissions.AccountingUpdate))
+    .AddPolicy(LegacyEmployeePermissions.AccountingDelete, policy => policy
+        .RequireAuthenticatedUser()
+        .RequireClaim("permissions", LegacyEmployeePermissions.AccountingDelete))
+    .AddPolicy(LegacyEmployeePermissions.AccountingFilesRead, policy => policy
+        .RequireAuthenticatedUser()
+        .RequireClaim("permissions", LegacyEmployeePermissions.AccountingFilesRead)
+        .RequireClaim("permissions", LegacyEmployeePermissions.FileUploadsRead))
+    .AddPolicy(LegacyEmployeePermissions.AccountingFilesWrite, policy => policy
+        .RequireAuthenticatedUser()
+        .RequireClaim("permissions", LegacyEmployeePermissions.AccountingFilesWrite)
+        .RequireClaim("permissions", LegacyEmployeePermissions.FileUploadsCreate))
+    .AddPolicy(LegacyEmployeePermissions.AccountingFilesDelete, policy => policy
+        .RequireAuthenticatedUser()
+        .RequireClaim("permissions", LegacyEmployeePermissions.AccountingFilesDelete)
+        .RequireClaim("permissions", LegacyEmployeePermissions.FileUploadsDelete))
     .AddPolicy(LegacyEmployeePermissions.CustomersRead, policy => policy
         .RequireAuthenticatedUser()
         .RequireClaim("permissions", LegacyEmployeePermissions.CustomersRead))
@@ -651,6 +679,37 @@ app.MapGet("/bff/finances/trends/yearly-expense", (
         context,
         cancellationToken))
     .RequireAuthorization(LegacyEmployeePermissions.AccountingRead);
+
+app.MapGet("/bff/finances/{id:int}", (int id, FinanceDetailAggregator aggregator, CancellationToken cancellationToken) =>
+    FinanceDetailEndpointMapper.GetAsync(id, aggregator, cancellationToken))
+    .RequireAuthorization(policy =>
+    {
+        policy.RequireClaim("permissions", LegacyEmployeePermissions.AccountingRead);
+        policy.RequireClaim("permissions", LegacyEmployeePermissions.AccountingFilesRead);
+        policy.RequireClaim("permissions", LegacyEmployeePermissions.FileUploadsRead);
+    });
+app.MapPut("/bff/finances/{id:int}", (int id, FinancePaymentUpdateRequest input, FinancesProxy finances, HttpContext context, CancellationToken cancellationToken) =>
+    FinanceDetailEndpointMapper.UpdateAsync(id, input, finances, context, cancellationToken))
+    .AddEndpointFilter<AntiforgeryValidationFilter>()
+    .RequireAuthorization(LegacyEmployeePermissions.AccountingUpdate);
+app.MapPost("/bff/finances/{id:int}/files", (int id, HttpRequest request, FinancesProxy finances, FinanceFileProxy files, FinanceFileWorkflow workflow, ILogger<FinanceFileWorkflow> logger, CancellationToken cancellationToken) =>
+    FinanceDetailEndpointMapper.UploadAsync(id, request, finances, files, workflow, logger, cancellationToken))
+    .AddEndpointFilter<AntiforgeryValidationFilter>()
+    .RequireAuthorization(LegacyEmployeePermissions.AccountingFilesWrite);
+app.MapDelete("/bff/finances/{id:int}/files/{fileId:int}", (int id, int fileId, FinanceDetailAggregator aggregator, FinancesProxy finances, FinanceFileProxy files, FinanceFileWorkflow workflow, CancellationToken cancellationToken) =>
+    FinanceDetailEndpointMapper.RemoveFileAsync(id, fileId, aggregator, finances, files, workflow, cancellationToken))
+    .AddEndpointFilter<AntiforgeryValidationFilter>()
+    .RequireAuthorization(LegacyEmployeePermissions.AccountingFilesDelete);
+app.MapDelete("/bff/finances/{id:int}", (int id, FinanceDetailAggregator aggregator, FinancesProxy finances, FinanceFileProxy files, CancellationToken cancellationToken) =>
+    FinanceDetailEndpointMapper.DeleteAsync(id, aggregator, finances, files, cancellationToken))
+    .AddEndpointFilter<AntiforgeryValidationFilter>()
+    .RequireAuthorization(policy =>
+    {
+        policy.RequireClaim("permissions", LegacyEmployeePermissions.AccountingDelete);
+        policy.RequireClaim("permissions", LegacyEmployeePermissions.AccountingFilesRead);
+        policy.RequireClaim("permissions", LegacyEmployeePermissions.AccountingFilesDelete);
+        policy.RequireClaim("permissions", LegacyEmployeePermissions.FileUploadsDelete);
+    });
 
 app.MapGet("/bff/orders", (
     OrderListSort? sort,

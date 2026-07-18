@@ -7,6 +7,16 @@ public static class LegacyEmployeePermissions
 {
     /// <summary>Allows an authenticated employee to read legacy accounting records and summaries.</summary>
     public const string AccountingRead = "legacy.accounting.read";
+    /// <summary>Allows updating legacy accounting records.</summary>
+    public const string AccountingUpdate = "legacy.accounting.update";
+    /// <summary>Allows deleting legacy accounting records.</summary>
+    public const string AccountingDelete = "legacy.accounting.delete";
+    /// <summary>Allows reading legacy accounting-file metadata.</summary>
+    public const string AccountingFilesRead = "legacy.accounting-files.read";
+    /// <summary>Allows linking clean files to legacy accounting records.</summary>
+    public const string AccountingFilesWrite = "legacy.accounting-files.write";
+    /// <summary>Allows deleting legacy accounting-file metadata.</summary>
+    public const string AccountingFilesDelete = "legacy.accounting-files.delete";
     /// <summary>Allows reading one complete legacy customer profile.</summary>
     public const string CustomersRead = "legacy-customer.customers.read";
     /// <summary>Allows creating a legacy customer profile and its authentication identity.</summary>
