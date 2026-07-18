@@ -1,0 +1,186 @@
+@page "/Finances/View"
+@attribute [Authorize]
+@inject HttpClient Http
+@inject NavigationManager Navigation
+@inject IStringLocalizer<FinanceView> Text
+
+<PageTitle>@Text["PageTitle", Id ?? 0]</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large">
+    @if (loading)
+    {
+        <MudProgressLinear Indeterminate="true" Color="Color.Primary" aria-label="@Text["Loading"]" />
+    }
+    else if (!string.IsNullOrWhiteSpace(error))
+    {
+        <MudAlert Severity="Severity.Error" aria-live="assertive">@error</MudAlert>
+    }
+    else if (page is not null)
+    {
+        <div class="d-flex flex-wrap align-center justify-space-between gap-3 mb-4">
+            <MudText Typo="Typo.h4" HtmlTag="h1">@Text["Heading", page.Payment.Id]</MudText>
+            <MudButton Href="/Finances/Index" Variant="Variant.Outlined">@Text["Back"]</MudButton>
+        </div>
+        @if (!string.IsNullOrWhiteSpace(notice))
+        {
+            <MudAlert Severity="Severity.Success" Class="mb-4" aria-live="polite">@notice</MudAlert>
+        }
+
+        <MudForm @ref="form" Model="edit">
+            <MudGrid>
+                <MudItem xs="12" md="6"><MudSelect T="int?" Label="@Text["Employee"]" @bind-Value="edit.EmployeeId" Clearable="true">@foreach (var item in page.Employees) { <MudSelectItem T="int?" Value="@((int?)item.Id)">@item.Name</MudSelectItem> }</MudSelect></MudItem>
+                <MudItem xs="12" md="6"><MudSelect T="int" Label="@Text["Direction"]" @bind-Value="edit.PaymentDirectionId" Required="true">@foreach (var item in page.Directions) { <MudSelectItem T="int" Value="@item.Id">@item.Name</MudSelectItem> }</MudSelect></MudItem>
+                <MudItem xs="12" md="6"><MudSelect T="int" Label="@Text["Type"]" @bind-Value="edit.PaymentTypeId" Required="true">@foreach (var item in page.Types) { <MudSelectItem T="int" Value="@item.Id">@item.Name</MudSelectItem> }</MudSelect></MudItem>
+                <MudItem xs="12" md="6"><MudSelect T="int" Label="@Text["Method"]" @bind-Value="edit.PaymentMethodId" Required="true">@foreach (var item in page.Methods) { <MudSelectItem T="int" Value="@item.Id">@item.Name</MudSelectItem> }</MudSelect></MudItem>
+                <MudItem xs="12" md="6"><MudNumericField T="decimal" Label="@Text["Amount"]" @bind-Value="edit.Amount" Min="0" Required="true" /></MudItem>
+                <MudItem xs="12" md="6"><MudSelect T="int?" Label="@Text["Currency"]" @bind-Value="edit.CurrencyId" Clearable="true">@foreach (var item in page.Currencies) { <MudSelectItem T="int?" Value="@((int?)item.Id)">@item.ShortName</MudSelectItem> }</MudSelect></MudItem>
+                <MudItem xs="12" md="6"><MudTextField Label="@Text["Recipient"]" @bind-Value="edit.Recipient" /></MudItem>
+                <MudItem xs="12" md="6"><MudTextField Label="@Text["TransactionNumber"]" @bind-Value="edit.TransactionNumber" /></MudItem>
+                <MudItem xs="12" md="6"><MudDatePicker Label="@Text["PaymentDate"]" @bind-Date="edit.PaymentDate" /></MudItem>
+                <MudItem xs="12"><MudTextField Label="@Text["Description"]" @bind-Value="edit.Description" Lines="4" /></MudItem>
+                <MudItem xs="12"><div class="d-flex flex-wrap gap-2"><MudButton OnClick="SaveAsync" Disabled="@submitting" Variant="Variant.Filled" Color="Color.Primary">@Text["Save"]</MudButton>@if (deleteArmed) { <MudButton OnClick="DeleteAsync" Disabled="@submitting" Variant="Variant.Filled" Color="Color.Error">@Text["ConfirmDelete"]</MudButton><MudButton OnClick="CancelDelete" Disabled="@submitting" Variant="Variant.Text">@Text["Cancel"]</MudButton> } else { <MudButton OnClick="ArmDelete" Disabled="@submitting" Variant="Variant.Outlined" Color="Color.Error">@Text["Delete"]</MudButton> }</div></MudItem>
+            </MudGrid>
+        </MudForm>
+
+        <MudPaper Class="pa-4 mt-4">
+            <MudText Typo="Typo.h5" HtmlTag="h2">@Text["Files"]</MudText>
+            <InputFile OnChange="SelectFiles" multiple class="mt-3" />
+            <MudButton OnClick="UploadAsync" Disabled="@(submitting || uploads.Count == 0)" Class="my-3">@Text["Upload"]</MudButton>
+            @if (page.Files.Count == 0)
+            {
+                <MudText>@Text["NoFiles"]</MudText>
+            }
+            else
+            {
+                <MudList T="FinanceFileItem">@foreach (var file in page.Files) { <MudListItem T="FinanceFileItem" Value="file"><MudLink Href="@file.Uri?.ToString()" Target="_blank">@file.ObjectName</MudLink><MudIconButton Icon="@Icons.Material.Filled.Delete" OnClick="() => RemoveFileAsync(file.Id)" Disabled="@submitting" aria-label="@Text["RemoveFile", file.ObjectName]" /></MudListItem> }</MudList>
+            }
+        </MudPaper>
+    }
+</MudContainer>
+
+@code {
+    [SupplyParameterFromQuery(Name = "id")] public int? Id { get; set; }
+    private MudForm? form;
+    private FinanceDetailPage? page;
+    private EmployeeSessionSummary? session;
+    private FinanceEditModel edit = new();
+    private readonly List<IBrowserFile> uploads = [];
+    private Guid? uploadAttemptId;
+    private bool loading = true;
+    private bool submitting;
+    private bool deleteArmed;
+    private string? error;
+    private string? notice;
+
+    protected override async Task OnParametersSetAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        loading = true; error = null;
+        if (Id is not > 0) { error = Text["InvalidId"]; loading = false; return; }
+        try
+        {
+            session = await Http.GetFromJsonAsync<EmployeeSessionSummary>("/bff/session");
+            using var response = await Http.GetAsync($"/bff/finances/{Id.Value}");
+            if (response.StatusCode == HttpStatusCode.Unauthorized) { Navigation.NavigateTo($"/Login?returnUrl={Uri.EscapeDataString(Navigation.ToBaseRelativePath(Navigation.Uri))}"); return; }
+            if (response.StatusCode == HttpStatusCode.NotFound) { error = Text["NotFound"]; return; }
+            if (!response.IsSuccessStatusCode) { error = ErrorFor(response.StatusCode); return; }
+            page = await response.Content.ReadFromJsonAsync<FinanceDetailPage>();
+            if (page is null) { error = Text["InvalidResponse"]; return; }
+            edit = FinanceEditModel.From(page.Payment);
+        }
+        catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException) { error = Text["Unavailable"]; }
+        finally { loading = false; }
+    }
+
+    private async Task SaveAsync()
+    {
+        if (page is null || form is null) return;
+        await form.ValidateAsync(); if (!form.IsValid) return;
+        using var request = WriteRequest(HttpMethod.Put, $"/bff/finances/{page.Payment.Id}");
+        request.Content = JsonContent.Create(edit.ToRequest());
+        await SendAsync(request, Text["Saved"]);
+    }
+
+    private void SelectFiles(InputFileChangeEventArgs args) { uploads.Clear(); uploads.AddRange(args.GetMultipleFiles()); uploadAttemptId = Guid.NewGuid(); }
+    private async Task UploadAsync()
+    {
+        if (page is null || uploads.Count == 0) return;
+        using var content = new MultipartFormDataContent("----maliev-finance-upload");
+        foreach (var upload in uploads)
+        {
+            var file = new StreamContent(upload.OpenReadStream(200 * 1024 * 1024));
+            file.Headers.ContentType = new(upload.ContentType);
+            content.Add(file, "files", upload.Name);
+        }
+        using var request = WriteRequest(HttpMethod.Post, $"/bff/finances/{page.Payment.Id}/files");
+        request.Headers.Add("Idempotency-Key", (uploadAttemptId ??= Guid.NewGuid()).ToString("D"));
+        request.Content = content;
+        await SendAsync(request, Text["Uploaded"]);
+    }
+
+    private async Task RemoveFileAsync(int fileId)
+    {
+        if (page is null) return;
+        using var request = WriteRequest(HttpMethod.Delete, $"/bff/finances/{page.Payment.Id}/files/{fileId}");
+        await SendAsync(request, Text["FileRemoved"]);
+    }
+
+    private async Task DeleteAsync()
+    {
+        if (page is null) return;
+        using var request = WriteRequest(HttpMethod.Delete, $"/bff/finances/{page.Payment.Id}");
+        submitting = true; error = null;
+        try
+        {
+            using var response = await Http.SendAsync(request);
+            if (!response.IsSuccessStatusCode) { error = ErrorFor(response.StatusCode); return; }
+            Navigation.NavigateTo("/Finances/Index");
+        }
+        catch (HttpRequestException) { error = Text["Unavailable"]; }
+        finally { submitting = false; }
+    }
+
+    private void ArmDelete() => deleteArmed = true;
+    private void CancelDelete() => deleteArmed = false;
+
+    private HttpRequestMessage WriteRequest(HttpMethod method, string path)
+    {
+        var request = new HttpRequestMessage(method, path);
+        if (!string.IsNullOrWhiteSpace(session?.CsrfToken)) request.Headers.Add("X-CSRF-TOKEN", session.CsrfToken);
+        return request;
+    }
+
+    private async Task SendAsync(HttpRequestMessage request, string success)
+    {
+        submitting = true; error = null; notice = null;
+        try
+        {
+            using var response = await Http.SendAsync(request);
+            if (response.StatusCode == HttpStatusCode.Conflict) { error = Text["Conflict"]; return; }
+            if (!response.IsSuccessStatusCode) { error = ErrorFor(response.StatusCode); return; }
+            notice = success; uploads.Clear(); uploadAttemptId = null; await LoadAsync();
+        }
+        catch (HttpRequestException) { error = Text["Unavailable"]; }
+        finally { submitting = false; }
+    }
+
+    private string ErrorFor(HttpStatusCode status) => status switch { HttpStatusCode.Forbidden => Text["Forbidden"], HttpStatusCode.TooManyRequests => Text["RateLimited"], HttpStatusCode.BadGateway => Text["InvalidResponse"], _ => Text["Unavailable"] };
+
+    private sealed class FinanceEditModel
+    {
+        public int? EmployeeId { get; set; }
+        public int PaymentDirectionId { get; set; }
+        public int PaymentTypeId { get; set; }
+        public string? Description { get; set; }
+        public int PaymentMethodId { get; set; }
+        public decimal Amount { get; set; }
+        public int? CurrencyId { get; set; }
+        public string? Recipient { get; set; }
+        public string? TransactionNumber { get; set; }
+        public DateTime? PaymentDate { get; set; }
+        public DateTime? ModifiedDate { get; set; }
+        public static FinanceEditModel From(FinancePaymentItem value) => new() { EmployeeId = value.EmployeeId, PaymentDirectionId = value.PaymentDirectionId, PaymentTypeId = value.PaymentTypeId, Description = value.Description, PaymentMethodId = value.PaymentMethodId, Amount = value.Amount, CurrencyId = value.CurrencyId, Recipient = value.Recipient, TransactionNumber = value.TransactionNumber, PaymentDate = value.PaymentDate, ModifiedDate = value.ModifiedDate };
+        public FinancePaymentUpdateRequest ToRequest() => new(EmployeeId, PaymentDirectionId, PaymentTypeId, Description, PaymentMethodId, Amount, CurrencyId, Recipient, TransactionNumber, PaymentDate, ModifiedDate);
+    }
+}

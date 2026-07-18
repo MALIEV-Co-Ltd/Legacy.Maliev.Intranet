@@ -68,3 +68,39 @@ public sealed record FinanceSummaryDetail(
 
 /// <summary>Finance summary projected from AccountingService.</summary>
 public sealed record FinanceSummary(IReadOnlyList<FinanceSummaryDetail> Details);
+
+/// <summary>Browser-safe Finance lookup value.</summary>
+public sealed record FinanceLookupItem(int Id, string Name);
+
+/// <summary>Browser-safe payment-file projection with an optional short-lived clean-object URL.</summary>
+public sealed record FinanceFileItem(
+    int Id,
+    int PaymentId,
+    string Bucket,
+    string ObjectName,
+    DateTime? CreatedDate,
+    Uri? Uri);
+
+/// <summary>Complete browser-safe projection for the legacy Finance editor.</summary>
+public sealed record FinanceDetailPage(
+    FinancePaymentItem Payment,
+    IReadOnlyList<FinanceLookupItem> Employees,
+    IReadOnlyList<FinanceLookupItem> Directions,
+    IReadOnlyList<FinanceLookupItem> Types,
+    IReadOnlyList<FinanceLookupItem> Methods,
+    IReadOnlyList<CatalogCurrency> Currencies,
+    IReadOnlyList<FinanceFileItem> Files);
+
+/// <summary>Validated Finance editor write contract.</summary>
+public sealed record FinancePaymentUpdateRequest(
+    int? EmployeeId,
+    int PaymentDirectionId,
+    int PaymentTypeId,
+    string? Description,
+    int PaymentMethodId,
+    decimal Amount,
+    int? CurrencyId,
+    string? Recipient,
+    string? TransactionNumber,
+    DateTime? PaymentDate,
+    DateTime? ModifiedDate);
