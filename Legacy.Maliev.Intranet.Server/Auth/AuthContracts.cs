@@ -88,6 +88,12 @@ public static class LegacyEmployeePermissions
     public const string PurchaseOrdersDelete = "legacy-procurement.purchase-orders.delete";
     /// <summary>Allows an authenticated employee to list and inspect legacy quotations.</summary>
     public const string QuotationsRead = "legacy.quotations.read";
+    /// <summary>Allows creating a legacy quotation root.</summary>
+    public const string QuotationsCreate = "legacy.quotations.create";
+    /// <summary>Allows creating server-priced legacy quotation lines.</summary>
+    public const string QuotationLinesWrite = "legacy.quotation-lines.write";
+    /// <summary>Allows linking customer-owned orders to a legacy quotation.</summary>
+    public const string QuotationOrdersWrite = "legacy.quotation-orders.write";
 }
 
 /// <summary>Explicit removable grants that preserve employee-wide authorization during legacy rollout.</summary>

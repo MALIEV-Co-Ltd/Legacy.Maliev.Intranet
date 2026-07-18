@@ -25,6 +25,19 @@ public sealed class OrdersProxy(HttpClient httpClient)
         return await httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
     }
 
+    /// <summary>Gets the bounded order page owned by one customer.</summary>
+    public async Task<HttpResponseMessage> GetCustomerAsync(
+        int customerId,
+        string? search,
+        int index,
+        int size,
+        CancellationToken cancellationToken)
+    {
+        var path = $"/Orders/customers/{customerId}?sort={OrderListSort.OrderCreatedDate_Descending}&search={Uri.EscapeDataString(search ?? string.Empty)}&index={index}&size={size}";
+        using var request = new HttpRequestMessage(HttpMethod.Get, path);
+        return await httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+    }
+
     /// <summary>Gets OrderService process labels from the actual controller route.</summary>
     public async Task<HttpResponseMessage> GetProcessesAsync(CancellationToken cancellationToken)
     {
