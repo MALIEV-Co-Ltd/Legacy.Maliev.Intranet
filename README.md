@@ -77,6 +77,9 @@ The customer, employee, material, supplier, purchase-order, and order-list domai
 - `/Orders/View` preserves complete edits with ModifiedDate concurrency, permitted status transitions, Accepted cancellation locking, signed clean-file downloads/removal, and QuestPDF order-label rendering;
 - failed create workflows compensate in reverse order so metadata, cloud objects, line items, and the parent order are not orphaned.
 
-The remaining 24 route workflows render an explicit migration state until their domain
-workflow is fully wired and tested. This repository must not be deployed before all
-of those route gates are complete.
+Remaining active route workflows render an explicit migration state until their domain
+workflow is fully wired and tested. `/Travelers/Create` and `/Travelers/Index` are retained
+only in the historical inventory and return `410 Gone`: the legacy PageModels were inert
+stubs, and no Traveler entity, repository, controller, DTO, persistence, or wire contract
+exists to migrate. Any future manufacturing-traveler capability requires a separately
+designed bounded context; it is intentionally not fabricated in this legacy migration.

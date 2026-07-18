@@ -58,4 +58,14 @@ public static class LegacyRoutes
         "/Employees/ForgotPassword",
         "/Employees/ResetPassword",
     };
+
+    /// <summary>Historical routes proven to have no implementation or owning service contract.</summary>
+    public static IReadOnlySet<string> Retired { get; } = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+    {
+        "/Travelers/Create",
+        "/Travelers/Index",
+    };
+
+    /// <summary>Historical routes that still have an implementation or a migration candidate contract.</summary>
+    public static IReadOnlyList<string> ActiveMigrationCandidates { get; } = All.Where(route => !Retired.Contains(route)).ToArray();
 }

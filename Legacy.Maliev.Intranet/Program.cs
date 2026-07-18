@@ -127,6 +127,7 @@ builder.Services.AddRazorPages(options =>
 
     foreach (var route in LegacyRoutes.All.Where(route =>
                  !LegacyRoutes.Anonymous.Contains(route) &&
+                 !LegacyRoutes.Retired.Contains(route) &&
                  !route.StartsWith("/Customers/", StringComparison.OrdinalIgnoreCase) &&
                  !route.StartsWith("/Employees/", StringComparison.OrdinalIgnoreCase) &&
                  !route.StartsWith("/Materials/", StringComparison.OrdinalIgnoreCase) &&
@@ -147,6 +148,13 @@ app.UseAuthentication();
 app.UseAuthorization();
 app.MapDefaultEndpoints("intranet");
 app.MapRazorPages();
+foreach (var route in LegacyRoutes.Retired)
+{
+    app.MapGet(route, () => Results.Problem(
+        statusCode: StatusCodes.Status410Gone,
+        title: "Retired legacy route",
+        detail: "This historical route never had an operational domain or API contract."));
+}
 app.MapPost("/Logout", async (HttpContext context, EmployeeSessionService sessions, CancellationToken cancellationToken) =>
 {
     await sessions.SignOutAsync(context, cancellationToken);
