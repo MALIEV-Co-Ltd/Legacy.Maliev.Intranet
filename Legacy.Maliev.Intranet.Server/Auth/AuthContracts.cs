@@ -19,6 +19,12 @@ public static class LegacyEmployeePermissions
     public const string AccountingFilesWrite = "legacy.accounting-files.write";
     /// <summary>Allows deleting legacy accounting-file metadata.</summary>
     public const string AccountingFilesDelete = "legacy.accounting-files.delete";
+    /// <summary>Allows reading legacy customer quotation requests.</summary>
+    public const string QuotationRequestsRead = "legacy.quotation-requests.read";
+    /// <summary>Allows updating legacy customer quotation requests.</summary>
+    public const string QuotationRequestsUpdate = "legacy.quotation-requests.update";
+    /// <summary>Allows reading file metadata owned by a legacy quotation request.</summary>
+    public const string QuotationFilesRead = "legacy.quotation-files.read";
     /// <summary>Allows reading one complete legacy customer profile.</summary>
     public const string CustomersRead = "legacy-customer.customers.read";
     /// <summary>Allows creating a legacy customer profile and its authentication identity.</summary>

@@ -14,10 +14,13 @@ public sealed class QuotationRequestsWasmMigrationContractTests
     public void Routes_AreLazyBrowserSafeAndUseOwnedBffContracts()
     {
         var root = FindRepositoryRoot();
-        var index = File.ReadAllText(Path.Combine(root, "Legacy.Maliev.Intranet.Client.Features.Quotations", "Pages", "QuotationRequests.razor"));
-        var view = File.ReadAllText(Path.Combine(root, "Legacy.Maliev.Intranet.Client.Features.Quotations", "Pages", "QuotationRequestView.razor"));
+        var index = File.ReadAllText(Path.Combine(root, "Legacy.Maliev.Intranet.Client.Features.Quotations", "Pages", "QuotationRequests", "Index.razor"));
+        var view = File.ReadAllText(Path.Combine(root, "Legacy.Maliev.Intranet.Client.Features.Quotations", "Pages", "QuotationRequests", "View.razor"));
         var mapper = File.ReadAllText(Path.Combine(root, "Legacy.Maliev.Intranet.Bff", "Quotations", "QuotationRequestsEndpointMapper.cs"));
         var proxy = File.ReadAllText(Path.Combine(root, "Legacy.Maliev.Intranet.Bff", "Quotations", "QuotationRequestsProxy.cs"));
+        var app = File.ReadAllText(Path.Combine(root, "Legacy.Maliev.Intranet.Client", "App.razor"));
+        var clientProject = File.ReadAllText(Path.Combine(root, "Legacy.Maliev.Intranet.Client", "Legacy.Maliev.Intranet.Client.csproj"));
+        var bffProgram = File.ReadAllText(Path.Combine(root, "Legacy.Maliev.Intranet.Bff", "Program.cs"));
 
         Assert.Contains("@page \"/QuotationRequests/Index\"", index, StringComparison.Ordinal);
         Assert.Contains("@page \"/QuotationRequests/View\"", view, StringComparison.Ordinal);
@@ -25,6 +28,11 @@ public sealed class QuotationRequestsWasmMigrationContractTests
         Assert.Contains("X-Expected-Modified-Date", proxy, StringComparison.Ordinal);
         Assert.Contains("/uploads/SignedUrl", proxy, StringComparison.Ordinal);
         Assert.Contains("file.RequestId != id", mapper, StringComparison.Ordinal);
+        Assert.Contains("QuotationRequests/", app, StringComparison.Ordinal);
+        Assert.Contains("Features.Quotations.wasm", clientProject, StringComparison.Ordinal);
+        Assert.Contains("LegacyEmployeePermissions.QuotationRequestsRead", bffProgram, StringComparison.Ordinal);
+        Assert.Contains("LegacyEmployeePermissions.QuotationRequestsUpdate", bffProgram, StringComparison.Ordinal);
+        Assert.Contains("LegacyEmployeePermissions.QuotationFilesRead", bffProgram, StringComparison.Ordinal);
         Assert.DoesNotContain("access_token", index, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("access_token", view, StringComparison.OrdinalIgnoreCase);
     }

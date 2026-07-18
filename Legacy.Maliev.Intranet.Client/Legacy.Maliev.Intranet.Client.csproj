@@ -19,6 +19,7 @@
     <ProjectReference Include="..\Legacy.Maliev.Intranet.Client.Features.Employees\Legacy.Maliev.Intranet.Client.Features.Employees.csproj" />
     <ProjectReference Include="..\Legacy.Maliev.Intranet.Client.Features.Orders\Legacy.Maliev.Intranet.Client.Features.Orders.csproj" />
     <ProjectReference Include="..\Legacy.Maliev.Intranet.Client.Features.Procurement\Legacy.Maliev.Intranet.Client.Features.Procurement.csproj" />
+    <ProjectReference Include="..\Legacy.Maliev.Intranet.Client.Features.Quotations\Legacy.Maliev.Intranet.Client.Features.Quotations.csproj" />
     <BlazorWebAssemblyLazyLoad Include="Legacy.Maliev.Intranet.Client.Features.Catalog.wasm" />
     <BlazorWebAssemblyLazyLoad Include="Legacy.Maliev.Intranet.Client.Features.Accounting.wasm" />
     <BlazorWebAssemblyLazyLoad Include="Legacy.Maliev.Intranet.Client.Features.Customers.wasm" />
@@ -26,5 +27,6 @@
     <BlazorWebAssemblyLazyLoad Include="Legacy.Maliev.Intranet.Client.Features.Employees.wasm" />
     <BlazorWebAssemblyLazyLoad Include="Legacy.Maliev.Intranet.Client.Features.Orders.wasm" />
     <BlazorWebAssemblyLazyLoad Include="Legacy.Maliev.Intranet.Client.Features.Procurement.wasm" />
+    <BlazorWebAssemblyLazyLoad Include="Legacy.Maliev.Intranet.Client.Features.Quotations.wasm" />
   </ItemGroup>
 </Project>

@@ -14,7 +14,18 @@ internal static class QuotationRequestsEndpointMapper
         {
             if (response.StatusCode == HttpStatusCode.NotFound) return Results.Ok(new QuotationRequestPage([], pageIndex, 0, 0, false, pageIndex > 1));
             var failure = Failure(response, context); if (failure is not null) return failure;
-            try { var page = await response.Content.ReadFromJsonAsync<QuotationRequestPage>(token); return page?.Items is null || page.PageIndex < 1 || page.TotalPages < 0 || page.TotalRecords < 0 || page.Items.Any(x => x.Id <= 0) ? Invalid() : Results.Ok(page); }
+            try
+            {
+                var page = await response.Content.ReadFromJsonAsync<DownstreamPage>(token);
+                if (page?.Items is null || page.PageIndex < 1 || page.TotalPages < 0 || page.TotalRecords < 0 || page.Items.Any(x => x.Id <= 0)) return Invalid();
+                return Results.Ok(new QuotationRequestPage(
+                    page.Items,
+                    page.PageIndex,
+                    page.TotalPages,
+                    page.TotalRecords,
+                    page.PageIndex < page.TotalPages,
+                    page.PageIndex > 1));
+            }
             catch (System.Text.Json.JsonException) { return Invalid(); }
         }
     }
@@ -55,5 +66,6 @@ internal static class QuotationRequestsEndpointMapper
     private static bool Bounded(Exception ex, CancellationToken token) => ex is HttpRequestException or InvalidDataException or System.Text.Json.JsonException or Polly.Timeout.TimeoutRejectedException || ex is OperationCanceledException && !token.IsCancellationRequested;
     private static IResult Invalid() => Results.Problem(statusCode: 502, title: "Invalid QuotationService response");
     private static IResult Unavailable() => Results.Problem(statusCode: 503, title: "QuotationService unavailable");
+    private sealed record DownstreamPage(IReadOnlyList<QuotationRequestItem> Items, int PageIndex, int TotalPages, int TotalRecords);
     private sealed record RequestFile(int Id, int? RequestId, string? Bucket, string? ObjectName, DateTime? CreatedDate, DateTime? ModifiedDate);
 }
