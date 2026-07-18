@@ -44,3 +44,31 @@ public sealed record QuotationListPage(
 
 /// <summary>Accepted, declined, and open quotation counts.</summary>
 public sealed record QuotationStats(int Accepted, int Declined, int Open);
+
+/// <summary>Customer contact fields displayed by the read-only quotation detail.</summary>
+public sealed record QuotationCustomer(int Id, string FullName, string Email, string? Telephone, string? Mobile, string? Fax);
+
+/// <summary>Employee attribution displayed by the read-only quotation detail.</summary>
+public sealed record QuotationEmployee(int Id, string FullName, string Email);
+
+/// <summary>Currency label owned by CatalogService.</summary>
+public sealed record QuotationCurrency(int Id, string ShortName, string LongName);
+
+/// <summary>Invoice label owned by AccountingService.</summary>
+public sealed record QuotationInvoice(int Id, string Number);
+
+/// <summary>Read-only order relationship owned by QuotationService.</summary>
+public sealed record QuotationOrderLink(int Id, int QuotationId, int OrderId, DateTime? CreatedDate);
+
+/// <summary>Read-only clean quotation document link.</summary>
+public sealed record QuotationFile(int Id, int QuotationId, string ObjectName, DateTime? CreatedDate, Uri? Uri);
+
+/// <summary>Complete browser-safe read-only quotation detail projection.</summary>
+public sealed record QuotationDetailPage(
+    QuotationListItem Quotation,
+    QuotationCustomer? Customer,
+    QuotationEmployee? Employee,
+    QuotationCurrency Currency,
+    QuotationInvoice? Invoice,
+    IReadOnlyList<QuotationOrderLink> Orders,
+    IReadOnlyList<QuotationFile> Files);
