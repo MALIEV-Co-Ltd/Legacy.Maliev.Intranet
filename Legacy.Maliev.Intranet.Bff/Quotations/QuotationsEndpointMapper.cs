@@ -7,6 +7,24 @@ namespace Legacy.Maliev.Intranet.Bff.Quotations;
 
 internal static class QuotationsEndpointMapper
 {
+    public static async Task<IResult> MapDetailAsync(int id, QuotationDetailAggregator aggregator, CancellationToken cancellationToken)
+    {
+        if (id < 1) return Results.BadRequest();
+        try
+        {
+            var page = await aggregator.GetAsync(id, cancellationToken);
+            return page is null ? Results.NotFound() : Results.Ok(page);
+        }
+        catch (Exception exception) when (exception is InvalidDataException or System.Text.Json.JsonException)
+        {
+            return InvalidResponse();
+        }
+        catch (Exception exception) when (exception is HttpRequestException or Polly.Timeout.TimeoutRejectedException || exception is OperationCanceledException && !cancellationToken.IsCancellationRequested)
+        {
+            return Unavailable();
+        }
+    }
+
     public static async Task<IResult> MapPageAsync(
         Func<CancellationToken, Task<HttpResponseMessage>> send,
         int pageIndex,

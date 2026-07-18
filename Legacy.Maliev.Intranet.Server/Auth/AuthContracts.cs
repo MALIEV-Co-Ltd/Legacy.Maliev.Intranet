@@ -25,6 +25,10 @@ public static class LegacyEmployeePermissions
     public const string QuotationRequestsUpdate = "legacy.quotation-requests.update";
     /// <summary>Allows reading file metadata owned by a legacy quotation request.</summary>
     public const string QuotationFilesRead = "legacy.quotation-files.read";
+    /// <summary>Allows reading order links owned by a legacy quotation.</summary>
+    public const string QuotationOrdersRead = "legacy.quotation-orders.read";
+    /// <summary>Allows reading the legacy currency catalog.</summary>
+    public const string CatalogCurrenciesRead = "legacy-catalog.currencies.read";
     /// <summary>Allows reading one complete legacy customer profile.</summary>
     public const string CustomersRead = "legacy-customer.customers.read";
     /// <summary>Allows creating a legacy customer profile and its authentication identity.</summary>
