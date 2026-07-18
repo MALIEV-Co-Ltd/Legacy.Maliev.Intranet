@@ -31,8 +31,6 @@ public sealed class InvoiceDetailProxy(HttpClient httpClient)
             IsPaid = input.IsPaid,
             PaymentDate = input.PaymentDate,
             InternalComment = input.InternalComment,
-            WithholdingTax = input.WithholdingTax,
-            Outstanding = input.Outstanding,
             ModifiedDate = input.ModifiedDate,
         };
         var request = new HttpRequestMessage(HttpMethod.Put, $"/invoices/{id}") { Content = JsonContent.Create(body) };

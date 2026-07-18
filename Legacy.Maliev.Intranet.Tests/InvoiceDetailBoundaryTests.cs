@@ -61,13 +61,15 @@ public sealed class InvoiceDetailBoundaryTests
         var current = System.Text.Json.JsonSerializer.Deserialize<InvoiceDetail>(InvoiceJson, new System.Text.Json.JsonSerializerOptions(System.Text.Json.JsonSerializerDefaults.Web))!;
         var modified = new DateTime(2030, 7, 19, 0, 0, 0, DateTimeKind.Utc);
 
-        using var response = await proxy.UpdateAsync(7, current, new(true, modified, "paid", 30m, 1040.27m, modified), CancellationToken.None);
+        using var response = await proxy.UpdateAsync(7, current, new(true, modified, "paid", modified), CancellationToken.None);
 
         Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
         var request = Assert.Single(downstream.Requests);
         Assert.Equal("2030-07-19T00:00:00.0000000Z", request.IfUnmodifiedSince);
         Assert.Contains("\"number\":\"INV-7\"", request.Body, StringComparison.Ordinal);
         Assert.Contains("\"internalComment\":\"paid\"", request.Body, StringComparison.Ordinal);
+        Assert.Contains("\"withholdingTax\":null", request.Body, StringComparison.Ordinal);
+        Assert.Contains("\"outstanding\":1070.27", request.Body, StringComparison.Ordinal);
     }
 
     private static InvoiceDetailAggregator CreateAggregator(HttpMessageHandler accounting, HttpMessageHandler storage) => new(

@@ -18,7 +18,7 @@ internal static class InvoiceDetailEndpointMapper
 
     public static async Task<IResult> UpdateAsync(int id, InvoiceUpdateRequest input, InvoiceDetailAggregator aggregator, InvoiceDetailProxy invoices, HttpContext context, CancellationToken cancellationToken)
     {
-        if (id <= 0 || input.ModifiedDate == default || input.Outstanding < 0 || input.WithholdingTax < 0) return Results.BadRequest();
+        if (id <= 0 || input.ModifiedDate == default || input.InternalComment?.Length > 1000) return Results.BadRequest();
         try
         {
             var invoice = await aggregator.GetInvoiceAsync(id, cancellationToken);

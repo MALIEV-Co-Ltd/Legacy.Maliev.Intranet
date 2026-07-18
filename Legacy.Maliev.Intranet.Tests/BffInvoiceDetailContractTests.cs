@@ -61,7 +61,7 @@ public sealed class BffInvoiceDetailContractTests
         using var client = CreateClient(factory);
         await SignInAsync(client);
 
-        using var response = await client.PutAsJsonAsync("/bff/invoices/7", new { isPaid = true, paymentDate = "2030-07-18T00:00:00Z", internalComment = "paid", withholdingTax = 30, outstanding = 1040.27, modifiedDate = "2030-07-18T00:00:00Z" });
+        using var response = await client.PutAsJsonAsync("/bff/invoices/7", new { isPaid = true, paymentDate = "2030-07-18T00:00:00Z", internalComment = "paid", modifiedDate = "2030-07-18T00:00:00Z" });
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         Assert.DoesNotContain(accounting.Requests, request => request.Method == "PUT");
@@ -76,7 +76,7 @@ public sealed class BffInvoiceDetailContractTests
         var csrf = await SignInAsync(client);
         using var request = new HttpRequestMessage(HttpMethod.Put, "/bff/invoices/7")
         {
-            Content = JsonContent.Create(new { isPaid = true, paymentDate = "2030-07-18T00:00:00Z", internalComment = "paid", withholdingTax = 30, outstanding = 1040.27, modifiedDate = "2030-07-18T00:00:00Z" }),
+            Content = JsonContent.Create(new { isPaid = true, paymentDate = "2030-07-18T00:00:00Z", internalComment = "paid", modifiedDate = "2030-07-18T00:00:00Z" }),
         };
         request.Headers.Add("X-CSRF-TOKEN", csrf);
 

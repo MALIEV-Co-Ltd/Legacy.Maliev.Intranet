@@ -62,8 +62,8 @@
                     <MudItem xs="12" md="4"><MudNumericField T="decimal?" Label="@Text["Subtotal"]" Value="detailPage.Invoice.Subtotal" ReadOnly="true" /></MudItem>
                     <MudItem xs="12" md="4"><MudNumericField T="decimal?" Label="@Text["Vat"]" Value="detailPage.Invoice.Vat" ReadOnly="true" /></MudItem>
                     <MudItem xs="12" md="4"><MudNumericField T="decimal?" Label="@Text["Total"]" Value="detailPage.Invoice.Total" ReadOnly="true" /></MudItem>
-                    <MudItem xs="12" md="6"><MudNumericField T="decimal?" Label="@Text["WithholdingTax"]" @bind-Value="edit.WithholdingTax" Min="0" /></MudItem>
-                    <MudItem xs="12" md="6"><MudNumericField T="decimal?" Label="@Text["Outstanding"]" @bind-Value="edit.Outstanding" Min="0" /></MudItem>
+                    <MudItem xs="12" md="6"><MudNumericField T="decimal?" Label="@Text["WithholdingTax"]" Value="detailPage.Invoice.WithholdingTax" ReadOnly="true" /></MudItem>
+                    <MudItem xs="12" md="6"><MudNumericField T="decimal?" Label="@Text["Outstanding"]" Value="detailPage.Invoice.Outstanding" ReadOnly="true" /></MudItem>
                     <MudItem xs="12" md="6"><MudCheckBox T="bool" Label="@Text["Paid"]" @bind-Value="edit.IsPaid" /></MudItem>
                     <MudItem xs="12" md="6"><MudDatePicker Label="@Text["PaymentDate"]" @bind-Date="edit.PaymentDate" /></MudItem>
                     <MudItem xs="12"><MudTextField Label="@Text["InternalComment"]" @bind-Value="edit.InternalComment" Lines="5" MaxLength="1000" /></MudItem>
@@ -102,6 +102,7 @@
             if (detailPage is null) { error = Text["InvalidResponse"]; return; }
             edit = InvoiceEditModel.From(detailPage.Invoice);
         }
+        catch (InvalidDataException) { error = Text["InvalidResponse"]; }
         catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException) { error = Text["Unavailable"]; }
         finally { loading = false; }
     }
@@ -144,10 +145,8 @@
         public bool IsPaid { get; set; }
         public DateTime? PaymentDate { get; set; }
         public string? InternalComment { get; set; }
-        public decimal? WithholdingTax { get; set; }
-        public decimal? Outstanding { get; set; }
         public DateTime ModifiedDate { get; set; }
-        public static InvoiceEditModel From(InvoiceDetail value) => new() { IsPaid = value.IsPaid, PaymentDate = value.PaymentDate, InternalComment = value.InternalComment, WithholdingTax = value.WithholdingTax, Outstanding = value.Outstanding, ModifiedDate = value.ModifiedDate ?? throw new InvalidDataException("Invoice has no concurrency timestamp.") };
-        public InvoiceUpdateRequest ToRequest() => new(IsPaid, PaymentDate, InternalComment, WithholdingTax, Outstanding, ModifiedDate);
+        public static InvoiceEditModel From(InvoiceDetail value) => new() { IsPaid = value.IsPaid, PaymentDate = value.PaymentDate, InternalComment = value.InternalComment, ModifiedDate = value.ModifiedDate ?? throw new InvalidDataException("Invoice has no concurrency timestamp.") };
+        public InvoiceUpdateRequest ToRequest() => new(IsPaid, PaymentDate, InternalComment, ModifiedDate);
     }
 }

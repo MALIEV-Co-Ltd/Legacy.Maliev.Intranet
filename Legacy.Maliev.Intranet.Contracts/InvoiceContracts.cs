@@ -109,6 +109,4 @@ public sealed record InvoiceUpdateRequest(
     bool IsPaid,
     DateTime? PaymentDate,
     string? InternalComment,
-    decimal? WithholdingTax,
-    decimal? Outstanding,
     DateTime ModifiedDate);
