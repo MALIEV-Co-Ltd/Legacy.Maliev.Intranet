@@ -1,0 +1,239 @@
+@page "/Quotations/Index"
+@attribute [Authorize]
+@inject HttpClient Http
+@inject NavigationManager Navigation
+@inject IStringLocalizer<Index> Text
+
+<PageTitle>@Text["PageTitle"]</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge">
+    <MudText Typo="Typo.overline">@Text["Sales"]</MudText>
+    <div class="d-flex flex-wrap align-center justify-space-between gap-3 mb-4">
+        <MudText Typo="Typo.h4" HtmlTag="h1">@Text["Quotations"]</MudText>
+        <div class="d-flex flex-wrap gap-2">
+            <MudButton Href="/Quotations/Create" Variant="Variant.Filled" Color="Color.Primary">@Text["Create"]</MudButton>
+            <MudButton Href="/Quotations/Estimate" Variant="Variant.Outlined">@Text["Estimate"]</MudButton>
+        </div>
+    </div>
+
+    @if (loading)
+    {
+        <MudProgressLinear Indeterminate="true" Color="Color.Primary" aria-label="@Text["Loading"]" />
+    }
+    else if (!string.IsNullOrWhiteSpace(error))
+    {
+        <MudAlert Severity="Severity.Error" aria-live="assertive">@error</MudAlert>
+    }
+    else
+    {
+        @if (stats.Accepted + stats.Declined + stats.Open > 0)
+        {
+            <MudPaper Class="pa-4 mb-4" Elevation="1">
+                <MudText Typo="Typo.h6" HtmlTag="h2" Class="mb-3">@Text["DecisionSummary"]</MudText>
+                <MudChart T="double" ChartType="ChartType.Donut" ChartSeries="decisionSeries" ChartLabels="decisionLabels" Width="100%" Height="300px" />
+            </MudPaper>
+        }
+
+        <MudPaper Class="pa-4 mb-4">
+            <div class="d-flex flex-wrap gap-3 align-end">
+                <MudTextField T="string" @bind-Value="searchInput" Label="@Text["Search"]" Variant="Variant.Outlined" Immediate="true" />
+                <MudSelect T="QuotationListSort" @bind-Value="sortInput" Label="@Text["Sort"]" Variant="Variant.Outlined">
+                    @foreach (var option in Enum.GetValues<QuotationListSort>())
+                    {
+                        <MudSelectItem T="QuotationListSort" Value="option">@Text[option.ToString()]</MudSelectItem>
+                    }
+                </MudSelect>
+                <MudSelect T="int" @bind-Value="sizeInput" Label="@Text["PerPage"]" Variant="Variant.Outlined">
+                    <MudSelectItem T="int" Value="100">100</MudSelectItem>
+                    <MudSelectItem T="int" Value="250">250</MudSelectItem>
+                </MudSelect>
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="ApplyFiltersAsync">@Text["Apply"]</MudButton>
+            </div>
+        </MudPaper>
+
+        @if (page.Items.Count == 0)
+        {
+            <MudAlert Severity="Severity.Info">@Text["NoQuotations"]</MudAlert>
+        }
+        else
+        {
+            <MudPaper Class="pa-4 mb-4" Elevation="1">
+                <MudText Typo="Typo.caption" Class="mb-3">@Text["RecordsSummary", page.TotalRecords, page.TotalPages]</MudText>
+                <MudTable Items="page.Items" Hover="true" Breakpoint="Breakpoint.Sm" Elevation="0">
+                    <HeaderContent>
+                        <MudTh>@Text["Id"]</MudTh>
+                        <MudTh>@Text["CustomerId"]</MudTh>
+                        <MudTh>@Text["Employee"]</MudTh>
+                        <MudTh>@Text["Period"]</MudTh>
+                        <MudTh>@Text["ExpirationDate"]</MudTh>
+                        <MudTh>@Text["Subtotal"]</MudTh>
+                        <MudTh>@Text["Vat"]</MudTh>
+                        <MudTh>@Text["Total"]</MudTh>
+                        <MudTh>@Text["WithholdingTax"]</MudTh>
+                        <MudTh>@Text["QuotedAmount"]</MudTh>
+                        <MudTh>@Text["Fob"]</MudTh>
+                        <MudTh>@Text["ShippedVia"]</MudTh>
+                        <MudTh>@Text["Terms"]</MudTh>
+                        <MudTh>@Text["Decision"]</MudTh>
+                    </HeaderContent>
+                    <RowTemplate Context="quotation">
+                        <MudTd DataLabel="@Text["Id"]"><MudLink Href="@($"/Quotations/View?id={quotation.Id}")">@quotation.Id</MudLink></MudTd>
+                        <MudTd DataLabel="@Text["CustomerId"]">@CustomerLink(quotation.CustomerId)</MudTd>
+                        <MudTd DataLabel="@Text["Employee"]">@EmployeeName(quotation.EmployeeId)</MudTd>
+                        <MudTd DataLabel="@Text["Period"]">@Text["Days", quotation.Period]</MudTd>
+                        <MudTd DataLabel="@Text["ExpirationDate"]">@FormatDate(quotation.ExpirationDate)</MudTd>
+                        <MudTd DataLabel="@Text["Subtotal"]">@FormatMoney(quotation.Subtotal, quotation.CurrencyId)</MudTd>
+                        <MudTd DataLabel="@Text["Vat"]">@FormatMoney(quotation.Vat, quotation.CurrencyId)</MudTd>
+                        <MudTd DataLabel="@Text["Total"]">@FormatMoney(quotation.Total, quotation.CurrencyId)</MudTd>
+                        <MudTd DataLabel="@Text["WithholdingTax"]">@FormatMoney(-(quotation.WithholdingTax ?? 0m), quotation.CurrencyId)</MudTd>
+                        <MudTd DataLabel="@Text["QuotedAmount"]"><strong>@FormatMoney(quotation.QuotedAmount ?? quotation.Total, quotation.CurrencyId)</strong></MudTd>
+                        <MudTd DataLabel="@Text["Fob"]">@ValueOrFallback(quotation.Fob)</MudTd>
+                        <MudTd DataLabel="@Text["ShippedVia"]">@ValueOrFallback(quotation.ShippedVia)</MudTd>
+                        <MudTd DataLabel="@Text["Terms"]">@ValueOrFallback(quotation.Terms)</MudTd>
+                        <MudTd DataLabel="@Text["Decision"]">@Decision(quotation.Accepted)</MudTd>
+                    </RowTemplate>
+                </MudTable>
+            </MudPaper>
+        }
+
+        <nav class="d-flex flex-wrap align-center justify-space-between gap-3" aria-label="@Text["QuotationPages"]">
+            <MudButton Disabled="@(!page.HasPreviousPage)" OnClick="PreviousPageAsync">@Text["Previous"]</MudButton>
+            <MudText aria-live="polite">@Text["PageSummary", page.PageIndex, page.TotalPages, page.TotalRecords]</MudText>
+            <MudButton Disabled="@(!page.HasNextPage)" OnClick="NextPageAsync">@Text["Next"]</MudButton>
+        </nav>
+    }
+</MudContainer>
+
+@code {
+    [SupplyParameterFromQuery(Name = "search")] public string? Search { get; set; }
+    [SupplyParameterFromQuery(Name = "sort")] public string? SortQuery { get; set; }
+    [SupplyParameterFromQuery(Name = "index")] public int PageIndex { get; set; } = 1;
+    [SupplyParameterFromQuery(Name = "size")] public int Size { get; set; } = 100;
+
+    private static readonly QuotationListPage EmptyPage = new([], 1, 0, 0, false, false);
+    private QuotationListPage page = EmptyPage;
+    private QuotationStats stats = new(0, 0, 0);
+    private IReadOnlyDictionary<int, string> employees = new Dictionary<int, string>();
+    private IReadOnlyDictionary<int, string> currencies = new Dictionary<int, string>();
+    private List<ChartSeries<double>> decisionSeries = [];
+    private string[] decisionLabels = [];
+    private QuotationListSort currentSort = QuotationListSort.QuotationCreatedDate_Descending;
+    private QuotationListSort sortInput;
+    private string? searchInput;
+    private int sizeInput = 100;
+    private bool loading;
+    private string? error;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        PageIndex = Math.Max(1, PageIndex);
+        Size = Size is 100 or 250 ? Size : 100;
+        currentSort = Enum.TryParse<QuotationListSort>(SortQuery, true, out var parsed)
+            ? parsed
+            : QuotationListSort.QuotationCreatedDate_Descending;
+        searchInput = Search;
+        sortInput = currentSort;
+        sizeInput = Size;
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        loading = true;
+        error = null;
+        HttpResponseMessage[]? responses = null;
+        try
+        {
+            responses = await Task.WhenAll(
+                Http.GetAsync($"/bff/quotations?sort={currentSort}&search={Uri.EscapeDataString(Search ?? string.Empty)}&index={PageIndex}&size={Size}"),
+                Http.GetAsync("/bff/quotations/stats"),
+                Http.GetAsync("/bff/catalog/currencies"),
+                Http.GetAsync("/bff/employees?sort=EmployeeId_Ascending&index=1&size=100"));
+            if (HandleFailure(responses[0]) || HandleFailure(responses[1]))
+            {
+                return;
+            }
+
+            page = await responses[0].Content.ReadFromJsonAsync<QuotationListPage>() ?? EmptyPage;
+            stats = await responses[1].Content.ReadFromJsonAsync<QuotationStats>() ?? new(0, 0, 0);
+            if (responses[2].IsSuccessStatusCode)
+            {
+                currencies = (await responses[2].Content.ReadFromJsonAsync<List<CatalogCurrency>>() ?? [])
+                    .ToDictionary(item => item.Id, item => item.ShortName);
+            }
+            if (responses[3].IsSuccessStatusCode)
+            {
+                employees = (await responses[3].Content.ReadFromJsonAsync<EmployeeListPage>() ?? new([], 1, 0, 0, false, false))
+                    .Items.ToDictionary(item => item.Id, item => item.FullName);
+            }
+
+            decisionLabels = [Text["Accepted"], Text["Declined"], Text["Open"]];
+            decisionSeries = [new ChartSeries<double> { Name = Text["DecisionSummary"], Data = new double[] { stats.Accepted, stats.Declined, stats.Open } }];
+        }
+        catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException)
+        {
+            error = Text["Unavailable"];
+        }
+        finally
+        {
+            if (responses is not null)
+            {
+                foreach (var response in responses)
+                {
+                    response.Dispose();
+                }
+            }
+            loading = false;
+        }
+    }
+
+    private bool HandleFailure(HttpResponseMessage response)
+    {
+        if (response.IsSuccessStatusCode)
+        {
+            return false;
+        }
+        if (response.StatusCode == HttpStatusCode.Unauthorized)
+        {
+            Navigation.NavigateTo($"/Login?returnUrl={Uri.EscapeDataString(Navigation.ToBaseRelativePath(Navigation.Uri))}");
+        }
+        else
+        {
+            error = response.StatusCode switch
+            {
+                HttpStatusCode.Forbidden => Text["Forbidden"],
+                HttpStatusCode.TooManyRequests => Text["RateLimited"],
+                HttpStatusCode.BadGateway => Text["InvalidResponse"],
+                _ => Text["Unavailable"],
+            };
+        }
+        return true;
+    }
+
+    private Task ApplyFiltersAsync() => NavigateAsync(1, searchInput, sortInput, sizeInput);
+    private Task PreviousPageAsync() => NavigateAsync(Math.Max(1, PageIndex - 1), Search, currentSort, Size);
+    private Task NextPageAsync() => NavigateAsync(PageIndex + 1, Search, currentSort, Size);
+    private Task NavigateAsync(int index, string? search, QuotationListSort sort, int size)
+    {
+        Navigation.NavigateTo($"/Quotations/Index?search={Uri.EscapeDataString(search ?? string.Empty)}&sort={sort}&index={index}&size={size}");
+        return Task.CompletedTask;
+    }
+
+    private RenderFragment CustomerLink(int? customerId) => builder =>
+    {
+        if (customerId is not int id)
+        {
+            builder.AddContent(0, "-");
+            return;
+        }
+        builder.OpenComponent<MudLink>(1);
+        builder.AddAttribute(2, "Href", $"/Customers/View?id={id}");
+        builder.AddAttribute(3, "ChildContent", (RenderFragment)(content => content.AddContent(0, id)));
+        builder.CloseComponent();
+    };
+    private string EmployeeName(int? id) => id is int value && employees.TryGetValue(value, out var name) ? name : id?.ToString(CultureInfo.InvariantCulture) ?? "-";
+    private string FormatMoney(decimal value, int currencyId) => $"{value:N2} {(currencies.TryGetValue(currencyId, out var name) ? name : currencyId.ToString(CultureInfo.InvariantCulture))}";
+    private static string FormatDate(DateTime value) => value.ToLocalTime().ToString("d", CultureInfo.CurrentCulture);
+    private string Decision(bool? value) => value switch { true => Text["Accepted"], false => Text["Declined"], null => Text["Open"] };
+    private static string ValueOrFallback(string? value) => string.IsNullOrWhiteSpace(value) ? "-" : value;
+}

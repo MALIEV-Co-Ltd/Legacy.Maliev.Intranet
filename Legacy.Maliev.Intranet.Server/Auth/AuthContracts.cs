@@ -82,6 +82,8 @@ public static class LegacyEmployeePermissions
     public const string PurchaseOrdersCreate = "legacy-procurement.purchase-orders.create";
     /// <summary>Allows an authenticated employee to delete a complete legacy purchase order and its owned artifacts.</summary>
     public const string PurchaseOrdersDelete = "legacy-procurement.purchase-orders.delete";
+    /// <summary>Allows an authenticated employee to list and inspect legacy quotations.</summary>
+    public const string QuotationsRead = "legacy.quotations.read";
 }
 
 /// <summary>Explicit removable grants that preserve employee-wide authorization during legacy rollout.</summary>

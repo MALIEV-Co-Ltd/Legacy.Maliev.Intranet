@@ -274,6 +274,29 @@ builder.Services.AddHttpClient<QuotationRequestFilesProxy>(client =>
                 (int)response.StatusCode >= StatusCodes.Status500InternalServerError),
     });
 });
+builder.Services.AddHttpClient<QuotationsProxy>(client =>
+{
+    client.BaseAddress = new Uri(builder.Configuration["Services:Quotation"]
+        ?? "https+http://legacy-maliev-quotation-service");
+    client.Timeout = TimeSpan.FromSeconds(10);
+}).RemoveAllResilienceHandlers()
+    .AddHttpMessageHandler<LegacyServiceAuthenticationHandler>()
+    .AddResilienceHandler("quotation-index", pipeline =>
+{
+    pipeline.AddRetry(new Microsoft.Extensions.Http.Resilience.HttpRetryStrategyOptions
+    {
+        MaxRetryAttempts = 2,
+        Delay = TimeSpan.FromMilliseconds(200),
+        BackoffType = Polly.DelayBackoffType.Exponential,
+        UseJitter = true,
+        ShouldRetryAfterHeader = false,
+        ShouldHandle = new Polly.PredicateBuilder<HttpResponseMessage>()
+            .Handle<HttpRequestException>()
+            .Handle<Polly.Timeout.TimeoutRejectedException>()
+            .HandleResult(response => response.StatusCode == System.Net.HttpStatusCode.RequestTimeout ||
+                (int)response.StatusCode >= StatusCodes.Status500InternalServerError),
+    });
+});
 builder.Services.AddHttpClient<SuppliersProxy>(client =>
 {
     client.BaseAddress = new Uri(builder.Configuration["Services:Procurement"]
@@ -600,6 +623,9 @@ builder.Services.AddAuthorizationBuilder()
     .AddPolicy(LegacyEmployeePermissions.PurchaseOrdersDelete, policy => policy
         .RequireAuthenticatedUser()
         .RequireClaim("permissions", LegacyEmployeePermissions.PurchaseOrdersDelete))
+    .AddPolicy(LegacyEmployeePermissions.QuotationsRead, policy => policy
+        .RequireAuthenticatedUser()
+        .RequireClaim("permissions", LegacyEmployeePermissions.QuotationsRead))
     .AddPolicy("legacy-catalog.materials.read", policy => policy
         .RequireAuthenticatedUser()
         .RequireClaim("permissions", "legacy-catalog.materials.read"))
@@ -748,6 +774,32 @@ app.MapGet("/bff/quotation-requests/{id:int}", QuotationRequestsEndpointMapper.D
 app.MapPut("/bff/quotation-requests/{id:int}", QuotationRequestsEndpointMapper.UpdateAsync)
     .AddEndpointFilter<AntiforgeryValidationFilter>()
     .RequireAuthorization(LegacyEmployeePermissions.QuotationRequestsUpdate);
+
+app.MapGet("/bff/quotations", (
+    QuotationListSort? sort,
+    string? search,
+    int? index,
+    int? size,
+    HttpContext context,
+    QuotationsProxy quotations,
+    CancellationToken cancellationToken) =>
+{
+    var normalizedSort = sort ?? QuotationListSort.QuotationCreatedDate_Descending;
+    var normalizedIndex = Math.Max(1, index ?? 1);
+    var normalizedSize = Math.Clamp(size ?? 100, 1, 250);
+    return QuotationsEndpointMapper.MapPageAsync(
+        token => quotations.GetPageAsync(normalizedSort, search, normalizedIndex, normalizedSize, token),
+        normalizedIndex,
+        context,
+        cancellationToken);
+}).RequireAuthorization(LegacyEmployeePermissions.QuotationsRead);
+
+app.MapGet("/bff/quotations/stats", (
+    HttpContext context,
+    QuotationsProxy quotations,
+    CancellationToken cancellationToken) =>
+    QuotationsEndpointMapper.MapStatsAsync(quotations.GetStatsAsync, context, cancellationToken))
+    .RequireAuthorization(LegacyEmployeePermissions.QuotationsRead);
 
 app.MapGet("/bff/finances", (
     string? sort,
