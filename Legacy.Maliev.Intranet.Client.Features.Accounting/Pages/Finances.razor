@@ -1,0 +1,294 @@
+@page "/Finances/Index"
+@attribute [Authorize]
+@inject HttpClient Http
+@inject NavigationManager Navigation
+@inject IStringLocalizer<Finances> Text
+
+<PageTitle>@Text["PageTitle"]</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge">
+    <MudText Typo="Typo.overline">@Text["Accounting"]</MudText>
+    <div class="d-flex flex-wrap align-center justify-space-between gap-3 mb-4">
+        <MudText Typo="Typo.h4" HtmlTag="h1">@Text["Finance"]</MudText>
+        <div class="d-flex flex-wrap gap-2">
+            <MudButton Href="/Finances/Create" Variant="Variant.Filled" Color="Color.Primary">@Text["Create"]</MudButton>
+            <MudButton Href="/Finances/YearlyActivityChart" Variant="Variant.Outlined">@Text["YearlyActivity"]</MudButton>
+            <MudButton Href="@($"/Finances/NetProfitChart?year={DateTime.UtcNow.Year}")" Variant="Variant.Outlined">@Text["NetProfit"]</MudButton>
+        </div>
+    </div>
+
+    @if (loading)
+    {
+        <MudProgressLinear Indeterminate="true" Color="Color.Primary" aria-label="@Text["Loading"]" />
+    }
+    else if (!string.IsNullOrWhiteSpace(error))
+    {
+        <MudAlert Severity="Severity.Error" aria-live="assertive">@error</MudAlert>
+    }
+    else
+    {
+        <MudGrid Class="mb-4">
+            @foreach (var summary in SummaryCards)
+            {
+                <MudItem xs="12" sm="6" lg="3">
+                    <MudPaper Class="pa-4 h-100" Elevation="1">
+                        <MudText Typo="Typo.h6" HtmlTag="h2">@summary.Title</MudText>
+                        @if (summary.Value.Details.Count == 0)
+                        {
+                            <MudText Color="Color.Secondary">@Text["NoData"]</MudText>
+                        }
+                        else
+                        {
+                            @foreach (var detail in summary.Value.Details.Where(value => value.CurrentAmount != 0m))
+                            {
+                                <div class="d-flex flex-wrap justify-space-between gap-2 mt-2">
+                                    <MudText>@FormatAmount(detail.CurrentAmount, detail.CurrencyId)</MudText>
+                                    <MudText Color="@DeltaColor(detail.DeltaAmount)">@FormatDelta(detail)</MudText>
+                                </div>
+                            }
+                        }
+                    </MudPaper>
+                </MudItem>
+            }
+        </MudGrid>
+
+        @if (TrendRows.Count > 0)
+        {
+            <MudPaper Class="pa-4 mb-4" Elevation="1">
+                <MudText Typo="Typo.h6" HtmlTag="h2" Class="mb-3">@Text["YearlyTrend"]</MudText>
+                <MudTable Items="TrendRows" Hover="true" Breakpoint="Breakpoint.Sm" Elevation="0">
+                    <HeaderContent>
+                        <MudTh>@Text["Month"]</MudTh>
+                        <MudTh>@Text["Income"]</MudTh>
+                        <MudTh>@Text["Expense"]</MudTh>
+                        <MudTh>@Text["Net"]</MudTh>
+                    </HeaderContent>
+                    <RowTemplate>
+                        <MudTd DataLabel="@Text["Month"]">@context.Month.ToString("Y", CultureInfo.CurrentCulture)</MudTd>
+                        <MudTd DataLabel="@Text["Income"]">@FormatAmount(context.Income, thbCurrencyId?.ToString(CultureInfo.InvariantCulture))</MudTd>
+                        <MudTd DataLabel="@Text["Expense"]">@FormatAmount(context.Expense, thbCurrencyId?.ToString(CultureInfo.InvariantCulture))</MudTd>
+                        <MudTd DataLabel="@Text["Net"]">@FormatAmount(context.Income - context.Expense, thbCurrencyId?.ToString(CultureInfo.InvariantCulture))</MudTd>
+                    </RowTemplate>
+                </MudTable>
+            </MudPaper>
+        }
+
+        <MudPaper Class="pa-4 mb-4">
+            <div class="d-flex flex-wrap gap-3 align-end">
+                <MudTextField T="string" @bind-Value="searchInput" Label="@Text["Search"]" Variant="Variant.Outlined" Immediate="true" />
+                <MudSelect T="FinancePaymentSort" @bind-Value="sortInput" Label="@Text["Sort"]" Variant="Variant.Outlined">
+                    @foreach (var option in Enum.GetValues<FinancePaymentSort>())
+                    {
+                        <MudSelectItem Value="option">@Text[option.ToString()]</MudSelectItem>
+                    }
+                </MudSelect>
+                <MudNumericField T="int" @bind-Value="sizeInput" Label="@Text["PerPage"]" Min="1" Max="100" Variant="Variant.Outlined" />
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="ApplyFiltersAsync">@Text["Apply"]</MudButton>
+            </div>
+        </MudPaper>
+
+        @if (Page is null || Page.Items.Count == 0)
+        {
+            <MudAlert Severity="Severity.Info">@Text["NoPayments"]</MudAlert>
+        }
+        else
+        {
+            <MudTable Items="Page.Items" Hover="true" Breakpoint="Breakpoint.Sm" Elevation="1">
+                <HeaderContent>
+                    <MudTh>@Text["Id"]</MudTh>
+                    <MudTh>@Text["Direction"]</MudTh>
+                    <MudTh>@Text["Type"]</MudTh>
+                    <MudTh>@Text["Description"]</MudTh>
+                    <MudTh>@Text["Method"]</MudTh>
+                    <MudTh>@Text["Amount"]</MudTh>
+                    <MudTh>@Text["Recipient"]</MudTh>
+                    <MudTh>@Text["TransactionNumber"]</MudTh>
+                    <MudTh>@Text["PaymentDate"]</MudTh>
+                </HeaderContent>
+                <RowTemplate>
+                    <MudTd DataLabel="@Text["Id"]"><MudLink Href="@($"/Finances/View?id={context.Id}")">@context.Id</MudLink></MudTd>
+                    <MudTd DataLabel="@Text["Direction"]">@context.PaymentDirectionId</MudTd>
+                    <MudTd DataLabel="@Text["Type"]">@context.PaymentTypeId</MudTd>
+                    <MudTd DataLabel="@Text["Description"]">@ValueOrFallback(context.Description)</MudTd>
+                    <MudTd DataLabel="@Text["Method"]">@context.PaymentMethodId</MudTd>
+                    <MudTd DataLabel="@Text["Amount"]">@FormatAmount(context.Amount, context.CurrencyId?.ToString(CultureInfo.InvariantCulture))</MudTd>
+                    <MudTd DataLabel="@Text["Recipient"]">@ValueOrFallback(context.Recipient)</MudTd>
+                    <MudTd DataLabel="@Text["TransactionNumber"]">@ValueOrFallback(context.TransactionNumber)</MudTd>
+                    <MudTd DataLabel="@Text["PaymentDate"]">@FormatDate(context.PaymentDate)</MudTd>
+                </RowTemplate>
+            </MudTable>
+        }
+
+        @if (Page is not null)
+        {
+            <nav class="d-flex flex-wrap align-center justify-space-between gap-3 mt-4" aria-label="@Text["PaymentPages"]">
+                <MudButton Disabled="@(!Page.HasPreviousPage)" OnClick="PreviousPageAsync">@Text["Previous"]</MudButton>
+                <MudText aria-live="polite">@Text["PageSummary", Page.PageIndex, Page.TotalPages, Page.TotalRecords]</MudText>
+                <MudButton Disabled="@(!Page.HasNextPage)" OnClick="NextPageAsync">@Text["Next"]</MudButton>
+            </nav>
+        }
+    }
+</MudContainer>
+
+@code {
+    [SupplyParameterFromQuery(Name = "search")] public string? Search { get; set; }
+    [SupplyParameterFromQuery(Name = "sort")] public string? SortQuery { get; set; }
+    [SupplyParameterFromQuery(Name = "index")] public int Index { get; set; } = 1;
+    [SupplyParameterFromQuery(Name = "size")] public int Size { get; set; } = 25;
+
+    private FinancePaymentPage? Page { get; set; }
+    private FinanceSummary Weekly { get; set; } = new([]);
+    private FinanceSummary Monthly { get; set; } = new([]);
+    private FinanceSummary MonthlyJobIncome { get; set; } = new([]);
+    private FinanceSummary Yearly { get; set; } = new([]);
+    private IReadOnlyDictionary<int, string> currencies = new Dictionary<int, string>();
+    private IReadOnlyDictionary<DateTime, decimal> yearlyIncome = new Dictionary<DateTime, decimal>();
+    private IReadOnlyDictionary<DateTime, decimal> yearlyExpense = new Dictionary<DateTime, decimal>();
+    private int? thbCurrencyId;
+    private string? error;
+    private bool loading;
+    private string? searchInput;
+    private FinancePaymentSort sortInput;
+    private FinancePaymentSort currentSort = FinancePaymentSort.PaymentCreatedDate_Descending;
+    private int sizeInput;
+
+    private IReadOnlyList<(string Title, FinanceSummary Value)> SummaryCards =>
+    [
+        (Text["ThisWeek"], Weekly),
+        (Text["ThisMonth"], Monthly),
+        (Text["ThisYear"], Yearly),
+        (Text["JobEarning"], MonthlyJobIncome),
+    ];
+
+    private IReadOnlyList<FinanceTrendRow> TrendRows => yearlyIncome.Keys
+        .Concat(yearlyExpense.Keys)
+        .Distinct()
+        .OrderByDescending(value => value)
+        .Take(12)
+        .Select(month => new FinanceTrendRow(
+            month,
+            yearlyIncome.GetValueOrDefault(month),
+            yearlyExpense.GetValueOrDefault(month)))
+        .ToArray();
+
+    protected override async Task OnParametersSetAsync()
+    {
+        Index = Math.Max(1, Index);
+        Size = Math.Clamp(Size, 1, 100);
+        currentSort = Enum.TryParse<FinancePaymentSort>(SortQuery, true, out var parsed)
+            ? parsed
+            : FinancePaymentSort.PaymentCreatedDate_Descending;
+        searchInput = Search;
+        sortInput = currentSort;
+        sizeInput = Size;
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        loading = true;
+        error = null;
+        HttpResponseMessage[]? responses = null;
+        try
+        {
+            responses = await Task.WhenAll(
+                Http.GetAsync($"/bff/finances?sort={currentSort}&search={Uri.EscapeDataString(Search ?? string.Empty)}&index={Index}&size={Size}"),
+                Http.GetAsync("/bff/finances/summaries/weekly"),
+                Http.GetAsync("/bff/finances/summaries/monthly"),
+                Http.GetAsync("/bff/finances/summaries/monthly-job-income"),
+                Http.GetAsync("/bff/finances/summaries/yearly"),
+                Http.GetAsync("/bff/catalog/currencies"));
+            if (HandleFailure(responses))
+            {
+                return;
+            }
+
+            Page = await responses[0].Content.ReadFromJsonAsync<FinancePaymentPage>();
+            Weekly = await responses[1].Content.ReadFromJsonAsync<FinanceSummary>() ?? new([]);
+            Monthly = await responses[2].Content.ReadFromJsonAsync<FinanceSummary>() ?? new([]);
+            MonthlyJobIncome = await responses[3].Content.ReadFromJsonAsync<FinanceSummary>() ?? new([]);
+            Yearly = await responses[4].Content.ReadFromJsonAsync<FinanceSummary>() ?? new([]);
+            var currencyItems = await responses[5].Content.ReadFromJsonAsync<List<CatalogCurrency>>();
+            if (Page?.Items is null || currencyItems is null)
+            {
+                error = Text["InvalidResponse"];
+                return;
+            }
+
+            currencies = currencyItems.ToDictionary(item => item.Id, item => item.ShortName);
+            thbCurrencyId = currencyItems.FirstOrDefault(item => string.Equals(item.ShortName, "THB", StringComparison.OrdinalIgnoreCase))?.Id;
+            var currencyQuery = thbCurrencyId is int currencyId
+                ? $"&currencyId={currencyId.ToString(CultureInfo.InvariantCulture)}"
+                : string.Empty;
+            using var incomeResponse = await Http.GetAsync($"/bff/finances/trends/yearly-income?year={DateTime.UtcNow.Year}{currencyQuery}");
+            using var expenseResponse = await Http.GetAsync($"/bff/finances/trends/yearly-expense?{currencyQuery.TrimStart('&')}");
+            if (HandleFailure([incomeResponse, expenseResponse]))
+            {
+                return;
+            }
+
+            yearlyIncome = await incomeResponse.Content.ReadFromJsonAsync<Dictionary<DateTime, decimal>>() ?? new();
+            yearlyExpense = await expenseResponse.Content.ReadFromJsonAsync<Dictionary<DateTime, decimal>>() ?? new();
+        }
+        catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException)
+        {
+            error = Text["Unavailable"];
+        }
+        finally
+        {
+            if (responses is not null)
+            {
+                foreach (var response in responses)
+                {
+                    response.Dispose();
+                }
+            }
+
+            loading = false;
+        }
+    }
+
+    private bool HandleFailure(IEnumerable<HttpResponseMessage> responses)
+    {
+        var failed = responses.FirstOrDefault(response => !response.IsSuccessStatusCode);
+        if (failed is null)
+        {
+            return false;
+        }
+
+        if (failed.StatusCode == HttpStatusCode.Unauthorized)
+        {
+            Navigation.NavigateTo($"/Login?returnUrl={Uri.EscapeDataString(Navigation.ToBaseRelativePath(Navigation.Uri))}");
+        }
+        else
+        {
+            error = failed.StatusCode switch
+            {
+                HttpStatusCode.Forbidden => Text["Forbidden"],
+                HttpStatusCode.TooManyRequests => Text["RateLimited"],
+                HttpStatusCode.BadGateway => Text["InvalidResponse"],
+                _ => Text["Unavailable"],
+            };
+        }
+
+        return true;
+    }
+
+    private Task ApplyFiltersAsync() => NavigateAsync(1, searchInput, sortInput, sizeInput);
+    private Task PreviousPageAsync() => NavigateAsync(Math.Max(1, Index - 1), Search, currentSort, Size);
+    private Task NextPageAsync() => NavigateAsync(Index + 1, Search, currentSort, Size);
+
+    private Task NavigateAsync(int index, string? search, FinancePaymentSort sort, int size)
+    {
+        Navigation.NavigateTo($"/Finances/Index?search={Uri.EscapeDataString(search ?? string.Empty)}&sort={sort}&index={index}&size={Math.Clamp(size, 1, 100)}");
+        return Task.CompletedTask;
+    }
+
+    private string CurrencyName(string? id) => int.TryParse(id, CultureInfo.InvariantCulture, out var value) && currencies.TryGetValue(value, out var name) ? name : "-";
+    private string FormatAmount(decimal amount, string? currencyId) => $"{amount:N2} {CurrencyName(currencyId)}";
+    private static string FormatDate(DateTime? value) => value?.ToString("d", CultureInfo.CurrentCulture) ?? "-";
+    private static string ValueOrFallback(string? value) => string.IsNullOrWhiteSpace(value) ? "-" : value;
+    private static Color DeltaColor(decimal value) => value > 0 ? Color.Success : value < 0 ? Color.Error : Color.Secondary;
+    private static string FormatDelta(FinanceSummaryDetail detail) => $"{detail.DeltaAmount:+#,##0.00;-#,##0.00;0.00} ({detail.DeltaPercent:N2}%)";
+    private sealed record FinanceTrendRow(DateTime Month, decimal Income, decimal Expense);
+}

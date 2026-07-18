@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using Legacy.Maliev.Intranet.Bff;
+using Legacy.Maliev.Intranet.Bff.Accounting;
 using Legacy.Maliev.Intranet.Auth;
 using Legacy.Maliev.Intranet.Contracts;
 using Legacy.Maliev.Intranet.Bff.Catalog;
@@ -165,6 +166,29 @@ builder.Services.AddHttpClient<OrdersProxy>(client =>
 }).RemoveAllResilienceHandlers()
     .AddHttpMessageHandler<LegacyServiceAuthenticationHandler>()
     .AddResilienceHandler("order-index", pipeline =>
+{
+    pipeline.AddRetry(new Microsoft.Extensions.Http.Resilience.HttpRetryStrategyOptions
+    {
+        MaxRetryAttempts = 2,
+        Delay = TimeSpan.FromMilliseconds(200),
+        BackoffType = Polly.DelayBackoffType.Exponential,
+        UseJitter = true,
+        ShouldRetryAfterHeader = false,
+        ShouldHandle = new Polly.PredicateBuilder<HttpResponseMessage>()
+            .Handle<HttpRequestException>()
+            .Handle<Polly.Timeout.TimeoutRejectedException>()
+            .HandleResult(response => response.StatusCode == System.Net.HttpStatusCode.RequestTimeout ||
+                (int)response.StatusCode >= StatusCodes.Status500InternalServerError),
+    });
+});
+builder.Services.AddHttpClient<FinancesProxy>(client =>
+{
+    client.BaseAddress = new Uri(builder.Configuration["Services:Accounting"]
+        ?? "https+http://legacy-maliev-accounting-service");
+    client.Timeout = TimeSpan.FromSeconds(10);
+}).RemoveAllResilienceHandlers()
+    .AddHttpMessageHandler<LegacyServiceAuthenticationHandler>()
+    .AddResilienceHandler("finance-index", pipeline =>
 {
     pipeline.AddRetry(new Microsoft.Extensions.Http.Resilience.HttpRetryStrategyOptions
     {
@@ -400,6 +424,9 @@ builder.Services
 builder.Services.AddOptions<CookieAuthenticationOptions>(CookieAuthenticationDefaults.AuthenticationScheme)
     .Configure<DistributedTicketStore>((options, store) => options.SessionStore = store);
 builder.Services.AddAuthorizationBuilder()
+    .AddPolicy(LegacyEmployeePermissions.AccountingRead, policy => policy
+        .RequireAuthenticatedUser()
+        .RequireClaim("permissions", LegacyEmployeePermissions.AccountingRead))
     .AddPolicy(LegacyEmployeePermissions.CustomersRead, policy => policy
         .RequireAuthenticatedUser()
         .RequireClaim("permissions", LegacyEmployeePermissions.CustomersRead))
@@ -536,6 +563,94 @@ app.MapPost("/bff/employee-recovery/email-confirmation/complete", EmployeeRecove
     .AddEndpointFilter<AntiforgeryValidationFilter>()
     .RequireRateLimiting("employee-recovery")
     .AllowAnonymous();
+
+app.MapGet("/bff/finances", (
+    string? sort,
+    string? search,
+    int? index,
+    int? size,
+    HttpContext context,
+    FinancesProxy finances,
+    CancellationToken cancellationToken) =>
+{
+    var pageIndex = Math.Max(1, index ?? 1);
+    var pageSize = Math.Clamp(size ?? 25, 1, 100);
+    var paymentSort = Enum.TryParse<FinancePaymentSort>(sort, true, out var parsedSort)
+        ? parsedSort
+        : FinancePaymentSort.PaymentCreatedDate_Descending;
+    return FinancesEndpointMapper.MapPageAsync(
+        token => finances.GetPageAsync(paymentSort, search, pageIndex, pageSize, token),
+        pageIndex,
+        context,
+        cancellationToken);
+}).RequireAuthorization(LegacyEmployeePermissions.AccountingRead);
+
+app.MapGet("/bff/finances/summaries/weekly", (
+    HttpContext context,
+    FinancesProxy finances,
+    CancellationToken cancellationToken) =>
+    FinancesEndpointMapper.MapSummaryAsync(
+        token => finances.GetSummaryAsync("/payments/summaries/weekly", token),
+        context,
+        cancellationToken))
+    .RequireAuthorization(LegacyEmployeePermissions.AccountingRead);
+
+app.MapGet("/bff/finances/summaries/monthly", (
+    HttpContext context,
+    FinancesProxy finances,
+    CancellationToken cancellationToken) =>
+    FinancesEndpointMapper.MapSummaryAsync(
+        token => finances.GetSummaryAsync("/payments/summaries/monthly", token),
+        context,
+        cancellationToken))
+    .RequireAuthorization(LegacyEmployeePermissions.AccountingRead);
+
+app.MapGet("/bff/finances/summaries/monthly-job-income", (
+    HttpContext context,
+    FinancesProxy finances,
+    CancellationToken cancellationToken) =>
+    FinancesEndpointMapper.MapSummaryAsync(
+        token => finances.GetSummaryAsync("/payments/summaries/monthly/income/job", token),
+        context,
+        cancellationToken))
+    .RequireAuthorization(LegacyEmployeePermissions.AccountingRead);
+
+app.MapGet("/bff/finances/summaries/yearly", (
+    HttpContext context,
+    FinancesProxy finances,
+    CancellationToken cancellationToken) =>
+    FinancesEndpointMapper.MapSummaryAsync(
+        token => finances.GetSummaryAsync("/payments/summaries/yearly", token),
+        context,
+        cancellationToken))
+    .RequireAuthorization(LegacyEmployeePermissions.AccountingRead);
+
+app.MapGet("/bff/finances/trends/yearly-income", (
+    int? year,
+    int? currencyId,
+    HttpContext context,
+    FinancesProxy finances,
+    CancellationToken cancellationToken) =>
+    FinancesEndpointMapper.MapTrendAsync(
+        token => finances.GetSummaryAsync(
+            $"/payments/summaries/yearly/income?year={year?.ToString(CultureInfo.InvariantCulture)}&currencyId={currencyId?.ToString(CultureInfo.InvariantCulture)}",
+            token),
+        context,
+        cancellationToken))
+    .RequireAuthorization(LegacyEmployeePermissions.AccountingRead);
+
+app.MapGet("/bff/finances/trends/yearly-expense", (
+    int? currencyId,
+    HttpContext context,
+    FinancesProxy finances,
+    CancellationToken cancellationToken) =>
+    FinancesEndpointMapper.MapTrendAsync(
+        token => finances.GetSummaryAsync(
+            $"/payments/summaries/yearly/expense?currencyId={currencyId?.ToString(CultureInfo.InvariantCulture)}",
+            token),
+        context,
+        cancellationToken))
+    .RequireAuthorization(LegacyEmployeePermissions.AccountingRead);
 
 app.MapGet("/bff/orders", (
     OrderListSort? sort,
