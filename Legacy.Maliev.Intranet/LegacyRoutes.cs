@@ -52,6 +52,7 @@ public static class LegacyRoutes
     /// <summary>Routes that can be reached before an employee session exists.</summary>
     public static IReadOnlySet<string> Anonymous { get; } = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
     {
+        "/AccessDenied",
         "/Index",
         "/Login",
         "/Employees/EmailConfirmation",
