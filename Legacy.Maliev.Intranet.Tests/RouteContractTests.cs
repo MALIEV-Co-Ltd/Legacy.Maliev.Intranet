@@ -19,6 +19,9 @@ public sealed class RouteContractTests : IClassFixture<IntranetFactory>
         Assert.Contains("/QuotationRequests/View", LegacyRoutes.All);
         Assert.Contains("/Finances/YearlyActivityChart", LegacyRoutes.All);
         Assert.Contains("/Travelers/Create", LegacyRoutes.All);
+        Assert.Equal(["/Travelers/Create", "/Travelers/Index"], LegacyRoutes.Retired);
+        Assert.DoesNotContain("/Travelers/Create", LegacyRoutes.ActiveMigrationCandidates);
+        Assert.DoesNotContain("/Travelers/Index", LegacyRoutes.ActiveMigrationCandidates);
     }
 
     [Fact]
