@@ -5,6 +5,31 @@ namespace Legacy.Maliev.Intranet.Bff.Accounting;
 /// <summary>Forwards read-only Finance requests to AccountingService with server-held credentials.</summary>
 public sealed class FinancesProxy(HttpClient httpClient)
 {
+    /// <summary>Creates one payment with a stable workflow identity.</summary>
+    public Task<HttpResponseMessage> CreateAsync(FinancePaymentCreateRequest input, string idempotencyKey, CancellationToken cancellationToken)
+    {
+        var now = DateTime.UtcNow;
+        var request = new HttpRequestMessage(HttpMethod.Post, "/payments")
+        {
+            Content = JsonContent.Create(new
+            {
+                input.EmployeeId,
+                input.PaymentDirectionId,
+                input.PaymentTypeId,
+                input.Description,
+                input.PaymentMethodId,
+                input.Amount,
+                input.CurrencyId,
+                input.Recipient,
+                input.TransactionNumber,
+                input.PaymentDate,
+                CreatedDate = now,
+                ModifiedDate = now,
+            }),
+        };
+        request.Headers.Add("Idempotency-Key", idempotencyKey);
+        return SendAsync(request, cancellationToken);
+    }
     /// <summary>Gets one payment.</summary>
     public Task<HttpResponseMessage> GetAsync(int id, CancellationToken cancellationToken) =>
         SendAsync(new HttpRequestMessage(HttpMethod.Get, $"/payments/{id}"), cancellationToken);

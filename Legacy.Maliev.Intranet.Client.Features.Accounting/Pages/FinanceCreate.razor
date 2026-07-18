@@ -1,0 +1,68 @@
+@page "/Finances/Create"
+@attribute [Authorize]
+@inject HttpClient Http
+@inject NavigationManager Navigation
+
+<PageTitle>Create payment | MALIEV Intranet</PageTitle>
+<MudContainer MaxWidth="MaxWidth.Large">
+    <MudText Typo="Typo.h4" HtmlTag="h1" Class="mb-4">Create payment</MudText>
+    <div class="d-flex flex-wrap gap-2 mb-4" aria-label="Quick form presets">
+        <MudButton OnClick="ApplyJobIncome" Color="Color.Success">Job income</MudButton>
+        <MudButton OnClick="ApplyJobExpense" Color="Color.Error">Job expense</MudButton>
+        <MudButton OnClick="ApplyProductExpense" Color="Color.Error">Product expense</MudButton>
+        <MudButton OnClick="ApplyGoogleExpense" Color="Color.Error">Google Ads/Google Cloud</MudButton>
+        <MudButton OnClick="ApplySalary" Color="Color.Warning">Salary</MudButton>
+    </div>
+    @if (loading) { <MudProgressLinear Indeterminate="true" /> }
+    else if (error is not null) { <MudAlert Severity="Severity.Error">@error</MudAlert> }
+    else if (lookups is not null)
+    {
+        <MudForm @ref="form" Model="model"><MudGrid>
+            <MudItem xs="12" md="6"><MudSelect T="int" Label="Employee" @bind-Value="model.EmployeeId" Required="true">@foreach (var x in lookups.Employees) { <MudSelectItem Value="x.Id">@x.Name</MudSelectItem> }</MudSelect></MudItem>
+            <MudItem xs="12" md="6"><MudSelect T="int" Label="Direction" @bind-Value="model.PaymentDirectionId" Required="true">@foreach (var x in lookups.Directions) { <MudSelectItem Value="x.Id">@x.Name</MudSelectItem> }</MudSelect></MudItem>
+            <MudItem xs="12" md="6"><MudSelect T="int" Label="Type" @bind-Value="model.PaymentTypeId" Required="true">@foreach (var x in lookups.Types) { <MudSelectItem Value="x.Id">@x.Name</MudSelectItem> }</MudSelect></MudItem>
+            <MudItem xs="12" md="6"><MudSelect T="int" Label="Method" @bind-Value="model.PaymentMethodId" Required="true">@foreach (var x in lookups.Methods) { <MudSelectItem Value="x.Id">@x.Name</MudSelectItem> }</MudSelect></MudItem>
+            <MudItem xs="12" md="6"><MudNumericField T="decimal" Label="Amount" @bind-Value="model.Amount" Min="0" Required="true" /></MudItem>
+            <MudItem xs="12" md="6"><MudSelect T="int" Label="Currency" @bind-Value="model.CurrencyId" Required="true">@foreach (var x in lookups.Currencies) { <MudSelectItem Value="x.Id">@x.ShortName</MudSelectItem> }</MudSelect></MudItem>
+            <MudItem xs="12" md="6"><MudTextField Label="Recipient" @bind-Value="model.Recipient" /></MudItem><MudItem xs="12" md="6"><MudTextField Label="Transaction number" @bind-Value="model.TransactionNumber" /></MudItem>
+            <MudItem xs="12" md="6"><MudDatePicker Label="Payment date" @bind-Date="model.PaymentDate" Required="true" /></MudItem>
+            <MudItem xs="12"><MudTextField Label="Description" @bind-Value="model.Description" Required="true" Lines="8" MaxLength="1000" /></MudItem>
+            <MudItem xs="12"><InputFile OnChange="SelectFiles" multiple /><MudText Typo="Typo.caption">Selected: @uploads.Count file(s), maximum 200 MB total.</MudText></MudItem>
+            <MudItem xs="12"><MudButton OnClick="CreateAsync" Disabled="submitting" Variant="Variant.Filled" Color="Color.Primary">Create payment</MudButton></MudItem>
+        </MudGrid></MudForm>
+    }
+</MudContainer>
+
+@code {
+    [SupplyParameterFromQuery] public int? paymentDirectionIdInput { get; set; }
+    [SupplyParameterFromQuery] public int? paymentTypeIdInput { get; set; }
+    [SupplyParameterFromQuery] public int? paymentMethodIdInput { get; set; }
+    [SupplyParameterFromQuery] public int? currencyIdInput { get; set; }
+    [SupplyParameterFromQuery] public string? recipientInput { get; set; }
+    [SupplyParameterFromQuery] public string? paymentDescriptionInput { get; set; }
+    private FinanceCreatePage? lookups; private EmployeeSessionSummary? session; private MudForm? form;
+    private readonly List<IBrowserFile> uploads = []; private Model model = new(); private Guid workflowId = Guid.NewGuid();
+    private bool loading = true, submitting; private string? error;
+    private const string JobIncome = "INVOICE No. XXXXXX-XXXXX-XXXXX\nRECEIPT No. XXXXX\nCUSTOMER No. XXXXX\nPAYMENT DATE XXXX-XX-XX";
+    protected override async Task OnInitializedAsync()
+    {
+        try { session = await Http.GetFromJsonAsync<EmployeeSessionSummary>("/bff/session"); lookups = await Http.GetFromJsonAsync<FinanceCreatePage>("/bff/finances/create"); model.EmployeeId = session?.LegacyDatabaseId ?? 0; ApplyPreset(paymentDirectionIdInput, paymentTypeIdInput, paymentMethodIdInput, currencyIdInput, recipientInput, paymentDescriptionInput); }
+        catch (Exception ex) when (ex is HttpRequestException or System.Text.Json.JsonException) { error = "Finance is temporarily unavailable."; }
+        finally { loading = false; }
+    }
+    private void ApplyPreset(int? d, int? t, int? m, int? c, string? r, string? x) { if (d.HasValue) model.PaymentDirectionId=d.Value; if(t.HasValue)model.PaymentTypeId=t.Value;if(m.HasValue)model.PaymentMethodId=m.Value;if(c.HasValue)model.CurrencyId=c.Value;if(r is not null)model.Recipient=r;if(x is not null)model.Description=x; }
+    private void ApplySalary() => ApplyPreset(2, 2, 2, 138, null, $"Employee's monthly salary {DateTime.Now.Month}/{DateTime.Now.Year}");
+    private void ApplyJobIncome() => ApplyPreset(1, 11, 2, 138, "Maliev Co., Ltd.", JobIncome);
+    private void ApplyJobExpense() => ApplyPreset(2, 11, 2, 138, null, "Expense for job");
+    private void ApplyProductExpense() => ApplyPreset(2, 13, 2, 138, null, null);
+    private void ApplyGoogleExpense() => ApplyPreset(2, 10, 2, 138, "Google Asia Pacific Pte. Ltd.", "Google Ads/Google Cloud");
+    private void SelectFiles(InputFileChangeEventArgs e) { uploads.Clear(); uploads.AddRange(e.GetMultipleFiles()); workflowId = Guid.NewGuid(); }
+    private async Task CreateAsync()
+    {
+        if (form is null || session?.CsrfToken is null || model.PaymentDate is null) return; await form.ValidateAsync(); if (!form.IsValid) return;
+        submitting=true; error=null;
+        try { using var content=new MultipartFormDataContent(); content.Add(new StringContent(System.Text.Json.JsonSerializer.Serialize(model.ToRequest(), new System.Text.Json.JsonSerializerOptions(System.Text.Json.JsonSerializerDefaults.Web))), "payment"); foreach(var upload in uploads){var file=new StreamContent(upload.OpenReadStream(200*1024*1024));file.Headers.ContentType=new(upload.ContentType);content.Add(file,"files",upload.Name);} using var request=new HttpRequestMessage(HttpMethod.Post,"/bff/finances"){Content=content};request.Headers.Add("X-CSRF-TOKEN",session.CsrfToken);request.Headers.Add("Idempotency-Key",workflowId.ToString("D"));using var response=await Http.SendAsync(request);if(!response.IsSuccessStatusCode){error=response.StatusCode==HttpStatusCode.Conflict?"This creation attempt conflicts with a prior payload.":"Payment could not be created; retry uses the same safe attempt.";return;}var result=await response.Content.ReadFromJsonAsync<FinancePaymentCreatedResult>();Navigation.NavigateTo($"/Finances/View?id={result?.Id}"); }
+        catch(HttpRequestException){error="Payment outcome is being reconciled; retry uses the same safe attempt.";} finally{submitting=false;}
+    }
+    sealed class Model { public int EmployeeId{get;set;} public int PaymentDirectionId{get;set;} public int PaymentTypeId{get;set;} public int PaymentMethodId{get;set;} public decimal Amount{get;set;} public int CurrencyId{get;set;} public string? Recipient{get;set;} public string? TransactionNumber{get;set;} public DateTime? PaymentDate{get;set;}=DateTime.Today; public string Description{get;set;}=string.Empty; public FinancePaymentCreateRequest ToRequest()=>new(EmployeeId,PaymentDirectionId,PaymentTypeId,Description,PaymentMethodId,Amount,CurrencyId,Recipient,TransactionNumber,PaymentDate!.Value); }
+}
