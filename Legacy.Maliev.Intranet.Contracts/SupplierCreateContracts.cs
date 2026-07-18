@@ -24,3 +24,9 @@ public sealed class SupplierCreateRequest
 
 /// <summary>Safe result returned after supplier creation.</summary>
 public sealed record CreatedSupplier(int Id);
+
+/// <summary>Browser-safe editable supplier and owned address.</summary>
+public sealed record SupplierDetail(
+    int Id, string Name, string? Website, string? TaxNumber, string? Email, string? Note,
+    string? Telephone, string? Mobile, string? Fax, string? Building, string Address1,
+    string? Address2, string? City, string? State, string? PostalCode, int CountryId);
