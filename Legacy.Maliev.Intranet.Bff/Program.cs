@@ -41,6 +41,8 @@ builder.Services.AddScoped<Legacy.Maliev.Intranet.Customers.CustomerAccountCreat
 builder.Services.AddScoped<Legacy.Maliev.Intranet.Employees.EmployeeAccountCreationService>();
 builder.Services.AddScoped<Legacy.Maliev.Intranet.Suppliers.SupplierCreationService>();
 builder.Services.AddScoped<Legacy.Maliev.Intranet.Suppliers.SupplierManagementService>();
+builder.Services.AddScoped<Legacy.Maliev.Intranet.PurchaseOrders.PurchaseOrderCreationService>();
+builder.Services.AddScoped<Legacy.Maliev.Intranet.PurchaseOrders.IPurchaseOrderCreationGateway, PurchaseOrderCreationGateway>();
 #pragma warning disable EXTEXP0001 // Replace inherited pipelines with explicit downstream 429 contracts.
 builder.Services.AddHttpClient<Legacy.Maliev.Intranet.Customers.ICustomerProfileCreationClient, Legacy.Maliev.Intranet.Customers.CustomerProfileCreationClient>(client =>
 {
@@ -206,6 +208,17 @@ builder.Services.AddHttpClient<PurchaseOrdersProxy>(client =>
                 (int)response.StatusCode >= StatusCodes.Status500InternalServerError),
     });
 });
+AddPurchaseOrderClient(PurchaseOrderCreationGateway.ProcurementClient, "Services:Procurement", "https+http://legacy-maliev-procurement-service", TimeSpan.FromSeconds(30));
+AddPurchaseOrderClient(PurchaseOrderCreationGateway.EmployeeClient, "Services:Employee", "https+http://legacy-maliev-employee-service", TimeSpan.FromSeconds(30));
+AddPurchaseOrderClient(PurchaseOrderCreationGateway.CatalogClient, "Services:Catalog", "https+http://legacy-maliev-catalog-service", TimeSpan.FromSeconds(30));
+AddPurchaseOrderClient(PurchaseOrderCreationGateway.DocumentClient, "Services:Document", "https+http://legacy-maliev-document-service", TimeSpan.FromSeconds(30));
+AddPurchaseOrderClient(PurchaseOrderCreationGateway.FileClient, "Services:File", "https+http://legacy-maliev-file-service", TimeSpan.FromMinutes(5));
+void AddPurchaseOrderClient(string name, string configurationKey, string fallback, TimeSpan timeout) =>
+    builder.Services.AddHttpClient(name, client =>
+    {
+        client.BaseAddress = new Uri(builder.Configuration[configurationKey] ?? fallback);
+        client.Timeout = timeout;
+    }).RemoveAllResilienceHandlers().AddHttpMessageHandler<LegacyServiceAuthenticationHandler>();
 builder.Services.AddHttpClient<OrderDetailProxy>(client =>
 {
     client.BaseAddress = new Uri(builder.Configuration["Services:Order"]
@@ -421,6 +434,9 @@ builder.Services.AddAuthorizationBuilder()
     .AddPolicy(LegacyEmployeePermissions.PurchaseOrdersRead, policy => policy
         .RequireAuthenticatedUser()
         .RequireClaim("permissions", LegacyEmployeePermissions.PurchaseOrdersRead))
+    .AddPolicy(LegacyEmployeePermissions.PurchaseOrdersCreate, policy => policy
+        .RequireAuthenticatedUser()
+        .RequireClaim("permissions", LegacyEmployeePermissions.PurchaseOrdersCreate))
     .AddPolicy("legacy-catalog.materials.read", policy => policy
         .RequireAuthenticatedUser()
         .RequireClaim("permissions", "legacy-catalog.materials.read"))
@@ -593,6 +609,63 @@ app.MapGet("/bff/purchase-orders", (
         cancellationToken);
 })
     .RequireAuthorization(LegacyEmployeePermissions.PurchaseOrdersRead);
+
+app.MapGet("/bff/purchase-orders/create-options", async (
+    HttpContext context,
+    Legacy.Maliev.Intranet.PurchaseOrders.PurchaseOrderCreationService service,
+    CancellationToken cancellationToken) =>
+{
+    var result = await service.GetOptionsAsync(cancellationToken);
+    if (result.Status == Legacy.Maliev.Intranet.PurchaseOrders.PurchaseOrderCreationStatus.RateLimited && result.RetryAfter is { } retryAfter)
+    {
+        context.Response.Headers.RetryAfter = ((int)Math.Ceiling(retryAfter.TotalSeconds)).ToString(CultureInfo.InvariantCulture);
+    }
+    return result.Status switch
+    {
+        Legacy.Maliev.Intranet.PurchaseOrders.PurchaseOrderCreationStatus.Created when result.Options is { } options => Results.Ok(options),
+        Legacy.Maliev.Intranet.PurchaseOrders.PurchaseOrderCreationStatus.Unauthorized => Results.Unauthorized(),
+        Legacy.Maliev.Intranet.PurchaseOrders.PurchaseOrderCreationStatus.Forbidden => Results.StatusCode(StatusCodes.Status403Forbidden),
+        Legacy.Maliev.Intranet.PurchaseOrders.PurchaseOrderCreationStatus.RateLimited => Results.StatusCode(StatusCodes.Status429TooManyRequests),
+        Legacy.Maliev.Intranet.PurchaseOrders.PurchaseOrderCreationStatus.BadGateway => Results.Problem(statusCode: StatusCodes.Status502BadGateway),
+        _ => Results.Problem(statusCode: StatusCodes.Status503ServiceUnavailable),
+    };
+})
+    .RequireAuthorization(LegacyEmployeePermissions.PurchaseOrdersCreate);
+
+app.MapPost("/bff/purchase-orders", async (
+    PurchaseOrderCreateRequest request,
+    HttpContext context,
+    Legacy.Maliev.Intranet.PurchaseOrders.PurchaseOrderCreationService service,
+    CancellationToken cancellationToken) =>
+{
+    var errors = ValidatePurchaseOrder(request);
+    if (errors.Count > 0) return Results.ValidationProblem(errors);
+    if (!context.Request.Headers.TryGetValue("Idempotency-Key", out var attemptHeader) ||
+        !Guid.TryParse(attemptHeader.ToString(), out var attemptId))
+    {
+        return Results.Problem(statusCode: StatusCodes.Status400BadRequest, title: "A valid Idempotency-Key is required");
+    }
+    var result = await service.CreateAsync(request, attemptId.ToString("D"), cancellationToken);
+    if (result.Status == Legacy.Maliev.Intranet.PurchaseOrders.PurchaseOrderCreationStatus.RateLimited && result.RetryAfter is { } retryAfter)
+    {
+        context.Response.Headers.RetryAfter = ((int)Math.Ceiling(retryAfter.TotalSeconds)).ToString(CultureInfo.InvariantCulture);
+    }
+    return result.Status switch
+    {
+        Legacy.Maliev.Intranet.PurchaseOrders.PurchaseOrderCreationStatus.Created when result.PurchaseOrderId is { } id =>
+            Results.Created($"/PurchaseOrders/View?id={id}", new CreatedPurchaseOrder(id)),
+        Legacy.Maliev.Intranet.PurchaseOrders.PurchaseOrderCreationStatus.BadRequest => Results.ValidationProblem(new Dictionary<string, string[]> { [string.Empty] = ["Purchase-order data was rejected."] }),
+        Legacy.Maliev.Intranet.PurchaseOrders.PurchaseOrderCreationStatus.Unauthorized => Results.Unauthorized(),
+        Legacy.Maliev.Intranet.PurchaseOrders.PurchaseOrderCreationStatus.Forbidden => Results.StatusCode(StatusCodes.Status403Forbidden),
+        Legacy.Maliev.Intranet.PurchaseOrders.PurchaseOrderCreationStatus.Conflict => Results.Conflict(),
+        Legacy.Maliev.Intranet.PurchaseOrders.PurchaseOrderCreationStatus.RateLimited => Results.StatusCode(StatusCodes.Status429TooManyRequests),
+        Legacy.Maliev.Intranet.PurchaseOrders.PurchaseOrderCreationStatus.BadGateway => Results.Problem(statusCode: StatusCodes.Status502BadGateway),
+        Legacy.Maliev.Intranet.PurchaseOrders.PurchaseOrderCreationStatus.OutcomeUnknown => Results.Problem(statusCode: StatusCodes.Status503ServiceUnavailable, title: "Purchase-order outcome requires reconciliation"),
+        _ => Results.Problem(statusCode: StatusCodes.Status503ServiceUnavailable),
+    };
+})
+    .AddEndpointFilter<AntiforgeryValidationFilter>()
+    .RequireAuthorization(LegacyEmployeePermissions.PurchaseOrdersCreate);
 
 app.MapGet("/bff/orders/pending", (
     int? size,
@@ -1491,6 +1564,35 @@ app.MapPut("/bff/catalog/materials/{id:int}", async (
 app.MapFallbackToFile("index.html").AllowAnonymous();
 
 await app.RunAsync();
+
+static Dictionary<string, string[]> ValidatePurchaseOrder(PurchaseOrderCreateRequest request)
+{
+    var failures = new List<(string member, string message)>();
+    AddFailures(request, string.Empty, failures);
+    if (request.Items is not null)
+    {
+        for (var index = 0; index < request.Items.Count; index++)
+        {
+            if (request.Items[index] is { } item) AddFailures(item, $"Items[{index}]", failures);
+            else failures.Add(($"Items[{index}]", "A line item is required."));
+        }
+    }
+    return failures.GroupBy(value => value.member, StringComparer.Ordinal)
+        .ToDictionary(group => group.Key, group => group.Select(value => value.message).Distinct(StringComparer.Ordinal).ToArray(), StringComparer.Ordinal);
+}
+
+static void AddFailures(object value, string prefix, ICollection<(string member, string message)> failures)
+{
+    var results = new List<ValidationResult>();
+    if (Validator.TryValidateObject(value, new ValidationContext(value), results, validateAllProperties: true)) return;
+    foreach (var result in results)
+    {
+        foreach (var member in result.MemberNames.DefaultIfEmpty(string.Empty))
+        {
+            failures.Add((string.IsNullOrEmpty(prefix) ? member : string.IsNullOrEmpty(member) ? prefix : $"{prefix}.{member}", result.ErrorMessage ?? "Invalid value."));
+        }
+    }
+}
 
 static async Task<IResult> ProxyCatalogJsonAsync<T>(
     Func<CancellationToken, Task<HttpResponseMessage>> send,
