@@ -26,9 +26,9 @@ public sealed class PurchaseOrdersIndexWasmMigrationContractTests
         Assert.Contains("/bff/employees", page, StringComparison.Ordinal);
         Assert.Contains("Task.WhenAll", page, StringComparison.Ordinal);
         Assert.Contains("MudTable", page, StringComparison.Ordinal);
-        Assert.Contains("Navigation.NavigateTo(\"/PurchaseOrders/Create\", forceLoad: true)", page, StringComparison.Ordinal);
+        Assert.Contains("Navigation.NavigateTo(\"/PurchaseOrders/Create\")", page, StringComparison.Ordinal);
         Assert.Contains("Navigation.NavigateTo($\"/PurchaseOrders/View?id={id}\", forceLoad: true)", page, StringComparison.Ordinal);
-        Assert.Equal(2, CountOccurrences(page, "forceLoad: true"));
+        Assert.Equal(1, CountOccurrences(page, "forceLoad: true"));
         Assert.Contains("HttpStatusCode.Unauthorized", page, StringComparison.Ordinal);
         Assert.Contains("HttpStatusCode.Forbidden", page, StringComparison.Ordinal);
         Assert.Contains("HttpStatusCode.TooManyRequests", page, StringComparison.Ordinal);
