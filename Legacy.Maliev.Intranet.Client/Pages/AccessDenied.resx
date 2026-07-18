@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader><resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader><resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
+  <data name="PageTitle" xml:space="preserve"><value>Access denied - MALIEV Intranet</value></data>
+  <data name="Heading" xml:space="preserve"><value>Access denied</value></data>
+  <data name="Description" xml:space="preserve"><value>Your employee session does not permit this action.</value></data>
+  <data name="ReturnToSignIn" xml:space="preserve"><value>Return to sign in</value></data>
+</root>

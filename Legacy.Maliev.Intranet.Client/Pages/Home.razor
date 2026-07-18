@@ -1,0 +1,14 @@
+@page "/"
+@attribute [AllowAnonymous]
+@inject Microsoft.Extensions.Localization.IStringLocalizer<Home> Text
+
+<PageTitle>@Text["PageTitle"]</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Medium" Class="py-8">
+    <MudPaper Class="pa-8 text-center" Elevation="1">
+        <MudText Typo="Typo.overline">@Text["Eyebrow"]</MudText>
+        <MudText Typo="Typo.h2" HtmlTag="h1" Class="mb-3">@Text["Heading"]</MudText>
+        <MudText Typo="Typo.body1" Class="mb-6">@Text["Description"]</MudText>
+        <MudButton Href="/Login" Variant="Variant.Filled" Color="Color.Primary" Size="Size.Large">@Text["SignIn"]</MudButton>
+    </MudPaper>
+</MudContainer>

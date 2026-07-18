@@ -1,0 +1,13 @@
+@page "/AccessDenied"
+@attribute [AllowAnonymous]
+@inject Microsoft.Extensions.Localization.IStringLocalizer<AccessDenied> Text
+
+<PageTitle>@Text["PageTitle"]</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Small" Class="py-8">
+    <MudAlert Severity="Severity.Error" Variant="Variant.Outlined">
+        <MudText Typo="Typo.h4" HtmlTag="h1" Class="mb-2">@Text["Heading"]</MudText>
+        <MudText Typo="Typo.body1" Class="mb-4">@Text["Description"]</MudText>
+        <MudButton Href="/Login" Variant="Variant.Filled" Color="Color.Primary">@Text["ReturnToSignIn"]</MudButton>
+    </MudAlert>
+</MudContainer>
