@@ -1,0 +1,10 @@
+@page
+@{
+    ViewData["Title"] = "Operational diagnostics";
+}
+<section class="panel">
+    <p class="eyebrow">Operations</p>
+    <h1>Operational diagnostics</h1>
+    <p>This protected Razor fallback is retained only for rollback while the Blazor diagnostics route is validated.</p>
+    <p class="correlation">Correlation ID: <code>@HttpContext.TraceIdentifier</code></p>
+</section>

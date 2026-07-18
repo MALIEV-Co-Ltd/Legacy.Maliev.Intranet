@@ -11,11 +11,39 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using BffProgram = Bff::Program;
+using DiagnosticEventStore = Bff::Legacy.Maliev.Intranet.Bff.Diagnostics.DiagnosticEventStore;
 
 namespace Legacy.Maliev.Intranet.Tests;
 
 public sealed class BffSecurityBoundaryTests
 {
+    [Fact]
+    public async Task AuthenticatedDiagnostics_ReturnsOnlyTheRedactedContract()
+    {
+        await using var factory = new BffFactory();
+        factory.Services.GetRequiredService<DiagnosticEventStore>()
+            .RecordResponseFailure(503, "/orders/42?access_token=do-not-return", "trace-42");
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            AllowAutoRedirect = false,
+            BaseAddress = new Uri("https://localhost"),
+        });
+
+        using var response = await client.GetAsync("/bff/diagnostics/events?sort=LogTimestamp_Descending&index=1&size=50");
+        var json = await response.Content.ReadAsStringAsync();
+        using var document = JsonDocument.Parse(json);
+        var item = Assert.Single(document.RootElement.GetProperty("items").EnumerateArray());
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal("HTTP_503", item.GetProperty("code").GetString());
+        Assert.Equal("/orders/{id}", item.GetProperty("path").GetString());
+        Assert.Equal("trace-42", item.GetProperty("correlationId").GetString());
+        Assert.DoesNotContain("access_token", json, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("stackTrace", json, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("username", json, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("message", json, StringComparison.OrdinalIgnoreCase);
+    }
+
     [Fact]
     public async Task CookieAuthenticatedWrite_RequiresMatchingCsrfCookieAndHeader()
     {

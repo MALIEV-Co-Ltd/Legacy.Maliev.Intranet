@@ -4,6 +4,7 @@ using Legacy.Maliev.Intranet.Auth;
 using Legacy.Maliev.Intranet.Contracts;
 using Legacy.Maliev.Intranet.Bff.Catalog;
 using Legacy.Maliev.Intranet.Bff.Customers;
+using Legacy.Maliev.Intranet.Bff.Diagnostics;
 using Legacy.Maliev.Intranet.Bff.Employees;
 using Legacy.Maliev.Intranet.Bff.Orders;
 using Legacy.Maliev.Intranet.Bff.Procurement;
@@ -26,6 +27,7 @@ builder.AddStandardMiddleware(options => options.EnableRequestLogging = true);
 builder.AddLegacyIntranetDataProtection();
 builder.Services.AddProblemDetails();
 builder.Services.AddSingleton(TimeProvider.System);
+builder.Services.AddSingleton<DiagnosticEventStore>();
 builder.Services.AddLegacyAccessTokenValidation(
     builder.Configuration,
     validateOnStart: !builder.Environment.IsEnvironment("Testing"));
@@ -487,6 +489,7 @@ app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
 app.UseAntiforgery();
+app.UseMiddleware<DiagnosticEventMiddleware>();
 app.MapDefaultEndpoints("intranet-bff");
 app.MapStaticAssets().AllowAnonymous();
 
@@ -508,6 +511,18 @@ app.MapGet("/bff/session", (HttpContext context, IAntiforgery antiforgery) =>
                 ? legacyDatabaseId
                 : null));
 }).AllowAnonymous();
+
+app.MapGet("/bff/diagnostics/events", (
+    DiagnosticEventSort? sort,
+    string? search,
+    int? index,
+    int? size,
+    DiagnosticEventStore store) => Results.Ok(store.Query(
+        sort ?? DiagnosticEventSort.LogTimestamp_Descending,
+        search,
+        Math.Max(1, index ?? 1),
+        Math.Clamp(size ?? 50, 1, 100))))
+    .RequireAuthorization();
 
 app.MapPost("/bff/employee-recovery/password-reset/request", EmployeeRecoveryEndpointMapper.RequestPasswordResetAsync)
     .AddEndpointFilter<AntiforgeryValidationFilter>()
