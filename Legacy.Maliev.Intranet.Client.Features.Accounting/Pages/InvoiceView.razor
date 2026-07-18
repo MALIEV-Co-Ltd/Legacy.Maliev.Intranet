@@ -46,6 +46,38 @@
         </MudPaper>
 
         <MudPaper Class="pa-4 mb-4">
+            <MudText Typo="Typo.h5" HtmlTag="h2" Class="mb-3">@Text["ReceiptActions"]</MudText>
+            <div class="d-flex flex-wrap gap-2">
+                @if (detailPage.Invoice.ReceiptId is null)
+                {
+                    <MudButton OnClick="CreateReceiptAsync" Disabled="@(submitting || !detailPage.Invoice.IsPaid)" Variant="Variant.Filled" Color="Color.Primary">@Text["CreateReceipt"]</MudButton>
+                }
+                else
+                {
+                    @if (emailReceiptArmed)
+                    {
+                        <MudButton OnClick="EmailReceiptAsync" Disabled="@submitting" Variant="Variant.Filled" Color="Color.Primary">@Text["ConfirmEmailReceipt"]</MudButton>
+                        <MudButton OnClick="CancelEmailReceipt" Disabled="@submitting">@Text["Cancel"]</MudButton>
+                    }
+                    else
+                    {
+                        <MudButton OnClick="ArmEmailReceipt" Disabled="@submitting" Variant="Variant.Outlined" Color="Color.Primary">@Text["EmailReceipt"]</MudButton>
+                    }
+                    @if (receiptRemoveArmed)
+                    {
+                        <MudButton OnClick="RemoveReceiptAsync" Disabled="@submitting" Variant="Variant.Filled" Color="Color.Error">@Text["ConfirmRemoveReceipt"]</MudButton>
+                        <MudButton OnClick="CancelRemoveReceipt" Disabled="@submitting">@Text["Cancel"]</MudButton>
+                    }
+                    else
+                    {
+                        <MudButton OnClick="ArmRemoveReceipt" Disabled="@submitting" Variant="Variant.Outlined" Color="Color.Error">@Text["RemoveReceipt"]</MudButton>
+                    }
+                }
+            </div>
+            @if (!detailPage.Invoice.IsPaid && detailPage.Invoice.ReceiptId is null) { <MudText Typo="Typo.caption" Class="mt-2">@Text["ReceiptRequiresPayment"]</MudText> }
+        </MudPaper>
+
+        <MudPaper Class="pa-4 mb-4">
             <MudText Typo="Typo.h5" HtmlTag="h2" Class="mb-3">@Text["Documents"]</MudText>
             <MudList T="InvoiceDownload">
                 @foreach (var file in detailPage.InvoiceFiles.Concat(detailPage.ReceiptFiles))
@@ -83,6 +115,11 @@
     private bool loading = true;
     private bool submitting;
     private bool deleteArmed;
+    private bool receiptRemoveArmed;
+    private bool emailReceiptArmed;
+    private Guid? createReceiptOperationId;
+    private Guid? removeReceiptOperationId;
+    private Guid? emailReceiptOperationId;
     private string? error;
     private string? notice;
 
@@ -123,6 +160,46 @@
         catch (HttpRequestException) { error = Text["Unavailable"]; }
         finally { submitting = false; }
     }
+    private async Task CreateReceiptAsync()
+    {
+        if (detailPage is null) return;
+        createReceiptOperationId ??= Guid.NewGuid();
+        using var request = ReceiptRequest(HttpMethod.Post, $"/bff/invoices/{detailPage.Invoice.Id}/receipt", createReceiptOperationId.Value);
+        request.Content = JsonContent.Create(new CreateInvoiceReceiptRequest(detailPage.Invoice.InternalComment, false));
+        await SendReceiptAsync(request, Text["ReceiptCreated"], () => createReceiptOperationId = null);
+    }
+    private async Task EmailReceiptAsync()
+    {
+        if (detailPage is null) return;
+        emailReceiptOperationId ??= Guid.NewGuid();
+        using var request = ReceiptRequest(HttpMethod.Post, $"/bff/invoices/{detailPage.Invoice.Id}/receipt/email", emailReceiptOperationId.Value);
+        await SendReceiptAsync(request, Text["ReceiptEmailed"], () => { emailReceiptOperationId = null; emailReceiptArmed = false; });
+    }
+    private async Task RemoveReceiptAsync()
+    {
+        if (detailPage is null) return;
+        removeReceiptOperationId ??= Guid.NewGuid();
+        using var request = ReceiptRequest(HttpMethod.Delete, $"/bff/invoices/{detailPage.Invoice.Id}/receipt", removeReceiptOperationId.Value);
+        await SendReceiptAsync(request, Text["ReceiptRemoved"], () => { removeReceiptOperationId = null; receiptRemoveArmed = false; });
+    }
+    private HttpRequestMessage ReceiptRequest(HttpMethod method, string path, Guid operationId)
+    {
+        var request = WriteRequest(method, path);
+        request.Headers.Add("Idempotency-Key", operationId.ToString("D"));
+        return request;
+    }
+    private async Task SendReceiptAsync(HttpRequestMessage request, string success, Action completed)
+    {
+        submitting = true; error = null; notice = null;
+        try
+        {
+            using var response = await Http.SendAsync(request);
+            if (!response.IsSuccessStatusCode) { error = ErrorFor(response.StatusCode); return; }
+            completed(); notice = success; await LoadAsync();
+        }
+        catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException) { error = Text["Unavailable"]; }
+        finally { submitting = false; }
+    }
     private HttpRequestMessage WriteRequest(HttpMethod method, string path) { var request = new HttpRequestMessage(method, path); if (!string.IsNullOrWhiteSpace(session?.CsrfToken)) request.Headers.Add("X-CSRF-TOKEN", session.CsrfToken); return request; }
     private async Task SendAsync(HttpRequestMessage request, string success)
     {
@@ -133,6 +210,10 @@
     }
     private void ArmDelete() => deleteArmed = true;
     private void CancelDelete() => deleteArmed = false;
+    private void ArmRemoveReceipt() => receiptRemoveArmed = true;
+    private void CancelRemoveReceipt() => receiptRemoveArmed = false;
+    private void ArmEmailReceipt() => emailReceiptArmed = true;
+    private void CancelEmailReceipt() => emailReceiptArmed = false;
     private string ErrorFor(HttpStatusCode status) => status switch { HttpStatusCode.Forbidden => Text["Forbidden"], HttpStatusCode.TooManyRequests => Text["RateLimited"], HttpStatusCode.BadGateway => Text["InvalidResponse"], _ => Text["Unavailable"] };
     private string Money(decimal? value) => value is null ? "-" : $"{value:N2} {detailPage?.Invoice.Currency}";
     private static string FormatDate(DateTime? value) => value?.ToLocalTime().ToString("g", CultureInfo.CurrentCulture) ?? "-";

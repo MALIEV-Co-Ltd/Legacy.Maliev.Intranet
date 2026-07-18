@@ -87,6 +87,95 @@ public sealed class BffInvoiceDetailContractTests
         Assert.Equal("2030-07-18T00:00:00.0000000Z", put.Concurrency);
     }
 
+    [Fact]
+    public async Task CreateReceipt_DerivesEmployeeFromSessionAndForwardsStableOperationOnly()
+    {
+        var accounting = new AccountingHandler();
+        await using var factory = new Factory(accounting, new FileHandler(), [.. ReadPermissions, LegacyEmployeePermissions.AccountingCreate]);
+        using var client = CreateClient(factory);
+        var csrf = await SignInAsync(client);
+        var operationId = Guid.Parse("9e60b70d-21af-473e-8749-fab4993e4f4f");
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/bff/invoices/7/receipt")
+        {
+            Content = JsonContent.Create(new { comment = "paid", sendEmail = false }),
+        };
+        request.Headers.Add("X-CSRF-TOKEN", csrf);
+        request.Headers.Add("Idempotency-Key", operationId.ToString("D"));
+
+        using var response = await client.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var write = Assert.Single(accounting.Requests, item => item.Path == "/invoices/7/receipt");
+        Assert.Equal("Bearer signed-service-token", write.Authorization);
+        Assert.Equal("7", write.EmployeeId);
+        Assert.Equal(operationId.ToString("D"), write.IdempotencyKey);
+        Assert.DoesNotContain("customerEmail", write.Body!, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("signature", write.Body!, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task CreateReceipt_WithoutCsrf_IsRejectedBeforeAccountingCall()
+    {
+        var accounting = new AccountingHandler();
+        await using var factory = new Factory(accounting, new FileHandler(), [.. ReadPermissions, LegacyEmployeePermissions.AccountingCreate]);
+        using var client = CreateClient(factory);
+        await SignInAsync(client);
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/bff/invoices/7/receipt")
+        {
+            Content = JsonContent.Create(new { comment = "paid", sendEmail = false }),
+        };
+        request.Headers.Add("Idempotency-Key", Guid.NewGuid().ToString("D"));
+
+        using var response = await client.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.DoesNotContain(accounting.Requests, item => item.Path == "/invoices/7/receipt");
+    }
+
+    [Fact]
+    public async Task CreateReceipt_WithoutTrustedLegacyEmployeeId_FailsClosed()
+    {
+        var accounting = new AccountingHandler();
+        await using var factory = new Factory(
+            accounting,
+            new FileHandler(),
+            [.. ReadPermissions, LegacyEmployeePermissions.AccountingCreate],
+            legacyDatabaseId: null);
+        using var client = CreateClient(factory);
+        var csrf = await SignInAsync(client);
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/bff/invoices/7/receipt")
+        {
+            Content = JsonContent.Create(new { comment = "paid", sendEmail = false }),
+        };
+        request.Headers.Add("X-CSRF-TOKEN", csrf);
+        request.Headers.Add("Idempotency-Key", Guid.NewGuid().ToString("D"));
+
+        using var response = await client.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
+        Assert.DoesNotContain(accounting.Requests, item => item.Path == "/invoices/7/receipt");
+    }
+
+    [Fact]
+    public async Task CreateReceipt_WithoutAccountingCreate_IsForbiddenBeforeAccountingCall()
+    {
+        var accounting = new AccountingHandler();
+        await using var factory = new Factory(accounting, new FileHandler(), ReadPermissions);
+        using var client = CreateClient(factory);
+        var csrf = await SignInAsync(client);
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/bff/invoices/7/receipt")
+        {
+            Content = JsonContent.Create(new { comment = "paid", sendEmail = false }),
+        };
+        request.Headers.Add("X-CSRF-TOKEN", csrf);
+        request.Headers.Add("Idempotency-Key", Guid.NewGuid().ToString("D"));
+
+        using var response = await client.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+        Assert.DoesNotContain(accounting.Requests, item => item.Path == "/invoices/7/receipt");
+    }
+
     private static readonly string[] ReadPermissions =
     [
         LegacyEmployeePermissions.AccountingRead,
@@ -108,7 +197,11 @@ public sealed class BffInvoiceDetailContractTests
         return (await (await client.GetAsync("/bff/session")).Content.ReadFromJsonAsync<System.Text.Json.JsonElement>()).GetProperty("csrfToken").GetString()!;
     }
 
-    private sealed class Factory(AccountingHandler accounting, FileHandler files, IReadOnlyList<string> permissions) : WebApplicationFactory<BffProgram>
+    private sealed class Factory(
+        AccountingHandler accounting,
+        FileHandler files,
+        IReadOnlyList<string> permissions,
+        int? legacyDatabaseId = 7) : WebApplicationFactory<BffProgram>
     {
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
@@ -117,7 +210,7 @@ public sealed class BffInvoiceDetailContractTests
             builder.ConfigureServices(services =>
             {
                 services.RemoveAll<ILegacyAuthClient>();
-                services.AddSingleton<ILegacyAuthClient>(new AuthClient(permissions));
+                services.AddSingleton<ILegacyAuthClient>(new AuthClient(permissions, legacyDatabaseId));
                 services.RemoveAll<IServiceAccessTokenProvider>();
                 var token = new TokenProvider();
                 services.AddSingleton<IServiceAccessTokenProvider>(token);
@@ -141,9 +234,9 @@ public sealed class BffInvoiceDetailContractTests
         public void Invalidate(string token) { }
     }
 
-    private sealed class AuthClient(IReadOnlyList<string> permissions) : ILegacyAuthClient
+    private sealed class AuthClient(IReadOnlyList<string> permissions, int? legacyDatabaseId) : ILegacyAuthClient
     {
-        public Task<EmployeeLoginResult> LoginAsync(string email, string password, CancellationToken cancellationToken) => Task.FromResult(new EmployeeLoginResult(true, new("server-token", "refresh-token", "Bearer", 900, DateTimeOffset.UtcNow.AddDays(1)), new("employee-id", email, email, permissions, 7)));
+        public Task<EmployeeLoginResult> LoginAsync(string email, string password, CancellationToken cancellationToken) => Task.FromResult(new EmployeeLoginResult(true, new("server-token", "refresh-token", "Bearer", 900, DateTimeOffset.UtcNow.AddDays(1)), new("employee-id", email, email, permissions, legacyDatabaseId)));
         public Task<EmployeeRefreshResult?> RefreshAsync(string refreshToken, CancellationToken cancellationToken) => Task.FromResult<EmployeeRefreshResult?>(null);
         public Task RevokeAsync(string refreshToken, CancellationToken cancellationToken) => Task.CompletedTask;
         public Task<CustomerIdentityResponse?> CreateCustomerIdentityAsync(int databaseId, CreateCustomerIdentityRequest request, string accessToken, CancellationToken cancellationToken) => Task.FromResult<CustomerIdentityResponse?>(null);
@@ -157,7 +250,16 @@ public sealed class BffInvoiceDetailContractTests
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
             request.Headers.TryGetValues("If-Unmodified-Since", out var concurrency);
-            Requests.Add(new(request.Method.Method, request.RequestUri?.PathAndQuery, request.Headers.Authorization?.ToString(), concurrency?.SingleOrDefault()));
+            Requests.Add(new(
+                request.Method.Method,
+                request.RequestUri?.PathAndQuery,
+                request.Headers.Authorization?.ToString(),
+                concurrency?.SingleOrDefault(),
+                request.Headers.TryGetValues("X-Legacy-Employee-Id", out var employee) ? employee.SingleOrDefault() : null,
+                request.Headers.TryGetValues("Idempotency-Key", out var idempotency) ? idempotency.SingleOrDefault() : null,
+                request.Content is null ? null : request.Content.ReadAsStringAsync(cancellationToken).GetAwaiter().GetResult()));
+            if (request.RequestUri?.AbsolutePath == "/invoices/7/receipt")
+                return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent("{\"receiptId\":9,\"state\":0,\"emailState\":0}", Encoding.UTF8, "application/json") });
             if (request.Method == HttpMethod.Put) return Task.FromResult(new HttpResponseMessage(PutStatus));
             var json = request.RequestUri?.AbsolutePath switch
             {
@@ -176,11 +278,11 @@ public sealed class BffInvoiceDetailContractTests
         public List<RequestRecord> Requests { get; } = [];
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
-            Requests.Add(new(request.Method.Method, request.RequestUri?.PathAndQuery, request.Headers.Authorization?.ToString(), null));
+            Requests.Add(new(request.Method.Method, request.RequestUri?.PathAndQuery, request.Headers.Authorization?.ToString(), null, null, null, null));
             return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent("\"https://storage.test/signed\"", Encoding.UTF8, "application/json") });
         }
     }
 
-    private sealed record RequestRecord(string Method, string? Path, string? Authorization, string? Concurrency);
+    private sealed record RequestRecord(string Method, string? Path, string? Authorization, string? Concurrency, string? EmployeeId, string? IdempotencyKey, string? Body);
     private const string InvoiceJson = """{"id":7,"customerId":3,"number":"INV-7","currency":"THB","subtotal":1000.25,"vat":70.02,"total":1070.27,"withholdingTax":30.00,"outstanding":1040.27,"isPaid":true,"receiptId":9,"paymentDate":"2030-07-18T00:00:00Z","createdDate":"2030-07-18T00:00:00Z","modifiedDate":"2030-07-18T00:00:00Z"}""";
 }
