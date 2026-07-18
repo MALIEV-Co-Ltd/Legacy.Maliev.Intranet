@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
+  <data name="PageTitle" xml:space="preserve"><value>Quotation estimate | MALIEV Intranet</value></data>
+  <data name="Heading" xml:space="preserve"><value>Quotation estimate</value></data>
+  <data name="Description" xml:space="preserve"><value>Explore an internal CNC machining cost breakdown. This estimate is not saved and does not create a quotation.</value></data>
+  <data name="Sales" xml:space="preserve"><value>Sales</value></data>
+  <data name="Quotations" xml:space="preserve"><value>Quotations</value></data>
+  <data name="Estimate" xml:space="preserve"><value>Estimate</value></data>
+  <data name="Printing" xml:space="preserve"><value>3D Printing</value></data>
+  <data name="CncMachining" xml:space="preserve"><value>CNC Machining</value></data>
+  <data name="Scanning" xml:space="preserve"><value>3D Scanning</value></data>
+  <data name="Designing" xml:space="preserve"><value>3D Designing</value></data>
+  <data name="ComingSoon" xml:space="preserve"><value>Coming soon</value></data>
+  <data name="Machine" xml:space="preserve"><value>Machine</value></data>
+  <data name="MachineCost" xml:space="preserve"><value>Machine cost</value></data>
+  <data name="RoiYears" xml:space="preserve"><value>ROI in years</value></data>
+  <data name="WeekdaysPerMonth" xml:space="preserve"><value>Weekdays per month</value></data>
+  <data name="WorkingHoursPerDay" xml:space="preserve"><value>Working hours per day</value></data>
+  <data name="MachineCostPerHour" xml:space="preserve"><value>Machine cost per hour</value></data>
+  <data name="ManualOverride" xml:space="preserve"><value>You may override this calculated value. Changing a source input recalculates it.</value></data>
+  <data name="RoiBreakdown" xml:space="preserve"><value>{0} months · {1} days · {2} working hours</value></data>
+  <data name="Job" xml:space="preserve"><value>Job</value></data>
+  <data name="PartCount" xml:space="preserve"><value>Number of parts</value></data>
+  <data name="Hours" xml:space="preserve"><value>Hours per part</value></data>
+  <data name="Minutes" xml:space="preserve"><value>Minutes per part</value></data>
+  <data name="MachineCostAllParts" xml:space="preserve"><value>Cost to machine all parts</value></data>
+  <data name="MachineHours" xml:space="preserve"><value>{0} hours per part · {1} hours for all parts</value></data>
+  <data name="Material" xml:space="preserve"><value>Material</value></data>
+  <data name="StockX" xml:space="preserve"><value>Stock length (mm)</value></data>
+  <data name="StockY" xml:space="preserve"><value>Stock width (mm)</value></data>
+  <data name="StockZ" xml:space="preserve"><value>Stock height (mm)</value></data>
+  <data name="StockCostPerKilogram" xml:space="preserve"><value>Stock cost per kilogram</value></data>
+  <data name="StockWeight" xml:space="preserve"><value>Stock weight (kg)</value></data>
+  <data name="StockMarkup" xml:space="preserve"><value>Stock markup (%)</value></data>
+  <data name="MaterialCostPerPart" xml:space="preserve"><value>Stock cost per part</value></data>
+  <data name="MaterialCostAllParts" xml:space="preserve"><value>Stock cost for all parts</value></data>
+  <data name="StockVolume" xml:space="preserve"><value>Stock volume: {0} mm³</value></data>
+  <data name="Electricity" xml:space="preserve"><value>Electricity</value></data>
+  <data name="MaximumPower" xml:space="preserve"><value>Maximum power draw (kW)</value></data>
+  <data name="ElectricityBaseCost" xml:space="preserve"><value>Base cost</value></data>
+  <data name="CostPerKwh" xml:space="preserve"><value>Cost per kWh</value></data>
+  <data name="ElectricityCost" xml:space="preserve"><value>Electricity cost</value></data>
+  <data name="PowerConsumption" xml:space="preserve"><value>Total power consumption: {0} kWh</value></data>
+  <data name="Setup" xml:space="preserve"><value>Setup</value></data>
+  <data name="NumberOfSetups" xml:space="preserve"><value>Number of setups</value></data>
+  <data name="CostPerSetup" xml:space="preserve"><value>Cost per setup</value></data>
+  <data name="SetupCostAllParts" xml:space="preserve"><value>Total setup cost</value></data>
+  <data name="SetupCostPerPart" xml:space="preserve"><value>Setup cost per part: {0}</value></data>
+  <data name="Summary" xml:space="preserve"><value>Summary</value></data>
+  <data name="MaterialCost" xml:space="preserve"><value>Material cost</value></data>
+  <data name="SetupCost" xml:space="preserve"><value>Setup cost</value></data>
+  <data name="GrandTotal" xml:space="preserve"><value>Total</value></data>
+  <data name="Reset" xml:space="preserve"><value>Reset legacy defaults</value></data>
+</root>

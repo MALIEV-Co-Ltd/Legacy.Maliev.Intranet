@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
+  <data name="PageTitle" xml:space="preserve"><value>ประมาณการใบเสนอราคา | MALIEV Intranet</value></data>
+  <data name="Heading" xml:space="preserve"><value>ประมาณการใบเสนอราคา</value></data>
+  <data name="Description" xml:space="preserve"><value>คำนวณต้นทุนงาน CNC ภายในโดยประมาณ ข้อมูลนี้จะไม่ถูกบันทึกและไม่สร้างใบเสนอราคา</value></data>
+  <data name="Sales" xml:space="preserve"><value>ฝ่ายขาย</value></data>
+  <data name="Quotations" xml:space="preserve"><value>ใบเสนอราคา</value></data>
+  <data name="Estimate" xml:space="preserve"><value>ประมาณการ</value></data>
+  <data name="Printing" xml:space="preserve"><value>การพิมพ์ 3 มิติ</value></data>
+  <data name="CncMachining" xml:space="preserve"><value>งาน CNC</value></data>
+  <data name="Scanning" xml:space="preserve"><value>การสแกน 3 มิติ</value></data>
+  <data name="Designing" xml:space="preserve"><value>การออกแบบ 3 มิติ</value></data>
+  <data name="ComingSoon" xml:space="preserve"><value>กำลังพัฒนา</value></data>
+  <data name="Machine" xml:space="preserve"><value>เครื่องจักร</value></data>
+  <data name="MachineCost" xml:space="preserve"><value>ต้นทุนเครื่องจักร</value></data>
+  <data name="RoiYears" xml:space="preserve"><value>ระยะเวลาคืนทุน (ปี)</value></data>
+  <data name="WeekdaysPerMonth" xml:space="preserve"><value>วันทำงานต่อเดือน</value></data>
+  <data name="WorkingHoursPerDay" xml:space="preserve"><value>ชั่วโมงทำงานต่อวัน</value></data>
+  <data name="MachineCostPerHour" xml:space="preserve"><value>ต้นทุนเครื่องจักรต่อชั่วโมง</value></data>
+  <data name="ManualOverride" xml:space="preserve"><value>แก้ไขค่าที่คำนวณได้ ค่านี้จะถูกคำนวณใหม่เมื่อเปลี่ยนข้อมูลต้นทาง</value></data>
+  <data name="RoiBreakdown" xml:space="preserve"><value>{0} เดือน · {1} วัน · {2} ชั่วโมงทำงาน</value></data>
+  <data name="Job" xml:space="preserve"><value>งาน</value></data>
+  <data name="PartCount" xml:space="preserve"><value>จำนวนชิ้นงาน</value></data>
+  <data name="Hours" xml:space="preserve"><value>ชั่วโมงต่อชิ้น</value></data>
+  <data name="Minutes" xml:space="preserve"><value>นาทีต่อชิ้น</value></data>
+  <data name="MachineCostAllParts" xml:space="preserve"><value>ต้นทุนการผลิตทุกชิ้น</value></data>
+  <data name="MachineHours" xml:space="preserve"><value>{0} ชั่วโมงต่อชิ้น · {1} ชั่วโมงรวม</value></data>
+  <data name="Material" xml:space="preserve"><value>วัสดุ</value></data>
+  <data name="StockX" xml:space="preserve"><value>ความยาววัสดุ (มม.)</value></data>
+  <data name="StockY" xml:space="preserve"><value>ความกว้างวัสดุ (มม.)</value></data>
+  <data name="StockZ" xml:space="preserve"><value>ความสูงวัสดุ (มม.)</value></data>
+  <data name="StockCostPerKilogram" xml:space="preserve"><value>ราคาวัสดุต่อกิโลกรัม</value></data>
+  <data name="StockWeight" xml:space="preserve"><value>น้ำหนักวัสดุ (กก.)</value></data>
+  <data name="StockMarkup" xml:space="preserve"><value>ส่วนเพิ่มราคาวัสดุ (%)</value></data>
+  <data name="MaterialCostPerPart" xml:space="preserve"><value>ต้นทุนวัสดุต่อชิ้น</value></data>
+  <data name="MaterialCostAllParts" xml:space="preserve"><value>ต้นทุนวัสดุรวม</value></data>
+  <data name="StockVolume" xml:space="preserve"><value>ปริมาตรวัสดุ: {0} มม.³</value></data>
+  <data name="Electricity" xml:space="preserve"><value>ไฟฟ้า</value></data>
+  <data name="MaximumPower" xml:space="preserve"><value>กำลังไฟสูงสุด (กิโลวัตต์)</value></data>
+  <data name="ElectricityBaseCost" xml:space="preserve"><value>ค่าไฟพื้นฐาน</value></data>
+  <data name="CostPerKwh" xml:space="preserve"><value>ค่าไฟต่อกิโลวัตต์ชั่วโมง</value></data>
+  <data name="ElectricityCost" xml:space="preserve"><value>ต้นทุนไฟฟ้า</value></data>
+  <data name="PowerConsumption" xml:space="preserve"><value>พลังงานรวม: {0} กิโลวัตต์ชั่วโมง</value></data>
+  <data name="Setup" xml:space="preserve"><value>การตั้งเครื่อง</value></data>
+  <data name="NumberOfSetups" xml:space="preserve"><value>จำนวนครั้งที่ตั้งเครื่อง</value></data>
+  <data name="CostPerSetup" xml:space="preserve"><value>ต้นทุนต่อการตั้งเครื่อง</value></data>
+  <data name="SetupCostAllParts" xml:space="preserve"><value>ต้นทุนการตั้งเครื่องรวม</value></data>
+  <data name="SetupCostPerPart" xml:space="preserve"><value>ต้นทุนการตั้งเครื่องต่อชิ้น: {0}</value></data>
+  <data name="Summary" xml:space="preserve"><value>สรุป</value></data>
+  <data name="MaterialCost" xml:space="preserve"><value>ต้นทุนวัสดุ</value></data>
+  <data name="SetupCost" xml:space="preserve"><value>ต้นทุนการตั้งเครื่อง</value></data>
+  <data name="GrandTotal" xml:space="preserve"><value>รวม</value></data>
+  <data name="Reset" xml:space="preserve"><value>คืนค่าเริ่มต้นเดิม</value></data>
+</root>
