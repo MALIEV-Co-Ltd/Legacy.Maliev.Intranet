@@ -749,6 +749,15 @@ app.MapDelete("/bff/invoices/{id:int}", (int id, InvoiceDetailAggregator aggrega
         .RequireClaim("permissions", LegacyEmployeePermissions.AccountingFilesRead)
         .RequireClaim("permissions", LegacyEmployeePermissions.AccountingFilesDelete)
         .RequireClaim("permissions", LegacyEmployeePermissions.FileUploadsDelete));
+app.MapPost("/bff/invoices/{id:int}/receipt", InvoiceReceiptEndpointMapper.CreateAsync)
+    .AddEndpointFilter<AntiforgeryValidationFilter>()
+    .RequireAuthorization(LegacyEmployeePermissions.AccountingCreate);
+app.MapDelete("/bff/invoices/{id:int}/receipt", InvoiceReceiptEndpointMapper.RemoveAsync)
+    .AddEndpointFilter<AntiforgeryValidationFilter>()
+    .RequireAuthorization(LegacyEmployeePermissions.AccountingDelete);
+app.MapPost("/bff/invoices/{id:int}/receipt/email", InvoiceReceiptEndpointMapper.EmailAsync)
+    .AddEndpointFilter<AntiforgeryValidationFilter>()
+    .RequireAuthorization(LegacyEmployeePermissions.AccountingUpdate);
 
 app.MapGet("/bff/quotation-requests", (
     QuotationRequestSort? sort,

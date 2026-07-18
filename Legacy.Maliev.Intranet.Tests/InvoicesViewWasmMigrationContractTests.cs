@@ -19,6 +19,9 @@ public sealed class InvoicesViewWasmMigrationContractTests
         Assert.Contains("@page \"/Invoices/View\"", page, StringComparison.Ordinal);
         Assert.Contains("/bff/invoices/", page, StringComparison.Ordinal);
         Assert.Contains("X-CSRF-TOKEN", page, StringComparison.Ordinal);
+        Assert.Contains("/receipt", page, StringComparison.Ordinal);
+        Assert.Contains("Idempotency-Key", page, StringComparison.Ordinal);
+        Assert.Contains("Guid.NewGuid", page, StringComparison.Ordinal);
         Assert.Contains("If-Unmodified-Since", proxy, StringComparison.Ordinal);
         Assert.Contains("/uploads/SignedUrl", files, StringComparison.Ordinal);
         Assert.Contains("AddEndpointFilter<AntiforgeryValidationFilter>()", program, StringComparison.Ordinal);
@@ -26,6 +29,8 @@ public sealed class InvoicesViewWasmMigrationContractTests
         Assert.Contains("LegacyEmployeePermissions.AccountingUpdate", program, StringComparison.Ordinal);
         Assert.Contains("LegacyEmployeePermissions.AccountingDelete", program, StringComparison.Ordinal);
         Assert.DoesNotContain("access_token", page, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("CustomerEmail", page, StringComparison.Ordinal);
+        Assert.DoesNotContain("Signature", page, StringComparison.Ordinal);
         Assert.DoesNotContain("jquery", page, StringComparison.OrdinalIgnoreCase);
     }
 

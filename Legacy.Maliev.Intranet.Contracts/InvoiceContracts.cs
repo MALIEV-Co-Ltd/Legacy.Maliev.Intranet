@@ -110,3 +110,13 @@ public sealed record InvoiceUpdateRequest(
     DateTime? PaymentDate,
     string? InternalComment,
     DateTime ModifiedDate);
+
+/// <summary>Browser intent for receipt creation; recipient and signature authority stay server-side.</summary>
+public sealed record CreateInvoiceReceiptRequest(string? Comment, bool SendEmail);
+
+/// <summary>Browser-safe receipt workflow result.</summary>
+public sealed record InvoiceReceiptWorkflowResult(
+    int? ReceiptId,
+    int State,
+    int EmailState,
+    string? ProviderMessageId);

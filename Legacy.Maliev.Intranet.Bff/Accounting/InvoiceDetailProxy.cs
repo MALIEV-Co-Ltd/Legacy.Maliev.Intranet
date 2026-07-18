@@ -50,6 +50,46 @@ public sealed class InvoiceDetailProxy(HttpClient httpClient)
     public Task<HttpResponseMessage> DeleteInvoiceFileAsync(int id, CancellationToken cancellationToken) =>
         SendAsync(new(HttpMethod.Delete, $"/invoices/files/{id}"), cancellationToken);
 
+    /// <summary>Creates or reconciles one receipt using Accounting-owned authority lookups.</summary>
+    public Task<HttpResponseMessage> CreateReceiptAsync(
+        int id,
+        CreateInvoiceReceiptRequest input,
+        int employeeId,
+        Guid operationId,
+        CancellationToken cancellationToken) =>
+        SendReceiptAsync(
+            new HttpRequestMessage(HttpMethod.Post, $"/invoices/{id}/receipt") { Content = JsonContent.Create(input) },
+            employeeId,
+            operationId,
+            cancellationToken);
+
+    /// <summary>Removes one receipt idempotently.</summary>
+    public Task<HttpResponseMessage> RemoveReceiptAsync(int id, Guid operationId, CancellationToken cancellationToken) =>
+        SendReceiptAsync(new(HttpMethod.Delete, $"/invoices/{id}/receipt"), null, operationId, cancellationToken);
+
+    /// <summary>Explicitly emails one existing receipt.</summary>
+    public Task<HttpResponseMessage> EmailReceiptAsync(
+        int id,
+        int employeeId,
+        Guid operationId,
+        CancellationToken cancellationToken) =>
+        SendReceiptAsync(new(HttpMethod.Post, $"/invoices/{id}/receipt/email"), employeeId, operationId, cancellationToken);
+
+    private Task<HttpResponseMessage> SendReceiptAsync(
+        HttpRequestMessage request,
+        int? employeeId,
+        Guid operationId,
+        CancellationToken cancellationToken)
+    {
+        request.Headers.Add("Idempotency-Key", operationId.ToString("D"));
+        if (employeeId is not null)
+        {
+            request.Headers.Add("X-Legacy-Employee-Id", employeeId.Value.ToString(CultureInfo.InvariantCulture));
+        }
+
+        return SendAsync(request, cancellationToken);
+    }
+
     private async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
     {
         using (request)
