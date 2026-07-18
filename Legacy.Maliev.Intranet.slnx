@@ -3,6 +3,7 @@
   <Project Path="Legacy.Maliev.Intranet.Client/Legacy.Maliev.Intranet.Client.csproj" />
   <Project Path="Legacy.Maliev.Intranet.Client.Features.Catalog/Legacy.Maliev.Intranet.Client.Features.Catalog.csproj" />
   <Project Path="Legacy.Maliev.Intranet.Client.Features.Customers/Legacy.Maliev.Intranet.Client.Features.Customers.csproj" />
+  <Project Path="Legacy.Maliev.Intranet.Client.Features.Diagnostics/Legacy.Maliev.Intranet.Client.Features.Diagnostics.csproj" />
   <Project Path="Legacy.Maliev.Intranet.Client.Features.Employees/Legacy.Maliev.Intranet.Client.Features.Employees.csproj" />
   <Project Path="Legacy.Maliev.Intranet.Client.Features.Orders/Legacy.Maliev.Intranet.Client.Features.Orders.csproj" />
   <Project Path="Legacy.Maliev.Intranet.Client.Features.Procurement/Legacy.Maliev.Intranet.Client.Features.Procurement.csproj" />

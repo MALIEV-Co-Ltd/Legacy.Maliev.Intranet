@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
+  <data name="PageTitle" xml:space="preserve"><value>Diagnostics - MALIEV Intranet</value></data>
+  <data name="Operations" xml:space="preserve"><value>Operations</value></data>
+  <data name="Title" xml:space="preserve"><value>Recent service failures</value></data>
+  <data name="PrivacyNote" xml:space="preserve"><value>This bounded feed contains redacted BFF metadata only. Exception text, stack traces, query strings, credentials, and employee or customer data are never retained.</value></data>
+  <data name="Search" xml:space="preserve"><value>Search code, category, path, or correlation ID</value></data>
+  <data name="Sort" xml:space="preserve"><value>Sort</value></data>
+  <data name="PerPage" xml:space="preserve"><value>Per page</value></data>
+  <data name="Apply" xml:space="preserve"><value>Apply</value></data>
+  <data name="Refresh" xml:space="preserve"><value>Refresh</value></data>
+  <data name="Loading" xml:space="preserve"><value>Loading recent failures</value></data>
+  <data name="Empty" xml:space="preserve"><value>No recent BFF failures were recorded.</value></data>
+  <data name="Timestamp" xml:space="preserve"><value>Timestamp</value></data>
+  <data name="Level" xml:space="preserve"><value>Level</value></data>
+  <data name="Code" xml:space="preserve"><value>Code</value></data>
+  <data name="Category" xml:space="preserve"><value>Category</value></data>
+  <data name="Path" xml:space="preserve"><value>Redacted path</value></data>
+  <data name="CorrelationId" xml:space="preserve"><value>Correlation ID</value></data>
+  <data name="Pages" xml:space="preserve"><value>Diagnostic event pages</value></data>
+  <data name="Previous" xml:space="preserve"><value>Previous</value></data>
+  <data name="Next" xml:space="preserve"><value>Next</value></data>
+  <data name="PageSummary" xml:space="preserve"><value>Page {0} of {1} · {2} events</value></data>
+  <data name="Forbidden" xml:space="preserve"><value>You do not have access to operational diagnostics.</value></data>
+  <data name="Unavailable" xml:space="preserve"><value>Operational diagnostics are temporarily unavailable.</value></data>
+  <data name="LogId_Ascending" xml:space="preserve"><value>Oldest ID first</value></data>
+  <data name="LogId_Descending" xml:space="preserve"><value>Newest ID first</value></data>
+  <data name="LogTimestamp_Ascending" xml:space="preserve"><value>Oldest timestamp first</value></data>
+  <data name="LogTimestamp_Descending" xml:space="preserve"><value>Newest timestamp first</value></data>
+  <data name="LogLevel_Ascending" xml:space="preserve"><value>Level ascending</value></data>
+  <data name="LogLevel_Descending" xml:space="preserve"><value>Level descending</value></data>
+</root>

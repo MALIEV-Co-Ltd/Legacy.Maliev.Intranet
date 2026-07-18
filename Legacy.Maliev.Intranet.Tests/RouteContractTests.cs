@@ -14,7 +14,7 @@ public sealed class RouteContractTests : IClassFixture<IntranetFactory>
     [Fact]
     public void Inventory_PreservesEveryHistoricalRouteExactlyOnce()
     {
-        Assert.Equal(42, LegacyRoutes.All.Count);
+        Assert.Equal(41, LegacyRoutes.All.Count);
         Assert.Equal(LegacyRoutes.All.Count, LegacyRoutes.All.Distinct(StringComparer.OrdinalIgnoreCase).Count());
         Assert.Contains("/QuotationRequests/View", LegacyRoutes.All);
         Assert.Contains("/Finances/YearlyActivityChart", LegacyRoutes.All);

@@ -26,6 +26,8 @@
     {
         var assemblyName = context.Path.StartsWith("Materials/", StringComparison.OrdinalIgnoreCase)
             ? "Legacy.Maliev.Intranet.Client.Features.Catalog.wasm"
+            : context.Path.StartsWith("Server/", StringComparison.OrdinalIgnoreCase)
+                ? "Legacy.Maliev.Intranet.Client.Features.Diagnostics.wasm"
             : context.Path.StartsWith("Customers/", StringComparison.OrdinalIgnoreCase)
                 ? "Legacy.Maliev.Intranet.Client.Features.Customers.wasm"
                 : context.Path.StartsWith("Employees/", StringComparison.OrdinalIgnoreCase)

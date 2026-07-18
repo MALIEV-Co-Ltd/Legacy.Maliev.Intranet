@@ -1,0 +1,145 @@
+@page "/Server/ErrorReport"
+@attribute [Authorize]
+@inject HttpClient Http
+@inject NavigationManager Navigation
+@inject IStringLocalizer<ErrorReport> Text
+
+<PageTitle>@Text["PageTitle"]</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge">
+    <MudText Typo="Typo.overline">@Text["Operations"]</MudText>
+    <MudText Typo="Typo.h4" HtmlTag="h1" Class="mb-2">@Text["Title"]</MudText>
+    <MudAlert Severity="Severity.Info" Class="mb-4">@Text["PrivacyNote"]</MudAlert>
+
+    <MudPaper Class="pa-4 mb-4">
+        <div class="d-flex flex-wrap gap-3 align-end">
+            <MudTextField T="string" @bind-Value="searchInput" Label="@Text["Search"]" Variant="Variant.Outlined" />
+            <MudSelect T="DiagnosticEventSort" @bind-Value="sortInput" Label="@Text["Sort"]" Variant="Variant.Outlined">
+                @foreach (var option in Enum.GetValues<DiagnosticEventSort>())
+                {
+                    <MudSelectItem Value="option">@Text[option.ToString()]</MudSelectItem>
+                }
+            </MudSelect>
+            <MudSelect T="int" @bind-Value="sizeInput" Label="@Text["PerPage"]" Variant="Variant.Outlined">
+                <MudSelectItem Value="25">25</MudSelectItem>
+                <MudSelectItem Value="50">50</MudSelectItem>
+                <MudSelectItem Value="100">100</MudSelectItem>
+            </MudSelect>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="ApplyFiltersAsync">@Text["Apply"]</MudButton>
+            <MudButton Variant="Variant.Outlined" OnClick="LoadAsync">@Text["Refresh"]</MudButton>
+        </div>
+    </MudPaper>
+
+    @if (loading)
+    {
+        <MudProgressLinear Indeterminate="true" Color="Color.Primary" aria-label="@Text["Loading"]" />
+    }
+    else if (!string.IsNullOrWhiteSpace(error))
+    {
+        <MudAlert Severity="Severity.Error">@error</MudAlert>
+    }
+    else if (page is null || page.Items.Count == 0)
+    {
+        <MudAlert Severity="Severity.Success">@Text["Empty"]</MudAlert>
+    }
+    else
+    {
+        <MudTable Items="page.Items" Hover="true" Breakpoint="Breakpoint.Sm" Elevation="1">
+            <HeaderContent>
+                <MudTh>@Text["Timestamp"]</MudTh>
+                <MudTh>@Text["Level"]</MudTh>
+                <MudTh>@Text["Code"]</MudTh>
+                <MudTh>@Text["Category"]</MudTh>
+                <MudTh>@Text["Path"]</MudTh>
+                <MudTh>@Text["CorrelationId"]</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd DataLabel="@Text["Timestamp"]">@context.Timestamp.ToLocalTime().ToString("g")</MudTd>
+                <MudTd DataLabel="@Text["Level"]">@context.Level</MudTd>
+                <MudTd DataLabel="@Text["Code"]"><code>@context.Code</code></MudTd>
+                <MudTd DataLabel="@Text["Category"]">@context.Category</MudTd>
+                <MudTd DataLabel="@Text["Path"]"><code>@context.Path</code></MudTd>
+                <MudTd DataLabel="@Text["CorrelationId"]"><code>@context.CorrelationId</code></MudTd>
+            </RowTemplate>
+        </MudTable>
+        <nav class="d-flex flex-wrap align-center justify-space-between gap-3 mt-4" aria-label="@Text["Pages"]">
+            <MudButton Disabled="@(!page.HasPreviousPage)" OnClick="PreviousPageAsync">@Text["Previous"]</MudButton>
+            <MudText aria-live="polite">@Text["PageSummary", page.PageIndex, page.TotalPages, page.TotalRecords]</MudText>
+            <MudButton Disabled="@(!page.HasNextPage)" OnClick="NextPageAsync">@Text["Next"]</MudButton>
+        </nav>
+    }
+</MudContainer>
+
+@code {
+    [SupplyParameterFromQuery(Name = "search")] public string? Search { get; set; }
+    [SupplyParameterFromQuery(Name = "sort")] public string? SortQuery { get; set; }
+    [SupplyParameterFromQuery(Name = "index")] public int Index { get; set; } = 1;
+    [SupplyParameterFromQuery(Name = "size")] public int Size { get; set; } = 50;
+
+    private DiagnosticEventPage? page;
+    private string? error;
+    private bool loading;
+    private string? searchInput;
+    private DiagnosticEventSort sortInput;
+    private DiagnosticEventSort currentSort = DiagnosticEventSort.LogTimestamp_Descending;
+    private int sizeInput = 50;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        Index = Math.Max(1, Index);
+        Size = Math.Clamp(Size, 1, 100);
+        currentSort = Enum.TryParse<DiagnosticEventSort>(SortQuery, true, out var parsed)
+            ? parsed
+            : DiagnosticEventSort.LogTimestamp_Descending;
+        searchInput = Search;
+        sortInput = currentSort;
+        sizeInput = Size;
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        loading = true;
+        error = null;
+        try
+        {
+            var uri = $"/bff/diagnostics/events?sort={currentSort}&search={Uri.EscapeDataString(Search ?? string.Empty)}&index={Index}&size={Size}";
+            using var response = await Http.GetAsync(uri);
+            if (response.StatusCode == HttpStatusCode.Unauthorized)
+            {
+                Navigation.NavigateTo($"/Login?returnUrl={Uri.EscapeDataString(Navigation.ToBaseRelativePath(Navigation.Uri))}");
+                return;
+            }
+
+            if (!response.IsSuccessStatusCode)
+            {
+                error = response.StatusCode == HttpStatusCode.Forbidden ? Text["Forbidden"] : Text["Unavailable"];
+                return;
+            }
+
+            page = await response.Content.ReadFromJsonAsync<DiagnosticEventPage>();
+            if (page is null)
+            {
+                error = Text["Unavailable"];
+            }
+        }
+        catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException)
+        {
+            error = Text["Unavailable"];
+        }
+        finally
+        {
+            loading = false;
+        }
+    }
+
+    private Task ApplyFiltersAsync() => NavigateAsync(1, searchInput, sortInput, sizeInput);
+    private Task PreviousPageAsync() => NavigateAsync(Math.Max(1, Index - 1), Search, currentSort, Size);
+    private Task NextPageAsync() => NavigateAsync(Index + 1, Search, currentSort, Size);
+
+    private Task NavigateAsync(int index, string? search, DiagnosticEventSort sort, int size)
+    {
+        Navigation.NavigateTo($"/Server/ErrorReport?search={Uri.EscapeDataString(search ?? string.Empty)}&sort={sort}&index={index}&size={Math.Clamp(size, 1, 100)}");
+        return Task.CompletedTask;
+    }
+}

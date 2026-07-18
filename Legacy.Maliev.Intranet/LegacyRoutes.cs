@@ -42,7 +42,6 @@ public static class LegacyRoutes
         "/Quotations/Estimate",
         "/Quotations/Index",
         "/Quotations/View",
-        "/Server/ErrorReport",
         "/Suppliers/Create",
         "/Suppliers/Index",
         "/Suppliers/View",
