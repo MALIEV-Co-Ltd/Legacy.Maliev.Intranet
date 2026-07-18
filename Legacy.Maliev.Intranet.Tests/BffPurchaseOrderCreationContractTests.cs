@@ -210,14 +210,14 @@ public sealed class BffPurchaseOrderCreationContractTests
             AttemptId = attemptId;
             return Task.FromResult(new PurchaseOrderCreatedData(84, new DateTime(2026, 7, 18)));
         }
-        public Task<int> CreateItemAsync(int purchaseOrderId, PurchaseOrderCreateItem item, CancellationToken cancellationToken) => Task.FromResult(9);
+        public Task<int> CreateItemAsync(int purchaseOrderId, PurchaseOrderCreateItem item, string attemptId, int itemIndex, CancellationToken cancellationToken) => Task.FromResult(9);
         public Task<PurchaseOrderDocumentReferences> GetDocumentReferencesAsync(PurchaseOrderCreateRequest request, CancellationToken cancellationToken) => Task.FromResult(new PurchaseOrderDocumentReferences(
             new("Acme", null, null, null, null, new("Supplier Road", null, null, "Bangkok", null, "10110", 66)),
             new("Ship Road", null, null, "Bangkok", null, "10110", 66),
             new("Bill Road", null, null, "Bangkok", null, "10110", 66), "Somchai Tester", new Dictionary<int, string> { [66] = "Thailand" }));
         public Task<byte[]> RenderPdfAsync(PurchaseOrderPdfDocument document, CancellationToken cancellationToken) => Task.FromResult("%PDF-fake"u8.ToArray());
         public Task<PurchaseOrderStoredFile> UploadPdfAsync(int purchaseOrderId, byte[] pdf, string attemptId, CancellationToken cancellationToken) => Task.FromResult(new PurchaseOrderStoredFile("maliev.com", "purchaseorders/84/PurchaseOrder_84.pdf"));
-        public Task<int> LinkFileAsync(int purchaseOrderId, PurchaseOrderStoredFile file, CancellationToken cancellationToken) => Task.FromResult(5);
+        public Task<int> LinkFileAsync(int purchaseOrderId, PurchaseOrderStoredFile file, string attemptId, CancellationToken cancellationToken) => Task.FromResult(5);
         public Task DeleteFileLinkAsync(int fileId, CancellationToken cancellationToken) => Task.CompletedTask;
         public Task DeleteStoredFileAsync(PurchaseOrderStoredFile file, CancellationToken cancellationToken) => Task.CompletedTask;
         public Task DeleteItemAsync(int itemId, CancellationToken cancellationToken) => Task.CompletedTask;

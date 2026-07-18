@@ -135,7 +135,7 @@ public interface IPurchaseOrderCreationGateway
     /// <summary>Creates the root purchase order with a replay-safe attempt identifier.</summary>
     Task<PurchaseOrderCreatedData> CreateOrderAsync(PurchaseOrderCreateRequest request, string attemptId, CancellationToken cancellationToken);
     /// <summary>Creates one line item owned by the root order.</summary>
-    Task<int> CreateItemAsync(int purchaseOrderId, PurchaseOrderCreateItem item, CancellationToken cancellationToken);
+    Task<int> CreateItemAsync(int purchaseOrderId, PurchaseOrderCreateItem item, string attemptId, int itemIndex, CancellationToken cancellationToken);
     /// <summary>Loads references required to construct the QuestPDF contract.</summary>
     Task<PurchaseOrderDocumentReferences> GetDocumentReferencesAsync(PurchaseOrderCreateRequest request, CancellationToken cancellationToken);
     /// <summary>Renders the purchase-order PDF through DocumentService.</summary>
@@ -143,7 +143,7 @@ public interface IPurchaseOrderCreationGateway
     /// <summary>Uploads and scans the generated PDF through FileService.</summary>
     Task<PurchaseOrderStoredFile> UploadPdfAsync(int purchaseOrderId, byte[] pdf, string attemptId, CancellationToken cancellationToken);
     /// <summary>Links the clean object metadata to the purchase order.</summary>
-    Task<int> LinkFileAsync(int purchaseOrderId, PurchaseOrderStoredFile file, CancellationToken cancellationToken);
+    Task<int> LinkFileAsync(int purchaseOrderId, PurchaseOrderStoredFile file, string attemptId, CancellationToken cancellationToken);
     /// <summary>Deletes a linked file-metadata record during compensation.</summary>
     Task DeleteFileLinkAsync(int fileId, CancellationToken cancellationToken);
     /// <summary>Deletes a clean stored object during compensation.</summary>
@@ -208,9 +208,9 @@ public sealed class PurchaseOrderCreationService(
             }
 
             orderId = order.Id;
-            foreach (var item in request.Items)
+            for (var itemIndex = 0; itemIndex < request.Items.Count; itemIndex++)
             {
-                var itemId = await gateway.CreateItemAsync(order.Id, item, cancellationToken);
+                var itemId = await gateway.CreateItemAsync(order.Id, request.Items[itemIndex], attemptId, itemIndex, cancellationToken);
                 if (itemId <= 0)
                 {
                     throw new PurchaseOrderGatewayException(PurchaseOrderCreationStatus.BadGateway);
@@ -233,7 +233,7 @@ public sealed class PurchaseOrderCreationService(
                 throw new PurchaseOrderGatewayException(PurchaseOrderCreationStatus.BadGateway);
             }
 
-            fileId = await gateway.LinkFileAsync(order.Id, storedFile, cancellationToken);
+            fileId = await gateway.LinkFileAsync(order.Id, storedFile, attemptId, cancellationToken);
             if (fileId <= 0)
             {
                 throw new PurchaseOrderGatewayException(PurchaseOrderCreationStatus.BadGateway);

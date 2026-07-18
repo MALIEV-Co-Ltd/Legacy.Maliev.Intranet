@@ -17,11 +17,13 @@ public sealed class PurchaseOrderCreationServiceTests
         Assert.Equal(PurchaseOrderCreationStatus.Created, result.Status);
         Assert.Equal(84, result.PurchaseOrderId);
         Assert.Equal([9, 10], gateway.CreatedItemIds);
+        Assert.Equal([("attempt-1", 0), ("attempt-1", 1)], gateway.ItemAttempts);
         Assert.NotNull(gateway.Document);
         Assert.Equal("ไม้เอก ไม้โท", gateway.Document!.Notes);
         Assert.Equal("คุณสมชาย", gateway.Document.Supplier.ContactName);
         Assert.Equal(84, gateway.UploadedOrderId);
         Assert.Equal(5, gateway.LinkedFileId);
+        Assert.Equal("attempt-1", gateway.LinkAttempt);
     }
 
     [Fact]
@@ -64,10 +66,12 @@ public sealed class PurchaseOrderCreationServiceTests
 
         public bool FailFileLink { get; init; }
         public List<int> CreatedItemIds { get; } = [];
+        public List<(string AttemptId, int ItemIndex)> ItemAttempts { get; } = [];
         public List<string> Compensations { get; } = [];
         public PurchaseOrderPdfDocument? Document { get; private set; }
         public int? UploadedOrderId { get; private set; }
         public int? LinkedFileId { get; private set; }
+        public string? LinkAttempt { get; private set; }
 
         public Task<PurchaseOrderCreateOptions> GetOptionsAsync(CancellationToken cancellationToken) =>
             Task.FromResult(new PurchaseOrderCreateOptions([], [], []));
@@ -75,10 +79,11 @@ public sealed class PurchaseOrderCreationServiceTests
         public Task<PurchaseOrderCreatedData> CreateOrderAsync(PurchaseOrderCreateRequest request, string attemptId, CancellationToken cancellationToken) =>
             Task.FromResult(new PurchaseOrderCreatedData(84, new DateTime(2030, 7, 15, 10, 30, 0, DateTimeKind.Utc)));
 
-        public Task<int> CreateItemAsync(int purchaseOrderId, PurchaseOrderCreateItem item, CancellationToken cancellationToken)
+        public Task<int> CreateItemAsync(int purchaseOrderId, PurchaseOrderCreateItem item, string attemptId, int itemIndex, CancellationToken cancellationToken)
         {
             var id = nextItemId++;
             CreatedItemIds.Add(id);
+            ItemAttempts.Add((attemptId, itemIndex));
             return Task.FromResult(id);
         }
 
@@ -102,8 +107,9 @@ public sealed class PurchaseOrderCreationServiceTests
             return Task.FromResult(new PurchaseOrderStoredFile("maliev.com", "purchaseorders/84.pdf"));
         }
 
-        public Task<int> LinkFileAsync(int purchaseOrderId, PurchaseOrderStoredFile file, CancellationToken cancellationToken)
+        public Task<int> LinkFileAsync(int purchaseOrderId, PurchaseOrderStoredFile file, string attemptId, CancellationToken cancellationToken)
         {
+            LinkAttempt = attemptId;
             if (FailFileLink)
             {
                 throw new HttpRequestException("link failed");

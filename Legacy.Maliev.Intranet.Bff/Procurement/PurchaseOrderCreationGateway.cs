@@ -1,6 +1,8 @@
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
 using Legacy.Maliev.Intranet.Contracts;
 using Legacy.Maliev.Intranet.PurchaseOrders;
@@ -49,12 +51,13 @@ public sealed class PurchaseOrderCreationGateway(IHttpClientFactory clients) : I
     }
 
     /// <inheritdoc />
-    public async Task<int> CreateItemAsync(int purchaseOrderId, PurchaseOrderCreateItem item, CancellationToken cancellationToken)
+    public async Task<int> CreateItemAsync(int purchaseOrderId, PurchaseOrderCreateItem item, string attemptId, int itemIndex, CancellationToken cancellationToken)
     {
         using var message = new HttpRequestMessage(HttpMethod.Post, "/purchaseorders/orderitems")
         {
             Content = JsonContent.Create(new ItemWrite(purchaseOrderId, item.PartNumber, item.Description, item.Quantity, item.UnitPrice)),
         };
+        message.Headers.Add("Idempotency-Key", OperationId(attemptId, $"item:{itemIndex}"));
         return (await SendAsync<CreatedId>(clients.CreateClient(ProcurementClient), message, cancellationToken)).Id;
     }
 
@@ -99,17 +102,18 @@ public sealed class PurchaseOrderCreationGateway(IHttpClientFactory clients) : I
         multipart.Add(file, "files", $"PurchaseOrder_{purchaseOrderId}.pdf");
         var path = $"purchaseorders/{purchaseOrderId}";
         using var message = new HttpRequestMessage(HttpMethod.Post, $"/Uploads?bucket=maliev.com&path={Uri.EscapeDataString(path)}") { Content = multipart };
-        message.Headers.Add("Idempotency-Key", attemptId);
+        message.Headers.Add("Idempotency-Key", OperationId(attemptId, "pdf-upload"));
         var result = await SendAsync<UploadResult>(clients.CreateClient(FileClient), message, cancellationToken);
         var stored = result.Object.SingleOrDefault() ?? throw new PurchaseOrderGatewayException(PurchaseOrderCreationStatus.BadGateway);
         return new(stored.Bucket, stored.ObjectName);
     }
 
     /// <inheritdoc />
-    public async Task<int> LinkFileAsync(int purchaseOrderId, PurchaseOrderStoredFile file, CancellationToken cancellationToken)
+    public async Task<int> LinkFileAsync(int purchaseOrderId, PurchaseOrderStoredFile file, string attemptId, CancellationToken cancellationToken)
     {
         var uri = $"/purchaseorders/{purchaseOrderId}/files?bucket={Uri.EscapeDataString(file.Bucket)}&objectName={Uri.EscapeDataString(file.ObjectName)}";
         using var message = new HttpRequestMessage(HttpMethod.Post, uri);
+        message.Headers.Add("Idempotency-Key", OperationId(attemptId, "file-link"));
         return (await SendAsync<CreatedId>(clients.CreateClient(ProcurementClient), message, cancellationToken)).Id;
     }
 
@@ -169,6 +173,16 @@ public sealed class PurchaseOrderCreationGateway(IHttpClientFactory clients) : I
 
     private static PurchaseOrderCreatedData MapOrder(OrderData value) =>
         value.Id > 0 && value.CreatedDate is { } date ? new(value.Id, date) : throw new PurchaseOrderGatewayException(PurchaseOrderCreationStatus.BadGateway);
+
+    private static string OperationId(string attemptId, string operation)
+    {
+        var hash = SHA256.HashData(Encoding.UTF8.GetBytes($"{attemptId}:{operation}"));
+        Span<byte> value = stackalloc byte[16];
+        hash.AsSpan(0, value.Length).CopyTo(value);
+        value[7] = (byte)((value[7] & 0x0f) | 0x50);
+        value[8] = (byte)((value[8] & 0x3f) | 0x80);
+        return new Guid(value).ToString("D");
+    }
 
     private static PurchaseOrderPostalAddress Address(AddressData value) => new(value.AddressLine1, value.AddressLine2, value.Building, value.City, value.State, value.PostalCode, value.CountryId);
     private static PurchaseOrderPostalAddress Address(SupplierAddressData value) => new(value.Address1, value.Address2, value.Building, value.City, value.State, value.PostalCode, value.CountryId);
