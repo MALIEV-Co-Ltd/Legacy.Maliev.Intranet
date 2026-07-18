@@ -1,0 +1,93 @@
+@page "/Employees/EmailConfirmation"
+@attribute [AllowAnonymous]
+@inject HttpClient Http
+@inject IStringLocalizer<EmployeeEmailConfirmation> Text
+
+<PageTitle>@Text["PageTitle"]</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Small" Class="employee-recovery">
+    <MudPaper Class="pa-6" Elevation="1">
+        <MudText Typo="Typo.h4" HtmlTag="h1" Class="mb-2">@Text["Heading"]</MudText>
+        <MudText Typo="Typo.body1" Class="mb-6">@Text["Introduction"]</MudText>
+        @if (!HasValidAction)
+        {
+            <MudAlert Severity="Severity.Error" aria-live="assertive">@Text["InvalidLink"]</MudAlert>
+        }
+        else
+        {
+            @if (!string.IsNullOrWhiteSpace(notice))
+            {
+                <MudAlert Severity="@noticeSeverity" Class="mb-4" aria-live="polite">@notice</MudAlert>
+            }
+            @if (submitting)
+            {
+                <MudProgressLinear Indeterminate="true" Color="Color.Primary" Class="mb-4" />
+            }
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" ButtonType="ButtonType.Button"
+                       OnClick="ConfirmAsync" Disabled="@(submitting || completed)" FullWidth="true">@Text["Confirm"]</MudButton>
+        }
+        <MudButton Href="/Login" Variant="Variant.Text" Class="mt-3">@Text["BackToLogin"]</MudButton>
+    </MudPaper>
+</MudContainer>
+
+@code {
+    private bool submitting;
+    private bool completed;
+    private string? notice;
+    private Severity noticeSeverity = Severity.Info;
+
+    [SupplyParameterFromQuery(Name = "email")] public string? Email { get; set; }
+    [SupplyParameterFromQuery(Name = "token")] public string? Token { get; set; }
+    private bool HasValidAction => !string.IsNullOrWhiteSpace(Email) && !string.IsNullOrWhiteSpace(Token);
+
+    private async Task ConfirmAsync()
+    {
+        if (submitting || completed || !HasValidAction) return;
+        submitting = true;
+        notice = null;
+        try
+        {
+            var csrf = await GetCsrfAsync();
+            if (csrf is null) { ShowError(Text["Unavailable"]); return; }
+            using var request = new HttpRequestMessage(HttpMethod.Post, "/bff/employee-recovery/email-confirmation/complete")
+            {
+                Content = JsonContent.Create(new EmployeeEmailConfirmationRequest(Email!, Token!)),
+            };
+            request.Headers.Add("X-CSRF-TOKEN", csrf);
+            using var response = await Http.SendAsync(request);
+            if (response.StatusCode == HttpStatusCode.NoContent)
+            {
+                completed = true;
+                noticeSeverity = Severity.Success;
+                notice = Text["Completed"];
+                return;
+            }
+
+            ShowError(response.StatusCode switch
+            {
+                HttpStatusCode.BadRequest => Text["InvalidLink"],
+                HttpStatusCode.TooManyRequests => Text["RateLimited"],
+                _ => Text["Unavailable"],
+            });
+        }
+        catch (Exception exception) when (
+            exception is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException)
+        {
+            ShowError(Text["Unavailable"]);
+        }
+        finally { submitting = false; }
+    }
+
+    private async Task<string?> GetCsrfAsync()
+    {
+        using var response = await Http.GetAsync("/bff/session");
+        if (!response.IsSuccessStatusCode) return null;
+        return (await response.Content.ReadFromJsonAsync<EmployeeSessionSummary>())?.CsrfToken;
+    }
+
+    private void ShowError(string message)
+    {
+        noticeSeverity = Severity.Error;
+        notice = message;
+    }
+}

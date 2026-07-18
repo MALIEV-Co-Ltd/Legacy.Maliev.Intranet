@@ -141,6 +141,20 @@ builder.Services.AddHttpClient<EmployeesProxy>(client =>
                 (int)response.StatusCode >= StatusCodes.Status500InternalServerError),
     });
 });
+builder.Services.AddHttpClient<EmployeeRecoveryAuthProxy>(client =>
+{
+    client.BaseAddress = new Uri(builder.Configuration["Services:Auth"]
+        ?? throw new InvalidOperationException("Services:Auth is required."));
+    client.Timeout = TimeSpan.FromSeconds(10);
+}).RemoveAllResilienceHandlers()
+    .AddHttpMessageHandler<LegacyServiceAuthenticationHandler>();
+builder.Services.AddHttpClient<EmployeeRecoveryNotificationProxy>(client =>
+{
+    client.BaseAddress = new Uri(builder.Configuration["Services:Notification"]
+        ?? throw new InvalidOperationException("Services:Notification is required."));
+    client.Timeout = TimeSpan.FromSeconds(10);
+}).RemoveAllResilienceHandlers()
+    .AddHttpMessageHandler<LegacyServiceAuthenticationHandler>();
 builder.Services.AddHttpClient<OrdersProxy>(client =>
 {
     client.BaseAddress = new Uri(builder.Configuration["Services:Order"]
@@ -326,6 +340,15 @@ builder.Services.AddRateLimiter(options =>
             QueueLimit = 0,
             AutoReplenishment = true,
         }));
+    options.AddPolicy("employee-recovery", context => RateLimitPartition.GetFixedWindowLimiter(
+        context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+        _ => new FixedWindowRateLimiterOptions
+        {
+            PermitLimit = 5,
+            Window = TimeSpan.FromMinutes(5),
+            QueueLimit = 0,
+            AutoReplenishment = true,
+        }));
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
 });
 builder.Services.AddAntiforgery(options =>
@@ -485,6 +508,19 @@ app.MapGet("/bff/session", (HttpContext context, IAntiforgery antiforgery) =>
                 ? legacyDatabaseId
                 : null));
 }).AllowAnonymous();
+
+app.MapPost("/bff/employee-recovery/password-reset/request", EmployeeRecoveryEndpointMapper.RequestPasswordResetAsync)
+    .AddEndpointFilter<AntiforgeryValidationFilter>()
+    .RequireRateLimiting("employee-recovery")
+    .AllowAnonymous();
+app.MapPost("/bff/employee-recovery/password-reset/complete", EmployeeRecoveryEndpointMapper.CompletePasswordResetAsync)
+    .AddEndpointFilter<AntiforgeryValidationFilter>()
+    .RequireRateLimiting("employee-recovery")
+    .AllowAnonymous();
+app.MapPost("/bff/employee-recovery/email-confirmation/complete", EmployeeRecoveryEndpointMapper.CompleteEmailConfirmationAsync)
+    .AddEndpointFilter<AntiforgeryValidationFilter>()
+    .RequireRateLimiting("employee-recovery")
+    .AllowAnonymous();
 
 app.MapGet("/bff/orders", (
     OrderListSort? sort,
