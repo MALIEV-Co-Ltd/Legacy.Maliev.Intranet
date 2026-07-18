@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
+  <data name="PageTitle" xml:space="preserve"><value>Create purchase order - MALIEV Intranet</value></data>
+  <data name="Procurement" xml:space="preserve"><value>Procurement</value></data>
+  <data name="CreatePurchaseOrder" xml:space="preserve"><value>Create purchase order</value></data>
+  <data name="Loading" xml:space="preserve"><value>Loading purchase-order form</value></data>
+  <data name="Supplier" xml:space="preserve"><value>Supplier</value></data>
+  <data name="ContactPerson" xml:space="preserve"><value>Contact person</value></data>
+  <data name="Shipping" xml:space="preserve"><value>Shipping</value></data>
+  <data name="Billing" xml:space="preserve"><value>Billing</value></data>
+  <data name="Address" xml:space="preserve"><value>Address</value></data>
+  <data name="CompanyName" xml:space="preserve"><value>Company name</value></data>
+  <data name="Telephone" xml:space="preserve"><value>Telephone</value></data>
+  <data name="Mobile" xml:space="preserve"><value>Mobile</value></data>
+  <data name="Fax" xml:space="preserve"><value>Fax</value></data>
+  <data name="OrderDetails" xml:space="preserve"><value>Order details</value></data>
+  <data name="OrderedBy" xml:space="preserve"><value>Ordered by</value></data>
+  <data name="Fob" xml:space="preserve"><value>FOB</value></data>
+  <data name="Terms" xml:space="preserve"><value>Terms</value></data>
+  <data name="ShippingMethod" xml:space="preserve"><value>Shipping method</value></data>
+  <data name="Notes" xml:space="preserve"><value>Notes</value></data>
+  <data name="LineItems" xml:space="preserve"><value>Line items</value></data>
+  <data name="AddLineItem" xml:space="preserve"><value>Add line item</value></data>
+  <data name="RemoveLineItem" xml:space="preserve"><value>Remove line item</value></data>
+  <data name="PartNumber" xml:space="preserve"><value>Part number</value></data>
+  <data name="Description" xml:space="preserve"><value>Description</value></data>
+  <data name="Quantity" xml:space="preserve"><value>Quantity</value></data>
+  <data name="UnitPrice" xml:space="preserve"><value>Unit price</value></data>
+  <data name="Submitting" xml:space="preserve"><value>Creating…</value></data>
+  <data name="Cancel" xml:space="preserve"><value>Cancel</value></data>
+  <data name="ValidationFailed" xml:space="preserve"><value>Review the highlighted fields and line items.</value></data>
+  <data name="Forbidden" xml:space="preserve"><value>You do not have permission to create purchase orders.</value></data>
+  <data name="Conflict" xml:space="preserve"><value>This purchase-order attempt conflicts with an existing operation.</value></data>
+  <data name="RateLimited" xml:space="preserve"><value>Too many requests were submitted. Wait a moment and try again.</value></data>
+  <data name="Unavailable" xml:space="preserve"><value>Purchase-order reference data is temporarily unavailable.</value></data>
+  <data name="CreateFailed" xml:space="preserve"><value>The purchase order could not be completed. Any partial resources were rolled back.</value></data>
+  <data name="InvalidResponse" xml:space="preserve"><value>A legacy service returned an invalid response.</value></data>
+</root>

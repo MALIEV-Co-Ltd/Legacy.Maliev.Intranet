@@ -1,0 +1,189 @@
+@page "/PurchaseOrders/Create"
+@attribute [Authorize]
+@inject HttpClient Http
+@inject NavigationManager Navigation
+@inject IStringLocalizer<PurchaseOrderCreate> Text
+
+<PageTitle>@Text["PageTitle"]</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large">
+    <MudText Typo="Typo.overline">@Text["Procurement"]</MudText>
+    <MudText Typo="Typo.h4" HtmlTag="h1" Class="mb-4">@Text["CreatePurchaseOrder"]</MudText>
+    @if (loading)
+    {
+        <MudProgressLinear Indeterminate="true" Color="Color.Primary" aria-label="@Text["Loading"]" />
+    }
+    else
+    {
+        @if (!string.IsNullOrWhiteSpace(error))
+        {
+            <MudAlert Severity="Severity.Error" Class="mb-4" aria-live="assertive">@error</MudAlert>
+        }
+        <MudForm @ref="form" Model="@model" @bind-IsValid="formValid">
+            <MudPaper Class="pa-4 mb-4">
+                <MudText Typo="Typo.h6" HtmlTag="h2">@Text["Supplier"]</MudText>
+                <MudSelect T="int" @bind-Value="model.SupplierId" Label="@Text["Supplier"]" Required="true">
+                    @foreach (var supplier in options?.Suppliers ?? [])
+                    {
+                        <MudSelectItem T="int" Value="supplier.Id">@supplier.Name</MudSelectItem>
+                    }
+                </MudSelect>
+                <MudTextField @bind-Value="model.SupplierContactPerson" Label="@Text["ContactPerson"]" />
+            </MudPaper>
+
+            <MudGrid Class="mb-4">
+                <MudItem xs="12" md="6">
+                    <MudPaper Class="pa-4 h-100">
+                        <MudText Typo="Typo.h6" HtmlTag="h2">@Text["Shipping"]</MudText>
+                        <MudSelect T="int" @bind-Value="model.ShippingAddressId" Label="@Text["Address"]" Required="true">
+                            @foreach (var address in options?.Addresses ?? [])
+                            {
+                                <MudSelectItem T="int" Value="address.Id">@AddressLabel(address)</MudSelectItem>
+                            }
+                        </MudSelect>
+                        <MudTextField @bind-Value="model.ShippingCompanyName" Label="@Text["CompanyName"]" Required="true" />
+                        <MudTextField @bind-Value="model.ShippingContactPerson" Label="@Text["ContactPerson"]" />
+                        <MudTextField @bind-Value="model.ShippingTelephone" Label="@Text["Telephone"]" InputType="InputType.Telephone" />
+                        <MudTextField @bind-Value="model.ShippingMobile" Label="@Text["Mobile"]" InputType="InputType.Telephone" />
+                        <MudTextField @bind-Value="model.ShippingFax" Label="@Text["Fax"]" />
+                    </MudPaper>
+                </MudItem>
+                <MudItem xs="12" md="6">
+                    <MudPaper Class="pa-4 h-100">
+                        <MudText Typo="Typo.h6" HtmlTag="h2">@Text["Billing"]</MudText>
+                        <MudSelect T="int" @bind-Value="model.BillingAddressId" Label="@Text["Address"]" Required="true">
+                            @foreach (var address in options?.Addresses ?? [])
+                            {
+                                <MudSelectItem T="int" Value="address.Id">@AddressLabel(address)</MudSelectItem>
+                            }
+                        </MudSelect>
+                        <MudTextField @bind-Value="model.BillingCompanyName" Label="@Text["CompanyName"]" Required="true" />
+                        <MudTextField @bind-Value="model.BillingContactPerson" Label="@Text["ContactPerson"]" />
+                        <MudTextField @bind-Value="model.BillingTelephone" Label="@Text["Telephone"]" InputType="InputType.Telephone" />
+                        <MudTextField @bind-Value="model.BillingMobile" Label="@Text["Mobile"]" InputType="InputType.Telephone" />
+                        <MudTextField @bind-Value="model.BillingFax" Label="@Text["Fax"]" />
+                    </MudPaper>
+                </MudItem>
+            </MudGrid>
+
+            <MudPaper Class="pa-4 mb-4">
+                <MudText Typo="Typo.h6" HtmlTag="h2">@Text["OrderDetails"]</MudText>
+                <MudSelect T="int" @bind-Value="model.EmployeeId" Label="@Text["OrderedBy"]" Required="true">
+                    @foreach (var employee in options?.Employees ?? [])
+                    {
+                        <MudSelectItem T="int" Value="employee.Id">@employee.FullName</MudSelectItem>
+                    }
+                </MudSelect>
+                <MudTextField @bind-Value="model.Fob" Label="@Text["Fob"]" />
+                <MudTextField @bind-Value="model.Terms" Label="@Text["Terms"]" />
+                <MudTextField @bind-Value="model.ShippingMethod" Label="@Text["ShippingMethod"]" />
+                <MudTextField @bind-Value="model.Notes" Label="@Text["Notes"]" Lines="3" />
+            </MudPaper>
+
+            <MudPaper Class="pa-4 mb-4">
+                <div class="d-flex align-center justify-space-between mb-3">
+                    <MudText Typo="Typo.h6" HtmlTag="h2">@Text["LineItems"]</MudText>
+                    <MudButton ButtonType="ButtonType.Button" Variant="Variant.Outlined" OnClick="AddLineItem">@Text["AddLineItem"]</MudButton>
+                </div>
+                @foreach (var item in model.Items)
+                {
+                    <MudGrid Class="mb-3">
+                        <MudItem xs="12" md="3"><MudTextField @bind-Value="item.PartNumber" Label="@Text["PartNumber"]" /></MudItem>
+                        <MudItem xs="12" md="4"><MudTextField @bind-Value="item.Description" Label="@Text["Description"]" Required="true" /></MudItem>
+                        <MudItem xs="6" md="2"><MudNumericField T="int" @bind-Value="item.Quantity" Label="@Text["Quantity"]" Min="1" Required="true" /></MudItem>
+                        <MudItem xs="6" md="2"><MudNumericField T="decimal" @bind-Value="item.UnitPrice" Label="@Text["UnitPrice"]" Min="0" Required="true" /></MudItem>
+                        <MudItem xs="12" md="1"><MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" Disabled="@(model.Items.Count == 1)" OnClick="@(() => RemoveLineItem(item))" aria-label="@Text["RemoveLineItem"]" /></MudItem>
+                    </MudGrid>
+                }
+            </MudPaper>
+
+            <MudStack Row="true" Spacing="2">
+                <MudButton ButtonType="ButtonType.Button" Variant="Variant.Filled" Color="Color.Primary" Disabled="@submitting" OnClick="SubmitAsync">
+                    @(submitting ? Text["Submitting"] : Text["CreatePurchaseOrder"])
+                </MudButton>
+                <MudButton Href="/PurchaseOrders/Index" Variant="Variant.Text" Disabled="@submitting">@Text["Cancel"]</MudButton>
+            </MudStack>
+        </MudForm>
+    }
+</MudContainer>
+
+@code {
+    private readonly PurchaseOrderCreateRequest model = new();
+    private readonly string attemptId = Guid.NewGuid().ToString("D");
+    private PurchaseOrderCreateOptions? options;
+    private MudForm? form;
+    private bool formValid;
+    private bool loading = true;
+    private bool submitting;
+    private string? error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            using var response = await Http.GetAsync("/bff/purchase-orders/create-options");
+            if (response.StatusCode == HttpStatusCode.Unauthorized) { NavigateToLogin(); return; }
+            if (response.StatusCode == HttpStatusCode.Forbidden) { error = Text["Forbidden"]; return; }
+            if (response.StatusCode == HttpStatusCode.TooManyRequests) { error = Text["RateLimited"]; return; }
+            if (!response.IsSuccessStatusCode) { error = Text["Unavailable"]; return; }
+            options = await response.Content.ReadFromJsonAsync<PurchaseOrderCreateOptions>();
+            if (options is null) error = Text["InvalidResponse"];
+        }
+        catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException)
+        {
+            error = Text["Unavailable"];
+        }
+        finally
+        {
+            loading = false;
+        }
+    }
+
+    private void AddLineItem() => model.Items.Add(new());
+    private void RemoveLineItem(PurchaseOrderCreateItem item)
+    {
+        if (model.Items.Count > 1) model.Items.Remove(item);
+    }
+
+    private async Task SubmitAsync()
+    {
+        if (submitting || form is null) return;
+        await form.ValidateAsync();
+        if (!formValid) { error = Text["ValidationFailed"]; return; }
+        submitting = true;
+        error = null;
+        try
+        {
+            using var sessionResponse = await Http.GetAsync("/bff/session");
+            if (sessionResponse.StatusCode == HttpStatusCode.Unauthorized) { NavigateToLogin(); return; }
+            sessionResponse.EnsureSuccessStatusCode();
+            var session = await sessionResponse.Content.ReadFromJsonAsync<EmployeeSessionSummary>();
+            if (string.IsNullOrWhiteSpace(session?.CsrfToken)) { error = Text["CreateFailed"]; return; }
+            using var request = new HttpRequestMessage(HttpMethod.Post, "/bff/purchase-orders") { Content = JsonContent.Create(model) };
+            request.Headers.Add("X-CSRF-TOKEN", session.CsrfToken);
+            request.Headers.Add("Idempotency-Key", attemptId);
+            using var response = await Http.SendAsync(request);
+            if (response.StatusCode == HttpStatusCode.Unauthorized) { NavigateToLogin(); return; }
+            if (response.StatusCode == HttpStatusCode.Forbidden) { error = Text["Forbidden"]; return; }
+            if (response.StatusCode == HttpStatusCode.BadRequest) { error = Text["ValidationFailed"]; return; }
+            if (response.StatusCode == HttpStatusCode.Conflict) { error = Text["Conflict"]; return; }
+            if (response.StatusCode == HttpStatusCode.TooManyRequests) { error = Text["RateLimited"]; return; }
+            if (response.StatusCode == HttpStatusCode.BadGateway) { error = Text["InvalidResponse"]; return; }
+            if (!response.IsSuccessStatusCode) { error = Text["CreateFailed"]; return; }
+            var created = await response.Content.ReadFromJsonAsync<CreatedPurchaseOrder>();
+            if (created is null || created.Id <= 0) { error = Text["InvalidResponse"]; return; }
+            Navigation.NavigateTo($"/PurchaseOrders/View?id={created.Id}", forceLoad: true);
+        }
+        catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException)
+        {
+            error = Text["CreateFailed"];
+        }
+        finally
+        {
+            submitting = false;
+        }
+    }
+
+    private string AddressLabel(PurchaseOrderAddressOption value) => string.IsNullOrWhiteSpace(value.City) ? value.AddressLine1 : $"{value.AddressLine1}, {value.City}";
+    private void NavigateToLogin() => Navigation.NavigateTo($"/Login?returnUrl={Uri.EscapeDataString(Navigation.ToBaseRelativePath(Navigation.Uri))}");
+}
