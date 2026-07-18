@@ -120,3 +120,60 @@ public sealed record InvoiceReceiptWorkflowResult(
     int State,
     int EmailState,
     string? ProviderMessageId);
+
+/// <summary>Editable address fields for quotation-derived invoice creation.</summary>
+public sealed record InvoiceCreationAddress(
+    string? Recipient,
+    string? Company,
+    string? Building,
+    string? Line1,
+    string? Line2,
+    string? City,
+    string? State,
+    string? PostalCode,
+    string? Country,
+    string? Telephone = null);
+
+/// <summary>Browser-safe quotation line displayed during invoice creation.</summary>
+public sealed record InvoiceCreationOrderItem(int Id, int QuotationId, int? OrderId, string? Description, int? Quantity, decimal? UnitPrice, decimal? Subtotal);
+
+/// <summary>Authoritative invoice defaults derived by AccountingService.</summary>
+public sealed record InvoiceCreationPreview(
+    int QuotationId,
+    int CustomerId,
+    string InvoiceNumber,
+    string SalesPerson,
+    string Currency,
+    string? Comment,
+    string? ShippedVia,
+    string? Fob,
+    string? Terms,
+    InvoiceCreationAddress BillingAddress,
+    InvoiceCreationAddress ShippingAddress,
+    string? TaxIdentification,
+    string? CommercialRegistration,
+    decimal Subtotal,
+    decimal Vat,
+    decimal Total,
+    decimal AvailableWithholdingTax,
+    decimal Outstanding,
+    IReadOnlyList<InvoiceCreationOrderItem> OrderItems);
+
+/// <summary>Only user-editable intent accepted from WASM. Identity, totals, currency, and line items are excluded.</summary>
+public sealed record CreateInvoiceFromQuotationRequest(
+    string InvoiceNumber,
+    string? Comment,
+    string? PurchaseOrderNumber,
+    string? Requisitioner,
+    string? ShippedVia,
+    string? Fob,
+    string? Terms,
+    InvoiceCreationAddress BillingAddress,
+    InvoiceCreationAddress ShippingAddress,
+    string? TaxIdentification,
+    string? CommercialRegistration,
+    bool DeductWithholdingTax,
+    bool SendEmail);
+
+/// <summary>Browser-safe replay/reconciliation result.</summary>
+public sealed record InvoiceCreationResult(int InvoiceId, int State, int EmailState, string? ProviderMessageId);
