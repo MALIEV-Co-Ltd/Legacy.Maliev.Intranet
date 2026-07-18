@@ -12,6 +12,7 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Legacy.Maliev.Intranet.Contracts\Legacy.Maliev.Intranet.Contracts.csproj" />
+    <ProjectReference Include="..\Legacy.Maliev.Intranet.Client.Features.Accounting\Legacy.Maliev.Intranet.Client.Features.Accounting.csproj" />
     <ProjectReference Include="..\Legacy.Maliev.Intranet.Client.Features.Catalog\Legacy.Maliev.Intranet.Client.Features.Catalog.csproj" />
     <ProjectReference Include="..\Legacy.Maliev.Intranet.Client.Features.Customers\Legacy.Maliev.Intranet.Client.Features.Customers.csproj" />
     <ProjectReference Include="..\Legacy.Maliev.Intranet.Client.Features.Diagnostics\Legacy.Maliev.Intranet.Client.Features.Diagnostics.csproj" />
@@ -19,6 +20,7 @@
     <ProjectReference Include="..\Legacy.Maliev.Intranet.Client.Features.Orders\Legacy.Maliev.Intranet.Client.Features.Orders.csproj" />
     <ProjectReference Include="..\Legacy.Maliev.Intranet.Client.Features.Procurement\Legacy.Maliev.Intranet.Client.Features.Procurement.csproj" />
     <BlazorWebAssemblyLazyLoad Include="Legacy.Maliev.Intranet.Client.Features.Catalog.wasm" />
+    <BlazorWebAssemblyLazyLoad Include="Legacy.Maliev.Intranet.Client.Features.Accounting.wasm" />
     <BlazorWebAssemblyLazyLoad Include="Legacy.Maliev.Intranet.Client.Features.Customers.wasm" />
     <BlazorWebAssemblyLazyLoad Include="Legacy.Maliev.Intranet.Client.Features.Diagnostics.wasm" />
     <BlazorWebAssemblyLazyLoad Include="Legacy.Maliev.Intranet.Client.Features.Employees.wasm" />
