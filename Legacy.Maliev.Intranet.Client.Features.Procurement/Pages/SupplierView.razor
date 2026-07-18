@@ -1,0 +1,120 @@
+@page "/Suppliers/View"
+@attribute [Authorize]
+@inject HttpClient Http
+@inject NavigationManager Navigation
+@inject IStringLocalizer<SupplierView> Text
+@inject IStringLocalizer<SupplierCreate> Fields
+
+<PageTitle>@Text["PageTitle", Id]</PageTitle>
+<MudContainer MaxWidth="MaxWidth.Medium">
+    <MudText Typo="Typo.overline">@Text["SupplierNumber", Id]</MudText>
+    <MudText Typo="Typo.h4" HtmlTag="h1" Class="mb-4">@(detail?.Name ?? Text["Supplier"])</MudText>
+    @if (loading) { <MudProgressLinear Indeterminate="true" aria-label="@Text["Loading"]" /> }
+    else if (!string.IsNullOrWhiteSpace(error)) { <MudAlert Severity="Severity.Error" Class="mb-4" aria-live="assertive">@error</MudAlert> }
+    @if (detail is not null)
+    {
+        @if (!string.IsNullOrWhiteSpace(notification)) { <MudAlert Severity="Severity.Success" Class="mb-4">@notification</MudAlert> }
+        <MudForm @ref="form" Model="@model" @bind-IsValid="formValid">
+            <MudText Typo="Typo.h6" HtmlTag="h2">@Fields["Supplier"]</MudText>
+            <MudTextField @bind-Value="model.Name" For="@(() => model.Name)" Label="@Fields["Name"]" Required="true" />
+            <MudTextField @bind-Value="model.Website" For="@(() => model.Website)" Label="@Fields["Website"]" InputType="InputType.Url" />
+            <MudTextField @bind-Value="model.TaxNumber" Label="@Fields["TaxNumber"]" />
+            <MudTextField @bind-Value="model.Email" For="@(() => model.Email)" Label="@Fields["Email"]" InputType="InputType.Email" />
+            <MudTextField @bind-Value="model.Telephone" Label="@Fields["Telephone"]" InputType="InputType.Telephone" />
+            <MudTextField @bind-Value="model.Mobile" Label="@Fields["Mobile"]" InputType="InputType.Telephone" />
+            <MudTextField @bind-Value="model.Fax" Label="@Fields["Fax"]" />
+            <MudTextField @bind-Value="model.Note" Label="@Fields["Note"]" Lines="3" />
+
+            <MudText Typo="Typo.h6" HtmlTag="h2" Class="mt-5">@Fields["Address"]</MudText>
+            <MudTextField @bind-Value="model.Building" Label="@Fields["Building"]" />
+            <MudTextField @bind-Value="model.Address1" For="@(() => model.Address1)" Label="@Fields["Address1"]" Required="true" />
+            <MudTextField @bind-Value="model.Address2" Label="@Fields["Address2"]" />
+            <MudTextField @bind-Value="model.City" Label="@Fields["City"]" />
+            <MudTextField @bind-Value="model.State" Label="@Fields["State"]" />
+            <MudTextField @bind-Value="model.PostalCode" Label="@Fields["PostalCode"]" />
+            <MudNumericField @bind-Value="model.CountryId" For="@(() => model.CountryId)" Label="@Fields["CountryId"]" Min="1" Required="true" />
+            <MudStack Row="true" Spacing="2" Class="mt-4">
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="@submitting" OnClick="SaveAsync">@Text["Save"]</MudButton>
+                <MudButton Variant="Variant.Filled" Color="Color.Error" Disabled="@submitting" OnClick="DeleteAsync">@Text["Delete"]</MudButton>
+                <MudButton Href="/Suppliers/Index" Variant="Variant.Text">@Text["Back"]</MudButton>
+            </MudStack>
+        </MudForm>
+    }
+</MudContainer>
+
+@code {
+    [SupplyParameterFromQuery(Name = "id")] public int Id { get; set; }
+    private readonly SupplierCreateRequest model = new();
+    private SupplierDetail? detail;
+    private MudForm? form;
+    private bool formValid, loading, submitting;
+    private string? error, notification;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (Id <= 0) { error = Text["NotFound"]; return; }
+        loading = true; error = null; detail = null;
+        try
+        {
+            using var response = await Http.GetAsync($"/bff/suppliers/{Id}");
+            if (response.StatusCode == HttpStatusCode.Unauthorized) { Login(); return; }
+            if (response.StatusCode == HttpStatusCode.Forbidden) { error = Text["Forbidden"]; return; }
+            if (response.StatusCode == HttpStatusCode.NotFound) { error = Text["NotFound"]; return; }
+            if (response.StatusCode == HttpStatusCode.TooManyRequests) { error = Text["RateLimited"]; return; }
+            if (!response.IsSuccessStatusCode) { error = Text["Unavailable"]; return; }
+            detail = await response.Content.ReadFromJsonAsync<SupplierDetail>();
+            if (detail is null || detail.Id != Id) { detail = null; error = Text["InvalidResponse"]; return; }
+            Copy(detail);
+        }
+        catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException) { error = Text["Unavailable"]; }
+        finally { loading = false; }
+    }
+
+    private async Task SaveAsync()
+    {
+        if (submitting || form is null) return;
+        await form.ValidateAsync(); if (!formValid) { error = Text["ValidationFailed"]; return; }
+        using var response = await SendWriteAsync(HttpMethod.Put);
+        if (response is null || !HandleWrite(response)) return;
+        notification = Text["Saved"];
+    }
+
+    private async Task DeleteAsync()
+    {
+        if (submitting) return;
+        using var response = await SendWriteAsync(HttpMethod.Delete);
+        if (response is null || !HandleWrite(response)) return;
+        Navigation.NavigateTo("/Suppliers/Index");
+    }
+
+    private async Task<HttpResponseMessage?> SendWriteAsync(HttpMethod method)
+    {
+        submitting = true; error = null; notification = null;
+        try
+        {
+            var session = await Http.GetFromJsonAsync<EmployeeSessionSummary>("/bff/session");
+            if (string.IsNullOrWhiteSpace(session?.CsrfToken)) { error = Text["Unavailable"]; return null; }
+            using var request = new HttpRequestMessage(method, $"/bff/suppliers/{Id}");
+            if (method == HttpMethod.Put) request.Content = JsonContent.Create(model);
+            request.Headers.Add("X-CSRF-TOKEN", session.CsrfToken);
+            return await Http.SendAsync(request);
+        }
+        catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException) { error = Text["Unavailable"]; return null; }
+        finally { submitting = false; }
+    }
+
+    private bool HandleWrite(HttpResponseMessage response)
+    {
+        if (response.StatusCode == HttpStatusCode.Unauthorized) { Login(); return false; }
+        if (response.StatusCode == HttpStatusCode.Forbidden) error = Text["Forbidden"];
+        else if (response.StatusCode == HttpStatusCode.NotFound) error = Text["NotFound"];
+        else if (response.StatusCode == HttpStatusCode.BadRequest) error = Text["ValidationFailed"];
+        else if (response.StatusCode == HttpStatusCode.Conflict) error = Text["Conflict"];
+        else if (response.StatusCode == HttpStatusCode.TooManyRequests) error = Text["RateLimited"];
+        else if (!response.IsSuccessStatusCode) error = Text["Unavailable"];
+        return response.IsSuccessStatusCode;
+    }
+
+    private void Copy(SupplierDetail value) { model.Name=value.Name; model.Website=value.Website; model.TaxNumber=value.TaxNumber; model.Email=value.Email; model.Note=value.Note; model.Telephone=value.Telephone; model.Mobile=value.Mobile; model.Fax=value.Fax; model.Building=value.Building; model.Address1=value.Address1; model.Address2=value.Address2; model.City=value.City; model.State=value.State; model.PostalCode=value.PostalCode; model.CountryId=value.CountryId; }
+    private void Login() => Navigation.NavigateTo($"/Login?returnUrl={Uri.EscapeDataString(Navigation.ToBaseRelativePath(Navigation.Uri))}");
+}

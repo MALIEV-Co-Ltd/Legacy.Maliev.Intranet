@@ -155,7 +155,7 @@
 
     private void OpenCreate() => Navigation.NavigateTo("/Suppliers/Create");
 
-    private void OpenSupplier(int id) => Navigation.NavigateTo($"/Suppliers/View?id={id}", forceLoad: true);
+    private void OpenSupplier(int id) => Navigation.NavigateTo($"/Suppliers/View?id={id}");
 
     private Task NavigateAsync(int index, string? search, SupplierListSort sort, int size)
     {
