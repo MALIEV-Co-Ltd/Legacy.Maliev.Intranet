@@ -229,6 +229,21 @@ builder.Services.AddHttpClient<InvoicesProxy>(client =>
                 (int)response.StatusCode >= StatusCodes.Status500InternalServerError),
     });
 });
+builder.Services.AddHttpClient<InvoiceDetailProxy>(client =>
+{
+    client.BaseAddress = new Uri(builder.Configuration["Services:Accounting"]
+        ?? "https+http://legacy-maliev-accounting-service");
+    client.Timeout = TimeSpan.FromSeconds(10);
+}).RemoveAllResilienceHandlers()
+    .AddHttpMessageHandler<LegacyServiceAuthenticationHandler>();
+builder.Services.AddHttpClient<InvoiceFileProxy>(client =>
+{
+    client.BaseAddress = new Uri(builder.Configuration["Services:File"]
+        ?? "https+http://legacy-maliev-file-service");
+    client.Timeout = TimeSpan.FromSeconds(30);
+}).RemoveAllResilienceHandlers()
+    .AddHttpMessageHandler<LegacyServiceAuthenticationHandler>();
+builder.Services.AddScoped<InvoiceDetailAggregator>();
 builder.Services.AddHttpClient<QuotationRequestsProxy>(client =>
 {
     client.BaseAddress = new Uri(builder.Configuration["Services:Quotation"]
@@ -674,6 +689,31 @@ app.MapGet("/bff/invoices", (
         context,
         cancellationToken);
 }).RequireAuthorization(LegacyEmployeePermissions.AccountingRead);
+
+app.MapGet("/bff/invoices/{id:int}", (int id, InvoiceDetailAggregator aggregator, CancellationToken cancellationToken) =>
+    InvoiceDetailEndpointMapper.GetAsync(id, aggregator, cancellationToken))
+    .RequireAuthorization(policy => policy
+        .RequireAuthenticatedUser()
+        .RequireClaim("permissions", LegacyEmployeePermissions.AccountingRead)
+        .RequireClaim("permissions", LegacyEmployeePermissions.AccountingFilesRead)
+        .RequireClaim("permissions", LegacyEmployeePermissions.FileUploadsRead));
+app.MapPut("/bff/invoices/{id:int}", (int id, InvoiceUpdateRequest input, InvoiceDetailAggregator aggregator, InvoiceDetailProxy invoices, HttpContext context, CancellationToken cancellationToken) =>
+    InvoiceDetailEndpointMapper.UpdateAsync(id, input, aggregator, invoices, context, cancellationToken))
+    .AddEndpointFilter<AntiforgeryValidationFilter>()
+    .RequireAuthorization(policy => policy
+        .RequireAuthenticatedUser()
+        .RequireClaim("permissions", LegacyEmployeePermissions.AccountingRead)
+        .RequireClaim("permissions", LegacyEmployeePermissions.AccountingUpdate));
+app.MapDelete("/bff/invoices/{id:int}", (int id, InvoiceDetailAggregator aggregator, InvoiceDetailProxy invoices, InvoiceFileProxy files, CancellationToken cancellationToken) =>
+    InvoiceDetailEndpointMapper.DeleteAsync(id, aggregator, invoices, files, cancellationToken))
+    .AddEndpointFilter<AntiforgeryValidationFilter>()
+    .RequireAuthorization(policy => policy
+        .RequireAuthenticatedUser()
+        .RequireClaim("permissions", LegacyEmployeePermissions.AccountingRead)
+        .RequireClaim("permissions", LegacyEmployeePermissions.AccountingDelete)
+        .RequireClaim("permissions", LegacyEmployeePermissions.AccountingFilesRead)
+        .RequireClaim("permissions", LegacyEmployeePermissions.AccountingFilesDelete)
+        .RequireClaim("permissions", LegacyEmployeePermissions.FileUploadsDelete));
 
 app.MapGet("/bff/quotation-requests", (
     QuotationRequestSort? sort,
