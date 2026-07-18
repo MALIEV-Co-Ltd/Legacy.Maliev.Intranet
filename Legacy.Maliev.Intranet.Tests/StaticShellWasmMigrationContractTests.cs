@@ -16,6 +16,7 @@ public sealed class StaticShellWasmMigrationContractTests
         var home = File.ReadAllText(homePath);
         var denied = File.ReadAllText(deniedPath);
         Assert.Contains("@page \"/\"", home, StringComparison.Ordinal);
+        Assert.Contains("@page \"/Index\"", home, StringComparison.Ordinal);
         Assert.Contains("@attribute [AllowAnonymous]", home, StringComparison.Ordinal);
         Assert.Contains("IStringLocalizer<Home>", home, StringComparison.Ordinal);
         Assert.Contains("Href=\"/Login\"", home, StringComparison.Ordinal);
