@@ -72,3 +72,35 @@ public sealed record QuotationDetailPage(
     QuotationInvoice? Invoice,
     IReadOnlyList<QuotationOrderLink> Orders,
     IReadOnlyList<QuotationFile> Files);
+
+/// <summary>One browser-edited quotation line; authoritative totals are calculated server-side.</summary>
+public sealed record QuotationCreateLine(
+    [property: System.ComponentModel.DataAnnotations.Range(1, int.MaxValue)] int? OrderId,
+    [property: System.ComponentModel.DataAnnotations.Required, System.ComponentModel.DataAnnotations.StringLength(2000)] string Description,
+    [property: System.ComponentModel.DataAnnotations.Range(1, int.MaxValue)] int Quantity,
+    [property: System.ComponentModel.DataAnnotations.Range(typeof(decimal), "0", "9999999999999999")] decimal UnitPrice,
+    [property: System.ComponentModel.DataAnnotations.Range(typeof(decimal), "0", "100")] decimal DiscountPercent);
+
+/// <summary>Validated quotation input accepted from the same-origin browser.</summary>
+public sealed record QuotationCreateRequest(
+    [property: System.ComponentModel.DataAnnotations.Range(1, int.MaxValue)] int CustomerId,
+    [property: System.ComponentModel.DataAnnotations.Range(1, int.MaxValue)] int EmployeeId,
+    [property: System.ComponentModel.DataAnnotations.Range(1, int.MaxValue)] int CurrencyId,
+    [property: System.ComponentModel.DataAnnotations.Range(1, 365)] int Period,
+    [property: System.ComponentModel.DataAnnotations.StringLength(256)] string? ShippedVia,
+    [property: System.ComponentModel.DataAnnotations.StringLength(256)] string? Fob,
+    [property: System.ComponentModel.DataAnnotations.StringLength(1000)] string? Terms,
+    [property: System.ComponentModel.DataAnnotations.StringLength(4000)] string? Comment,
+    bool WithholdingTaxEnabled,
+    [property: System.ComponentModel.DataAnnotations.Required, System.ComponentModel.DataAnnotations.MinLength(1)] IReadOnlyList<QuotationCreateLine> Lines);
+
+/// <summary>Safe result returned after the durable server workflow commits a quotation.</summary>
+public sealed record QuotationCreatedResult(int Id, string? Warning);
+
+/// <summary>Reference data required by the browser create form.</summary>
+public sealed record QuotationCreatePage(
+    IReadOnlyList<QuotationEmployee> Employees,
+    IReadOnlyList<QuotationCurrency> Currencies,
+    QuotationCustomer? Customer,
+    IReadOnlyList<OrderListItem> Orders,
+    int? CurrentEmployeeId);

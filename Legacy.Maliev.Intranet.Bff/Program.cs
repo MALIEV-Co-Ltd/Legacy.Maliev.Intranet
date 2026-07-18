@@ -12,6 +12,7 @@ using Legacy.Maliev.Intranet.Bff.Procurement;
 using Legacy.Maliev.Intranet.Bff.Quotations;
 using Legacy.Maliev.Intranet.Server.Orders;
 using Legacy.Maliev.Intranet.Server.Accounting;
+using Legacy.Maliev.Intranet.Server.Quotations;
 using Maliev.Aspire.ServiceDefaults;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
@@ -306,6 +307,16 @@ builder.Services.AddHttpClient<QuotationFileProxy>(client =>
     .AddHttpMessageHandler<LegacyServiceAuthenticationHandler>()
     .AddStandardResilienceHandler();
 builder.Services.AddScoped<QuotationDetailAggregator>();
+builder.Services.AddScoped<IQuotationCreationGateway, QuotationCreationGateway>();
+builder.Services.AddScoped<QuotationCreationWorkflow>();
+if (builder.Environment.IsEnvironment("Testing"))
+{
+    builder.Services.AddSingleton<IQuotationCreationStateStore, InMemoryQuotationCreationStateStore>();
+}
+else
+{
+    builder.Services.AddSingleton<IQuotationCreationStateStore, RedisQuotationCreationStateStore>();
+}
 builder.Services.AddHttpClient<SuppliersProxy>(client =>
 {
     client.BaseAddress = new Uri(builder.Configuration["Services:Procurement"]
@@ -358,6 +369,20 @@ AddPurchaseOrderClient(PurchaseOrderCreationGateway.CatalogClient, "Services:Cat
 AddPurchaseOrderClient(PurchaseOrderCreationGateway.DocumentClient, "Services:Document", "https+http://legacy-maliev-document-service", TimeSpan.FromSeconds(30));
 AddPurchaseOrderClient(PurchaseOrderCreationGateway.FileClient, "Services:File", "https+http://legacy-maliev-file-service", TimeSpan.FromMinutes(5));
 void AddPurchaseOrderClient(string name, string configurationKey, string fallback, TimeSpan timeout) =>
+    builder.Services.AddHttpClient(name, client =>
+    {
+        client.BaseAddress = new Uri(builder.Configuration[configurationKey] ?? fallback);
+        client.Timeout = timeout;
+    }).RemoveAllResilienceHandlers().AddHttpMessageHandler<LegacyServiceAuthenticationHandler>();
+AddQuotationCreateClient(QuotationCreationGateway.QuotationClient, "Services:Quotation", "https+http://legacy-maliev-quotation-service", TimeSpan.FromSeconds(30));
+AddQuotationCreateClient(QuotationCreationGateway.OrderClient, "Services:Order", "https+http://legacy-maliev-order-service", TimeSpan.FromSeconds(30));
+AddQuotationCreateClient(QuotationCreationGateway.CustomerClient, "Services:Customer", "https+http://legacy-maliev-customer-service", TimeSpan.FromSeconds(30));
+AddQuotationCreateClient(QuotationCreationGateway.EmployeeClient, "Services:Employee", "https+http://legacy-maliev-employee-service", TimeSpan.FromSeconds(30));
+AddQuotationCreateClient(QuotationCreationGateway.CatalogClient, "Services:Catalog", "https+http://legacy-maliev-catalog-service", TimeSpan.FromSeconds(30));
+AddQuotationCreateClient(QuotationCreationGateway.DocumentClient, "Services:Document", "https+http://legacy-maliev-document-service", TimeSpan.FromSeconds(30));
+AddQuotationCreateClient(QuotationCreationGateway.FileClient, "Services:File", "https+http://legacy-maliev-file-service", TimeSpan.FromMinutes(5));
+AddQuotationCreateClient(QuotationCreationGateway.NotificationClient, "Services:Notification", "https+http://legacy-maliev-notification-service", TimeSpan.FromSeconds(30));
+void AddQuotationCreateClient(string name, string configurationKey, string fallback, TimeSpan timeout) =>
     builder.Services.AddHttpClient(name, client =>
     {
         client.BaseAddress = new Uri(builder.Configuration[configurationKey] ?? fallback);
@@ -635,6 +660,11 @@ builder.Services.AddAuthorizationBuilder()
     .AddPolicy(LegacyEmployeePermissions.QuotationsRead, policy => policy
         .RequireAuthenticatedUser()
         .RequireClaim("permissions", LegacyEmployeePermissions.QuotationsRead))
+    .AddPolicy(LegacyEmployeePermissions.QuotationsCreate, policy => policy
+        .RequireAuthenticatedUser()
+        .RequireClaim("permissions", LegacyEmployeePermissions.QuotationsCreate)
+        .RequireClaim("permissions", LegacyEmployeePermissions.QuotationLinesWrite)
+        .RequireClaim("permissions", LegacyEmployeePermissions.QuotationOrdersWrite))
     .AddPolicy("legacy-catalog.materials.read", policy => policy
         .RequireAuthenticatedUser()
         .RequireClaim("permissions", "legacy-catalog.materials.read"))
@@ -818,6 +848,29 @@ app.MapGet("/bff/quotations/stats", (
     CancellationToken cancellationToken) =>
     QuotationsEndpointMapper.MapStatsAsync(quotations.GetStatsAsync, context, cancellationToken))
     .RequireAuthorization(LegacyEmployeePermissions.QuotationsRead);
+
+app.MapGet("/bff/quotations/create", QuotationCreateEndpointMapper.GetAsync)
+    .RequireAuthorization(policy => policy
+        .RequireAuthenticatedUser()
+        .RequireClaim("permissions", LegacyEmployeePermissions.QuotationsCreate)
+        .RequireClaim("permissions", LegacyEmployeePermissions.QuotationLinesWrite)
+        .RequireClaim("permissions", LegacyEmployeePermissions.QuotationOrdersWrite)
+        .RequireClaim("permissions", LegacyEmployeePermissions.CustomersRead)
+        .RequireClaim("permissions", LegacyEmployeePermissions.EmployeesRead)
+        .RequireClaim("permissions", LegacyEmployeePermissions.CatalogCurrenciesRead)
+        .RequireClaim("permissions", LegacyEmployeePermissions.OrdersRead));
+
+app.MapPost("/bff/quotations", QuotationCreateEndpointMapper.PostAsync)
+    .AddEndpointFilter<AntiforgeryValidationFilter>()
+    .RequireAuthorization(policy => policy
+        .RequireAuthenticatedUser()
+        .RequireClaim("permissions", LegacyEmployeePermissions.QuotationsCreate)
+        .RequireClaim("permissions", LegacyEmployeePermissions.QuotationLinesWrite)
+        .RequireClaim("permissions", LegacyEmployeePermissions.QuotationOrdersWrite)
+        .RequireClaim("permissions", LegacyEmployeePermissions.CustomersRead)
+        .RequireClaim("permissions", LegacyEmployeePermissions.EmployeesRead)
+        .RequireClaim("permissions", LegacyEmployeePermissions.CatalogCurrenciesRead)
+        .RequireClaim("permissions", LegacyEmployeePermissions.OrdersRead));
 
 app.MapGet("/bff/quotations/{id:int}", QuotationsEndpointMapper.MapDetailAsync)
     .RequireAuthorization(policy => policy

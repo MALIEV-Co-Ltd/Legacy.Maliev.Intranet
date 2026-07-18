@@ -1,0 +1,182 @@
+@page "/Quotations/Create"
+@attribute [Authorize]
+@inject HttpClient Http
+@inject NavigationManager Navigation
+@inject IStringLocalizer<Create> Text
+
+<PageTitle>@Text["PageTitle"]</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large">
+    <MudText Typo="Typo.overline">@Text["Sales"]</MudText>
+    <MudText Typo="Typo.h4" HtmlTag="h1" Class="mb-4">@Text["Heading"]</MudText>
+    @if (loading)
+    {
+        <MudProgressLinear Indeterminate="true" Color="Color.Primary" aria-label="@Text["Loading"]" />
+    }
+    else
+    {
+        @if (!string.IsNullOrWhiteSpace(error))
+        {
+            <MudAlert Severity="Severity.Error" Class="mb-4" aria-live="assertive">@error</MudAlert>
+        }
+        @if (!string.IsNullOrWhiteSpace(warning))
+        {
+            <MudAlert Severity="Severity.Warning" Class="mb-4" aria-live="polite">@warning</MudAlert>
+        }
+        <MudForm @ref="form" Model="model" @bind-IsValid="formValid">
+            <MudPaper Class="pa-4 mb-4">
+                <MudText Typo="Typo.h6" HtmlTag="h2">@Text["Customer"]</MudText>
+                <MudGrid>
+                    <MudItem xs="12" sm="8"><MudNumericField T="int" @bind-Value="model.CustomerId" Label="@Text["CustomerId"]" Min="1" Required="true" /></MudItem>
+                    <MudItem xs="12" sm="4"><MudButton ButtonType="ButtonType.Button" Variant="Variant.Outlined" OnClick="LoadCustomerAsync">@Text["LoadCustomer"]</MudButton></MudItem>
+                </MudGrid>
+                @if (page?.Customer is not null)
+                {
+                    <MudText Class="mt-2"><strong>@(page.Customer.FullName)</strong> · @(page.Customer.Email)</MudText>
+                }
+            </MudPaper>
+
+            <MudPaper Class="pa-4 mb-4">
+                <MudText Typo="Typo.h6" HtmlTag="h2">@Text["TermsHeading"]</MudText>
+                <MudGrid>
+                    <MudItem xs="12" md="4"><MudSelect T="int" @bind-Value="model.EmployeeId" Label="@Text["Employee"]" Required="true">@foreach (var employee in page?.Employees ?? []) { <MudSelectItem T="int" Value="employee.Id">@employee.FullName</MudSelectItem> }</MudSelect></MudItem>
+                    <MudItem xs="12" md="4"><MudSelect T="int" @bind-Value="model.CurrencyId" Label="@Text["Currency"]" Required="true">@foreach (var currency in page?.Currencies ?? []) { <MudSelectItem T="int" Value="currency.Id">@currency.ShortName</MudSelectItem> }</MudSelect></MudItem>
+                    <MudItem xs="12" md="4"><MudNumericField T="int" @bind-Value="model.Period" Label="@Text["Period"]" Min="1" Max="365" Required="true" /></MudItem>
+                    <MudItem xs="12" md="4"><MudTextField @bind-Value="model.ShippedVia" Label="@Text["ShippedVia"]" /></MudItem>
+                    <MudItem xs="12" md="4"><MudTextField @bind-Value="model.Fob" Label="@Text["Fob"]" /></MudItem>
+                    <MudItem xs="12" md="4"><MudTextField @bind-Value="model.Terms" Label="@Text["Terms"]" /></MudItem>
+                    <MudItem xs="12"><MudTextField @bind-Value="model.Comment" Label="@Text["Comment"]" Lines="3" /></MudItem>
+                    <MudItem xs="12"><MudCheckBox T="bool" @bind-Value="model.WithholdingTaxEnabled" Label="@Text["Withholding"]" /></MudItem>
+                </MudGrid>
+            </MudPaper>
+
+            <MudPaper Class="pa-4 mb-4">
+                <div class="d-flex align-center justify-space-between mb-3">
+                    <MudText Typo="Typo.h6" HtmlTag="h2">@Text["Lines"]</MudText>
+                    <MudButton ButtonType="ButtonType.Button" Variant="Variant.Outlined" OnClick="AddLine">@Text["AddLine"]</MudButton>
+                </div>
+                @foreach (var line in model.Lines)
+                {
+                    <MudGrid Class="mb-3">
+                        <MudItem xs="12" md="2"><MudSelect T="int?" @bind-Value="line.OrderId" Label="@Text["Order"]" Clearable="true">@foreach (var order in page?.Orders ?? []) { <MudSelectItem T="int?" Value="order.Id">#@order.Id @order.Name</MudSelectItem> }</MudSelect></MudItem>
+                        <MudItem xs="12" md="4"><MudTextField @bind-Value="line.Description" Label="@Text["Description"]" Required="true" /></MudItem>
+                        <MudItem xs="6" md="2"><MudNumericField T="int" @bind-Value="line.Quantity" Label="@Text["Quantity"]" Min="1" Required="true" /></MudItem>
+                        <MudItem xs="6" md="2"><MudNumericField T="decimal" @bind-Value="line.UnitPrice" Label="@Text["UnitPrice"]" Min="0" Required="true" /></MudItem>
+                        <MudItem xs="6" md="1"><MudNumericField T="decimal" @bind-Value="line.DiscountPercent" Label="@Text["Discount"]" Min="0" Max="100" /></MudItem>
+                        <MudItem xs="6" md="1"><MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" Disabled="@(model.Lines.Count == 1)" OnClick="@(() => RemoveLine(line))" aria-label="@Text["RemoveLine"]" /></MudItem>
+                    </MudGrid>
+                }
+                <MudDivider Class="my-3" />
+                <MudText Align="Align.Right">@Text["EstimatedSubtotal", EstimatedSubtotal.ToString("N2", CultureInfo.CurrentCulture), CurrencyLabel]</MudText>
+                <MudText Typo="Typo.caption" Align="Align.Right">@Text["ServerAuthoritative"]</MudText>
+            </MudPaper>
+
+            <MudStack Row="true" Spacing="2">
+                <MudButton ButtonType="ButtonType.Button" Variant="Variant.Filled" Color="Color.Primary" Disabled="submitting" OnClick="SubmitAsync">@(submitting ? Text["Submitting"] : Text["Create"])</MudButton>
+                <MudButton Href="/Quotations/Index" Variant="Variant.Text" Disabled="submitting">@Text["Cancel"]</MudButton>
+            </MudStack>
+        </MudForm>
+    }
+</MudContainer>
+
+@code {
+    [SupplyParameterFromQuery(Name = "customerId")] public int? CustomerId { get; set; }
+    private readonly FormModel model = new();
+    private readonly string attemptId = Guid.NewGuid().ToString("D");
+    private QuotationCreatePage? page;
+    private MudForm? form;
+    private bool formValid;
+    private bool loading = true;
+    private bool submitting;
+    private string? error;
+    private string? warning;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        model.CustomerId = CustomerId is > 0 ? CustomerId.Value : model.CustomerId;
+        await LoadPageAsync(model.CustomerId > 0 ? model.CustomerId : null);
+    }
+
+    private async Task LoadCustomerAsync() => await LoadPageAsync(model.CustomerId > 0 ? model.CustomerId : null);
+
+    private async Task LoadPageAsync(int? customerId)
+    {
+        loading = true; error = null;
+        try
+        {
+            var uri = customerId is > 0 ? $"/bff/quotations/create?customerId={customerId}" : "/bff/quotations/create";
+            using var response = await Http.GetAsync(uri);
+            if (response.StatusCode == HttpStatusCode.Unauthorized) { NavigateToLogin(); return; }
+            if (response.StatusCode == HttpStatusCode.NotFound) { error = Text["CustomerNotFound"]; return; }
+            if (!response.IsSuccessStatusCode) { error = response.StatusCode == HttpStatusCode.Forbidden ? Text["Forbidden"] : Text["Unavailable"]; return; }
+            page = await response.Content.ReadFromJsonAsync<QuotationCreatePage>();
+            if (page is null) { error = Text["InvalidResponse"]; return; }
+            if (model.EmployeeId <= 0) model.EmployeeId = page.CurrentEmployeeId ?? page.Employees.FirstOrDefault()?.Id ?? 0;
+            if (model.CurrencyId <= 0) model.CurrencyId = page.Currencies.FirstOrDefault(value => value.ShortName == "THB")?.Id ?? page.Currencies.FirstOrDefault()?.Id ?? 0;
+        }
+        catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException) { error = Text["Unavailable"]; }
+        finally { loading = false; }
+    }
+
+    private void AddLine() => model.Lines.Add(new());
+    private void RemoveLine(LineModel line) { if (model.Lines.Count > 1) model.Lines.Remove(line); }
+
+    private async Task SubmitAsync()
+    {
+        if (submitting || form is null) return;
+        await form.ValidateAsync();
+        if (!formValid || page?.Customer?.Id != model.CustomerId) { error = Text["ValidationFailed"]; return; }
+        submitting = true; error = null; warning = null;
+        try
+        {
+            using var sessionResponse = await Http.GetAsync("/bff/session");
+            sessionResponse.EnsureSuccessStatusCode();
+            var session = await sessionResponse.Content.ReadFromJsonAsync<EmployeeSessionSummary>();
+            if (string.IsNullOrWhiteSpace(session?.CsrfToken)) { error = Text["CreateFailed"]; return; }
+            var input = new QuotationCreateRequest(model.CustomerId, model.EmployeeId, model.CurrencyId, model.Period, model.ShippedVia, model.Fob, model.Terms, model.Comment, model.WithholdingTaxEnabled,
+                model.Lines.Select(line => new QuotationCreateLine(line.OrderId, line.Description, line.Quantity, line.UnitPrice, line.DiscountPercent)).ToArray());
+            using var request = new HttpRequestMessage(HttpMethod.Post, "/bff/quotations") { Content = JsonContent.Create(input) };
+            request.Headers.Add("X-CSRF-TOKEN", session.CsrfToken);
+            request.Headers.Add("Idempotency-Key", attemptId);
+            using var response = await Http.SendAsync(request);
+            if (response.StatusCode == HttpStatusCode.Unauthorized) { NavigateToLogin(); return; }
+            if (response.StatusCode == HttpStatusCode.Forbidden) { error = Text["Forbidden"]; return; }
+            if (response.StatusCode == HttpStatusCode.BadRequest) { error = Text["ValidationFailed"]; return; }
+            if (response.StatusCode == HttpStatusCode.Conflict) { error = Text["Conflict"]; return; }
+            if (!response.IsSuccessStatusCode) { error = Text["CreateFailed"]; return; }
+            var created = await response.Content.ReadFromJsonAsync<QuotationCreatedResult>();
+            if (created is null || created.Id <= 0) { error = Text["InvalidResponse"]; return; }
+            warning = created.Warning;
+            Navigation.NavigateTo($"/Quotations/View?id={created.Id}");
+        }
+        catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException) { error = Text["CreateFailed"]; }
+        finally { submitting = false; }
+    }
+
+    private decimal EstimatedSubtotal => model.Lines.Sum(line => Math.Round((line.UnitPrice * (1m - line.DiscountPercent / 100m)) * line.Quantity, 2, MidpointRounding.AwayFromZero));
+    private string CurrencyLabel => page?.Currencies.FirstOrDefault(value => value.Id == model.CurrencyId)?.ShortName ?? string.Empty;
+    private void NavigateToLogin() => Navigation.NavigateTo($"/Login?returnUrl={Uri.EscapeDataString(Navigation.ToBaseRelativePath(Navigation.Uri))}");
+
+    private sealed class FormModel
+    {
+        public int CustomerId { get; set; }
+        public int EmployeeId { get; set; }
+        public int CurrencyId { get; set; }
+        public int Period { get; set; } = 30;
+        public string? ShippedVia { get; set; }
+        public string? Fob { get; set; }
+        public string? Terms { get; set; }
+        public string? Comment { get; set; }
+        public bool WithholdingTaxEnabled { get; set; }
+        public List<LineModel> Lines { get; } = [new()];
+    }
+
+    private sealed class LineModel
+    {
+        public int? OrderId { get; set; }
+        public string Description { get; set; } = string.Empty;
+        public int Quantity { get; set; } = 1;
+        public decimal UnitPrice { get; set; }
+        public decimal DiscountPercent { get; set; }
+    }
+}
