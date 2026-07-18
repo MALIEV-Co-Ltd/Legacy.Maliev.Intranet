@@ -1,0 +1,153 @@
+@page "/Invoices/View"
+@attribute [Authorize]
+@inject HttpClient Http
+@inject NavigationManager Navigation
+@inject IStringLocalizer<InvoiceView> Text
+
+<PageTitle>@Text["PageTitle", Id ?? 0]</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large">
+    @if (loading)
+    {
+        <MudProgressLinear Indeterminate="true" Color="Color.Primary" aria-label="@Text["Loading"]" />
+    }
+    else if (!string.IsNullOrWhiteSpace(error))
+    {
+        <MudAlert Severity="Severity.Error" aria-live="assertive">@error</MudAlert>
+    }
+    else if (detailPage is not null)
+    {
+        <div class="d-flex flex-wrap align-center justify-space-between gap-3 mb-4">
+            <div><MudText Typo="Typo.overline">@Text["Accounting"]</MudText><MudText Typo="Typo.h4" HtmlTag="h1">@Text["Heading", detailPage.Invoice.Number]</MudText></div>
+            <MudButton Href="/Invoices/Index" Variant="Variant.Outlined">@Text["Back"]</MudButton>
+        </div>
+        @if (!string.IsNullOrWhiteSpace(notice)) { <MudAlert Severity="Severity.Success" Class="mb-4" aria-live="polite">@notice</MudAlert> }
+
+        <MudPaper Class="pa-4 mb-4">
+            <MudGrid>
+                <MudItem xs="12" md="4"><MudText Typo="Typo.caption">@Text["InvoiceId"]</MudText><MudText>@detailPage.Invoice.Id</MudText></MudItem>
+                <MudItem xs="12" md="4"><MudText Typo="Typo.caption">@Text["CustomerId"]</MudText><MudLink Href="@($"/Customers/View?id={detailPage.Invoice.CustomerId}")">@detailPage.Invoice.CustomerId</MudLink></MudItem>
+                <MudItem xs="12" md="4"><MudText Typo="Typo.caption">@Text["CreatedDate"]</MudText><MudText>@FormatDate(detailPage.Invoice.CreatedDate)</MudText></MudItem>
+                <MudItem xs="12" md="4"><MudText Typo="Typo.caption">@Text["SalesPerson"]</MudText><MudText>@Value(detailPage.Invoice.SalesPerson)</MudText></MudItem>
+                <MudItem xs="12" md="4"><MudText Typo="Typo.caption">@Text["PurchaseOrder"]</MudText><MudText>@Value(detailPage.Invoice.PurchaseOrderNumber)</MudText></MudItem>
+                <MudItem xs="12" md="4"><MudText Typo="Typo.caption">@Text["Terms"]</MudText><MudText>@Value(detailPage.Invoice.Terms)</MudText></MudItem>
+                <MudItem xs="12" md="6"><MudText Typo="Typo.h6" HtmlTag="h2">@Text["Billing"]</MudText><MudText Style="white-space: pre-line">@Address(detailPage.Invoice, false)</MudText></MudItem>
+                <MudItem xs="12" md="6"><MudText Typo="Typo.h6" HtmlTag="h2">@Text["Shipping"]</MudText><MudText Style="white-space: pre-line">@Address(detailPage.Invoice, true)</MudText></MudItem>
+            </MudGrid>
+        </MudPaper>
+
+        <MudPaper Class="pa-4 mb-4">
+            <MudText Typo="Typo.h5" HtmlTag="h2" Class="mb-3">@Text["Items"]</MudText>
+            <MudTable Items="detailPage.OrderItems" Breakpoint="Breakpoint.Sm" Elevation="0">
+                <HeaderContent><MudTh>@Text["Description"]</MudTh><MudTh>@Text["UnitPrice"]</MudTh><MudTh>@Text["Quantity"]</MudTh><MudTh>@Text["Subtotal"]</MudTh></HeaderContent>
+                <RowTemplate Context="item"><MudTd DataLabel="@Text["Description"]">@Value(item.Description)</MudTd><MudTd DataLabel="@Text["UnitPrice"]">@Money(item.UnitPrice)</MudTd><MudTd DataLabel="@Text["Quantity"]">@item.Quantity</MudTd><MudTd DataLabel="@Text["Subtotal"]">@Money(item.Subtotal)</MudTd></RowTemplate>
+                <NoRecordsContent><MudText>@Text["NoItems"]</MudText></NoRecordsContent>
+            </MudTable>
+        </MudPaper>
+
+        <MudPaper Class="pa-4 mb-4">
+            <MudText Typo="Typo.h5" HtmlTag="h2" Class="mb-3">@Text["Documents"]</MudText>
+            <MudList T="InvoiceDownload">
+                @foreach (var file in detailPage.InvoiceFiles.Concat(detailPage.ReceiptFiles))
+                {
+                    <MudListItem T="InvoiceDownload" Value="file"><a href="@file.Uri?.ToString()" target="_blank" rel="noopener">@file.ObjectName</a></MudListItem>
+                }
+            </MudList>
+            @if (detailPage.InvoiceFiles.Count + detailPage.ReceiptFiles.Count == 0) { <MudText>@Text["NoDocuments"]</MudText> }
+        </MudPaper>
+
+        <MudPaper Class="pa-4">
+            <MudForm @ref="form" Model="edit">
+                <MudGrid>
+                    <MudItem xs="12" md="4"><MudNumericField T="decimal?" Label="@Text["Subtotal"]" Value="detailPage.Invoice.Subtotal" ReadOnly="true" /></MudItem>
+                    <MudItem xs="12" md="4"><MudNumericField T="decimal?" Label="@Text["Vat"]" Value="detailPage.Invoice.Vat" ReadOnly="true" /></MudItem>
+                    <MudItem xs="12" md="4"><MudNumericField T="decimal?" Label="@Text["Total"]" Value="detailPage.Invoice.Total" ReadOnly="true" /></MudItem>
+                    <MudItem xs="12" md="6"><MudNumericField T="decimal?" Label="@Text["WithholdingTax"]" @bind-Value="edit.WithholdingTax" Min="0" /></MudItem>
+                    <MudItem xs="12" md="6"><MudNumericField T="decimal?" Label="@Text["Outstanding"]" @bind-Value="edit.Outstanding" Min="0" /></MudItem>
+                    <MudItem xs="12" md="6"><MudCheckBox T="bool" Label="@Text["Paid"]" @bind-Value="edit.IsPaid" /></MudItem>
+                    <MudItem xs="12" md="6"><MudDatePicker Label="@Text["PaymentDate"]" @bind-Date="edit.PaymentDate" /></MudItem>
+                    <MudItem xs="12"><MudTextField Label="@Text["InternalComment"]" @bind-Value="edit.InternalComment" Lines="5" MaxLength="1000" /></MudItem>
+                    <MudItem xs="12"><div class="d-flex flex-wrap gap-2"><MudButton OnClick="SaveAsync" Disabled="@submitting" Variant="Variant.Filled" Color="Color.Primary">@Text["Save"]</MudButton>@if (deleteArmed) { <MudButton OnClick="DeleteAsync" Disabled="@submitting" Color="Color.Error" Variant="Variant.Filled">@Text["ConfirmDelete"]</MudButton><MudButton OnClick="CancelDelete">@Text["Cancel"]</MudButton> } else { <MudButton OnClick="ArmDelete" Disabled="@submitting" Color="Color.Error" Variant="Variant.Outlined">@Text["Delete"]</MudButton> }</div></MudItem>
+                </MudGrid>
+            </MudForm>
+        </MudPaper>
+    }
+</MudContainer>
+
+@code {
+    [SupplyParameterFromQuery(Name = "id")] public int? Id { get; set; }
+    private MudForm? form;
+    private InvoiceDetailPage? detailPage;
+    private EmployeeSessionSummary? session;
+    private InvoiceEditModel edit = new();
+    private bool loading = true;
+    private bool submitting;
+    private bool deleteArmed;
+    private string? error;
+    private string? notice;
+
+    protected override Task OnParametersSetAsync() => LoadAsync();
+    private async Task LoadAsync()
+    {
+        loading = true; error = null;
+        if (Id is not > 0) { error = Text["InvalidId"]; loading = false; return; }
+        try
+        {
+            session = await Http.GetFromJsonAsync<EmployeeSessionSummary>("/bff/session");
+            using var response = await Http.GetAsync($"/bff/invoices/{Id.Value}");
+            if (response.StatusCode == HttpStatusCode.Unauthorized) { Navigation.NavigateTo($"/Login?returnUrl={Uri.EscapeDataString(Navigation.ToBaseRelativePath(Navigation.Uri))}"); return; }
+            if (response.StatusCode == HttpStatusCode.NotFound) { error = Text["NotFound"]; return; }
+            if (!response.IsSuccessStatusCode) { error = ErrorFor(response.StatusCode); return; }
+            detailPage = await response.Content.ReadFromJsonAsync<InvoiceDetailPage>();
+            if (detailPage is null) { error = Text["InvalidResponse"]; return; }
+            edit = InvoiceEditModel.From(detailPage.Invoice);
+        }
+        catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException) { error = Text["Unavailable"]; }
+        finally { loading = false; }
+    }
+    private async Task SaveAsync()
+    {
+        if (detailPage is null || form is null) return;
+        await form.ValidateAsync(); if (!form.IsValid) return;
+        using var request = WriteRequest(HttpMethod.Put, $"/bff/invoices/{detailPage.Invoice.Id}");
+        request.Content = JsonContent.Create(edit.ToRequest());
+        await SendAsync(request, Text["Saved"]);
+    }
+    private async Task DeleteAsync()
+    {
+        if (detailPage is null) return;
+        using var request = WriteRequest(HttpMethod.Delete, $"/bff/invoices/{detailPage.Invoice.Id}");
+        submitting = true; error = null;
+        try { using var response = await Http.SendAsync(request); if (!response.IsSuccessStatusCode) { error = ErrorFor(response.StatusCode); return; } Navigation.NavigateTo("/Invoices/Index"); }
+        catch (HttpRequestException) { error = Text["Unavailable"]; }
+        finally { submitting = false; }
+    }
+    private HttpRequestMessage WriteRequest(HttpMethod method, string path) { var request = new HttpRequestMessage(method, path); if (!string.IsNullOrWhiteSpace(session?.CsrfToken)) request.Headers.Add("X-CSRF-TOKEN", session.CsrfToken); return request; }
+    private async Task SendAsync(HttpRequestMessage request, string success)
+    {
+        submitting = true; error = null; notice = null;
+        try { using var response = await Http.SendAsync(request); if (response.StatusCode == HttpStatusCode.Conflict) { error = Text["Conflict"]; return; } if (!response.IsSuccessStatusCode) { error = ErrorFor(response.StatusCode); return; } notice = success; await LoadAsync(); }
+        catch (HttpRequestException) { error = Text["Unavailable"]; }
+        finally { submitting = false; }
+    }
+    private void ArmDelete() => deleteArmed = true;
+    private void CancelDelete() => deleteArmed = false;
+    private string ErrorFor(HttpStatusCode status) => status switch { HttpStatusCode.Forbidden => Text["Forbidden"], HttpStatusCode.TooManyRequests => Text["RateLimited"], HttpStatusCode.BadGateway => Text["InvalidResponse"], _ => Text["Unavailable"] };
+    private string Money(decimal? value) => value is null ? "-" : $"{value:N2} {detailPage?.Invoice.Currency}";
+    private static string FormatDate(DateTime? value) => value?.ToLocalTime().ToString("g", CultureInfo.CurrentCulture) ?? "-";
+    private static string Value(string? value) => string.IsNullOrWhiteSpace(value) ? "-" : value;
+    private static string Address(InvoiceDetail value, bool shipping) => string.Join(Environment.NewLine, (shipping
+        ? new[] { value.ShippingAddressRecipient, value.ShippingAddressCompany, value.ShippingAddressBuilding, value.ShippingAddressLine1, value.ShippingAddressLine2, value.ShippingAddressCity, value.ShippingAddressState, value.ShippingAddressPostalCode, value.ShippingAddressCountry }
+        : new[] { value.BillingAddressRecipient, value.BillingAddressCompany, value.BillingAddressBuilding, value.BillingAddressLine1, value.BillingAddressLine2, value.BillingAddressCity, value.BillingAddressState, value.BillingAddressPostalCode, value.BillingAddressCountry }).Where(item => !string.IsNullOrWhiteSpace(item)));
+    private sealed class InvoiceEditModel
+    {
+        public bool IsPaid { get; set; }
+        public DateTime? PaymentDate { get; set; }
+        public string? InternalComment { get; set; }
+        public decimal? WithholdingTax { get; set; }
+        public decimal? Outstanding { get; set; }
+        public DateTime ModifiedDate { get; set; }
+        public static InvoiceEditModel From(InvoiceDetail value) => new() { IsPaid = value.IsPaid, PaymentDate = value.PaymentDate, InternalComment = value.InternalComment, WithholdingTax = value.WithholdingTax, Outstanding = value.Outstanding, ModifiedDate = value.ModifiedDate ?? throw new InvalidDataException("Invoice has no concurrency timestamp.") };
+        public InvoiceUpdateRequest ToRequest() => new(IsPaid, PaymentDate, InternalComment, WithholdingTax, Outstanding, ModifiedDate);
+    }
+}
