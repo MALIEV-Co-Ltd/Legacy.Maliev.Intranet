@@ -7,14 +7,23 @@ namespace Legacy.Maliev.Intranet.Bff.Accounting;
 /// <summary>Builds the browser-safe Invoice View from AccountingService and FileService.</summary>
 public sealed class InvoiceDetailAggregator(InvoiceDetailProxy invoices, InvoiceFileProxy files)
 {
+    /// <summary>Gets and validates one invoice without loading its file boundaries.</summary>
+    public async Task<InvoiceDetail?> GetInvoiceAsync(int id, CancellationToken cancellationToken)
+    {
+        using var response = await invoices.GetAsync(id, cancellationToken);
+        if (response.StatusCode == HttpStatusCode.NotFound) return null;
+        var invoice = await ReadAsync<InvoiceDetail>(response, cancellationToken)
+            ?? throw new InvalidDataException("AccountingService returned an empty invoice.");
+        return invoice.Id == id
+            ? invoice
+            : throw new InvalidDataException("AccountingService returned the wrong invoice.");
+    }
+
     /// <summary>Gets one complete detail response and resolves clean file links.</summary>
     public async Task<InvoiceDetailPage?> GetAsync(int id, CancellationToken cancellationToken)
     {
-        using var invoiceResponse = await invoices.GetAsync(id, cancellationToken);
-        if (invoiceResponse.StatusCode == HttpStatusCode.NotFound) return null;
-        var invoice = await ReadAsync<InvoiceDetail>(invoiceResponse, cancellationToken)
-            ?? throw new InvalidDataException("AccountingService returned an empty invoice.");
-        if (invoice.Id != id) throw new InvalidDataException("AccountingService returned the wrong invoice.");
+        var invoice = await GetInvoiceAsync(id, cancellationToken);
+        if (invoice is null) return null;
 
         var itemsTask = ReadItemsAsync(id, cancellationToken);
         var invoiceFilesTask = ReadFilesAsync(id, false, cancellationToken);
@@ -33,11 +42,8 @@ public sealed class InvoiceDetailAggregator(InvoiceDetailProxy invoices, Invoice
     /// <summary>Gets server-only owned resources for safe update and deletion workflows.</summary>
     public async Task<(InvoiceDetail Invoice, IReadOnlyList<InvoiceOrderItem> Items, IReadOnlyList<OwnedFile> Files)?> GetOwnedAsync(int id, CancellationToken cancellationToken)
     {
-        using var response = await invoices.GetAsync(id, cancellationToken);
-        if (response.StatusCode == HttpStatusCode.NotFound) return null;
-        var invoice = await ReadAsync<InvoiceDetail>(response, cancellationToken)
-            ?? throw new InvalidDataException("AccountingService returned an empty invoice.");
-        if (invoice.Id != id) throw new InvalidDataException("AccountingService returned the wrong invoice.");
+        var invoice = await GetInvoiceAsync(id, cancellationToken);
+        if (invoice is null) return null;
         var itemsTask = ReadItemsAsync(id, cancellationToken);
         var filesTask = ReadFilesAsync(id, false, cancellationToken);
         await Task.WhenAll(itemsTask, filesTask);

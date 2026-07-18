@@ -21,9 +21,9 @@ internal static class InvoiceDetailEndpointMapper
         if (id <= 0 || input.ModifiedDate == default || input.Outstanding < 0 || input.WithholdingTax < 0) return Results.BadRequest();
         try
         {
-            var owned = await aggregator.GetOwnedAsync(id, cancellationToken);
-            if (owned is null) return Results.NotFound();
-            using var response = await invoices.UpdateAsync(id, owned.Value.Invoice, input, cancellationToken);
+            var invoice = await aggregator.GetInvoiceAsync(id, cancellationToken);
+            if (invoice is null) return Results.NotFound();
+            using var response = await invoices.UpdateAsync(id, invoice, input, cancellationToken);
             return MapWrite(response, context);
         }
         catch (Exception exception) when (IsBoundedFailure(exception, cancellationToken)) { return Unavailable(); }
