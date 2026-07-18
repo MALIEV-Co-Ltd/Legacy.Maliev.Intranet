@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
+  <data name="PageTitle" xml:space="preserve"><value>Net income | MALIEV Intranet</value></data>
+  <data name="Accounting" xml:space="preserve"><value>Accounting</value></data>
+  <data name="Title" xml:space="preserve"><value>Financial summary {0}</value></data>
+  <data name="Back" xml:space="preserve"><value>Back to finance</value></data>
+  <data name="Loading" xml:space="preserve"><value>Loading net income</value></data>
+  <data name="NoData" xml:space="preserve"><value>No income activity is available for {0}.</value></data>
+  <data name="Cumulative" xml:space="preserve"><value>Cumulative net income</value></data>
+  <data name="Daily" xml:space="preserve"><value>Daily amount</value></data>
+  <data name="NetIncome" xml:space="preserve"><value>Net income</value></data>
+  <data name="Amount" xml:space="preserve"><value>Amount</value></data>
+  <data name="Forbidden" xml:space="preserve"><value>You do not have permission to view accounting activity.</value></data>
+  <data name="RateLimited" xml:space="preserve"><value>Accounting is busy. Try again shortly.</value></data>
+  <data name="InvalidResponse" xml:space="preserve"><value>Accounting returned invalid chart data.</value></data>
+  <data name="Unavailable" xml:space="preserve"><value>Accounting is temporarily unavailable.</value></data>
+</root>
