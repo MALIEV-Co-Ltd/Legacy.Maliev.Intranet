@@ -4,12 +4,15 @@ using System.Net;
 using System.Text;
 using Legacy.Maliev.Intranet.Contracts;
 using Legacy.Maliev.Intranet.Server.Quotations;
+using Microsoft.Extensions.Time.Testing;
 using QuotationCreationGateway = Bff::Legacy.Maliev.Intranet.Bff.Quotations.QuotationCreationGateway;
 
 namespace Legacy.Maliev.Intranet.Tests;
 
 public sealed class QuotationCreationGatewayContractTests
 {
+    private static readonly DateTimeOffset Now = DateTimeOffset.Parse("2026-07-18T00:00:00Z");
+
     [Fact]
     public async Task RequiredCreates_UseExactRoutesJsonAndStableIdempotencyKeys()
     {
@@ -21,9 +24,9 @@ public sealed class QuotationCreationGatewayContractTests
             "/orderstatuses/histories/42/quoted" => new(HttpStatusCode.NoContent),
             _ => new(HttpStatusCode.NotFound),
         });
-        var gateway = new QuotationCreationGateway(new StubFactory(handler));
+        var gateway = new QuotationCreationGateway(new StubFactory(handler), new FakeTimeProvider(Now));
         var input = Request();
-        var priced = QuotationPricing.Calculate(input, DateTimeOffset.Parse("2026-07-18T00:00:00Z"));
+        var priced = QuotationPricing.Calculate(input, Now);
 
         Assert.Equal(77, await gateway.CreateQuotationAsync(input, priced, "attempt:quotation", CancellationToken.None));
         Assert.Equal(101, await gateway.CreateLineAsync(77, priced.Lines[0], "attempt:line:0", CancellationToken.None));
@@ -58,9 +61,9 @@ public sealed class QuotationCreationGatewayContractTests
             "/Emails/manufacturing" => new(HttpStatusCode.OK),
             _ => new(HttpStatusCode.NotFound),
         });
-        var gateway = new QuotationCreationGateway(new StubFactory(handler));
+        var gateway = new QuotationCreationGateway(new StubFactory(handler), new FakeTimeProvider(Now));
         var input = Request();
-        var priced = QuotationPricing.Calculate(input, DateTimeOffset.Parse("2026-07-18T00:00:00Z"));
+        var priced = QuotationPricing.Calculate(input, Now);
 
         await gateway.FinalizeDocumentDeliveryAsync(77, input, priced, CancellationToken.None);
 
