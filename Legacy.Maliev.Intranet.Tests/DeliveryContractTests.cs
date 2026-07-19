@@ -28,14 +28,24 @@ public sealed class DeliveryContractTests
     }
 
     [Fact]
-    public void Deployment_IsSmallNonRootAndUsesRuntimeSecretProjection()
+    public void Deployments_AreSmallNonRootAndUseRuntimeSecretProjection()
     {
-        var deployment = File.ReadAllText(Path.Combine(FindRoot(), "deploy", "base", "deployment.yaml"));
-        Assert.Contains("replicas: 1", deployment, StringComparison.Ordinal);
-        Assert.Contains("runAsNonRoot: true", deployment, StringComparison.Ordinal);
-        Assert.Contains("readOnlyRootFilesystem: true", deployment, StringComparison.Ordinal);
-        Assert.Contains("name: legacy-maliev-intranet-runtime", deployment, StringComparison.Ordinal);
-        Assert.Contains("cpu: 50m", deployment, StringComparison.Ordinal);
+        var root = FindRoot();
+        var deployments = new[]
+        {
+            Path.Combine(root, "deploy", "base", "deployment.yaml"),
+            Path.Combine(root, "deploy", "base", "deployment-bff.yaml"),
+        };
+
+        Assert.All(deployments, path =>
+        {
+            var deployment = File.ReadAllText(path);
+            Assert.Contains("replicas: 1", deployment, StringComparison.Ordinal);
+            Assert.Contains("runAsNonRoot: true", deployment, StringComparison.Ordinal);
+            Assert.Contains("readOnlyRootFilesystem: true", deployment, StringComparison.Ordinal);
+            Assert.Contains("name: legacy-maliev-intranet-runtime", deployment, StringComparison.Ordinal);
+            Assert.Contains("cpu: 50m", deployment, StringComparison.Ordinal);
+        });
     }
 
     [Fact]
@@ -44,18 +54,55 @@ public sealed class DeliveryContractTests
         var workflow = File.ReadAllText(Path.Combine(FindRoot(), ".github", "workflows", "publish-image.yml"));
         Assert.Contains("vars.LEGACY_DEPLOY_ENABLED == 'true'", workflow, StringComparison.Ordinal);
         Assert.Contains("Legacy.Maliev.Workflows/.github/workflows/publish-image.yml@6017816", workflow, StringComparison.Ordinal);
+        Assert.Contains("legacy-maliev-intranet-compatibility", workflow, StringComparison.Ordinal);
+        Assert.Contains("Legacy.Maliev.Intranet/Dockerfile", workflow, StringComparison.Ordinal);
+        Assert.Contains("legacy-maliev-intranet-bff", workflow, StringComparison.Ordinal);
+        Assert.Contains("Legacy.Maliev.Intranet.Bff/Dockerfile", workflow, StringComparison.Ordinal);
         Assert.DoesNotContain("kubectl apply", workflow, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
-    public void Dockerfile_IsDotNet10NonRootAndPinsPublicBuildDependencies()
+    public void Dockerfiles_AreDotNet10NonRootAndPinLegacyBuildDependencies()
     {
-        var dockerfile = File.ReadAllText(Path.Combine(FindRoot(), "Legacy.Maliev.Intranet", "Dockerfile"));
-        Assert.Contains("dotnet/sdk:10.0-alpine", dockerfile, StringComparison.Ordinal);
-        Assert.Contains("dotnet/aspnet:10.0-alpine", dockerfile, StringComparison.Ordinal);
-        Assert.Contains("USER $APP_UID", dockerfile, StringComparison.Ordinal);
-        Assert.Contains("checkout 085f24b8b6b19c5a8e932b229d93421b03bcd032", dockerfile, StringComparison.Ordinal);
-        Assert.Contains("checkout c533c12a8154f5cf7c4fbc9734e82a62705ac60f", dockerfile, StringComparison.Ordinal);
+        var root = FindRoot();
+        var dockerfiles = new[]
+        {
+            Path.Combine(root, "Legacy.Maliev.Intranet", "Dockerfile"),
+            Path.Combine(root, "Legacy.Maliev.Intranet.Bff", "Dockerfile"),
+        };
+
+        Assert.All(dockerfiles, path =>
+        {
+            var dockerfile = File.ReadAllText(path);
+            Assert.Contains("dotnet/sdk:10.0-alpine", dockerfile, StringComparison.Ordinal);
+            Assert.Contains("dotnet/aspnet:10.0-alpine", dockerfile, StringComparison.Ordinal);
+            Assert.Contains("USER $APP_UID", dockerfile, StringComparison.Ordinal);
+            Assert.Contains("Legacy.Maliev.ServiceDefaults.git", dockerfile, StringComparison.Ordinal);
+            Assert.Contains("checkout bcab875a7f703d1d9c2d535479e93653720eb62d", dockerfile, StringComparison.Ordinal);
+            Assert.Contains("Legacy.Maliev.CompatibilityContracts.git", dockerfile, StringComparison.Ordinal);
+            Assert.Contains("checkout 95c62eb6209411f5aada443b315447a2f76ca0cd", dockerfile, StringComparison.Ordinal);
+            Assert.DoesNotContain("Maliev.Aspire.git", dockerfile, StringComparison.Ordinal);
+            Assert.DoesNotContain("Maliev.MessagingContracts.git", dockerfile, StringComparison.Ordinal);
+        });
+    }
+
+    [Fact]
+    public void Kustomization_DeclaresSeparateCompatibilityAndBffRuntimeResources()
+    {
+        var root = FindRoot();
+        var kustomization = File.ReadAllText(Path.Combine(root, "deploy", "base", "kustomization.yaml"));
+
+        Assert.Contains("deployment.yaml", kustomization, StringComparison.Ordinal);
+        Assert.Contains("service.yaml", kustomization, StringComparison.Ordinal);
+        Assert.Contains("legacy-maliev-intranet-compatibility", kustomization, StringComparison.Ordinal);
+        Assert.Contains("deployment-bff.yaml", kustomization, StringComparison.Ordinal);
+        Assert.Contains("service-bff.yaml", kustomization, StringComparison.Ordinal);
+        Assert.Contains("network-policy-bff.yaml", kustomization, StringComparison.Ordinal);
+        Assert.Contains("legacy-maliev-intranet-bff", kustomization, StringComparison.Ordinal);
+
+        var bffDeployment = File.ReadAllText(Path.Combine(root, "deploy", "base", "deployment-bff.yaml"));
+        Assert.Contains("path: /intranet-bff/readiness", bffDeployment, StringComparison.Ordinal);
+        Assert.Contains("path: /intranet-bff/liveness", bffDeployment, StringComparison.Ordinal);
     }
 
     private static string FindRoot()

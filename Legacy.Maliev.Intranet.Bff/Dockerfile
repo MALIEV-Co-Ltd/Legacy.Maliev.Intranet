@@ -6,7 +6,7 @@ RUN apk add --no-cache git \
     && git clone --filter=blob:none --no-checkout https://github.com/MALIEV-Co-Ltd/Legacy.Maliev.CompatibilityContracts.git /dependencies/Legacy.Maliev.CompatibilityContracts \
     && git -C /dependencies/Legacy.Maliev.CompatibilityContracts checkout 95c62eb6209411f5aada443b315447a2f76ca0cd
 COPY . .
-RUN dotnet publish Legacy.Maliev.Intranet/Legacy.Maliev.Intranet.csproj \
+RUN dotnet publish Legacy.Maliev.Intranet.Bff/Legacy.Maliev.Intranet.Bff.csproj \
     --configuration Release \
     --output /app/publish \
     --no-self-contained \
@@ -20,4 +20,4 @@ ENV ASPNETCORE_HTTP_PORTS=8080 \
 COPY --from=build /app/publish .
 USER $APP_UID
 EXPOSE 8080
-ENTRYPOINT ["dotnet", "Legacy.Maliev.Intranet.dll"]
+ENTRYPOINT ["dotnet", "Legacy.Maliev.Intranet.Bff.dll"]

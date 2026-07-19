@@ -1,20 +1,20 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: legacy-maliev-intranet
+  name: legacy-maliev-intranet-bff
   namespace: maliev-legacy
   labels:
-    app.kubernetes.io/name: legacy-maliev-intranet
+    app.kubernetes.io/name: legacy-maliev-intranet-bff
     app.kubernetes.io/part-of: maliev-legacy
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app.kubernetes.io/name: legacy-maliev-intranet
+      app.kubernetes.io/name: legacy-maliev-intranet-bff
   template:
     metadata:
       labels:
-        app.kubernetes.io/name: legacy-maliev-intranet
+        app.kubernetes.io/name: legacy-maliev-intranet-bff
         app.kubernetes.io/part-of: maliev-legacy
     spec:
       serviceAccountName: legacy-maliev-intranet
@@ -24,8 +24,8 @@ spec:
         seccompProfile:
           type: RuntimeDefault
       containers:
-        - name: intranet
-          image: legacy-maliev-intranet-compatibility
+        - name: intranet-bff
+          image: legacy-maliev-intranet-bff
           imagePullPolicy: IfNotPresent
           ports:
             - name: http
@@ -35,23 +35,23 @@ spec:
                 name: legacy-maliev-intranet-runtime
           readinessProbe:
             httpGet:
-              path: /intranet/readiness
+              path: /intranet-bff/readiness
               port: http
             initialDelaySeconds: 5
             periodSeconds: 10
           livenessProbe:
             httpGet:
-              path: /intranet/liveness
+              path: /intranet-bff/liveness
               port: http
             initialDelaySeconds: 15
             periodSeconds: 20
           resources:
             requests:
               cpu: 50m
-              memory: 96Mi
+              memory: 128Mi
             limits:
               cpu: 300m
-              memory: 256Mi
+              memory: 384Mi
           securityContext:
             allowPrivilegeEscalation: false
             capabilities:

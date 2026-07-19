@@ -15,16 +15,26 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Record planned-only state
-        run: echo "Deployment remains gated until all 42 workflows, capacity, secrets, WIF, GitOps and staging gates pass."
+        run: echo "Deployment remains gated until all 41 historical routes, capacity, secrets, WIF, GitOps and staging gates pass."
 
-  publish:
+  publish-compatibility:
     if: vars.LEGACY_DEPLOY_ENABLED == 'true'
     uses: MALIEV-Co-Ltd/Legacy.Maliev.Workflows/.github/workflows/publish-image.yml@6017816fa67f369d785ed30794f002cfd6299af7
     with:
-      image: ${{ vars.LEGACY_ARTIFACT_REGISTRY }}/legacy-maliev-intranet
+      image: ${{ vars.LEGACY_ARTIFACT_REGISTRY }}/legacy-maliev-intranet-compatibility
       dockerfile: Legacy.Maliev.Intranet/Dockerfile
       context: .
       environment: legacy-production
       workload-identity-provider: ${{ vars.LEGACY_WORKLOAD_IDENTITY_PROVIDER }}
       service-account: ${{ vars.LEGACY_INTRANET_PUBLISHER_SERVICE_ACCOUNT }}
 
+  publish-bff:
+    if: vars.LEGACY_DEPLOY_ENABLED == 'true'
+    uses: MALIEV-Co-Ltd/Legacy.Maliev.Workflows/.github/workflows/publish-image.yml@6017816fa67f369d785ed30794f002cfd6299af7
+    with:
+      image: ${{ vars.LEGACY_ARTIFACT_REGISTRY }}/legacy-maliev-intranet-bff
+      dockerfile: Legacy.Maliev.Intranet.Bff/Dockerfile
+      context: .
+      environment: legacy-production
+      workload-identity-provider: ${{ vars.LEGACY_WORKLOAD_IDENTITY_PROVIDER }}
+      service-account: ${{ vars.LEGACY_INTRANET_PUBLISHER_SERVICE_ACCOUNT }}
