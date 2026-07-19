@@ -47,13 +47,17 @@ WebAssembly.
 
 Migration rules:
 
-- preserve all 42 historical staff routes and validated workflows;
+- preserve all 41 historical staff routes and validated workflows (39 active and 2 intentionally retired);
 - use `Legacy.Maliev.AuthService` for employee authentication and keep access/refresh tokens server-side;
 - call independently deployed legacy services through typed HTTP clients only;
 - never reference employee or domain DbContexts;
 - remove LoggerService, PredictionService, PayPal and certificate-validation bypasses;
 - expose useful downstream failure UX and correlation IDs;
 - deploy only to the existing GKE cluster in `maliev-legacy`, after the complete migration and staging gates pass.
+
+Delivery produces separate immutable images for the Razor Pages compatibility host and the
+same-origin BFF. Both workloads are namespace-confined, non-root, project the shared runtime
+secret only at runtime, and remain behind the explicit publish and GitOps gates.
 
 The customer, employee, material, supplier, purchase-order, and order-list domains are completed typed workflow slices:
 
