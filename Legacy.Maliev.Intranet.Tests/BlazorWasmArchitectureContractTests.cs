@@ -107,7 +107,7 @@ public sealed class BlazorWasmArchitectureContractTests
         Assert.Contains("..\\Legacy.Maliev.Intranet.Contracts\\Legacy.Maliev.Intranet.Contracts.csproj", project, StringComparison.Ordinal);
         Assert.Contains("CookieAuthenticationDefaults.AuthenticationScheme", program, StringComparison.Ordinal);
         Assert.Contains("Cookie.HttpOnly = true", program, StringComparison.Ordinal);
-        Assert.Contains("Cookie.SecurePolicy = CookieSecurePolicy.Always", program, StringComparison.Ordinal);
+        Assert.Contains("Cookie.SecurePolicy = LegacyCookieSecurity.ResolveSecurePolicy(builder.Environment.EnvironmentName)", program, StringComparison.Ordinal);
         Assert.Contains("AddAntiforgery", program, StringComparison.Ordinal);
         Assert.Contains("RequireAuthenticatedUser", program, StringComparison.Ordinal);
         Assert.Contains("RequireAuthorization", program, StringComparison.Ordinal);

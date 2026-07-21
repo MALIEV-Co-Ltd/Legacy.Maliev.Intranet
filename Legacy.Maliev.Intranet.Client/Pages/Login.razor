@@ -6,9 +6,14 @@
 <PageTitle>Employee sign in - MALIEV Intranet</PageTitle>
 
 <MudContainer MaxWidth="MaxWidth.Small" Class="employee-login">
-    <MudPaper Class="pa-6" Elevation="1">
-        <MudText Typo="Typo.h4" HtmlTag="h1" Class="mb-2">Employee sign in</MudText>
-        <MudText Typo="Typo.body1" Class="mb-6">Use your MALIEV employee account to continue.</MudText>
+    <MudPaper Class="login-card" Elevation="2">
+        <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="login-card-header pa-4">
+            <MudText Typo="Typo.h6" Class="font-weight-light">Intranet</MudText>
+            <img src="images/MALIEV_BLACK.svg" alt="Maliev" class="brand-logo" />
+        </MudStack>
+        <div class="pa-6">
+        <MudText Typo="Typo.h5" HtmlTag="h1" Class="mb-2">Employee sign in</MudText>
+        <MudText Typo="Typo.body2" Class="mb-6">Use your MALIEV employee account to continue.</MudText>
 
         @if (!string.IsNullOrWhiteSpace(errorMessage))
         {
@@ -57,6 +62,7 @@
                 Forgot your password?
             </MudButton>
         </MudForm>
+        </div>
     </MudPaper>
 </MudContainer>
 

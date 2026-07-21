@@ -19,7 +19,7 @@ public sealed partial class OrderPageContractTests
     {
         var orders = new StubOrderClient();
         await using var factory = new OrderIntranetFactory(orders, new StubEmployeeClient(), new StubAuthClient());
-        using var client = factory.CreateClient(new() { AllowAutoRedirect = false, HandleCookies = true });
+        using var client = factory.CreateClient(new() { AllowAutoRedirect = false, HandleCookies = true, BaseAddress = new Uri("https://localhost") });
         await LoginAsync(client);
 
         var response = await client.GetAsync("/Orders/Index?search=fixture&index=1&size=25");

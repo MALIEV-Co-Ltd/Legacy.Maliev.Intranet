@@ -22,7 +22,7 @@ public sealed partial class OrderWorkflowPageContractTests
     {
         var boundaries = new WorkflowBoundaries();
         await using var factory = new WorkflowFactory(boundaries);
-        using var client = factory.CreateClient(new() { AllowAutoRedirect = false, HandleCookies = true });
+        using var client = factory.CreateClient(new() { AllowAutoRedirect = false, HandleCookies = true, BaseAddress = new Uri("https://localhost") });
         await LoginAsync(client);
 
         var createPage = await client.GetStringAsync("/Orders/Create?customerId=42");

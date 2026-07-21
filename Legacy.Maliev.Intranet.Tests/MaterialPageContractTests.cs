@@ -17,7 +17,7 @@ public sealed partial class MaterialPageContractTests
     {
         var catalog = new StubCatalogClient();
         await using var factory = new MaterialIntranetFactory(catalog, new StubAuthClient());
-        using var client = factory.CreateClient(new() { AllowAutoRedirect = false, HandleCookies = true });
+        using var client = factory.CreateClient(new() { AllowAutoRedirect = false, HandleCookies = true, BaseAddress = new Uri("https://localhost") });
         await LoginAsync(client);
 
         var index = await client.GetStringAsync("/Materials/Index?search=4140&index=1&size=25");
@@ -34,7 +34,7 @@ public sealed partial class MaterialPageContractTests
     {
         var catalog = new StubCatalogClient();
         await using var factory = new MaterialIntranetFactory(catalog, new StubAuthClient());
-        using var client = factory.CreateClient(new() { AllowAutoRedirect = false, HandleCookies = true });
+        using var client = factory.CreateClient(new() { AllowAutoRedirect = false, HandleCookies = true, BaseAddress = new Uri("https://localhost") });
         await LoginAsync(client);
         var createPage = await client.GetStringAsync("/Materials/Create");
         var token = AntiForgeryToken().Match(createPage).Groups[1].Value;

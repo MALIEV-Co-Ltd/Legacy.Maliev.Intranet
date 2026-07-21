@@ -18,3 +18,27 @@ body {
 .employee-login {
     padding-block: clamp(1.5rem, 8vh, 5rem);
 }
+
+.login-card {
+    overflow: hidden;
+}
+
+.brand-logo {
+    height: 22px;
+    width: auto;
+    display: block;
+}
+
+.login-card-header {
+    background-color: #f6f8fa;
+    border-bottom: 1px solid #e0e0e0;
+    color: #2f2f2f;
+}
+
+.mud-appbar {
+    border-bottom: 1px solid #e0e0e0;
+}
+
+.mud-drawer {
+    border-right: 1px solid #e0e0e0;
+}

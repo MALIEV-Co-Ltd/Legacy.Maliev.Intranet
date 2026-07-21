@@ -62,6 +62,7 @@ public sealed partial class EmployeeSessionContractTests
         {
             AllowAutoRedirect = false,
             HandleCookies = true,
+            BaseAddress = new Uri("https://localhost"),
         });
         var loginPage = await client.GetStringAsync("/Login");
         var antiForgery = AntiForgeryToken().Match(loginPage).Groups[1].Value;

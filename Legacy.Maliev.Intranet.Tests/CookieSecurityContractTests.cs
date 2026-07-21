@@ -11,10 +11,10 @@ namespace Legacy.Maliev.Intranet.Tests;
 public sealed class CookieSecurityContractTests
 {
     [Theory]
-    [InlineData("Development", CookieSecurePolicy.SameAsRequest)]
-    [InlineData("Testing", CookieSecurePolicy.SameAsRequest)]
+    [InlineData("Development", CookieSecurePolicy.Always)]
+    [InlineData("Testing", CookieSecurePolicy.Always)]
     [InlineData("Production", CookieSecurePolicy.Always)]
-    public void SessionCookie_UsesEnvironmentAppropriateTransportSecurity(
+    public void SessionCookie_IsAlwaysSecureRegardlessOfEnvironment(
         string environment,
         CookieSecurePolicy expected)
     {
@@ -44,7 +44,7 @@ public sealed class CookieSecurityContractTests
             .GetRequiredService<IOptionsMonitor<CookieAuthenticationOptions>>()
             .Get(CookieAuthenticationDefaults.AuthenticationScheme);
 
-        Assert.Equal(CookieSecurePolicy.SameAsRequest, options.Cookie.SecurePolicy);
+        Assert.Equal(CookieSecurePolicy.Always, options.Cookie.SecurePolicy);
         Assert.True(options.Cookie.HttpOnly);
         Assert.Equal(SameSiteMode.Lax, options.Cookie.SameSite);
     }
