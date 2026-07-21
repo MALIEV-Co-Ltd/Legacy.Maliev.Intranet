@@ -1,44 +1,116 @@
 @inherits LayoutComponentBase
+@implements IAsyncDisposable
 @inject EmployeeSessionClient SessionClient
+@inject EmployeeAuthenticationClient AuthenticationClient
+@inject NavigationManager Navigation
 
-<MudThemeProvider />
+<MudThemeProvider Theme="_theme" />
 <MudPopoverProvider />
 <MudDialogProvider />
 <MudSnackbarProvider />
 
 <MudLayout>
-    <MudAppBar Elevation="0">
-        <MudText Typo="Typo.h6">MALIEV Intranet</MudText>
+    <MudAppBar Elevation="1">
+        @if (session?.IsAuthenticated == true)
+        {
+            <MudIconButton Icon="@Icons.Material.Filled.Menu"
+                           Color="Color.Inherit"
+                           Edge="Edge.Start"
+                           OnClick="@(() => drawerOpen = !drawerOpen)" />
+        }
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="ml-2">
+            <img src="images/MALIEV_BLACK.svg" alt="Maliev" class="brand-logo" />
+            <MudText Typo="Typo.subtitle1" Class="mud-text-secondary">Intranet</MudText>
+        </MudStack>
         <MudSpacer />
-        @if (!sessionLoaded)
-        {
-            <MudText Typo="Typo.body2">Checking session…</MudText>
-        }
-        else if (session is null)
-        {
-            <MudText Typo="Typo.body2">Session unavailable</MudText>
-        }
-        else if (session.IsAuthenticated)
-        {
-            <MudText Typo="Typo.body2">@session.DisplayName</MudText>
-        }
-        else
-        {
-            <MudText Typo="Typo.body2">Sign in required</MudText>
-        }
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="4">
+            <MudText Typo="Typo.body2">@now.ToString("yyyy/MM/dd hh:mm:ss tt")</MudText>
+            @if (!sessionLoaded)
+            {
+                <MudText Typo="Typo.body2">Checking session…</MudText>
+            }
+            else if (session is null)
+            {
+                <MudText Typo="Typo.body2">Session unavailable</MudText>
+            }
+            else if (session.IsAuthenticated)
+            {
+                <MudText Typo="Typo.body2">@session.DisplayName</MudText>
+            }
+            else
+            {
+                <MudText Typo="Typo.body2">Sign in required</MudText>
+            }
+        </MudStack>
     </MudAppBar>
+
+    @if (session?.IsAuthenticated == true)
+    {
+        <MudDrawer @bind-Open="drawerOpen" Elevation="1" Variant="DrawerVariant.Responsive" ClipMode="DrawerClipMode.Always">
+            <MudNavMenu>
+                <MudNavLink Href="/Dashboard" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Assessment">Dashboard</MudNavLink>
+                <MudNavLink Href="/Customers/Index" Icon="@Icons.Material.Filled.People">Customers</MudNavLink>
+                <MudNavLink Href="/Orders/Index" Icon="@Icons.Material.Filled.Inventory2">Orders</MudNavLink>
+                <MudNavLink Href="/Quotations/Index" Icon="@Icons.Material.Filled.Description">Quotations</MudNavLink>
+                <MudNavLink Href="/QuotationRequests/Index" Icon="@Icons.Material.Filled.RequestQuote">Quotation Requests</MudNavLink>
+                <MudNavLink Href="/Invoices/Index" Icon="@Icons.Material.Filled.Receipt">Invoices</MudNavLink>
+                <MudNavLink Href="/Employees/Index" Icon="@Icons.Material.Filled.Badge">Employees</MudNavLink>
+                <MudNavLink Href="/Suppliers/Index" Icon="@Icons.Material.Filled.LocalShipping">Suppliers</MudNavLink>
+                <MudNavLink Href="/Finances/Index" Icon="@Icons.Material.Filled.AttachMoney">Finances</MudNavLink>
+                <MudNavLink Href="/PurchaseOrders/Index" Icon="@Icons.Material.Filled.ShoppingCart">Purchase Orders</MudNavLink>
+                <MudNavLink Href="/Materials/Index" Icon="@Icons.Material.Filled.ViewInAr">Materials</MudNavLink>
+                <MudNavLink Href="/Server/ErrorReport" Icon="@Icons.Material.Filled.Dns">Server Errors</MudNavLink>
+                <MudDivider Class="my-2" />
+                <MudNavLink OnClick="SignOutAsync" Icon="@Icons.Material.Filled.Logout">Sign Out</MudNavLink>
+            </MudNavMenu>
+        </MudDrawer>
+    }
+
     <MudMainContent Class="pa-6">
         @Body
     </MudMainContent>
 </MudLayout>
 
 @code {
+    private static readonly MudTheme _theme = new()
+    {
+        PaletteLight = new PaletteLight
+        {
+            Primary = "#2f6fed",
+            AppbarBackground = "#f6f8fa",
+            AppbarText = "#2f2f2f",
+            Background = "#f4f5f7",
+            DrawerBackground = "#ffffff",
+            DrawerText = "#3d3d3d",
+        },
+    };
+
     private EmployeeSessionSummary? session;
     private bool sessionLoaded;
+    private bool drawerOpen = true;
+    private DateTime now = DateTime.Now;
+    private System.Threading.Timer? clockTimer;
 
     protected override async Task OnInitializedAsync()
     {
         session = await SessionClient.GetAsync();
         sessionLoaded = true;
+        clockTimer = new System.Threading.Timer(_ =>
+        {
+            now = DateTime.Now;
+            InvokeAsync(StateHasChanged);
+        }, null, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1));
+    }
+
+    private async Task SignOutAsync()
+    {
+        await AuthenticationClient.SignOutAsync();
+        Navigation.NavigateTo("/Login", forceLoad: true);
+    }
+
+    public ValueTask DisposeAsync()
+    {
+        clockTimer?.Dispose();
+        return ValueTask.CompletedTask;
     }
 }

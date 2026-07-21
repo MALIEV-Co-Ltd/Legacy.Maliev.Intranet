@@ -56,6 +56,30 @@ internal sealed class EmployeeAuthenticationClient(
         }
     }
 
+    /// <summary>Revokes the server-side employee session and clears the BFF auth cookie.</summary>
+    public async Task<bool> SignOutAsync(CancellationToken cancellationToken = default)
+    {
+        var session = await sessionClient.GetAsync(cancellationToken);
+        if (string.IsNullOrWhiteSpace(session?.CsrfToken))
+        {
+            return false;
+        }
+
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/bff/logout");
+        request.Headers.Add("X-CSRF-TOKEN", session.CsrfToken);
+
+        try
+        {
+            using var response = await httpClient.SendAsync(request, cancellationToken);
+            return response.StatusCode is HttpStatusCode.NoContent or HttpStatusCode.OK;
+        }
+        catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException)
+        {
+            logger.LogWarning(exception, "The same-origin employee sign-out request is unavailable.");
+            return false;
+        }
+    }
+
     private static bool IsLocalPath(string path) =>
         path.StartsWith("/", StringComparison.Ordinal) &&
         (path.Length == 1 || path[1] is not ('/' or '\\'));

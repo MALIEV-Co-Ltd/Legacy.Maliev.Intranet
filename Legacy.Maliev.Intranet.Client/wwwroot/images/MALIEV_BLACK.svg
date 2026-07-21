@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   version="1.1"
+   id="svg182"
+   width="2264.344"
+   height="520"
+   viewBox="0 0 2264.344 520"
+   sodipodi:docname="MALIEV_BLACK.svg"
+   inkscape:version="1.2.2 (732a01da63, 2022-12-09)"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <defs
+     id="defs186" />
+  <sodipodi:namedview
+     id="namedview184"
+     pagecolor="#ffffff"
+     bordercolor="#000000"
+     borderopacity="0.25"
+     inkscape:showpageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="true"
+     inkscape:deskcolor="#d1d1d1"
+     showgrid="false"
+     inkscape:zoom="0.31322621"
+     inkscape:cx="833.26361"
+     inkscape:cy="102.16259"
+     inkscape:window-width="1920"
+     inkscape:window-height="1129"
+     inkscape:window-x="-8"
+     inkscape:window-y="-8"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="g192">
+    <inkscape:page
+       x="0"
+       y="0"
+       id="page188"
+       width="2264.344"
+       height="520" />
+  </sodipodi:namedview>
+  <g
+     id="g190"
+     inkscape:groupmode="layer"
+     inkscape:label="Page 1"
+     transform="matrix(1.3333333,0,0,1.3333333,-188.97333,-430.66666)">
+    <g
+       id="g192">
+      <path
+         d="M 1746.406,323 1648.641,591.617 1550.871,323 H 1238.73 v 390 h 310.375 l -28.718,-79 H 1326.73 V 556 L 1492.027,555.996 1465.492,483 H 1326.73 v -82 l 158.821,0.004 L 1599.109,713 h 98.93 L 1839.988,323 Z M 1128.73,713 h 88 V 323 h -88 z M 650.582,556.004 694.23,442.152 737.883,556 Z M 972.73,323 h -94 V 667 L 739.914,323 H 648.551 L 509.73,667 V 323 h -92 l -92,159.543 -92,-159.543 h -92 v 390 h 92 V 518 l 64.403,116 h 55.199 L 417.73,518 v 195 h 172.657 l 30.293,-79 h 147.105 l 30.289,79 h 307.656 v -79 h -133 z"
+         style="fill:#262626;fill-opacity:1;fill-rule:nonzero;stroke:none"
+         id="path194" />
+    </g>
+  </g>
+</svg>

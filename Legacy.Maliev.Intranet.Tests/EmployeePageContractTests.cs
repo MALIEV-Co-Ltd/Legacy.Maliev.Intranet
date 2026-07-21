@@ -17,7 +17,7 @@ public sealed partial class EmployeePageContractTests
         var employees = new StubEmployeeClient();
         var auth = new StubAuthClient();
         await using var factory = new EmployeeIntranetFactory(employees, auth);
-        using var client = factory.CreateClient(new() { AllowAutoRedirect = false, HandleCookies = true });
+        using var client = factory.CreateClient(new() { AllowAutoRedirect = false, HandleCookies = true, BaseAddress = new Uri("https://localhost") });
         await LoginAsync(client);
 
         var index = await client.GetAsync("/Employees/Index?search=ada&index=1&size=25");
@@ -39,7 +39,7 @@ public sealed partial class EmployeePageContractTests
         var employees = new StubEmployeeClient();
         var auth = new StubAuthClient { IdentityConflict = true };
         await using var factory = new EmployeeIntranetFactory(employees, auth);
-        using var client = factory.CreateClient(new() { AllowAutoRedirect = false, HandleCookies = true });
+        using var client = factory.CreateClient(new() { AllowAutoRedirect = false, HandleCookies = true, BaseAddress = new Uri("https://localhost") });
         await LoginAsync(client);
         var createPage = await client.GetStringAsync("/Employees/Create");
         var antiForgery = AntiForgeryToken().Match(createPage).Groups[1].Value;
