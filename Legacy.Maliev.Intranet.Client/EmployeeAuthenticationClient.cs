@@ -13,6 +13,7 @@ internal sealed class EmployeeAuthenticationClient(
         string email,
         string password,
         string? returnUrl,
+        bool rememberMe = false,
         CancellationToken cancellationToken = default)
     {
         var session = await sessionClient.GetAsync(cancellationToken);
@@ -23,7 +24,7 @@ internal sealed class EmployeeAuthenticationClient(
 
         using var request = new HttpRequestMessage(HttpMethod.Post, "/bff/login")
         {
-            Content = JsonContent.Create(new EmployeeSignInRequest(email, password, returnUrl)),
+            Content = JsonContent.Create(new EmployeeSignInRequest(email, password, returnUrl, rememberMe)),
         };
         request.Headers.Add("X-CSRF-TOKEN", session.CsrfToken);
 

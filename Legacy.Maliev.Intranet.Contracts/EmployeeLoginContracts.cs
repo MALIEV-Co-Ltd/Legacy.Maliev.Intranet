@@ -6,7 +6,8 @@ namespace Legacy.Maliev.Intranet.Contracts;
 public sealed record EmployeeSignInRequest(
     [property: Required, EmailAddress, StringLength(320)] string Email,
     [property: Required, StringLength(1024, MinimumLength = 1)] string Password,
-    string? ReturnUrl);
+    string? ReturnUrl,
+    bool RememberMe = false);
 
 /// <summary>Browser-safe result of a successful employee sign-in.</summary>
 public sealed record EmployeeSignInResponse(string RedirectUrl);

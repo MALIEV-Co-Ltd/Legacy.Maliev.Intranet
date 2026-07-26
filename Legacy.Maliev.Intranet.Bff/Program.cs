@@ -1,11 +1,13 @@
 using System.Security.Claims;
 using Legacy.Maliev.Intranet.Bff;
 using Legacy.Maliev.Intranet.Bff.Accounting;
+using Legacy.Maliev.Intranet.Bff.Address;
 using Legacy.Maliev.Intranet.Auth;
 using Legacy.Maliev.Intranet.Contracts;
 using Legacy.Maliev.Intranet.Bff.Catalog;
 using Legacy.Maliev.Intranet.Bff.Customers;
 using Legacy.Maliev.Intranet.Bff.Diagnostics;
+using Legacy.Maliev.Intranet.Bff.Dashboard;
 using Legacy.Maliev.Intranet.Bff.Employees;
 using Legacy.Maliev.Intranet.Bff.Orders;
 using Legacy.Maliev.Intranet.Bff.Procurement;
@@ -17,6 +19,7 @@ using Maliev.Aspire.ServiceDefaults;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Antiforgery;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.RateLimiting;
 using System.ComponentModel.DataAnnotations;
 using System.Globalization;
@@ -32,6 +35,7 @@ builder.AddLegacyIntranetDataProtection();
 builder.Services.AddProblemDetails();
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddSingleton<DiagnosticEventStore>();
+builder.Services.AddScoped<LegacyDashboardAggregator>();
 builder.Services.AddLegacyAccessTokenValidation(
     builder.Configuration,
     validateOnStart: !builder.Environment.IsEnvironment("Testing"));
@@ -121,9 +125,16 @@ builder.Services.AddHttpClient<CustomersProxy>(client =>
             .Handle<HttpRequestException>()
             .Handle<Polly.Timeout.TimeoutRejectedException>()
             .HandleResult(response => response.StatusCode == System.Net.HttpStatusCode.RequestTimeout ||
-                (int)response.StatusCode >= StatusCodes.Status500InternalServerError),
+            (int)response.StatusCode >= StatusCodes.Status500InternalServerError),
     });
 });
+builder.Services.AddHttpClient<CustomerUpdateProxy>(client =>
+{
+    client.BaseAddress = new Uri(builder.Configuration["Services:Customer"]
+        ?? throw new InvalidOperationException("Services:Customer is required."));
+    client.Timeout = TimeSpan.FromSeconds(10);
+}).RemoveAllResilienceHandlers()
+    .AddHttpMessageHandler<LegacyServiceAuthenticationHandler>();
 builder.Services.AddHttpClient<EmployeesProxy>(client =>
 {
     client.BaseAddress = new Uri(builder.Configuration["Services:Employee"]
@@ -498,6 +509,12 @@ builder.Services.AddHttpClient<ILegacyAuthClient, LegacyAuthClient>(client =>
         ?? throw new InvalidOperationException("Services:Auth is required."));
     client.Timeout = TimeSpan.FromSeconds(10);
 }).AddStandardResilienceHandler();
+builder.Services.AddHttpClient<IGoogleIdentityAuthClient, GoogleIdentityAuthClient>(client =>
+{
+    client.BaseAddress = new Uri(builder.Configuration["Services:Auth"]
+        ?? throw new InvalidOperationException("Services:Auth is required."));
+    client.Timeout = TimeSpan.FromSeconds(10);
+}).AddStandardResilienceHandler();
 builder.Services.AddRateLimiter(options =>
 {
     options.AddPolicy("employee-login", context => RateLimitPartition.GetFixedWindowLimiter(
@@ -603,6 +620,9 @@ builder.Services.AddAuthorizationBuilder()
     .AddPolicy(LegacyEmployeePermissions.CustomersCreate, policy => policy
         .RequireAuthenticatedUser()
         .RequireClaim("permissions", LegacyEmployeePermissions.CustomersCreate))
+    .AddPolicy(LegacyEmployeePermissions.CustomersUpdate, policy => policy
+        .RequireAuthenticatedUser()
+        .RequireClaim("permissions", LegacyEmployeePermissions.CustomersUpdate))
     .AddPolicy(LegacyEmployeePermissions.CustomersList, policy => policy
         .RequireAuthenticatedUser()
         .RequireClaim("permissions", LegacyEmployeePermissions.CustomersList))
@@ -712,10 +732,21 @@ app.MapGet("/bff/session", (HttpContext context, IAntiforgery antiforgery) =>
             context.User.FindFirstValue(EmployeeSessionService.LegacyDatabaseIdClaim),
             NumberStyles.None,
             CultureInfo.InvariantCulture,
-            out var legacyDatabaseId) && legacyDatabaseId > 0
+                out var legacyDatabaseId) && legacyDatabaseId > 0
                 ? legacyDatabaseId
-                : null));
+                : null,
+        context.User.FindAll("permissions")
+            .Select(claim => claim.Value)
+            .Where(value => !string.IsNullOrWhiteSpace(value))
+            .Distinct(StringComparer.Ordinal)
+            .ToArray()));
 }).AllowAnonymous();
+
+app.MapGet("/bff/dashboard", (
+    HttpContext context,
+    LegacyDashboardAggregator dashboard,
+    CancellationToken cancellationToken) => dashboard.GetAsync(context.User, cancellationToken))
+    .RequireAuthorization();
 
 app.MapGet("/bff/diagnostics/events", (
     DiagnosticEventSort? sort,
@@ -1423,6 +1454,12 @@ app.MapPost("/bff/login", async (
         return Results.ValidationProblem(errors);
     }
 
+    if (!WorkspaceIdentityRules.IsAllowedEmployeeEmail(request.Email))
+    {
+        logger.LogWarning("Rejected employee login attempt outside the workspace email domain.");
+        return Results.Unauthorized();
+    }
+
     EmployeeLoginResult login;
     try
     {
@@ -1457,10 +1494,117 @@ app.MapPost("/bff/login", async (
             statusCode: StatusCodes.Status401Unauthorized);
     }
 
-    await sessions.SignInAsync(context, login);
+    if (!WorkspaceIdentityRules.IsAllowedEmployeeEmail(login.Identity?.Email))
+    {
+        logger.LogWarning("AuthService returned a non-workspace identity for an employee login.");
+        return Results.Unauthorized();
+    }
+
+    await sessions.SignInAsync(context, login, request.RememberMe);
     return Results.Ok(new EmployeeSignInResponse(LocalReturnUrl.Normalize(request.ReturnUrl)));
 })
     .AddEndpointFilter<AntiforgeryValidationFilter>()
+    .RequireRateLimiting("employee-login")
+    .AllowAnonymous();
+
+app.MapGet("/bff/address/google-config", (IConfiguration configuration) =>
+        Results.Ok(GoogleMapsEndpointMapper.GetBrowserConfiguration(configuration)))
+    .RequireAuthorization(LegacyEmployeePermissions.CustomersRead);
+
+app.MapPost("/bff/google/nonce", async (
+    GoogleIdentityBrowserNonceRequest request,
+    HttpContext context,
+    IGoogleIdentityAuthClient authClient,
+    IDataProtectionProvider dataProtectionProvider,
+    IConfiguration configuration,
+    TimeProvider timeProvider,
+    ILogger<Program> logger,
+    CancellationToken cancellationToken) =>
+{
+    var clientId = configuration["Authentication:Google:ClientId"];
+    if (string.IsNullOrWhiteSpace(clientId))
+    {
+        logger.LogError("Google Identity Services client ID is not configured for the legacy Intranet.");
+        return Results.Problem(
+            title: "Google sign-in unavailable",
+            detail: "Google sign-in is temporarily unavailable.",
+            statusCode: StatusCodes.Status503ServiceUnavailable);
+    }
+
+    var issued = await authClient.IssueNonceAsync(cancellationToken);
+    if (issued is null || issued.ExpiresAtUtc <= timeProvider.GetUtcNow())
+    {
+        return Results.Problem(
+            title: "Google sign-in unavailable",
+            detail: "Google sign-in is temporarily unavailable.",
+            statusCode: StatusCodes.Status503ServiceUnavailable);
+    }
+
+    var state = new GoogleIdentityFlowState(
+        issued.Nonce,
+        LocalReturnUrl.Normalize(request.ReturnUrl),
+        issued.ExpiresAtUtc);
+    context.Response.Cookies.Append(
+        GoogleIdentityBffFlow.CookieName,
+        GoogleIdentityBffFlow.Protect(dataProtectionProvider, state),
+        new CookieOptions
+        {
+            HttpOnly = true,
+            Secure = context.Request.IsHttps,
+            SameSite = SameSiteMode.Strict,
+            IsEssential = true,
+            Path = "/bff/google",
+            Expires = issued.ExpiresAtUtc,
+        });
+
+    return Results.Ok(new
+    {
+        clientId,
+        nonce = issued.Nonce,
+        expiresAtUtc = issued.ExpiresAtUtc,
+    });
+})
+    .RequireRateLimiting("employee-login")
+    .AllowAnonymous();
+
+app.MapPost("/bff/google", async (
+    GoogleIdentityBrowserExchangeRequest request,
+    HttpContext context,
+    IGoogleIdentityAuthClient authClient,
+    EmployeeSessionService sessions,
+    IDataProtectionProvider dataProtectionProvider,
+    TimeProvider timeProvider,
+    ILogger<Program> logger,
+    CancellationToken cancellationToken) =>
+{
+    if (string.IsNullOrWhiteSpace(request.Credential) || request.Credential.Length > 8192 ||
+        string.IsNullOrWhiteSpace(request.Nonce) || request.Nonce.Length is < 32 or > 256)
+    {
+        return Results.BadRequest();
+    }
+
+    if (!context.Request.Cookies.TryGetValue(GoogleIdentityBffFlow.CookieName, out var protectedState) ||
+        !GoogleIdentityBffFlow.TryUnprotect(dataProtectionProvider, protectedState, out var state) ||
+        state.ExpiresAtUtc <= timeProvider.GetUtcNow() ||
+        !GoogleIdentityBffFlow.FixedTimeEquals(state.Nonce, request.Nonce))
+    {
+        DeleteGoogleIdentityFlowCookie(context);
+        return Results.Unauthorized();
+    }
+
+    // Consume the browser state before the downstream call; retries cannot replay the credential.
+    DeleteGoogleIdentityFlowCookie(context);
+    var login = await authClient.ExchangeAsync(request.Credential, request.Nonce, cancellationToken);
+    if (!login.Succeeded || login.Identity is null ||
+        !WorkspaceIdentityRules.IsAllowedEmployeeEmail(login.Identity.Email))
+    {
+        logger.LogWarning("Legacy Intranet Google exchange did not produce an allowed employee identity.");
+        return Results.Unauthorized();
+    }
+
+    await sessions.SignInAsync(context, login, rememberMe: false);
+    return Results.Ok(new EmployeeSignInResponse(state.ReturnUrl));
+})
     .RequireRateLimiting("employee-login")
     .AllowAnonymous();
 
@@ -1625,6 +1769,17 @@ app.MapGet("/bff/customers/{id:int}", async (
     }
 })
     .RequireAuthorization(LegacyEmployeePermissions.CustomersRead);
+
+app.MapPut("/bff/customers/{id:int}", (
+    int id,
+    CustomerUpdateRequest input,
+    CustomersProxy customers,
+    CustomerUpdateProxy updates,
+    HttpContext context,
+    CancellationToken cancellationToken) =>
+    CustomerUpdateEndpointMapper.UpdateAsync(id, input, customers, updates, context, cancellationToken))
+    .AddEndpointFilter<AntiforgeryValidationFilter>()
+    .RequireAuthorization(LegacyEmployeePermissions.CustomersUpdate);
 
 app.MapPost("/bff/customers", async (
     CreateCustomerAccountRequest request,
@@ -2334,6 +2489,20 @@ static IResult SupplierManagementResult(
         Legacy.Maliev.Intranet.Suppliers.SupplierManagementStatus.BadGateway => Results.Problem(statusCode: StatusCodes.Status502BadGateway),
         _ => Results.Problem(statusCode: StatusCodes.Status503ServiceUnavailable),
     };
+}
+
+static void DeleteGoogleIdentityFlowCookie(HttpContext context)
+{
+    context.Response.Cookies.Delete(
+        GoogleIdentityBffFlow.CookieName,
+        new CookieOptions
+        {
+            HttpOnly = true,
+            Secure = context.Request.IsHttps,
+            SameSite = SameSiteMode.Strict,
+            IsEssential = true,
+            Path = "/bff/google",
+        });
 }
 
 /// <summary>Same-origin security and proxy boundary for the legacy Intranet WASM client.</summary>

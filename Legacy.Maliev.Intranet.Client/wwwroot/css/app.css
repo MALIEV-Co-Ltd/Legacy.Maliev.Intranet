@@ -2,8 +2,30 @@ html,
 body {
     margin: 0;
     min-height: 100%;
-    font-family: system-ui, sans-serif;
+    font-family: "Geist", "Noto Sans Thai", sans-serif;
+    background: #f6f8fb;
+    color: #172033;
 }
+
+:root {
+    --legacy-primary: #2f6fed;
+    --legacy-ink: #172033;
+    --legacy-muted: #68758b;
+    --legacy-border: #e2e8f0;
+    --legacy-surface: #ffffff;
+    --legacy-surface-muted: #f1f5f9;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+.legacy-layout { min-height: 100dvh; background: #f6f8fb; }
+.legacy-main-content { min-height: calc(100dvh - 52px); padding: 0 !important; }
+.legacy-page-container { width: min(1440px, 100%); margin: 0 auto; padding: clamp(1rem, 2.5vw, 2.5rem); }
+.legacy-empty-layout { min-height: 100dvh; display: grid; place-items: center; padding: 1rem; background: #f6f8fb; }
+.legacy-skip-link { position: fixed; top: .5rem; left: .5rem; z-index: 100; padding: .5rem .75rem; border-radius: .5rem; background: var(--legacy-ink); color: #fff; transform: translateY(-180%); transition: transform .15s ease; }
+.legacy-skip-link:focus { transform: translateY(0); }
+.dashboard-card { height: 100%; border: 1px solid var(--legacy-border); background: var(--legacy-surface); }
+.dashboard-card-link { color: var(--legacy-primary); font-size: .8rem; font-weight: 600; text-decoration: none; }
+.dashboard-card-link:hover { text-decoration: underline; }
 
 #blazor-error-ui {
     background: #b91c1c;
@@ -41,4 +63,12 @@ body {
 
 .mud-drawer {
     border-right: 1px solid #e0e0e0;
+}
+
+@media (max-width: 1280px) {
+    .legacy-page-container { padding-bottom: calc(1rem + env(safe-area-inset-bottom)); }
+}
+
+@media (max-width: 640px) {
+    .legacy-page-container { padding: 1rem .75rem calc(1rem + env(safe-area-inset-bottom)); }
 }

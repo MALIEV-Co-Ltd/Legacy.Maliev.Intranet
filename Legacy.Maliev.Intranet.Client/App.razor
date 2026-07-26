@@ -1,16 +1,27 @@
+@using Legacy.Maliev.Intranet.Client.Pages
+
 <CascadingAuthenticationState>
     <Router AppAssembly="@typeof(App).Assembly" AdditionalAssemblies="@lazyAssemblies" OnNavigateAsync="LoadFeatureAssemblyAsync">
         <Found Context="routeData">
             <AuthorizeRouteView RouteData="routeData" DefaultLayout="@typeof(Layout.MainLayout)">
-                <NotAuthorized>
-                    <LoginRedirect />
+                <NotAuthorized Context="authState">
+                    @if (authState.User.Identity?.IsAuthenticated == true)
+                    {
+                        <LayoutView Layout="@typeof(Layout.MainLayout)">
+                            <AccessDenied />
+                        </LayoutView>
+                    }
+                    else
+                    {
+                        <LoginRedirect />
+                    }
                 </NotAuthorized>
             </AuthorizeRouteView>
             <FocusOnNavigate RouteData="routeData" Selector="h1" />
         </Found>
         <NotFound>
             <LayoutView Layout="@typeof(Layout.MainLayout)">
-                <MudAlert Severity="Severity.Warning">This employee route has not been migrated yet.</MudAlert>
+                <NotFound />
             </LayoutView>
         </NotFound>
     </Router>
@@ -24,27 +35,40 @@
 
     private async Task LoadFeatureAssemblyAsync(Microsoft.AspNetCore.Components.Routing.NavigationContext context)
     {
-        var assemblyName = context.Path.StartsWith("Materials/", StringComparison.OrdinalIgnoreCase)
+        var path = context.Path.TrimStart('/');
+        var assemblyName = path.StartsWith("Materials/", StringComparison.OrdinalIgnoreCase) ||
+            path.StartsWith("mfg/materials", StringComparison.OrdinalIgnoreCase)
             ? "Legacy.Maliev.Intranet.Client.Features.Catalog.wasm"
-            : context.Path.StartsWith("Server/", StringComparison.OrdinalIgnoreCase)
+            : path.StartsWith("Server/", StringComparison.OrdinalIgnoreCase)
                 ? "Legacy.Maliev.Intranet.Client.Features.Diagnostics.wasm"
-                : context.Path.StartsWith("Finances/", StringComparison.OrdinalIgnoreCase)
+                : path.StartsWith("Finances/", StringComparison.OrdinalIgnoreCase)
                     ? "Legacy.Maliev.Intranet.Client.Features.Accounting.wasm"
-                    : context.Path.StartsWith("Invoices/", StringComparison.OrdinalIgnoreCase)
+                    : path.StartsWith("Invoices/", StringComparison.OrdinalIgnoreCase) ||
+                        path.Equals("accounting", StringComparison.OrdinalIgnoreCase) ||
+                        path.StartsWith("accounting/", StringComparison.OrdinalIgnoreCase) ||
+                        path.Equals("finance/invoices", StringComparison.OrdinalIgnoreCase)
                         ? "Legacy.Maliev.Intranet.Client.Features.Accounting.wasm"
-                    : context.Path.StartsWith("QuotationRequests/", StringComparison.OrdinalIgnoreCase)
+                    : path.StartsWith("QuotationRequests/", StringComparison.OrdinalIgnoreCase)
                         ? "Legacy.Maliev.Intranet.Client.Features.Quotations.wasm"
-                        : context.Path.StartsWith("Quotations/", StringComparison.OrdinalIgnoreCase)
+                        : path.StartsWith("Quotations/", StringComparison.OrdinalIgnoreCase)
                             ? "Legacy.Maliev.Intranet.Client.Features.Quotations.wasm"
-                    : context.Path.StartsWith("Customers/", StringComparison.OrdinalIgnoreCase)
+                    : path.StartsWith("Customers/", StringComparison.OrdinalIgnoreCase) ||
+                        path.StartsWith("customers", StringComparison.OrdinalIgnoreCase) ||
+                        path.StartsWith("sales/customers", StringComparison.OrdinalIgnoreCase)
                         ? "Legacy.Maliev.Intranet.Client.Features.Customers.wasm"
-                : context.Path.StartsWith("Employees/", StringComparison.OrdinalIgnoreCase)
+                : path.StartsWith("Employees/", StringComparison.OrdinalIgnoreCase) ||
+                    path.StartsWith("employees", StringComparison.OrdinalIgnoreCase) ||
+                    path.StartsWith("hr/directory", StringComparison.OrdinalIgnoreCase) ||
+                    path.StartsWith("hr/profile", StringComparison.OrdinalIgnoreCase)
                     ? "Legacy.Maliev.Intranet.Client.Features.Employees.wasm"
-                    : context.Path.StartsWith("Orders/", StringComparison.OrdinalIgnoreCase)
+                    : path.StartsWith("Orders/", StringComparison.OrdinalIgnoreCase) ||
+                        path.StartsWith("sales/orders", StringComparison.OrdinalIgnoreCase)
                         ? "Legacy.Maliev.Intranet.Client.Features.Orders.wasm"
-                        : context.Path.StartsWith("Suppliers/", StringComparison.OrdinalIgnoreCase)
+                        : path.StartsWith("Suppliers/", StringComparison.OrdinalIgnoreCase) ||
+                            path.StartsWith("purchasing/suppliers", StringComparison.OrdinalIgnoreCase)
                             ? "Legacy.Maliev.Intranet.Client.Features.Procurement.wasm"
-                            : context.Path.StartsWith("PurchaseOrders/", StringComparison.OrdinalIgnoreCase)
+                            : path.StartsWith("PurchaseOrders/", StringComparison.OrdinalIgnoreCase) ||
+                                path.StartsWith("purchasing", StringComparison.OrdinalIgnoreCase)
                                 ? "Legacy.Maliev.Intranet.Client.Features.Procurement.wasm"
                                 : null;
         if (assemblyName is not null && loadedFeatureAssemblies.Add(assemblyName))

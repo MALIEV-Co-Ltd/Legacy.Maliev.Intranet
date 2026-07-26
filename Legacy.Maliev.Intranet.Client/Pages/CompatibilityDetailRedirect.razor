@@ -1,0 +1,36 @@
+@page "/sales/orders/{Id:int}"
+@page "/purchasing/{Id:int}"
+@page "/mfg/procurement/{Id:int}"
+@attribute [Authorize]
+@inject NavigationManager Navigation
+
+<PageTitle>Opening workspace record</PageTitle>
+
+<div class="legacy-route-redirect" role="status" aria-live="polite">
+    <MudProgressLinear Indeterminate="true" aria-label="Opening workspace record" />
+</div>
+
+@code {
+    [Parameter] public int Id { get; set; }
+
+    private bool _redirected;
+
+    protected override void OnParametersSet()
+    {
+        if (_redirected || Id <= 0)
+        {
+            return;
+        }
+
+        _redirected = true;
+        var currentPath = Navigation.ToBaseRelativePath(Navigation.Uri)
+            .Split('?', '#')[0]
+            .Trim('/');
+
+        var legacyPath = currentPath.StartsWith("sales/orders/", StringComparison.OrdinalIgnoreCase)
+            ? "/Orders/View"
+            : "/PurchaseOrders/View";
+
+        Navigation.NavigateTo($"{legacyPath}?id={Id}", replace: true);
+    }
+}

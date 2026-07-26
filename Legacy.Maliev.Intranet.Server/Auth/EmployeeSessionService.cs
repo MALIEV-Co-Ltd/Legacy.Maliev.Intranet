@@ -22,7 +22,10 @@ public sealed class EmployeeSessionService(
     private const string AccessExpiresAt = "legacy_access_expires_at";
 
     /// <summary>Signs in after AuthService has validated the employee.</summary>
-    public async Task SignInAsync(HttpContext context, EmployeeLoginResult login)
+    public async Task SignInAsync(
+        HttpContext context,
+        EmployeeLoginResult login,
+        bool rememberMe = false)
     {
         if (!login.Succeeded || login.Tokens is null || login.Identity is null)
         {
@@ -34,7 +37,7 @@ public sealed class EmployeeSessionService(
             new System.Security.Claims.ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme));
         var properties = new AuthenticationProperties
         {
-            IsPersistent = false,
+            IsPersistent = rememberMe,
             IssuedUtc = timeProvider.GetUtcNow(),
             ExpiresUtc = timeProvider.GetUtcNow().AddHours(8),
         };
