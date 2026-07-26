@@ -74,6 +74,14 @@ are available.
 - This is local evidence only. No production/GKE deployment, database write,
   credential reuse, or legacy PostgreSQL cutover was performed.
 
+The source-history review also found current-only authorization work after the
+legacy baseline (`d8e943b`, `008ba29`, `c79885f`, `fbf91c8`, `c3bed92`, and the
+recent IAM hardening commits). Those changes protect live employee analytics,
+profile reads, dashboard/project reads, and IAM bindings; they are not covered
+by the legacy int-based contracts yet. Each permission and resource-ownership
+decision must be ported and tested before the workspace can be called
+behavior-compatible.
+
 The 2026-07-26 validation slice also proves that authenticated-but-unauthorized
 routes render `AccessDenied`, anonymous routes redirect to the BFF login flow,
 and unknown routes render the accessible `NotFound` page. The BFF session
