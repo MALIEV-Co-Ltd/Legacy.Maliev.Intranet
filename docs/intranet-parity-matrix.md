@@ -80,6 +80,17 @@ are available.
 - This is local evidence only. No production/GKE deployment, database write,
   credential reuse, or legacy PostgreSQL cutover was performed.
 
+The current migration readiness validator accepts the checked-in restore and
+copy receipts (`evidenceValid=true`) and still reports `cutoverAuthorized=false`.
+The verified gates are limited to source-backup integrity and initial-copy
+parity. Existing-cluster capacity, CNPG backup/WAL, recovery drill, shadow-read
+parity, final-sync parity, rollback rehearsal, owner Aspire review, and service
+owner approval remain open. The legacy Intranet BFF is intentionally database
+free; twelve data-bearing legacy services have PostgreSQL/Testcontainers
+migration coverage, but no live GCS restore, `legacy-postgres-main-*` schema/
+row/key reconciliation, or service-to-database shadow-read proof has been run
+for this cutover.
+
 The source-history review also found current-only authorization work after the
 legacy baseline (`d8e943b`, `008ba29`, `c79885f`, `fbf91c8`, `c3bed92`, and the
 recent IAM hardening commits). Those changes protect live employee analytics,
