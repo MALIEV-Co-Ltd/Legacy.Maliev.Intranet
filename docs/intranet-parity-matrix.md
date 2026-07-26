@@ -51,7 +51,7 @@ are available.
 
 ## Latest validation checkpoint (2026-07-27)
 
-- Branch: `main` (current local HEAD `4a5080d`, built on validation merge `1a96322`); the parity branch now also contains
+- Branch: `main` (remote merge `25cac405`; local Aspire checkout is synchronized to the same tree); the parity branch now also contains
   browser-safe Maps configuration (`e70253f`) and nonce-bound Google employee
   sign-in (`d410b4c`, sourced from AuthService `8911dcc`). AppHost wires the
   optional local Google client/hosted-domain values and the dedicated
@@ -93,14 +93,15 @@ are available.
   carries Remember Me through the opaque server-side session ticket. Supported
   cultures are normalized to `en-TH`, `th-TH`, or `en-US`.
 - `dotnet test Legacy.Maliev.Intranet.Tests\Legacy.Maliev.Intranet.Tests.csproj -c Release --no-build --no-restore`
-  passed **561/561** with zero skips after the permission-aware navigation,
+  passed **563/563** with zero skips after the permission-aware navigation,
   persisted workspace theme, Orders Refresh, WASM runtime/login interop, and
   refresh-race hardening slices; the focused auth contract subset passed
-  **49/49**, focused navigation/theme passed **9/9**, and Orders passed **4/4**.
+  **49/49**, focused navigation/theme passed **9/9**, and the purchase-order
+  outcome/reconciliation slice passed **11/11**.
   With
   `MALIEV_CURRENT_INTRANET_ROOT` pointed at the original
   checkout, the route-parity subset passed **3/3** and the full suite passed
-  **561/561** again. The
+  **563/563** again. The
   clean Release build passed with **0 warnings and 0 errors** after stopping
   the serving BFF, and whitespace/diff verification passed. AuthService passed
   **107/107** and FileService passed
@@ -112,17 +113,14 @@ are available.
   `bd7cd33` with 43 newer delegated upload/Instant-Quotation commits. Those
   commits remain owned by the FileService/Web lanes and are not claimed as
   integrated into this Intranet validation.
-- Aspire local validation currently reports **17 running executable resources**
-  (14 legacy APIs, Intranet BFF, Web, and the dashboard), with all **22 DCP
-  service resources Ready** and all **19 migration runners Finished with exit
-  code 0**. The 14 API resources' `aspire-liveness`, `liveness`, and
-  `readiness` probes returned HTTP 200 (**42/42**); the BFF liveness/readiness
-  probes also returned HTTP 200. The Web proxy
+- Aspire local validation currently reports **16/16 application projects
+  Running and Healthy** and **42/42 runtime resources Healthy**, with all
+  **19 migration runners Finished with exit code 0**. The 14 API resources'
+  `aspire-liveness`, `liveness`, and `readiness` probes plus the BFF probes
+  returned HTTP 200 (**49/49** local health/login/session checks). The Web proxy
   (`http://localhost:5188/Account/Login`), BFF login
   (`https://localhost:65248/Login`), and dashboard
-  (`http://localhost:15888`) returned HTTP 200. The fresh browser login tab
-  had no console warnings/errors and no horizontal overflow at desktop
-  (1,280px) or mobile (390px) width. Google nonce exchange is deliberately
+  (`http://localhost:15888`) returned HTTP 200. Google nonce exchange is deliberately
   HTTP 503 until a local client ID is supplied, while password sign-in remains
   available; the Maps config endpoint is HTTP 401 without the required
   employee permission.
@@ -131,11 +129,12 @@ are available.
   `en-US` culture switch from crashing the browser. Login Google interop is
   guarded until the host is rendered and retries fail-closed, preventing the
   empty `ElementReference` startup race.
-- After the Orders Refresh and auth refresh-race slices (`b4dca3c`, `4a5080d`),
-  the Aspire restart passed a clean Release build with **0 warnings and 0
-  errors**; Release tests passed **561/561**, all 22 DCP services were Ready,
-  all 19 migration runners exited 0, and the 14 API resources returned HTTP
-  200 for all three prefixed probes (**42/42**). The latest Intranet BFF
+- After the Orders Refresh, auth refresh-race, and purchase-order
+  reconciliation slices (`b4dca3c`, `4a5080d`, `60addae`), the Aspire BFF
+  rebuild passed a clean build with **0 warnings and 0 errors**; Release tests
+  passed **563/563**, all 16 application projects were Healthy, all 19
+  migration runners exited 0, and the 14 API resources plus BFF returned HTTP
+  200 for every local health/login/session check (**49/49**). The latest Intranet BFF
   returned HTTP 200 for `/intranet-bff/aspire-liveness`,
   `/intranet-bff/liveness`, `/intranet-bff/readiness`, `/Login`, and the
   anonymous `/bff/session` projection on dynamic local port `65248`.
@@ -145,6 +144,14 @@ are available.
   focused tests prove peer-token reuse, true-revocation sign-out, and
   transient-failure preservation; no access or refresh token is exposed to
   the WASM client.
+- Purchase-order creation now distinguishes a reconciliation-required 503 from
+  retry-safe 408/504 responses and keeps the stable idempotency attempt key;
+  service compensation, BFF ProblemDetails, and WASM status handling are
+  covered by the focused **11/11** slice.
+- The shared `Legacy.Maliev.ServiceDefaults` readiness probe fix is merged at
+  `1065c071`; the Intranet CI workflow pins that immutable commit so an
+  authenticated fallback policy cannot turn Kubernetes/Aspire readiness into
+  a login redirect.
 - This is local evidence only. No production/GKE deployment, database write,
   credential reuse, or legacy PostgreSQL cutover was performed.
 
