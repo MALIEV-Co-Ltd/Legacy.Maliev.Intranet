@@ -51,7 +51,7 @@ are available.
 
 ## Latest validation checkpoint (2026-07-27)
 
-- Branch: `main` (current local HEAD `e095fca`, built on validation merge `1a96322`); the parity branch now also contains
+- Branch: `main` (current local HEAD `f88b763`, built on validation merge `1a96322`); the parity branch now also contains
   browser-safe Maps configuration (`e70253f`) and nonce-bound Google employee
   sign-in (`d410b4c`, sourced from AuthService `8911dcc`). AppHost wires the
   optional local Google client/hosted-domain values and the dedicated
@@ -84,10 +84,12 @@ are available.
   carries Remember Me through the opaque server-side session ticket. Supported
   cultures are normalized to `en-TH`, `th-TH`, or `en-US`.
 - `dotnet test Legacy.Maliev.Intranet.slnx -c Release --no-build --no-restore`
-  passed **549/549** with zero skips after the navigation and Orders Refresh
-  slices; focused navigation passed **2/2** and Orders passed **4/4**. The
-  Release build passed with **0 warnings and 0 errors**, and whitespace
-  verification passed. AuthService passed **107/107** and FileService passed
+  passed **551/551** with zero skips after the navigation, Orders Refresh, and
+  WASM runtime/login interop slices; focused navigation passed **2/2**, Orders
+  passed **4/4**, and the runtime/login contract subset passed **4/4**. The
+  clean Release build passed with **0 warnings and 0 errors** after stopping
+  the serving BFF, and whitespace/diff verification passed. AuthService passed
+  **107/107** and FileService passed
   **28/28** after pinning `Google.Apis.Auth` to `1.75.0` in the storage data
   adapter (`2fffcbe`), removing the AppHost migration-runner assembly
   conflict. AppHost passed **88/88** and its Release build passed with **0
@@ -96,17 +98,25 @@ are available.
   `bd7cd33` with 43 newer delegated upload/Instant-Quotation commits. Those
   commits remain owned by the FileService/Web lanes and are not claimed as
   integrated into this Intranet validation.
-- Aspire local validation currently reports all **16 application** resources
-  (14 legacy APIs, Intranet BFF, and Web) Ready/Healthy, with all **22
-  PostgreSQL database resources** and the dashboard, PostgreSQL main/pooler,
-  and both Redis endpoints healthy. The 16 resources'
-  `aspire-liveness`, `liveness`, and `readiness` probes returned HTTP 200
-  (**48/48**); all 19 migration runners finished with exit code 0. The Web
-  proxy (`http://localhost:5188/` and `/Account/Login`) and dashboard
-  (`http://localhost:15888`) returned HTTP 200. The BFF session endpoint is
-  HTTP 200 for an anonymous session; Google nonce exchange is deliberately
-  HTTP 503 until a client ID is supplied, and the Maps config endpoint is
-  HTTP 401 without the required employee permission.
+- Aspire local validation currently reports **17 running executable resources**
+  (14 legacy APIs, Intranet BFF, Web, and the dashboard), with all **22 DCP
+  service resources Ready** and all **19 migration runners Finished with exit
+  code 0**. The 14 API resources' `aspire-liveness`, `liveness`, and
+  `readiness` probes returned HTTP 200 (**42/42**); the BFF liveness/readiness
+  probes also returned HTTP 200. The Web proxy
+  (`http://localhost:5188/Account/Login`), BFF login
+  (`https://localhost:58513/Login`), and dashboard
+  (`http://localhost:15888`) returned HTTP 200. The fresh browser login tab
+  had no console warnings/errors and no horizontal overflow at desktop
+  (1,280px) or mobile (390px) width. Google nonce exchange is deliberately
+  HTTP 503 until a local client ID is supplied, while password sign-in remains
+  available; the Maps config endpoint is HTTP 401 without the required
+  employee permission.
+- The WASM client now explicitly loads all globalization data when
+  `InvariantGlobalization` is false, preventing the supported `en-TH`/`th-TH`/
+  `en-US` culture switch from crashing the browser. Login Google interop is
+  guarded until the host is rendered and retries fail-closed, preventing the
+  empty `ElementReference` startup race.
 - This is local evidence only. No production/GKE deployment, database write,
   credential reuse, or legacy PostgreSQL cutover was performed.
 
