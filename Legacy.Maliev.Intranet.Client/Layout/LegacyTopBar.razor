@@ -1,0 +1,153 @@
+@using Legacy.Maliev.Intranet.Contracts
+@using Microsoft.AspNetCore.Components.Authorization
+@inject NavigationManager Navigation
+
+<header class="legacy-topbar" @onkeydown="HandleKeyDown">
+    <div class="legacy-topbar-brand">
+        <button type="button"
+                class="legacy-mobile-menu-button"
+                aria-label="@(_mobileOpen ? "Close navigation" : "Open navigation")"
+                aria-expanded="@_mobileOpen"
+                @onclick="ToggleMobileAsync">
+            <MudIcon Icon="@(_mobileOpen ? Icons.Material.Filled.Close : Icons.Material.Filled.Menu)" Size="Size.Small" />
+        </button>
+        <a class="legacy-logo-link" href="/Dashboard" aria-label="MALIEV dashboard">
+            <img src="images/MALIEV_BLACK.svg" alt="MALIEV" />
+        </a>
+        <span class="legacy-workspace-label">Workspace</span>
+    </div>
+
+    <nav class="legacy-desktop-nav" aria-label="Primary navigation">
+        @foreach (var group in LegacyAppNavigation.Groups)
+        {
+            <MudMenu Dense="true" AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft" Class="legacy-nav-menu">
+                <ActivatorContent>
+                    <button type="button"
+                            class="legacy-nav-trigger @(IsGroupActive(group) ? "active" : string.Empty)"
+                            aria-label="@($"{group.Label} navigation")"
+                            @onclick="context.ToggleAsync">
+                        <MudIcon Icon="@group.Icon" Size="Size.Small" />
+                        <span>@group.Label</span>
+                        <MudIcon Icon="@Icons.Material.Filled.KeyboardArrowDown" Size="Size.Small" />
+                    </button>
+                </ActivatorContent>
+                <ChildContent>
+                    @foreach (var item in group.Items)
+                    {
+                        <MudMenuItem Href="@item.Href" Icon="@item.Icon" Class="@(IsItemActive(item) ? "legacy-nav-item active" : "legacy-nav-item")">
+                            @item.Label
+                        </MudMenuItem>
+                    }
+                </ChildContent>
+            </MudMenu>
+        }
+    </nav>
+
+    <div class="legacy-topbar-spacer"></div>
+
+    <AuthorizeView>
+        <Authorized Context="auth">
+            <div class="legacy-session-summary">
+                <span class="legacy-session-avatar" aria-hidden="true">@GetInitials(auth.User.Identity?.Name)</span>
+                <span class="legacy-session-copy">
+                    <strong>@(Session?.DisplayName ?? auth.User.Identity?.Name ?? "Employee")</strong>
+                    <small>Employee workspace</small>
+                </span>
+            </div>
+            <button type="button" class="legacy-signout-button" @onclick="SignOutAsync">
+                <MudIcon Icon="@Icons.Material.Outlined.Logout" Size="Size.Small" />
+                <span>Sign out</span>
+            </button>
+        </Authorized>
+        <NotAuthorized>
+            <a class="legacy-signin-link" href="/Login">Sign in</a>
+        </NotAuthorized>
+    </AuthorizeView>
+    @if (Session is null)
+    {
+        <span class="legacy-session-status" role="status">Session unavailable</span>
+    }
+</header>
+
+@if (_mobileOpen)
+{
+    <div class="legacy-mobile-backdrop" aria-hidden="true" @onclick="CloseMobileAsync"></div>
+    <aside class="legacy-mobile-nav" aria-label="Mobile navigation">
+        <div class="legacy-mobile-nav-header">
+            <span>Workspace navigation</span>
+            <button type="button" class="legacy-icon-button" aria-label="Close navigation" @onclick="CloseMobileAsync">
+                <MudIcon Icon="@Icons.Material.Filled.Close" Size="Size.Small" />
+            </button>
+        </div>
+        @foreach (var group in LegacyAppNavigation.Groups)
+        {
+            <section class="legacy-mobile-group" aria-label="@group.Label">
+                <div class="legacy-mobile-group-title">
+                    <MudIcon Icon="@group.Icon" Size="Size.Small" />
+                    <span>@group.Label</span>
+                </div>
+                @foreach (var item in group.Items)
+                {
+                    <a href="@item.Href" class="legacy-mobile-link @(IsItemActive(item) ? "active" : string.Empty)" @onclick="CloseMobileAsync">
+                        <MudIcon Icon="@item.Icon" Size="Size.Small" />
+                        <span>@item.Label</span>
+                    </a>
+                }
+            </section>
+        }
+    </aside>
+}
+
+@code {
+    [Parameter] public EmployeeSessionSummary? Session { get; set; }
+    [Parameter] public EventCallback OnSignOut { get; set; }
+
+    private bool _mobileOpen;
+
+    private bool IsGroupActive(LegacyNavGroup group) => group.Items.Any(IsItemActive);
+
+    private bool IsItemActive(LegacyNavItem item)
+    {
+        var current = Navigation.ToBaseRelativePath(Navigation.Uri).Split('?', '#')[0].Trim('/');
+        var target = item.Href.Trim('/').Split('?', '#')[0];
+        return item.Match == NavLinkMatch.All
+            ? string.Equals(current, target, StringComparison.OrdinalIgnoreCase)
+            : string.Equals(current, target, StringComparison.OrdinalIgnoreCase) ||
+              current.StartsWith($"{target}/", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private Task ToggleMobileAsync()
+    {
+        _mobileOpen = !_mobileOpen;
+        return Task.CompletedTask;
+    }
+
+    private Task CloseMobileAsync()
+    {
+        _mobileOpen = false;
+        return Task.CompletedTask;
+    }
+
+    private Task SignOutAsync() => OnSignOut.InvokeAsync();
+
+    private void HandleKeyDown(KeyboardEventArgs args)
+    {
+        if (args.Key == "Escape")
+        {
+            _mobileOpen = false;
+        }
+    }
+
+    private static string GetInitials(string? name)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            return "U";
+        }
+
+        var parts = name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        return parts.Length > 1
+            ? string.Concat(parts[0][0], parts[^1][0]).ToUpperInvariant()
+            : name[..Math.Min(2, name.Length)].ToUpperInvariant();
+    }
+}

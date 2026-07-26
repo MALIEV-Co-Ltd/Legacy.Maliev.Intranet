@@ -1,0 +1,74 @@
+namespace Legacy.Maliev.Intranet.Tests;
+
+public sealed class IntranetParityContractTests
+{
+    [Fact]
+    public void Shell_UsesTheWorkspaceNavigationAndResponsiveMobileSurface()
+    {
+        var root = FindRoot();
+        var layout = File.ReadAllText(Path.Combine(root, "Legacy.Maliev.Intranet.Client", "Layout", "MainLayout.razor"));
+        var topbar = File.ReadAllText(Path.Combine(root, "Legacy.Maliev.Intranet.Client", "Layout", "LegacyTopBar.razor"));
+        var css = File.ReadAllText(Path.Combine(root, "Legacy.Maliev.Intranet.Client", "Layout", "LegacyTopBar.razor.css"));
+        var navigation = File.ReadAllText(Path.Combine(root, "Legacy.Maliev.Intranet.Client", "Layout", "LegacyAppNavigation.cs"));
+
+        Assert.Contains("<LegacyTopBar", layout, StringComparison.Ordinal);
+        Assert.Contains("OnSignOut=\"SignOutAsync\"", layout, StringComparison.Ordinal);
+        Assert.Contains("MALIEV_BLACK.svg", topbar, StringComparison.Ordinal);
+        Assert.Contains("aria-label", topbar, StringComparison.Ordinal);
+        Assert.Contains("Escape", topbar, StringComparison.Ordinal);
+        Assert.Contains("@media (max-width: 1200px)", css, StringComparison.Ordinal);
+        Assert.Contains("@media (max-width: 640px)", css, StringComparison.Ordinal);
+        Assert.Contains("/customers", navigation, StringComparison.Ordinal);
+        Assert.Contains("/sales/orders", navigation, StringComparison.Ordinal);
+        Assert.Contains("/purchasing", navigation, StringComparison.Ordinal);
+        Assert.Contains("/mfg/materials", navigation, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Dashboard_StaysBehindTheSameOriginBffAndPermissionScopedAggregator()
+    {
+        var root = FindRoot();
+        var program = File.ReadAllText(Path.Combine(root, "Legacy.Maliev.Intranet.Bff", "Program.cs"));
+        var aggregator = File.ReadAllText(Path.Combine(root, "Legacy.Maliev.Intranet.Bff", "Dashboard", "LegacyDashboardAggregator.cs"));
+        var page = File.ReadAllText(Path.Combine(root, "Legacy.Maliev.Intranet.Client", "Pages", "Dashboard.razor"));
+
+        Assert.Contains("MapGet(\"/bff/dashboard\"", program, StringComparison.Ordinal);
+        Assert.Contains(".RequireAuthorization()", program, StringComparison.Ordinal);
+        Assert.Contains("FindAll(\"permissions\")", aggregator, StringComparison.Ordinal);
+        Assert.Contains("ReadFromJsonAsync", aggregator, StringComparison.Ordinal);
+        Assert.DoesNotContain("DbContext", aggregator, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("GetAsync(\"/bff/dashboard\"", page, StringComparison.Ordinal);
+        Assert.DoesNotContain("AccessToken", page, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("RefreshToken", page, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void CurrentWorkspaceAliases_AreDeclaredAndLazyLoadedByTheMatchingFeatureAssembly()
+    {
+        var root = FindRoot();
+        var app = File.ReadAllText(Path.Combine(root, "Legacy.Maliev.Intranet.Client", "App.razor"));
+        var routes = File.ReadAllText(Path.Combine(root, "Legacy.Maliev.Intranet", "LegacyRoutes.cs"));
+
+        foreach (var alias in Legacy.Maliev.Intranet.LegacyRoutes.CompatibilityAliases)
+        {
+            Assert.Contains($"\"{alias}\"", routes, StringComparison.Ordinal);
+        }
+
+        Assert.Contains("sales/customers", app, StringComparison.Ordinal);
+        Assert.Contains("sales/orders", app, StringComparison.Ordinal);
+        Assert.Contains("purchasing/suppliers", app, StringComparison.Ordinal);
+        Assert.Contains("finance/invoices", app, StringComparison.Ordinal);
+        Assert.Contains("mfg/materials", app, StringComparison.Ordinal);
+    }
+
+    private static string FindRoot()
+    {
+        var directory = new DirectoryInfo(AppContext.BaseDirectory);
+        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "Legacy.Maliev.Intranet.slnx")))
+        {
+            directory = directory.Parent;
+        }
+
+        return directory?.FullName ?? throw new DirectoryNotFoundException();
+    }
+}
