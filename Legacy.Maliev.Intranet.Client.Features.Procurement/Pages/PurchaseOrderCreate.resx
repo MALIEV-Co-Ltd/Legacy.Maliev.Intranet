@@ -37,6 +37,8 @@
   <data name="Conflict" xml:space="preserve"><value>This purchase-order attempt conflicts with an existing operation.</value></data>
   <data name="RateLimited" xml:space="preserve"><value>Too many requests were submitted. Wait a moment and try again.</value></data>
   <data name="Unavailable" xml:space="preserve"><value>Purchase-order reference data is temporarily unavailable.</value></data>
+  <data name="OutcomeUnknown" xml:space="preserve"><value>The purchase-order result could not be confirmed. Do not create a second order; reconcile this attempt before retrying.</value></data>
+  <data name="RetrySafe" xml:space="preserve"><value>The purchase-order result could not be confirmed. Check the purchase-order list, then retry this same attempt if it was not created.</value></data>
   <data name="CreateFailed" xml:space="preserve"><value>The purchase order could not be completed. Any partial resources were rolled back.</value></data>
   <data name="InvalidResponse" xml:space="preserve"><value>A legacy service returned an invalid response.</value></data>
 </root>
