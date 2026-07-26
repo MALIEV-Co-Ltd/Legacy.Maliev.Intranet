@@ -33,6 +33,8 @@ public static class LegacyEmployeePermissions
     public const string CustomersRead = "legacy-customer.customers.read";
     /// <summary>Allows creating a legacy customer profile and its authentication identity.</summary>
     public const string CustomersCreate = "legacy-customer.customers.create";
+    /// <summary>Allows updating a legacy customer profile.</summary>
+    public const string CustomersUpdate = "legacy-customer.customers.update";
     /// <summary>Allows listing and searching legacy customer profiles.</summary>
     public const string CustomersList = "legacy-customer.customers.list";
     /// <summary>Allows reading the legacy materials catalog.</summary>

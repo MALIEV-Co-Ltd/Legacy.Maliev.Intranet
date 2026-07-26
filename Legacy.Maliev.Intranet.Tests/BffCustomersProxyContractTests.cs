@@ -22,6 +22,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.IdentityModel.Tokens;
 using BffProgram = Bff::Program;
 using CustomersProxy = Bff::Legacy.Maliev.Intranet.Bff.Customers.CustomersProxy;
+using CustomerUpdateProxy = Bff::Legacy.Maliev.Intranet.Bff.Customers.CustomerUpdateProxy;
 
 namespace Legacy.Maliev.Intranet.Tests;
 
@@ -613,6 +614,121 @@ public sealed class BffCustomersProxyContractTests
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
     }
 
+    [Fact]
+    public async Task Update_MissingCsrf_IsRejectedBeforeAnyCustomerWrite()
+    {
+        var profile = new RecordingCustomerHandler(HttpStatusCode.OK, CustomerDetailJson);
+        var update = new RecordingWorkflowHandler((HttpStatusCode.NoContent, string.Empty));
+        await using var factory = new CustomersBffFactory(
+            profile,
+            hasPermission: true,
+            hasReadPermission: true,
+            hasUpdatePermission: true,
+            updateDownstream: update);
+        using var client = CreateClient(factory);
+        await SignInAsync(client);
+
+        using var response = await client.PutAsJsonAsync("/bff/customers/42", ValidUpdateRequest());
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal(0, profile.RequestCount);
+        Assert.Empty(update.Requests);
+    }
+
+    [Fact]
+    public async Task Update_EmployeeWithoutExactPermission_IsForbiddenBeforeDownstreamCalls()
+    {
+        var profile = new RecordingCustomerHandler(HttpStatusCode.OK, CustomerDetailJson);
+        var update = new RecordingWorkflowHandler((HttpStatusCode.NoContent, string.Empty));
+        await using var factory = new CustomersBffFactory(
+            profile,
+            hasPermission: true,
+            hasReadPermission: true,
+            hasUpdatePermission: false,
+            updateDownstream: update);
+        using var client = CreateClient(factory);
+        await SignInAsync(client);
+
+        using var response = await SendUpdateAsync(client, ValidUpdateRequest(), includeCsrf: true);
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+        Assert.Equal(0, profile.RequestCount);
+        Assert.Empty(update.Requests);
+    }
+
+    [Fact]
+    public async Task Update_AuthorizedCsrfWrite_PreservesOwnedRelationsAndDoesNotRetry()
+    {
+        var profile = new RecordingCustomerHandler(HttpStatusCode.OK, CustomerDetailJson);
+        var update = new RecordingWorkflowHandler((HttpStatusCode.NoContent, string.Empty));
+        await using var factory = new CustomersBffFactory(
+            profile,
+            hasPermission: true,
+            hasReadPermission: true,
+            hasUpdatePermission: true,
+            updateDownstream: update);
+        using var client = CreateClient(factory);
+        await SignInAsync(client);
+
+        using var response = await SendUpdateAsync(client, ValidUpdateRequest(), includeCsrf: true);
+
+        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+        Assert.Equal(1, profile.RequestCount);
+        var request = Assert.Single(update.Requests);
+        Assert.Equal(HttpMethod.Put, request.Method);
+        Assert.Equal("/customers/42", request.PathAndQuery);
+        Assert.Equal("Bearer signed-service-token", request.Authorization);
+        Assert.Contains("\"firstName\":\"Grace\"", request.Body, StringComparison.Ordinal);
+        Assert.Contains("\"companyId\":7", request.Body, StringComparison.Ordinal);
+        Assert.Contains("\"billingAddressId\":13", request.Body, StringComparison.Ordinal);
+        Assert.Contains("\"shippingAddressId\":14", request.Body, StringComparison.Ordinal);
+        Assert.DoesNotContain("server-only-access-token", request.Body, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Update_InvalidInput_IsRejectedBeforeCustomerServiceRead()
+    {
+        var profile = new RecordingCustomerHandler(HttpStatusCode.OK, CustomerDetailJson);
+        var update = new RecordingWorkflowHandler((HttpStatusCode.NoContent, string.Empty));
+        await using var factory = new CustomersBffFactory(
+            profile,
+            hasPermission: true,
+            hasReadPermission: true,
+            hasUpdatePermission: true,
+            updateDownstream: update);
+        using var client = CreateClient(factory);
+        await SignInAsync(client);
+
+        var invalid = ValidUpdateRequest();
+        invalid.Email = "not-an-email";
+        invalid.FirstName = string.Empty;
+        using var response = await SendUpdateAsync(client, invalid, includeCsrf: true);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal(0, profile.RequestCount);
+        Assert.Empty(update.Requests);
+    }
+
+    [Fact]
+    public async Task Update_DownstreamConflict_IsPreservedWithoutRetry()
+    {
+        var profile = new RecordingCustomerHandler(HttpStatusCode.OK, CustomerDetailJson);
+        var update = new RecordingWorkflowHandler((HttpStatusCode.Conflict, string.Empty));
+        await using var factory = new CustomersBffFactory(
+            profile,
+            hasPermission: true,
+            hasReadPermission: true,
+            hasUpdatePermission: true,
+            updateDownstream: update);
+        using var client = CreateClient(factory);
+        await SignInAsync(client);
+
+        using var response = await SendUpdateAsync(client, ValidUpdateRequest(), includeCsrf: true);
+
+        Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+        Assert.Single(update.Requests);
+    }
+
     public static TheoryData<Exception> TransportFailures => new()
     {
         new HttpRequestException("customer unavailable"),
@@ -665,6 +781,25 @@ public sealed class BffCustomersProxyContractTests
         return await client.SendAsync(request);
     }
 
+    private static async Task<HttpResponseMessage> SendUpdateAsync(
+        HttpClient client,
+        CustomerUpdateRequest requestBody,
+        bool includeCsrf)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Put, "/bff/customers/42")
+        {
+            Content = JsonContent.Create(requestBody),
+        };
+        if (includeCsrf)
+        {
+            using var sessionResponse = await client.GetAsync("/bff/session");
+            var session = await sessionResponse.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>();
+            request.Headers.Add("X-CSRF-TOKEN", session.GetProperty("csrfToken").GetString());
+        }
+
+        return await client.SendAsync(request);
+    }
+
     private static CreateCustomerAccountRequest ValidCreateRequest() => new()
     {
         FirstName = "Ada",
@@ -678,6 +813,17 @@ public sealed class BffCustomersProxyContractTests
         DateOfBirth = new DateTime(1815, 12, 10),
     };
 
+    private static CustomerUpdateRequest ValidUpdateRequest() => new()
+    {
+        FirstName = "Grace",
+        LastName = "Hopper",
+        Email = "grace@example.com",
+        Telephone = "+66 2 999 9999",
+        Mobile = "+66 81 999 9999",
+        Fax = "+66 2 888 8888",
+        DateOfBirth = new DateTime(1906, 12, 9),
+    };
+
     private sealed class CustomersBffFactory(
         HttpMessageHandler downstream,
         bool hasPermission,
@@ -685,7 +831,9 @@ public sealed class BffCustomersProxyContractTests
         bool hasCreatePermission = false,
         HttpMessageHandler? profileDownstream = null,
         HttpMessageHandler? identityDownstream = null,
-        bool hasReadPermission = false)
+        bool hasReadPermission = false,
+        bool hasUpdatePermission = false,
+        HttpMessageHandler? updateDownstream = null)
         : WebApplicationFactory<BffProgram>
     {
         protected override void ConfigureWebHost(IWebHostBuilder builder)
@@ -698,11 +846,13 @@ public sealed class BffCustomersProxyContractTests
             builder.ConfigureServices(services =>
             {
                 services.RemoveAll<ILegacyAuthClient>();
-                services.AddSingleton<ILegacyAuthClient>(new CustomersAuthClient(hasPermission, hasCreatePermission, hasReadPermission));
+                services.AddSingleton<ILegacyAuthClient>(new CustomersAuthClient(hasPermission, hasCreatePermission, hasReadPermission, hasUpdatePermission));
                 services.RemoveAll<IServiceAccessTokenProvider>();
                 services.AddSingleton<IServiceAccessTokenProvider>(new CustomersServiceTokenProvider(serviceToken));
                 services.AddHttpClient<CustomersProxy>()
                     .ConfigurePrimaryHttpMessageHandler(() => downstream);
+                services.AddHttpClient<CustomerUpdateProxy>()
+                    .ConfigurePrimaryHttpMessageHandler(() => updateDownstream ?? downstream);
                 services.RemoveAll<ICustomerProfileCreationClient>();
                 services.AddHttpClient<ICustomerProfileCreationClient, CustomerProfileCreationClient>()
                     .ConfigurePrimaryHttpMessageHandler(() => profileDownstream ?? downstream);
@@ -723,7 +873,7 @@ public sealed class BffCustomersProxyContractTests
         }
     }
 
-    private sealed class CustomersAuthClient(bool hasPermission, bool hasCreatePermission, bool hasReadPermission) : ILegacyAuthClient
+    private sealed class CustomersAuthClient(bool hasPermission, bool hasCreatePermission, bool hasReadPermission, bool hasUpdatePermission) : ILegacyAuthClient
     {
         public Task<EmployeeLoginResult> LoginAsync(string email, string password, CancellationToken cancellationToken) =>
             Task.FromResult(new EmployeeLoginResult(
@@ -737,6 +887,7 @@ public sealed class BffCustomersProxyContractTests
                         .. hasPermission ? ["legacy-customer.customers.list"] : Array.Empty<string>(),
                         .. hasCreatePermission ? ["legacy-customer.customers.create"] : Array.Empty<string>(),
                         .. hasReadPermission ? ["legacy-customer.customers.read"] : Array.Empty<string>(),
+                        .. hasUpdatePermission ? ["legacy-customer.customers.update"] : Array.Empty<string>(),
                     ])));
 
         public Task<EmployeeRefreshResult?> RefreshAsync(string refreshToken, CancellationToken cancellationToken) => Task.FromResult<EmployeeRefreshResult?>(null);

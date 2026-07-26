@@ -123,9 +123,16 @@ builder.Services.AddHttpClient<CustomersProxy>(client =>
             .Handle<HttpRequestException>()
             .Handle<Polly.Timeout.TimeoutRejectedException>()
             .HandleResult(response => response.StatusCode == System.Net.HttpStatusCode.RequestTimeout ||
-                (int)response.StatusCode >= StatusCodes.Status500InternalServerError),
+            (int)response.StatusCode >= StatusCodes.Status500InternalServerError),
     });
 });
+builder.Services.AddHttpClient<CustomerUpdateProxy>(client =>
+{
+    client.BaseAddress = new Uri(builder.Configuration["Services:Customer"]
+        ?? throw new InvalidOperationException("Services:Customer is required."));
+    client.Timeout = TimeSpan.FromSeconds(10);
+}).RemoveAllResilienceHandlers()
+    .AddHttpMessageHandler<LegacyServiceAuthenticationHandler>();
 builder.Services.AddHttpClient<EmployeesProxy>(client =>
 {
     client.BaseAddress = new Uri(builder.Configuration["Services:Employee"]
@@ -605,6 +612,9 @@ builder.Services.AddAuthorizationBuilder()
     .AddPolicy(LegacyEmployeePermissions.CustomersCreate, policy => policy
         .RequireAuthenticatedUser()
         .RequireClaim("permissions", LegacyEmployeePermissions.CustomersCreate))
+    .AddPolicy(LegacyEmployeePermissions.CustomersUpdate, policy => policy
+        .RequireAuthenticatedUser()
+        .RequireClaim("permissions", LegacyEmployeePermissions.CustomersUpdate))
     .AddPolicy(LegacyEmployeePermissions.CustomersList, policy => policy
         .RequireAuthenticatedUser()
         .RequireClaim("permissions", LegacyEmployeePermissions.CustomersList))
@@ -1638,6 +1648,17 @@ app.MapGet("/bff/customers/{id:int}", async (
     }
 })
     .RequireAuthorization(LegacyEmployeePermissions.CustomersRead);
+
+app.MapPut("/bff/customers/{id:int}", (
+    int id,
+    CustomerUpdateRequest input,
+    CustomersProxy customers,
+    CustomerUpdateProxy updates,
+    HttpContext context,
+    CancellationToken cancellationToken) =>
+    CustomerUpdateEndpointMapper.UpdateAsync(id, input, customers, updates, context, cancellationToken))
+    .AddEndpointFilter<AntiforgeryValidationFilter>()
+    .RequireAuthorization(LegacyEmployeePermissions.CustomersUpdate);
 
 app.MapPost("/bff/customers", async (
     CreateCustomerAccountRequest request,
