@@ -14,14 +14,39 @@ public sealed class IntranetParityContractTests
         Assert.Contains("<LegacyTopBar", layout, StringComparison.Ordinal);
         Assert.Contains("OnSignOut=\"SignOutAsync\"", layout, StringComparison.Ordinal);
         Assert.Contains("MALIEV_BLACK.svg", topbar, StringComparison.Ordinal);
+        Assert.DoesNotContain("legacy-workspace-label", topbar, StringComparison.Ordinal);
         Assert.Contains("aria-label", topbar, StringComparison.Ordinal);
+        Assert.Contains("aria-controls=\"legacy-mobile-nav\"", topbar, StringComparison.Ordinal);
+        Assert.Contains("role=\"dialog\"", topbar, StringComparison.Ordinal);
+        Assert.Contains("aria-modal=\"true\"", topbar, StringComparison.Ordinal);
+        Assert.Contains("aria-current=\"@GetAriaCurrent(item)\"", topbar, StringComparison.Ordinal);
+        Assert.Contains("Navigation.LocationChanged", topbar, StringComparison.Ordinal);
         Assert.Contains("Escape", topbar, StringComparison.Ordinal);
-        Assert.Contains("@media (max-width: 1200px)", css, StringComparison.Ordinal);
+        Assert.Contains("@media (max-width: 1600px)", css, StringComparison.Ordinal);
+        Assert.Contains("@media (max-width: 1280px)", css, StringComparison.Ordinal);
+        Assert.Contains("@media (max-width: 720px)", css, StringComparison.Ordinal);
         Assert.Contains("@media (max-width: 640px)", css, StringComparison.Ordinal);
+        Assert.Contains("@media (max-width: 420px)", css, StringComparison.Ordinal);
+        Assert.Contains("inset: 0 0 calc(52px + env(safe-area-inset-bottom))", css, StringComparison.Ordinal);
         Assert.Contains("/customers", navigation, StringComparison.Ordinal);
         Assert.Contains("/sales/orders", navigation, StringComparison.Ordinal);
         Assert.Contains("/purchasing", navigation, StringComparison.Ordinal);
         Assert.Contains("/mfg/materials", navigation, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Login_UsesAnEmptyAuthLayoutAndWorkspaceShellProvidesSkipTarget()
+    {
+        var root = FindRoot();
+        var login = File.ReadAllText(Path.Combine(root, "Legacy.Maliev.Intranet.Client", "Pages", "Login.razor"));
+        var emptyLayout = File.ReadAllText(Path.Combine(root, "Legacy.Maliev.Intranet.Client", "Layout", "EmptyLayout.razor"));
+        var mainLayout = File.ReadAllText(Path.Combine(root, "Legacy.Maliev.Intranet.Client", "Layout", "MainLayout.razor"));
+
+        Assert.Contains("@layout Layout.EmptyLayout", login, StringComparison.Ordinal);
+        Assert.DoesNotContain("<LegacyTopBar", emptyLayout, StringComparison.Ordinal);
+        Assert.Contains("id=\"main-content\"", emptyLayout, StringComparison.Ordinal);
+        Assert.Contains("legacy-skip-link", mainLayout, StringComparison.Ordinal);
+        Assert.Contains("id=\"main-content\"", mainLayout, StringComparison.Ordinal);
     }
 
     [Fact]

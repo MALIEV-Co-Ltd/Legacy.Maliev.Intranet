@@ -8,12 +8,14 @@
 <MudDialogProvider />
 <MudSnackbarProvider />
 
+<a class="legacy-skip-link" href="#main-content">Skip to content</a>
+
 <MudLayout Class="legacy-layout">
     <LegacyTopBar Session="@session" OnSignOut="SignOutAsync" />
     <MudMainContent Class="legacy-main-content">
-        <div class="legacy-page-container">
+        <main id="main-content" class="legacy-page-container" tabindex="-1">
             @Body
-        </div>
+        </main>
     </MudMainContent>
 </MudLayout>
 
