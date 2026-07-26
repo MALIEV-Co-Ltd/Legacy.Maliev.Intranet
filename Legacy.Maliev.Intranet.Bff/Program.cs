@@ -714,9 +714,14 @@ app.MapGet("/bff/session", (HttpContext context, IAntiforgery antiforgery) =>
             context.User.FindFirstValue(EmployeeSessionService.LegacyDatabaseIdClaim),
             NumberStyles.None,
             CultureInfo.InvariantCulture,
-            out var legacyDatabaseId) && legacyDatabaseId > 0
+                out var legacyDatabaseId) && legacyDatabaseId > 0
                 ? legacyDatabaseId
-                : null));
+                : null,
+        context.User.FindAll("permissions")
+            .Select(claim => claim.Value)
+            .Where(value => !string.IsNullOrWhiteSpace(value))
+            .Distinct(StringComparer.Ordinal)
+            .ToArray()));
 }).AllowAnonymous();
 
 app.MapGet("/bff/dashboard", (

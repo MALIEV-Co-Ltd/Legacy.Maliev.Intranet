@@ -29,6 +29,10 @@ public sealed class EmployeeAuthenticationStateProvider(EmployeeSessionClient se
         }
 
         claims.AddRange(session.Roles.Select(role => new Claim(ClaimTypes.Role, role)));
+        claims.AddRange((session.Permissions ?? [])
+            .Where(permission => !string.IsNullOrWhiteSpace(permission))
+            .Distinct(StringComparer.Ordinal)
+            .Select(permission => new Claim("permissions", permission)));
         return new AuthenticationState(new ClaimsPrincipal(new ClaimsIdentity(
             claims,
             authenticationType: "BffCookie",

@@ -90,9 +90,25 @@ public sealed class BlazorWasmArchitectureContractTests
         var redirect = File.ReadAllText(Path.Combine(root, "Legacy.Maliev.Intranet.Client", "LoginRedirect.razor"));
         Assert.Contains("CascadingAuthenticationState", app, StringComparison.Ordinal);
         Assert.Contains("AuthorizeRouteView", app, StringComparison.Ordinal);
-        Assert.Contains("<NotAuthorized>", app, StringComparison.Ordinal);
+        Assert.Contains("<NotAuthorized Context=\"authState\">", app, StringComparison.Ordinal);
         Assert.Contains("<LoginRedirect", app, StringComparison.Ordinal);
         Assert.Contains("/Login?returnUrl=", redirect, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Router_DistinguishesAnonymousSignInFromAuthenticatedAccessDeniedAndUsesNotFoundPage()
+    {
+        var root = FindRoot();
+        var app = File.ReadAllText(Path.Combine(root, "Legacy.Maliev.Intranet.Client", "App.razor"));
+        var notFound = File.ReadAllText(Path.Combine(root, "Legacy.Maliev.Intranet.Client", "Pages", "NotFound.razor"));
+
+        Assert.Contains("<NotAuthorized Context=\"authState\">", app, StringComparison.Ordinal);
+        Assert.Contains("authState.User.Identity?.IsAuthenticated == true", app, StringComparison.Ordinal);
+        Assert.Contains("<AccessDenied />", app, StringComparison.Ordinal);
+        Assert.Contains("<LoginRedirect />", app, StringComparison.Ordinal);
+        Assert.Contains("<NotFound />", app, StringComparison.Ordinal);
+        Assert.Contains("role=\"alert\"", notFound, StringComparison.Ordinal);
+        Assert.Contains("@attribute [AllowAnonymous]", notFound, StringComparison.Ordinal);
     }
 
     [Fact]

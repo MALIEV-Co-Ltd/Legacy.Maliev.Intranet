@@ -87,6 +87,9 @@ public static class LegacyRoutes
         "/purchasing/new",
         "/purchasing/suppliers",
         "/sales/orders",
+        "/sales/orders/{Id:int}",
+        "/purchasing/{Id:int}",
+        "/mfg/procurement/{Id:int}",
     };
 
     /// <summary>Historical routes that still have an implementation or a migration candidate contract.</summary>

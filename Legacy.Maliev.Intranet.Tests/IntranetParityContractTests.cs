@@ -57,6 +57,22 @@ public sealed class IntranetParityContractTests
     }
 
     [Fact]
+    public void SessionProjection_PreservesValidatedPermissionsWithoutExposingTokens()
+    {
+        var root = FindRoot();
+        var contract = File.ReadAllText(Path.Combine(root, "Legacy.Maliev.Intranet.Contracts", "EmployeeSessionSummary.cs"));
+        var program = File.ReadAllText(Path.Combine(root, "Legacy.Maliev.Intranet.Bff", "Program.cs"));
+        var provider = File.ReadAllText(Path.Combine(root, "Legacy.Maliev.Intranet.Client", "EmployeeAuthenticationStateProvider.cs"));
+
+        Assert.Contains("IReadOnlyList<string>? Permissions = null", contract, StringComparison.Ordinal);
+        Assert.Contains("FindAll(\"permissions\")", program, StringComparison.Ordinal);
+        Assert.Contains("Distinct(StringComparer.Ordinal)", program, StringComparison.Ordinal);
+        Assert.Contains("new Claim(\"permissions\", permission)", provider, StringComparison.Ordinal);
+        Assert.DoesNotContain("AccessToken", contract, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("RefreshToken", contract, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public void CurrentWorkspaceAliases_AreDeclaredAndLazyLoadedByTheMatchingFeatureAssembly()
     {
         var root = FindRoot();
@@ -73,6 +89,25 @@ public sealed class IntranetParityContractTests
         Assert.Contains("purchasing/suppliers", app, StringComparison.Ordinal);
         Assert.Contains("finance/invoices", app, StringComparison.Ordinal);
         Assert.Contains("mfg/materials", app, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void NumericDetailAliases_RedirectOnlyToLegacyOwnedQueryContracts()
+    {
+        var root = FindRoot();
+        var redirect = File.ReadAllText(Path.Combine(root, "Legacy.Maliev.Intranet.Client", "Pages", "CompatibilityDetailRedirect.razor"));
+        var routes = File.ReadAllText(Path.Combine(root, "Legacy.Maliev.Intranet", "LegacyRoutes.cs"));
+
+        Assert.Contains("@page \"/sales/orders/{Id:int}\"", redirect, StringComparison.Ordinal);
+        Assert.Contains("@page \"/purchasing/{Id:int}\"", redirect, StringComparison.Ordinal);
+        Assert.Contains("@page \"/mfg/procurement/{Id:int}\"", redirect, StringComparison.Ordinal);
+        Assert.Contains("Navigation.NavigateTo($\"{legacyPath}?id={Id}\", replace: true)", redirect, StringComparison.Ordinal);
+        Assert.Contains("@attribute [Authorize]", redirect, StringComparison.Ordinal);
+        Assert.DoesNotContain("Guid", redirect, StringComparison.Ordinal);
+
+        Assert.Contains("\"/sales/orders/{Id:int}\"", routes, StringComparison.Ordinal);
+        Assert.Contains("\"/purchasing/{Id:int}\"", routes, StringComparison.Ordinal);
+        Assert.Contains("\"/mfg/procurement/{Id:int}\"", routes, StringComparison.Ordinal);
     }
 
     private static string FindRoot()

@@ -9,6 +9,7 @@ public sealed partial class BlazorRouteOwnershipCompletionTests
     [
         "/",
         "/migration-foundation",
+        "/not-found",
         "/Server/ErrorReport",
         .. LegacyRoutes.CompatibilityAliases,
     ];

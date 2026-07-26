@@ -1,16 +1,27 @@
+@using Legacy.Maliev.Intranet.Client.Pages
+
 <CascadingAuthenticationState>
     <Router AppAssembly="@typeof(App).Assembly" AdditionalAssemblies="@lazyAssemblies" OnNavigateAsync="LoadFeatureAssemblyAsync">
         <Found Context="routeData">
             <AuthorizeRouteView RouteData="routeData" DefaultLayout="@typeof(Layout.MainLayout)">
-                <NotAuthorized>
-                    <LoginRedirect />
+                <NotAuthorized Context="authState">
+                    @if (authState.User.Identity?.IsAuthenticated == true)
+                    {
+                        <LayoutView Layout="@typeof(Layout.MainLayout)">
+                            <AccessDenied />
+                        </LayoutView>
+                    }
+                    else
+                    {
+                        <LoginRedirect />
+                    }
                 </NotAuthorized>
             </AuthorizeRouteView>
             <FocusOnNavigate RouteData="routeData" Selector="h1" />
         </Found>
         <NotFound>
             <LayoutView Layout="@typeof(Layout.MainLayout)">
-                <MudAlert Severity="Severity.Warning">This employee route has not been migrated yet.</MudAlert>
+                <NotFound />
             </LayoutView>
         </NotFound>
     </Router>
