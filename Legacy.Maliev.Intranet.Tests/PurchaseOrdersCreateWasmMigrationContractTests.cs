@@ -39,6 +39,7 @@ public sealed class PurchaseOrdersCreateWasmMigrationContractTests
         Assert.True(File.Exists(resourcePath), "The PurchaseOrders/Create localization resource is missing.");
 
         var page = File.ReadAllText(pagePath);
+        var resource = File.ReadAllText(resourcePath);
         var bff = File.ReadAllText(Path.Combine(root, "Legacy.Maliev.Intranet.Bff", "Program.cs"));
         var auth = File.ReadAllText(Path.Combine(root, "Legacy.Maliev.Intranet.Server", "Auth", "AuthContracts.cs"));
 
@@ -57,6 +58,13 @@ public sealed class PurchaseOrdersCreateWasmMigrationContractTests
         Assert.Contains("HttpStatusCode.Forbidden", page, StringComparison.Ordinal);
         Assert.Contains("HttpStatusCode.Conflict", page, StringComparison.Ordinal);
         Assert.Contains("HttpStatusCode.TooManyRequests", page, StringComparison.Ordinal);
+        Assert.Contains("HttpStatusCode.ServiceUnavailable", page, StringComparison.Ordinal);
+        Assert.Contains("HttpStatusCode.GatewayTimeout", page, StringComparison.Ordinal);
+        Assert.Contains("HttpStatusCode.RequestTimeout", page, StringComparison.Ordinal);
+        Assert.Contains("Text[\"OutcomeUnknown\"]", page, StringComparison.Ordinal);
+        Assert.Contains("Text[\"RetrySafe\"]", page, StringComparison.Ordinal);
+        Assert.Contains("name=\"OutcomeUnknown\"", resource, StringComparison.Ordinal);
+        Assert.Contains("name=\"RetrySafe\"", resource, StringComparison.Ordinal);
         Assert.Contains("Navigation.NavigateTo($\"/PurchaseOrders/View?id={created.Id}\")", page, StringComparison.Ordinal);
         Assert.DoesNotContain("forceLoad: true", page, StringComparison.Ordinal);
         Assert.DoesNotContain("jquery", page, StringComparison.OrdinalIgnoreCase);
@@ -64,6 +72,7 @@ public sealed class PurchaseOrdersCreateWasmMigrationContractTests
         Assert.Contains("legacy-procurement.purchase-orders.create", auth, StringComparison.Ordinal);
         Assert.Contains("MapGet(\"/bff/purchase-orders/create-options\"", bff, StringComparison.Ordinal);
         Assert.Contains("MapPost(\"/bff/purchase-orders\"", bff, StringComparison.Ordinal);
+        Assert.Contains("PurchaseOrderCreationStatus.OutcomeUnknown", bff, StringComparison.Ordinal);
         Assert.Contains("LegacyEmployeePermissions.PurchaseOrdersCreate", bff, StringComparison.Ordinal);
         Assert.Contains("AddEndpointFilter<AntiforgeryValidationFilter>()", bff, StringComparison.Ordinal);
 

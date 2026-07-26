@@ -40,6 +40,20 @@ public sealed class PurchaseOrderCreationServiceTests
             gateway.Compensations);
     }
 
+    [Fact]
+    public async Task CreateAsync_WhenCompensationCannotConfirmOrderDeletion_ReturnsOutcomeUnknown()
+    {
+        var gateway = new Gateway { FailFileLink = true, FailOrderDelete = true };
+        var service = new PurchaseOrderCreationService(gateway, NullLogger<PurchaseOrderCreationService>.Instance);
+
+        var result = await service.CreateAsync(Request, "attempt-unknown", CancellationToken.None);
+
+        Assert.Equal(PurchaseOrderCreationStatus.OutcomeUnknown, result.Status);
+        Assert.Equal(
+            ["stored:purchaseorders/84.pdf", "item:10", "item:9", "order:84"],
+            gateway.Compensations);
+    }
+
     private static readonly PurchaseOrderCreateRequest Request = new()
     {
         SupplierId = 4,
@@ -65,6 +79,7 @@ public sealed class PurchaseOrderCreationServiceTests
         private int nextItemId = 9;
 
         public bool FailFileLink { get; init; }
+        public bool FailOrderDelete { get; init; }
         public List<int> CreatedItemIds { get; } = [];
         public List<(string AttemptId, int ItemIndex)> ItemAttempts { get; } = [];
         public List<string> Compensations { get; } = [];
@@ -140,6 +155,11 @@ public sealed class PurchaseOrderCreationServiceTests
         public Task DeleteOrderAsync(int purchaseOrderId, CancellationToken cancellationToken)
         {
             Compensations.Add($"order:{purchaseOrderId}");
+            if (FailOrderDelete)
+            {
+                throw new HttpRequestException("order deletion could not be confirmed");
+            }
+
             return Task.CompletedTask;
         }
 

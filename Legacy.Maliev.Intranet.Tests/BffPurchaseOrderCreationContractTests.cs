@@ -100,6 +100,23 @@ public sealed class BffPurchaseOrderCreationContractTests
         Assert.Equal("0f727e0f-a4f3-4e1c-995a-c0d37ea2a972", gateway.AttemptId);
     }
 
+    [Fact]
+    public async Task OutcomeUnknown_ReturnsReconciliationRequired503()
+    {
+        var gateway = new Gateway { FailFileLink = true, FailOrderDelete = true };
+        await using var factory = new Factory(gateway, [LegacyEmployeePermissions.PurchaseOrdersCreate]);
+        using var client = CreateClient(factory);
+        var csrf = await SignInAsync(client);
+        using var request = CreatePost(ValidRequest, csrf, "f4e2f7cc-0c50-4c52-9a4d-5b902c0b2f6a");
+
+        using var response = await client.SendAsync(request);
+        var body = await response.Content.ReadAsStringAsync();
+
+        Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
+        Assert.Contains("Purchase-order outcome requires reconciliation", body, StringComparison.Ordinal);
+        Assert.DoesNotContain("server-only", body, StringComparison.Ordinal);
+    }
+
     private static readonly PurchaseOrderCreateRequest ValidRequest = new()
     {
         SupplierId = 42,
@@ -198,6 +215,8 @@ public sealed class BffPurchaseOrderCreationContractTests
         public int OptionsReads { get; private set; }
         public int OrderCreates { get; private set; }
         public string? AttemptId { get; private set; }
+        public bool FailFileLink { get; init; }
+        public bool FailOrderDelete { get; init; }
         public Task<PurchaseOrderCreateOptions> GetOptionsAsync(CancellationToken cancellationToken)
         {
             OptionsReads++;
@@ -217,10 +236,26 @@ public sealed class BffPurchaseOrderCreationContractTests
             new("Bill Road", null, null, "Bangkok", null, "10110", 66), "Somchai Tester", new Dictionary<int, string> { [66] = "Thailand" }));
         public Task<byte[]> RenderPdfAsync(PurchaseOrderPdfDocument document, CancellationToken cancellationToken) => Task.FromResult("%PDF-fake"u8.ToArray());
         public Task<PurchaseOrderStoredFile> UploadPdfAsync(int purchaseOrderId, byte[] pdf, string attemptId, CancellationToken cancellationToken) => Task.FromResult(new PurchaseOrderStoredFile("maliev.com", "purchaseorders/84/PurchaseOrder_84.pdf"));
-        public Task<int> LinkFileAsync(int purchaseOrderId, PurchaseOrderStoredFile file, string attemptId, CancellationToken cancellationToken) => Task.FromResult(5);
+        public Task<int> LinkFileAsync(int purchaseOrderId, PurchaseOrderStoredFile file, string attemptId, CancellationToken cancellationToken)
+        {
+            if (FailFileLink)
+            {
+                throw new HttpRequestException("file link could not be confirmed");
+            }
+
+            return Task.FromResult(5);
+        }
         public Task DeleteFileLinkAsync(int fileId, CancellationToken cancellationToken) => Task.CompletedTask;
         public Task DeleteStoredFileAsync(PurchaseOrderStoredFile file, CancellationToken cancellationToken) => Task.CompletedTask;
         public Task DeleteItemAsync(int itemId, CancellationToken cancellationToken) => Task.CompletedTask;
-        public Task DeleteOrderAsync(int purchaseOrderId, CancellationToken cancellationToken) => Task.CompletedTask;
+        public Task DeleteOrderAsync(int purchaseOrderId, CancellationToken cancellationToken)
+        {
+            if (FailOrderDelete)
+            {
+                throw new HttpRequestException("order deletion could not be confirmed");
+            }
+
+            return Task.CompletedTask;
+        }
     }
 }
