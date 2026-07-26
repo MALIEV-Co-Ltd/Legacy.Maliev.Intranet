@@ -70,10 +70,50 @@ public sealed class EmployeeSessionService(
             return null;
         }
 
-        var refreshed = await authClient.RefreshAsync(refreshToken, cancellationToken);
         var expectedEmployeeId = result.Principal?.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (refreshed is null ||
-            string.IsNullOrWhiteSpace(expectedEmployeeId) ||
+        EmployeeRefreshResult? refreshed = null;
+        var transientRefreshFailure = false;
+        try
+        {
+            refreshed = await authClient.RefreshAsync(refreshToken, cancellationToken);
+        }
+        catch (LegacyAuthRateLimitedException exception)
+        {
+            transientRefreshFailure = true;
+            logger.LogWarning(
+                exception,
+                "Employee session refresh was rate limited; preserving the opaque session for retry after {RetryAfterSeconds} seconds.",
+                exception.RetryAfterSeconds);
+        }
+        catch (Exception exception) when (
+            exception is HttpRequestException or System.Text.Json.JsonException ||
+            exception is TaskCanceledException && !cancellationToken.IsCancellationRequested)
+        {
+            transientRefreshFailure = true;
+            logger.LogWarning(exception, "Employee session refresh was temporarily unavailable; preserving the opaque session for retry.");
+        }
+
+        if (refreshed is null)
+        {
+            // AuthService refresh tokens are single-use. Another request may have won the
+            // rotation between this request's ticket read and refresh attempt. Re-read the
+            // distributed ticket before treating a null result as revocation.
+            var peerAccessToken = await TryReadRenewedAccessTokenAsync(context, refreshToken, expectedEmployeeId);
+            if (peerAccessToken is not null)
+            {
+                return peerAccessToken;
+            }
+
+            if (transientRefreshFailure)
+            {
+                return null;
+            }
+
+            await context.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+            return null;
+        }
+
+        if (string.IsNullOrWhiteSpace(expectedEmployeeId) ||
             !string.Equals(refreshed.Identity.Id, expectedEmployeeId, StringComparison.Ordinal))
         {
             await context.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
@@ -92,6 +132,41 @@ public sealed class EmployeeSessionService(
             refreshedPrincipal,
             result.Properties);
         return refreshed.Tokens.AccessToken;
+    }
+
+    private async Task<string?> TryReadRenewedAccessTokenAsync(
+        HttpContext context,
+        string previousRefreshToken,
+        string? expectedEmployeeId)
+    {
+        if (string.IsNullOrWhiteSpace(expectedEmployeeId))
+        {
+            return null;
+        }
+
+        var current = await context.AuthenticateAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+        if (!current.Succeeded || current.Properties is null ||
+            !string.Equals(
+                current.Principal?.FindFirstValue(ClaimTypes.NameIdentifier),
+                expectedEmployeeId,
+                StringComparison.Ordinal))
+        {
+            return null;
+        }
+
+        var currentRefreshToken = current.Properties.GetTokenValue(RefreshToken);
+        var currentAccessToken = current.Properties.GetTokenValue(AccessToken);
+        var expiresText = current.Properties.GetTokenValue(AccessExpiresAt);
+        if (string.IsNullOrWhiteSpace(currentRefreshToken) ||
+            string.Equals(currentRefreshToken, previousRefreshToken, StringComparison.Ordinal) ||
+            string.IsNullOrWhiteSpace(currentAccessToken) ||
+            !DateTimeOffset.TryParse(expiresText, out var expiresAt) ||
+            expiresAt <= timeProvider.GetUtcNow().AddMinutes(2))
+        {
+            return null;
+        }
+
+        return currentAccessToken;
     }
 
     /// <summary>Revokes the refresh family and always clears the local session.</summary>
