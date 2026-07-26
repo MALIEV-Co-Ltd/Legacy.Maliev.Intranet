@@ -51,7 +51,7 @@ are available.
 
 ## Latest validation checkpoint (2026-07-27)
 
-- Branch: `main` (current local HEAD `6f0eaeb`, built on validation merge `1a96322`); the parity branch now also contains
+- Branch: `main` (current local HEAD `4a5080d`, built on validation merge `1a96322`); the parity branch now also contains
   browser-safe Maps configuration (`e70253f`) and nonce-bound Google employee
   sign-in (`d410b4c`, sourced from AuthService `8911dcc`). AppHost wires the
   optional local Google client/hosted-domain values and the dedicated
@@ -92,14 +92,15 @@ are available.
   browser and BFF sides, revalidates the identity returned by AuthService, and
   carries Remember Me through the opaque server-side session ticket. Supported
   cultures are normalized to `en-TH`, `th-TH`, or `en-US`.
-- `dotnet test Legacy.Maliev.Intranet.slnx -c Release --no-build --no-restore`
-  passed **558/558** with zero skips after the permission-aware navigation,
-  persisted workspace theme, Orders Refresh, and WASM runtime/login interop
-  slices; focused navigation/theme passed **9/9**, Orders passed **4/4**, and
-  the runtime/login contract subset passed **4/4**. With
+- `dotnet test Legacy.Maliev.Intranet.Tests\Legacy.Maliev.Intranet.Tests.csproj -c Release --no-build --no-restore`
+  passed **561/561** with zero skips after the permission-aware navigation,
+  persisted workspace theme, Orders Refresh, WASM runtime/login interop, and
+  refresh-race hardening slices; the focused auth contract subset passed
+  **49/49**, focused navigation/theme passed **9/9**, and Orders passed **4/4**.
+  With
   `MALIEV_CURRENT_INTRANET_ROOT` pointed at the original
   checkout, the route-parity subset passed **3/3** and the full suite passed
-  **558/558** again. The
+  **561/561** again. The
   clean Release build passed with **0 warnings and 0 errors** after stopping
   the serving BFF, and whitespace/diff verification passed. AuthService passed
   **107/107** and FileService passed
@@ -118,7 +119,7 @@ are available.
   `readiness` probes returned HTTP 200 (**42/42**); the BFF liveness/readiness
   probes also returned HTTP 200. The Web proxy
   (`http://localhost:5188/Account/Login`), BFF login
-  (`https://localhost:63143/Login`), and dashboard
+  (`https://localhost:65248/Login`), and dashboard
   (`http://localhost:15888`) returned HTTP 200. The fresh browser login tab
   had no console warnings/errors and no horizontal overflow at desktop
   (1,280px) or mobile (390px) width. Google nonce exchange is deliberately
@@ -130,14 +131,20 @@ are available.
   `en-US` culture switch from crashing the browser. Login Google interop is
   guarded until the host is rendered and retries fail-closed, preventing the
   empty `ElementReference` startup race.
-- After the navigation and theme slices, the Aspire restart passed a clean
-  Release build
-  with **0 warnings and 0 errors**; all 22 DCP services were Ready, all 19
-  migration runners exited 0, and the 14 API resources returned HTTP 200 for
-  all three prefixed liveness/readiness probes (**42/42**). The Intranet BFF
+- After the Orders Refresh and auth refresh-race slices (`b4dca3c`, `4a5080d`),
+  the Aspire restart passed a clean Release build with **0 warnings and 0
+  errors**; Release tests passed **561/561**, all 22 DCP services were Ready,
+  all 19 migration runners exited 0, and the 14 API resources returned HTTP
+  200 for all three prefixed probes (**42/42**). The latest Intranet BFF
   returned HTTP 200 for `/intranet-bff/aspire-liveness`,
   `/intranet-bff/liveness`, `/intranet-bff/readiness`, `/Login`, and the
-  anonymous `/bff/session` projection.
+  anonymous `/bff/session` projection on dynamic local port `65248`.
+- `EmployeeSessionService` now re-reads the distributed ticket when a
+  single-use AuthService refresh loses a concurrent rotation race, and keeps
+  the opaque session for transient HTTP/JSON/timeout/rate-limit failures. The
+  focused tests prove peer-token reuse, true-revocation sign-out, and
+  transient-failure preservation; no access or refresh token is exposed to
+  the WASM client.
 - This is local evidence only. No production/GKE deployment, database write,
   credential reuse, or legacy PostgreSQL cutover was performed.
 
