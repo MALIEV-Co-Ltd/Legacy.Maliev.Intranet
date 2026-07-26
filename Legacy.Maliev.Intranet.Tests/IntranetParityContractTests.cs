@@ -25,6 +25,20 @@ public sealed class IntranetParityContractTests
     }
 
     [Fact]
+    public void Typography_UsesTheCurrentWorkspaceFontContract()
+    {
+        var root = FindRoot();
+        var index = File.ReadAllText(Path.Combine(root, "Legacy.Maliev.Intranet.Client", "wwwroot", "index.html"));
+        var css = File.ReadAllText(Path.Combine(root, "Legacy.Maliev.Intranet.Client", "wwwroot", "css", "app.css"));
+
+        Assert.Contains("family=Geist", index, StringComparison.Ordinal);
+        Assert.Contains("family=Noto+Sans+Thai", index, StringComparison.Ordinal);
+        Assert.Contains("'Geist', 'Noto Sans Thai', sans-serif", index, StringComparison.Ordinal);
+        Assert.Contains("\"Geist\", \"Noto Sans Thai\", sans-serif", css, StringComparison.Ordinal);
+        Assert.DoesNotContain("font-family: Inter", css, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Dashboard_StaysBehindTheSameOriginBffAndPermissionScopedAggregator()
     {
         var root = FindRoot();
