@@ -35,7 +35,10 @@
                 <ChildContent>
                     @foreach (var item in group.Items)
                     {
-                        <MudMenuItem Href="@item.Href" Icon="@item.Icon" Class="@(IsItemActive(item) ? "legacy-nav-item active" : "legacy-nav-item")">
+                        <MudMenuItem Href="@item.Href"
+                                     Icon="@item.Icon"
+                                     Disabled="@(!IsItemEnabled(item))"
+                                     Class="@(GetDesktopItemClass(item))">
                             @item.Label
                         </MudMenuItem>
                     }
@@ -89,13 +92,25 @@
                 </div>
                 @foreach (var item in group.Items)
                 {
-                    <a href="@item.Href"
-                       class="legacy-mobile-link @(IsItemActive(item) ? "active" : string.Empty)"
-                       aria-current="@GetAriaCurrent(item)"
-                       @onclick="CloseMobileAsync">
-                        <MudIcon Icon="@item.Icon" Size="Size.Small" />
-                        <span>@item.Label</span>
-                    </a>
+                    @if (IsItemEnabled(item))
+                    {
+                        <a href="@item.Href"
+                           class="legacy-mobile-link @(IsItemActive(item) ? "active" : string.Empty)"
+                           aria-current="@GetAriaCurrent(item)"
+                           @onclick="CloseMobileAsync">
+                            <MudIcon Icon="@item.Icon" Size="Size.Small" />
+                            <span>@item.Label</span>
+                        </a>
+                    }
+                    else
+                    {
+                        <span class="legacy-mobile-link disabled"
+                              aria-disabled="true"
+                              tabindex="-1">
+                            <MudIcon Icon="@item.Icon" Size="Size.Small" />
+                            <span>@item.Label</span>
+                        </span>
+                    }
                 }
             </section>
         }
@@ -111,6 +126,18 @@
     protected override void OnInitialized() => Navigation.LocationChanged += OnLocationChanged;
 
     private bool IsGroupActive(LegacyNavGroup group) => group.Items.Any(IsItemActive);
+
+    private bool IsItemEnabled(LegacyNavItem item) => LegacyNavigationAuthorization.IsEnabled(
+        Session?.IsAuthenticated == true,
+        item.RequiredPermission,
+        Session?.Permissions,
+        Session?.Roles);
+
+    private string GetDesktopItemClass(LegacyNavItem item)
+    {
+        var classes = IsItemActive(item) ? "legacy-nav-item active" : "legacy-nav-item";
+        return IsItemEnabled(item) ? classes : $"{classes} disabled";
+    }
 
     private bool IsItemActive(LegacyNavItem item)
     {

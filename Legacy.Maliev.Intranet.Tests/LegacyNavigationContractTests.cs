@@ -66,6 +66,34 @@ public sealed class LegacyNavigationContractTests
         Assert.DoesNotContain("/iam", links, StringComparer.OrdinalIgnoreCase);
     }
 
+    [Fact]
+    public void Navigation_PreservesLegacyCatalogButUsesPermissionAwareActivation()
+    {
+        var root = FindRoot();
+        var navigation = File.ReadAllText(Path.Combine(
+            root,
+            "Legacy.Maliev.Intranet.Client",
+            "Layout",
+            "LegacyAppNavigation.cs"));
+        var topbar = File.ReadAllText(Path.Combine(
+            root,
+            "Legacy.Maliev.Intranet.Client",
+            "Layout",
+            "LegacyTopBar.razor"));
+        var css = File.ReadAllText(Path.Combine(
+            root,
+            "Legacy.Maliev.Intranet.Client",
+            "Layout",
+            "LegacyTopBar.razor.css"));
+
+        Assert.Contains("RequiredPermission", navigation, StringComparison.Ordinal);
+        Assert.Contains("legacy.orders.read", navigation, StringComparison.Ordinal);
+        Assert.Contains("LegacyNavigationAuthorization.IsEnabled", topbar, StringComparison.Ordinal);
+        Assert.Contains("Disabled=\"@(!IsItemEnabled(item))\"", topbar, StringComparison.Ordinal);
+        Assert.Contains("aria-disabled=\"true\"", topbar, StringComparison.Ordinal);
+        Assert.Contains(".legacy-mobile-link.disabled", css, StringComparison.Ordinal);
+    }
+
     private static IReadOnlyList<string> ExtractLinks(string source)
     {
         var matches = Regex.Matches(
