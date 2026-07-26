@@ -1,0 +1,167 @@
+@page "/hr/profile"
+@attribute [Authorize]
+@using System.Net
+@using System.Net.Http.Json
+@using Legacy.Maliev.Intranet.Contracts
+@inject HttpClient Http
+@inject NavigationManager Navigation
+
+<PageTitle>My Profile | MALIEV Intranet</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Medium" Class="employee-profile-page">
+    <div class="d-flex flex-wrap align-center justify-space-between gap-3 mb-4">
+        <div>
+            <MudText Typo="Typo.overline">Employee workspace</MudText>
+            <MudText Typo="Typo.h4" HtmlTag="h1">My Profile</MudText>
+            <MudText Typo="Typo.body2" Class="text-secondary">Your current employee record from the legacy source of truth.</MudText>
+        </div>
+        <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Outlined.Refresh" OnClick="LoadAsync" Disabled="loading">
+            Refresh
+        </MudButton>
+    </div>
+
+    @if (loading)
+    {
+        <MudProgressLinear Indeterminate="true" Color="Color.Primary" aria-label="Loading employee profile" />
+    }
+    else if (!string.IsNullOrWhiteSpace(error))
+    {
+        <MudAlert Severity="Severity.Error" aria-live="assertive">@error</MudAlert>
+    }
+    else if (profile is null)
+    {
+        <MudAlert Severity="Severity.Warning" aria-live="polite">Your employee profile could not be found.</MudAlert>
+    }
+    else
+    {
+        <MudPaper Class="pa-5" Elevation="1">
+            <MudText Typo="Typo.h6" HtmlTag="h2" Class="mb-4">Employee details</MudText>
+            <MudGrid Spacing="3">
+                <MudItem xs="12" sm="6">
+                    <MudText Typo="Typo.caption">Name</MudText>
+                    <MudText>@profile.FullName</MudText>
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudText Typo="Typo.caption">Employee number</MudText>
+                    <MudText>@profile.Id</MudText>
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudText Typo="Typo.caption">Email</MudText>
+                    <MudText>@profile.Email</MudText>
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudText Typo="Typo.caption">Phone</MudText>
+                    <MudText>@Display(profile.PhoneNumber)</MudText>
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudText Typo="Typo.caption">Role</MudText>
+                    <MudText>@Display(profile.Role?.Name)</MudText>
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudText Typo="Typo.caption">Date of birth</MudText>
+                    <MudText>@(profile.DateOfBirth?.ToString("yyyy-MM-dd") ?? "Not provided")</MudText>
+                </MudItem>
+                <MudItem xs="12">
+                    <MudText Typo="Typo.caption">Home address</MudText>
+                    <MudText>@Display(AddressLine(profile.HomeAddress))</MudText>
+                </MudItem>
+            </MudGrid>
+        </MudPaper>
+        <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Class="mt-4">
+            Profile preferences and self-service edits remain disabled until their owning EmployeeService contract is migrated. No editable field is written through this read-only parity route.
+        </MudAlert>
+    }
+</MudContainer>
+
+@code {
+    private EmployeeDetail? profile;
+    private bool loading;
+    private string? error;
+
+    protected override Task OnInitializedAsync() => LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        loading = true;
+        error = null;
+        profile = null;
+        try
+        {
+            using var sessionResponse = await Http.GetAsync("/bff/session");
+            if (sessionResponse.StatusCode == HttpStatusCode.Unauthorized)
+            {
+                RedirectToLogin();
+                return;
+            }
+
+            if (!sessionResponse.IsSuccessStatusCode)
+            {
+                error = "The employee session is unavailable.";
+                return;
+            }
+
+            var session = await sessionResponse.Content.ReadFromJsonAsync<EmployeeSessionSummary>();
+            if (session?.IsAuthenticated != true || session.LegacyDatabaseId is not > 0)
+            {
+                error = "The employee profile identifier is unavailable.";
+                return;
+            }
+
+            using var profileResponse = await Http.GetAsync($"/bff/employees/{session.LegacyDatabaseId.Value}");
+            if (profileResponse.StatusCode == HttpStatusCode.Unauthorized)
+            {
+                RedirectToLogin();
+                return;
+            }
+
+            if (profileResponse.StatusCode == HttpStatusCode.Forbidden)
+            {
+                error = "You do not have permission to view this profile.";
+                return;
+            }
+
+            if (profileResponse.StatusCode == HttpStatusCode.NotFound)
+            {
+                return;
+            }
+
+            if (!profileResponse.IsSuccessStatusCode)
+            {
+                error = "The EmployeeService profile is temporarily unavailable.";
+                return;
+            }
+
+            profile = await profileResponse.Content.ReadFromJsonAsync<EmployeeDetail>();
+            if (profile is null || profile.Id != session.LegacyDatabaseId.Value)
+            {
+                profile = null;
+                error = "The EmployeeService returned an invalid profile.";
+            }
+        }
+        catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException)
+        {
+            error = "The EmployeeService profile is temporarily unavailable.";
+        }
+        finally
+        {
+            loading = false;
+        }
+    }
+
+    private void RedirectToLogin() => Navigation.NavigateTo(
+        $"/Login?returnUrl={Uri.EscapeDataString(Navigation.ToBaseRelativePath(Navigation.Uri))}");
+
+    private static string Display(string? value) => string.IsNullOrWhiteSpace(value) ? "Not provided" : value;
+
+    private static string? AddressLine(EmployeeAddressDetail? address)
+    {
+        if (address is null)
+        {
+            return null;
+        }
+
+        var parts = new[] { address.Building, address.AddressLine1, address.AddressLine2, address.City, address.State, address.PostalCode }
+            .Where(value => !string.IsNullOrWhiteSpace(value));
+        return string.Join(", ", parts);
+    }
+}

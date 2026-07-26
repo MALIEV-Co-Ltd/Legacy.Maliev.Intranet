@@ -4,20 +4,100 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="robots" content="noindex,nofollow,noarchive" />
+    <meta name="application-name" content="MALIEV Intranet" />
+    <meta name="theme-color" content="#f6f8fb" />
     <title>MALIEV Intranet</title>
     <base href="/" />
+    <script>
+        (function () {
+            const root = document.documentElement;
+            const storageKey = 'maliev_theme';
+
+            function readPreference() {
+                try {
+                    const stored = window.localStorage.getItem(storageKey);
+                    if (stored === 'dark' || stored === 'light') return stored;
+                } catch (_) { }
+
+                const cookie = document.cookie
+                    .split('; ')
+                    .find(value => value.startsWith(storageKey + '='));
+                const cookieValue = cookie ? cookie.substring(storageKey.length + 1) : '';
+                return cookieValue === 'dark' || cookieValue === 'light' ? cookieValue : 'system';
+            }
+
+            function effectiveTheme(preference) {
+                return preference === 'dark' ||
+                    (preference === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches)
+                    ? 'dark'
+                    : 'light';
+            }
+
+            function apply(preference) {
+                const theme = effectiveTheme(preference);
+                root.dataset.malievTheme = theme;
+                root.style.colorScheme = theme;
+                return theme === 'dark';
+            }
+
+            const initialPreference = readPreference();
+            apply(initialPreference);
+            window.malievTheme = {
+                isDark: function () { return root.dataset.malievTheme === 'dark'; },
+                toggle: function () {
+                    const next = root.dataset.malievTheme === 'dark' ? 'light' : 'dark';
+                    try { window.localStorage.setItem(storageKey, next); } catch (_) { }
+                    document.cookie = storageKey + '=' + next + '; path=/; max-age=31536000; SameSite=Lax';
+                    return apply(next);
+                }
+            };
+        })();
+    </script>
+    <link rel="preload" id="webassembly" />
     <link href="_content/MudBlazor/MudBlazor.min.css" rel="stylesheet" />
     <link href="css/app.css" rel="stylesheet" />
+    <link href="css/loading-shell.css" rel="stylesheet" />
+    <link rel="icon" type="image/svg+xml" href="images/favicon.svg" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400..700&family=Geist+Mono:wght@400..600&family=Noto+Sans+Thai:wght@100..900&display=swap" rel="stylesheet" />
+    <style>
+        :root {
+            --mud-typography-default-family: 'Geist', 'Noto Sans Thai', sans-serif;
+            --mud-typography-h1-family: 'Geist', 'Noto Sans Thai', sans-serif;
+            --mud-typography-h2-family: 'Geist', 'Noto Sans Thai', sans-serif;
+            --mud-typography-h3-family: 'Geist', 'Noto Sans Thai', sans-serif;
+            --mud-typography-h4-family: 'Geist', 'Noto Sans Thai', sans-serif;
+            --mud-typography-h5-family: 'Geist', 'Noto Sans Thai', sans-serif;
+            --mud-typography-h6-family: 'Geist', 'Noto Sans Thai', sans-serif;
+            --mud-typography-body1-family: 'Geist', 'Noto Sans Thai', sans-serif;
+            --mud-typography-body2-family: 'Geist', 'Noto Sans Thai', sans-serif;
+            --mud-typography-button-family: 'Geist', 'Noto Sans Thai', sans-serif;
+        }
+
+        body {
+            font-family: 'Geist', 'Noto Sans Thai', sans-serif !important;
+        }
+    </style>
 </head>
 <body>
     <div id="app">
-        <p role="status" aria-live="polite">Loading MALIEV Intranet…</p>
+        <div class="legacy-wasm-loading" role="status" aria-live="polite" aria-label="Loading MALIEV Intranet">
+            <svg class="loading-progress" aria-hidden="true" focusable="false">
+                <circle r="40%" cx="50%" cy="50%" />
+                <circle r="40%" cx="50%" cy="50%" />
+            </svg>
+            <div class="loading-progress-text" aria-hidden="true"></div>
+        </div>
     </div>
-    <div id="blazor-error-ui" hidden>
-        The application encountered an unexpected error.
+    <div id="blazor-error-ui" role="alert">
+        <span>An unhandled error has occurred.</span>
         <a href="." class="reload">Reload</a>
+        <button type="button" class="dismiss" aria-label="Dismiss error">&times;</button>
     </div>
     <script src="_content/MudBlazor/MudBlazor.min.js"></script>
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <script src="js/google-identity-signin.js"></script>
     <script src="_framework/blazor.webassembly.js"></script>
 </body>
 </html>

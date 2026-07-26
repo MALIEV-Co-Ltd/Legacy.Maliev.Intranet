@@ -47,8 +47,12 @@ public sealed class SameOriginHostingContractTests
         Assert.Contains("EmployeeSessionClient", source, StringComparison.Ordinal);
         Assert.Contains("response.IsSuccessStatusCode", source, StringComparison.Ordinal);
         Assert.Contains("Session unavailable", source, StringComparison.Ordinal);
-        Assert.DoesNotContain("http://", source, StringComparison.OrdinalIgnoreCase);
-        Assert.DoesNotContain("https://", source, StringComparison.OrdinalIgnoreCase);
+        var sourceWithoutApprovedPublicSiteLink = source.Replace(
+            "https://www.maliev.com",
+            string.Empty,
+            StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("http://", sourceWithoutApprovedPublicSiteLink, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("https://", sourceWithoutApprovedPublicSiteLink, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
@@ -83,6 +87,47 @@ public sealed class SameOriginHostingContractTests
                 $"{asset} returned {(int)assetResponse.StatusCode}: {assetBody}");
             Assert.Null(assetResponse.Headers.Location);
         }
+    }
+
+    [Fact]
+    public async Task BffDashboardEndpoint_IsNotClaimedByTheWasmFallbackForAnonymousUsers()
+    {
+        await using var factory = new SameOriginBffFactory();
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            AllowAutoRedirect = false,
+            BaseAddress = new Uri("https://localhost"),
+        });
+
+        using var response = await client.GetAsync("/bff/dashboard");
+        var body = await response.Content.ReadAsStringAsync();
+
+        Assert.Contains(response.StatusCode, new[]
+        {
+            HttpStatusCode.Unauthorized,
+            HttpStatusCode.Forbidden,
+            HttpStatusCode.Redirect,
+        });
+        Assert.DoesNotContain("<div id=\"app\">", body, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task BffHealthEndpoints_RemainAnonymousWithTheAuthenticatedFallbackPolicy()
+    {
+        await using var factory = new SameOriginBffFactory();
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            AllowAutoRedirect = false,
+            BaseAddress = new Uri("https://localhost"),
+        });
+
+        using var liveness = await client.GetAsync("/intranet-bff/liveness");
+        using var readiness = await client.GetAsync("/intranet-bff/readiness");
+
+        Assert.Equal(HttpStatusCode.OK, liveness.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, readiness.StatusCode);
+        Assert.DoesNotContain("Location", liveness.Headers.Select(header => header.Key), StringComparer.OrdinalIgnoreCase);
+        Assert.DoesNotContain("Location", readiness.Headers.Select(header => header.Key), StringComparer.OrdinalIgnoreCase);
     }
 
     private sealed class SameOriginBffFactory : WebApplicationFactory<BffProgram>

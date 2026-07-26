@@ -39,6 +39,9 @@ public sealed class OrdersIndexWasmMigrationContractTests
         Assert.Contains("MudTable", page, StringComparison.Ordinal);
         Assert.Contains("/Orders/Create", page, StringComparison.Ordinal);
         Assert.Contains("/Orders/View?id=", page, StringComparison.Ordinal);
+        Assert.Contains("OnClick=\"ReloadAsync\"", page, StringComparison.Ordinal);
+        Assert.Contains("@Text[\"Refresh\"]", page, StringComparison.Ordinal);
+        Assert.Contains("private async Task ReloadAsync()", page, StringComparison.Ordinal);
         Assert.Contains("HttpStatusCode.Unauthorized", page, StringComparison.Ordinal);
         Assert.Contains("HttpStatusCode.Forbidden", page, StringComparison.Ordinal);
         Assert.Contains("HttpStatusCode.TooManyRequests", page, StringComparison.Ordinal);

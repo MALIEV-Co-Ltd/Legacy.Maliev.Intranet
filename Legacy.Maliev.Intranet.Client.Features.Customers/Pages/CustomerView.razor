@@ -2,6 +2,7 @@
 @attribute [Authorize]
 @inject HttpClient Http
 @inject NavigationManager Navigation
+@inject AuthenticationStateProvider AuthenticationStateProvider
 @inject IStringLocalizer<CustomerView> Text
 
 <PageTitle>@(customer is null ? Text["PageTitle"] : Text["CustomerPageTitle", customer.FullName])</PageTitle>
@@ -19,21 +20,52 @@
     else if (customer is not null)
     {
         <MudText Typo="Typo.overline">@Text["CustomerNumber", customer.Id]</MudText>
-        <MudText Typo="Typo.h4" HtmlTag="h1" Class="mb-4">@customer.FullName</MudText>
+        <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="mb-4" Wrap="Wrap.Wrap">
+            <MudText Typo="Typo.h4" HtmlTag="h1">@customer.FullName</MudText>
+            @if (canEdit)
+            {
+                <MudButton Variant="Variant.Outlined" Color="Color.Primary" Disabled="@submitting" OnClick="BeginEdit" aria-label="@Text["EditCustomer"]">
+                    @Text["EditCustomer"]
+                </MudButton>
+            }
+        </MudStack>
 
         <MudGrid Spacing="3">
             <MudItem xs="12" md="6">
                 <section>
                 <MudPaper Class="pa-4">
                     <MudText Typo="Typo.h6" HtmlTag="h2" Class="mb-3">@Text["Contact"]</MudText>
-                    <dl class="details">
-                        <dt>@Text["Email"]</dt>
-                        <dd><a href="mailto:@customer.Email">@customer.Email</a></dd>
-                        <dt>@Text["Telephone"]</dt><dd>@Display(customer.Telephone)</dd>
-                        <dt>@Text["Mobile"]</dt><dd>@Display(customer.Mobile)</dd>
-                        <dt>@Text["Fax"]</dt><dd>@Display(customer.Fax)</dd>
-                        <dt>@Text["DateOfBirth"]</dt><dd>@DisplayDate(customer.DateOfBirth)</dd>
-                    </dl>
+                    @if (editing)
+                    {
+                        <MudForm @ref="editForm" Model="@editModel" @bind-IsValid="editFormValid">
+                            <MudTextField @bind-Value="editModel.FirstName" For="@(() => editModel.FirstName)" Label="@Text["FirstName"]" Required="true" />
+                            <MudTextField @bind-Value="editModel.LastName" For="@(() => editModel.LastName)" Label="@Text["LastName"]" Required="true" />
+                            <MudTextField @bind-Value="editModel.Email" For="@(() => editModel.Email)" Label="@Text["Email"]" InputType="InputType.Email" Required="true" />
+                            <MudTextField @bind-Value="editModel.Telephone" For="@(() => editModel.Telephone)" Label="@Text["Telephone"]" InputType="InputType.Telephone" />
+                            <MudTextField @bind-Value="editModel.Mobile" For="@(() => editModel.Mobile)" Label="@Text["Mobile"]" InputType="InputType.Telephone" />
+                            <MudTextField @bind-Value="editModel.Fax" For="@(() => editModel.Fax)" Label="@Text["Fax"]" />
+                            <MudDatePicker @bind-Date="editModel.DateOfBirth" For="@(() => editModel.DateOfBirth)" Label="@Text["DateOfBirth"]" />
+                            <MudStack Row="true" Spacing="2" Class="mt-4">
+                                <MudButton ButtonType="ButtonType.Button" Variant="Variant.Filled" Color="Color.Primary" Disabled="@submitting" OnClick="SaveAsync">
+                                    @(submitting ? Text["Saving"] : Text["SaveChanges"])
+                                </MudButton>
+                                <MudButton ButtonType="ButtonType.Button" Variant="Variant.Text" Disabled="@submitting" OnClick="CancelEdit">
+                                    @Text["Cancel"]
+                                </MudButton>
+                            </MudStack>
+                        </MudForm>
+                    }
+                    else
+                    {
+                        <dl class="details">
+                            <dt>@Text["Email"]</dt>
+                            <dd><a href="mailto:@customer.Email">@customer.Email</a></dd>
+                            <dt>@Text["Telephone"]</dt><dd>@Display(customer.Telephone)</dd>
+                            <dt>@Text["Mobile"]</dt><dd>@Display(customer.Mobile)</dd>
+                            <dt>@Text["Fax"]</dt><dd>@Display(customer.Fax)</dd>
+                            <dt>@Text["DateOfBirth"]</dt><dd>@DisplayDate(customer.DateOfBirth)</dd>
+                        </dl>
+                    }
                 </MudPaper>
                 </section>
             </MudItem>
@@ -97,6 +129,12 @@
     [SupplyParameterFromQuery(Name = "id")] public int Id { get; set; }
 
     private CustomerDetail? customer;
+    private readonly CustomerUpdateRequest editModel = new();
+    private MudForm? editForm;
+    private bool editFormValid;
+    private bool canEdit;
+    private bool editing;
+    private bool submitting;
     private string? error;
     private Severity errorSeverity = Severity.Error;
     private bool loading;
@@ -106,6 +144,12 @@
         customer = null;
         error = null;
         errorSeverity = Severity.Error;
+        editing = false;
+        submitting = false;
+        var authenticationState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        canEdit = authenticationState.User.Claims.Any(claim =>
+            claim.Type == "permissions" &&
+            claim.Value == "legacy-customer.customers.update");
         if (Id <= 0)
         {
             error = Text["NotFound"];
@@ -160,6 +204,10 @@
                 customer = null;
                 error = Text["InvalidResponse"];
             }
+            else
+            {
+                CopyToEditModel(customer);
+            }
         }
         catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException)
         {
@@ -169,6 +217,129 @@
         {
             loading = false;
         }
+    }
+
+    private void BeginEdit()
+    {
+        if (!canEdit || customer is null)
+        {
+            return;
+        }
+
+        CopyToEditModel(customer);
+        error = null;
+        editing = true;
+    }
+
+    private void CancelEdit()
+    {
+        editing = false;
+        error = null;
+    }
+
+    private async Task SaveAsync()
+    {
+        if (!canEdit || !editing || submitting || editForm is null)
+        {
+            return;
+        }
+
+        await editForm.ValidateAsync();
+        if (!editFormValid)
+        {
+            error = Text["ValidationFailed"];
+            return;
+        }
+
+        submitting = true;
+        error = null;
+        try
+        {
+            using var sessionResponse = await Http.GetAsync("/bff/session");
+            if (sessionResponse.StatusCode == HttpStatusCode.Unauthorized)
+            {
+                NavigateToLogin();
+                return;
+            }
+
+            sessionResponse.EnsureSuccessStatusCode();
+            var session = await sessionResponse.Content.ReadFromJsonAsync<EmployeeSessionSummary>();
+            if (string.IsNullOrWhiteSpace(session?.CsrfToken))
+            {
+                error = Text["SaveFailed"];
+                return;
+            }
+
+            using var request = new HttpRequestMessage(HttpMethod.Put, $"/bff/customers/{Id}")
+            {
+                Content = JsonContent.Create(editModel),
+            };
+            request.Headers.Add("X-CSRF-TOKEN", session.CsrfToken);
+            using var response = await Http.SendAsync(request);
+            if (response.StatusCode == HttpStatusCode.Unauthorized)
+            {
+                NavigateToLogin();
+                return;
+            }
+
+            if (response.StatusCode == HttpStatusCode.Forbidden)
+            {
+                error = Text["ForbiddenUpdate"];
+                return;
+            }
+
+            if (response.StatusCode == HttpStatusCode.BadRequest)
+            {
+                error = Text["ValidationFailed"];
+                return;
+            }
+
+            if (response.StatusCode == HttpStatusCode.NotFound)
+            {
+                error = Text["NotFound"];
+                return;
+            }
+
+            if (response.StatusCode == HttpStatusCode.Conflict)
+            {
+                error = Text["Conflict"];
+                return;
+            }
+
+            if (response.StatusCode == HttpStatusCode.TooManyRequests)
+            {
+                error = Text["RateLimited"];
+                return;
+            }
+
+            if (!response.IsSuccessStatusCode)
+            {
+                error = Text["SaveFailed"];
+                return;
+            }
+
+            editing = false;
+            await OnParametersSetAsync();
+        }
+        catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException)
+        {
+            error = Text["SaveFailed"];
+        }
+        finally
+        {
+            submitting = false;
+        }
+    }
+
+    private void CopyToEditModel(CustomerDetail value)
+    {
+        editModel.FirstName = value.FirstName;
+        editModel.LastName = value.LastName;
+        editModel.Email = value.Email;
+        editModel.Telephone = value.Telephone;
+        editModel.Mobile = value.Mobile;
+        editModel.Fax = value.Fax;
+        editModel.DateOfBirth = value.DateOfBirth;
     }
 
     private string Display(string? value) => string.IsNullOrWhiteSpace(value) ? Text["NotAvailable"] : value;

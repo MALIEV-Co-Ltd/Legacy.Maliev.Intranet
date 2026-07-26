@@ -246,6 +246,59 @@ public sealed partial class EmployeeSessionContractTests
     }
 
     [Fact]
+    public async Task GetAccessToken_WhenAnotherRequestRotatedTicket_ReusesRenewedAccess()
+    {
+        var authentication = new RecordingAuthenticationService(CreateTokenProperties(Now.AddMinutes(1)));
+        var auth = new StubAuthClient
+        {
+            OnRefreshAttempt = () => authentication.ReplaceTicket(
+                CreateTokenProperties(
+                    Now.AddMinutes(10),
+                    accessToken: "rotated-by-peer-access-token",
+                    refreshToken: "rotated-by-peer-refresh-token")),
+        };
+        var sessions = CreateSessionService(auth);
+
+        var accessToken = await sessions.GetAccessTokenAsync(CreateHttpContext(authentication), CancellationToken.None);
+
+        Assert.Equal("rotated-by-peer-access-token", accessToken);
+        Assert.False(authentication.SignedOut);
+        Assert.Equal(1, auth.RefreshAttempts);
+    }
+
+    [Fact]
+    public async Task GetAccessToken_WhenRefreshIsRateLimited_PreservesSessionForRetry()
+    {
+        var auth = new StubAuthClient
+        {
+            RefreshException = new LegacyAuthRateLimitedException(30),
+        };
+        var authentication = new RecordingAuthenticationService(CreateTokenProperties(Now.AddMinutes(1)));
+        var sessions = CreateSessionService(auth);
+
+        var accessToken = await sessions.GetAccessTokenAsync(CreateHttpContext(authentication), CancellationToken.None);
+
+        Assert.Null(accessToken);
+        Assert.False(authentication.SignedOut);
+    }
+
+    [Fact]
+    public async Task GetAccessToken_WhenRefreshIsUnavailable_PreservesSessionForRetry()
+    {
+        var auth = new StubAuthClient
+        {
+            RefreshException = new HttpRequestException("auth unavailable"),
+        };
+        var authentication = new RecordingAuthenticationService(CreateTokenProperties(Now.AddMinutes(1)));
+        var sessions = CreateSessionService(auth);
+
+        var accessToken = await sessions.GetAccessTokenAsync(CreateHttpContext(authentication), CancellationToken.None);
+
+        Assert.Null(accessToken);
+        Assert.False(authentication.SignedOut);
+    }
+
+    [Fact]
     public async Task GetAccessToken_WhenRefreshSubjectChanges_ClearsLocalSession()
     {
         var auth = new StubAuthClient
@@ -305,7 +358,35 @@ public sealed partial class EmployeeSessionContractTests
         Assert.Equal(Now.AddHours(8), authentication.CurrentProperties?.ExpiresUtc);
     }
 
-    private static AuthenticationProperties CreateTokenProperties(DateTimeOffset accessExpiresAt)
+    [Fact]
+    public async Task SignIn_WithRememberMe_PersistsTheSameEightHourOpaqueServerSession()
+    {
+        var authentication = new RecordingAuthenticationService(new AuthenticationProperties());
+        var context = CreateHttpContext(authentication);
+        var sessions = CreateSessionService(new StubAuthClient());
+        var login = new EmployeeLoginResult(
+            true,
+            new AuthTokenResponse(
+                StubAuthClient.AccessToken,
+                StubAuthClient.RefreshToken,
+                "Bearer",
+                900,
+                Now.AddDays(14)),
+            new EmployeeIdentity("employee-id", "employee@maliev.com", "employee@maliev.com"));
+
+        await sessions.SignInAsync(context, login, rememberMe: true);
+
+        Assert.True(authentication.CurrentProperties?.IsPersistent);
+        Assert.Equal(Now, authentication.CurrentProperties?.IssuedUtc);
+        Assert.Equal(Now.AddHours(8), authentication.CurrentProperties?.ExpiresUtc);
+        Assert.Equal(StubAuthClient.AccessToken, authentication.CurrentProperties?.GetTokenValue("legacy_access_token"));
+        Assert.Equal(StubAuthClient.RefreshToken, authentication.CurrentProperties?.GetTokenValue("legacy_refresh_token"));
+    }
+
+    private static AuthenticationProperties CreateTokenProperties(
+        DateTimeOffset accessExpiresAt,
+        string accessToken = StubAuthClient.AccessToken,
+        string refreshToken = StubAuthClient.RefreshToken)
     {
         var properties = new AuthenticationProperties
         {
@@ -314,8 +395,8 @@ public sealed partial class EmployeeSessionContractTests
         };
         properties.StoreTokens(
         [
-            new AuthenticationToken { Name = "legacy_access_token", Value = StubAuthClient.AccessToken },
-            new AuthenticationToken { Name = "legacy_refresh_token", Value = StubAuthClient.RefreshToken },
+            new AuthenticationToken { Name = "legacy_access_token", Value = accessToken },
+            new AuthenticationToken { Name = "legacy_refresh_token", Value = refreshToken },
             new AuthenticationToken { Name = "legacy_access_expires_at", Value = accessExpiresAt.ToString("O") },
         ]);
         return properties;
@@ -371,6 +452,12 @@ public sealed partial class EmployeeSessionContractTests
 
         public Exception? RevokeException { get; init; }
 
+        public Exception? RefreshException { get; init; }
+
+        public Action? OnRefreshAttempt { get; init; }
+
+        public int RefreshAttempts { get; private set; }
+
         public string? RefreshedRefreshToken { get; private set; }
 
         public string? RevokedRefreshToken { get; private set; }
@@ -394,7 +481,14 @@ public sealed partial class EmployeeSessionContractTests
 
         public Task<EmployeeRefreshResult?> RefreshAsync(string refreshToken, CancellationToken cancellationToken)
         {
+            RefreshAttempts++;
             RefreshedRefreshToken = refreshToken;
+            OnRefreshAttempt?.Invoke();
+            if (RefreshException is not null)
+            {
+                return Task.FromException<EmployeeRefreshResult?>(RefreshException);
+            }
+
             return Task.FromResult(RefreshResult is null
                 ? null
                 : new EmployeeRefreshResult(
@@ -440,6 +534,15 @@ public sealed partial class EmployeeSessionContractTests
         public bool SignedOut { get; private set; }
 
         public ClaimsPrincipal? CurrentPrincipal => SignedOut ? null : principal;
+
+        public void ReplaceTicket(AuthenticationProperties properties)
+        {
+            CurrentProperties = properties;
+            principal = new ClaimsPrincipal(new ClaimsIdentity(
+                [new Claim(ClaimTypes.NameIdentifier, "employee-id")],
+                CookieAuthenticationDefaults.AuthenticationScheme));
+            SignedOut = false;
+        }
 
         public Task<AuthenticateResult> AuthenticateAsync(HttpContext context, string? scheme)
         {

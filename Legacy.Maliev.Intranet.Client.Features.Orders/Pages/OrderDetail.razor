@@ -111,7 +111,7 @@ else if (page is not null)
             {
                 <MudListItem T="OrderFileItem" Value="file">
                     <MudLink Href="@file.Uri?.ToString()" Target="_blank">@file.ObjectName</MudLink>
-                    <MudIconButton Icon="@Icons.Material.Filled.Delete" OnClick="() => RemoveFileAsync(file.Id)" Disabled="@submitting" />
+                    <MudIconButton Icon="@Icons.Material.Filled.Delete" OnClick="() => RemoveFileAsync(file.Id)" Disabled="@submitting" aria-label="@($"Remove {file.ObjectName}")" />
                 </MudListItem>
             }
         </MudList>

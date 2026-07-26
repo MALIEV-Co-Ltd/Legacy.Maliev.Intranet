@@ -1,4 +1,5 @@
 @page "/Orders/Index"
+@page "/sales/orders"
 @attribute [Authorize]
 @inject HttpClient Http
 @inject NavigationManager Navigation
@@ -24,6 +25,9 @@
             </MudSelect>
             <MudNumericField T="int" @bind-Value="sizeInput" Label="@Text["PerPage"]" Min="1" Max="250" Variant="Variant.Outlined" />
             <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="ApplyFiltersAsync">@Text["Apply"]</MudButton>
+            <MudButton Variant="Variant.Outlined" Color="Color.Default" OnClick="ReloadAsync" Disabled="@loading">
+                @Text["Refresh"]
+            </MudButton>
         </div>
     </MudPaper>
 
@@ -231,6 +235,7 @@
     }
 
     private Task ApplyFiltersAsync() => NavigateAsync(1, searchInput, sortInput, sizeInput);
+    private async Task ReloadAsync() => await LoadAsync();
     private Task PreviousPageAsync() => NavigateAsync(Math.Max(1, Index - 1), Search, currentSort, Size);
     private Task NextPageAsync() => NavigateAsync(Index + 1, Search, currentSort, Size);
 

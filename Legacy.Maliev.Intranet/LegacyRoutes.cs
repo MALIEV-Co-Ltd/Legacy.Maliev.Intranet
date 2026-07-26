@@ -67,6 +67,32 @@ public static class LegacyRoutes
         "/Travelers/Index",
     };
 
+    /// <summary>
+    /// Current lower-case workspace URLs that are intentionally mapped to the
+    /// already-tested legacy workflows. These are compatibility aliases, not
+    /// additional domain endpoints.
+    /// </summary>
+    public static IReadOnlySet<string> CompatibilityAliases { get; } = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+    {
+        "/accounting",
+        "/accounting/new",
+        "/customers",
+        "/customers/new",
+        "/sales/customers",
+        "/sales/customers/new",
+        "/finance/invoices",
+        "/mfg/materials",
+        "/mfg/procurement",
+        "/purchasing",
+        "/purchasing/new",
+        "/purchasing/suppliers",
+        "/sales/orders",
+        "/sales/orders/{Id:int}",
+        "/purchasing/{Id:int}",
+        "/mfg/procurement/{Id:int}",
+        "/hr/profile",
+    };
+
     /// <summary>Historical routes that still have an implementation or a migration candidate contract.</summary>
     public static IReadOnlyList<string> ActiveMigrationCandidates { get; } = All.Where(route => !Retired.Contains(route)).ToArray();
 }

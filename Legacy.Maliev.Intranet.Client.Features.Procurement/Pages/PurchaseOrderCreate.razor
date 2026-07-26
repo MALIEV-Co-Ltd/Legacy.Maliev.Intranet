@@ -1,4 +1,5 @@
 @page "/PurchaseOrders/Create"
+@page "/purchasing/new"
 @attribute [Authorize]
 @inject HttpClient Http
 @inject NavigationManager Navigation
@@ -168,6 +169,8 @@
             if (response.StatusCode == HttpStatusCode.BadRequest) { error = Text["ValidationFailed"]; return; }
             if (response.StatusCode == HttpStatusCode.Conflict) { error = Text["Conflict"]; return; }
             if (response.StatusCode == HttpStatusCode.TooManyRequests) { error = Text["RateLimited"]; return; }
+            if (response.StatusCode == HttpStatusCode.ServiceUnavailable) { error = Text["OutcomeUnknown"]; return; }
+            if (response.StatusCode is HttpStatusCode.GatewayTimeout or HttpStatusCode.RequestTimeout) { error = Text["RetrySafe"]; return; }
             if (response.StatusCode == HttpStatusCode.BadGateway) { error = Text["InvalidResponse"]; return; }
             if (!response.IsSuccessStatusCode) { error = Text["CreateFailed"]; return; }
             var created = await response.Content.ReadFromJsonAsync<CreatedPurchaseOrder>();

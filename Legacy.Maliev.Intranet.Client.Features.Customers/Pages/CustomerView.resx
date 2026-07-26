@@ -6,6 +6,12 @@
   <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
   <data name="PageTitle" xml:space="preserve"><value>Customer profile - MALIEV Intranet</value></data>
   <data name="CustomerPageTitle" xml:space="preserve"><value>{0} - MALIEV Intranet</value></data>
+  <data name="EditCustomer" xml:space="preserve"><value>Edit customer</value></data>
+  <data name="FirstName" xml:space="preserve"><value>First name</value></data>
+  <data name="LastName" xml:space="preserve"><value>Last name</value></data>
+  <data name="SaveChanges" xml:space="preserve"><value>Save changes</value></data>
+  <data name="Saving" xml:space="preserve"><value>Saving</value></data>
+  <data name="Cancel" xml:space="preserve"><value>Cancel</value></data>
   <data name="Loading" xml:space="preserve"><value>Loading customer profile</value></data>
   <data name="CustomerNumber" xml:space="preserve"><value>Customer #{0}</value></data>
   <data name="Contact" xml:space="preserve"><value>Contact</value></data>
@@ -26,8 +32,12 @@
   <data name="BackToCustomers" xml:space="preserve"><value>Back to customers</value></data>
   <data name="NotAvailable" xml:space="preserve"><value>Not available</value></data>
   <data name="Forbidden" xml:space="preserve"><value>You do not have permission to view this customer.</value></data>
+  <data name="ForbiddenUpdate" xml:space="preserve"><value>You do not have permission to update this customer.</value></data>
   <data name="NotFound" xml:space="preserve"><value>The requested customer was not found.</value></data>
   <data name="RateLimited" xml:space="preserve"><value>Too many requests were submitted. Wait a moment and try again.</value></data>
   <data name="InvalidResponse" xml:space="preserve"><value>CustomerService returned an invalid profile response.</value></data>
   <data name="Unavailable" xml:space="preserve"><value>The customer profile is temporarily unavailable.</value></data>
+  <data name="ValidationFailed" xml:space="preserve"><value>Check the highlighted customer fields.</value></data>
+  <data name="Conflict" xml:space="preserve"><value>The customer profile changed before it could be saved.</value></data>
+  <data name="SaveFailed" xml:space="preserve"><value>The customer profile could not be saved.</value></data>
 </root>
