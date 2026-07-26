@@ -5,7 +5,13 @@ namespace Legacy.Maliev.Intranet.Tests;
 
 public sealed partial class BlazorRouteOwnershipCompletionTests
 {
-    private static readonly string[] AllowedNonLegacyRoutes = ["/", "/migration-foundation", "/Server/ErrorReport"];
+    private static readonly string[] AllowedNonLegacyRoutes =
+    [
+        "/",
+        "/migration-foundation",
+        "/Server/ErrorReport",
+        .. LegacyRoutes.CompatibilityAliases,
+    ];
 
     [Fact]
     public void EveryActiveLegacyRoute_HasExactlyOneBlazorOwner()
