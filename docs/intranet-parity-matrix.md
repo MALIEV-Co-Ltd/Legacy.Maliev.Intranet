@@ -81,7 +81,11 @@ are available.
   **28/28** after pinning `Google.Apis.Auth` to `1.75.0` in the storage data
   adapter (`2fffcbe`), removing the AppHost migration-runner assembly
   conflict. AppHost passed **88/88** and its Release build passed with **0
-  warnings and 0 errors**.
+  warnings and 0 errors**. The FileService checkout used by this local
+  validation is `main` at `2fffcbe`; fetched `origin/main` is already at
+  `bd7cd33` with 43 newer delegated upload/Instant-Quotation commits. Those
+  commits remain owned by the FileService/Web lanes and are not claimed as
+  integrated into this Intranet validation.
 - Aspire local validation currently reports all **16 application** resources
   (14 legacy APIs, Intranet BFF, and Web) Ready/Healthy, with the dashboard,
   PostgreSQL main/pooler, and both Redis endpoints healthy. The 16 resources'
