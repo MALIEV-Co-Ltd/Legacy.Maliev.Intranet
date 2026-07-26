@@ -52,7 +52,13 @@ are available.
 ## Latest validation checkpoint (2026-07-27)
 
 - Branch: `codex/intranet-parity-audit`; integrated commits `9a5c9fe`,
-  `d422797`, and `6e8b4d1`.
+  `d422797`, `6e8b4d1`, and route-audit test commit `d48e719`.
+- The current-source route baseline is machine-checked in
+  `docs/current-intranet-route-parity.json` at `Maliev.Intranet` commit
+  `d8e943b`: 53 current routes are classified exactly once (18 exact legacy
+  owners, 35 explicit blockers). When `MALIEV_CURRENT_INTRANET_ROOT` is set,
+  the contract test compares the manifest with the actual current Razor route
+  directives; it never treats an absent current checkout as proof of parity.
 - The WASM shell now matches the current loading/error behavior and branding
   assets, including keyboard focus, reduced-motion, forced-colors, reload, and
   dismiss states.
