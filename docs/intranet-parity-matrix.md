@@ -21,7 +21,6 @@ look complete.
 | `/accounting`, `/finance/invoices` | Invoice list | Accounting feature assembly + `/bff/invoices` |
 | `/accounting/new` | Invoice create | Accounting creation workflow + `/bff/invoices/from-quotation` |
 | `/hr/profile` | Read-only employee profile | Employees feature assembly + `/bff/session` + `/bff/employees/{legacyDatabaseId}`; self-service edits/preferences remain explicitly disabled |
-| `/sales/orders/{id}` | Legacy order detail redirect | Numeric compatibility route redirects to `/Orders/View?id={id}`; no new API contract |
 | `/purchasing/{id}`, `/mfg/procurement/{id}` | Legacy purchase-order detail redirect | Numeric compatibility routes redirect to `/PurchaseOrders/View?id={id}`; no GUID translation |
 
 Historical PascalCase routes remain supported and are tracked by
@@ -34,6 +33,7 @@ The following routes exist in the current `Maliev.Intranet` source but do not
 have an equivalent legacy service contract yet. They must not be silently
 pointed at an unrelated legacy page:
 
+- `/sales/orders/{OrderId}` (the current route is unconstrained; the legacy redirect only accepts a proven numeric identifier)
 - `/sales/projects`, `/sales/projects/new`, `/sales/projects/{id}`
 - `/commerce/catalog`, `/commerce/catalog/new`, `/commerce/catalog/{handle}`, `/commerce/collections`
 - `/finance/delivery-notes`, `/finance/delivery-notes/new`, `/delivery-notes`
@@ -71,7 +71,7 @@ are available.
   carries Remember Me through the opaque server-side session ticket. Supported
   cultures are normalized to `en-TH`, `th-TH`, or `en-US`.
 - `dotnet test Legacy.Maliev.Intranet.slnx -c Release --no-restore` passed
-  **530/530** with zero skips; the Release build passed with **0 warnings and
+  **533/533** with zero skips; the Release build passed with **0 warnings and
   0 errors**, and whitespace verification passed.
 - Aspire local validation reported all 17 running application resources
   healthy. Direct liveness/readiness probes for the 16 service/BFF/Web
