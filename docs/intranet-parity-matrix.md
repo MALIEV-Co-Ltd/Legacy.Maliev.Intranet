@@ -49,6 +49,31 @@ The legacy shell intentionally exposes only the migrated workflows until the
 corresponding service, permission, DTO, database, and browser contract tests
 are available.
 
+## Latest validation checkpoint (2026-07-27)
+
+- Branch: `codex/intranet-parity-audit`; integrated commits `9a5c9fe`,
+  `d422797`, and `6e8b4d1`.
+- The WASM shell now matches the current loading/error behavior and branding
+  assets, including keyboard focus, reduced-motion, forced-colors, reload, and
+  dismiss states.
+- `/hr/profile` is a protected, lazy-loaded read projection backed by the
+  existing `/bff/session` and `/bff/employees/{legacyDatabaseId}` contracts;
+  self-service edits remain fail-closed until the owning EmployeeService
+  preference contract is migrated.
+- Employee password sign-in now validates the `@maliev.com` boundary on both
+  browser and BFF sides, revalidates the identity returned by AuthService, and
+  carries Remember Me through the opaque server-side session ticket. Supported
+  cultures are normalized to `en-TH`, `th-TH`, or `en-US`.
+- `dotnet test Legacy.Maliev.Intranet.slnx -c Release --no-restore` passed
+  **530/530** with zero skips; the Release build passed with **0 warnings and
+  0 errors**, and whitespace verification passed.
+- Aspire local validation reported all 17 running application resources
+  healthy. Direct liveness/readiness probes for the 16 service/BFF/Web
+  resources returned HTTP 200 (32/32), while the Web proxy (`http://localhost:5188/`)
+  and dashboard (`http://localhost:15888`) also returned HTTP 200.
+- This is local evidence only. No production/GKE deployment, database write,
+  credential reuse, or legacy PostgreSQL cutover was performed.
+
 The 2026-07-26 validation slice also proves that authenticated-but-unauthorized
 routes render `AccessDenied`, anonymous routes redirect to the BFF login flow,
 and unknown routes render the accessible `NotFound` page. The BFF session
