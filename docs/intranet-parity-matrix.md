@@ -51,7 +51,7 @@ are available.
 
 ## Latest validation checkpoint (2026-07-27)
 
-- Branch: `main` (current local HEAD `9a4ef85`, built on validation merge `1a96322`); the parity branch now also contains
+- Branch: `main` (current local HEAD `6f0eaeb`, built on validation merge `1a96322`); the parity branch now also contains
   browser-safe Maps configuration (`e70253f`) and nonce-bound Google employee
   sign-in (`d410b4c`, sourced from AuthService `8911dcc`). AppHost wires the
   optional local Google client/hosted-domain values and the dedicated
@@ -83,17 +83,23 @@ are available.
   delivery-note, IAM, and administration links are still intentionally absent
   until their contracts are migrated. The Orders page now has a tested Refresh
   action that reuses the existing bounded `/bff/orders` load path.
+- The workspace shell now restores the current persisted light/dark theme
+  toggle through the existing blocking `malievTheme` bootstrap, binds the
+  MudBlazor dark palette, and applies dark surface/text variables without
+  introducing a new preferences API. JS initialization and toggling fail
+  closed when the browser interop is unavailable.
 - Employee password sign-in now validates the `@maliev.com` boundary on both
   browser and BFF sides, revalidates the identity returned by AuthService, and
   carries Remember Me through the opaque server-side session ticket. Supported
   cultures are normalized to `en-TH`, `th-TH`, or `en-US`.
 - `dotnet test Legacy.Maliev.Intranet.slnx -c Release --no-build --no-restore`
-  passed **556/556** with zero skips after the permission-aware navigation,
-  Orders Refresh, and WASM runtime/login interop slices; focused navigation
-  passed **7/7**, Orders passed **4/4**, and the runtime/login contract subset
-  passed **4/4**. With `MALIEV_CURRENT_INTRANET_ROOT` pointed at the original
+  passed **558/558** with zero skips after the permission-aware navigation,
+  persisted workspace theme, Orders Refresh, and WASM runtime/login interop
+  slices; focused navigation/theme passed **9/9**, Orders passed **4/4**, and
+  the runtime/login contract subset passed **4/4**. With
+  `MALIEV_CURRENT_INTRANET_ROOT` pointed at the original
   checkout, the route-parity subset passed **3/3** and the full suite passed
-  **556/556** again. The
+  **558/558** again. The
   clean Release build passed with **0 warnings and 0 errors** after stopping
   the serving BFF, and whitespace/diff verification passed. AuthService passed
   **107/107** and FileService passed
@@ -112,7 +118,7 @@ are available.
   `readiness` probes returned HTTP 200 (**42/42**); the BFF liveness/readiness
   probes also returned HTTP 200. The Web proxy
   (`http://localhost:5188/Account/Login`), BFF login
-  (`https://localhost:63888/Login`), and dashboard
+  (`https://localhost:63143/Login`), and dashboard
   (`http://localhost:15888`) returned HTTP 200. The fresh browser login tab
   had no console warnings/errors and no horizontal overflow at desktop
   (1,280px) or mobile (390px) width. Google nonce exchange is deliberately
@@ -124,7 +130,8 @@ are available.
   `en-US` culture switch from crashing the browser. Login Google interop is
   guarded until the host is rendered and retries fail-closed, preventing the
   empty `ElementReference` startup race.
-- After the navigation slice, the Aspire restart passed a clean Release build
+- After the navigation and theme slices, the Aspire restart passed a clean
+  Release build
   with **0 warnings and 0 errors**; all 22 DCP services were Ready, all 19
   migration runners exited 0, and the 14 API resources returned HTTP 200 for
   all three prefixed liveness/readiness probes (**42/42**). The Intranet BFF
