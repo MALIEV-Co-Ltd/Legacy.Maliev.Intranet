@@ -20,7 +20,7 @@
     </div>
 
     <nav class="legacy-desktop-nav" aria-label="Primary navigation">
-        @foreach (var group in LegacyAppNavigation.Groups)
+        @foreach (var group in _desktopNavGroups)
         {
             <MudMenu Dense="true" AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft" Class="legacy-nav-menu">
                 <ActivatorContent>
@@ -40,12 +40,61 @@
                                      Icon="@item.Icon"
                                      Disabled="@(!IsItemEnabled(item))"
                                      Class="@(GetDesktopItemClass(item))">
-                            @item.Label
+                            <div class="legacy-nav-menu-copy">
+                                <span>@item.Label</span>
+                                @if (!string.IsNullOrWhiteSpace(item.Description))
+                                {
+                                    <small>@item.Description</small>
+                                }
+                            </div>
                         </MudMenuItem>
                     }
                 </ChildContent>
             </MudMenu>
         }
+
+        <MudMenu Dense="true"
+                 AnchorOrigin="Origin.BottomRight"
+                 TransformOrigin="Origin.TopRight"
+                 Class="legacy-nav-menu legacy-nav-more-menu">
+            <ActivatorContent>
+                <button type="button"
+                        class="legacy-nav-trigger legacy-nav-more-trigger @(IsOverflowActive() ? "active" : string.Empty)"
+                        aria-label="More navigation"
+                        @onclick="context.ToggleAsync">
+                    <MudIcon Icon="@Icons.Material.Outlined.Apps" Size="Size.Small" />
+                    <span>More</span>
+                    <MudIcon Icon="@Icons.Material.Filled.KeyboardArrowDown" Size="Size.Small" />
+                </button>
+            </ActivatorContent>
+            <ChildContent>
+                @foreach (var group in _desktopOverflowNavGroups)
+                {
+                    <div class="legacy-nav-more-section" role="presentation">
+                        <div class="legacy-nav-more-section-title">
+                            <MudIcon Icon="@group.Icon" Size="Size.Small" />
+                            <span>@group.Label</span>
+                        </div>
+
+                        @foreach (var item in group.Items)
+                        {
+                            <MudMenuItem Href="@item.Href"
+                                         Icon="@item.Icon"
+                                         Disabled="@(!IsItemEnabled(item))"
+                                         Class="@(GetDesktopItemClass(item))">
+                                <div class="legacy-nav-menu-copy">
+                                    <span>@item.Label</span>
+                                    @if (!string.IsNullOrWhiteSpace(item.Description))
+                                    {
+                                        <small>@item.Description</small>
+                                    }
+                                </div>
+                            </MudMenuItem>
+                        }
+                    </div>
+                }
+            </ChildContent>
+        </MudMenu>
     </nav>
 
     <div class="legacy-topbar-spacer"></div>
@@ -150,6 +199,9 @@
     [Parameter] public EmployeeSessionSummary? Session { get; set; }
     [Parameter] public EventCallback OnSignOut { get; set; }
 
+    private static readonly IReadOnlyList<LegacyNavGroup> _desktopNavGroups = LegacyAppNavigation.DesktopGroups;
+    private static readonly IReadOnlyList<LegacyNavGroup> _desktopOverflowNavGroups = LegacyAppNavigation.DesktopOverflowGroups;
+
     private bool _mobileOpen;
     private bool _profileMenuOpen;
 
@@ -160,6 +212,8 @@
     }
 
     private bool IsGroupActive(LegacyNavGroup group) => group.Items.Any(IsItemActive);
+
+    private bool IsOverflowActive() => _desktopOverflowNavGroups.Any(IsGroupActive);
 
     private bool IsItemEnabled(LegacyNavItem item) => LegacyNavigationAuthorization.IsEnabled(
         Session?.IsAuthenticated == true,
