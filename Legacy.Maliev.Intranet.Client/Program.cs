@@ -1,10 +1,12 @@
 using Legacy.Maliev.Intranet.Client;
+using Legacy.Maliev.Intranet.Contracts;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using MudBlazor.Services;
 
 var builder = WebAssemblyHostBuilder.CreateDefault(args);
+WorkspaceCulture.Apply(null);
 builder.RootComponents.Add<App>("#app");
 builder.RootComponents.Add<HeadOutlet>("head::after");
 builder.Services.AddMudServices();

@@ -1446,6 +1446,12 @@ app.MapPost("/bff/login", async (
         return Results.ValidationProblem(errors);
     }
 
+    if (!WorkspaceIdentityRules.IsAllowedEmployeeEmail(request.Email))
+    {
+        logger.LogWarning("Rejected employee login attempt outside the workspace email domain.");
+        return Results.Unauthorized();
+    }
+
     EmployeeLoginResult login;
     try
     {
@@ -1480,7 +1486,13 @@ app.MapPost("/bff/login", async (
             statusCode: StatusCodes.Status401Unauthorized);
     }
 
-    await sessions.SignInAsync(context, login);
+    if (!WorkspaceIdentityRules.IsAllowedEmployeeEmail(login.Identity?.Email))
+    {
+        logger.LogWarning("AuthService returned a non-workspace identity for an employee login.");
+        return Results.Unauthorized();
+    }
+
+    await sessions.SignInAsync(context, login, request.RememberMe);
     return Results.Ok(new EmployeeSignInResponse(LocalReturnUrl.Normalize(request.ReturnUrl)));
 })
     .AddEndpointFilter<AntiforgeryValidationFilter>()

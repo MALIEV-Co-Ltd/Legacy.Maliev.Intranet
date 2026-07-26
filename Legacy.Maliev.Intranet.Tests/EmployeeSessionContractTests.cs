@@ -305,6 +305,31 @@ public sealed partial class EmployeeSessionContractTests
         Assert.Equal(Now.AddHours(8), authentication.CurrentProperties?.ExpiresUtc);
     }
 
+    [Fact]
+    public async Task SignIn_WithRememberMe_PersistsTheSameEightHourOpaqueServerSession()
+    {
+        var authentication = new RecordingAuthenticationService(new AuthenticationProperties());
+        var context = CreateHttpContext(authentication);
+        var sessions = CreateSessionService(new StubAuthClient());
+        var login = new EmployeeLoginResult(
+            true,
+            new AuthTokenResponse(
+                StubAuthClient.AccessToken,
+                StubAuthClient.RefreshToken,
+                "Bearer",
+                900,
+                Now.AddDays(14)),
+            new EmployeeIdentity("employee-id", "employee@maliev.com", "employee@maliev.com"));
+
+        await sessions.SignInAsync(context, login, rememberMe: true);
+
+        Assert.True(authentication.CurrentProperties?.IsPersistent);
+        Assert.Equal(Now, authentication.CurrentProperties?.IssuedUtc);
+        Assert.Equal(Now.AddHours(8), authentication.CurrentProperties?.ExpiresUtc);
+        Assert.Equal(StubAuthClient.AccessToken, authentication.CurrentProperties?.GetTokenValue("legacy_access_token"));
+        Assert.Equal(StubAuthClient.RefreshToken, authentication.CurrentProperties?.GetTokenValue("legacy_refresh_token"));
+    }
+
     private static AuthenticationProperties CreateTokenProperties(DateTimeOffset accessExpiresAt)
     {
         var properties = new AuthenticationProperties

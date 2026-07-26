@@ -47,6 +47,13 @@
                           Disabled="isSubmitting"
                           FullWidth="true"
                           Class="mb-4" />
+            <MudCheckBox T="bool"
+                         @bind-Value="model.RememberMe"
+                         Disabled="isSubmitting"
+                         Color="Color.Primary"
+                         Class="mb-3">
+                Remember me
+            </MudCheckBox>
             <MudButton Variant="Variant.Filled"
                        Color="Color.Primary"
                        ButtonType="ButtonType.Button"
@@ -90,13 +97,23 @@
             return;
         }
 
+        if (!WorkspaceIdentityRules.IsAllowedEmployeeEmail(model.Email))
+        {
+            errorMessage = "Use your MALIEV work email.";
+            return;
+        }
+
         isSubmitting = true;
         errorMessage = null;
         var requestPassword = model.Password;
         model.Password = string.Empty;
         try
         {
-            var result = await AuthenticationClient.SignInAsync(model.Email.Trim(), requestPassword, ReturnUrl);
+            var result = await AuthenticationClient.SignInAsync(
+                model.Email.Trim(),
+                requestPassword,
+                ReturnUrl,
+                model.RememberMe);
             requestPassword = string.Empty;
             if (result.Succeeded && result.RedirectUrl is not null)
             {
@@ -118,5 +135,7 @@
         public string Email { get; set; } = string.Empty;
 
         public string Password { get; set; } = string.Empty;
+
+        public bool RememberMe { get; set; }
     }
 }
