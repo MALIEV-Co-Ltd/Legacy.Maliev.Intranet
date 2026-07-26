@@ -47,8 +47,12 @@ public sealed class SameOriginHostingContractTests
         Assert.Contains("EmployeeSessionClient", source, StringComparison.Ordinal);
         Assert.Contains("response.IsSuccessStatusCode", source, StringComparison.Ordinal);
         Assert.Contains("Session unavailable", source, StringComparison.Ordinal);
-        Assert.DoesNotContain("http://", source, StringComparison.OrdinalIgnoreCase);
-        Assert.DoesNotContain("https://", source, StringComparison.OrdinalIgnoreCase);
+        var sourceWithoutApprovedPublicSiteLink = source.Replace(
+            "https://www.maliev.com",
+            string.Empty,
+            StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("http://", sourceWithoutApprovedPublicSiteLink, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("https://", sourceWithoutApprovedPublicSiteLink, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]

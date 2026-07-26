@@ -8,6 +8,51 @@
     <meta name="theme-color" content="#f6f8fb" />
     <title>MALIEV Intranet</title>
     <base href="/" />
+    <script>
+        (function () {
+            const root = document.documentElement;
+            const storageKey = 'maliev_theme';
+
+            function readPreference() {
+                try {
+                    const stored = window.localStorage.getItem(storageKey);
+                    if (stored === 'dark' || stored === 'light') return stored;
+                } catch (_) { }
+
+                const cookie = document.cookie
+                    .split('; ')
+                    .find(value => value.startsWith(storageKey + '='));
+                const cookieValue = cookie ? cookie.substring(storageKey.length + 1) : '';
+                return cookieValue === 'dark' || cookieValue === 'light' ? cookieValue : 'system';
+            }
+
+            function effectiveTheme(preference) {
+                return preference === 'dark' ||
+                    (preference === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches)
+                    ? 'dark'
+                    : 'light';
+            }
+
+            function apply(preference) {
+                const theme = effectiveTheme(preference);
+                root.dataset.malievTheme = theme;
+                root.style.colorScheme = theme;
+                return theme === 'dark';
+            }
+
+            const initialPreference = readPreference();
+            apply(initialPreference);
+            window.malievTheme = {
+                isDark: function () { return root.dataset.malievTheme === 'dark'; },
+                toggle: function () {
+                    const next = root.dataset.malievTheme === 'dark' ? 'light' : 'dark';
+                    try { window.localStorage.setItem(storageKey, next); } catch (_) { }
+                    document.cookie = storageKey + '=' + next + '; path=/; max-age=31536000; SameSite=Lax';
+                    return apply(next);
+                }
+            };
+        })();
+    </script>
     <link rel="preload" id="webassembly" />
     <link href="_content/MudBlazor/MudBlazor.min.css" rel="stylesheet" />
     <link href="css/app.css" rel="stylesheet" />

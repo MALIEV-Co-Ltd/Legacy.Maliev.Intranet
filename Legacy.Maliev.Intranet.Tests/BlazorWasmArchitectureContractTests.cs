@@ -49,13 +49,14 @@ public sealed class BlazorWasmArchitectureContractTests
 
         Assert.Contains("@page \"/Login\"", login, StringComparison.Ordinal);
         Assert.Contains("<PageTitle>", login, StringComparison.Ordinal);
-        Assert.Contains("<MudForm", login, StringComparison.Ordinal);
-        Assert.Contains("InputType.Email", login, StringComparison.Ordinal);
-        Assert.Contains("InputType.Password", login, StringComparison.Ordinal);
-        Assert.Contains("Required=\"true\"", login, StringComparison.Ordinal);
-        Assert.Contains("MudProgressLinear", login, StringComparison.Ordinal);
-        Assert.Contains("MudAlert", login, StringComparison.Ordinal);
-        Assert.Contains("Password = string.Empty", login, StringComparison.Ordinal);
+        Assert.Contains("<form", login, StringComparison.Ordinal);
+        Assert.Contains("type=\"email\"", login, StringComparison.Ordinal);
+        Assert.Contains("type=\"password\"", login, StringComparison.Ordinal);
+        Assert.Contains("required", login, StringComparison.Ordinal);
+        Assert.Contains("legacy-login-error", login, StringComparison.Ordinal);
+        Assert.Contains("MudProgressCircular", login, StringComparison.Ordinal);
+        Assert.Contains("@onsubmit:preventDefault", login, StringComparison.Ordinal);
+        Assert.Contains("_password = string.Empty", login, StringComparison.Ordinal);
         Assert.Contains("forceLoad: true", login, StringComparison.Ordinal);
         Assert.Contains("GetAsync", authenticationClient, StringComparison.Ordinal);
         Assert.Contains("/bff/login", authenticationClient, StringComparison.Ordinal);

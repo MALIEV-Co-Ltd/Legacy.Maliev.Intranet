@@ -3,97 +3,179 @@
 @layout Layout.EmptyLayout
 @inject EmployeeAuthenticationClient AuthenticationClient
 @inject NavigationManager Navigation
+@inject AuthenticationStateProvider AuthenticationStateProvider
 @inject IJSRuntime JSRuntime
+@inject ILogger<Login> Logger
+@implements IAsyncDisposable
 
-<PageTitle>Employee sign in - MALIEV Intranet</PageTitle>
+<PageTitle>MALIEV | Intranet Gateway</PageTitle>
 
-<MudContainer MaxWidth="MaxWidth.Small" Class="employee-login">
-    <MudPaper Class="login-card" Elevation="2">
-        <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="login-card-header pa-4">
-            <MudText Typo="Typo.h6" Class="font-weight-light">Intranet</MudText>
-            <img src="images/MALIEV_BLACK.svg" alt="Maliev" class="brand-logo" />
-        </MudStack>
-        <div class="pa-6">
-        <MudText Typo="Typo.h5" HtmlTag="h1" Class="mb-2">Employee sign in</MudText>
-        <MudText Typo="Typo.body2" Class="mb-6">Use your MALIEV employee account to continue.</MudText>
-
-        <div class="google-signin-shell mb-4">
-            <div @ref="googleIdentityHost" data-google-signin-host data-return-url="@LocalReturnUrlForGoogle"></div>
-            <p data-google-signin-status class="google-signin-status" role="status" aria-live="polite" hidden></p>
+<div class="legacy-login-page @(_isDarkMode ? "dark-theme" : string.Empty)">
+    <header class="legacy-login-header">
+        <div class="legacy-login-header-content">
+            <a class="legacy-login-brand" href="/" aria-label="MALIEV Intranet home">
+                <img src="images/MALIEV_BLACK.svg" alt="MALIEV" class="legacy-login-brand-image" />
+            </a>
+            <button type="button"
+                    class="legacy-login-theme-toggle"
+                    @onclick="ToggleThemeAsync"
+                    aria-label="@ThemeToggleLabel"
+                    title="@ThemeToggleLabel">
+                <MudIcon Icon="@(_isDarkMode ? Icons.Material.Outlined.LightMode : Icons.Material.Outlined.DarkMode)"
+                         Size="Size.Small" />
+            </button>
         </div>
-        <div class="login-divider mb-4"><MudDivider /><span>or use your work email</span><MudDivider /></div>
+    </header>
 
-        @if (!string.IsNullOrWhiteSpace(errorMessage))
+    <main class="legacy-login-main">
+        @if (!_isCheckingAuth)
         {
-            <MudAlert Severity="Severity.Error" Class="mb-4" Dense="true">@errorMessage</MudAlert>
-        }
+            <section class="legacy-login-card" aria-labelledby="legacy-login-title">
+                <div class="legacy-login-heading">
+                    <p class="legacy-login-kicker">Employee gateway</p>
+                    <h1 id="legacy-login-title" class="legacy-login-title">
+                        <span>Sign in to</span>
+                        <img src="images/MALIEV_BLACK.svg" alt="" aria-hidden="true" class="legacy-login-title-logo" />
+                    </h1>
+                </div>
 
-        @if (isSubmitting)
-        {
-            <MudProgressLinear Indeterminate="true" Color="Color.Primary" Class="mb-4" />
-        }
+                @if (!string.IsNullOrWhiteSpace(_errorMessage))
+                {
+                    <div class="legacy-login-error" role="alert">@_errorMessage</div>
+                }
 
-        <MudForm @ref="form" @bind-IsValid="isValid">
-            <MudTextField T="string"
-                          @bind-Value="model.Email"
-                          Label="Email"
-                          InputType="InputType.Email"
-                          autocomplete="email"
-                          Required="true"
-                          RequiredError="Email is required."
-                          Disabled="isSubmitting"
-                          FullWidth="true"
-                          Class="mb-3" />
-            <MudTextField T="string"
-                          @bind-Value="model.Password"
-                          Label="Password"
-                          InputType="InputType.Password"
-                          autocomplete="current-password"
-                          Required="true"
-                          RequiredError="Password is required."
-                          Disabled="isSubmitting"
-                          FullWidth="true"
-                          Class="mb-4" />
-            <MudCheckBox T="bool"
-                         @bind-Value="model.RememberMe"
-                         Disabled="isSubmitting"
-                         Color="Color.Primary"
-                         Class="mb-3">
-                Remember me
-            </MudCheckBox>
-            <MudButton Variant="Variant.Filled"
-                       Color="Color.Primary"
-                       ButtonType="ButtonType.Button"
-                       OnClick="SubmitAsync"
-                       Disabled="isSubmitting"
-                       FullWidth="true">
-                Sign in
-            </MudButton>
-            <MudButton Href="/Employees/ForgotPassword"
-                       Variant="Variant.Text"
-                       Disabled="isSubmitting"
-                       FullWidth="true"
-                       Class="mt-2">
-                Forgot your password?
-            </MudButton>
-        </MudForm>
-        </div>
-    </MudPaper>
-</MudContainer>
+                <div class="legacy-google-signin-section">
+                    <div @ref="_googleIdentityHost"
+                         class="legacy-google-signin-host"
+                         data-google-signin-host
+                         data-return-url="@LocalReturnUrlForGoogle"
+                         aria-label="Continue with Google"></div>
+                    <p class="legacy-google-signin-status" data-google-signin-status role="status" aria-live="polite" hidden></p>
+                </div>
+
+                <div class="legacy-login-divider" role="separator" aria-label="or continue with email">
+                    <span></span>
+                    <strong>or continue with email</strong>
+                    <span></span>
+                </div>
+
+                @if (IsEmailStep)
+                {
+                    <form class="legacy-login-form" @onsubmit="ContinueWithEmail" @onsubmit:preventDefault>
+                        <div class="legacy-login-field">
+                            <label for="legacy-login-email">Email</label>
+                            <input id="legacy-login-email"
+                                   type="email"
+                                   class="legacy-login-input"
+                                   placeholder="name@@maliev.com"
+                                   pattern="^[^@@\s]+@@maliev\.com$"
+                                   autocomplete="username"
+                                   required
+                                   aria-describedby="legacy-login-email-help"
+                                   @bind="_emailInput"
+                                   @bind:event="oninput" />
+                            <small id="legacy-login-email-help">Use your MALIEV work email.</small>
+                        </div>
+                        <button type="submit" class="legacy-login-primary" disabled="@(!EmailLooksValid)">Continue with email</button>
+                    </form>
+                }
+                else
+                {
+                    <form class="legacy-login-form" @onsubmit="HandleLogin" @onsubmit:preventDefault>
+                        <div class="legacy-login-email-summary">
+                            <span>@_emailInput</span>
+                            <button type="button" class="legacy-login-change" @onclick="BackToEmailStep">Change</button>
+                        </div>
+                        <div class="legacy-login-field">
+                            <label for="legacy-login-password">Password</label>
+                            <input id="legacy-login-password"
+                                   type="password"
+                                   class="legacy-login-input"
+                                   autocomplete="current-password"
+                                   required
+                                   @bind="_password"
+                                   @bind:event="oninput" />
+                        </div>
+                        <label class="legacy-login-remember">
+                            <input type="checkbox" @bind="_rememberMe" />
+                            <span>Remember me</span>
+                        </label>
+                        <button type="submit" class="legacy-login-primary" disabled="@(_isProcessing || !CredentialsReady)">
+                            @if (_isProcessing)
+                            {
+                                <MudProgressCircular Size="Size.Small" Color="Color.Inherit" Indeterminate="true" />
+                                <span>Signing in...</span>
+                            }
+                            else
+                            {
+                                <span>Sign in with email</span>
+                            }
+                        </button>
+                    </form>
+                }
+
+                <p class="legacy-login-footer-note">
+                    Not an employee? Visit our main page at
+                    <a href="https://www.maliev.com" target="_blank" rel="noreferrer">www.maliev.com</a>
+                </p>
+            </section>
+        }
+    </main>
+
+    <footer class="legacy-login-footer">
+        <span>MALIEV CO., LTD.</span>
+        <a href="https://www.maliev.com" target="_blank" rel="noreferrer">www.maliev.com</a>
+    </footer>
+</div>
 
 @code {
-    private readonly EmployeeLoginForm model = new();
-    private MudForm? form;
-    private bool isValid;
-    private bool isSubmitting;
-    private string? errorMessage;
-    private ElementReference googleIdentityHost;
-
-    private string LocalReturnUrlForGoogle =>
-        string.IsNullOrWhiteSpace(ReturnUrl) ? "/Dashboard" : ReturnUrl!;
-
     [SupplyParameterFromQuery(Name = "returnUrl")]
     public string? ReturnUrl { get; set; }
+
+    [SupplyParameterFromQuery(Name = "error")]
+    public string? Error { get; set; }
+
+    private bool _isCheckingAuth = true;
+    private bool _isDarkMode;
+    private bool _isProcessing;
+    private bool _rememberMe;
+    private string _emailInput = string.Empty;
+    private string _password = string.Empty;
+    private string? _errorMessage;
+    private LoginStep _step = LoginStep.Email;
+    private ElementReference _googleIdentityHost;
+
+    private bool IsEmailStep => _step == LoginStep.Email;
+
+    private bool EmailLooksValid => WorkspaceIdentityRules.IsAllowedEmployeeEmail(_emailInput.Trim());
+
+    private bool CredentialsReady => EmailLooksValid && !string.IsNullOrWhiteSpace(_password);
+
+    private string LocalReturnUrlForGoogle => IsLocalPath(ReturnUrl) ? ReturnUrl! : "/Dashboard";
+
+    private string ThemeToggleLabel => _isDarkMode ? "Switch to light mode" : "Switch to dark mode";
+
+    protected override async Task OnInitializedAsync()
+    {
+        _isDarkMode = await ReadThemeAsync();
+        _errorMessage = string.IsNullOrWhiteSpace(Error) ? null : Error;
+
+        try
+        {
+            var authenticationState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+            if (authenticationState.User.Identity?.IsAuthenticated == true)
+            {
+                Navigation.NavigateTo(LocalReturnUrlForGoogle, replace: true);
+                return;
+            }
+        }
+        catch (Exception exception)
+        {
+            Logger.LogDebug(exception, "Employee login could not read the existing authentication state.");
+        }
+
+        _isCheckingAuth = false;
+    }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -104,68 +186,106 @@
 
         try
         {
-            await JSRuntime.InvokeVoidAsync(
-                "malievGoogleIdentity.initializeHost",
-                googleIdentityHost);
+            await JSRuntime.InvokeVoidAsync("malievGoogleIdentity.initializeHost", _googleIdentityHost);
         }
         catch (Exception exception) when (exception is InvalidOperationException or JSException or JSDisconnectedException)
         {
-            // The login page remains usable through the password form when GIS is unavailable.
+            Logger.LogWarning(exception, "Google Identity Services could not initialize on the legacy login fallback.");
         }
     }
 
-    private async Task SubmitAsync()
+    private async Task<bool> ReadThemeAsync()
     {
-        if (isSubmitting || form is null)
+        try
+        {
+            return await JSRuntime.InvokeAsync<bool>("malievTheme.isDark");
+        }
+        catch (Exception exception) when (exception is InvalidOperationException or JSException or JSDisconnectedException)
+        {
+            Logger.LogDebug(exception, "Legacy login theme preference is unavailable; using light mode.");
+            return false;
+        }
+    }
+
+    private async Task ToggleThemeAsync()
+    {
+        try
+        {
+            _isDarkMode = await JSRuntime.InvokeAsync<bool>("malievTheme.toggle");
+        }
+        catch (Exception exception) when (exception is InvalidOperationException or JSException or JSDisconnectedException)
+        {
+            Logger.LogDebug(exception, "Legacy login theme toggle is unavailable.");
+        }
+    }
+
+    private void ContinueWithEmail()
+    {
+        _emailInput = _emailInput.Trim();
+        if (!EmailLooksValid)
+        {
+            _errorMessage = "Use your MALIEV work email.";
+            return;
+        }
+
+        _errorMessage = null;
+        _step = LoginStep.Credentials;
+    }
+
+    private void BackToEmailStep()
+    {
+        _step = LoginStep.Email;
+        _password = string.Empty;
+    }
+
+    private async Task HandleLogin()
+    {
+        if (_isProcessing || !CredentialsReady)
         {
             return;
         }
 
-        await form.ValidateAsync();
-        if (!isValid)
-        {
-            return;
-        }
+        _isProcessing = true;
+        _errorMessage = null;
+        var password = _password;
+        _password = string.Empty;
 
-        if (!WorkspaceIdentityRules.IsAllowedEmployeeEmail(model.Email))
-        {
-            errorMessage = "Use your MALIEV work email.";
-            return;
-        }
-
-        isSubmitting = true;
-        errorMessage = null;
-        var requestPassword = model.Password;
-        model.Password = string.Empty;
         try
         {
             var result = await AuthenticationClient.SignInAsync(
-                model.Email.Trim(),
-                requestPassword,
+                _emailInput,
+                password,
                 ReturnUrl,
-                model.RememberMe);
-            requestPassword = string.Empty;
+                _rememberMe);
             if (result.Succeeded && result.RedirectUrl is not null)
             {
                 Navigation.NavigateTo(result.RedirectUrl, forceLoad: true);
                 return;
             }
 
-            errorMessage = result.ErrorMessage ?? "Employee sign-in is temporarily unavailable.";
+            _errorMessage = result.ErrorMessage ?? "Employee sign-in is temporarily unavailable.";
         }
         finally
         {
-            requestPassword = string.Empty;
-            isSubmitting = false;
+            password = string.Empty;
+            _isProcessing = false;
         }
     }
 
-    private sealed class EmployeeLoginForm
+    private static bool IsLocalPath(string? path) =>
+        !string.IsNullOrWhiteSpace(path) &&
+        path.StartsWith("/", StringComparison.Ordinal) &&
+        (path.Length == 1 || path[1] is not ('/' or '\\'));
+
+    public ValueTask DisposeAsync()
     {
-        public string Email { get; set; } = string.Empty;
+        _password = string.Empty;
+        return ValueTask.CompletedTask;
+    }
 
-        public string Password { get; set; } = string.Empty;
-
-        public bool RememberMe { get; set; }
+    private enum LoginStep
+    {
+        Email,
+        Credentials,
     }
 }

@@ -65,7 +65,10 @@ are available.
   directives; it never treats an absent current checkout as proof of parity.
 - The WASM shell now matches the current loading/error behavior and branding
   assets, including keyboard focus, reduced-motion, forced-colors, reload, and
-  dismiss states.
+  dismiss states. The employee gateway now also preserves the current
+  two-step corporate-email/password flow, nonce-bound Google sign-in host,
+  Remember Me request, local theme bootstrap, safe return-url handling, and
+  responsive/reduced-motion/forced-colors states.
 - `/hr/profile` is a protected, lazy-loaded read projection backed by the
   existing `/bff/session` and `/bff/employees/{legacyDatabaseId}` contracts;
   self-service edits remain fail-closed until the owning EmployeeService
@@ -75,7 +78,8 @@ are available.
   carries Remember Me through the opaque server-side session ticket. Supported
   cultures are normalized to `en-TH`, `th-TH`, or `en-US`.
 - `dotnet test Legacy.Maliev.Intranet.slnx -c Release --no-restore` passed
-  **545/545** with zero skips after the Maps and Google Identity slices; the
+  **547/547** with zero skips after the Maps, Google Identity, and login
+  experience slices; the
   Release build passed with **0 warnings and 0 errors**, and whitespace
   verification passed. AuthService passed **107/107** and FileService passed
   **28/28** after pinning `Google.Apis.Auth` to `1.75.0` in the storage data
