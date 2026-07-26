@@ -4,10 +4,15 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="robots" content="noindex,nofollow,noarchive" />
+    <meta name="application-name" content="MALIEV Intranet" />
+    <meta name="theme-color" content="#f6f8fb" />
     <title>MALIEV Intranet</title>
     <base href="/" />
+    <link rel="preload" id="webassembly" />
     <link href="_content/MudBlazor/MudBlazor.min.css" rel="stylesheet" />
     <link href="css/app.css" rel="stylesheet" />
+    <link href="css/loading-shell.css" rel="stylesheet" />
+    <link rel="icon" type="image/svg+xml" href="images/favicon.svg" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400..700&family=Geist+Mono:wght@400..600&family=Noto+Sans+Thai:wght@100..900&display=swap" rel="stylesheet" />
@@ -32,11 +37,18 @@
 </head>
 <body>
     <div id="app">
-        <p role="status" aria-live="polite">Loading MALIEV Intranet…</p>
+        <div class="legacy-wasm-loading" role="status" aria-live="polite" aria-label="Loading MALIEV Intranet">
+            <svg class="loading-progress" aria-hidden="true" focusable="false">
+                <circle r="40%" cx="50%" cy="50%" />
+                <circle r="40%" cx="50%" cy="50%" />
+            </svg>
+            <div class="loading-progress-text" aria-hidden="true"></div>
+        </div>
     </div>
-    <div id="blazor-error-ui" hidden>
-        The application encountered an unexpected error.
+    <div id="blazor-error-ui" role="alert">
+        <span>An unhandled error has occurred.</span>
         <a href="." class="reload">Reload</a>
+        <button type="button" class="dismiss" aria-label="Dismiss error">&times;</button>
     </div>
     <script src="_content/MudBlazor/MudBlazor.min.js"></script>
     <script src="_framework/blazor.webassembly.js"></script>
