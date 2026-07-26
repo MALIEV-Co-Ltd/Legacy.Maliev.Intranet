@@ -1,9 +1,11 @@
 @inherits LayoutComponentBase
 @inject EmployeeSessionClient SessionClient
 @inject EmployeeAuthenticationClient AuthenticationClient
+@inject LegacyThemeService ThemeService
 @inject NavigationManager Navigation
+@implements IDisposable
 
-<MudThemeProvider Theme="_theme" />
+<MudThemeProvider Theme="_theme" IsDarkMode="@ThemeService.IsDarkMode" />
 <MudPopoverProvider />
 <MudDialogProvider />
 <MudSnackbarProvider />
@@ -31,13 +33,36 @@
             DrawerBackground = "#ffffff",
             DrawerText = "#3d3d3d",
         },
+        PaletteDark = new PaletteDark
+        {
+            Primary = "#6ea8fe",
+            Background = "#0d1117",
+            Surface = "#111620",
+            TextPrimary = "#e6edf3",
+            TextSecondary = "#9aa7b7",
+            AppbarBackground = "#111620",
+            AppbarText = "#e6edf3",
+            DrawerBackground = "#111620",
+            DrawerText = "#e6edf3",
+        },
     };
 
     private EmployeeSessionSummary? session;
 
+    protected override void OnInitialized() => ThemeService.Changed += OnThemeChanged;
+
     protected override async Task OnInitializedAsync()
     {
         session = await SessionClient.GetAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await ThemeService.InitializeAsync();
+            await InvokeAsync(StateHasChanged);
+        }
     }
 
     private async Task SignOutAsync()
@@ -45,5 +70,9 @@
         await AuthenticationClient.SignOutAsync();
         Navigation.NavigateTo("/Login", forceLoad: true);
     }
+
+    private void OnThemeChanged(object? sender, EventArgs args) => _ = InvokeAsync(StateHasChanged);
+
+    public void Dispose() => ThemeService.Changed -= OnThemeChanged;
 
 }

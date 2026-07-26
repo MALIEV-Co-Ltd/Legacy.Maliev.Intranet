@@ -1,6 +1,7 @@
 @using Legacy.Maliev.Intranet.Contracts
 @using Microsoft.AspNetCore.Components.Authorization
 @inject NavigationManager Navigation
+@inject LegacyThemeService ThemeService
 @implements IDisposable
 
 <header class="legacy-topbar" @onkeydown="HandleKeyDown">
@@ -48,6 +49,15 @@
     </nav>
 
     <div class="legacy-topbar-spacer"></div>
+
+    <button type="button"
+            class="legacy-theme-toggle"
+            aria-label="@ThemeLabel"
+            title="@ThemeLabel"
+            @onclick="ToggleThemeAsync">
+        <MudIcon Icon="@(ThemeService.IsDarkMode ? Icons.Material.Outlined.LightMode : Icons.Material.Outlined.DarkMode)" Size="Size.Small" />
+        <span>@(ThemeService.IsDarkMode ? "Light" : "Dark")</span>
+    </button>
 
     <AuthorizeView>
         <Authorized Context="auth">
@@ -123,7 +133,11 @@
 
     private bool _mobileOpen;
 
-    protected override void OnInitialized() => Navigation.LocationChanged += OnLocationChanged;
+    protected override void OnInitialized()
+    {
+        Navigation.LocationChanged += OnLocationChanged;
+        ThemeService.Changed += OnThemeChanged;
+    }
 
     private bool IsGroupActive(LegacyNavGroup group) => group.Items.Any(IsItemActive);
 
@@ -171,6 +185,12 @@
 
     private Task SignOutAsync() => OnSignOut.InvokeAsync();
 
+    private string ThemeLabel => ThemeService.IsDarkMode ? "Use light theme" : "Use dark theme";
+
+    private Task ToggleThemeAsync() => ThemeService.ToggleAsync();
+
+    private void OnThemeChanged(object? sender, EventArgs args) => _ = InvokeAsync(StateHasChanged);
+
     private void HandleKeyDown(KeyboardEventArgs args)
     {
         if (args.Key == "Escape")
@@ -179,7 +199,11 @@
         }
     }
 
-    public void Dispose() => Navigation.LocationChanged -= OnLocationChanged;
+    public void Dispose()
+    {
+        Navigation.LocationChanged -= OnLocationChanged;
+        ThemeService.Changed -= OnThemeChanged;
+    }
 
     private static string GetInitials(string? name)
     {

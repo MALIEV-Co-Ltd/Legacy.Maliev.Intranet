@@ -15,6 +15,7 @@ builder.Services.AddAuthorizationCore();
 builder.Services.AddScoped(_ => new HttpClient { BaseAddress = new Uri(builder.HostEnvironment.BaseAddress) });
 builder.Services.AddScoped<EmployeeSessionClient>();
 builder.Services.AddScoped<EmployeeAuthenticationClient>();
+builder.Services.AddScoped<LegacyThemeService>();
 builder.Services.AddScoped<EmployeeAuthenticationStateProvider>();
 builder.Services.AddScoped<AuthenticationStateProvider>(provider =>
     provider.GetRequiredService<EmployeeAuthenticationStateProvider>());
