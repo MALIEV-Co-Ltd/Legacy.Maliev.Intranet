@@ -51,7 +51,7 @@ are available.
 
 ## Latest validation checkpoint (2026-07-27)
 
-- Branch: `main` (current local HEAD `a61d423`, built on validation merge `1a96322`); the parity branch now also contains
+- Branch: `main` (current local HEAD `e095fca`, built on validation merge `1a96322`); the parity branch now also contains
   browser-safe Maps configuration (`e70253f`) and nonce-bound Google employee
   sign-in (`d410b4c`, sourced from AuthService `8911dcc`). AppHost wires the
   optional local Google client/hosted-domain values and the dedicated
@@ -73,13 +73,19 @@ are available.
   existing `/bff/session` and `/bff/employees/{legacyDatabaseId}` contracts;
   self-service edits remain fail-closed until the owning EmployeeService
   preference contract is migrated.
+- The legacy workspace navigation now exposes the 24 legacy-owned CRM/ERP
+  workflows (including create routes and employee profile/server errors) and
+  intentionally omits current-only project, commerce, delivery-note, IAM,
+  and administration links until their contracts are migrated. The Orders
+  page now has a tested Refresh action that reuses the existing bounded
+  `/bff/orders` load path.
 - Employee password sign-in now validates the `@maliev.com` boundary on both
   browser and BFF sides, revalidates the identity returned by AuthService, and
   carries Remember Me through the opaque server-side session ticket. Supported
   cultures are normalized to `en-TH`, `th-TH`, or `en-US`.
-- `dotnet test Legacy.Maliev.Intranet.slnx -c Release --no-restore` passed
-  **547/547** with zero skips after the Maps, Google Identity, and login
-  experience slices; the
+- `dotnet test Legacy.Maliev.Intranet.slnx -c Release --no-build --no-restore`
+  passed **549/549** with zero skips after the navigation and Orders Refresh
+  slices; focused navigation passed **2/2** and Orders passed **4/4**. The
   Release build passed with **0 warnings and 0 errors**, and whitespace
   verification passed. AuthService passed **107/107** and FileService passed
   **28/28** after pinning `Google.Apis.Auth` to `1.75.0` in the storage data
@@ -91,8 +97,9 @@ are available.
   commits remain owned by the FileService/Web lanes and are not claimed as
   integrated into this Intranet validation.
 - Aspire local validation currently reports all **16 application** resources
-  (14 legacy APIs, Intranet BFF, and Web) Ready/Healthy, with the dashboard,
-  PostgreSQL main/pooler, and both Redis endpoints healthy. The 16 resources'
+  (14 legacy APIs, Intranet BFF, and Web) Ready/Healthy, with all **22
+  PostgreSQL database resources** and the dashboard, PostgreSQL main/pooler,
+  and both Redis endpoints healthy. The 16 resources'
   `aspire-liveness`, `liveness`, and `readiness` probes returned HTTP 200
   (**48/48**); all 19 migration runners finished with exit code 0. The Web
   proxy (`http://localhost:5188/` and `/Account/Login`) and dashboard
