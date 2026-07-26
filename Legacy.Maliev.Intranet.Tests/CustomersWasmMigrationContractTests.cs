@@ -31,6 +31,10 @@ public sealed class CustomersWasmMigrationContractTests
         Assert.Contains("Math.Clamp", page, StringComparison.Ordinal);
         Assert.Contains("Uri.EscapeDataString", page, StringComparison.Ordinal);
         Assert.Contains("PageSummary", page, StringComparison.Ordinal);
+        Assert.Contains("OnClick=\"ReloadAsync\"", page, StringComparison.Ordinal);
+        Assert.Contains("Disabled=\"@loading\"", page, StringComparison.Ordinal);
+        Assert.Contains("@Text[\"Refresh\"]", page, StringComparison.Ordinal);
+        Assert.Contains("private Task ReloadAsync() => LoadAsync();", page, StringComparison.Ordinal);
 
         Assert.Contains("LegacyEmployeePermissions.CustomersList", bffProgram, StringComparison.Ordinal);
         Assert.Contains("public const string CustomersList = \"legacy-customer.customers.list\";", authContracts, StringComparison.Ordinal);
