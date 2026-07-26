@@ -25,6 +25,22 @@ public sealed class LegacyLoginExperienceContractTests
     }
 
     [Fact]
+    public void LoginClient_DoesNotInvokeGoogleInteropBeforeTheHostIsRendered()
+    {
+        var root = FindRepositoryRoot();
+        var login = File.ReadAllText(Path.Combine(
+            root,
+            "Legacy.Maliev.Intranet.Client",
+            "Pages",
+            "Login.razor"));
+
+        Assert.Contains("private bool _googleIdentityInitialized", login, StringComparison.Ordinal);
+        Assert.Contains("if (_isCheckingAuth || _googleIdentityInitialized)", login, StringComparison.Ordinal);
+        Assert.Contains("_googleIdentityInitialized = true", login, StringComparison.Ordinal);
+        Assert.Contains("_googleIdentityInitialized = false", login, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void LoginClient_PreservesThemeBootstrapResponsiveAndAccessibilityContracts()
     {
         var root = FindRepositoryRoot();

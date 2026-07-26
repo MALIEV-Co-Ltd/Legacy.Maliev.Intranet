@@ -144,6 +144,7 @@
     private string? _errorMessage;
     private LoginStep _step = LoginStep.Email;
     private ElementReference _googleIdentityHost;
+    private bool _googleIdentityInitialized;
 
     private bool IsEmailStep => _step == LoginStep.Email;
 
@@ -179,17 +180,19 @@
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (!firstRender)
+        if (_isCheckingAuth || _googleIdentityInitialized)
         {
             return;
         }
 
+        _googleIdentityInitialized = true;
         try
         {
             await JSRuntime.InvokeVoidAsync("malievGoogleIdentity.initializeHost", _googleIdentityHost);
         }
         catch (Exception exception) when (exception is InvalidOperationException or JSException or JSDisconnectedException)
         {
+            _googleIdentityInitialized = false;
             Logger.LogWarning(exception, "Google Identity Services could not initialize on the legacy login fallback.");
         }
     }
