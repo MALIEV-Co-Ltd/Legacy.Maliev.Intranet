@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using Legacy.Maliev.Intranet.Bff;
 using Legacy.Maliev.Intranet.Bff.Accounting;
+using Legacy.Maliev.Intranet.Bff.Address;
 using Legacy.Maliev.Intranet.Auth;
 using Legacy.Maliev.Intranet.Contracts;
 using Legacy.Maliev.Intranet.Bff.Catalog;
@@ -1498,6 +1499,10 @@ app.MapPost("/bff/login", async (
     .AddEndpointFilter<AntiforgeryValidationFilter>()
     .RequireRateLimiting("employee-login")
     .AllowAnonymous();
+
+app.MapGet("/bff/address/google-config", (IConfiguration configuration) =>
+        Results.Ok(GoogleMapsEndpointMapper.GetBrowserConfiguration(configuration)))
+    .RequireAuthorization(LegacyEmployeePermissions.CustomersRead);
 
 app.MapPost("/bff/logout", async (
     HttpContext context,
