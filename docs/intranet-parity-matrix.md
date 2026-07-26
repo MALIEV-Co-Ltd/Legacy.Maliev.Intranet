@@ -91,7 +91,9 @@ are available.
   passed **556/556** with zero skips after the permission-aware navigation,
   Orders Refresh, and WASM runtime/login interop slices; focused navigation
   passed **7/7**, Orders passed **4/4**, and the runtime/login contract subset
-  passed **4/4**. The
+  passed **4/4**. With `MALIEV_CURRENT_INTRANET_ROOT` pointed at the original
+  checkout, the route-parity subset passed **3/3** and the full suite passed
+  **556/556** again. The
   clean Release build passed with **0 warnings and 0 errors** after stopping
   the serving BFF, and whitespace/diff verification passed. AuthService passed
   **107/107** and FileService passed
