@@ -51,7 +51,7 @@ are available.
 
 ## Latest validation checkpoint (2026-07-27)
 
-- Branch: `main` (current local HEAD `f88b763`, built on validation merge `1a96322`); the parity branch now also contains
+- Branch: `main` (current local HEAD `9a4ef85`, built on validation merge `1a96322`); the parity branch now also contains
   browser-safe Maps configuration (`e70253f`) and nonce-bound Google employee
   sign-in (`d410b4c`, sourced from AuthService `8911dcc`). AppHost wires the
   optional local Google client/hosted-domain values and the dedicated
@@ -73,20 +73,25 @@ are available.
   existing `/bff/session` and `/bff/employees/{legacyDatabaseId}` contracts;
   self-service edits remain fail-closed until the owning EmployeeService
   preference contract is migrated.
-- The legacy workspace navigation now exposes the 24 legacy-owned CRM/ERP
-  workflows (including create routes and employee profile/server errors) and
-  intentionally omits current-only project, commerce, delivery-note, IAM,
-  and administration links until their contracts are migrated. The Orders
-  page now has a tested Refresh action that reuses the existing bounded
-  `/bff/orders` load path.
+- The legacy workspace navigation now preserves all 24 legacy-owned CRM/ERP
+  workflows (including create routes and employee profile/server errors), but
+  applies the same fail-closed permission semantics as the current shell:
+  authenticated sessions can activate only links backed by their server-issued
+  permission claims, while unauthenticated or missing-permission links remain
+  visibly disabled in desktop and mobile navigation. The BFF remains the
+  authoritative authorization boundary. Current-only project, commerce,
+  delivery-note, IAM, and administration links are still intentionally absent
+  until their contracts are migrated. The Orders page now has a tested Refresh
+  action that reuses the existing bounded `/bff/orders` load path.
 - Employee password sign-in now validates the `@maliev.com` boundary on both
   browser and BFF sides, revalidates the identity returned by AuthService, and
   carries Remember Me through the opaque server-side session ticket. Supported
   cultures are normalized to `en-TH`, `th-TH`, or `en-US`.
 - `dotnet test Legacy.Maliev.Intranet.slnx -c Release --no-build --no-restore`
-  passed **551/551** with zero skips after the navigation, Orders Refresh, and
-  WASM runtime/login interop slices; focused navigation passed **2/2**, Orders
-  passed **4/4**, and the runtime/login contract subset passed **4/4**. The
+  passed **556/556** with zero skips after the permission-aware navigation,
+  Orders Refresh, and WASM runtime/login interop slices; focused navigation
+  passed **7/7**, Orders passed **4/4**, and the runtime/login contract subset
+  passed **4/4**. The
   clean Release build passed with **0 warnings and 0 errors** after stopping
   the serving BFF, and whitespace/diff verification passed. AuthService passed
   **107/107** and FileService passed
@@ -105,7 +110,7 @@ are available.
   `readiness` probes returned HTTP 200 (**42/42**); the BFF liveness/readiness
   probes also returned HTTP 200. The Web proxy
   (`http://localhost:5188/Account/Login`), BFF login
-  (`https://localhost:58513/Login`), and dashboard
+  (`https://localhost:63888/Login`), and dashboard
   (`http://localhost:15888`) returned HTTP 200. The fresh browser login tab
   had no console warnings/errors and no horizontal overflow at desktop
   (1,280px) or mobile (390px) width. Google nonce exchange is deliberately
@@ -117,6 +122,13 @@ are available.
   `en-US` culture switch from crashing the browser. Login Google interop is
   guarded until the host is rendered and retries fail-closed, preventing the
   empty `ElementReference` startup race.
+- After the navigation slice, the Aspire restart passed a clean Release build
+  with **0 warnings and 0 errors**; all 22 DCP services were Ready, all 19
+  migration runners exited 0, and the 14 API resources returned HTTP 200 for
+  all three prefixed liveness/readiness probes (**42/42**). The Intranet BFF
+  returned HTTP 200 for `/intranet-bff/aspire-liveness`,
+  `/intranet-bff/liveness`, `/intranet-bff/readiness`, `/Login`, and the
+  anonymous `/bff/session` projection.
 - This is local evidence only. No production/GKE deployment, database write,
   credential reuse, or legacy PostgreSQL cutover was performed.
 
