@@ -58,7 +58,8 @@
                         ? "Legacy.Maliev.Intranet.Client.Features.Customers.wasm"
                 : path.StartsWith("Employees/", StringComparison.OrdinalIgnoreCase) ||
                     path.StartsWith("employees", StringComparison.OrdinalIgnoreCase) ||
-                    path.StartsWith("hr/directory", StringComparison.OrdinalIgnoreCase)
+                    path.StartsWith("hr/directory", StringComparison.OrdinalIgnoreCase) ||
+                    path.StartsWith("hr/profile", StringComparison.OrdinalIgnoreCase)
                     ? "Legacy.Maliev.Intranet.Client.Features.Employees.wasm"
                     : path.StartsWith("Orders/", StringComparison.OrdinalIgnoreCase) ||
                         path.StartsWith("sales/orders", StringComparison.OrdinalIgnoreCase)

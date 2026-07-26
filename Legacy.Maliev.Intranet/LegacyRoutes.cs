@@ -90,6 +90,7 @@ public static class LegacyRoutes
         "/sales/orders/{Id:int}",
         "/purchasing/{Id:int}",
         "/mfg/procurement/{Id:int}",
+        "/hr/profile",
     };
 
     /// <summary>Historical routes that still have an implementation or a migration candidate contract.</summary>

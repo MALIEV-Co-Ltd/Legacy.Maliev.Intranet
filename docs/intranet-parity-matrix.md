@@ -20,6 +20,7 @@ look complete.
 | `/purchasing/suppliers` | Supplier list | Procurement feature assembly + `/bff/suppliers` |
 | `/accounting`, `/finance/invoices` | Invoice list | Accounting feature assembly + `/bff/invoices` |
 | `/accounting/new` | Invoice create | Accounting creation workflow + `/bff/invoices/from-quotation` |
+| `/hr/profile` | Read-only employee profile | Employees feature assembly + `/bff/session` + `/bff/employees/{legacyDatabaseId}`; self-service edits/preferences remain explicitly disabled |
 | `/sales/orders/{id}` | Legacy order detail redirect | Numeric compatibility route redirects to `/Orders/View?id={id}`; no new API contract |
 | `/purchasing/{id}`, `/mfg/procurement/{id}` | Legacy purchase-order detail redirect | Numeric compatibility routes redirect to `/PurchaseOrders/View?id={id}`; no GUID translation |
 
@@ -37,7 +38,7 @@ pointed at an unrelated legacy page:
 - `/commerce/catalog`, `/commerce/catalog/new`, `/commerce/catalog/{handle}`, `/commerce/collections`
 - `/finance/delivery-notes`, `/finance/delivery-notes/new`, `/delivery-notes`
 - `/mfg/equipment`, `/mfg/equipment/{id}`, `/mfg/production-schedule`
-- `/hr/profile`, `/hr/leave`
+- `/hr/leave` (the profile read projection is now mapped; self-service profile edits/preferences still require the current EmployeeService contract)
 - `/iam`, `/iam/users/new`, `/iam/users/{id}`, `/iam/roles/{id}`
 - `/admin`, `/admin/web-content`, `/admin/chatbot-instructions`, `/admin/reference-data`, `/admin/system-health`
 - `/search`

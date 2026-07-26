@@ -32,6 +32,7 @@ public sealed class IntranetParityContractTests
         Assert.Contains("/sales/orders", navigation, StringComparison.Ordinal);
         Assert.Contains("/purchasing", navigation, StringComparison.Ordinal);
         Assert.Contains("/mfg/materials", navigation, StringComparison.Ordinal);
+        Assert.Contains("/hr/profile", File.ReadAllText(Path.Combine(root, "Legacy.Maliev.Intranet", "LegacyRoutes.cs")), StringComparison.Ordinal);
     }
 
     [Fact]
