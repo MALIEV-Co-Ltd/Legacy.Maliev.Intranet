@@ -51,8 +51,12 @@ are available.
 
 ## Latest validation checkpoint (2026-07-27)
 
-- Branch: `codex/intranet-parity-audit`; integrated commits `9a5c9fe`,
-  `d422797`, `6e8b4d1`, and route-audit test commit `d48e719`.
+- Branch: `codex/intranet-parity-audit`; the parity branch now also contains
+  browser-safe Maps configuration (`e70253f`) and nonce-bound Google employee
+  sign-in (`d410b4c`, sourced from AuthService `8911dcc`). AppHost wires the
+  optional local Google client/hosted-domain values and the dedicated
+  `legacy-auth.google-identity.exchange` permission (`da3c0dd`, with the
+  formatter-only follow-up `259fbee`).
 - The current-source route baseline is machine-checked in
   `docs/current-intranet-route-parity.json` at `Maliev.Intranet` commit
   `d8e943b`: 53 current routes are classified exactly once (18 exact legacy
@@ -71,12 +75,23 @@ are available.
   carries Remember Me through the opaque server-side session ticket. Supported
   cultures are normalized to `en-TH`, `th-TH`, or `en-US`.
 - `dotnet test Legacy.Maliev.Intranet.slnx -c Release --no-restore` passed
-  **533/533** with zero skips; the Release build passed with **0 warnings and
-  0 errors**, and whitespace verification passed.
-- Aspire local validation reported all 17 running application resources
-  healthy. Direct liveness/readiness probes for the 16 service/BFF/Web
-  resources returned HTTP 200 (32/32), while the Web proxy (`http://localhost:5188/`)
-  and dashboard (`http://localhost:15888`) also returned HTTP 200.
+  **545/545** with zero skips after the Maps and Google Identity slices; the
+  Release build passed with **0 warnings and 0 errors**, and whitespace
+  verification passed. AuthService passed **107/107** and FileService passed
+  **28/28** after pinning `Google.Apis.Auth` to `1.75.0` in the storage data
+  adapter (`2fffcbe`), removing the AppHost migration-runner assembly
+  conflict. AppHost passed **88/88** and its Release build passed with **0
+  warnings and 0 errors**.
+- Aspire local validation currently reports all **16 application** resources
+  (14 legacy APIs, Intranet BFF, and Web) Ready/Healthy, with the dashboard,
+  PostgreSQL main/pooler, and both Redis endpoints healthy. The 16 resources'
+  `aspire-liveness`, `liveness`, and `readiness` probes returned HTTP 200
+  (**48/48**); all 19 migration runners finished with exit code 0. The Web
+  proxy (`http://localhost:5188/` and `/Account/Login`) and dashboard
+  (`http://localhost:15888`) returned HTTP 200. The BFF session endpoint is
+  HTTP 200 for an anonymous session; Google nonce exchange is deliberately
+  HTTP 503 until a client ID is supplied, and the Maps config endpoint is
+  HTTP 401 without the required employee permission.
 - This is local evidence only. No production/GKE deployment, database write,
   credential reuse, or legacy PostgreSQL cutover was performed.
 
@@ -110,6 +125,15 @@ unresolved current-only domains above have been migrated.
 
 - Login remains same-origin `/bff/login` with CSRF and the existing AuthService
   credentials; access/refresh tokens stay in the server-side distributed ticket.
+- Google Identity Services is an optional, nonce-bound employee sign-in path:
+  the BFF consumes the protected nonce cookie before exchanging the credential,
+  AuthService verifies audience/hosted-domain/nonce and active employee status,
+  and the browser receives only the normal server session. Missing local
+  client-id configuration fails closed while password sign-in remains available.
+- Google Maps configuration is exposed only through the authenticated,
+  `CustomersRead`-scoped `/bff/address/google-config` endpoint. The response
+  contains the browser-restricted key and map defaults only; embed/server keys
+  are never sent to WASM.
 - Every BFF read/write is authenticated and permission-scoped; browser WASM
   never receives service credentials or database access.
 - Dashboard counts are permission-scoped and degrade per downstream source;
