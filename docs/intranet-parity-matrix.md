@@ -20,6 +20,8 @@ look complete.
 | `/purchasing/suppliers` | Supplier list | Procurement feature assembly + `/bff/suppliers` |
 | `/accounting`, `/finance/invoices` | Invoice list | Accounting feature assembly + `/bff/invoices` |
 | `/accounting/new` | Invoice create | Accounting creation workflow + `/bff/invoices/from-quotation` |
+| `/sales/orders/{id}` | Legacy order detail redirect | Numeric compatibility route redirects to `/Orders/View?id={id}`; no new API contract |
+| `/purchasing/{id}`, `/mfg/procurement/{id}` | Legacy purchase-order detail redirect | Numeric compatibility routes redirect to `/PurchaseOrders/View?id={id}`; no GUID translation |
 
 Historical PascalCase routes remain supported and are tracked by
 `LegacyRoutes.All`. The aliases above are loaded through the same lazy feature
@@ -45,6 +47,13 @@ These gaps are cutover blockers for a claim of full current-workspace parity.
 The legacy shell intentionally exposes only the migrated workflows until the
 corresponding service, permission, DTO, database, and browser contract tests
 are available.
+
+The 2026-07-26 validation slice also proves that authenticated-but-unauthorized
+routes render `AccessDenied`, anonymous routes redirect to the BFF login flow,
+and unknown routes render the accessible `NotFound` page. The BFF session
+projection preserves distinct server-issued `permissions` claims without
+exposing tokens. These are compatibility safeguards, not evidence that the
+unresolved current-only domains above have been migrated.
 
 ## Employee identity and data safety gates
 
