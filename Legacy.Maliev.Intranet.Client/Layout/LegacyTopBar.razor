@@ -61,17 +61,36 @@
 
     <AuthorizeView>
         <Authorized Context="auth">
-            <div class="legacy-session-summary">
-                <span class="legacy-session-avatar" aria-hidden="true">@GetInitials(auth.User.Identity?.Name)</span>
-                <span class="legacy-session-copy">
-                    <strong>@(Session?.DisplayName ?? auth.User.Identity?.Name ?? "Employee")</strong>
-                    <small>Employee workspace</small>
-                </span>
+            <div class="legacy-profile-menu">
+                <button type="button"
+                        class="legacy-profile"
+                        aria-haspopup="menu"
+                        aria-expanded="@_profileMenuOpen"
+                        aria-label="Employee menu"
+                        @onclick="ToggleProfileMenuAsync">
+                    <span class="legacy-session-avatar" aria-hidden="true">@GetInitials(auth.User.Identity?.Name)</span>
+                    <span class="legacy-session-copy">
+                        <strong>@(Session?.DisplayName ?? auth.User.Identity?.Name ?? "Employee")</strong>
+                        <small>Employee workspace</small>
+                    </span>
+                    <MudIcon Icon="@Icons.Material.Filled.ExpandMore" Size="Size.Small" Class="legacy-profile-chevron" />
+                </button>
+
+                @if (_profileMenuOpen)
+                {
+                    <div class="legacy-profile-popover" role="menu">
+                        <a class="legacy-profile-action" role="menuitem" href="/hr/profile" @onclick="CloseProfileMenuAsync">
+                            <MudIcon Icon="@Icons.Material.Outlined.AccountCircle" Size="Size.Small" />
+                            <span>My profile</span>
+                        </a>
+                        <div class="legacy-profile-menu-divider" />
+                        <button type="button" class="legacy-profile-action" role="menuitem" @onclick="SignOutFromProfileAsync">
+                            <MudIcon Icon="@Icons.Material.Outlined.Logout" Size="Size.Small" />
+                            <span>Sign out</span>
+                        </button>
+                    </div>
+                }
             </div>
-            <button type="button" class="legacy-signout-button" @onclick="SignOutAsync">
-                <MudIcon Icon="@Icons.Material.Outlined.Logout" Size="Size.Small" />
-                <span>Sign out</span>
-            </button>
         </Authorized>
         <NotAuthorized>
             <a class="legacy-signin-link" href="/Login">Sign in</a>
@@ -132,6 +151,7 @@
     [Parameter] public EventCallback OnSignOut { get; set; }
 
     private bool _mobileOpen;
+    private bool _profileMenuOpen;
 
     protected override void OnInitialized()
     {
@@ -175,11 +195,30 @@
         return Task.CompletedTask;
     }
 
+    private Task ToggleProfileMenuAsync()
+    {
+        _profileMenuOpen = !_profileMenuOpen;
+        return Task.CompletedTask;
+    }
+
+    private Task CloseProfileMenuAsync()
+    {
+        _profileMenuOpen = false;
+        return Task.CompletedTask;
+    }
+
+    private async Task SignOutFromProfileAsync()
+    {
+        _profileMenuOpen = false;
+        await SignOutAsync();
+    }
+
     private string? GetAriaCurrent(LegacyNavItem item) => IsItemActive(item) ? "page" : null;
 
     private void OnLocationChanged(object? sender, LocationChangedEventArgs args)
     {
         _mobileOpen = false;
+        _profileMenuOpen = false;
         _ = InvokeAsync(StateHasChanged);
     }
 
@@ -196,6 +235,7 @@
         if (args.Key == "Escape")
         {
             _mobileOpen = false;
+            _profileMenuOpen = false;
         }
     }
 
