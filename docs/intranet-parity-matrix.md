@@ -51,7 +51,7 @@ are available.
 
 ## Latest validation checkpoint (2026-07-27)
 
-- Branch: `main` (local validation merge `1a96322`); the parity branch now also contains
+- Branch: `main` (current local HEAD `a61d423`, built on validation merge `1a96322`); the parity branch now also contains
   browser-safe Maps configuration (`e70253f`) and nonce-bound Google employee
   sign-in (`d410b4c`, sourced from AuthService `8911dcc`). AppHost wires the
   optional local Google client/hosted-domain values and the dedicated
