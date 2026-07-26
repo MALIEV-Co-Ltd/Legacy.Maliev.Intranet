@@ -85,6 +85,28 @@ public sealed class SameOriginHostingContractTests
         }
     }
 
+    [Fact]
+    public async Task BffDashboardEndpoint_IsNotClaimedByTheWasmFallbackForAnonymousUsers()
+    {
+        await using var factory = new SameOriginBffFactory();
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            AllowAutoRedirect = false,
+            BaseAddress = new Uri("https://localhost"),
+        });
+
+        using var response = await client.GetAsync("/bff/dashboard");
+        var body = await response.Content.ReadAsStringAsync();
+
+        Assert.Contains(response.StatusCode, new[]
+        {
+            HttpStatusCode.Unauthorized,
+            HttpStatusCode.Forbidden,
+            HttpStatusCode.Redirect,
+        });
+        Assert.DoesNotContain("<div id=\"app\">", body, StringComparison.Ordinal);
+    }
+
     private sealed class SameOriginBffFactory : WebApplicationFactory<BffProgram>
     {
         protected override void ConfigureWebHost(IWebHostBuilder builder) => builder.UseEnvironment("Testing");

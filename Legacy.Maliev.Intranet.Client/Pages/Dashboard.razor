@@ -1,11 +1,90 @@
 @page "/Dashboard"
 @attribute [Authorize]
+@inject HttpClient Http
+@inject NavigationManager Navigation
 
 <PageTitle>Employee dashboard - MALIEV Intranet</PageTitle>
 
 <MudContainer MaxWidth="MaxWidth.Large">
-    <MudText Typo="Typo.h4" HtmlTag="h1" Class="mb-2">Employee dashboard</MudText>
-    <MudText Typo="Typo.body1">
-        Your employee session is active. Feature areas will appear here as each protected workflow reaches parity.
-    </MudText>
+    <MudStack Spacing="1" Class="mb-6">
+        <MudText Typo="Typo.overline" Color="Color.Primary">MALIEV WORKSPACE</MudText>
+        <MudText Typo="Typo.h4" HtmlTag="h1">Employee dashboard</MudText>
+        <MudText Typo="Typo.body1" Color="Color.Secondary">
+            Permission-scoped counts from the legacy CRM and ERP services.
+        </MudText>
+    </MudStack>
+
+    @if (_loading)
+    {
+        <MudProgressLinear Indeterminate="true" Color="Color.Primary" Class="mb-4" />
+        <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="120px" />
+    }
+    else if (!string.IsNullOrWhiteSpace(_error))
+    {
+        <MudAlert Severity="Severity.Error">@_error</MudAlert>
+    }
+    else if (_snapshot is { Cards.Count: 0 })
+    {
+        <MudAlert Severity="Severity.Info">
+            No dashboard cards are available for this employee session. Open a feature from the navigation to continue.
+        </MudAlert>
+    }
+    else if (_snapshot is not null)
+    {
+        <MudGrid Spacing="3">
+            @foreach (var card in _snapshot.Cards)
+            {
+                <MudItem xs="12" sm="6" md="4" lg="3">
+                    <MudPaper Class="dashboard-card pa-4" Elevation="0">
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">@card.Label</MudText>
+                        <MudText Typo="Typo.h4" Class="mt-2">@card.Count.ToString("N0")</MudText>
+                        <MudLink Href="@card.NavigateTo" Class="dashboard-card-link mt-3">Open workspace</MudLink>
+                    </MudPaper>
+                </MudItem>
+            }
+        </MudGrid>
+
+        @if (_snapshot.DegradedSources.Count > 0)
+        {
+            <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined" Class="mt-6">
+                Some legacy sources were unavailable. The cards above are still safe to use; retry after the service recovers.
+            </MudAlert>
+        }
+    }
 </MudContainer>
+
+@code {
+    private LegacyDashboardSnapshot? _snapshot;
+    private string? _error;
+    private bool _loading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            using var response = await Http.GetAsync("/bff/dashboard");
+            if (response.StatusCode is System.Net.HttpStatusCode.Unauthorized or System.Net.HttpStatusCode.Forbidden)
+            {
+                Navigation.NavigateTo($"/Login?returnUrl={Uri.EscapeDataString(Navigation.ToBaseRelativePath(Navigation.Uri))}");
+                return;
+            }
+
+            if (!response.IsSuccessStatusCode)
+            {
+                _error = "The dashboard is temporarily unavailable.";
+                return;
+            }
+
+            _snapshot = await response.Content.ReadFromJsonAsync<LegacyDashboardSnapshot>();
+            _error = _snapshot is null ? "The dashboard returned an invalid response." : null;
+        }
+        catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException)
+        {
+            _error = "The dashboard is temporarily unavailable.";
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+}

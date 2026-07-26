@@ -6,6 +6,7 @@ using Legacy.Maliev.Intranet.Contracts;
 using Legacy.Maliev.Intranet.Bff.Catalog;
 using Legacy.Maliev.Intranet.Bff.Customers;
 using Legacy.Maliev.Intranet.Bff.Diagnostics;
+using Legacy.Maliev.Intranet.Bff.Dashboard;
 using Legacy.Maliev.Intranet.Bff.Employees;
 using Legacy.Maliev.Intranet.Bff.Orders;
 using Legacy.Maliev.Intranet.Bff.Procurement;
@@ -32,6 +33,7 @@ builder.AddLegacyIntranetDataProtection();
 builder.Services.AddProblemDetails();
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddSingleton<DiagnosticEventStore>();
+builder.Services.AddScoped<LegacyDashboardAggregator>();
 builder.Services.AddLegacyAccessTokenValidation(
     builder.Configuration,
     validateOnStart: !builder.Environment.IsEnvironment("Testing"));
@@ -716,6 +718,12 @@ app.MapGet("/bff/session", (HttpContext context, IAntiforgery antiforgery) =>
                 ? legacyDatabaseId
                 : null));
 }).AllowAnonymous();
+
+app.MapGet("/bff/dashboard", (
+    HttpContext context,
+    LegacyDashboardAggregator dashboard,
+    CancellationToken cancellationToken) => dashboard.GetAsync(context.User, cancellationToken))
+    .RequireAuthorization();
 
 app.MapGet("/bff/diagnostics/events", (
     DiagnosticEventSort? sort,
