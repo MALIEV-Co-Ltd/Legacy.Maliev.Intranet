@@ -3,6 +3,7 @@
 @layout Layout.EmptyLayout
 @inject EmployeeAuthenticationClient AuthenticationClient
 @inject NavigationManager Navigation
+@inject IJSRuntime JSRuntime
 
 <PageTitle>Employee sign in - MALIEV Intranet</PageTitle>
 
@@ -15,6 +16,12 @@
         <div class="pa-6">
         <MudText Typo="Typo.h5" HtmlTag="h1" Class="mb-2">Employee sign in</MudText>
         <MudText Typo="Typo.body2" Class="mb-6">Use your MALIEV employee account to continue.</MudText>
+
+        <div class="google-signin-shell mb-4">
+            <div @ref="googleIdentityHost" data-google-signin-host data-return-url="@LocalReturnUrlForGoogle"></div>
+            <p data-google-signin-status class="google-signin-status" role="status" aria-live="polite" hidden></p>
+        </div>
+        <div class="login-divider mb-4"><MudDivider /><span>or use your work email</span><MudDivider /></div>
 
         @if (!string.IsNullOrWhiteSpace(errorMessage))
         {
@@ -80,9 +87,32 @@
     private bool isValid;
     private bool isSubmitting;
     private string? errorMessage;
+    private ElementReference googleIdentityHost;
+
+    private string LocalReturnUrlForGoogle =>
+        string.IsNullOrWhiteSpace(ReturnUrl) ? "/Dashboard" : ReturnUrl!;
 
     [SupplyParameterFromQuery(Name = "returnUrl")]
     public string? ReturnUrl { get; set; }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+        {
+            return;
+        }
+
+        try
+        {
+            await JSRuntime.InvokeVoidAsync(
+                "malievGoogleIdentity.initializeHost",
+                googleIdentityHost);
+        }
+        catch (Exception exception) when (exception is InvalidOperationException or JSException or JSDisconnectedException)
+        {
+            // The login page remains usable through the password form when GIS is unavailable.
+        }
+    }
 
     private async Task SubmitAsync()
     {

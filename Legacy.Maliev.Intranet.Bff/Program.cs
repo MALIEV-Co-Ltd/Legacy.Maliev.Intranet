@@ -19,6 +19,7 @@ using Maliev.Aspire.ServiceDefaults;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Antiforgery;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.RateLimiting;
 using System.ComponentModel.DataAnnotations;
 using System.Globalization;
@@ -503,6 +504,12 @@ builder.Services.AddHttpClient("service-auth", client =>
     client.Timeout = TimeSpan.FromSeconds(10);
 }).AddStandardResilienceHandler();
 builder.Services.AddHttpClient<ILegacyAuthClient, LegacyAuthClient>(client =>
+{
+    client.BaseAddress = new Uri(builder.Configuration["Services:Auth"]
+        ?? throw new InvalidOperationException("Services:Auth is required."));
+    client.Timeout = TimeSpan.FromSeconds(10);
+}).AddStandardResilienceHandler();
+builder.Services.AddHttpClient<IGoogleIdentityAuthClient, GoogleIdentityAuthClient>(client =>
 {
     client.BaseAddress = new Uri(builder.Configuration["Services:Auth"]
         ?? throw new InvalidOperationException("Services:Auth is required."));
@@ -1504,6 +1511,103 @@ app.MapGet("/bff/address/google-config", (IConfiguration configuration) =>
         Results.Ok(GoogleMapsEndpointMapper.GetBrowserConfiguration(configuration)))
     .RequireAuthorization(LegacyEmployeePermissions.CustomersRead);
 
+app.MapPost("/bff/google/nonce", async (
+    GoogleIdentityBrowserNonceRequest request,
+    HttpContext context,
+    IGoogleIdentityAuthClient authClient,
+    IDataProtectionProvider dataProtectionProvider,
+    IConfiguration configuration,
+    TimeProvider timeProvider,
+    ILogger<Program> logger,
+    CancellationToken cancellationToken) =>
+{
+    var clientId = configuration["Authentication:Google:ClientId"];
+    if (string.IsNullOrWhiteSpace(clientId))
+    {
+        logger.LogError("Google Identity Services client ID is not configured for the legacy Intranet.");
+        return Results.Problem(
+            title: "Google sign-in unavailable",
+            detail: "Google sign-in is temporarily unavailable.",
+            statusCode: StatusCodes.Status503ServiceUnavailable);
+    }
+
+    var issued = await authClient.IssueNonceAsync(cancellationToken);
+    if (issued is null || issued.ExpiresAtUtc <= timeProvider.GetUtcNow())
+    {
+        return Results.Problem(
+            title: "Google sign-in unavailable",
+            detail: "Google sign-in is temporarily unavailable.",
+            statusCode: StatusCodes.Status503ServiceUnavailable);
+    }
+
+    var state = new GoogleIdentityFlowState(
+        issued.Nonce,
+        LocalReturnUrl.Normalize(request.ReturnUrl),
+        issued.ExpiresAtUtc);
+    context.Response.Cookies.Append(
+        GoogleIdentityBffFlow.CookieName,
+        GoogleIdentityBffFlow.Protect(dataProtectionProvider, state),
+        new CookieOptions
+        {
+            HttpOnly = true,
+            Secure = context.Request.IsHttps,
+            SameSite = SameSiteMode.Strict,
+            IsEssential = true,
+            Path = "/bff/google",
+            Expires = issued.ExpiresAtUtc,
+        });
+
+    return Results.Ok(new
+    {
+        clientId,
+        nonce = issued.Nonce,
+        expiresAtUtc = issued.ExpiresAtUtc,
+    });
+})
+    .RequireRateLimiting("employee-login")
+    .AllowAnonymous();
+
+app.MapPost("/bff/google", async (
+    GoogleIdentityBrowserExchangeRequest request,
+    HttpContext context,
+    IGoogleIdentityAuthClient authClient,
+    EmployeeSessionService sessions,
+    IDataProtectionProvider dataProtectionProvider,
+    TimeProvider timeProvider,
+    ILogger<Program> logger,
+    CancellationToken cancellationToken) =>
+{
+    if (string.IsNullOrWhiteSpace(request.Credential) || request.Credential.Length > 8192 ||
+        string.IsNullOrWhiteSpace(request.Nonce) || request.Nonce.Length is < 32 or > 256)
+    {
+        return Results.BadRequest();
+    }
+
+    if (!context.Request.Cookies.TryGetValue(GoogleIdentityBffFlow.CookieName, out var protectedState) ||
+        !GoogleIdentityBffFlow.TryUnprotect(dataProtectionProvider, protectedState, out var state) ||
+        state.ExpiresAtUtc <= timeProvider.GetUtcNow() ||
+        !GoogleIdentityBffFlow.FixedTimeEquals(state.Nonce, request.Nonce))
+    {
+        DeleteGoogleIdentityFlowCookie(context);
+        return Results.Unauthorized();
+    }
+
+    // Consume the browser state before the downstream call; retries cannot replay the credential.
+    DeleteGoogleIdentityFlowCookie(context);
+    var login = await authClient.ExchangeAsync(request.Credential, request.Nonce, cancellationToken);
+    if (!login.Succeeded || login.Identity is null ||
+        !WorkspaceIdentityRules.IsAllowedEmployeeEmail(login.Identity.Email))
+    {
+        logger.LogWarning("Legacy Intranet Google exchange did not produce an allowed employee identity.");
+        return Results.Unauthorized();
+    }
+
+    await sessions.SignInAsync(context, login, rememberMe: false);
+    return Results.Ok(new EmployeeSignInResponse(state.ReturnUrl));
+})
+    .RequireRateLimiting("employee-login")
+    .AllowAnonymous();
+
 app.MapPost("/bff/logout", async (
     HttpContext context,
     EmployeeSessionService sessions,
@@ -2385,6 +2489,20 @@ static IResult SupplierManagementResult(
         Legacy.Maliev.Intranet.Suppliers.SupplierManagementStatus.BadGateway => Results.Problem(statusCode: StatusCodes.Status502BadGateway),
         _ => Results.Problem(statusCode: StatusCodes.Status503ServiceUnavailable),
     };
+}
+
+static void DeleteGoogleIdentityFlowCookie(HttpContext context)
+{
+    context.Response.Cookies.Delete(
+        GoogleIdentityBffFlow.CookieName,
+        new CookieOptions
+        {
+            HttpOnly = true,
+            Secure = context.Request.IsHttps,
+            SameSite = SameSiteMode.Strict,
+            IsEssential = true,
+            Path = "/bff/google",
+        });
 }
 
 /// <summary>Same-origin security and proxy boundary for the legacy Intranet WASM client.</summary>

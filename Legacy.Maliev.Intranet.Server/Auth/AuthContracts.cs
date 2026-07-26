@@ -136,6 +136,31 @@ public sealed record EmployeeLoginResult(bool Succeeded, AuthTokenResponse? Toke
 /// <summary>Validated rotated employee tokens and the identity bound to the new access token.</summary>
 public sealed record EmployeeRefreshResult(AuthTokenResponse Tokens, EmployeeIdentity Identity);
 
+/// <summary>One-time nonce returned by the legacy AuthService Google exchange boundary.</summary>
+public sealed record GoogleIdentityNonceResponse(string Nonce, DateTimeOffset ExpiresAtUtc);
+
+/// <summary>Browser-safe request for a same-origin Google Identity Services nonce.</summary>
+public sealed record GoogleIdentityBrowserNonceRequest(string? ReturnUrl);
+
+/// <summary>Browser credential and nonce sent to the same-origin Google exchange endpoint.</summary>
+public sealed record GoogleIdentityBrowserExchangeRequest(string Credential, string Nonce);
+
+/// <summary>AuthService response retained only in the BFF's server-side session ticket.</summary>
+public sealed record GoogleIdentityFlowState(string Nonce, string ReturnUrl, DateTimeOffset ExpiresAtUtc);
+
+/// <summary>Calls the service-authenticated Google employee exchange endpoints.</summary>
+public interface IGoogleIdentityAuthClient
+{
+    /// <summary>Requests a nonce bound to the Intranet service identity.</summary>
+    Task<GoogleIdentityNonceResponse?> IssueNonceAsync(CancellationToken cancellationToken);
+
+    /// <summary>Exchanges a browser credential and projects a validated employee session.</summary>
+    Task<EmployeeLoginResult> ExchangeAsync(
+        string credential,
+        string nonce,
+        CancellationToken cancellationToken);
+}
+
 /// <summary>Indicates that AuthService throttled an employee authentication request.</summary>
 public sealed class LegacyAuthRateLimitedException(int? retryAfterSeconds) : Exception("Employee authentication was rate limited.")
 {
