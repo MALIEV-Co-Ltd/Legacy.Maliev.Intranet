@@ -94,6 +94,42 @@ public sealed class LegacyNavigationContractTests
         Assert.Contains(".legacy-mobile-link.disabled", css, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void DesktopNavigation_UsesCurrentPrimaryAndOverflowGroupingForLegacyWorkflows()
+    {
+        var root = FindRoot();
+        var navigation = File.ReadAllText(Path.Combine(
+            root,
+            "Legacy.Maliev.Intranet.Client",
+            "Layout",
+            "LegacyAppNavigation.cs"));
+        var topbar = File.ReadAllText(Path.Combine(
+            root,
+            "Legacy.Maliev.Intranet.Client",
+            "Layout",
+            "LegacyTopBar.razor"));
+
+        Assert.Contains("DesktopGroups", navigation, StringComparison.Ordinal);
+        Assert.Contains("DesktopOverflowGroups", navigation, StringComparison.Ordinal);
+        Assert.Contains("Description", navigation, StringComparison.Ordinal);
+        Assert.Contains("_desktopNavGroups", topbar, StringComparison.Ordinal);
+        Assert.Contains("_desktopOverflowNavGroups", topbar, StringComparison.Ordinal);
+        Assert.Contains("legacy-nav-more-trigger", topbar, StringComparison.Ordinal);
+        Assert.Contains("legacy-nav-more-section", topbar, StringComparison.Ordinal);
+        Assert.Contains("legacy-nav-menu-copy", topbar, StringComparison.Ordinal);
+
+        // The primary desktop groups mirror current workspace ordering while
+        // retaining only contracts that are actually owned by the migration.
+        Assert.Contains("new(\"Sales\"", navigation, StringComparison.Ordinal);
+        Assert.Contains("new(\"Finance\"", navigation, StringComparison.Ordinal);
+        Assert.Contains("new(\"Manufacturing\"", navigation, StringComparison.Ordinal);
+        Assert.Contains("new(\"Purchasing\"", navigation, StringComparison.Ordinal);
+        Assert.DoesNotContain("/sales/projects", navigation, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("/commerce/", navigation, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("/finance/delivery-notes", navigation, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("/iam", navigation, StringComparison.OrdinalIgnoreCase);
+    }
+
     private static IReadOnlyList<string> ExtractLinks(string source)
     {
         var matches = Regex.Matches(

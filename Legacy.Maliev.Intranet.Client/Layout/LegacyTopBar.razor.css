@@ -46,6 +46,29 @@
 .legacy-nav-trigger:focus-visible,
 .legacy-mobile-link:focus-visible,
 .legacy-icon-button:focus-visible { box-shadow: 0 0 0 3px rgba(47,111,237,.22); outline: none; }
+.legacy-nav-more-trigger { background: var(--legacy-surface-muted); box-shadow: 0 1px 8px rgba(15, 23, 42, .05); }
+.legacy-nav-more-trigger:hover,
+.legacy-nav-more-trigger:focus-visible,
+.legacy-nav-more-trigger.active { background: var(--legacy-border); }
+.legacy-nav-more-section { display: grid; gap: 3px; padding: 4px 0; }
+.legacy-nav-more-section + .legacy-nav-more-section { margin-top: 4px; border-top: 1px solid var(--legacy-border); padding-top: 8px; }
+.legacy-nav-more-section-title {
+    display: grid;
+    grid-template-columns: 22px minmax(0, 1fr);
+    align-items: center;
+    gap: 8px;
+    min-height: 28px;
+    padding: 4px 9px;
+    color: var(--legacy-muted);
+    font-size: .68rem;
+    font-weight: 800;
+    text-transform: uppercase;
+}
+.legacy-nav-more-section-title .mud-icon-root { width: 22px; height: 22px; color: currentColor; }
+.legacy-nav-menu-copy { display: flex; min-width: 0; flex-direction: column; gap: 1px; line-height: 1.2; }
+.legacy-nav-menu-copy span { color: var(--legacy-ink); font-size: .78rem; }
+.legacy-nav-menu-copy small { color: var(--legacy-muted); font-size: .68rem; line-height: 1.25; }
+.legacy-desktop-nav ::deep .legacy-nav-item.disabled { opacity: .45; }
 .legacy-session-avatar { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; background: var(--legacy-primary); color: #fff; font-size: .72rem; font-weight: 700; }
 .legacy-session-copy { display: flex; flex-direction: column; min-width: 0; line-height: 1.1; }
 .legacy-session-copy strong { max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--legacy-ink); font-size: .78rem; }
