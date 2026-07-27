@@ -72,6 +72,18 @@ public sealed class QuotationLegacySourceParityContractTests
         Assert.DoesNotContain("<Mud", source, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void QuotationView_PreservesLegacyPdfLinkBeforeEmployeeInformation()
+    {
+        var root = FindRoot();
+        var source = File.ReadAllText(Path.Combine(root, "Legacy.Maliev.Intranet.Client.Features.Quotations", "Pages", "Quotations", "View.razor"));
+
+        Assert.Contains("quotationPage.Files.LastOrDefault()?.Uri", source, StringComparison.Ordinal);
+        Assert.Contains("View PDF", source, StringComparison.Ordinal);
+        Assert.Contains("target=\"_blank\" rel=\"noopener\"", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("<Mud", source, StringComparison.Ordinal);
+    }
+
     private static string FindRoot()
     {
         var directory = new DirectoryInfo(AppContext.BaseDirectory);
