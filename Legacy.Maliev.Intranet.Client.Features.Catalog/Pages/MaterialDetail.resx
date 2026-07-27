@@ -15,6 +15,8 @@
   <data name="Density" xml:space="preserve"><value>Density</value></data>
   <data name="Machinable" xml:space="preserve"><value>Machinable</value></data>
   <data name="Printable" xml:space="preserve"><value>Printable</value></data>
+  <data name="AvailableColors" xml:space="preserve"><value>Available colors</value></data>
+  <data name="AvailableSurfaceFinishes" xml:space="preserve"><value>Available surface finishes</value></data>
   <data name="Yes" xml:space="preserve"><value>Yes</value></data>
   <data name="No" xml:space="preserve"><value>No</value></data>
   <data name="NotAvailable" xml:space="preserve"><value>Not available</value></data>
@@ -28,6 +30,7 @@
   <data name="Saving" xml:space="preserve"><value>Saving...</value></data>
   <data name="MaterialSaved" xml:space="preserve"><value>Material saved.</value></data>
   <data name="SaveFailed" xml:space="preserve"><value>The material could not be saved. Try again.</value></data>
+  <data name="AssociationSaveFailed" xml:space="preserve"><value>The material was saved, but its color or surface-finish options could not be updated. Try again.</value></data>
   <data name="ValidationFailed" xml:space="preserve"><value>Correct the highlighted fields before saving.</value></data>
   <data name="Conflict" xml:space="preserve"><value>The material changed while you were editing it. Reload the page and try again.</value></data>
 </root>

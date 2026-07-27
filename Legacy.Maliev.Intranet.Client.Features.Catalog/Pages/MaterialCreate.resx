@@ -44,6 +44,8 @@
   <data name="Astm" xml:space="preserve"><value>ASTM</value></data>
   <data name="Ams" xml:space="preserve"><value>AMS</value></data>
   <data name="ProcessCompatibility" xml:space="preserve"><value>Process compatibility</value></data>
+  <data name="AvailableColors" xml:space="preserve"><value>Available colors</value></data>
+  <data name="AvailableSurfaceFinishes" xml:space="preserve"><value>Available surface finishes</value></data>
   <data name="Machinable" xml:space="preserve"><value>CNC machinable</value></data>
   <data name="Printable" xml:space="preserve"><value>3D printable</value></data>
   <data name="Submitting" xml:space="preserve"><value>Creating material...</value></data>

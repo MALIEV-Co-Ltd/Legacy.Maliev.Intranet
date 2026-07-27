@@ -2141,6 +2141,144 @@ app.MapGet("/bff/catalog/currencies", (
         cancellationToken))
     .RequireAuthorization("legacy-catalog.materials.read");
 
+app.MapGet("/bff/catalog/materials/{id:int}/colors", async (
+    int id,
+    HttpContext context,
+    CatalogMaterialsProxy catalog,
+    CancellationToken cancellationToken) =>
+{
+    if (id <= 0)
+    {
+        return Results.NotFound();
+    }
+
+    return await ProxyCatalogJsonAsync<IReadOnlyList<CatalogMaterialColor>>(
+        token => catalog.GetMaterialColorsAsync(id, token),
+        context,
+        cancellationToken);
+}).RequireAuthorization("legacy-catalog.materials.read");
+
+app.MapGet("/bff/catalog/materials/{id:int}/surface-finishes", async (
+    int id,
+    HttpContext context,
+    CatalogMaterialsProxy catalog,
+    CancellationToken cancellationToken) =>
+{
+    if (id <= 0)
+    {
+        return Results.NotFound();
+    }
+
+    return await ProxyCatalogJsonAsync<IReadOnlyList<CatalogMaterialSurfaceFinish>>(
+        token => catalog.GetMaterialSurfaceFinishesAsync(id, token),
+        context,
+        cancellationToken);
+}).RequireAuthorization("legacy-catalog.materials.read");
+
+app.MapGet("/bff/catalog/colors", (
+    HttpContext context,
+    CatalogMaterialsProxy catalog,
+    CancellationToken cancellationToken) =>
+    ProxyCatalogJsonAsync<IReadOnlyList<CatalogMaterialColor>>(
+        catalog.GetColorsAsync,
+        context,
+        cancellationToken))
+    .RequireAuthorization("legacy-catalog.materials.read");
+
+app.MapGet("/bff/catalog/surface-finishes", (
+    HttpContext context,
+    CatalogMaterialsProxy catalog,
+    CancellationToken cancellationToken) =>
+    ProxyCatalogJsonAsync<IReadOnlyList<CatalogMaterialSurfaceFinish>>(
+        catalog.GetSurfaceFinishesAsync,
+        context,
+        cancellationToken))
+    .RequireAuthorization("legacy-catalog.materials.read");
+
+app.MapPost("/bff/catalog/materials/{id:int}/colors/{colorId:int}", async (
+    int id,
+    int colorId,
+    HttpContext context,
+    CatalogMaterialsProxy catalog,
+    CancellationToken cancellationToken) =>
+{
+    if (id <= 0 || colorId <= 0)
+    {
+        return Results.NotFound();
+    }
+
+    return await ProxyCatalogNoContentAsync(
+        token => catalog.AddMaterialColorAsync(id, colorId, token),
+        context,
+        cancellationToken,
+        preserveBadRequest: true);
+})
+    .AddEndpointFilter<AntiforgeryValidationFilter>()
+    .RequireAuthorization("legacy-catalog.materials.update");
+
+app.MapDelete("/bff/catalog/materials/{id:int}/colors/{colorId:int}", async (
+    int id,
+    int colorId,
+    HttpContext context,
+    CatalogMaterialsProxy catalog,
+    CancellationToken cancellationToken) =>
+{
+    if (id <= 0 || colorId <= 0)
+    {
+        return Results.NotFound();
+    }
+
+    return await ProxyCatalogNoContentAsync(
+        token => catalog.RemoveMaterialColorAsync(id, colorId, token),
+        context,
+        cancellationToken,
+        preserveBadRequest: true);
+})
+    .AddEndpointFilter<AntiforgeryValidationFilter>()
+    .RequireAuthorization("legacy-catalog.materials.update");
+
+app.MapPost("/bff/catalog/materials/{id:int}/surface-finishes/{surfaceFinishId:int}", async (
+    int id,
+    int surfaceFinishId,
+    HttpContext context,
+    CatalogMaterialsProxy catalog,
+    CancellationToken cancellationToken) =>
+{
+    if (id <= 0 || surfaceFinishId <= 0)
+    {
+        return Results.NotFound();
+    }
+
+    return await ProxyCatalogNoContentAsync(
+        token => catalog.AddMaterialSurfaceFinishAsync(id, surfaceFinishId, token),
+        context,
+        cancellationToken,
+        preserveBadRequest: true);
+})
+    .AddEndpointFilter<AntiforgeryValidationFilter>()
+    .RequireAuthorization("legacy-catalog.materials.update");
+
+app.MapDelete("/bff/catalog/materials/{id:int}/surface-finishes/{surfaceFinishId:int}", async (
+    int id,
+    int surfaceFinishId,
+    HttpContext context,
+    CatalogMaterialsProxy catalog,
+    CancellationToken cancellationToken) =>
+{
+    if (id <= 0 || surfaceFinishId <= 0)
+    {
+        return Results.NotFound();
+    }
+
+    return await ProxyCatalogNoContentAsync(
+        token => catalog.RemoveMaterialSurfaceFinishAsync(id, surfaceFinishId, token),
+        context,
+        cancellationToken,
+        preserveBadRequest: true);
+})
+    .AddEndpointFilter<AntiforgeryValidationFilter>()
+    .RequireAuthorization("legacy-catalog.materials.update");
+
 app.MapPost("/bff/catalog/materials", async (
     CatalogMaterialUpsertRequest request,
     HttpContext context,

@@ -31,6 +31,12 @@ public sealed record CatalogMaterialGroup(int Id, string Name);
 /// <summary>Browser-safe currency option for material pricing.</summary>
 public sealed record CatalogCurrency(int Id, string ShortName);
 
+/// <summary>Browser-safe color option used by the legacy material editor.</summary>
+public sealed record CatalogMaterialColor(int Id, string Name);
+
+/// <summary>Browser-safe surface-finish option used by the legacy material editor.</summary>
+public sealed record CatalogMaterialSurfaceFinish(int Id, string Name);
+
 /// <summary>Browser-safe result returned after a material is created.</summary>
 public sealed record CatalogCreatedMaterial(int Id);
 

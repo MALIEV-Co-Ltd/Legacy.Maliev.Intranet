@@ -116,6 +116,50 @@
                 <MudCheckBox T="bool" @bind-Value="model.Machinable" Label="@Fields["Machinable"]" />
                 <MudCheckBox T="bool" @bind-Value="model.Printable" Label="@Fields["Printable"]" />
             </MudPaper>
+            <MudPaper Class="pa-4 mb-4" Elevation="1">
+                <MudText Typo="Typo.h6" HtmlTag="h2" Class="mb-3">@Fields["AvailableColors"]</MudText>
+                @if (loadingAssociations)
+                {
+                    <MudText Color="Color.Secondary">@Text["Loading"]</MudText>
+                }
+                else if (colors.Count == 0)
+                {
+                    <MudText Color="Color.Secondary">@Text["NotAvailable"]</MudText>
+                }
+                else
+                {
+                    <MudGrid Spacing="1">
+                        @foreach (var color in colors)
+                        {
+                            <MudItem xs="12" sm="6" md="4">
+                                <MudCheckBox T="bool" Value="@selectedColorIds.Contains(color.Id)" ValueChanged="value => SetColorSelection(color.Id, value)" Label="@color.Name" />
+                            </MudItem>
+                        }
+                    </MudGrid>
+                }
+            </MudPaper>
+            <MudPaper Class="pa-4 mb-4" Elevation="1">
+                <MudText Typo="Typo.h6" HtmlTag="h2" Class="mb-3">@Fields["AvailableSurfaceFinishes"]</MudText>
+                @if (loadingAssociations)
+                {
+                    <MudText Color="Color.Secondary">@Text["Loading"]</MudText>
+                }
+                else if (surfaceFinishes.Count == 0)
+                {
+                    <MudText Color="Color.Secondary">@Text["NotAvailable"]</MudText>
+                }
+                else
+                {
+                    <MudGrid Spacing="1">
+                        @foreach (var finish in surfaceFinishes)
+                        {
+                            <MudItem xs="12" sm="6" md="4">
+                                <MudCheckBox T="bool" Value="@selectedSurfaceFinishIds.Contains(finish.Id)" ValueChanged="value => SetSurfaceFinishSelection(finish.Id, value)" Label="@finish.Name" />
+                            </MudItem>
+                        }
+                    </MudGrid>
+                }
+            </MudPaper>
 
             <MudStack Row="true" Spacing="2">
                 <MudButton ButtonType="ButtonType.Button" Variant="Variant.Filled" Color="Color.Primary" Disabled="@submitting" OnClick="SubmitAsync">
@@ -139,8 +183,15 @@
     private string? notification;
     private bool formValid;
     private bool loading;
+    private bool loadingAssociations;
     private bool notFound;
     private bool submitting;
+    private IReadOnlyList<CatalogMaterialColor> colors = [];
+    private IReadOnlyList<CatalogMaterialSurfaceFinish> surfaceFinishes = [];
+    private HashSet<int> selectedColorIds = [];
+    private HashSet<int> persistedColorIds = [];
+    private HashSet<int> selectedSurfaceFinishIds = [];
+    private HashSet<int> persistedSurfaceFinishIds = [];
 
     protected override async Task OnParametersSetAsync()
     {
@@ -157,15 +208,26 @@
         }
 
         loading = true;
+        loadingAssociations = true;
         try
         {
             var detailTask = LoadMaterialAsync();
             var groupsTask = LoadLookupAsync<CatalogMaterialGroup>("/bff/catalog/material-groups");
             var currenciesTask = LoadLookupAsync<CatalogCurrency>("/bff/catalog/currencies");
-            await Task.WhenAll(detailTask, groupsTask, currenciesTask);
+            var colorsTask = LoadLookupAsync<CatalogMaterialColor>("/bff/catalog/colors");
+            var surfaceFinishesTask = LoadLookupAsync<CatalogMaterialSurfaceFinish>("/bff/catalog/surface-finishes");
+            var selectedColorsTask = LoadAssociationLookupAsync<CatalogMaterialColor>($"/bff/catalog/materials/{Id}/colors");
+            var selectedSurfaceFinishesTask = LoadAssociationLookupAsync<CatalogMaterialSurfaceFinish>($"/bff/catalog/materials/{Id}/surface-finishes");
+            await Task.WhenAll(detailTask, groupsTask, currenciesTask, colorsTask, surfaceFinishesTask, selectedColorsTask, selectedSurfaceFinishesTask);
             material = await detailTask;
             materialGroups = await groupsTask;
             currencies = await currenciesTask;
+            colors = await colorsTask;
+            surfaceFinishes = await surfaceFinishesTask;
+            persistedColorIds = (await selectedColorsTask).Select(color => color.Id).ToHashSet();
+            selectedColorIds = persistedColorIds.ToHashSet();
+            persistedSurfaceFinishIds = (await selectedSurfaceFinishesTask).Select(finish => finish.Id).ToHashSet();
+            selectedSurfaceFinishIds = persistedSurfaceFinishIds.ToHashSet();
             if (material is not null)
             {
                 CopyToModel(material);
@@ -195,6 +257,7 @@
         finally
         {
             loading = false;
+            loadingAssociations = false;
         }
     }
 
@@ -216,6 +279,17 @@
         if (response.StatusCode == HttpStatusCode.Unauthorized) throw new UnauthorizedAccessException();
         if (response.StatusCode == HttpStatusCode.Forbidden) throw new CatalogForbiddenException();
         if (response.StatusCode == HttpStatusCode.TooManyRequests) throw new CatalogRateLimitedException();
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<IReadOnlyList<T>>() ?? [];
+    }
+
+    private async Task<IReadOnlyList<T>> LoadAssociationLookupAsync<T>(string path)
+    {
+        using var response = await Http.GetAsync(path);
+        if (response.StatusCode == HttpStatusCode.Unauthorized) throw new UnauthorizedAccessException();
+        if (response.StatusCode == HttpStatusCode.Forbidden) throw new CatalogForbiddenException();
+        if (response.StatusCode == HttpStatusCode.TooManyRequests) throw new CatalogRateLimitedException();
+        if (response.StatusCode == HttpStatusCode.NotFound) return [];
         response.EnsureSuccessStatusCode();
         return await response.Content.ReadFromJsonAsync<IReadOnlyList<T>>() ?? [];
     }
@@ -256,8 +330,30 @@
             if (response.StatusCode == HttpStatusCode.TooManyRequests) { error = Text["RateLimited"]; return; }
             if (!response.IsSuccessStatusCode) { error = Text["SaveFailed"]; return; }
 
+            await SyncAssociationSetAsync(
+                persistedColorIds,
+                selectedColorIds,
+                "colors");
+            await SyncAssociationSetAsync(
+                persistedSurfaceFinishIds,
+                selectedSurfaceFinishIds,
+                "surface-finishes");
+            persistedColorIds = selectedColorIds.ToHashSet();
+            persistedSurfaceFinishIds = selectedSurfaceFinishIds.ToHashSet();
             notification = Text["MaterialSaved"];
             CopyToSummary();
+        }
+        catch (UnauthorizedAccessException)
+        {
+            NavigateToLogin();
+        }
+        catch (CatalogForbiddenException)
+        {
+            error = Text["Forbidden"];
+        }
+        catch (AssociationSaveException)
+        {
+            error = Text["AssociationSaveFailed"];
         }
         catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException)
         {
@@ -283,6 +379,91 @@
         model.PricePerKilogram = value.PricePerKilogram; model.CurrencyId = value.CurrencyId; model.Comment = value.Comment;
     }
 
+    private async Task SyncAssociationSetAsync(
+        IEnumerable<int> persisted,
+        IEnumerable<int> selected,
+        string segment)
+    {
+        var session = await Http.GetFromJsonAsync<EmployeeSessionSummary>("/bff/session");
+        if (string.IsNullOrWhiteSpace(session?.CsrfToken))
+        {
+            throw new AssociationSaveException();
+        }
+
+        var current = persisted.ToHashSet();
+        var next = selected.ToHashSet();
+        foreach (var id in next.Except(current))
+        {
+            await SendAssociationAsync(
+                HttpMethod.Post,
+                $"/bff/catalog/materials/{Id}/{segment}/{id}",
+                session.CsrfToken,
+                ignoreNotFound: false);
+        }
+
+        foreach (var id in current.Except(next))
+        {
+            await SendAssociationAsync(
+                HttpMethod.Delete,
+                $"/bff/catalog/materials/{Id}/{segment}/{id}",
+                session.CsrfToken,
+                ignoreNotFound: true);
+        }
+    }
+
+    private async Task SendAssociationAsync(
+        HttpMethod method,
+        string path,
+        string csrfToken,
+        bool ignoreNotFound)
+    {
+        using var request = new HttpRequestMessage(method, path);
+        request.Headers.Add("X-CSRF-TOKEN", csrfToken);
+        using var response = await Http.SendAsync(request);
+        if (response.StatusCode == HttpStatusCode.Unauthorized)
+        {
+            throw new UnauthorizedAccessException();
+        }
+
+        if (response.StatusCode == HttpStatusCode.Forbidden)
+        {
+            throw new CatalogForbiddenException();
+        }
+
+        if (ignoreNotFound && response.StatusCode == HttpStatusCode.NotFound)
+        {
+            return;
+        }
+
+        if (!response.IsSuccessStatusCode)
+        {
+            throw new AssociationSaveException();
+        }
+    }
+
+    private void SetColorSelection(int id, ChangeEventArgs args) => SetSelection(selectedColorIds, id, args);
+
+    private void SetSurfaceFinishSelection(int id, ChangeEventArgs args) => SetSelection(selectedSurfaceFinishIds, id, args);
+
+    private static void SetSelection(HashSet<int> selection, int id, ChangeEventArgs args)
+    {
+        var selected = args.Value switch
+        {
+            bool value => value,
+            string value when bool.TryParse(value, out var parsed) => parsed,
+            _ => false,
+        };
+
+        if (selected)
+        {
+            selection.Add(id);
+        }
+        else
+        {
+            selection.Remove(id);
+        }
+    }
+
     private void CopyToSummary() => material = material! with
     {
         MaterialGroupId = model.MaterialGroupId,
@@ -300,4 +481,5 @@
     private sealed class MaterialNotFoundException : Exception;
     private sealed class CatalogForbiddenException : Exception;
     private sealed class CatalogRateLimitedException : Exception;
+    private sealed class AssociationSaveException : Exception;
 }
