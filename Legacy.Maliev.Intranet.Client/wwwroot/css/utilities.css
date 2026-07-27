@@ -1,0 +1,90 @@
+/* ================================================================
+   Maliev Global Utility Classes
+   Small set of reusable, design-token-backed helpers.
+   ================================================================ */
+
+/* Monospace text — for dimensions, prices, code */
+.maliev-mono {
+    font-family: var(--maliev-font-mono);
+}
+
+/* Section/zone label — uppercase micro-label above content groups */
+.maliev-label {
+    font-size: var(--maliev-font-micro);
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--maliev-muted);
+}
+
+/* Section title — uppercase caption above panels or card sections */
+.section-title {
+    font-size: var(--mud-typography-caption-size);
+    text-transform: uppercase;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    color: var(--mud-palette-text-secondary);
+}
+
+/* Toolbar divider — vertical separator between icon groups */
+.maliev-divider {
+    width: 1px;
+    height: 24px;
+    align-self: center;
+    flex-shrink: 0;
+    background: var(--maliev-border);
+    margin: 0 var(--maliev-space-2);
+}
+
+/* Status pill — combine with a colour modifier */
+.maliev-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--maliev-space-1);
+    padding: var(--maliev-space-1) var(--maliev-space-3);
+    border-radius: var(--maliev-radius-pill);
+    font-size: var(--maliev-font-micro);
+    font-weight: 600;
+    line-height: 1.4;
+}
+
+.maliev-pill--ok {
+    background: var(--maliev-ok-bg);
+    color: var(--maliev-ok);
+}
+
+.maliev-pill--warn {
+    background: var(--maliev-warn-bg);
+    color: var(--maliev-warn-fg);
+    border: 1px solid var(--maliev-warn-border);
+}
+
+.maliev-pill--danger {
+    background: var(--maliev-danger-bg);
+    color: var(--maliev-danger);
+}
+
+.maliev-pill--info {
+    background: var(--maliev-info-bg);
+    color: var(--maliev-info);
+}
+
+/* Accent badge — primary-tinted chip (e.g. saved-state indicator) */
+.maliev-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--maliev-space-2);
+    padding: var(--maliev-space-2) var(--maliev-space-4);
+    border-radius: var(--maliev-space-3);
+    font-size: var(--maliev-font-small);
+    font-weight: 500;
+    background: var(--maliev-accent-soft);
+    color: var(--mud-palette-primary);
+    border: 1px solid var(--maliev-accent-soft);
+}
+
+.maliev-badge--muted {
+    background: color-mix(in oklch, var(--maliev-muted) 8%, transparent);
+    color: var(--mud-palette-text-secondary);
+    border-color: color-mix(in oklch, var(--maliev-muted) 25%, transparent);
+}

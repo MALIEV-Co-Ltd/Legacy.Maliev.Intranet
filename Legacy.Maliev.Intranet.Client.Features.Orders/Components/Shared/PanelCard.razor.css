@@ -1,0 +1,16 @@
+.mlv-panel-card {
+    min-width: 0;
+    padding: 16px 20px;
+    border: 0;
+    border-radius: var(--maliev-radius-md);
+    background: var(--maliev-panel);
+    box-shadow: var(--maliev-shadow-card);
+    overflow-wrap: anywhere;
+}
+
+@media (max-width: 520px) {
+    .mlv-panel-card {
+        padding: 14px 12px;
+        border-radius: var(--maliev-radius-sm);
+    }
+}
