@@ -1,0 +1,136 @@
+<div class="@RootClass" style="@RootStyle" aria-busy="true" aria-label="@Label">
+    @if (ShowHeader)
+    {
+        <div class="mlv-progressive-skeleton-header">
+            <MudSkeleton SkeletonType="SkeletonType.Text" Width="170px" Height="22px" Animation="Animation.Wave" />
+            <MudSkeleton SkeletonType="SkeletonType.Rectangle" Width="112px" Height="34px" Animation="Animation.Wave" />
+        </div>
+    }
+
+    @switch (NormalizedLayout)
+    {
+        case "detail":
+            <div class="mlv-progressive-skeleton-stats">
+                @for (var index = 0; index < 4; index++)
+                {
+                    <div class="mlv-progressive-skeleton-stat">
+                        <MudSkeleton SkeletonType="SkeletonType.Text" Width="74px" Height="13px" Animation="Animation.Wave" />
+                        <MudSkeleton SkeletonType="SkeletonType.Text" Width="96px" Height="28px" Animation="Animation.Wave" />
+                    </div>
+                }
+            </div>
+            <div class="mlv-progressive-skeleton-grid">
+                <div class="mlv-progressive-skeleton-panel">
+                    <MudSkeleton SkeletonType="SkeletonType.Text" Width="142px" Height="16px" Animation="Animation.Wave" />
+                    <div class="mlv-progressive-skeleton-fields">
+                        @for (var index = 0; index < Math.Max(4, Rows); index++)
+                        {
+                            <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="38px" Animation="Animation.Wave" />
+                        }
+                    </div>
+                </div>
+                <div class="mlv-progressive-skeleton-panel">
+                    <MudSkeleton SkeletonType="SkeletonType.Text" Width="118px" Height="16px" Animation="Animation.Wave" />
+                    @for (var index = 0; index < 3; index++)
+                    {
+                        <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="58px" Animation="Animation.Wave" />
+                    }
+                </div>
+            </div>
+            break;
+
+        case "form":
+            <div class="mlv-progressive-skeleton-panel">
+                <MudSkeleton SkeletonType="SkeletonType.Text" Width="138px" Height="16px" Animation="Animation.Wave" />
+                <div class="mlv-progressive-skeleton-fields">
+                    @for (var index = 0; index < Math.Max(4, Rows); index++)
+                    {
+                        <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="38px" Animation="Animation.Wave" />
+                    }
+                </div>
+            </div>
+            break;
+
+        case "list":
+            <div class="mlv-progressive-skeleton-list">
+                @for (var index = 0; index < Rows; index++)
+                {
+                    <div class="mlv-progressive-skeleton-row">
+                        <MudSkeleton SkeletonType="SkeletonType.Circle" Width="28px" Height="28px" Animation="Animation.Wave" />
+                        <div class="mlv-progressive-skeleton-copy">
+                            <MudSkeleton SkeletonType="SkeletonType.Text" Width="72%" Height="16px" Animation="Animation.Wave" />
+                            <MudSkeleton SkeletonType="SkeletonType.Text" Width="42%" Height="12px" Animation="Animation.Wave" />
+                        </div>
+                        <MudSkeleton SkeletonType="SkeletonType.Text" Width="54px" Height="16px" Animation="Animation.Wave" />
+                    </div>
+                }
+            </div>
+            break;
+
+        case "compact":
+            <div class="mlv-progressive-skeleton-compact">
+                @for (var index = 0; index < Rows; index++)
+                {
+                    <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="32px" Animation="Animation.Wave" />
+                }
+            </div>
+            break;
+
+        default:
+            <div class="mlv-progressive-skeleton-table">
+                @if (ShowFilters)
+                {
+                    <div class="mlv-progressive-skeleton-filters">
+                        <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="36px" Animation="Animation.Wave" />
+                        <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="36px" Animation="Animation.Wave" />
+                        <MudSkeleton SkeletonType="SkeletonType.Rectangle" Width="96px" Height="36px" Animation="Animation.Wave" />
+                    </div>
+                }
+                <div class="mlv-progressive-skeleton-head">
+                    @for (var index = 0; index < Columns; index++)
+                    {
+                        <MudSkeleton SkeletonType="SkeletonType.Text" Width="80px" Height="13px" Animation="Animation.Wave" />
+                    }
+                </div>
+                @for (var row = 0; row < Rows; row++)
+                {
+                    <div class="mlv-progressive-skeleton-table-row">
+                        @for (var column = 0; column < Columns; column++)
+                        {
+                            <MudSkeleton SkeletonType="SkeletonType.Text" Width="@ResolveColumnWidth(column)" Height="16px" Animation="Animation.Wave" />
+                        }
+                    </div>
+                }
+            </div>
+            break;
+    }
+</div>
+
+@code {
+    [Parameter] public string Layout { get; set; } = "table";
+    [Parameter] public string Label { get; set; } = "Loading content";
+    [Parameter] public int Rows { get; set; } = 5;
+    [Parameter] public int Columns { get; set; } = 5;
+    [Parameter] public bool ShowHeader { get; set; }
+    [Parameter] public bool ShowFilters { get; set; } = true;
+    [Parameter] public string? Class { get; set; }
+
+    private string NormalizedLayout => string.IsNullOrWhiteSpace(Layout)
+        ? "table"
+        : Layout.Trim().ToLowerInvariant();
+
+    private string RootClass => string.Join(
+        ' ',
+        new[] { "mlv-progressive-skeleton", $"mlv-progressive-skeleton--{NormalizedLayout}", Class }
+            .Where(value => !string.IsNullOrWhiteSpace(value)));
+
+    private string RootStyle => $"--mlv-skeleton-columns: {Math.Clamp(Columns, 1, 8)};";
+
+    private static string ResolveColumnWidth(int column) => (column % 4) switch
+    {
+        0 => "88px",
+        1 => "148px",
+        2 => "96px",
+        _ => "72px"
+    };
+}

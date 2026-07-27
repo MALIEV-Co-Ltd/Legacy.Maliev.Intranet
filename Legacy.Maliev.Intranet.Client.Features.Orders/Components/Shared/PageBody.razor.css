@@ -1,0 +1,13 @@
+.mlv-page-body {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: auto;
+    padding: 20px;
+    background: var(--maliev-panel-2);
+}
+
+@media (max-width: 720px) {
+    .mlv-page-body {
+        padding: 12px;
+    }
+}

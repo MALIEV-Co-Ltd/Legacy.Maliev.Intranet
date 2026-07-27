@@ -7,6 +7,7 @@
   <data name="PageTitle" xml:space="preserve"><value>Orders - MALIEV Intranet</value></data>
   <data name="Operations" xml:space="preserve"><value>Operations</value></data>
   <data name="Orders" xml:space="preserve"><value>Orders</value></data>
+  <data name="PageSubtitle" xml:space="preserve"><value>Customer orders, payment state, accepted quotes, and production handoff.</value></data>
   <data name="CreateOrder" xml:space="preserve"><value>Create order</value></data>
   <data name="Search" xml:space="preserve"><value>Search</value></data>
   <data name="Sort" xml:space="preserve"><value>Sort</value></data>

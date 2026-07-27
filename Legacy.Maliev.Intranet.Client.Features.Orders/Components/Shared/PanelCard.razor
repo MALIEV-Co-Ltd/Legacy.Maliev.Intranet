@@ -1,0 +1,14 @@
+<section class="mlv-panel-card @Class" style="@Style">
+    @if (!string.IsNullOrWhiteSpace(Title))
+    {
+        <SectionTitle Text="@Title" />
+    }
+    @ChildContent
+</section>
+
+@code {
+    [Parameter] public string? Title { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public string? Class { get; set; }
+    [Parameter] public string? Style { get; set; }
+}

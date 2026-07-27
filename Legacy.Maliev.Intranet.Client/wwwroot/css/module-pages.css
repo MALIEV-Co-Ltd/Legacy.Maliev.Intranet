@@ -1,0 +1,658 @@
+.mlv-module-shell {
+    height: 100%;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    color: var(--maliev-ink);
+}
+
+.mlv-grid {
+    display: grid;
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+    gap: 14px;
+}
+
+.mlv-span-3 { grid-column: span 3; }
+.mlv-span-4 { grid-column: span 4; }
+.mlv-span-5 { grid-column: span 5; }
+.mlv-span-6 { grid-column: span 6; }
+.mlv-span-7 { grid-column: span 7; }
+.mlv-span-8 { grid-column: span 8; }
+.mlv-span-12 { grid-column: span 12; }
+
+.mlv-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 14px;
+}
+
+.mlv-toolbar-left,
+.mlv-toolbar-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+    max-width: 100%;
+}
+
+.mlv-segmented {
+    display: flex;
+    max-width: 100%;
+    min-width: 0;
+    overflow-x: auto;
+    gap: 2px;
+    padding: 3px;
+    border: 0;
+    border-radius: var(--maliev-radius-sm);
+    background: var(--maliev-panel);
+    box-shadow: var(--maliev-shadow-ring);
+    scrollbar-width: thin;
+}
+
+.mlv-segmented button {
+    flex: 0 0 auto;
+    min-height: 26px;
+    padding: 0 10px;
+    border: 0;
+    border-radius: var(--maliev-radius-xs);
+    background: transparent;
+    color: var(--maliev-muted);
+    font-size: var(--maliev-font-small);
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.mlv-segmented button:focus-visible {
+    outline: none;
+    box-shadow: var(--maliev-focus-ring);
+}
+
+.mlv-segmented button.active {
+    background: var(--maliev-accent-soft);
+    color: var(--maliev-accent);
+}
+
+.mlv-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    border-radius: var(--maliev-radius-md);
+    background: var(--maliev-panel);
+    box-shadow: var(--maliev-shadow-ring);
+    font-size: var(--maliev-font-base);
+    overflow: hidden;
+}
+
+.mlv-table th,
+.mlv-table td {
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--maliev-border-subtle);
+    text-align: left;
+    vertical-align: middle;
+}
+
+.mlv-table th {
+    color: var(--maliev-muted);
+    font-size: var(--maliev-font-nano);
+    font-weight: 600;
+    letter-spacing: 0;
+    text-transform: uppercase;
+}
+
+.mlv-table tbody tr {
+    cursor: pointer;
+}
+
+.mlv-table tbody tr:hover {
+    background: var(--maliev-panel-2);
+}
+
+.mlv-data-page-body {
+    display: flex;
+    flex-direction: column;
+}
+
+.mlv-data-results-panel {
+    flex: 1 1 0;
+    min-height: clamp(360px, 52dvh, 760px);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.mlv-data-results-panel .mlv-table {
+    flex: 0 0 auto;
+    width: 100%;
+}
+
+.mlv-data-results-panel .mlv-row-scroll-table {
+    flex: 1 1 0;
+    min-height: 0;
+}
+
+.mlv-row-scroll-table {
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr);
+    overflow: hidden;
+}
+
+.mlv-row-scroll-table thead {
+    display: block;
+    position: relative;
+    z-index: 1;
+}
+
+.mlv-row-scroll-table tbody {
+    display: block;
+    min-height: 0;
+    overflow-y: auto;
+    scrollbar-gutter: stable;
+    scrollbar-width: thin;
+}
+
+.mlv-row-scroll-table thead tr,
+.mlv-row-scroll-table tbody tr {
+    display: grid;
+    grid-template-columns: var(--mlv-row-scroll-table-columns, repeat(6, minmax(0, 1fr)));
+}
+
+.mlv-row-scroll-table th,
+.mlv-row-scroll-table td {
+    min-width: 0;
+}
+
+.customer-list-table {
+    --mlv-row-scroll-table-columns: minmax(240px, 2fr) minmax(180px, 1.35fr) minmax(92px, 0.55fr) minmax(92px, 0.55fr) minmax(110px, 0.7fr) minmax(128px, 0.75fr);
+}
+
+.mlv-data-results-panel .mlv-empty {
+    flex: 1 1 auto;
+    min-height: 100%;
+    align-content: center;
+}
+
+.mlv-data-page-body > .mlv-pagination-footer {
+    flex: 0 0 auto;
+}
+
+.mlv-row-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+}
+
+.mlv-row-main {
+    color: var(--maliev-ink);
+    font-weight: 600;
+}
+
+.mlv-row-sub {
+    margin-top: 2px;
+    color: var(--maliev-muted);
+    font-size: var(--maliev-font-small);
+}
+
+.mlv-mono {
+    font-family: var(--maliev-font-mono);
+}
+
+.mlv-empty {
+    display: grid;
+    place-items: center;
+    min-height: 180px;
+    padding: 28px;
+    border: 0;
+    border-radius: var(--maliev-radius-md);
+    background: var(--maliev-panel);
+    box-shadow: var(--maliev-shadow-ring);
+    color: var(--maliev-muted);
+    text-align: center;
+}
+
+.mlv-list {
+    display: grid;
+    gap: 8px;
+}
+
+.mlv-list-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--maliev-border-subtle);
+}
+
+.mlv-list-row:last-child {
+    border-bottom: 0;
+}
+
+.mlv-section-skeleton {
+    display: grid;
+    gap: 8px;
+}
+
+.mlv-list-skeleton-copy {
+    display: grid;
+    gap: 4px;
+    min-width: 0;
+}
+
+.mlv-form-input,
+.mlv-form-select,
+.mlv-form-textarea {
+    width: 100%;
+    min-height: 34px;
+    padding: 0 10px;
+    border: 0;
+    border-radius: var(--maliev-radius-sm);
+    background: var(--maliev-panel);
+    box-shadow: var(--maliev-shadow-ring);
+    color: var(--maliev-ink);
+    font: inherit;
+}
+
+.mlv-form-input:focus,
+.mlv-form-select:focus,
+.mlv-form-textarea:focus {
+    outline: none;
+    box-shadow: var(--maliev-focus-ring);
+}
+
+.mlv-form-textarea {
+    min-height: 90px;
+    padding-top: 8px;
+}
+
+.mlv-filter-field {
+    display: grid;
+    gap: 4px;
+    min-width: 140px;
+    color: var(--maliev-muted);
+    font-size: var(--maliev-font-small);
+}
+
+.mlv-filter-field.compact {
+    min-width: 110px;
+}
+
+.mlv-filter-field select,
+.mlv-filter-field input {
+    height: 36px;
+    padding: 0 10px;
+    border: 0;
+    border-radius: var(--maliev-radius-sm);
+    background: var(--maliev-panel);
+    box-shadow: var(--maliev-shadow-ring);
+    color: var(--maliev-ink);
+    font: inherit;
+}
+
+.mlv-filter-field select:focus,
+.mlv-filter-field input:focus {
+    outline: none;
+    box-shadow: var(--maliev-focus-ring);
+}
+
+.accounting-reconciliation-source-field {
+    min-width: 320px;
+}
+
+.accounting-reconciliation-source-hint {
+    max-width: 340px;
+    margin-top: 0;
+}
+
+.mlv-two-column-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+}
+
+.mlv-detail-list {
+    display: grid;
+    grid-template-columns: minmax(120px, auto) minmax(0, 1fr);
+    gap: 10px 14px;
+    margin: 0;
+}
+
+.mlv-detail-list dt {
+    color: var(--maliev-muted);
+    font-size: var(--maliev-font-small);
+}
+
+.mlv-detail-list dd {
+    margin: 0;
+    min-width: 0;
+    color: var(--maliev-ink);
+    font-weight: 600;
+    overflow-wrap: anywhere;
+}
+
+.mlv-error {
+    margin-bottom: 12px;
+    padding: 10px 12px;
+    border: 0;
+    border-radius: var(--maliev-radius-sm);
+    background: var(--maliev-danger-bg);
+    box-shadow: var(--maliev-shadow-ring);
+    color: var(--maliev-danger);
+    font-size: var(--maliev-font-small);
+}
+
+.mlv-status {
+    margin-bottom: 12px;
+    padding: 10px 12px;
+    border: 0;
+    border-radius: var(--maliev-radius-sm);
+    background: var(--maliev-ok-bg);
+    box-shadow: var(--maliev-shadow-ring);
+    color: var(--maliev-ok);
+    font-size: var(--maliev-font-small);
+}
+
+.mlv-form-hint {
+    margin-top: 6px;
+    color: var(--maliev-muted);
+    font-size: var(--maliev-font-small);
+    overflow-wrap: anywhere;
+}
+
+.mlv-prerequisite-list {
+    display: grid;
+    gap: 12px;
+}
+
+.mlv-prerequisite-card {
+    display: grid;
+    grid-template-columns: 32px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 12px;
+    padding: 14px;
+    border-radius: var(--maliev-radius-sm);
+    background: var(--maliev-panel-2);
+    box-shadow: var(--maliev-shadow-ring);
+}
+
+.mlv-prerequisite-card > div {
+    display: grid;
+    gap: 3px;
+    min-width: 0;
+}
+
+.mlv-prerequisite-card strong {
+    color: var(--maliev-ink);
+    font-weight: 700;
+}
+
+.mlv-prerequisite-card span {
+    color: var(--maliev-muted);
+    font-size: var(--maliev-font-small);
+}
+
+.accounting-report-panel {
+    display: grid;
+    gap: 16px;
+}
+
+.accounting-report-toolbar {
+    display: flex;
+    align-items: end;
+    justify-content: space-between;
+    gap: 14px;
+    padding: 12px;
+    border-radius: var(--maliev-radius-sm);
+    background: var(--maliev-panel-2);
+    box-shadow: var(--maliev-shadow-ring);
+}
+
+.accounting-report-filters {
+    display: grid;
+    grid-template-columns: minmax(220px, 1.35fr) repeat(2, minmax(150px, 0.8fr));
+    align-items: end;
+    gap: 12px;
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.accounting-report-field {
+    min-width: 0;
+}
+
+.accounting-report-actions {
+    display: flex;
+    align-items: end;
+    justify-content: flex-end;
+    gap: 10px;
+    flex: 0 0 auto;
+}
+
+.accounting-report-pdf-button {
+    min-height: 36px;
+}
+
+.accounting-report-run-button {
+    min-height: 36px;
+}
+
+.accounting-report-empty {
+    margin-top: 0;
+}
+
+.accounting-report-statement {
+    display: grid;
+    gap: 18px;
+    padding: 16px;
+    border-radius: var(--maliev-radius-sm);
+    background: var(--maliev-panel-2);
+    box-shadow: var(--maliev-shadow-ring);
+}
+
+.accounting-report-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--maliev-border-subtle);
+}
+
+.accounting-report-title {
+    color: var(--maliev-ink);
+    font-size: var(--maliev-font-large);
+    font-weight: 700;
+}
+
+.accounting-report-period {
+    margin-top: 3px;
+    color: var(--maliev-muted);
+    font-size: var(--maliev-font-small);
+}
+
+.accounting-report-section {
+    display: grid;
+    gap: 8px;
+    min-width: 0;
+}
+
+.accounting-report-section-title {
+    margin: 0;
+    color: var(--maliev-ink);
+    font-size: var(--maliev-font-base);
+    font-weight: 700;
+}
+
+.accounting-report-table {
+    margin: 0;
+}
+
+.accounting-report-table th:last-child,
+.accounting-report-table td:last-child {
+    text-align: right;
+}
+
+.mlv-pagination-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-top: 14px;
+    padding: 10px 2px 0;
+    color: var(--maliev-muted);
+    font-size: var(--maliev-font-small);
+}
+
+.mlv-pagination-controls {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.mlv-pagination-controls label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    white-space: nowrap;
+}
+
+.mlv-page-size-select {
+    height: 30px;
+    min-width: 64px;
+    padding-left: 10px;
+    border: 0;
+    border-radius: var(--maliev-radius-sm);
+    background: var(--maliev-panel);
+    box-shadow: var(--maliev-shadow-ring);
+    color: var(--maliev-ink);
+    font: inherit;
+}
+
+select.mlv-form-input,
+select.mlv-form-select,
+.mlv-filter-field select,
+.mlv-page-size-select {
+    appearance: none;
+    padding-right: 2.35rem;
+    background-image: url("data:image/svg+xml,%3Csvg width='16' height='16' viewBox='0 0 16 16' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M4 6L8 10L12 6' stroke='%23657380' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.85rem center;
+    background-size: 0.9rem;
+}
+
+.mlv-page-size-select:focus {
+    outline: none;
+    box-shadow: var(--maliev-focus-ring);
+}
+
+@media (min-width: 721px) and (max-width: 1000px) {
+    .mlv-span-3,
+    .mlv-span-4,
+    .mlv-span-5,
+    .mlv-span-6 {
+        grid-column: span 6;
+    }
+
+    .mlv-span-7,
+    .mlv-span-8,
+    .mlv-span-12 {
+        grid-column: span 12;
+    }
+}
+
+@media (max-width: 900px) {
+    .mlv-toolbar {
+        align-items: stretch;
+    }
+
+    .mlv-toolbar-left {
+        flex: 1 1 100%;
+    }
+
+    .mlv-toolbar-right {
+        flex: 1 1 auto;
+        justify-content: flex-start;
+    }
+}
+
+@media (max-width: 720px) {
+    .mlv-span-3,
+    .mlv-span-4,
+    .mlv-span-5,
+    .mlv-span-6,
+    .mlv-span-7,
+    .mlv-span-8,
+    .mlv-span-12 {
+        grid-column: span 12;
+    }
+
+    .mlv-toolbar {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .mlv-toolbar-left,
+    .mlv-toolbar-right {
+        flex-wrap: wrap;
+        overflow-x: visible;
+    }
+
+    .mlv-segmented {
+        flex-wrap: wrap;
+        overflow-x: visible;
+    }
+
+    .mlv-prerequisite-card {
+        grid-template-columns: 28px minmax(0, 1fr);
+    }
+
+    .mlv-prerequisite-card .mlv-button {
+        grid-column: 1 / -1;
+        justify-self: stretch;
+    }
+
+    .accounting-report-toolbar {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .accounting-report-filters {
+        grid-template-columns: 1fr;
+    }
+
+    .accounting-report-actions {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .accounting-report-pdf-button,
+    .accounting-report-run-button {
+        width: 100%;
+    }
+
+    .mlv-table {
+        display: block;
+        max-width: 100%;
+        overflow-x: auto;
+        white-space: nowrap;
+        scrollbar-width: thin;
+    }
+
+    .mlv-two-column-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .mlv-pagination-footer {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .mlv-pagination-controls {
+        flex-wrap: wrap;
+        justify-content: space-between;
+    }
+}
