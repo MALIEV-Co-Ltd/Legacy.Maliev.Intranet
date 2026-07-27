@@ -1,0 +1,6 @@
+<div class="mlv-section-title @Class">@Text</div>
+
+@code {
+    [Parameter, EditorRequired] public string Text { get; set; } = string.Empty;
+    [Parameter] public string? Class { get; set; }
+}

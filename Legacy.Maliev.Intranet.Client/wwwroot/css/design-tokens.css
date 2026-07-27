@@ -1,0 +1,169 @@
+/* ================================================================
+   Maliev Design Tokens — single source of truth
+   Load order: FIRST in index.html, before app.css and overrides.
+   ================================================================ */
+
+/* ── Light mode (default) ─────────────────────────────────────── */
+:root {
+    --maliev-accent-hue: 0;
+    --maliev-accent:        #171717;
+
+    /* Surfaces & ink */
+    --maliev-bg:            #ffffff;
+    --maliev-panel:         #ffffff;
+    --maliev-panel-2:       #fafafa;
+    --maliev-panel-3:       #f5f5f5;
+    --maliev-ink:           #171717;
+    --maliev-ink-2:         #4d4d4d;
+    --maliev-muted:         #666666;
+    --maliev-muted-2:       #808080;
+    --maliev-muted-3:       #a3a3a3;
+    --maliev-border:        #ebebeb;
+    --maliev-border-subtle: #f5f5f5;
+
+    /* Accent tints */
+    --maliev-accent-soft:   #f5f5f5;
+    --maliev-accent-softer: #fafafa;
+    --maliev-primary-soft:  color-mix(in srgb, var(--mud-palette-primary) 12%, var(--maliev-panel));
+
+    /* High-contrast functional surfaces */
+    --maliev-barcode-bg:  #ffffff;
+    --maliev-barcode-ink: #111827;
+
+    /* Status colours */
+    --maliev-ok:          #007a3d;
+    --maliev-ok-bg:       #e9f9ef;
+    --maliev-warn:        #a15c00;
+    --maliev-warn-bg:     #fff6e5;
+    --maliev-warn-border: #f2d28a;
+    --maliev-warn-fg:     #7a3f00;
+    --maliev-danger:      #c1121f;
+    --maliev-danger-bg:   #fff0f0;
+    --maliev-info:        #0072f5;
+    --maliev-info-bg:     #ebf5ff;
+    --maliev-info-fg:     #0068d6;
+    --maliev-action-primary:       #0a72ef;
+    --maliev-action-primary-hover: #075fc9;
+    --maliev-action-primary-text:  #ffffff;
+
+    /* Shadows */
+    --maliev-shadow-ring:      rgba(0,0,0,0.08) 0 0 0 1px;
+    --maliev-shadow-ring-soft: rgb(235,235,235) 0 0 0 1px;
+    --maliev-shadow-sm:        rgba(0,0,0,0.08) 0 0 0 1px, rgba(0,0,0,0.03) 0 1px 2px;
+    --maliev-shadow-md:        rgba(0,0,0,0.08) 0 0 0 1px, rgba(0,0,0,0.04) 0 2px 6px;
+    --maliev-shadow-lg:        rgba(0,0,0,0.10) 0 0 0 1px, rgba(0,0,0,0.08) 0 16px 40px -24px;
+    --maliev-shadow-card:      rgba(0,0,0,0.08) 0 0 0 1px, rgba(0,0,0,0.04) 0 2px 2px, rgba(0,0,0,0.04) 0 8px 8px -8px, #fafafa 0 0 0 1px inset;
+    --maliev-focus-color:      hsla(212, 100%, 48%, 1);
+    --maliev-focus-ring:       0 0 0 2px #ffffff, 0 0 0 4px var(--maliev-focus-color);
+    --maliev-reconnect-button-bg: #0a72ef;
+    --maliev-reconnect-button-hover: #075fc9;
+    --maliev-reconnect-button-text: #ffffff;
+    --maliev-reconnect-button-focus: rgba(10, 114, 239, 0.24);
+
+    /* Radius scale */
+    --maliev-radius-xs:   3px;
+    --maliev-radius-sm:   6px;
+    --maliev-radius-md:   8px;
+    --maliev-radius-lg:   8px;
+    --maliev-radius-xl:   8px;
+    --maliev-radius-pill: 99px;
+
+    /* Spacing scale */
+    --maliev-space-1:  2px;
+    --maliev-space-2:  4px;
+    --maliev-space-3:  6px;
+    --maliev-space-4:  8px;
+    --maliev-space-5:  10px;
+    --maliev-space-6:  12px;
+    --maliev-space-7:  14px;
+    --maliev-space-8:  16px;
+    --maliev-space-9:  20px;
+    --maliev-space-10: 24px;
+    --maliev-space-11: 32px;
+    --maliev-space-12: 48px;
+
+    /* Responsive breakpoints */
+    --maliev-bp-mobile: 600px;
+    --maliev-bp-tablet: 1200px;
+
+    /* Typography micro-scale (below MudBlazor's 13px base) */
+    --maliev-font-nano:  10px;
+    --maliev-font-micro: 11px;
+    --maliev-font-small: 12px;
+    --maliev-font-base:  13px;
+    --maliev-font-large: 14px;
+    --maliev-font-sans:  'Geist', 'Noto Sans Thai', sans-serif;
+    --maliev-font-mono:  'Geist Mono', 'Noto Sans Thai', ui-monospace, SFMono-Regular, Menlo, Monaco, 'Courier New', monospace;
+
+    /* Icon sizes */
+    --maliev-icon-sm: 14px;
+    --maliev-icon-md: 18px;
+    --maliev-icon-lg: 20px;
+
+    /* Viewer / scrollbar */
+    --maliev-viewer-bg:    linear-gradient(180deg, #ffffff 0%, #fafafa 100%);
+    --maliev-scroll:       #d4d4d4;
+    --maliev-scroll-hover: #a3a3a3;
+
+    /* MudBlazor gap-filler (text-tertiary not in MudBlazor 9 palette) */
+    --mud-palette-text-tertiary: #666666;
+}
+
+/* ── Dark mode ────────────────────────────────────────────────── */
+:root[data-maliev-theme="dark"] {
+    --maliev-accent:        #fafafa;
+    --maliev-bg:            #0a0a0a;
+    --maliev-panel:         #171717;
+    --maliev-panel-2:       #111111;
+    --maliev-panel-3:       #202020;
+    --maliev-ink:           #fafafa;
+    --maliev-ink-2:         #a3a3a3;
+    --maliev-muted:         #808080;
+    --maliev-muted-2:       #666666;
+    --maliev-muted-3:       #4d4d4d;
+    --maliev-border:        #2f2f2f;
+    --maliev-border-subtle: #202020;
+    --maliev-accent-soft:   #202020;
+    --maliev-accent-softer: #111111;
+
+    --maliev-ok:          #1fc16b;
+    --maliev-ok-bg:       #062d1c;
+    --maliev-warn:        #f5a524;
+    --maliev-warn-bg:     #3a2a14;
+    --maliev-warn-border: #6a4a1a;
+    --maliev-warn-fg:     #f0c274;
+    --maliev-danger:      #ff5b5b;
+    --maliev-danger-bg:   #3a1111;
+    --maliev-info:        #60a5fa;
+    --maliev-info-bg:     #0b2f62;
+    --maliev-info-fg:     #bfdbfe;
+    --maliev-action-primary:       #0a72ef;
+    --maliev-action-primary-hover: #2686ff;
+    --maliev-action-primary-text:  #ffffff;
+
+    --maliev-shadow-ring:      rgba(255,255,255,0.12) 0 0 0 1px;
+    --maliev-shadow-ring-soft: rgba(255,255,255,0.08) 0 0 0 1px;
+    --maliev-shadow-sm:        rgba(255,255,255,0.12) 0 0 0 1px, rgba(0,0,0,0.24) 0 1px 2px;
+    --maliev-shadow-md:        rgba(255,255,255,0.12) 0 0 0 1px, rgba(0,0,0,0.32) 0 2px 8px;
+    --maliev-shadow-lg:        rgba(255,255,255,0.12) 0 0 0 1px, rgba(0,0,0,0.46) 0 16px 40px -24px;
+    --maliev-shadow-card:      rgba(255,255,255,0.12) 0 0 0 1px, rgba(0,0,0,0.36) 0 2px 2px, rgba(0,0,0,0.36) 0 8px 8px -8px, rgba(255,255,255,0.06) 0 0 0 1px inset;
+    --maliev-focus-ring:       0 0 0 2px #0a0a0a, 0 0 0 4px var(--maliev-focus-color);
+    --maliev-reconnect-button-bg: #0a72ef;
+    --maliev-reconnect-button-hover: #2686ff;
+    --maliev-reconnect-button-text: #ffffff;
+    --maliev-reconnect-button-focus: rgba(10, 114, 239, 0.32);
+
+    --maliev-viewer-bg:    linear-gradient(180deg, #111111 0%, #171717 100%);
+    --maliev-scroll:       #404040;
+    --maliev-scroll-hover: #666666;
+
+    --mud-palette-text-tertiary: #808080;
+}
+
+/* Scrollbar theming */
+:root[data-maliev-theme="dark"] ::-webkit-scrollbar-thumb {
+    background: var(--maliev-scroll);
+}
+:root[data-maliev-theme="dark"] ::-webkit-scrollbar-thumb:hover {
+    background: var(--maliev-scroll-hover);
+}

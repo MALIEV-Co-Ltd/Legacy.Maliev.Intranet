@@ -1,0 +1,108 @@
+.mlv-progressive-skeleton {
+    display: grid;
+    gap: 12px;
+    min-width: 0;
+}
+
+.mlv-progressive-skeleton-header,
+.mlv-progressive-skeleton-filters,
+.mlv-progressive-skeleton-stats,
+.mlv-progressive-skeleton-head,
+.mlv-progressive-skeleton-table-row,
+.mlv-progressive-skeleton-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 0;
+}
+
+.mlv-progressive-skeleton-header {
+    justify-content: space-between;
+}
+
+.mlv-progressive-skeleton-filters {
+    display: grid;
+    grid-template-columns: minmax(180px, 260px) minmax(140px, 220px) auto;
+}
+
+.mlv-progressive-skeleton-table,
+.mlv-progressive-skeleton-list,
+.mlv-progressive-skeleton-panel {
+    display: grid;
+    gap: 10px;
+    padding: 12px;
+    border-radius: var(--maliev-radius-md);
+    background: var(--maliev-panel);
+    box-shadow: var(--maliev-shadow-ring);
+}
+
+.mlv-progressive-skeleton-head,
+.mlv-progressive-skeleton-table-row {
+    display: grid;
+    grid-template-columns: repeat(var(--mlv-skeleton-columns, 5), minmax(0, 1fr));
+    padding: 6px 0;
+    border-bottom: 1px solid var(--maliev-border-subtle);
+}
+
+.mlv-progressive-skeleton-table-row:last-child {
+    border-bottom: 0;
+}
+
+.mlv-progressive-skeleton-row {
+    justify-content: space-between;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--maliev-border-subtle);
+}
+
+.mlv-progressive-skeleton-row:last-child {
+    border-bottom: 0;
+}
+
+.mlv-progressive-skeleton-copy,
+.mlv-progressive-skeleton-fields,
+.mlv-progressive-skeleton-compact {
+    display: grid;
+    gap: 8px;
+    min-width: 0;
+}
+
+.mlv-progressive-skeleton-copy {
+    flex: 1 1 auto;
+}
+
+.mlv-progressive-skeleton-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+}
+
+.mlv-progressive-skeleton-stat {
+    display: grid;
+    gap: 6px;
+    padding: 12px;
+    border-radius: var(--maliev-radius-md);
+    background: var(--maliev-panel);
+    box-shadow: var(--maliev-shadow-ring);
+}
+
+.mlv-progressive-skeleton-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1.4fr) minmax(260px, 0.6fr);
+    gap: 12px;
+}
+
+@media (max-width: 760px) {
+    .mlv-progressive-skeleton-filters,
+    .mlv-progressive-skeleton-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .mlv-progressive-skeleton-head,
+    .mlv-progressive-skeleton-table-row {
+        grid-template-columns: 1.2fr 1fr;
+    }
+
+    .mlv-progressive-skeleton-head > :nth-child(n+3),
+    .mlv-progressive-skeleton-table-row > :nth-child(n+3) {
+        display: none;
+    }
+}

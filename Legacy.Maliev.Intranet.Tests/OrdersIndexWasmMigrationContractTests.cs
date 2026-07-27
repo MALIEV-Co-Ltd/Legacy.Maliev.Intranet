@@ -36,7 +36,13 @@ public sealed class OrdersIndexWasmMigrationContractTests
         Assert.Contains("Task.WhenAll", page, StringComparison.Ordinal);
         Assert.Contains("AssignedOrders", page, StringComparison.Ordinal);
         Assert.Contains("UnassignedOrders", page, StringComparison.Ordinal);
-        Assert.Contains("MudTable", page, StringComparison.Ordinal);
+        Assert.Contains("mlv-module-shell", page, StringComparison.Ordinal);
+        Assert.Contains("<ModuleHeader", page, StringComparison.Ordinal);
+        Assert.Contains("<SearchBox", page, StringComparison.Ordinal);
+        Assert.Contains("<ProgressiveSkeleton", page, StringComparison.Ordinal);
+        Assert.Contains("class=\"mlv-table orders-table\"", page, StringComparison.Ordinal);
+        Assert.Contains("data-label=", page, StringComparison.Ordinal);
+        Assert.Contains("aria-live=\"polite\"", page, StringComparison.Ordinal);
         Assert.Contains("/Orders/Create", page, StringComparison.Ordinal);
         Assert.Contains("/Orders/View?id=", page, StringComparison.Ordinal);
         Assert.Contains("OnClick=\"ReloadAsync\"", page, StringComparison.Ordinal);
