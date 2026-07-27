@@ -51,12 +51,9 @@ are available.
 
 ## Latest validation checkpoint (2026-07-27)
 
-- Branch: `main` at merge `00b79131b25696a972bc2db96bc9b086784190cf` (PR #90,
-  current-shell navigation grouping). The local Aspire checkout includes this
-  navigation slice through a local cherry-pick; it does not change the remote
-  branch or authorize deployment. Earlier browser-safe Maps configuration
-  (`e70253f`) and nonce-bound Google employee sign-in (`d410b4c`, sourced from
-  AuthService `8911dcc`) remain part of the legacy baseline. AppHost wires the
+- Branch: `main` (remote merge `25cac405`; local Aspire checkout is synchronized to the same tree); the parity branch now also contains
+  browser-safe Maps configuration (`e70253f`) and nonce-bound Google employee
+  sign-in (`d410b4c`, sourced from AuthService `8911dcc`). AppHost wires the
   optional local Google client/hosted-domain values and the dedicated
   `legacy-auth.google-identity.exchange` permission (`da3c0dd`, with the
   formatter-only follow-up `259fbee`).
@@ -77,18 +74,15 @@ are available.
   self-service edits remain fail-closed until the owning EmployeeService
   preference contract is migrated.
 - The legacy workspace navigation now preserves all 24 legacy-owned CRM/ERP
-  workflows (including create routes and employee profile/server errors), and
-  the merged `00b79131` slice aligns desktop grouping with the current shell:
-  Sales, Finance, and Manufacturing are primary groups while Purchasing and
-  People are available through a More overflow menu. Every link still uses the
-  same fail-closed permission semantics: authenticated sessions can activate
-  only links backed by server-issued permission claims, while unauthenticated
-  or missing-permission links remain visibly disabled in desktop and mobile
-  navigation. The BFF remains the authoritative authorization boundary.
-  Current-only project, commerce, delivery-note, IAM, and administration links
-  are intentionally absent until their contracts are migrated. The Orders page
-  has a tested Refresh action that reuses the existing bounded `/bff/orders`
-  load path.
+  workflows (including create routes and employee profile/server errors), but
+  applies the same fail-closed permission semantics as the current shell:
+  authenticated sessions can activate only links backed by their server-issued
+  permission claims, while unauthenticated or missing-permission links remain
+  visibly disabled in desktop and mobile navigation. The BFF remains the
+  authoritative authorization boundary. Current-only project, commerce,
+  delivery-note, IAM, and administration links are still intentionally absent
+  until their contracts are migrated. The Orders page now has a tested Refresh
+  action that reuses the existing bounded `/bff/orders` load path.
 - The workspace shell now restores the current persisted light/dark theme
   toggle through the existing blocking `malievTheme` bootstrap, binds the
   MudBlazor dark palette, and applies dark surface/text variables without
@@ -99,15 +93,15 @@ are available.
   carries Remember Me through the opaque server-side session ticket. Supported
   cultures are normalized to `en-TH`, `th-TH`, or `en-US`.
 - `dotnet test Legacy.Maliev.Intranet.Tests\Legacy.Maliev.Intranet.Tests.csproj -c Release --no-build --no-restore`
-  passed **566/566** with zero skips after the permission-aware navigation,
-  current-shell grouping/overflow, persisted workspace theme, Orders Refresh,
-  WASM runtime/login interop, and refresh-race hardening slices; the focused
-  navigation/auth/theme parity suite passed **15/15**, and the purchase-order
+  passed **563/563** with zero skips after the permission-aware navigation,
+  persisted workspace theme, Orders Refresh, WASM runtime/login interop, and
+  refresh-race hardening slices; the focused auth contract subset passed
+  **49/49**, focused navigation/theme passed **9/9**, and the purchase-order
   outcome/reconciliation slice passed **11/11**.
   With
   `MALIEV_CURRENT_INTRANET_ROOT` pointed at the original
   checkout, the route-parity subset passed **3/3** and the full suite passed
-  **566/566** again. The
+  **563/563** again. The
   clean Release build passed with **0 warnings and 0 errors** after stopping
   the serving BFF, and whitespace/diff verification passed. AuthService passed
   **107/107** and FileService passed
@@ -119,9 +113,7 @@ are available.
   `bd7cd33` with 43 newer delegated upload/Instant-Quotation commits. Those
   commits remain owned by the FileService/Web lanes and are not claimed as
   integrated into this Intranet validation.
-- Main CI run `30225807339` reports the same Release build and **566/566** test
-  result; immutable image run `30225807482` succeeded with the deployment gate
-  remaining planned-only. Aspire local validation currently reports **16/16 application projects
+- Aspire local validation currently reports **16/16 application projects
   Running and Healthy** and **42/42 runtime resources Healthy**, with all
   **19 migration runners Finished with exit code 0**. The 14 API resources'
   `aspire-liveness`, `liveness`, and `readiness` probes plus the BFF probes
@@ -140,7 +132,7 @@ are available.
 - After the Orders Refresh, auth refresh-race, and purchase-order
   reconciliation slices (`b4dca3c`, `4a5080d`, `60addae`), the Aspire BFF
   rebuild passed a clean build with **0 warnings and 0 errors**; Release tests
-  passed **566/566**, all 16 application projects were Healthy, all 19
+  passed **563/563**, all 16 application projects were Healthy, all 19
   migration runners exited 0, and the 14 API resources plus BFF returned HTTP
   200 for every local health/login/session check (**49/49**). The latest Intranet BFF
   returned HTTP 200 for `/intranet-bff/aspire-liveness`,
