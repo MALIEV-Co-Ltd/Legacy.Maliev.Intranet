@@ -3,6 +3,7 @@
 @inject EmployeeAuthenticationClient AuthenticationClient
 @inject LegacyThemeService ThemeService
 @inject NavigationManager Navigation
+@inject IStringLocalizer<MainLayout> Text
 @implements IDisposable
 
 <MudThemeProvider Theme="_theme" IsDarkMode="@ThemeService.IsDarkMode" />
@@ -10,7 +11,7 @@
 <MudDialogProvider />
 <MudSnackbarProvider />
 
-<a class="legacy-skip-link" href="#main-content">Skip to content</a>
+<a class="legacy-skip-link" href="#main-content">@Text["Skip to content"]</a>
 
 <MudLayout Class="legacy-layout">
     <LegacyTopBar Session="@session" OnSignOut="SignOutAsync" />

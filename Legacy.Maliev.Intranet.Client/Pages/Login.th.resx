@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
+  <data name="PageTitle" xml:space="preserve"><value>MALIEV | ประตูทางเข้าอินทราเน็ต</value></data>
+  <data name="Employee gateway" xml:space="preserve"><value>ทางเข้าสำหรับพนักงาน</value></data>
+  <data name="Sign in to" xml:space="preserve"><value>เข้าสู่ระบบ</value></data>
+  <data name="Continue with Google" xml:space="preserve"><value>ดำเนินการต่อด้วย Google</value></data>
+  <data name="or continue with email" xml:space="preserve"><value>หรือดำเนินการต่อด้วยอีเมล</value></data>
+  <data name="Email" xml:space="preserve"><value>อีเมล</value></data>
+  <data name="Use your MALIEV work email." xml:space="preserve"><value>ใช้อีเมลที่ทำงานของ MALIEV</value></data>
+  <data name="Continue with email" xml:space="preserve"><value>ดำเนินการต่อด้วยอีเมล</value></data>
+  <data name="Change" xml:space="preserve"><value>เปลี่ยน</value></data>
+  <data name="Password" xml:space="preserve"><value>รหัสผ่าน</value></data>
+  <data name="Remember me" xml:space="preserve"><value>จดจำฉัน</value></data>
+  <data name="Signing in..." xml:space="preserve"><value>กำลังเข้าสู่ระบบ...</value></data>
+  <data name="Sign in with email" xml:space="preserve"><value>เข้าสู่ระบบด้วยอีเมล</value></data>
+  <data name="Not an employee? Visit our main page at" xml:space="preserve"><value>ไม่ใช่พนักงานใช่ไหม เยี่ยมชมเว็บไซต์หลักของเราได้ที่</value></data>
+  <data name="Switch to light mode" xml:space="preserve"><value>เปลี่ยนเป็นโหมดสว่าง</value></data>
+  <data name="Switch to dark mode" xml:space="preserve"><value>เปลี่ยนเป็นโหมดมืด</value></data>
+  <data name="Employee sign-in is temporarily unavailable." xml:space="preserve"><value>ระบบเข้าสู่ระบบพนักงานไม่พร้อมใช้งานชั่วคราว</value></data>
+</root>
