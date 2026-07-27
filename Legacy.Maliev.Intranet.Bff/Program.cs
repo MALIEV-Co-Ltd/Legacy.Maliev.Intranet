@@ -903,6 +903,14 @@ app.MapGet("/bff/quotations/create", QuotationCreateEndpointMapper.GetAsync)
         .RequireClaim("permissions", LegacyEmployeePermissions.CatalogCurrenciesRead)
         .RequireClaim("permissions", LegacyEmployeePermissions.OrdersRead));
 
+app.MapGet("/bff/quotations/create/orders", QuotationCreateEndpointMapper.SearchOrdersAsync)
+    .RequireAuthorization(policy => policy
+        .RequireAuthenticatedUser()
+        .RequireClaim("permissions", LegacyEmployeePermissions.QuotationsCreate)
+        .RequireClaim("permissions", LegacyEmployeePermissions.QuotationLinesWrite)
+        .RequireClaim("permissions", LegacyEmployeePermissions.QuotationOrdersWrite)
+        .RequireClaim("permissions", LegacyEmployeePermissions.OrdersRead));
+
 app.MapPost("/bff/quotations", QuotationCreateEndpointMapper.PostAsync)
     .AddEndpointFilter<AntiforgeryValidationFilter>()
     .RequireAuthorization(policy => policy
