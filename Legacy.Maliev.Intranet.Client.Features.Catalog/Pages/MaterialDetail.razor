@@ -441,19 +441,12 @@
         }
     }
 
-    private void SetColorSelection(int id, ChangeEventArgs args) => SetSelection(selectedColorIds, id, args);
+    private void SetColorSelection(int id, bool selected) => SetSelection(selectedColorIds, id, selected);
 
-    private void SetSurfaceFinishSelection(int id, ChangeEventArgs args) => SetSelection(selectedSurfaceFinishIds, id, args);
+    private void SetSurfaceFinishSelection(int id, bool selected) => SetSelection(selectedSurfaceFinishIds, id, selected);
 
-    private static void SetSelection(HashSet<int> selection, int id, ChangeEventArgs args)
+    private static void SetSelection(HashSet<int> selection, int id, bool selected)
     {
-        var selected = args.Value switch
-        {
-            bool value => value,
-            string value when bool.TryParse(value, out var parsed) => parsed,
-            _ => false,
-        };
-
         if (selected)
         {
             selection.Add(id);
