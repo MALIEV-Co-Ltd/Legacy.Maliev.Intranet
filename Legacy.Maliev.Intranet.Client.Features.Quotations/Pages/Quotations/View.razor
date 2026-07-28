@@ -21,6 +21,10 @@
             <div><MudText Typo="Typo.overline">@Text["Sales"]</MudText><MudText Typo="Typo.h4" HtmlTag="h1">@Text["Heading", page.Quotation.Id]</MudText></div>
             <MudButton Href="/Quotations/Index" Variant="Variant.Outlined">@Text["Back"]</MudButton>
         </div>
+        @if (page.Files.LastOrDefault()?.Uri is Uri quotationUri)
+        {
+            <MudButton Class="mb-4" Href="@quotationUri.ToString()" Target="_blank" Rel="noopener" Variant="Variant.Filled" Color="Color.Primary">@Text["ViewPdf"]</MudButton>
+        }
 
         <MudAlert Severity="Severity.Info" Class="mb-4">@Text["ReadOnlyNotice"]</MudAlert>
         <MudGrid>

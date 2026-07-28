@@ -56,6 +56,125 @@ public sealed class BffMaterialsProxyContractTests
         Assert.DoesNotContain("LongName", body, StringComparison.Ordinal);
     }
 
+    [Theory]
+    [InlineData("/bff/catalog/colors", "/materials/Colors", "Black")]
+    [InlineData("/bff/catalog/surface-finishes", "/materials/SurfaceFinishes", "Anodized")]
+    public async Task AuthorizedEmployee_MaterialAssociationLookupsStayServerAuthenticated(
+        string bffPath,
+        string catalogPath,
+        string expectedValue)
+    {
+        var downstream = new RecordingCatalogHandler(
+            HttpStatusCode.OK,
+            $"[{{\"Id\":7,\"Name\":\"{expectedValue}\"}}]");
+        await using var factory = new MaterialsBffFactory(downstream, hasPermission: true);
+        using var client = CreateClient(factory);
+        await SignInAsync(client);
+
+        using var response = await client.GetAsync(bffPath);
+        var body = await response.Content.ReadAsStringAsync();
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal(catalogPath, downstream.PathAndQuery);
+        Assert.Equal("Bearer signed-service-token", downstream.Authorization);
+        Assert.Contains(expectedValue, body, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("/bff/catalog/materials/42/colors", "/materials/42/colors", "Black")]
+    [InlineData("/bff/catalog/materials/42/surface-finishes", "/materials/42/surfacefinishes", "Anodized")]
+    public async Task AuthorizedEmployee_LinkedMaterialAssociationsStayServerAuthenticated(
+        string bffPath,
+        string catalogPath,
+        string expectedValue)
+    {
+        var downstream = new RecordingCatalogHandler(
+            HttpStatusCode.OK,
+            $"[{{\"Id\":7,\"Name\":\"{expectedValue}\"}}]");
+        await using var factory = new MaterialsBffFactory(downstream, hasPermission: true);
+        using var client = CreateClient(factory);
+        await SignInAsync(client);
+
+        using var response = await client.GetAsync(bffPath);
+        var body = await response.Content.ReadAsStringAsync();
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal(catalogPath, downstream.PathAndQuery);
+        Assert.Equal("Bearer signed-service-token", downstream.Authorization);
+        Assert.Contains(expectedValue, body, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("POST", "/bff/catalog/materials/42/colors/7", "/materials/42/colors/7")]
+    [InlineData("DELETE", "/bff/catalog/materials/42/colors/7", "/materials/42/colors/7")]
+    [InlineData("POST", "/bff/catalog/materials/42/surface-finishes/7", "/materials/42/surfacefinishes/7")]
+    [InlineData("DELETE", "/bff/catalog/materials/42/surface-finishes/7", "/materials/42/surfacefinishes/7")]
+    public async Task AuthorizedEmployee_MaterialAssociationWritesForwardWithCsrfAndServerToken(
+        string method,
+        string bffPath,
+        string catalogPath)
+    {
+        var downstream = new RecordingCatalogHandler(HttpStatusCode.NoContent, string.Empty);
+        await using var factory = new MaterialsBffFactory(
+            downstream,
+            hasPermission: true,
+            compatibilityGrant: false,
+            hasUpdatePermission: true);
+        using var client = CreateClient(factory);
+        await SignInAsync(client);
+        var csrf = await GetCsrfAsync(client);
+        using var request = new HttpRequestMessage(new HttpMethod(method), bffPath);
+        request.Headers.Add("X-CSRF-TOKEN", csrf);
+
+        using var response = await client.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+        Assert.Equal(catalogPath, downstream.PathAndQuery);
+        Assert.Equal("Bearer signed-service-token", downstream.Authorization);
+        Assert.Equal(new HttpMethod(method), downstream.Method);
+        Assert.Null(downstream.Body);
+    }
+
+    [Theory]
+    [InlineData("POST", "/bff/catalog/materials/42/colors/7")]
+    [InlineData("DELETE", "/bff/catalog/materials/42/surface-finishes/7")]
+    public async Task MaterialAssociationWritesWithoutCsrf_AreRejectedBeforeCatalogCall(
+        string method,
+        string bffPath)
+    {
+        var downstream = new RecordingCatalogHandler(HttpStatusCode.NoContent, string.Empty);
+        await using var factory = new MaterialsBffFactory(
+            downstream,
+            hasPermission: true,
+            compatibilityGrant: false,
+            hasUpdatePermission: true);
+        using var client = CreateClient(factory);
+        await SignInAsync(client);
+        using var request = new HttpRequestMessage(new HttpMethod(method), bffPath);
+
+        using var response = await client.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal(0, downstream.RequestCount);
+    }
+
+    [Fact]
+    public async Task ReadOnlyEmployee_MaterialAssociationWriteIsForbiddenBeforeCatalogCall()
+    {
+        var downstream = new RecordingCatalogHandler(HttpStatusCode.NoContent, string.Empty);
+        await using var factory = new MaterialsBffFactory(downstream, hasPermission: true);
+        using var client = CreateClient(factory);
+        await SignInAsync(client);
+        var csrf = await GetCsrfAsync(client);
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/bff/catalog/materials/42/colors/7");
+        request.Headers.Add("X-CSRF-TOKEN", csrf);
+
+        using var response = await client.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+        Assert.Equal(0, downstream.RequestCount);
+    }
+
     [Fact]
     public async Task CreateWithoutCsrf_IsRejectedBeforeCatalogCall()
     {

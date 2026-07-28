@@ -93,6 +93,14 @@ public sealed class MaterialsViewWasmMigrationContractTests
         Assert.Contains("MaterialSaved", resource, StringComparison.Ordinal);
         Assert.Contains("Conflict", resource, StringComparison.Ordinal);
         Assert.Contains("HttpStatusCode.Conflict", page, StringComparison.Ordinal);
+        Assert.Contains("AvailableColors", page, StringComparison.Ordinal);
+        Assert.Contains("AvailableSurfaceFinishes", page, StringComparison.Ordinal);
+        Assert.Contains("/bff/catalog/colors", page, StringComparison.Ordinal);
+        Assert.Contains("/bff/catalog/surface-finishes", page, StringComparison.Ordinal);
+        Assert.Contains("/bff/catalog/materials/{Id}/colors", page, StringComparison.Ordinal);
+        Assert.Contains("/bff/catalog/materials/{Id}/surface-finishes", page, StringComparison.Ordinal);
+        Assert.Contains("SyncAssociationSetAsync", page, StringComparison.Ordinal);
+        Assert.Contains("X-CSRF-TOKEN", page, StringComparison.Ordinal);
 
         Assert.True(
             File.Exists(Path.Combine(root, "Legacy.Maliev.Intranet", "Pages", "Materials", "View.cshtml")),

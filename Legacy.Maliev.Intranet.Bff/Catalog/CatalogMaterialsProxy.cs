@@ -13,6 +13,50 @@ public sealed class CatalogMaterialsProxy(HttpClient httpClient)
     public Task<HttpResponseMessage> GetCurrenciesAsync(CancellationToken cancellationToken) =>
         SendAsync(HttpMethod.Get, "/Currencies", null, cancellationToken);
 
+    /// <summary>Gets the complete legacy color lookup used by material editing.</summary>
+    public Task<HttpResponseMessage> GetColorsAsync(CancellationToken cancellationToken) =>
+        SendAsync(HttpMethod.Get, "/materials/Colors", null, cancellationToken);
+
+    /// <summary>Gets colors currently linked to a material.</summary>
+    public Task<HttpResponseMessage> GetMaterialColorsAsync(int materialId, CancellationToken cancellationToken) =>
+        SendAsync(HttpMethod.Get, $"/materials/{materialId}/colors", null, cancellationToken);
+
+    /// <summary>Adds one material/color relationship through CatalogService.</summary>
+    public Task<HttpResponseMessage> AddMaterialColorAsync(
+        int materialId,
+        int colorId,
+        CancellationToken cancellationToken) =>
+        SendAsync(HttpMethod.Post, $"/materials/{materialId}/colors/{colorId}", null, cancellationToken);
+
+    /// <summary>Removes one material/color relationship through CatalogService.</summary>
+    public Task<HttpResponseMessage> RemoveMaterialColorAsync(
+        int materialId,
+        int colorId,
+        CancellationToken cancellationToken) =>
+        SendAsync(HttpMethod.Delete, $"/materials/{materialId}/colors/{colorId}", null, cancellationToken);
+
+    /// <summary>Gets the complete legacy surface-finish lookup used by material editing.</summary>
+    public Task<HttpResponseMessage> GetSurfaceFinishesAsync(CancellationToken cancellationToken) =>
+        SendAsync(HttpMethod.Get, "/materials/SurfaceFinishes", null, cancellationToken);
+
+    /// <summary>Gets surface finishes currently linked to a material.</summary>
+    public Task<HttpResponseMessage> GetMaterialSurfaceFinishesAsync(int materialId, CancellationToken cancellationToken) =>
+        SendAsync(HttpMethod.Get, $"/materials/{materialId}/surfacefinishes", null, cancellationToken);
+
+    /// <summary>Adds one material/surface-finish relationship through CatalogService.</summary>
+    public Task<HttpResponseMessage> AddMaterialSurfaceFinishAsync(
+        int materialId,
+        int surfaceFinishId,
+        CancellationToken cancellationToken) =>
+        SendAsync(HttpMethod.Post, $"/materials/{materialId}/surfacefinishes/{surfaceFinishId}", null, cancellationToken);
+
+    /// <summary>Removes one material/surface-finish relationship through CatalogService.</summary>
+    public Task<HttpResponseMessage> RemoveMaterialSurfaceFinishAsync(
+        int materialId,
+        int surfaceFinishId,
+        CancellationToken cancellationToken) =>
+        SendAsync(HttpMethod.Delete, $"/materials/{materialId}/surfacefinishes/{surfaceFinishId}", null, cancellationToken);
+
     /// <summary>Creates a complete material while the service credential remains server-side.</summary>
     public Task<HttpResponseMessage> CreateAsync(
         CatalogMaterialUpsertRequest request,

@@ -15,6 +15,37 @@ namespace Legacy.Maliev.Intranet.Bff.Quotations;
 
 internal static class QuotationCreateEndpointMapper
 {
+    public static async Task<IResult> SearchOrdersAsync(
+        string? search,
+        int? customerId,
+        OrdersProxy orders,
+        HttpContext context,
+        CancellationToken cancellationToken)
+    {
+        var normalizedSearch = search?.Trim() ?? string.Empty;
+        if (normalizedSearch.Length == 0) return Results.Ok(Array.Empty<OrderListItem>());
+        try
+        {
+            using var response = customerId is > 0
+                ? await orders.GetCustomerAsync(customerId.Value, normalizedSearch, 1, 10, cancellationToken)
+                : await orders.GetAsync(OrderListSort.OrderCreatedDate_Descending, normalizedSearch, 1, 10, cancellationToken);
+            if (response.StatusCode == HttpStatusCode.NotFound) return Results.Ok(Array.Empty<OrderListItem>());
+            var failure = MapFailure(response);
+            if (failure is not null) return failure;
+            var page = await response.Content.ReadFromJsonAsync<OrderListPage>(cancellationToken);
+            if (page?.Items is null || page.Items.Any(item => item.Id < 1 || customerId is > 0 && item.CustomerId != customerId)) return InvalidResponse();
+            return Results.Ok(page.Items);
+        }
+        catch (Exception exception) when (IsUnavailable(exception, cancellationToken))
+        {
+            return Unavailable();
+        }
+        catch (System.Text.Json.JsonException)
+        {
+            return InvalidResponse();
+        }
+    }
+
     public static async Task<IResult> GetAsync(
         int? customerId,
         HttpContext context,
