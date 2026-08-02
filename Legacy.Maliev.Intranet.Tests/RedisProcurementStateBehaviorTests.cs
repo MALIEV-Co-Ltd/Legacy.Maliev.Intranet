@@ -11,14 +11,29 @@ using Testcontainers.Redis;
 
 namespace Legacy.Maliev.Intranet.Tests;
 
-public sealed class RedisProcurementStateBehaviorTests : IAsyncLifetime
+[CollectionDefinition(Name, DisableParallelization = true)]
+public sealed class RedisProcurementStateCollection : ICollectionFixture<RedisProcurementStateFixture>
 {
-    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
+    public const string Name = "Redis procurement state";
+}
+
+public sealed class RedisProcurementStateFixture : IAsyncLifetime
+{
     private readonly RedisContainer redis = new RedisBuilder("redis:7.4.5-alpine").Build();
 
-    public async Task InitializeAsync() => await redis.StartAsync();
+    public string ConnectionString => redis.GetConnectionString();
 
-    public async Task DisposeAsync() => await redis.DisposeAsync();
+    public Task InitializeAsync() => redis.StartAsync();
+
+    public Task DisposeAsync() => redis.DisposeAsync().AsTask();
+}
+
+[Collection(RedisProcurementStateCollection.Name)]
+public sealed class RedisProcurementStateBehaviorTests(RedisProcurementStateFixture fixture)
+{
+    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
+    private static readonly TimeSpan CompletionTimeout = TimeSpan.FromSeconds(10);
+    private static readonly TimeSpan ContentionProbeTimeout = TimeSpan.FromMilliseconds(750);
 
     [Fact]
     public async Task OrderState_RoundTripsUpdatesRemovesAndExpiresAfterSevenDays()
@@ -64,78 +79,142 @@ public sealed class RedisProcurementStateBehaviorTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task OrderLock_SerializesSameKeyAndReleasesOwnedLease()
+    public async Task OrderLock_SerializesIndependentConnectionsAndAllowsBoundedRetry()
     {
-        using var resources = await CreateResourcesAsync();
-        var store = new RedisOrderCreationStateStore(resources, NullLogger<RedisOrderCreationStateStore>.Instance);
+        using var ownerResources = await CreateResourcesAsync();
+        using var contenderResources = await CreateResourcesAsync();
+        var ownerStore = new RedisOrderCreationStateStore(ownerResources, NullLogger<RedisOrderCreationStateStore>.Instance);
+        var contenderStore = new RedisOrderCreationStateStore(contenderResources, NullLogger<RedisOrderCreationStateStore>.Instance);
         var key = Guid.NewGuid().ToString("N");
-        var firstEntered = NewSignal();
-        var releaseFirst = NewSignal();
-        var secondEntered = NewSignal();
+        var ownerEntered = NewSignal();
+        var releaseOwner = NewSignal();
+        var contenderEntered = NewSignal();
 
-        var first = store.ExecuteLockedAsync(key, async cancellationToken =>
+        var owner = ownerStore.ExecuteLockedAsync(key, async cancellationToken =>
         {
-            firstEntered.TrySetResult();
-            await releaseFirst.Task.WaitAsync(cancellationToken);
+            ownerEntered.TrySetResult();
+            await releaseOwner.Task.WaitAsync(cancellationToken);
             return 1;
         }, TestContext.Current.CancellationToken);
-        await firstEntered.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+        await ownerEntered.Task.WaitAsync(CompletionTimeout, TestContext.Current.CancellationToken);
 
-        var second = store.ExecuteLockedAsync(key, _ =>
+        using (var blocked = new CancellationTokenSource(ContentionProbeTimeout))
         {
-            secondEntered.TrySetResult();
-            return Task.FromResult(2);
-        }, TestContext.Current.CancellationToken);
+            await Assert.ThrowsAnyAsync<OperationCanceledException>(() => contenderStore.ExecuteLockedAsync(key, _ =>
+            {
+                contenderEntered.TrySetResult();
+                return Task.FromResult(2);
+            }, blocked.Token).WaitAsync(CompletionTimeout));
+        }
+        Assert.False(contenderEntered.Task.IsCompleted);
 
-        await Task.Delay(250, TestContext.Current.CancellationToken);
-        Assert.False(secondEntered.Task.IsCompleted);
-        var database = resources.Redis.GetDatabase();
+        var database = contenderResources.Redis.GetDatabase();
         var lockKey = $"legacy:intranet:order-create:lock:{key}";
         Assert.True(await database.KeyExistsAsync(lockKey));
         var ttl = await database.KeyTimeToLiveAsync(lockKey);
         Assert.NotNull(ttl);
         Assert.InRange(ttl.Value, TimeSpan.FromSeconds(90), TimeSpan.FromMinutes(2));
 
-        releaseFirst.TrySetResult();
-        Assert.Equal(1, await first);
-        Assert.Equal(2, await second);
-        Assert.True(secondEntered.Task.IsCompletedSuccessfully);
+        releaseOwner.TrySetResult();
+        Assert.Equal(1, await owner.WaitAsync(CompletionTimeout));
+        Assert.Equal(2, await contenderStore.ExecuteLockedAsync(key, _ => Task.FromResult(2), TestContext.Current.CancellationToken).WaitAsync(CompletionTimeout));
         Assert.False(await database.KeyExistsAsync(lockKey));
     }
 
     [Fact]
-    public async Task QuotationLock_SerializesSameKeyAndReleasesOwnedLease()
+    public async Task QuotationLock_SerializesIndependentConnectionsAndAllowsBoundedRetry()
+    {
+        using var ownerResources = await CreateResourcesAsync();
+        using var contenderResources = await CreateResourcesAsync();
+        var ownerStore = new RedisQuotationCreationStateStore(ownerResources, NullLogger<RedisQuotationCreationStateStore>.Instance);
+        var contenderStore = new RedisQuotationCreationStateStore(contenderResources, NullLogger<RedisQuotationCreationStateStore>.Instance);
+        var key = Guid.NewGuid().ToString("N");
+        var ownerEntered = NewSignal();
+        var releaseOwner = NewSignal();
+        var contenderEntered = NewSignal();
+
+        var owner = ownerStore.ExecuteLockedAsync(key, async cancellationToken =>
+        {
+            ownerEntered.TrySetResult();
+            await releaseOwner.Task.WaitAsync(cancellationToken);
+            return 1;
+        }, TestContext.Current.CancellationToken);
+        await ownerEntered.Task.WaitAsync(CompletionTimeout, TestContext.Current.CancellationToken);
+
+        using (var blocked = new CancellationTokenSource(ContentionProbeTimeout))
+        {
+            await Assert.ThrowsAnyAsync<OperationCanceledException>(() => contenderStore.ExecuteLockedAsync(key, _ =>
+            {
+                contenderEntered.TrySetResult();
+                return Task.FromResult(2);
+            }, blocked.Token).WaitAsync(CompletionTimeout));
+        }
+        Assert.False(contenderEntered.Task.IsCompleted);
+
+        var database = contenderResources.Redis.GetDatabase();
+        var lockKey = $"legacy:intranet:quotation-create:lock:{key}";
+        Assert.True(await database.KeyExistsAsync(lockKey));
+
+        releaseOwner.TrySetResult();
+        Assert.Equal(1, await owner.WaitAsync(CompletionTimeout));
+        Assert.Equal(2, await contenderStore.ExecuteLockedAsync(key, _ => Task.FromResult(2), TestContext.Current.CancellationToken).WaitAsync(CompletionTimeout));
+        Assert.False(await database.KeyExistsAsync(lockKey));
+    }
+
+    [Fact]
+    public async Task OrderLock_StaleOwnerCannotDeleteReplacementLease()
+    {
+        using var resources = await CreateResourcesAsync();
+        var store = new RedisOrderCreationStateStore(resources, NullLogger<RedisOrderCreationStateStore>.Instance);
+        var key = Guid.NewGuid().ToString("N");
+        var lockKey = $"legacy:intranet:order-create:lock:{key}";
+        var entered = NewSignal();
+        var release = NewSignal();
+        var operation = store.ExecuteLockedAsync(key, async cancellationToken =>
+        {
+            entered.TrySetResult();
+            await release.Task.WaitAsync(cancellationToken);
+            return 1;
+        }, TestContext.Current.CancellationToken);
+        await entered.Task.WaitAsync(CompletionTimeout, TestContext.Current.CancellationToken);
+
+        var database = resources.Redis.GetDatabase();
+        var originalOwner = await database.StringGetAsync(lockKey);
+        Assert.False(originalOwner.IsNullOrEmpty);
+        Assert.True(await database.StringSetAsync(lockKey, "replacement-owner", TimeSpan.FromMinutes(2), When.Always));
+
+        release.TrySetResult();
+        Assert.Equal(1, await operation.WaitAsync(CompletionTimeout));
+        Assert.Equal("replacement-owner", (string?)await database.StringGetAsync(lockKey));
+        Assert.True(await database.KeyDeleteAsync(lockKey));
+    }
+
+    [Fact]
+    public async Task QuotationLock_StaleOwnerCannotDeleteReplacementLease()
     {
         using var resources = await CreateResourcesAsync();
         var store = new RedisQuotationCreationStateStore(resources, NullLogger<RedisQuotationCreationStateStore>.Instance);
         var key = Guid.NewGuid().ToString("N");
-        var firstEntered = NewSignal();
-        var releaseFirst = NewSignal();
-        var secondEntered = NewSignal();
-
-        var first = store.ExecuteLockedAsync(key, async cancellationToken =>
+        var lockKey = $"legacy:intranet:quotation-create:lock:{key}";
+        var entered = NewSignal();
+        var release = NewSignal();
+        var operation = store.ExecuteLockedAsync(key, async cancellationToken =>
         {
-            firstEntered.TrySetResult();
-            await releaseFirst.Task.WaitAsync(cancellationToken);
+            entered.TrySetResult();
+            await release.Task.WaitAsync(cancellationToken);
             return 1;
         }, TestContext.Current.CancellationToken);
-        await firstEntered.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
-        var second = store.ExecuteLockedAsync(key, _ =>
-        {
-            secondEntered.TrySetResult();
-            return Task.FromResult(2);
-        }, TestContext.Current.CancellationToken);
+        await entered.Task.WaitAsync(CompletionTimeout, TestContext.Current.CancellationToken);
 
-        await Task.Delay(250, TestContext.Current.CancellationToken);
-        Assert.False(secondEntered.Task.IsCompleted);
         var database = resources.Redis.GetDatabase();
-        var lockKey = $"legacy:intranet:quotation-create:lock:{key}";
-        Assert.True(await database.KeyExistsAsync(lockKey));
+        var originalOwner = await database.StringGetAsync(lockKey);
+        Assert.False(originalOwner.IsNullOrEmpty);
+        Assert.True(await database.StringSetAsync(lockKey, "replacement-owner", TimeSpan.FromMinutes(2), When.Always));
 
-        releaseFirst.TrySetResult();
-        Assert.Equal(1, await first);
-        Assert.Equal(2, await second);
-        Assert.False(await database.KeyExistsAsync(lockKey));
+        release.TrySetResult();
+        Assert.Equal(1, await operation.WaitAsync(CompletionTimeout));
+        Assert.Equal("replacement-owner", (string?)await database.StringGetAsync(lockKey));
+        Assert.True(await database.KeyDeleteAsync(lockKey));
     }
 
     [Fact]
@@ -146,10 +225,10 @@ public sealed class RedisProcurementStateBehaviorTests : IAsyncLifetime
         var key = Guid.NewGuid().ToString("N");
 
         await Assert.ThrowsAsync<InvalidOperationException>(() => store.ExecuteLockedAsync<int>(
-            key, _ => throw new InvalidOperationException("test failure"), TestContext.Current.CancellationToken));
+            key, _ => throw new InvalidOperationException("test failure"), TestContext.Current.CancellationToken).WaitAsync(CompletionTimeout));
 
         Assert.False(await resources.Redis.GetDatabase().KeyExistsAsync($"legacy:intranet:order-create:lock:{key}"));
-        Assert.Equal(7, await store.ExecuteLockedAsync(key, _ => Task.FromResult(7), TestContext.Current.CancellationToken));
+        Assert.Equal(7, await store.ExecuteLockedAsync(key, _ => Task.FromResult(7), TestContext.Current.CancellationToken).WaitAsync(CompletionTimeout));
     }
 
     [Fact]
@@ -160,10 +239,10 @@ public sealed class RedisProcurementStateBehaviorTests : IAsyncLifetime
         var key = Guid.NewGuid().ToString("N");
 
         await Assert.ThrowsAsync<InvalidOperationException>(() => store.ExecuteLockedAsync<int>(
-            key, _ => throw new InvalidOperationException("test failure"), TestContext.Current.CancellationToken));
+            key, _ => throw new InvalidOperationException("test failure"), TestContext.Current.CancellationToken).WaitAsync(CompletionTimeout));
 
         Assert.False(await resources.Redis.GetDatabase().KeyExistsAsync($"legacy:intranet:quotation-create:lock:{key}"));
-        Assert.Equal(9, await store.ExecuteLockedAsync(key, _ => Task.FromResult(9), TestContext.Current.CancellationToken));
+        Assert.Equal(9, await store.ExecuteLockedAsync(key, _ => Task.FromResult(9), TestContext.Current.CancellationToken).WaitAsync(CompletionTimeout));
     }
 
     [Fact]
@@ -178,13 +257,13 @@ public sealed class RedisProcurementStateBehaviorTests : IAsyncLifetime
         var orderStore = new RedisOrderCreationStateStore(resources, NullLogger<RedisOrderCreationStateStore>.Instance);
         var quotationStore = new RedisQuotationCreationStateStore(resources, NullLogger<RedisQuotationCreationStateStore>.Instance);
 
-        await Assert.ThrowsAsync<JsonException>(() => orderStore.GetAsync(orderKey, TestContext.Current.CancellationToken));
-        await Assert.ThrowsAsync<JsonException>(() => quotationStore.GetAsync(quotationKey, TestContext.Current.CancellationToken));
+        await Assert.ThrowsAsync<JsonException>(() => orderStore.GetAsync(orderKey, TestContext.Current.CancellationToken).WaitAsync(CompletionTimeout));
+        await Assert.ThrowsAsync<JsonException>(() => quotationStore.GetAsync(quotationKey, TestContext.Current.CancellationToken).WaitAsync(CompletionTimeout));
     }
 
     private async Task<LegacyDataProtectionResources> CreateResourcesAsync()
     {
-        var connection = await ConnectionMultiplexer.ConnectAsync(redis.GetConnectionString());
+        var connection = await ConnectionMultiplexer.ConnectAsync(fixture.ConnectionString).WaitAsync(CompletionTimeout);
         return new LegacyDataProtectionResources(CreateCertificate(), connection);
     }
 
@@ -203,7 +282,7 @@ public sealed class RedisProcurementStateBehaviorTests : IAsyncLifetime
 
     private static async Task AssertSevenDayExpiryAsync(IDatabase database, RedisKey key)
     {
-        var ttl = await database.KeyTimeToLiveAsync(key);
+        var ttl = await database.KeyTimeToLiveAsync(key).WaitAsync(CompletionTimeout);
         Assert.NotNull(ttl);
         Assert.InRange(ttl.Value, TimeSpan.FromDays(6.95), TimeSpan.FromDays(7));
     }

@@ -2,6 +2,7 @@ extern alias Bff;
 
 using System.Collections.Concurrent;
 using System.Net;
+using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
 using Legacy.Maliev.Intranet.Contracts;
@@ -24,6 +25,8 @@ internal sealed class TestCancellationContext
 
 public sealed class ProcurementStateGatewayBehaviorTests
 {
+    private const string ServiceAuthorization = "Bearer signed-service-token";
+
     [Fact]
     public async Task CreationGateway_UsesExactOptionRoutesAndFiltersInvalidRows()
     {
@@ -41,8 +44,10 @@ public sealed class ProcurementStateGatewayBehaviorTests
         Assert.Equal(new PurchaseOrderSupplierOption(7, "Supplier A"), Assert.Single(result.Suppliers));
         Assert.Equal(new PurchaseOrderEmployeeOption(9, "Employee A"), Assert.Single(result.Employees));
         Assert.Equal(new PurchaseOrderAddressOption(11, "16/1", "Nonthaburi"), Assert.Single(result.Addresses));
-        Assert.Equal(3, factory.Requests.Count);
-        Assert.All(factory.Requests, request => Assert.Equal(HttpMethod.Get, request.Method));
+        AssertRequests(factory.Requests,
+            (PurchaseOrderCreationGateway.ProcurementClient, HttpMethod.Get, "/Suppliers?sort=SupplierName_Ascending&search=&index=1&size=250"),
+            (PurchaseOrderCreationGateway.EmployeeClient, HttpMethod.Get, "/employees?sort=EmployeeId_Ascending&search=&index=1&size=250"),
+            (PurchaseOrderCreationGateway.ProcurementClient, HttpMethod.Get, "/purchaseorders/addresses"));
     }
 
     [Fact]
@@ -58,12 +63,17 @@ public sealed class ProcurementStateGatewayBehaviorTests
         var created = await gateway.CreateOrderAsync(request, "attempt-1", TestContext.Current.CancellationToken);
         var firstItem = await gateway.CreateItemAsync(41, request.Items[0], "attempt-1", 0, TestContext.Current.CancellationToken);
         var repeatedItem = await gateway.CreateItemAsync(41, request.Items[0], "attempt-1", 0, TestContext.Current.CancellationToken);
+        var secondItem = await gateway.CreateItemAsync(41, request.Items[0], "attempt-1", 1, TestContext.Current.CancellationToken);
 
         Assert.Equal(41, created.Id);
         Assert.Equal(73, firstItem);
         Assert.Equal(73, repeatedItem);
+        Assert.Equal(73, secondItem);
         var order = factory.Requests.Single(value => value.PathAndQuery == "/PurchaseOrders");
+        Assert.Equal(PurchaseOrderCreationGateway.ProcurementClient, order.ClientName);
         Assert.Equal(HttpMethod.Post, order.Method);
+        Assert.StartsWith("application/json", order.ContentType, StringComparison.Ordinal);
+        Assert.Equal(ServiceAuthorization, order.Authorization);
         Assert.Equal("attempt-1", order.IdempotencyKey);
         AssertJson(order.Body!, new Dictionary<string, object?>
         {
@@ -86,9 +96,18 @@ public sealed class ProcurementStateGatewayBehaviorTests
             ["notes"] = "Handle carefully",
         });
         var items = factory.Requests.Where(value => value.PathAndQuery == "/purchaseorders/orderitems").ToArray();
-        Assert.Equal(2, items.Length);
+        Assert.Equal(3, items.Length);
+        Assert.All(items, item =>
+        {
+            Assert.Equal(PurchaseOrderCreationGateway.ProcurementClient, item.ClientName);
+            Assert.Equal(HttpMethod.Post, item.Method);
+            Assert.StartsWith("application/json", item.ContentType, StringComparison.Ordinal);
+            Assert.Equal(ServiceAuthorization, item.Authorization);
+        });
         Assert.Equal(items[0].IdempotencyKey, items[1].IdempotencyKey);
+        Assert.NotEqual(items[0].IdempotencyKey, items[2].IdempotencyKey);
         Assert.Matches("^[0-9a-f]{8}-[0-9a-f]{4}-5[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$", items[0].IdempotencyKey!);
+        Assert.Matches("^[0-9a-f]{8}-[0-9a-f]{4}-5[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$", items[2].IdempotencyKey!);
         AssertJson(items[0].Body!, new Dictionary<string, object?>
         {
             ["purchaseOrderId"] = 41L,
@@ -122,9 +141,13 @@ public sealed class ProcurementStateGatewayBehaviorTests
         Assert.Equal("16/1 Billing Road", result.BillingAddress.AddressLine1);
         Assert.Equal("Employee A", result.EmployeeFullName);
         Assert.Equal("Thailand", Assert.Single(result.Countries).Value);
-        Assert.Equal(
-            ["/Countries", "/Suppliers/7", "/employees/9", "/purchaseorders/addresses/11", "/purchaseorders/addresses/12", "/suppliers/7/addresses"],
-            factory.Requests.Select(value => value.PathAndQuery).Order(StringComparer.Ordinal));
+        AssertRequests(factory.Requests,
+            (PurchaseOrderCreationGateway.ProcurementClient, HttpMethod.Get, "/Suppliers/7"),
+            (PurchaseOrderCreationGateway.ProcurementClient, HttpMethod.Get, "/suppliers/7/addresses"),
+            (PurchaseOrderCreationGateway.ProcurementClient, HttpMethod.Get, "/purchaseorders/addresses/11"),
+            (PurchaseOrderCreationGateway.ProcurementClient, HttpMethod.Get, "/purchaseorders/addresses/12"),
+            (PurchaseOrderCreationGateway.EmployeeClient, HttpMethod.Get, "/employees/9"),
+            (PurchaseOrderCreationGateway.CatalogClient, HttpMethod.Get, "/Countries"));
     }
 
     [Fact]
@@ -143,6 +166,9 @@ public sealed class ProcurementStateGatewayBehaviorTests
 
         Assert.Equal([1, 2, 3], await gateway.RenderPdfAsync(pdfDocument, TestContext.Current.CancellationToken));
         var stored = await gateway.UploadPdfAsync(41, [1, 2, 3], "attempt-1", TestContext.Current.CancellationToken);
+        var repeatedStored = await gateway.UploadPdfAsync(41, [1, 2, 3], "attempt-1", TestContext.Current.CancellationToken);
+        Assert.Equal(stored, repeatedStored);
+        Assert.Equal(88, await gateway.LinkFileAsync(41, stored, "attempt-1", TestContext.Current.CancellationToken));
         Assert.Equal(88, await gateway.LinkFileAsync(41, stored, "attempt-1", TestContext.Current.CancellationToken));
         await gateway.DeleteFileLinkAsync(88, TestContext.Current.CancellationToken);
         await gateway.DeleteStoredFileAsync(stored, TestContext.Current.CancellationToken);
@@ -150,26 +176,47 @@ public sealed class ProcurementStateGatewayBehaviorTests
         await gateway.DeleteOrderAsync(41, TestContext.Current.CancellationToken);
 
         var render = factory.Requests.Single(value => value.PathAndQuery == "/Pdfs/purchaseorder");
+        Assert.Equal(PurchaseOrderCreationGateway.DocumentClient, render.ClientName);
+        Assert.Equal(HttpMethod.Post, render.Method);
         Assert.StartsWith("application/json", render.ContentType, StringComparison.Ordinal);
         using (var json = JsonDocument.Parse(render.Body!))
         {
             Assert.Equal("Bangkok", json.RootElement.GetProperty("FOB").GetString());
             Assert.False(json.RootElement.TryGetProperty("fob", out _));
         }
-        var upload = factory.Requests.Single(value => value.PathAndQuery.StartsWith("/Uploads?bucket=maliev.com&path=", StringComparison.Ordinal));
-        Assert.StartsWith("multipart/form-data; boundary=", upload.ContentType, StringComparison.Ordinal);
-        Assert.Contains("name=files", upload.Body!, StringComparison.Ordinal);
-        Assert.Contains("filename=PurchaseOrder_41.pdf", upload.Body!, StringComparison.Ordinal);
-        Assert.Contains("Content-Type: application/pdf", upload.Body!, StringComparison.OrdinalIgnoreCase);
-        Assert.NotNull(upload.IdempotencyKey);
-        Assert.Equal(
-            [
-                "/purchaseorders/files/88",
-                "/Uploads?bucket=maliev.com&objectName=purchaseorders%2F41%2Forder.pdf",
-                "/purchaseorders/orderitems/73",
-                "/PurchaseOrders/41",
-            ],
-            factory.Requests.Where(value => value.Method == HttpMethod.Delete).Select(value => value.PathAndQuery));
+        var uploads = factory.Requests.Where(value => value.PathAndQuery.StartsWith("/Uploads?bucket=maliev.com&path=", StringComparison.Ordinal)).ToArray();
+        Assert.Equal(2, uploads.Length);
+        Assert.All(uploads, upload =>
+        {
+            Assert.Equal(PurchaseOrderCreationGateway.FileClient, upload.ClientName);
+            Assert.Equal(HttpMethod.Post, upload.Method);
+            Assert.StartsWith("multipart/form-data; boundary=", upload.ContentType, StringComparison.Ordinal);
+            Assert.Contains("name=files", upload.Body!, StringComparison.Ordinal);
+            Assert.Contains("filename=PurchaseOrder_41.pdf", upload.Body!, StringComparison.Ordinal);
+            Assert.Contains("Content-Type: application/pdf", upload.Body!, StringComparison.OrdinalIgnoreCase);
+        });
+        Assert.Equal(uploads[0].IdempotencyKey, uploads[1].IdempotencyKey);
+        Assert.Matches("^[0-9a-f]{8}-[0-9a-f]{4}-5[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$", uploads[0].IdempotencyKey!);
+
+        var links = factory.Requests.Where(value => value.PathAndQuery.StartsWith("/purchaseorders/41/files?", StringComparison.Ordinal)).ToArray();
+        Assert.Equal(2, links.Length);
+        Assert.All(links, link =>
+        {
+            Assert.Equal(PurchaseOrderCreationGateway.ProcurementClient, link.ClientName);
+            Assert.Equal(HttpMethod.Post, link.Method);
+            Assert.Null(link.ContentType);
+        });
+        Assert.Equal(links[0].IdempotencyKey, links[1].IdempotencyKey);
+        Assert.Matches("^[0-9a-f]{8}-[0-9a-f]{4}-5[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$", links[0].IdempotencyKey!);
+        Assert.NotEqual(uploads[0].IdempotencyKey, links[0].IdempotencyKey);
+        Assert.All(factory.Requests, value => Assert.Equal(ServiceAuthorization, value.Authorization));
+
+        AssertRequests(
+            factory.Requests.Where(value => value.Method == HttpMethod.Delete),
+            (PurchaseOrderCreationGateway.ProcurementClient, HttpMethod.Delete, "/purchaseorders/files/88"),
+            (PurchaseOrderCreationGateway.FileClient, HttpMethod.Delete, "/Uploads?bucket=maliev.com&objectName=purchaseorders%2F41%2Forder.pdf"),
+            (PurchaseOrderCreationGateway.ProcurementClient, HttpMethod.Delete, "/purchaseorders/orderitems/73"),
+            (PurchaseOrderCreationGateway.ProcurementClient, HttpMethod.Delete, "/PurchaseOrders/41"));
     }
 
     [Theory]
@@ -195,6 +242,8 @@ public sealed class ProcurementStateGatewayBehaviorTests
 
         Assert.Equal(expected, exception.Status);
         Assert.Equal(statusCode == HttpStatusCode.TooManyRequests ? TimeSpan.FromSeconds(12) : (TimeSpan?)null, exception.RetryAfter);
+        AssertRequests(factory.Requests,
+            (PurchaseOrderCreationGateway.ProcurementClient, HttpMethod.Post, "/PurchaseOrders"));
     }
 
     [Fact]
@@ -224,7 +273,17 @@ public sealed class ProcurementStateGatewayBehaviorTests
         await gateway.DeleteItemAsync(73, TestContext.Current.CancellationToken);
         await gateway.DeleteOrderAsync(41, TestContext.Current.CancellationToken);
 
-        Assert.Equal(10, factory.Requests.Count);
+        AssertRequests(factory.Requests,
+            (PurchaseOrderCreationGateway.ProcurementClient, HttpMethod.Get, "/PurchaseOrders/41"),
+            (PurchaseOrderCreationGateway.ProcurementClient, HttpMethod.Get, "/Suppliers/7"),
+            (PurchaseOrderCreationGateway.EmployeeClient, HttpMethod.Get, "/employees/9"),
+            (PurchaseOrderCreationGateway.ProcurementClient, HttpMethod.Get, "/purchaseorders/41/orderitems"),
+            (PurchaseOrderCreationGateway.ProcurementClient, HttpMethod.Get, "/purchaseorders/41/files"),
+            (PurchaseOrderCreationGateway.FileClient, HttpMethod.Get, "/uploads/SignedUrl?bucket=maliev.com&objectName=purchaseorders%2F41%2Forder.pdf"),
+            (PurchaseOrderCreationGateway.FileClient, HttpMethod.Delete, "/Uploads?bucket=maliev.com&objectName=purchaseorders%2F41%2Forder.pdf"),
+            (PurchaseOrderCreationGateway.ProcurementClient, HttpMethod.Delete, "/purchaseorders/files/88"),
+            (PurchaseOrderCreationGateway.ProcurementClient, HttpMethod.Delete, "/purchaseorders/orderitems/73"),
+            (PurchaseOrderCreationGateway.ProcurementClient, HttpMethod.Delete, "/PurchaseOrders/41"));
     }
 
     [Theory]
@@ -256,6 +315,13 @@ public sealed class ProcurementStateGatewayBehaviorTests
         Assert.Empty(await gateway.GetItemsAsync(41, TestContext.Current.CancellationToken));
         Assert.Empty(await gateway.GetFilesAsync(41, TestContext.Current.CancellationToken));
         Assert.Null(await gateway.GetSignedUrlAsync("maliev.com", "missing.pdf", TestContext.Current.CancellationToken));
+        AssertRequests(factory.Requests,
+            (PurchaseOrderCreationGateway.ProcurementClient, HttpMethod.Get, "/PurchaseOrders/41"),
+            (PurchaseOrderCreationGateway.ProcurementClient, HttpMethod.Get, "/Suppliers/7"),
+            (PurchaseOrderCreationGateway.EmployeeClient, HttpMethod.Get, "/employees/9"),
+            (PurchaseOrderCreationGateway.ProcurementClient, HttpMethod.Get, "/purchaseorders/41/orderitems"),
+            (PurchaseOrderCreationGateway.ProcurementClient, HttpMethod.Get, "/purchaseorders/41/files"),
+            (PurchaseOrderCreationGateway.FileClient, HttpMethod.Get, "/uploads/SignedUrl?bucket=maliev.com&objectName=missing.pdf"));
     }
 
     [Fact]
@@ -270,6 +336,9 @@ public sealed class ProcurementStateGatewayBehaviorTests
 
         Assert.Equal(PurchaseOrderCreationStatus.BadGateway, creation.Status);
         Assert.Equal(PurchaseOrderDetailStatus.BadGateway, detail.Status);
+        AssertRequests(factory.Requests,
+            (PurchaseOrderCreationGateway.ProcurementClient, HttpMethod.Post, "/PurchaseOrders"),
+            (PurchaseOrderCreationGateway.ProcurementClient, HttpMethod.Get, "/PurchaseOrders/41"));
     }
 
     [Fact]
@@ -277,6 +346,7 @@ public sealed class ProcurementStateGatewayBehaviorTests
     {
         var handler = new RecordingHandler("supplier", (_, _) => Task.FromResult(new HttpResponseMessage(HttpStatusCode.Accepted)));
         using var http = new HttpClient(handler) { BaseAddress = new Uri("https://supplier.test") };
+        http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", "signed-service-token");
         var client = new SupplierManagementClient(http);
         var request = new SupplierCreateRequest
         {
@@ -305,10 +375,17 @@ public sealed class ProcurementStateGatewayBehaviorTests
         using var delete = await client.DeleteProfileAsync(7, TestContext.Current.CancellationToken);
 
         Assert.All(new[] { profile, address, update, createAddress, updateAddress, delete }, value => Assert.Equal(HttpStatusCode.Accepted, value.StatusCode));
+        Assert.All(handler.Requests, value => Assert.Equal(ServiceAuthorization, value.Authorization));
         Assert.Equal(
             ["/Suppliers/7", "/suppliers/7/addresses", "/Suppliers/7", "/suppliers/7/addresses", "/suppliers/addresses/17", "/Suppliers/7"],
             handler.Requests.Select(value => value.PathAndQuery));
         Assert.Equal([HttpMethod.Get, HttpMethod.Get, HttpMethod.Put, HttpMethod.Post, HttpMethod.Put, HttpMethod.Delete], handler.Requests.Select(value => value.Method));
+        Assert.Null(handler.Requests[0].ContentType);
+        Assert.Null(handler.Requests[1].ContentType);
+        Assert.StartsWith("application/json", handler.Requests[2].ContentType, StringComparison.Ordinal);
+        Assert.StartsWith("application/json", handler.Requests[3].ContentType, StringComparison.Ordinal);
+        Assert.StartsWith("application/json", handler.Requests[4].ContentType, StringComparison.Ordinal);
+        Assert.Null(handler.Requests[5].ContentType);
         AssertJson(handler.Requests[2].Body!, new Dictionary<string, object?>
         {
             ["name"] = "Supplier A",
@@ -375,6 +452,19 @@ public sealed class ProcurementStateGatewayBehaviorTests
         }
     }
 
+    private static void AssertRequests(
+        IEnumerable<RequestSnapshot> requests,
+        params (string ClientName, HttpMethod Method, string PathAndQuery)[] expected)
+    {
+        var actual = requests.ToArray();
+        Assert.Equal(
+            expected.Select(value => $"{value.ClientName}|{value.Method}|{value.PathAndQuery}").Order(StringComparer.Ordinal),
+            actual.Select(value => $"{value.ClientName}|{value.Method}|{value.PathAndQuery}").Order(StringComparer.Ordinal));
+        Assert.All(actual, value => Assert.Equal(ServiceAuthorization, value.Authorization));
+        Assert.All(actual.Where(value => value.Method is { } method && (method == HttpMethod.Get || method == HttpMethod.Delete)),
+            value => Assert.Null(value.ContentType));
+    }
+
     private static HttpResponseMessage Json(string body, HttpStatusCode status = HttpStatusCode.OK) => new(status)
     {
         Content = new StringContent(body, Encoding.UTF8, "application/json"),
@@ -389,12 +479,17 @@ public sealed class ProcurementStateGatewayBehaviorTests
     {
         public ConcurrentQueue<RequestSnapshot> Requests { get; } = new();
 
-        public HttpClient CreateClient(string name) => new(new RecordingHandler(name, async (client, request) =>
+        public HttpClient CreateClient(string name)
         {
-            Requests.Enqueue(request);
-            return await responder(client, request);
-        }))
-        { BaseAddress = new Uri($"https://{name}.test") };
+            var client = new HttpClient(new RecordingHandler(name, async (clientName, request) =>
+            {
+                Requests.Enqueue(request);
+                return await responder(clientName, request);
+            }))
+            { BaseAddress = new Uri($"https://{name}.test") };
+            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", "signed-service-token");
+            return client;
+        }
     }
 
     private sealed class RecordingHandler(string clientName, Func<string, RequestSnapshot, Task<HttpResponseMessage>> responder) : HttpMessageHandler
@@ -405,8 +500,10 @@ public sealed class ProcurementStateGatewayBehaviorTests
         {
             var body = request.Content is null ? null : await request.Content.ReadAsStringAsync(cancellationToken);
             var snapshot = new RequestSnapshot(
+                clientName,
                 request.Method,
                 request.RequestUri!.PathAndQuery,
+                request.Headers.Authorization?.ToString(),
                 body,
                 request.Content?.Headers.ContentType?.ToString(),
                 request.Headers.TryGetValues("Idempotency-Key", out var values) ? Assert.Single(values) : null);
@@ -415,5 +512,12 @@ public sealed class ProcurementStateGatewayBehaviorTests
         }
     }
 
-    private sealed record RequestSnapshot(HttpMethod Method, string PathAndQuery, string? Body, string? ContentType, string? IdempotencyKey);
+    private sealed record RequestSnapshot(
+        string ClientName,
+        HttpMethod Method,
+        string PathAndQuery,
+        string? Authorization,
+        string? Body,
+        string? ContentType,
+        string? IdempotencyKey);
 }
