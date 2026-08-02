@@ -8,30 +8,31 @@
 
 @if (loading)
 {
-    <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
-    <MudText Class="mt-2">@Text["Loading"]</MudText>
+    <div role="status" aria-live="polite"><MudProgressLinear Indeterminate="true" Color="Color.Primary" aria-label="@Text["Loading"]" /><span class="visually-hidden">@Text["Loading"]</span></div>
 }
 else if (!string.IsNullOrWhiteSpace(error))
 {
-    <MudAlert Severity="Severity.Error">@error</MudAlert>
+    <MudAlert Severity="Severity.Error" aria-live="assertive">@error</MudAlert>
 }
 else if (page is not null)
 {
-    <div class="d-flex flex-wrap align-center justify-space-between gap-3 mb-4">
-        <MudText Typo="Typo.h4" HtmlTag="h1">@Text["OrderHeading", page.Order.Id]</MudText>
+    <header class="operations-page-header">
+        <div><MudText Typo="Typo.h4" HtmlTag="h1">@Text["OrderHeading", page.Order.Id]</MudText><MudText Typo="Typo.body2">@Text["OrderDetails"]</MudText></div>
         <div class="d-flex gap-2">
             <MudButton Href="/Orders/Index" Variant="Variant.Outlined">@Text["BackToOrders"]</MudButton>
-            <MudButton Href="@($"/bff/orders/{page.Order.Id}/label")" Target="_blank" Variant="Variant.Outlined">@Text["OrderLabel"]</MudButton>
+            <MudButton Href="@($"/bff/orders/{page.Order.Id}/label")" Target="_blank" Rel="noopener" Variant="Variant.Outlined">@Text["OrderLabel"]</MudButton>
         </div>
-    </div>
+    </header>
 
     @if (!string.IsNullOrWhiteSpace(notice))
     {
-        <MudAlert Severity="Severity.Success" Class="mb-4">@notice</MudAlert>
+        <MudAlert Severity="Severity.Success" Class="mb-4" aria-live="polite">@notice</MudAlert>
     }
 
     <MudForm @ref="form" Model="edit">
-        <MudGrid>
+        <MudPaper Class="pa-4" Elevation="1">
+        <MudText Typo="Typo.h6" HtmlTag="h2" id="order-edit-details-heading">@Text["OrderDetails"]</MudText>
+        <MudGrid aria-labelledby="order-edit-details-heading">
             <MudItem xs="12" md="6">
                 <div class="d-flex align-end gap-2">
                     <MudTextField Label="@Text["CustomerId"]" Value="@(page.Order.CustomerId?.ToString(CultureInfo.CurrentCulture) ?? "-")" ReadOnly="true" />
@@ -88,11 +89,12 @@ else if (page is not null)
             <MudItem xs="12" md="4"><MudCheckBox T="bool" Label="@Text["AllowPayment"]" @bind-Value="edit.AllowPayment" /></MudItem>
             <MudItem xs="12"><MudButton OnClick="SaveAsync" Disabled="@submitting" Variant="Variant.Filled" Color="Color.Primary">@Text["Save"]</MudButton></MudItem>
         </MudGrid>
+        </MudPaper>
     </MudForm>
 
     <MudPaper Class="pa-4 mt-4">
         <MudText Typo="Typo.h5" HtmlTag="h2">@Text["Status"]</MudText>
-        <MudText Class="mt-2">@Text["CurrentStatus"]: @(page.CurrentStatus?.Name ?? "-")</MudText>
+        <MudText Class="mt-2">@Text["CurrentStatus"]: <span class="operations-status-pill">@(page.CurrentStatus?.Name ?? "-")</span></MudText>
         <div class="d-flex flex-wrap gap-2 align-end my-3">
             <MudSelect T="int?" Label="@Text["NextStatus"]" @bind-Value="selectedStatus">
                 @foreach (var status in page.AvailableStatuses) { <MudSelectItem T="int?" Value="@((int?)status.Id)">@status.Name</MudSelectItem> }
@@ -110,8 +112,8 @@ else if (page is not null)
             @foreach (var file in page.Files)
             {
                 <MudListItem T="OrderFileItem" Value="file">
-                    <MudLink Href="@file.Uri?.ToString()" Target="_blank">@file.ObjectName</MudLink>
-                    <MudIconButton Icon="@Icons.Material.Filled.Delete" OnClick="() => RemoveFileAsync(file.Id)" Disabled="@submitting" aria-label="@($"Remove {file.ObjectName}")" />
+                    <MudLink Href="@file.Uri?.ToString()" Target="_blank" rel="noopener">@file.ObjectName</MudLink>
+                    <MudIconButton Icon="@Icons.Material.Filled.Delete" OnClick="() => RemoveFileAsync(file.Id)" Disabled="@submitting" aria-label="@Text["RemoveFile", file.ObjectName]" />
                 </MudListItem>
             }
         </MudList>

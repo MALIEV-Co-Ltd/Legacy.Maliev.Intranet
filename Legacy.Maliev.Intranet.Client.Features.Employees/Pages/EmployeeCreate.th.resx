@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
+  <data name="PageTitle" xml:space="preserve"><value>สร้างพนักงาน - MALIEV Intranet</value></data>
+  <data name="ProfileAndAccount" xml:space="preserve"><value>ข้อมูลพนักงานและบัญชีผู้ใช้</value></data>
+  <data name="CreateEmployee" xml:space="preserve"><value>เพิ่มพนักงาน</value></data>
+  <data name="FirstName" xml:space="preserve"><value>ชื่อ</value></data>
+  <data name="LastName" xml:space="preserve"><value>นามสกุล</value></data>
+  <data name="Email" xml:space="preserve"><value>อีเมล</value></data>
+  <data name="Password" xml:space="preserve"><value>รหัสผ่าน</value></data>
+  <data name="ConfirmPassword" xml:space="preserve"><value>ยืนยันรหัสผ่าน</value></data>
+  <data name="PasswordPrivacy" xml:space="preserve"><value>รหัสผ่านจะถูกส่งไปยังระบบยืนยันตัวตนเท่านั้น และจะไม่บันทึกไว้กับข้อมูลพนักงาน</value></data>
+  <data name="PhoneNumber" xml:space="preserve"><value>หมายเลขโทรศัพท์</value></data>
+  <data name="RoleId" xml:space="preserve"><value>รหัสบทบาท</value></data>
+  <data name="DateOfBirth" xml:space="preserve"><value>วันเกิด</value></data>
+  <data name="Submitting" xml:space="preserve"><value>กำลังเพิ่มพนักงาน…</value></data>
+  <data name="Cancel" xml:space="preserve"><value>ยกเลิก</value></data>
+  <data name="ValidationFailed" xml:space="preserve"><value>โปรดตรวจสอบช่องที่ระบุ แล้วลองอีกครั้ง</value></data>
+  <data name="Forbidden" xml:space="preserve"><value>คุณไม่ได้รับอนุญาตให้สร้างพนักงาน</value></data>
+  <data name="Conflict" xml:space="preserve"><value>มีบัญชีสำหรับที่อยู่อีเมลนี้อยู่แล้ว</value></data>
+  <data name="RateLimited" xml:space="preserve"><value>มีการส่งคำขอมากเกินไป รอสักครู่แล้วลองอีกครั้ง</value></data>
+  <data name="CreateFailed" xml:space="preserve"><value>ไม่สามารถสร้างพนักงานได้ ไม่มีการเก็บรหัสผ่าน กรุณาลองอีกครั้ง</value></data>
+  <data name="InvalidResponse" xml:space="preserve"><value>บริการข้อมูลพนักงานส่งข้อมูลกลับมาไม่ถูกต้อง</value></data>
+  <data name="AccountDetails" xml:space="preserve"><value>บัญชีพนักงาน</value></data>
+  <data name="EmploymentDetails" xml:space="preserve"><value>ข้อมูลการทำงาน</value></data>
+</root>

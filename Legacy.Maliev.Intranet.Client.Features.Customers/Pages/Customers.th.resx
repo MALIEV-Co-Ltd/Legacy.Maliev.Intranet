@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
+  <data name="PageTitle" xml:space="preserve"><value>ลูกค้า - MALIEV Intranet</value></data>
+  <data name="Profiles" xml:space="preserve"><value>ข้อมูลลูกค้า</value></data>
+  <data name="Customers" xml:space="preserve"><value>ลูกค้า</value></data>
+  <data name="CreateCustomer" xml:space="preserve"><value>เพิ่มลูกค้า</value></data>
+  <data name="Search" xml:space="preserve"><value>ค้นหา</value></data>
+  <data name="Sort" xml:space="preserve"><value>จัดเรียง</value></data>
+  <data name="PerPage" xml:space="preserve"><value>ต่อหน้า</value></data>
+  <data name="Apply" xml:space="preserve"><value>ใช้ตัวกรอง</value></data>
+  <data name="Refresh" xml:space="preserve"><value>รีเฟรช</value></data>
+  <data name="Loading" xml:space="preserve"><value>กำลังโหลดลูกค้า</value></data>
+  <data name="Empty" xml:space="preserve"><value>ไม่มีลูกค้าที่ตรงกับคำค้นหานี้</value></data>
+  <data name="Id" xml:space="preserve"><value>ID</value></data>
+  <data name="Name" xml:space="preserve"><value>ชื่อ</value></data>
+  <data name="Email" xml:space="preserve"><value>อีเมล</value></data>
+  <data name="Company" xml:space="preserve"><value>บริษัท</value></data>
+  <data name="Actions" xml:space="preserve"><value>การดำเนินการ</value></data>
+  <data name="View" xml:space="preserve"><value>ดู</value></data>
+  <data name="CustomerPages" xml:space="preserve"><value>หน้ารายการลูกค้า</value></data>
+  <data name="Previous" xml:space="preserve"><value>ก่อนหน้า</value></data>
+  <data name="Next" xml:space="preserve"><value>ถัดไป</value></data>
+  <data name="PageSummary" xml:space="preserve"><value>หน้า {0} จาก {1} · {2} บันทึก</value></data>
+  <data name="Forbidden" xml:space="preserve"><value>คุณไม่ได้รับอนุญาตให้ดูลูกค้า</value></data>
+  <data name="RateLimited" xml:space="preserve"><value>ระบบได้รับคำขอข้อมูลลูกค้ามากเกินไป โปรดรอสักครู่แล้วลองอีกครั้ง</value></data>
+  <data name="Unavailable" xml:space="preserve"><value>ระบบข้อมูลลูกค้าไม่พร้อมใช้งานชั่วคราว</value></data>
+  <data name="InvalidResponse" xml:space="preserve"><value>บริการข้อมูลลูกค้าส่งข้อมูลกลับมาไม่ถูกต้อง</value></data>
+  <data name="CustomerId_Ascending" xml:space="preserve"><value>ID จากน้อยไปหามาก</value></data>
+  <data name="CustomerId_Descending" xml:space="preserve"><value>ID จากมากไปหาน้อย</value></data>
+  <data name="CustomerCompany_Ascending" xml:space="preserve"><value>บริษัทจากน้อยไปหามาก</value></data>
+  <data name="CustomerCompany_Descending" xml:space="preserve"><value>บริษัทจากมากไปน้อย</value></data>
+  <data name="CustomerEmail_Ascending" xml:space="preserve"><value>อีเมลจากน้อยไปหามาก</value></data>
+  <data name="CustomerEmail_Descending" xml:space="preserve"><value>อีเมลจากมากไปน้อย</value></data>
+  <data name="CustomerCreatedDate_Ascending" xml:space="preserve"><value>สร้างเก่าที่สุดก่อน</value></data>
+  <data name="CustomerCreatedDate_Descending" xml:space="preserve"><value>สร้างใหม่ล่าสุดก่อน</value></data>
+  <data name="CustomerModifiedDate_Ascending" xml:space="preserve"><value>แก้ไขเก่าที่สุดก่อน</value></data>
+  <data name="CustomerModifiedDate_Descending" xml:space="preserve"><value>แก้ไขใหม่ล่าสุดก่อน</value></data>
+  <data name="CustomersTable" xml:space="preserve"><value>ตารางข้อมูลลูกค้า</value></data>
+</root>

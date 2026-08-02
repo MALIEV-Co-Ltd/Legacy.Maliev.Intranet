@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
+  <data name="PageTitle" xml:space="preserve"><value>พนักงาน - MALIEV Intranet</value></data>
+  <data name="Profiles" xml:space="preserve"><value>ข้อมูลพนักงาน</value></data>
+  <data name="Employees" xml:space="preserve"><value>พนักงาน</value></data>
+  <data name="CreateEmployee" xml:space="preserve"><value>เพิ่มพนักงาน</value></data>
+  <data name="Search" xml:space="preserve"><value>ค้นหา</value></data>
+  <data name="Sort" xml:space="preserve"><value>เรียงลำดับ</value></data>
+  <data name="PerPage" xml:space="preserve"><value>ต่อหน้า</value></data>
+  <data name="Apply" xml:space="preserve"><value>ใช้ตัวกรอง</value></data>
+  <data name="Loading" xml:space="preserve"><value>กำลังโหลดพนักงาน</value></data>
+  <data name="Empty" xml:space="preserve"><value>ไม่มีพนักงานที่ตรงกับคำค้นหานี้</value></data>
+  <data name="Id" xml:space="preserve"><value>รหัส</value></data>
+  <data name="Name" xml:space="preserve"><value>ชื่อ</value></data>
+  <data name="Email" xml:space="preserve"><value>อีเมล</value></data>
+  <data name="Role" xml:space="preserve"><value>บทบาท</value></data>
+  <data name="Actions" xml:space="preserve"><value>การดำเนินการ</value></data>
+  <data name="View" xml:space="preserve"><value>ดู</value></data>
+  <data name="EmployeePages" xml:space="preserve"><value>หน้ารายการพนักงาน</value></data>
+  <data name="Previous" xml:space="preserve"><value>ก่อนหน้า</value></data>
+  <data name="Next" xml:space="preserve"><value>ต่อไป</value></data>
+  <data name="PageSummary" xml:space="preserve"><value>บันทึกหน้า {0} จาก {1} · {2}</value></data>
+  <data name="Forbidden" xml:space="preserve"><value>คุณไม่ได้รับอนุญาตให้ดูพนักงาน</value></data>
+  <data name="RateLimited" xml:space="preserve"><value>ระบบได้รับคำขอข้อมูลพนักงานมากเกินไป โปรดรอสักครู่แล้วลองอีกครั้ง</value></data>
+  <data name="Unavailable" xml:space="preserve"><value>ระบบข้อมูลพนักงานไม่พร้อมใช้งานชั่วคราว</value></data>
+  <data name="InvalidResponse" xml:space="preserve"><value>บริการข้อมูลพนักงานส่งข้อมูลกลับมาไม่ถูกต้อง</value></data>
+  <data name="EmployeeId_Ascending" xml:space="preserve"><value>ID จากน้อยไปมาก</value></data>
+  <data name="EmployeeId_Descending" xml:space="preserve"><value>รหัส: มากไปน้อย</value></data>
+  <data name="EmployeeEmail_Ascending" xml:space="preserve"><value>อีเมลจากน้อยไปหามาก</value></data>
+  <data name="EmployeeEmail_Descending" xml:space="preserve"><value>อีเมลจากมากไปน้อย</value></data>
+  <data name="EmployeesTable" xml:space="preserve"><value>ตารางข้อมูลพนักงาน</value></data>
+</root>

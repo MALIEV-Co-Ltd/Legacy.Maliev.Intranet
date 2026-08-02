@@ -4,9 +4,9 @@
     justify-content: space-between;
     gap: 16px;
     padding: 12px 20px;
-    border-bottom: 0;
+    border-bottom: 1px solid var(--legacy-border);
     background: var(--maliev-panel);
-    box-shadow: var(--maliev-shadow-ring);
+    box-shadow: none;
     flex-shrink: 0;
     position: relative;
     z-index: 1;
@@ -20,14 +20,19 @@
     margin: 0;
     color: var(--maliev-ink);
     font-size: var(--mud-typography-h4-size);
-    font-weight: 600;
+    font-weight: 750;
     line-height: 1.2;
+    letter-spacing: -0.025em;
+    overflow-wrap: anywhere;
+    text-wrap: balance;
 }
 
 .mlv-module-copy p {
     margin: 3px 0 0;
     color: var(--maliev-muted);
     font-size: var(--maliev-font-small);
+    line-height: 1.5;
+    overflow-wrap: anywhere;
 }
 
 .mlv-module-actions {
@@ -47,5 +52,9 @@
     .mlv-module-actions {
         width: 100%;
         flex-wrap: wrap;
+    }
+
+    .mlv-module-actions > * {
+        flex: 1 1 auto;
     }
 }

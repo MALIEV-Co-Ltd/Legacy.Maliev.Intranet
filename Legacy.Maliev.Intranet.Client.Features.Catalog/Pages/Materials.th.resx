@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
+  <data name="PageTitle" xml:space="preserve"><value>วัสดุ - MALIEV Intranet</value></data>
+  <data name="Catalog" xml:space="preserve"><value>แคตตาล็อก</value></data>
+  <data name="Materials" xml:space="preserve"><value>วัสดุ</value></data>
+  <data name="CreateMaterial" xml:space="preserve"><value>เพิ่มวัสดุ</value></data>
+  <data name="Search" xml:space="preserve"><value>ค้นหา</value></data>
+  <data name="Sort" xml:space="preserve"><value>เรียงลำดับ</value></data>
+  <data name="PerPage" xml:space="preserve"><value>ต่อหน้า</value></data>
+  <data name="Apply" xml:space="preserve"><value>ใช้ตัวกรอง</value></data>
+  <data name="Loading" xml:space="preserve"><value>กำลังโหลดวัสดุ</value></data>
+  <data name="Empty" xml:space="preserve"><value>ไม่มีวัสดุที่ตรงกับคำค้นหานี้</value></data>
+  <data name="Id" xml:space="preserve"><value>รหัส</value></data>
+  <data name="Group" xml:space="preserve"><value>กลุ่ม</value></data>
+  <data name="Name" xml:space="preserve"><value>ชื่อ</value></data>
+  <data name="Number" xml:space="preserve"><value>หมายเลขวัสดุ</value></data>
+  <data name="Density" xml:space="preserve"><value>ความหนาแน่น</value></data>
+  <data name="Machinable" xml:space="preserve"><value>ตัดเฉือนได้</value></data>
+  <data name="Printable" xml:space="preserve"><value>พิมพ์ 3 มิติได้</value></data>
+  <data name="Yes" xml:space="preserve"><value>ใช่</value></data>
+  <data name="No" xml:space="preserve"><value>ไม่</value></data>
+  <data name="MaterialPages" xml:space="preserve"><value>หน้าวัสดุ</value></data>
+  <data name="Previous" xml:space="preserve"><value>ก่อนหน้า</value></data>
+  <data name="Next" xml:space="preserve"><value>ต่อไป</value></data>
+  <data name="PageSummary" xml:space="preserve"><value>บันทึกหน้า {0} จาก {1} · {2}</value></data>
+  <data name="Forbidden" xml:space="preserve"><value>คุณไม่มีสิทธิ์ดูข้อมูลวัสดุ</value></data>
+  <data name="RateLimited" xml:space="preserve"><value>ระบบได้รับคำขอข้อมูลวัสดุมากเกินไป โปรดรอสักครู่แล้วลองอีกครั้ง</value></data>
+  <data name="Unavailable" xml:space="preserve"><value>แค็ตตาล็อกวัสดุไม่พร้อมใช้งานชั่วคราว</value></data>
+  <data name="InvalidResponse" xml:space="preserve"><value>ระบบวัสดุส่งข้อมูลกลับมาไม่ถูกต้อง</value></data>
+  <data name="MaterialsTable" xml:space="preserve"><value>ตารางวัสดุ</value></data>
+</root>

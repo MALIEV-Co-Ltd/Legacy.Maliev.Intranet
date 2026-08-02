@@ -6,19 +6,23 @@
 
 <MudStack Spacing="3">
     <MudBreadcrumbs Items="Breadcrumbs" />
-    <MudText Typo="Typo.h1">@Text["Heading"]</MudText>
-    <MudText Typo="Typo.body1">@Text["Description"]</MudText>
+    <header class="operations-page-header">
+        <div>
+            <MudText Typo="Typo.h1" HtmlTag="h1">@Text["Heading"]</MudText>
+            <MudText Typo="Typo.body1">@Text["Description"]</MudText>
+        </div>
+    </header>
 
     <MudTabs Elevation="1" Rounded="true">
         <MudTabPanel Text="@Text["Printing"]">
-            <MudAlert Severity="Severity.Info">@Text["ComingSoon"]</MudAlert>
+            <MudAlert Severity="Severity.Info" aria-live="polite">@Text["ComingSoon"]</MudAlert>
         </MudTabPanel>
         <MudTabPanel Text="@Text["CncMachining"]">
             <MudGrid Spacing="3">
                 <MudItem xs="12" lg="8">
                     <MudStack Spacing="3">
                         <MudPaper Class="pa-4" Elevation="1">
-                            <MudText Typo="Typo.h2" Class="mb-3">@Text["Machine"]</MudText>
+                            <MudText Typo="Typo.h2" HtmlTag="h2" Class="mb-3">@Text["Machine"]</MudText>
                             <MudGrid>
                                 <MudItem xs="12" md="6"><MudNumericField T="decimal" @bind-Value="model.MachineCost" @bind-Value:after="Recalculate" Label="@Text["MachineCost"]" Min="0" /></MudItem>
                                 <MudItem xs="12" md="6"><MudNumericField T="decimal" @bind-Value="model.ReturnOnInvestmentYears" @bind-Value:after="Recalculate" Label="@Text["RoiYears"]" Min="0" Max="100" Step="0.5m" /></MudItem>
@@ -30,7 +34,7 @@
                         </MudPaper>
 
                         <MudPaper Class="pa-4" Elevation="1">
-                            <MudText Typo="Typo.h2" Class="mb-3">@Text["Job"]</MudText>
+                            <MudText Typo="Typo.h2" HtmlTag="h2" Class="mb-3">@Text["Job"]</MudText>
                             <MudGrid>
                                 <MudItem xs="12" md="4"><MudNumericField T="int" @bind-Value="model.PartCount" @bind-Value:after="Recalculate" Label="@Text["PartCount"]" Min="1" /></MudItem>
                                 <MudItem xs="6" md="4"><MudNumericField T="int" @bind-Value="model.TimePerPartHours" @bind-Value:after="Recalculate" Label="@Text["Hours"]" Min="0" /></MudItem>
@@ -40,7 +44,7 @@
                         </MudPaper>
 
                         <MudPaper Class="pa-4" Elevation="1">
-                            <MudText Typo="Typo.h2" Class="mb-3">@Text["Material"]</MudText>
+                            <MudText Typo="Typo.h2" HtmlTag="h2" Class="mb-3">@Text["Material"]</MudText>
                             <MudGrid>
                                 <MudItem xs="12" sm="4"><MudNumericField T="decimal" @bind-Value="model.StockLengthMillimetres" @bind-Value:after="Recalculate" Label="@Text["StockX"]" Min="0" /></MudItem>
                                 <MudItem xs="12" sm="4"><MudNumericField T="decimal" @bind-Value="model.StockWidthMillimetres" @bind-Value:after="Recalculate" Label="@Text["StockY"]" Min="0" /></MudItem>
@@ -54,7 +58,7 @@
                         </MudPaper>
 
                         <MudPaper Class="pa-4" Elevation="1">
-                            <MudText Typo="Typo.h2" Class="mb-3">@Text["Electricity"]</MudText>
+                            <MudText Typo="Typo.h2" HtmlTag="h2" Class="mb-3">@Text["Electricity"]</MudText>
                             <MudGrid>
                                 <MudItem xs="12" md="4"><MudNumericField T="decimal" @bind-Value="model.MaximumPowerKilowatts" @bind-Value:after="Recalculate" Label="@Text["MaximumPower"]" Min="0" /></MudItem>
                                 <MudItem xs="12" md="4"><MudNumericField T="decimal" @bind-Value="model.ElectricityBaseCost" @bind-Value:after="Recalculate" Label="@Text["ElectricityBaseCost"]" Min="0" /></MudItem>
@@ -64,7 +68,7 @@
                         </MudPaper>
 
                         <MudPaper Class="pa-4" Elevation="1">
-                            <MudText Typo="Typo.h2" Class="mb-3">@Text["Setup"]</MudText>
+                            <MudText Typo="Typo.h2" HtmlTag="h2" Class="mb-3">@Text["Setup"]</MudText>
                             <MudGrid>
                                 <MudItem xs="12" md="6"><MudNumericField T="int" @bind-Value="model.NumberOfSetups" @bind-Value:after="Recalculate" Label="@Text["NumberOfSetups"]" Min="0" /></MudItem>
                                 <MudItem xs="12" md="6"><MudNumericField T="decimal" @bind-Value="model.CostPerSetup" @bind-Value:after="Recalculate" Label="@Text["CostPerSetup"]" Min="0" /></MudItem>
@@ -75,29 +79,32 @@
                 </MudItem>
 
                 <MudItem xs="12" lg="4">
+                    <aside class="quotation-estimate-summary" aria-labelledby="estimate-summary-heading">
                     <MudPaper Class="pa-4" Elevation="2">
-                        <div aria-live="polite">
-                            <MudText Typo="Typo.h2" Class="mb-3">@Text["Summary"]</MudText>
+                        <div role="status" aria-live="polite" aria-atomic="true">
+                            <MudText id="estimate-summary-heading" Typo="Typo.h2" HtmlTag="h2" Class="mb-3">@Text["Summary"]</MudText>
                             <MudSimpleTable Dense="true" Hover="false">
+                                <caption class="sr-only">@Text["SummaryCaption"]</caption>
                                 <tbody>
-                                    <tr><th scope="row">@Text["MachineCost"]</th><td class="text-end">@machineCost.ToString("N2", CultureInfo.CurrentCulture)</td></tr>
-                                    <tr><th scope="row">@Text["MaterialCost"]</th><td class="text-end">@materialCost.ToString("N2", CultureInfo.CurrentCulture)</td></tr>
-                                    <tr><th scope="row">@Text["ElectricityCost"]</th><td class="text-end">@electricityCost.ToString("N2", CultureInfo.CurrentCulture)</td></tr>
-                                    <tr><th scope="row">@Text["SetupCost"]</th><td class="text-end">@setupCost.ToString("N2", CultureInfo.CurrentCulture)</td></tr>
+                                    <tr><th scope="row">@Text["MachineCost"]</th><td class="text-end">@FormatMoney(machineCost)</td></tr>
+                                    <tr><th scope="row">@Text["MaterialCost"]</th><td class="text-end">@FormatMoney(materialCost)</td></tr>
+                                    <tr><th scope="row">@Text["ElectricityCost"]</th><td class="text-end">@FormatMoney(electricityCost)</td></tr>
+                                    <tr><th scope="row">@Text["SetupCost"]</th><td class="text-end">@FormatMoney(setupCost)</td></tr>
                                 </tbody>
-                                <tfoot><tr><th scope="row">@Text["GrandTotal"]</th><td class="text-end fw-bold">@GrandTotal.ToString("N2", CultureInfo.CurrentCulture)</td></tr></tfoot>
+                                <tfoot><tr><th scope="row">@Text["GrandTotal"]</th><td class="text-end fw-bold">@FormatMoney(GrandTotal)</td></tr></tfoot>
                             </MudSimpleTable>
                         </div>
                         <MudButton Class="mt-4" Variant="Variant.Outlined" OnClick="Reset">@Text["Reset"]</MudButton>
                     </MudPaper>
+                    </aside>
                 </MudItem>
             </MudGrid>
         </MudTabPanel>
         <MudTabPanel Text="@Text["Scanning"]">
-            <MudAlert Severity="Severity.Info">@Text["ComingSoon"]</MudAlert>
+            <MudAlert Severity="Severity.Info" aria-live="polite">@Text["ComingSoon"]</MudAlert>
         </MudTabPanel>
         <MudTabPanel Text="@Text["Designing"]">
-            <MudAlert Severity="Severity.Info">@Text["ComingSoon"]</MudAlert>
+            <MudAlert Severity="Severity.Info" aria-live="polite">@Text["ComingSoon"]</MudAlert>
         </MudTabPanel>
     </MudTabs>
 </MudStack>
@@ -106,7 +113,7 @@
     private IReadOnlyList<BreadcrumbItem> Breadcrumbs =>
     [
         new(Text["Sales"], href: null, disabled: true),
-        new(Text["Quotations"], href: "/Quotations"),
+        new(Text["Quotations"], href: "/Quotations/Index"),
         new(Text["Estimate"], href: null, disabled: true),
     ];
 
@@ -120,6 +127,7 @@
     private decimal setupCost;
 
     private decimal GrandTotal => Math.Round(machineCost + materialCost + electricityCost + setupCost, 2, MidpointRounding.AwayFromZero);
+    private static string FormatMoney(decimal value) => $"{value.ToString("N2", CultureInfo.CurrentCulture)} THB";
 
     protected override void OnInitialized() => ApplyCalculatedValues();
 

@@ -7,22 +7,31 @@
 <PageTitle>@Text["PageTitle"]</PageTitle>
 
 <MudContainer MaxWidth="MaxWidth.Medium">
-    <MudText Typo="Typo.overline">@Text["ProfileAndAccount"]</MudText>
-    <MudText Typo="Typo.h4" HtmlTag="h1" Class="mb-4">@Text["CreateEmployee"]</MudText>
+    <header class="operations-page-header"><div><MudText Typo="Typo.h4" HtmlTag="h1">@Text["CreateEmployee"]</MudText><MudText Typo="Typo.body2">@Text["ProfileAndAccount"]</MudText></div></header>
     @if (!string.IsNullOrWhiteSpace(error))
     {
         <MudAlert Severity="Severity.Error" Class="mb-4" aria-live="assertive">@error</MudAlert>
     }
     <MudForm @ref="form" Model="@model" @bind-IsValid="formValid">
-        <MudTextField @bind-Value="model.FirstName" For="@(() => model.FirstName)" Label="@Text["FirstName"]" Required="true" />
-        <MudTextField @bind-Value="model.LastName" For="@(() => model.LastName)" Label="@Text["LastName"]" Required="true" />
-        <MudTextField @bind-Value="model.Email" For="@(() => model.Email)" Label="@Text["Email"]" InputType="InputType.Email" Required="true" />
-        <MudTextField @bind-Value="model.Password" For="@(() => model.Password)" Label="@Text["Password"]" InputType="InputType.Password" Required="true" />
-        <MudTextField @bind-Value="model.ConfirmPassword" For="@(() => model.ConfirmPassword)" Label="@Text["ConfirmPassword"]" InputType="InputType.Password" Required="true" />
-        <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mb-2">@Text["PasswordPrivacy"]</MudText>
-        <MudTextField @bind-Value="model.PhoneNumber" For="@(() => model.PhoneNumber)" Label="@Text["PhoneNumber"]" InputType="InputType.Telephone" />
-        <MudNumericField @bind-Value="model.RoleId" For="@(() => model.RoleId)" Label="@Text["RoleId"]" Min="1" />
-        <MudDatePicker @bind-Date="model.DateOfBirth" For="@(() => model.DateOfBirth)" Label="@Text["DateOfBirth"]" />
+        <MudPaper Class="pa-4 mb-4" Elevation="1">
+            <MudText Typo="Typo.h6" HtmlTag="h2" id="employee-account-heading">@Text["AccountDetails"]</MudText>
+            <MudGrid Spacing="3" aria-labelledby="employee-account-heading">
+                <MudItem xs="12" md="6"><MudTextField @bind-Value="model.FirstName" For="@(() => model.FirstName)" Label="@Text["FirstName"]" Required="true" /></MudItem>
+                <MudItem xs="12" md="6"><MudTextField @bind-Value="model.LastName" For="@(() => model.LastName)" Label="@Text["LastName"]" Required="true" /></MudItem>
+                <MudItem xs="12"><MudTextField @bind-Value="model.Email" For="@(() => model.Email)" Label="@Text["Email"]" InputType="InputType.Email" Required="true" /></MudItem>
+                <MudItem xs="12" md="6"><MudTextField @bind-Value="model.Password" For="@(() => model.Password)" Label="@Text["Password"]" InputType="InputType.Password" Required="true" /></MudItem>
+                <MudItem xs="12" md="6"><MudTextField @bind-Value="model.ConfirmPassword" For="@(() => model.ConfirmPassword)" Label="@Text["ConfirmPassword"]" InputType="InputType.Password" Required="true" /></MudItem>
+                <MudItem xs="12"><MudText Typo="Typo.caption" Color="Color.Secondary">@Text["PasswordPrivacy"]</MudText></MudItem>
+            </MudGrid>
+        </MudPaper>
+        <MudPaper Class="pa-4 mb-4" Elevation="1">
+            <MudText Typo="Typo.h6" HtmlTag="h2" id="employee-work-heading">@Text["EmploymentDetails"]</MudText>
+            <MudGrid Spacing="3" aria-labelledby="employee-work-heading">
+                <MudItem xs="12"><MudTextField @bind-Value="model.PhoneNumber" For="@(() => model.PhoneNumber)" Label="@Text["PhoneNumber"]" InputType="InputType.Telephone" /></MudItem>
+                <MudItem xs="12" md="6"><MudNumericField @bind-Value="model.RoleId" For="@(() => model.RoleId)" Label="@Text["RoleId"]" Min="1" /></MudItem>
+                <MudItem xs="12" md="6"><MudDatePicker @bind-Date="model.DateOfBirth" For="@(() => model.DateOfBirth)" Label="@Text["DateOfBirth"]" /></MudItem>
+            </MudGrid>
+        </MudPaper>
         <MudStack Row="true" Spacing="2" Class="mt-4">
             <MudButton ButtonType="ButtonType.Button" Variant="Variant.Filled" Color="Color.Primary" Disabled="@submitting" OnClick="SubmitAsync">
                 @(submitting ? Text["Submitting"] : Text["CreateEmployee"])

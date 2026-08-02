@@ -48,4 +48,7 @@
   <data name="InvoiceCreatedDate_Descending" xml:space="preserve"><value>Created date descending</value></data>
   <data name="InvoicePaymentDate_Ascending" xml:space="preserve"><value>Payment date ascending</value></data>
   <data name="InvoicePaymentDate_Descending" xml:space="preserve"><value>Payment date descending</value></data>
+  <data name="InvoiceTableLabel" xml:space="preserve"><value>{0} table</value></data>
+  <data name="PaidStatus" xml:space="preserve"><value>Paid</value></data>
+  <data name="UnpaidStatus" xml:space="preserve"><value>Unpaid</value></data>
 </root>

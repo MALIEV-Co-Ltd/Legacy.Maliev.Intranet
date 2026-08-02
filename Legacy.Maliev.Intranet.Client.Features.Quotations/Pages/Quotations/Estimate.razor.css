@@ -1,0 +1,16 @@
+.quotation-estimate-summary {
+    display: block;
+}
+
+.quotation-estimate-summary td {
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+@media (min-width: 1280px) {
+    .quotation-estimate-summary {
+        position: sticky;
+        top: calc(var(--legacy-topbar-height, 4.25rem) + 1rem);
+        align-self: start;
+    }
+}

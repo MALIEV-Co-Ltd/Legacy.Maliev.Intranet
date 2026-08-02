@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
+  <data name="PageTitle" xml:space="preserve"><value>คำขอใบเสนอราคา {0} | MALIEV Intranet</value></data>
+  <data name="Heading" xml:space="preserve"><value>คำขอใบเสนอราคา {0}</value></data>
+  <data name="Description" xml:space="preserve"><value>ตรวจสอบความต้องการของลูกค้า อัปเดตขั้นตอนการทำงานภายใน และดูไฟล์ที่แนบมา</value></data>
+  <data name="Back" xml:space="preserve"><value>กลับไปยังรายการคำขอ</value></data>
+  <data name="Loading" xml:space="preserve"><value>กำลังโหลดคำขอใบเสนอราคา</value></data>
+  <data name="CustomerDetails" xml:space="preserve"><value>ข้อมูลลูกค้า</value></data>
+  <data name="RequestDetails" xml:space="preserve"><value>รายละเอียดคำขอ</value></data>
+  <data name="Workflow" xml:space="preserve"><value>ขั้นตอนการดำเนินงาน</value></data>
+  <data name="StatusSummary" xml:space="preserve"><value>สถานะปัจจุบัน</value></data>
+  <data name="FirstName" xml:space="preserve"><value>ชื่อ</value></data>
+  <data name="LastName" xml:space="preserve"><value>นามสกุล</value></data>
+  <data name="Email" xml:space="preserve"><value>อีเมล</value></data>
+  <data name="Telephone" xml:space="preserve"><value>หมายเลขโทรศัพท์</value></data>
+  <data name="Company" xml:space="preserve"><value>บริษัท</value></data>
+  <data name="Country" xml:space="preserve"><value>ประเทศ</value></data>
+  <data name="Tax" xml:space="preserve"><value>เลขประจำตัวผู้เสียภาษี</value></data>
+  <data name="Message" xml:space="preserve"><value>ข้อความจากลูกค้า</value></data>
+  <data name="Internal" xml:space="preserve"><value>หมายเหตุภายใน</value></data>
+  <data name="Status" xml:space="preserve"><value>สถานะ</value></data>
+  <data name="Open" xml:space="preserve"><value>รอดำเนินการ</value></data>
+  <data name="Done" xml:space="preserve"><value>ดำเนินการเสร็จแล้ว</value></data>
+  <data name="Save" xml:space="preserve"><value>บันทึกคำขอ</value></data>
+  <data name="Saving" xml:space="preserve"><value>กำลังบันทึกคำขอ</value></data>
+  <data name="Files" xml:space="preserve"><value>ไฟล์จากลูกค้า</value></data>
+  <data name="NoFiles" xml:space="preserve"><value>ไม่มีไฟล์แนบ</value></data>
+  <data name="InvalidId" xml:space="preserve"><value>กรุณาระบุรหัสคำขอที่ถูกต้อง</value></data>
+  <data name="NotFound" xml:space="preserve"><value>ไม่พบคำขอใบเสนอราคานี้</value></data>
+  <data name="Forbidden" xml:space="preserve"><value>คุณไม่มีสิทธิ์จัดการคำขอใบเสนอราคานี้</value></data>
+  <data name="RateLimited" xml:space="preserve"><value>ระบบใบเสนอราคากำลังมีการใช้งานหนาแน่น โปรดลองอีกครั้งในอีกสักครู่</value></data>
+  <data name="Invalid" xml:space="preserve"><value>ระบบใบเสนอราคาส่งข้อมูลกลับมาไม่ถูกต้อง</value></data>
+  <data name="Unavailable" xml:space="preserve"><value>ระบบใบเสนอราคาไม่พร้อมใช้งานชั่วคราว</value></data>
+  <data name="Conflict" xml:space="preserve"><value>คำขอนี้ถูกแก้ไขหลังจากที่คุณเปิดหน้า โปรดโหลดข้อมูลล่าสุดแล้วลองอีกครั้ง</value></data>
+  <data name="Saved" xml:space="preserve"><value>บันทึกคำขอใบเสนอราคาเรียบร้อยแล้ว</value></data>
+</root>

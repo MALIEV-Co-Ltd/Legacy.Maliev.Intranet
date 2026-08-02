@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
+  <data name="PageTitle" xml:space="preserve"><value>ใบเสนอราคา | MALIEV Intranet</value></data>
+  <data name="Sales" xml:space="preserve"><value>ฝ่ายขาย</value></data>
+  <data name="Quotations" xml:space="preserve"><value>ใบเสนอราคา</value></data>
+  <data name="Description" xml:space="preserve"><value>ตรวจสอบ กรอง และเปิดดูใบเสนอราคาของลูกค้าพร้อมผลการพิจารณาล่าสุด</value></data>
+  <data name="Actions" xml:space="preserve"><value>การดำเนินการเกี่ยวกับใบเสนอราคา</value></data>
+  <data name="Create" xml:space="preserve"><value>สร้างใบเสนอราคา</value></data>
+  <data name="Estimate" xml:space="preserve"><value>ประมาณการ</value></data>
+  <data name="Loading" xml:space="preserve"><value>กำลังโหลดใบเสนอราคา</value></data>
+  <data name="DecisionSummary" xml:space="preserve"><value>ผลการพิจารณาใบเสนอราคา</value></data>
+  <data name="DecisionData" xml:space="preserve"><value>จำนวนใบเสนอราคาแยกตามผลการพิจารณา</value></data>
+  <data name="Search" xml:space="preserve"><value>ค้นหาใบเสนอราคา</value></data>
+  <data name="Sort" xml:space="preserve"><value>เรียงลำดับ</value></data>
+  <data name="PerPage" xml:space="preserve"><value>ต่อหน้า</value></data>
+  <data name="Apply" xml:space="preserve"><value>ใช้ตัวกรอง</value></data>
+  <data name="NoQuotations" xml:space="preserve"><value>ไม่มีใบเสนอราคาที่ตรงกับตัวกรองนี้</value></data>
+  <data name="RecordsSummary" xml:space="preserve"><value>{0} บันทึก; {1} หน้า</value></data>
+  <data name="TableCaption" xml:space="preserve"><value>รายการใบเสนอราคา</value></data>
+  <data name="Id" xml:space="preserve"><value>รหัส</value></data>
+  <data name="CustomerId" xml:space="preserve"><value>รหัสลูกค้า</value></data>
+  <data name="Employee" xml:space="preserve"><value>พนักงาน</value></data>
+  <data name="Period" xml:space="preserve"><value>ระยะเวลา</value></data>
+  <data name="Days" xml:space="preserve"><value>{0} วัน</value></data>
+  <data name="ExpirationDate" xml:space="preserve"><value>วันหมดอายุ</value></data>
+  <data name="Subtotal" xml:space="preserve"><value>ยอดก่อนภาษี</value></data>
+  <data name="Vat" xml:space="preserve"><value>ภาษีมูลค่าเพิ่ม</value></data>
+  <data name="Total" xml:space="preserve"><value>ยอดรวม</value></data>
+  <data name="WithholdingTax" xml:space="preserve"><value>ภาษีหัก ณ ที่จ่าย</value></data>
+  <data name="QuotedAmount" xml:space="preserve"><value>จำนวนเงินที่เสนอ</value></data>
+  <data name="Fob" xml:space="preserve"><value>FOB</value></data>
+  <data name="ShippedVia" xml:space="preserve"><value>วิธีจัดส่ง</value></data>
+  <data name="Terms" xml:space="preserve"><value>เงื่อนไข</value></data>
+  <data name="Decision" xml:space="preserve"><value>ผลการพิจารณา</value></data>
+  <data name="Accepted" xml:space="preserve"><value>ยอมรับแล้ว</value></data>
+  <data name="Declined" xml:space="preserve"><value>ปฏิเสธหรือหมดอายุแล้ว</value></data>
+  <data name="Open" xml:space="preserve"><value>รอการพิจารณา</value></data>
+  <data name="QuotationPages" xml:space="preserve"><value>หน้ารายการใบเสนอราคา</value></data>
+  <data name="Previous" xml:space="preserve"><value>ก่อนหน้า</value></data>
+  <data name="Next" xml:space="preserve"><value>ต่อไป</value></data>
+  <data name="PageSummary" xml:space="preserve"><value>หน้า {0} จาก {1}; {2} บันทึก</value></data>
+  <data name="Forbidden" xml:space="preserve"><value>คุณไม่ได้รับอนุญาตให้ดูใบเสนอราคา</value></data>
+  <data name="RateLimited" xml:space="preserve"><value>ระบบใบเสนอราคามีคำขอจำนวนมาก โปรดลองอีกครั้งในอีกสักครู่</value></data>
+  <data name="InvalidResponse" xml:space="preserve"><value>ระบบใบเสนอราคาส่งข้อมูลกลับมาไม่ถูกต้อง</value></data>
+  <data name="Unavailable" xml:space="preserve"><value>ระบบใบเสนอราคาไม่พร้อมใช้งานชั่วคราว</value></data>
+  <data name="QuotationId_Ascending" xml:space="preserve"><value>ID จากน้อยไปมาก</value></data>
+  <data name="QuotationId_Descending" xml:space="preserve"><value>รหัส: มากไปน้อย</value></data>
+  <data name="QuotationCreatedDate_Ascending" xml:space="preserve"><value>วันที่สร้างจากน้อยไปหามาก</value></data>
+  <data name="QuotationCreatedDate_Descending" xml:space="preserve"><value>วันที่สร้างจากมากไปน้อย</value></data>
+  <data name="QuotationModifiedDate_Ascending" xml:space="preserve"><value>วันที่แก้ไขจากน้อยไปหามาก</value></data>
+  <data name="QuotationModifiedDate_Descending" xml:space="preserve"><value>วันที่แก้ไขจากมากไปน้อย</value></data>
+</root>

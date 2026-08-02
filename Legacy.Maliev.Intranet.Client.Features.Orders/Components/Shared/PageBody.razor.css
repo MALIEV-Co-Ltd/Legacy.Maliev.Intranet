@@ -3,11 +3,12 @@
     min-height: 0;
     overflow: auto;
     padding: 20px;
-    background: var(--maliev-panel-2);
+    background: var(--legacy-background);
+    scrollbar-gutter: stable;
 }
 
 @media (max-width: 720px) {
     .mlv-page-body {
-        padding: 12px;
+        padding: 12px 12px calc(12px + env(safe-area-inset-bottom));
     }
 }

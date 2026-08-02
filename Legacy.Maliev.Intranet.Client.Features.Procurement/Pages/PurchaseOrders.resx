@@ -32,4 +32,5 @@
   <data name="PurchaseOrderId_Descending" xml:space="preserve"><value>ID descending</value></data>
   <data name="PurchaseOrderCreatedDate_Ascending" xml:space="preserve"><value>Created oldest first</value></data>
   <data name="PurchaseOrderCreatedDate_Descending" xml:space="preserve"><value>Created newest first</value></data>
+  <data name="PurchaseOrdersTable" xml:space="preserve"><value>Purchase orders</value></data>
 </root>

@@ -9,7 +9,10 @@
 <MudContainer MaxWidth="MaxWidth.Large">
     @if (loading)
     {
-        <MudProgressLinear Indeterminate="true" Color="Color.Primary" aria-label="@Text["Loading"]" />
+        <div role="status" aria-live="polite">
+            <MudProgressLinear Indeterminate="true" Color="Color.Primary" aria-label="@Text["Loading"]" />
+            <span class="visually-hidden">@Text["Loading"]</span>
+        </div>
     }
     else if (!string.IsNullOrWhiteSpace(error))
     {
@@ -17,8 +20,8 @@
     }
     else if (detailPage is not null)
     {
-        <div class="d-flex flex-wrap align-center justify-space-between gap-3 mb-4">
-            <div><MudText Typo="Typo.overline">@Text["Accounting"]</MudText><MudText Typo="Typo.h4" HtmlTag="h1">@Text["Heading", detailPage.Invoice.Number]</MudText></div>
+        <div class="operations-page-header d-flex flex-wrap align-center justify-space-between gap-3 mb-4">
+            <MudText Typo="Typo.h4" HtmlTag="h1">@Text["Heading", detailPage.Invoice.Number]</MudText>
             <MudButton Href="/Invoices/Index" Variant="Variant.Outlined">@Text["Back"]</MudButton>
         </div>
         @if (!string.IsNullOrWhiteSpace(notice)) { <MudAlert Severity="Severity.Success" Class="mb-4" aria-live="polite">@notice</MudAlert> }
@@ -31,6 +34,12 @@
                 <MudItem xs="12" md="4"><MudText Typo="Typo.caption">@Text["SalesPerson"]</MudText><MudText>@Value(detailPage.Invoice.SalesPerson)</MudText></MudItem>
                 <MudItem xs="12" md="4"><MudText Typo="Typo.caption">@Text["PurchaseOrder"]</MudText><MudText>@Value(detailPage.Invoice.PurchaseOrderNumber)</MudText></MudItem>
                 <MudItem xs="12" md="4"><MudText Typo="Typo.caption">@Text["Terms"]</MudText><MudText>@Value(detailPage.Invoice.Terms)</MudText></MudItem>
+                <MudItem xs="12" md="4">
+                    <MudText Typo="Typo.caption">@Text["PaymentStatus"]</MudText>
+                    <MudChip T="string" Size="MudBlazor.Size.Small" Color="@(detailPage.Invoice.IsPaid ? Color.Success : Color.Warning)" Variant="Variant.Outlined">
+                        @(detailPage.Invoice.IsPaid ? Text["PaidStatus"] : Text["UnpaidStatus"])
+                    </MudChip>
+                </MudItem>
                 <MudItem xs="12" md="6"><MudText Typo="Typo.h6" HtmlTag="h2">@Text["Billing"]</MudText><MudText Style="white-space: pre-line">@Address(detailPage.Invoice, false)</MudText></MudItem>
                 <MudItem xs="12" md="6"><MudText Typo="Typo.h6" HtmlTag="h2">@Text["Shipping"]</MudText><MudText Style="white-space: pre-line">@Address(detailPage.Invoice, true)</MudText></MudItem>
             </MudGrid>
@@ -38,39 +47,47 @@
 
         <MudPaper Class="pa-4 mb-4">
             <MudText Typo="Typo.h5" HtmlTag="h2" Class="mb-3">@Text["Items"]</MudText>
-            <MudTable Items="detailPage.OrderItems" Breakpoint="Breakpoint.Sm" Elevation="0">
-                <HeaderContent><MudTh>@Text["Description"]</MudTh><MudTh>@Text["UnitPrice"]</MudTh><MudTh>@Text["Quantity"]</MudTh><MudTh>@Text["Subtotal"]</MudTh></HeaderContent>
-                <RowTemplate Context="item"><MudTd DataLabel="@Text["Description"]">@Value(item.Description)</MudTd><MudTd DataLabel="@Text["UnitPrice"]">@Money(item.UnitPrice)</MudTd><MudTd DataLabel="@Text["Quantity"]">@item.Quantity</MudTd><MudTd DataLabel="@Text["Subtotal"]">@Money(item.Subtotal)</MudTd></RowTemplate>
+            <MudTable Items="detailPage.OrderItems" Breakpoint="Breakpoint.Sm" Elevation="0" aria-label="@Text["OrderItemsTable"]">
+                <HeaderContent>
+                    <MudTh>@Text["Description"]</MudTh>
+                    <MudTh>@Text["UnitPrice"]</MudTh>
+                    <MudTh>@Text["Quantity"]</MudTh>
+                    <MudTh>@Text["Subtotal"]</MudTh>
+                </HeaderContent>
+                <RowTemplate Context="item">
+                    <MudTd DataLabel="@Text["Description"]">@Value(item.Description)</MudTd>
+                    <MudTd DataLabel="@Text["UnitPrice"]">@Money(item.UnitPrice)</MudTd>
+                    <MudTd DataLabel="@Text["Quantity"]">@item.Quantity</MudTd>
+                    <MudTd DataLabel="@Text["Subtotal"]">@Money(item.Subtotal)</MudTd>
+                </RowTemplate>
                 <NoRecordsContent><MudText>@Text["NoItems"]</MudText></NoRecordsContent>
             </MudTable>
         </MudPaper>
 
         <MudPaper Class="pa-4 mb-4">
             <MudText Typo="Typo.h5" HtmlTag="h2" Class="mb-3">@Text["ReceiptActions"]</MudText>
-            <div class="d-flex flex-wrap gap-2">
+            <div class="d-flex flex-wrap gap-2" role="group" aria-label="@Text["ReceiptActionGroup"]">
                 @if (detailPage.Invoice.ReceiptId is null)
                 {
                     <MudButton OnClick="CreateReceiptAsync" Disabled="@(submitting || !detailPage.Invoice.IsPaid)" Variant="Variant.Filled" Color="Color.Primary">@Text["CreateReceipt"]</MudButton>
                 }
                 else
                 {
+                    <MudButton OnClick="ArmEmailReceipt" Disabled="@submitting" Variant="Variant.Outlined" Color="Color.Primary" aria-expanded="@emailReceiptArmed">@Text["EmailReceipt"]</MudButton>
                     @if (emailReceiptArmed)
                     {
-                        <MudButton OnClick="EmailReceiptAsync" Disabled="@submitting" Variant="Variant.Filled" Color="Color.Primary">@Text["ConfirmEmailReceipt"]</MudButton>
-                        <MudButton OnClick="CancelEmailReceipt" Disabled="@submitting">@Text["Cancel"]</MudButton>
+                        <div class="d-flex flex-wrap gap-2" role="group" aria-label="@Text["EmailReceiptConfirmation"]">
+                            <MudButton OnClick="EmailReceiptAsync" Disabled="@submitting" Variant="Variant.Filled" Color="Color.Primary">@Text["ConfirmEmailReceipt"]</MudButton>
+                            <MudButton OnClick="CancelEmailReceipt" Disabled="@submitting">@Text["Cancel"]</MudButton>
+                        </div>
                     }
-                    else
-                    {
-                        <MudButton OnClick="ArmEmailReceipt" Disabled="@submitting" Variant="Variant.Outlined" Color="Color.Primary">@Text["EmailReceipt"]</MudButton>
-                    }
+                    <MudButton OnClick="ArmRemoveReceipt" Disabled="@submitting" Variant="Variant.Outlined" Color="Color.Error" aria-expanded="@receiptRemoveArmed">@Text["RemoveReceipt"]</MudButton>
                     @if (receiptRemoveArmed)
                     {
-                        <MudButton OnClick="RemoveReceiptAsync" Disabled="@submitting" Variant="Variant.Filled" Color="Color.Error">@Text["ConfirmRemoveReceipt"]</MudButton>
-                        <MudButton OnClick="CancelRemoveReceipt" Disabled="@submitting">@Text["Cancel"]</MudButton>
-                    }
-                    else
-                    {
-                        <MudButton OnClick="ArmRemoveReceipt" Disabled="@submitting" Variant="Variant.Outlined" Color="Color.Error">@Text["RemoveReceipt"]</MudButton>
+                        <div class="d-flex flex-wrap gap-2" role="group" aria-label="@Text["RemoveReceiptConfirmation"]">
+                            <MudButton OnClick="RemoveReceiptAsync" Disabled="@submitting" Variant="Variant.Filled" Color="Color.Error">@Text["ConfirmRemoveReceipt"]</MudButton>
+                            <MudButton OnClick="CancelRemoveReceipt" Disabled="@submitting">@Text["Cancel"]</MudButton>
+                        </div>
                     }
                 }
             </div>
@@ -91,15 +108,27 @@
         <MudPaper Class="pa-4">
             <MudForm @ref="form" Model="edit">
                 <MudGrid>
-                    <MudItem xs="12" md="4"><MudNumericField T="decimal?" Label="@Text["Subtotal"]" Value="detailPage.Invoice.Subtotal" ReadOnly="true" /></MudItem>
-                    <MudItem xs="12" md="4"><MudNumericField T="decimal?" Label="@Text["Vat"]" Value="detailPage.Invoice.Vat" ReadOnly="true" /></MudItem>
-                    <MudItem xs="12" md="4"><MudNumericField T="decimal?" Label="@Text["Total"]" Value="detailPage.Invoice.Total" ReadOnly="true" /></MudItem>
-                    <MudItem xs="12" md="6"><MudNumericField T="decimal?" Label="@Text["WithholdingTax"]" Value="detailPage.Invoice.WithholdingTax" ReadOnly="true" /></MudItem>
-                    <MudItem xs="12" md="6"><MudNumericField T="decimal?" Label="@Text["Outstanding"]" Value="detailPage.Invoice.Outstanding" ReadOnly="true" /></MudItem>
+                    <MudItem xs="12" md="4"><MudNumericField T="decimal?" Label="@Text["Subtotal"]" Value="detailPage.Invoice.Subtotal" ReadOnly="true" Adornment="Adornment.End" AdornmentText="@detailPage.Invoice.Currency" /></MudItem>
+                    <MudItem xs="12" md="4"><MudNumericField T="decimal?" Label="@Text["Vat"]" Value="detailPage.Invoice.Vat" ReadOnly="true" Adornment="Adornment.End" AdornmentText="@detailPage.Invoice.Currency" /></MudItem>
+                    <MudItem xs="12" md="4"><MudNumericField T="decimal?" Label="@Text["Total"]" Value="detailPage.Invoice.Total" ReadOnly="true" Adornment="Adornment.End" AdornmentText="@detailPage.Invoice.Currency" /></MudItem>
+                    <MudItem xs="12" md="6"><MudNumericField T="decimal?" Label="@Text["WithholdingTax"]" Value="detailPage.Invoice.WithholdingTax" ReadOnly="true" Adornment="Adornment.End" AdornmentText="@detailPage.Invoice.Currency" /></MudItem>
+                    <MudItem xs="12" md="6"><MudNumericField T="decimal?" Label="@Text["Outstanding"]" Value="detailPage.Invoice.Outstanding" ReadOnly="true" Adornment="Adornment.End" AdornmentText="@detailPage.Invoice.Currency" /></MudItem>
                     <MudItem xs="12" md="6"><MudCheckBox T="bool" Label="@Text["Paid"]" @bind-Value="edit.IsPaid" /></MudItem>
                     <MudItem xs="12" md="6"><MudDatePicker Label="@Text["PaymentDate"]" @bind-Date="edit.PaymentDate" /></MudItem>
                     <MudItem xs="12"><MudTextField Label="@Text["InternalComment"]" @bind-Value="edit.InternalComment" Lines="5" MaxLength="1000" /></MudItem>
-                    <MudItem xs="12"><div class="d-flex flex-wrap gap-2"><MudButton OnClick="SaveAsync" Disabled="@submitting" Variant="Variant.Filled" Color="Color.Primary">@Text["Save"]</MudButton>@if (deleteArmed) { <MudButton OnClick="DeleteAsync" Disabled="@submitting" Color="Color.Error" Variant="Variant.Filled">@Text["ConfirmDelete"]</MudButton><MudButton OnClick="CancelDelete">@Text["Cancel"]</MudButton> } else { <MudButton OnClick="ArmDelete" Disabled="@submitting" Color="Color.Error" Variant="Variant.Outlined">@Text["Delete"]</MudButton> }</div></MudItem>
+                    <MudItem xs="12">
+                        <div class="d-flex flex-wrap gap-2" role="group" aria-label="@Text["InvoiceActionGroup"]">
+                            <MudButton OnClick="SaveAsync" Disabled="@submitting" Variant="Variant.Filled" Color="Color.Primary">@Text["Save"]</MudButton>
+                            <MudButton OnClick="ArmDelete" Disabled="@submitting" Color="Color.Error" Variant="Variant.Outlined" aria-expanded="@deleteArmed">@Text["Delete"]</MudButton>
+                            @if (deleteArmed)
+                            {
+                                <div class="d-flex flex-wrap gap-2" role="group" aria-label="@Text["DeleteConfirmation"]">
+                                    <MudButton OnClick="DeleteAsync" Disabled="@submitting" Color="Color.Error" Variant="Variant.Filled">@Text["ConfirmDelete"]</MudButton>
+                                    <MudButton OnClick="CancelDelete" Disabled="@submitting">@Text["Cancel"]</MudButton>
+                                </div>
+                            }
+                        </div>
+                    </MudItem>
                 </MudGrid>
             </MudForm>
         </MudPaper>
@@ -216,7 +245,15 @@
     private void CancelEmailReceipt() => emailReceiptArmed = false;
     private string ErrorFor(HttpStatusCode status) => status switch { HttpStatusCode.Forbidden => Text["Forbidden"], HttpStatusCode.TooManyRequests => Text["RateLimited"], HttpStatusCode.BadGateway => Text["InvalidResponse"], _ => Text["Unavailable"] };
     private string Money(decimal? value) => value is null ? "-" : $"{value:N2} {detailPage?.Invoice.Currency}";
-    private static string FormatDate(DateTime? value) => value?.ToLocalTime().ToString("g", CultureInfo.CurrentCulture) ?? "-";
+    private static string FormatDate(DateTime? value)
+    {
+        if (value is null) return "-";
+        var utc = value.Value.Kind == DateTimeKind.Unspecified
+            ? DateTime.SpecifyKind(value.Value, DateTimeKind.Utc)
+            : value.Value.ToUniversalTime();
+        return TimeZoneInfo.ConvertTimeBySystemTimeZoneId(new DateTimeOffset(utc), "Asia/Bangkok")
+            .ToString("g", CultureInfo.CurrentCulture);
+    }
     private static string Value(string? value) => string.IsNullOrWhiteSpace(value) ? "-" : value;
     private static string Address(InvoiceDetail value, bool shipping) => string.Join(Environment.NewLine, (shipping
         ? new[] { value.ShippingAddressRecipient, value.ShippingAddressCompany, value.ShippingAddressBuilding, value.ShippingAddressLine1, value.ShippingAddressLine2, value.ShippingAddressCity, value.ShippingAddressState, value.ShippingAddressPostalCode, value.ShippingAddressCountry }

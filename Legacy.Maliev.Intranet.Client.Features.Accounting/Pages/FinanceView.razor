@@ -9,7 +9,10 @@
 <MudContainer MaxWidth="MaxWidth.Large">
     @if (loading)
     {
-        <MudProgressLinear Indeterminate="true" Color="Color.Primary" aria-label="@Text["Loading"]" />
+        <div role="status" aria-live="polite">
+            <MudProgressLinear Indeterminate="true" Color="Color.Primary" aria-label="@Text["Loading"]" />
+            <span class="visually-hidden">@Text["Loading"]</span>
+        </div>
     }
     else if (!string.IsNullOrWhiteSpace(error))
     {
@@ -17,7 +20,7 @@
     }
     else if (page is not null)
     {
-        <div class="d-flex flex-wrap align-center justify-space-between gap-3 mb-4">
+        <div class="operations-page-header d-flex flex-wrap align-center justify-space-between gap-3 mb-4">
             <MudText Typo="Typo.h4" HtmlTag="h1">@Text["Heading", page.Payment.Id]</MudText>
             <MudButton Href="/Finances/Index" Variant="Variant.Outlined">@Text["Back"]</MudButton>
         </div>
@@ -32,13 +35,27 @@
                 <MudItem xs="12" md="6"><MudSelect T="int" Label="@Text["Direction"]" @bind-Value="edit.PaymentDirectionId" Required="true">@foreach (var item in page.Directions) { <MudSelectItem T="int" Value="@item.Id">@item.Name</MudSelectItem> }</MudSelect></MudItem>
                 <MudItem xs="12" md="6"><MudSelect T="int" Label="@Text["Type"]" @bind-Value="edit.PaymentTypeId" Required="true">@foreach (var item in page.Types) { <MudSelectItem T="int" Value="@item.Id">@item.Name</MudSelectItem> }</MudSelect></MudItem>
                 <MudItem xs="12" md="6"><MudSelect T="int" Label="@Text["Method"]" @bind-Value="edit.PaymentMethodId" Required="true">@foreach (var item in page.Methods) { <MudSelectItem T="int" Value="@item.Id">@item.Name</MudSelectItem> }</MudSelect></MudItem>
-                <MudItem xs="12" md="6"><MudNumericField T="decimal" Label="@Text["Amount"]" @bind-Value="edit.Amount" Min="0" Required="true" /></MudItem>
+                <MudItem xs="12" md="6">
+                    <MudNumericField T="decimal" Label="@Text["AmountThbOrCurrency"]" @bind-Value="edit.Amount" Min="0" Required="true" Adornment="Adornment.End" AdornmentText="@CurrencyName(edit.CurrencyId)" />
+                </MudItem>
                 <MudItem xs="12" md="6"><MudSelect T="int?" Label="@Text["Currency"]" @bind-Value="edit.CurrencyId" Clearable="true">@foreach (var item in page.Currencies) { <MudSelectItem T="int?" Value="@((int?)item.Id)">@item.ShortName</MudSelectItem> }</MudSelect></MudItem>
                 <MudItem xs="12" md="6"><MudTextField Label="@Text["Recipient"]" @bind-Value="edit.Recipient" /></MudItem>
                 <MudItem xs="12" md="6"><MudTextField Label="@Text["TransactionNumber"]" @bind-Value="edit.TransactionNumber" /></MudItem>
                 <MudItem xs="12" md="6"><MudDatePicker Label="@Text["PaymentDate"]" @bind-Date="edit.PaymentDate" /></MudItem>
                 <MudItem xs="12"><MudTextField Label="@Text["Description"]" @bind-Value="edit.Description" Lines="4" /></MudItem>
-                <MudItem xs="12"><div class="d-flex flex-wrap gap-2"><MudButton OnClick="SaveAsync" Disabled="@submitting" Variant="Variant.Filled" Color="Color.Primary">@Text["Save"]</MudButton>@if (deleteArmed) { <MudButton OnClick="DeleteAsync" Disabled="@submitting" Variant="Variant.Filled" Color="Color.Error">@Text["ConfirmDelete"]</MudButton><MudButton OnClick="CancelDelete" Disabled="@submitting" Variant="Variant.Text">@Text["Cancel"]</MudButton> } else { <MudButton OnClick="ArmDelete" Disabled="@submitting" Variant="Variant.Outlined" Color="Color.Error">@Text["Delete"]</MudButton> }</div></MudItem>
+                <MudItem xs="12">
+                    <div class="d-flex flex-wrap gap-2" role="group" aria-label="@Text["PaymentActions"]">
+                        <MudButton OnClick="SaveAsync" Disabled="@submitting" Variant="Variant.Filled" Color="Color.Primary">@Text["Save"]</MudButton>
+                        <MudButton OnClick="ArmDelete" Disabled="@submitting" Variant="Variant.Outlined" Color="Color.Error" aria-expanded="@deleteArmed">@Text["Delete"]</MudButton>
+                        @if (deleteArmed)
+                        {
+                            <span role="group" aria-label="@Text["DeleteConfirmation"]">
+                                <MudButton OnClick="DeleteAsync" Disabled="@submitting" Variant="Variant.Filled" Color="Color.Error">@Text["ConfirmDelete"]</MudButton>
+                                <MudButton OnClick="CancelDelete" Disabled="@submitting" Variant="Variant.Text">@Text["Cancel"]</MudButton>
+                            </span>
+                        }
+                    </div>
+                </MudItem>
             </MudGrid>
         </MudForm>
 
@@ -52,7 +69,24 @@
             }
             else
             {
-                <MudList T="FinanceFileItem">@foreach (var file in page.Files) { <MudListItem T="FinanceFileItem" Value="file"><MudLink Href="@file.Uri?.ToString()" Target="_blank">@file.ObjectName</MudLink><MudIconButton Icon="@Icons.Material.Filled.Delete" OnClick="() => RemoveFileAsync(file.Id)" Disabled="@submitting" aria-label="@Text["RemoveFile", file.ObjectName]" /></MudListItem> }</MudList>
+                <MudList T="FinanceFileItem">
+                    @foreach (var file in page.Files)
+                    {
+                        <MudListItem T="FinanceFileItem" Value="file">
+                            <a href="@file.Uri?.ToString()" target="_blank" rel="noopener">@file.ObjectName</a>
+                            <div class="d-flex flex-wrap gap-2" role="group" aria-label="@Text["FileActions", file.ObjectName]">
+                                <MudIconButton Icon="@Icons.Material.Filled.Delete" OnClick="() => ArmFileRemove(file.Id)" Disabled="@submitting" aria-label="@Text["RemoveFile", file.ObjectName]" aria-expanded="@(fileRemoveArmedId == file.Id)" />
+                                @if (fileRemoveArmedId == file.Id)
+                                {
+                                    <div class="d-flex flex-wrap gap-2" role="group" aria-label="@Text["RemoveFileConfirmation", file.ObjectName]">
+                                        <MudButton OnClick="() => RemoveFileAsync(file.Id)" Disabled="@submitting" Color="Color.Error" Variant="Variant.Filled">@Text["ConfirmRemoveFile"]</MudButton>
+                                        <MudButton OnClick="CancelFileRemove" Disabled="@submitting">@Text["Cancel"]</MudButton>
+                                    </div>
+                                }
+                            </div>
+                        </MudListItem>
+                    }
+                </MudList>
             }
         </MudPaper>
     }
@@ -69,6 +103,7 @@
     private bool loading = true;
     private bool submitting;
     private bool deleteArmed;
+    private int? fileRemoveArmedId;
     private string? error;
     private string? notice;
 
@@ -124,6 +159,7 @@
         if (page is null) return;
         using var request = WriteRequest(HttpMethod.Delete, $"/bff/finances/{page.Payment.Id}/files/{fileId}");
         await SendAsync(request, Text["FileRemoved"]);
+        if (string.IsNullOrWhiteSpace(error)) fileRemoveArmedId = null;
     }
 
     private async Task DeleteAsync()
@@ -143,6 +179,8 @@
 
     private void ArmDelete() => deleteArmed = true;
     private void CancelDelete() => deleteArmed = false;
+    private void ArmFileRemove(int fileId) => fileRemoveArmedId = fileId;
+    private void CancelFileRemove() => fileRemoveArmedId = null;
 
     private HttpRequestMessage WriteRequest(HttpMethod method, string path)
     {
@@ -166,6 +204,7 @@
     }
 
     private string ErrorFor(HttpStatusCode status) => status switch { HttpStatusCode.Forbidden => Text["Forbidden"], HttpStatusCode.TooManyRequests => Text["RateLimited"], HttpStatusCode.BadGateway => Text["InvalidResponse"], _ => Text["Unavailable"] };
+    private string CurrencyName(int? id) => page?.Currencies.FirstOrDefault(item => item.Id == id)?.ShortName ?? Text["CurrencyUnknown"];
 
     private sealed class FinanceEditModel
     {

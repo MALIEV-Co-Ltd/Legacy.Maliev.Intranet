@@ -44,7 +44,7 @@ public sealed class PaginationQueryDefaultsTests
     [InlineData("Legacy.Maliev.Intranet.Client.Features.Orders/Pages/Orders.razor", "fallback: 25", "maximum: 250")]
     [InlineData("Legacy.Maliev.Intranet.Client.Features.Procurement/Pages/PurchaseOrders.razor", "fallback: 25", "maximum: 250")]
     [InlineData("Legacy.Maliev.Intranet.Client.Features.Procurement/Pages/Suppliers.razor", "fallback: 100", "maximum: 250")]
-    [InlineData("Legacy.Maliev.Intranet.Client.Features.Quotations/Pages/QuotationRequests/Index.razor", "fallback:25", "maximum:250")]
+    [InlineData("Legacy.Maliev.Intranet.Client.Features.Quotations/Pages/QuotationRequests/Index.razor", "fallback: 25", "maximum: 250")]
     public void PaginatedFeaturePages_UseExplicitQueryDefaults(string relativePath, string fallback, string maximum)
     {
         var root = FindRoot();

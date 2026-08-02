@@ -1,11 +1,17 @@
 .mlv-panel-card {
     min-width: 0;
     padding: 16px 20px;
-    border: 0;
+    border: 1px solid var(--legacy-border);
     border-radius: var(--maliev-radius-md);
     background: var(--maliev-panel);
-    box-shadow: var(--maliev-shadow-card);
+    box-shadow: none;
     overflow-wrap: anywhere;
+}
+
+@media (forced-colors: active) {
+    .mlv-panel-card {
+        border-color: CanvasText;
+    }
 }
 
 @media (max-width: 520px) {

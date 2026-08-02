@@ -34,4 +34,5 @@
   <data name="SupplierCreatedDate_Descending" xml:space="preserve"><value>Created newest first</value></data>
   <data name="SupplierModifiedDate_Ascending" xml:space="preserve"><value>Modified oldest first</value></data>
   <data name="SupplierModifiedDate_Descending" xml:space="preserve"><value>Modified newest first</value></data>
+  <data name="SuppliersTable" xml:space="preserve"><value>Supplier records</value></data>
 </root>

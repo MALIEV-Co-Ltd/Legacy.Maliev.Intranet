@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
+  <data name="PageTitle" xml:space="preserve"><value>ใบเสนอราคา {0} | MALIEV Intranet</value></data>
+  <data name="Loading" xml:space="preserve"><value>กำลังโหลดใบเสนอราคา</value></data>
+  <data name="Sales" xml:space="preserve"><value>ฝ่ายขาย</value></data>
+  <data name="Heading" xml:space="preserve"><value>ใบเสนอราคา #{0}</value></data>
+  <data name="Description" xml:space="preserve"><value>ตรวจสอบข้อมูลลูกค้า ราคา ใบสั่งผลิตที่เกี่ยวข้อง และเอกสารของใบเสนอราคานี้</value></data>
+  <data name="Actions" xml:space="preserve"><value>การดำเนินการเกี่ยวกับใบเสนอราคา</value></data>
+  <data name="Back" xml:space="preserve"><value>กลับไปยังรายการใบเสนอราคา</value></data>
+  <data name="ReadOnlyNotice" xml:space="preserve"><value>ใบเสนอราคานี้เปิดให้อ่านเท่านั้น การเปลี่ยนผลการพิจารณาจะเปิดใช้งานเมื่อบริการที่รับผิดชอบรองรับแล้ว</value></data>
+  <data name="Quotation" xml:space="preserve"><value>ข้อมูลใบเสนอราคา</value></data>
+  <data name="Created" xml:space="preserve"><value>สร้างเมื่อ: {0}</value></data>
+  <data name="Modified" xml:space="preserve"><value>แก้ไขเมื่อ: {0}</value></data>
+  <data name="Employee" xml:space="preserve"><value>สร้างโดย: {0}</value></data>
+  <data name="Period" xml:space="preserve"><value>ระยะเวลา: {0} วัน</value></data>
+  <data name="Expiration" xml:space="preserve"><value>หมดอายุ: {0}</value></data>
+  <data name="Decision" xml:space="preserve"><value>ผลการพิจารณา: {0}</value></data>
+  <data name="CreatedLabel" xml:space="preserve"><value>วันที่สร้าง</value></data>
+  <data name="ModifiedLabel" xml:space="preserve"><value>วันที่แก้ไข</value></data>
+  <data name="EmployeeLabel" xml:space="preserve"><value>ผู้จัดทำ</value></data>
+  <data name="PeriodLabel" xml:space="preserve"><value>ระยะเวลาที่ใช้ได้</value></data>
+  <data name="PeriodValue" xml:space="preserve"><value>{0} วัน</value></data>
+  <data name="ExpirationLabel" xml:space="preserve"><value>วันหมดอายุ</value></data>
+  <data name="DecisionLabel" xml:space="preserve"><value>ผลการพิจารณา</value></data>
+  <data name="CommentLabel" xml:space="preserve"><value>หมายเหตุ</value></data>
+  <data name="Customer" xml:space="preserve"><value>ข้อมูลลูกค้า</value></data>
+  <data name="NoCustomer" xml:space="preserve"><value>ไม่มีข้อมูลลูกค้าที่เชื่อมโยง</value></data>
+  <data name="CustomerNameLabel" xml:space="preserve"><value>ลูกค้า</value></data>
+  <data name="EmailLabel" xml:space="preserve"><value>อีเมล</value></data>
+  <data name="TelephoneLabel" xml:space="preserve"><value>โทรศัพท์</value></data>
+  <data name="MobileLabel" xml:space="preserve"><value>โทรศัพท์มือถือ</value></data>
+  <data name="FaxLabel" xml:space="preserve"><value>โทรสาร</value></data>
+  <data name="Pricing" xml:space="preserve"><value>ราคา</value></data>
+  <data name="Subtotal" xml:space="preserve"><value>ยอดก่อนภาษี</value></data>
+  <data name="Vat" xml:space="preserve"><value>ภาษีมูลค่าเพิ่ม</value></data>
+  <data name="Withholding" xml:space="preserve"><value>ภาษีหัก ณ ที่จ่าย</value></data>
+  <data name="Total" xml:space="preserve"><value>ยอดสุทธิตามใบเสนอราคา</value></data>
+  <data name="Invoice" xml:space="preserve"><value>ใบแจ้งหนี้:</value></data>
+  <data name="Orders" xml:space="preserve"><value>ใบสั่งผลิตที่เกี่ยวข้อง</value></data>
+  <data name="NoOrders" xml:space="preserve"><value>ไม่มีใบสั่งผลิตที่เชื่อมโยง</value></data>
+  <data name="Order" xml:space="preserve"><value>ใบสั่งผลิต #{0}</value></data>
+  <data name="Files" xml:space="preserve"><value>เอกสารใบเสนอราคา</value></data>
+  <data name="ViewPdf" xml:space="preserve"><value>ดูไฟล์ PDF</value></data>
+  <data name="NoFiles" xml:space="preserve"><value>ไม่มีเอกสารแนบ</value></data>
+  <data name="Accepted" xml:space="preserve"><value>ลูกค้ายอมรับแล้ว</value></data>
+  <data name="Declined" xml:space="preserve"><value>ลูกค้าปฏิเสธ</value></data>
+  <data name="Open" xml:space="preserve"><value>รอการพิจารณา</value></data>
+  <data name="InvalidId" xml:space="preserve"><value>กรุณาระบุรหัสใบเสนอราคาที่ถูกต้อง</value></data>
+  <data name="NotFound" xml:space="preserve"><value>ไม่พบใบเสนอราคานี้</value></data>
+  <data name="Forbidden" xml:space="preserve"><value>คุณไม่มีสิทธิ์ดูใบเสนอราคานี้</value></data>
+  <data name="InvalidResponse" xml:space="preserve"><value>ระบบส่งข้อมูลใบเสนอราคากลับมาไม่ถูกต้อง</value></data>
+  <data name="Unavailable" xml:space="preserve"><value>รายละเอียดใบเสนอราคาไม่พร้อมใช้งานชั่วคราว</value></data>
+</root>

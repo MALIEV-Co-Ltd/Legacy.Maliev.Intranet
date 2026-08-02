@@ -1,0 +1,91 @@
+.quotation-detail-list,
+.quotation-price-grid {
+    display: grid;
+    gap: 0;
+    margin: 0.75rem 0 0;
+}
+
+.quotation-detail-list > div,
+.quotation-price-grid > div {
+    display: grid;
+    grid-template-columns: minmax(8rem, 0.75fr) minmax(0, 1fr);
+    gap: 1rem;
+    padding-block: 0.65rem;
+    border-bottom: 1px solid var(--legacy-border);
+}
+
+.quotation-detail-list dt,
+.quotation-price-grid dt {
+    color: var(--legacy-muted);
+    font-weight: 650;
+}
+
+.quotation-detail-list dd,
+.quotation-price-grid dd {
+    margin: 0;
+    color: var(--legacy-ink);
+    overflow-wrap: anywhere;
+}
+
+.quotation-price-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 1rem;
+}
+
+.quotation-price-grid > div {
+    display: block;
+    padding: 0.75rem;
+    border: 1px solid var(--legacy-border);
+    border-radius: var(--legacy-radius-md);
+}
+
+.quotation-price-grid dd {
+    margin-top: 0.4rem;
+    font-size: 1.05rem;
+    font-weight: 750;
+    font-variant-numeric: tabular-nums;
+}
+
+.quotation-price-total {
+    border-color: var(--legacy-primary) !important;
+}
+
+.quotation-status {
+    display: inline-flex;
+    align-items: center;
+    min-height: 1.75rem;
+    padding: 0.2rem 0.65rem;
+    border: 1px solid currentColor;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    line-height: 1.2;
+}
+
+.quotation-status--accepted {
+    color: var(--legacy-success, #087a45);
+    background: color-mix(in srgb, currentColor 9%, transparent);
+}
+
+.quotation-status--declined {
+    color: var(--legacy-danger, #b42318);
+    background: color-mix(in srgb, currentColor 8%, transparent);
+}
+
+.quotation-status--open {
+    color: var(--legacy-warning, #8a5b00);
+    background: color-mix(in srgb, currentColor 10%, transparent);
+}
+
+@media (max-width: 800px) {
+    .quotation-price-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 520px) {
+    .quotation-detail-list > div,
+    .quotation-price-grid {
+        grid-template-columns: 1fr;
+    }
+}

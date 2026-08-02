@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
+  <data name="PageTitle" xml:space="preserve"><value>ใบสั่งซื้อ - MALIEV Intranet</value></data>
+  <data name="PageTitleWithId" xml:space="preserve"><value>ใบสั่งซื้อ {0} - MALIEV Intranet</value></data>
+  <data name="Loading" xml:space="preserve"><value>กำลังโหลดใบสั่งซื้อ</value></data>
+  <data name="NotFound" xml:space="preserve"><value>ไม่พบใบสั่งซื้อนี้</value></data>
+  <data name="Back" xml:space="preserve"><value>กลับไปยังรายการใบสั่งซื้อ</value></data>
+  <data name="Procurement" xml:space="preserve"><value>การจัดซื้อ</value></data>
+  <data name="PurchaseOrder" xml:space="preserve"><value>ใบสั่งซื้อ {0}</value></data>
+  <data name="DownloadPdf" xml:space="preserve"><value>ดาวน์โหลดไฟล์ PDF</value></data>
+  <data name="Delete" xml:space="preserve"><value>ลบใบสั่งซื้อ</value></data>
+  <data name="Supplier" xml:space="preserve"><value>ผู้ขาย</value></data>
+  <data name="SupplierContact" xml:space="preserve"><value>ผู้ติดต่อของผู้ขาย</value></data>
+  <data name="OrderedBy" xml:space="preserve"><value>ผู้สั่งซื้อ</value></data>
+  <data name="ShippingMethod" xml:space="preserve"><value>วิธีจัดส่ง</value></data>
+  <data name="Fob" xml:space="preserve"><value>FOB</value></data>
+  <data name="Terms" xml:space="preserve"><value>เงื่อนไข</value></data>
+  <data name="Created" xml:space="preserve"><value>วันที่สร้าง</value></data>
+  <data name="Notes" xml:space="preserve"><value>หมายเหตุ</value></data>
+  <data name="PartNumber" xml:space="preserve"><value>หมายเลขชิ้นส่วน</value></data>
+  <data name="Description" xml:space="preserve"><value>คำอธิบาย</value></data>
+  <data name="UnitPrice" xml:space="preserve"><value>ราคาต่อหน่วย</value></data>
+  <data name="Quantity" xml:space="preserve"><value>ปริมาณ</value></data>
+  <data name="Subtotal" xml:space="preserve"><value>ยอดรวมก่อนภาษี</value></data>
+  <data name="ConfirmDeleteTitle" xml:space="preserve"><value>ลบใบสั่งซื้อนี้หรือไม่</value></data>
+  <data name="ConfirmDeleteBody" xml:space="preserve"><value>ไฟล์ PDF ข้อมูลไฟล์ รายการสินค้า และใบสั่งซื้อนี้จะถูกลบอย่างถาวร และไม่สามารถเรียกคืนได้</value></data>
+  <data name="Cancel" xml:space="preserve"><value>ยกเลิก</value></data>
+  <data name="Deleting" xml:space="preserve"><value>กำลังลบ...</value></data>
+  <data name="Forbidden" xml:space="preserve"><value>คุณไม่ได้รับอนุญาตให้ดูใบสั่งซื้อ</value></data>
+  <data name="ForbiddenDelete" xml:space="preserve"><value>คุณไม่ได้รับอนุญาตให้ลบใบสั่งซื้อ</value></data>
+  <data name="RateLimited" xml:space="preserve"><value>ระบบได้รับคำขอมากเกินไป โปรดรอสักครู่แล้วลองอีกครั้ง</value></data>
+  <data name="Unavailable" xml:space="preserve"><value>รายละเอียดใบสั่งซื้อไม่พร้อมใช้งานชั่วคราว</value></data>
+  <data name="InvalidResponse" xml:space="preserve"><value>ระบบเดิมส่งข้อมูลใบสั่งซื้อกลับมาไม่ถูกต้อง</value></data>
+  <data name="DeleteFailed" xml:space="preserve"><value>ระบบหยุดการลบอย่างปลอดภัยก่อนลบข้อมูลหลัก โปรดลองอีกครั้งเพื่อดำเนินการให้เสร็จสมบูรณ์</value></data>
+  <data name="LineItemsTable" xml:space="preserve"><value>ตารางรายการสินค้าในใบสั่งซื้อ</value></data>
+</root>

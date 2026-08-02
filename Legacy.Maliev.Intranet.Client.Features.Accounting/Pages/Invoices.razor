@@ -9,8 +9,7 @@
 <PageTitle>@Text["PageTitle"]</PageTitle>
 
 <MudContainer MaxWidth="MaxWidth.ExtraLarge">
-    <MudText Typo="Typo.overline">@Text["Accounting"]</MudText>
-    <div class="d-flex flex-wrap align-center justify-space-between gap-3 mb-4">
+    <div class="operations-page-header d-flex flex-wrap align-center justify-space-between gap-3 mb-4">
         <MudText Typo="Typo.h4" HtmlTag="h1">@Text["Invoices"]</MudText>
         <MudButton Href="/Invoices/Create" Variant="Variant.Filled" Color="Color.Primary">@Text["Create"]</MudButton>
     </div>
@@ -35,7 +34,10 @@
 
     @if (loading)
     {
-        <MudProgressLinear Indeterminate="true" Color="Color.Primary" aria-label="@Text["Loading"]" />
+        <div role="status" aria-live="polite">
+            <MudProgressLinear Indeterminate="true" Color="Color.Primary" aria-label="@Text["Loading"]" />
+            <span class="visually-hidden">@Text["Loading"]</span>
+        </div>
     }
     else if (!string.IsNullOrWhiteSpace(error))
     {
@@ -56,11 +58,11 @@
                 </MudText>
                 @if (section.Page.Items.Count == 0)
                 {
-                    <MudAlert Severity="Severity.Info">@section.EmptyMessage</MudAlert>
+                    <MudAlert Severity="Severity.Info" aria-live="polite">@section.EmptyMessage</MudAlert>
                 }
                 else
                 {
-                    <MudTable Items="section.Page.Items" Hover="true" Breakpoint="Breakpoint.Sm" Elevation="0">
+                    <MudTable Items="section.Page.Items" Hover="true" Breakpoint="Breakpoint.Sm" Elevation="0" aria-label="@Text["InvoiceTableLabel", section.Title]">
                         <HeaderContent>
                             <MudTh>@Text["Id"]</MudTh>
                             <MudTh>@Text["CustomerId"]</MudTh>
@@ -80,7 +82,11 @@
                             <MudTd DataLabel="@Text["Id"]"><MudLink Href="@($"/Invoices/View?id={invoice.Id}")">@invoice.Id</MudLink></MudTd>
                             <MudTd DataLabel="@Text["CustomerId"]"><MudLink Href="@($"/Customers/View?id={invoice.CustomerId}")">@invoice.CustomerId</MudLink></MudTd>
                             <MudTd DataLabel="@Text["Number"]">@invoice.Number</MudTd>
-                            <MudTd DataLabel="@Text["Paid"]">@(invoice.IsPaid ? Text["Yes"] : Text["No"])</MudTd>
+                            <MudTd DataLabel="@Text["Paid"]">
+                                <MudChip T="string" Size="MudBlazor.Size.Small" Color="@(invoice.IsPaid ? Color.Success : Color.Warning)" Variant="Variant.Outlined">
+                                    @(invoice.IsPaid ? Text["PaidStatus"] : Text["UnpaidStatus"])
+                                </MudChip>
+                            </MudTd>
                             <MudTd DataLabel="@Text["ReceiptId"]">@(invoice.ReceiptId?.ToString(CultureInfo.InvariantCulture) ?? "-")</MudTd>
                             <MudTd DataLabel="@Text["PurchaseOrder"]">@ValueOrFallback(invoice.PurchaseOrderNumber)</MudTd>
                             <MudTd DataLabel="@Text["Subtotal"]">@FormatMoney(invoice.Subtotal, invoice.Currency)</MudTd>
@@ -218,6 +224,14 @@
 
     private static string FormatMoney(decimal? value, string? currency, bool negate = false) =>
         value is null ? "-" : $"{(negate ? -value.Value : value.Value):N2} {ValueOrFallback(currency)}";
-    private static string FormatDate(DateTime? value) => value?.ToLocalTime().ToString("g", CultureInfo.CurrentCulture) ?? "-";
+    private static string FormatDate(DateTime? value)
+    {
+        if (value is null) return "-";
+        var utc = value.Value.Kind == DateTimeKind.Unspecified
+            ? DateTime.SpecifyKind(value.Value, DateTimeKind.Utc)
+            : value.Value.ToUniversalTime();
+        return TimeZoneInfo.ConvertTimeBySystemTimeZoneId(new DateTimeOffset(utc), "Asia/Bangkok")
+            .ToString("g", CultureInfo.CurrentCulture);
+    }
     private static string ValueOrFallback(string? value) => string.IsNullOrWhiteSpace(value) ? "-" : value;
 }

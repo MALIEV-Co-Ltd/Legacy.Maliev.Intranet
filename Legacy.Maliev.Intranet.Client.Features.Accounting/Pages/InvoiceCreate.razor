@@ -7,13 +7,19 @@
 
 <PageTitle>@Text["PageTitle"]</PageTitle>
 
-<div class="d-flex flex-wrap align-center justify-space-between gap-3 mb-4">
+<div class="operations-page-header d-flex flex-wrap align-center justify-space-between gap-3 mb-4">
     <MudText Typo="Typo.h4" HtmlTag="h1">@Text["Heading"]</MudText>
     <MudButton Href="/Invoices/Index" Variant="Variant.Outlined">@Text["Back"]</MudButton>
 </div>
 
-@if (!string.IsNullOrWhiteSpace(error)) { <MudAlert Severity="Severity.Error" Class="mb-4">@error</MudAlert> }
-@if (pendingRequest is not null) { <MudAlert Severity="Severity.Warning" Class="mb-4">@Text["PendingRetry"]</MudAlert> }
+@if (!string.IsNullOrWhiteSpace(error))
+{
+    <MudAlert Severity="Severity.Error" Class="mb-4" aria-live="assertive">@error</MudAlert>
+}
+@if (pendingRequest is not null)
+{
+    <MudAlert Severity="Severity.Warning" Class="mb-4" aria-live="polite">@Text["PendingRetry"]</MudAlert>
+}
 
 <MudPaper Class="pa-4 mb-4" Outlined="true">
     <MudText Typo="Typo.h6" HtmlTag="h2" Class="mb-3">@Text["Quotation"]</MudText>
@@ -23,6 +29,13 @@
             @(loading ? Text["Loading"] : Text["LoadQuotation"])
         </MudButton>
     </div>
+    @if (loading)
+    {
+        <div role="status" aria-live="polite" class="mt-2">
+            <MudProgressLinear Indeterminate="true" Color="Color.Primary" aria-label="@Text["Loading"]" />
+            <span class="visually-hidden">@Text["Loading"]</span>
+        </div>
+    }
 </MudPaper>
 
 @if (preview is not null)
@@ -52,9 +65,19 @@
 
         <MudPaper Class="pa-4 mb-4" Outlined="true">
             <MudText Typo="Typo.h6" HtmlTag="h2" Class="mb-3">@Text["OrderItems"]</MudText>
-            <MudTable Items="preview.OrderItems" Dense="true" Hover="true">
-                <HeaderContent><MudTh>@Text["Description"]</MudTh><MudTh>@Text["UnitPrice"]</MudTh><MudTh>@Text["Quantity"]</MudTh><MudTh>@Text["Subtotal"]</MudTh></HeaderContent>
-                <RowTemplate><MudTd DataLabel="@Text["Description"]">@context.Description</MudTd><MudTd DataLabel="@Text["UnitPrice"]">@Money(context.UnitPrice)</MudTd><MudTd DataLabel="@Text["Quantity"]">@context.Quantity</MudTd><MudTd DataLabel="@Text["Subtotal"]">@Money(context.Subtotal)</MudTd></RowTemplate>
+            <MudTable Items="preview.OrderItems" Dense="true" Hover="true" aria-label="@Text["OrderItemsTable"]">
+                <HeaderContent>
+                    <MudTh>@Text["Description"]</MudTh>
+                    <MudTh>@Text["UnitPrice"]</MudTh>
+                    <MudTh>@Text["Quantity"]</MudTh>
+                    <MudTh>@Text["Subtotal"]</MudTh>
+                </HeaderContent>
+                <RowTemplate>
+                    <MudTd DataLabel="@Text["Description"]">@context.Description</MudTd>
+                    <MudTd DataLabel="@Text["UnitPrice"]">@Money(context.UnitPrice)</MudTd>
+                    <MudTd DataLabel="@Text["Quantity"]">@context.Quantity</MudTd>
+                    <MudTd DataLabel="@Text["Subtotal"]">@Money(context.Subtotal)</MudTd>
+                </RowTemplate>
             </MudTable>
         </MudPaper>
 
@@ -62,11 +85,11 @@
             <MudGrid>
                 <MudItem xs="12" md="7"><MudTextField Label="@Text["Comment"]" @bind-Value="model.Comment" Lines="7" MaxLength="2000" /></MudItem>
                 <MudItem xs="12" md="5">
-                    <MudNumericField T="decimal" Label="@Text["Subtotal"]" Value="preview.Subtotal" ReadOnly="true" />
-                    <MudNumericField T="decimal" Label="@Text["Vat"]" Value="preview.Vat" ReadOnly="true" />
-                    <MudNumericField T="decimal" Label="@Text["Total"]" Value="preview.Total" ReadOnly="true" />
-                    <MudNumericField T="decimal" Label="@Text["WithholdingTax"]" Value="@(model.DeductWithholdingTax ? preview.AvailableWithholdingTax : 0m)" ReadOnly="true" />
-                    <MudNumericField T="decimal" Label="@Text["Outstanding"]" Value="@Outstanding" ReadOnly="true" />
+                    <MudNumericField T="decimal" Label="@Text["Subtotal"]" Value="preview.Subtotal" ReadOnly="true" Adornment="Adornment.End" AdornmentText="@preview.Currency" />
+                    <MudNumericField T="decimal" Label="@Text["Vat"]" Value="preview.Vat" ReadOnly="true" Adornment="Adornment.End" AdornmentText="@preview.Currency" />
+                    <MudNumericField T="decimal" Label="@Text["Total"]" Value="preview.Total" ReadOnly="true" Adornment="Adornment.End" AdornmentText="@preview.Currency" />
+                    <MudNumericField T="decimal" Label="@Text["WithholdingTax"]" Value="@(model.DeductWithholdingTax ? preview.AvailableWithholdingTax : 0m)" ReadOnly="true" Adornment="Adornment.End" AdornmentText="@preview.Currency" />
+                    <MudNumericField T="decimal" Label="@Text["Outstanding"]" Value="@Outstanding" ReadOnly="true" Adornment="Adornment.End" AdornmentText="@preview.Currency" />
                     <MudCheckBox T="bool" Label="@Text["DeductWithholdingTax"]" @bind-Value="model.DeductWithholdingTax" />
                     <MudCheckBox T="bool" Label="@Text["SendEmail"]" @bind-Value="model.SendEmail" />
                 </MudItem>

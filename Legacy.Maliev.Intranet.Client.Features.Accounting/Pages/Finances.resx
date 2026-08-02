@@ -43,4 +43,7 @@
   <data name="RateLimited" xml:space="preserve"><value>Accounting is busy. Try again shortly.</value></data>
   <data name="InvalidResponse" xml:space="preserve"><value>Accounting returned an invalid response.</value></data>
   <data name="Unavailable" xml:space="preserve"><value>Accounting is temporarily unavailable.</value></data>
+  <data name="FinanceActions" xml:space="preserve"><value>Finance actions</value></data>
+  <data name="YearlyTrendTable" xml:space="preserve"><value>Monthly income, expense, and net totals in Thai baht</value></data>
+  <data name="PaymentsTable" xml:space="preserve"><value>Payment records</value></data>
 </root>

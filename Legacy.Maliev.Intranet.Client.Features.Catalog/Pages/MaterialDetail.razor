@@ -8,20 +8,19 @@
 <PageTitle>@Text["PageTitle", Id]</PageTitle>
 
 <MudContainer MaxWidth="MaxWidth.Large">
-    <MudText Typo="Typo.overline">@Text["Catalog"]</MudText>
-    <MudText Typo="Typo.h4" HtmlTag="h1" Class="mb-4">@Text["Material", Id]</MudText>
+    <header class="operations-page-header"><div><MudText Typo="Typo.h4" HtmlTag="h1">@Text["Material", Id]</MudText><MudText Typo="Typo.body2">@Text["Catalog"]</MudText></div></header>
 
     @if (loading)
     {
-        <MudProgressLinear Indeterminate="true" Color="Color.Primary" aria-label="@Text["Loading"]" />
+        <div role="status" aria-live="polite"><MudProgressLinear Indeterminate="true" Color="Color.Primary" aria-label="@Text["Loading"]" /><span class="visually-hidden">@Text["Loading"]</span></div>
     }
     else if (notFound)
     {
-        <MudAlert Severity="Severity.Info">@error</MudAlert>
+        <MudAlert Severity="Severity.Info" aria-live="polite">@error</MudAlert>
     }
     else if (!string.IsNullOrWhiteSpace(error))
     {
-        <MudAlert Severity="Severity.Error">@error</MudAlert>
+        <MudAlert Severity="Severity.Error" aria-live="assertive">@error</MudAlert>
     }
     else if (material is not null)
     {
@@ -31,7 +30,7 @@
         }
         @if (!string.IsNullOrWhiteSpace(notification))
         {
-            <MudAlert Severity="Severity.Success" Class="mb-4">@notification</MudAlert>
+            <MudAlert Severity="Severity.Success" Class="mb-4" aria-live="polite">@notification</MudAlert>
         }
 
         <MudPaper Class="pa-4 mb-4" Elevation="1">

@@ -8,11 +8,10 @@
 <PageTitle>@Text["PageTitle"]</PageTitle>
 
 <MudContainer MaxWidth="MaxWidth.Large">
-    <MudText Typo="Typo.overline">@Text["Procurement"]</MudText>
-    <MudText Typo="Typo.h4" HtmlTag="h1" Class="mb-4">@Text["CreatePurchaseOrder"]</MudText>
+    <header class="operations-page-header"><div><MudText Typo="Typo.h4" HtmlTag="h1">@Text["CreatePurchaseOrder"]</MudText><MudText Typo="Typo.body2">@Text["Procurement"]</MudText></div></header>
     @if (loading)
     {
-        <MudProgressLinear Indeterminate="true" Color="Color.Primary" aria-label="@Text["Loading"]" />
+        <div role="status" aria-live="polite"><MudProgressLinear Indeterminate="true" Color="Color.Primary" aria-label="@Text["Loading"]" /><span class="visually-hidden">@Text["Loading"]</span></div>
     }
     else
     {

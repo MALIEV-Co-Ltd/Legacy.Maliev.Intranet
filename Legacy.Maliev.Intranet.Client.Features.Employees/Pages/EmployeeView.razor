@@ -9,7 +9,7 @@
 <MudContainer MaxWidth="MaxWidth.Medium">
     @if (loading)
     {
-        <MudProgressLinear Indeterminate="true" Color="Color.Primary" aria-label="@Text["Loading"]" />
+        <div role="status" aria-live="polite"><MudProgressLinear Indeterminate="true" Color="Color.Primary" aria-label="@Text["Loading"]" /><span class="visually-hidden">@Text["Loading"]</span></div>
     }
     else if (!string.IsNullOrWhiteSpace(error))
     {
@@ -18,8 +18,7 @@
     }
     else if (detail is not null)
     {
-        <MudText Typo="Typo.overline">@Text["EmployeeNumber", detail.Id]</MudText>
-        <MudText Typo="Typo.h4" HtmlTag="h1" Class="mb-4">@detail.FullName</MudText>
+        <header class="operations-page-header"><div><MudText Typo="Typo.h4" HtmlTag="h1">@detail.FullName</MudText><MudText Typo="Typo.body2">@Text["EmployeeNumber", detail.Id]</MudText></div></header>
         <MudPaper Class="pa-4" Elevation="1">
             <dl class="details">
                 <dt>@Text["Email"]</dt>

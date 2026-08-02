@@ -33,4 +33,5 @@
   <data name="LogTimestamp_Descending" xml:space="preserve"><value>Newest timestamp first</value></data>
   <data name="LogLevel_Ascending" xml:space="preserve"><value>Level ascending</value></data>
   <data name="LogLevel_Descending" xml:space="preserve"><value>Level descending</value></data>
+  <data name="DiagnosticsTable" xml:space="preserve"><value>Recent diagnostic events</value></data>
 </root>

@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
+  <data name="PageTitle" xml:space="preserve"><value>ใบสั่งซื้อ - MALIEV Intranet</value></data>
+  <data name="Procurement" xml:space="preserve"><value>การจัดซื้อ</value></data>
+  <data name="PurchaseOrders" xml:space="preserve"><value>ใบสั่งซื้อ</value></data>
+  <data name="CreatePurchaseOrder" xml:space="preserve"><value>สร้างใบสั่งซื้อ</value></data>
+  <data name="Search" xml:space="preserve"><value>ค้นหา</value></data>
+  <data name="Sort" xml:space="preserve"><value>เรียงลำดับ</value></data>
+  <data name="PerPage" xml:space="preserve"><value>ต่อหน้า</value></data>
+  <data name="Apply" xml:space="preserve"><value>ใช้ตัวกรอง</value></data>
+  <data name="Loading" xml:space="preserve"><value>กำลังโหลดใบสั่งซื้อ</value></data>
+  <data name="Empty" xml:space="preserve"><value>ไม่มีใบสั่งซื้อที่ตรงกับคำค้นหานี้</value></data>
+  <data name="Id" xml:space="preserve"><value>รหัส</value></data>
+  <data name="Employee" xml:space="preserve"><value>พนักงาน</value></data>
+  <data name="Fob" xml:space="preserve"><value>FOB</value></data>
+  <data name="Terms" xml:space="preserve"><value>เงื่อนไข</value></data>
+  <data name="Shipping" xml:space="preserve"><value>วิธีจัดส่ง</value></data>
+  <data name="Created" xml:space="preserve"><value>วันที่สร้าง</value></data>
+  <data name="PurchaseOrderPages" xml:space="preserve"><value>หน้ารายการใบสั่งซื้อ</value></data>
+  <data name="Previous" xml:space="preserve"><value>ก่อนหน้า</value></data>
+  <data name="Next" xml:space="preserve"><value>ต่อไป</value></data>
+  <data name="PageSummary" xml:space="preserve"><value>หน้า {0} จาก {1} · ทั้งหมด {2} รายการ</value></data>
+  <data name="Forbidden" xml:space="preserve"><value>คุณไม่ได้รับอนุญาตให้ดูใบสั่งซื้อ</value></data>
+  <data name="RateLimited" xml:space="preserve"><value>ระบบได้รับคำขอข้อมูลใบสั่งซื้อมากเกินไป โปรดรอสักครู่แล้วลองอีกครั้ง</value></data>
+  <data name="Unavailable" xml:space="preserve"><value>ระบบใบสั่งซื้อไม่พร้อมใช้งานชั่วคราว</value></data>
+  <data name="InvalidResponse" xml:space="preserve"><value>ระบบเดิมส่งข้อมูลใบสั่งซื้อกลับมาไม่ถูกต้อง</value></data>
+  <data name="PurchaseOrderId_Ascending" xml:space="preserve"><value>ID จากน้อยไปมาก</value></data>
+  <data name="PurchaseOrderId_Descending" xml:space="preserve"><value>รหัส: มากไปน้อย</value></data>
+  <data name="PurchaseOrderCreatedDate_Ascending" xml:space="preserve"><value>วันที่สร้าง: เก่าไปใหม่</value></data>
+  <data name="PurchaseOrderCreatedDate_Descending" xml:space="preserve"><value>วันที่สร้าง: ใหม่ไปเก่า</value></data>
+  <data name="PurchaseOrdersTable" xml:space="preserve"><value>ตารางใบสั่งซื้อ</value></data>
+</root>

@@ -7,17 +7,17 @@
 <PageTitle>@Text["PageTitle"]</PageTitle>
 
 <MudContainer MaxWidth="MaxWidth.ExtraLarge">
-    <div class="d-flex flex-wrap align-center justify-space-between gap-3 mb-4">
-        <div>
-            <MudText Typo="Typo.overline">@Text["Accounting"]</MudText>
-            <MudText Typo="Typo.h4" HtmlTag="h1">@Text["Title", DateTime.UtcNow.Year]</MudText>
-        </div>
+    <div class="operations-page-header d-flex flex-wrap align-center justify-space-between gap-3 mb-4">
+        <MudText Typo="Typo.h4" HtmlTag="h1">@Text["Title", BangkokYear]</MudText>
         <MudButton Href="/Finances/Index" Variant="Variant.Outlined">@Text["Back"]</MudButton>
     </div>
 
     @if (loading)
     {
-        <MudProgressLinear Indeterminate="true" Color="Color.Primary" aria-label="@Text["Loading"]" />
+        <div role="status" aria-live="polite">
+            <MudProgressLinear Indeterminate="true" Color="Color.Primary" aria-label="@Text["Loading"]" />
+            <span class="visually-hidden">@Text["Loading"]</span>
+        </div>
     }
     else if (!string.IsNullOrWhiteSpace(error))
     {
@@ -25,13 +25,30 @@
     }
     else if (chartData is null || chartData.Labels.Length == 0)
     {
-        <MudAlert Severity="Severity.Info">@Text["NoData"]</MudAlert>
+        <MudAlert Severity="Severity.Info" aria-live="polite">@Text["NoData"]</MudAlert>
     }
     else
     {
-        <MudPaper Class="pa-4" Elevation="1">
-            <MudChart T="double" ChartType="ChartType.Bar" ChartSeries="@series" ChartLabels="@chartData.Labels" Width="100%" Height="520px" />
-        </MudPaper>
+        <section aria-labelledby="yearly-activity-heading">
+            <MudPaper Class="pa-4" Elevation="1">
+                <MudText id="yearly-activity-heading" Typo="Typo.h5" HtmlTag="h2">@Text["ChartHeading", BangkokYear]</MudText>
+                <div aria-hidden="true">
+                    <MudChart T="double" ChartType="ChartType.Bar" ChartSeries="@series" ChartLabels="@chartData.Labels" Width="100%" Height="520px" />
+                </div>
+                <MudTable Items="ActivityRows" Breakpoint="Breakpoint.Sm" Elevation="0" aria-label="@Text["TableLabel", BangkokYear]">
+                    <HeaderContent>
+                        <MudTh>@Text["Date"]</MudTh>
+                        <MudTh>@Text["IncomeThb"]</MudTh>
+                        <MudTh>@Text["ExpenseThb"]</MudTh>
+                    </HeaderContent>
+                    <RowTemplate>
+                        <MudTd DataLabel="@Text["Date"]">@context.Date</MudTd>
+                        <MudTd DataLabel="@Text["IncomeThb"]">@FormatThb(context.Income)</MudTd>
+                        <MudTd DataLabel="@Text["ExpenseThb"]">@FormatThb(context.Expense)</MudTd>
+                    </RowTemplate>
+                </MudTable>
+            </MudPaper>
+        </section>
     }
 </MudContainer>
 
@@ -40,6 +57,16 @@
     private List<ChartSeries<double>> series = [];
     private bool loading;
     private string? error;
+
+    private static int BangkokYear => TimeZoneInfo.ConvertTimeBySystemTimeZoneId(DateTimeOffset.UtcNow, "Asia/Bangkok").Year;
+    private IReadOnlyList<ActivityRow> ActivityRows => chartData is null
+        ? []
+        : chartData.Labels.Select((date, index) => new ActivityRow(
+            date,
+            chartData.Income[index],
+            Math.Abs(chartData.Expense[index]))).ToArray();
+
+    private static string FormatThb(double value) => $"{value:N2} THB";
 
     protected override async Task OnInitializedAsync()
     {
@@ -84,4 +111,6 @@
             _ => Text["Unavailable"],
         };
     }
+
+    private sealed record ActivityRow(string Date, double Income, double Expense);
 }

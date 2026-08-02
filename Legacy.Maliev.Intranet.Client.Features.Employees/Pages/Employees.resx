@@ -32,4 +32,5 @@
   <data name="EmployeeId_Descending" xml:space="preserve"><value>ID descending</value></data>
   <data name="EmployeeEmail_Ascending" xml:space="preserve"><value>Email ascending</value></data>
   <data name="EmployeeEmail_Descending" xml:space="preserve"><value>Email descending</value></data>
+  <data name="EmployeesTable" xml:space="preserve"><value>Employee records</value></data>
 </root>

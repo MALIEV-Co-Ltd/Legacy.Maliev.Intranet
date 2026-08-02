@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
+  <data name="PageTitle" xml:space="preserve"><value>ข้อมูลของฉัน | MALIEV Intranet</value></data>
+  <data name="Workspace" xml:space="preserve"><value>พื้นที่ทำงานสำหรับพนักงาน</value></data>
+  <data name="Heading" xml:space="preserve"><value>ข้อมูลของฉัน</value></data>
+  <data name="Description" xml:space="preserve"><value>ข้อมูลพนักงานปัจจุบันจากระบบหลัก</value></data>
+  <data name="Refresh" xml:space="preserve"><value>รีเฟรช</value></data>
+  <data name="Loading" xml:space="preserve"><value>กำลังโหลดข้อมูลพนักงาน</value></data>
+  <data name="NotFound" xml:space="preserve"><value>ไม่พบข้อมูลพนักงานของคุณ</value></data>
+  <data name="Details" xml:space="preserve"><value>รายละเอียดพนักงาน</value></data>
+  <data name="EditableDetails" xml:space="preserve"><value>ข้อมูลส่วนตัว</value></data>
+  <data name="EditableDetailsHelp" xml:space="preserve"><value>ตรวจสอบชื่อ หมายเลขโทรศัพท์ และวันเกิดของคุณให้เป็นข้อมูลปัจจุบัน</value></data>
+  <data name="FirstName" xml:space="preserve"><value>ชื่อ</value></data>
+  <data name="LastName" xml:space="preserve"><value>นามสกุล</value></data>
+  <data name="SaveChanges" xml:space="preserve"><value>บันทึกการเปลี่ยนแปลง</value></data>
+  <data name="Saving" xml:space="preserve"><value>กำลังบันทึก…</value></data>
+  <data name="Reset" xml:space="preserve"><value>คืนค่าเดิม</value></data>
+  <data name="ManagedDetails" xml:space="preserve"><value>ข้อมูลการทำงาน</value></data>
+  <data name="ManagedDetailsHelp" xml:space="preserve"><value>อีเมล ตำแหน่ง และที่อยู่บ้านเป็นข้อมูลที่ฝ่ายบุคคลดูแล หากต้องการแก้ไข โปรดติดต่อฝ่ายบุคคล</value></data>
+  <data name="Name" xml:space="preserve"><value>ชื่อ</value></data>
+  <data name="EmployeeNumber" xml:space="preserve"><value>รหัสพนักงาน</value></data>
+  <data name="Email" xml:space="preserve"><value>อีเมล</value></data>
+  <data name="Phone" xml:space="preserve"><value>โทรศัพท์</value></data>
+  <data name="Role" xml:space="preserve"><value>บทบาท</value></data>
+  <data name="DateOfBirth" xml:space="preserve"><value>วันเกิด</value></data>
+  <data name="HomeAddress" xml:space="preserve"><value>ที่อยู่บ้าน</value></data>
+  <data name="NotProvided" xml:space="preserve"><value>ไม่ได้ระบุ</value></data>
+  <data name="ReadOnlyNotice" xml:space="preserve"><value>ขณะนี้หน้านี้แสดงข้อมูลอย่างเดียว หากต้องการแก้ไขข้อมูลส่วนตัว โปรดติดต่อผู้ดูแลระบบ</value></data>
+  <data name="SessionUnavailable" xml:space="preserve"><value>ไม่สามารถตรวจสอบเซสชันพนักงานได้ในขณะนี้</value></data>
+  <data name="ProfileIdentifierUnavailable" xml:space="preserve"><value>ไม่พบรหัสอ้างอิงข้อมูลพนักงาน</value></data>
+  <data name="Forbidden" xml:space="preserve"><value>คุณไม่มีสิทธิ์ดูข้อมูลนี้</value></data>
+  <data name="Unavailable" xml:space="preserve"><value>ระบบข้อมูลพนักงานไม่พร้อมใช้งานชั่วคราว</value></data>
+  <data name="InvalidResponse" xml:space="preserve"><value>ระบบข้อมูลพนักงานส่งข้อมูลกลับมาไม่ถูกต้อง</value></data>
+  <data name="Saved" xml:space="preserve"><value>บันทึกข้อมูลโปรไฟล์เรียบร้อยแล้ว</value></data>
+  <data name="ValidationFailed" xml:space="preserve"><value>กรุณากรอกชื่อและนามสกุลก่อนบันทึก</value></data>
+  <data name="SaveFailed" xml:space="preserve"><value>ไม่สามารถบันทึกโปรไฟล์ได้ โปรดลองอีกครั้ง</value></data>
+  <data name="ForbiddenUpdate" xml:space="preserve"><value>คุณไม่มีสิทธิ์แก้ไขโปรไฟล์นี้</value></data>
+  <data name="RateLimited" xml:space="preserve"><value>มีการส่งคำขอบ่อยเกินไป โปรดรอสักครู่แล้วลองอีกครั้ง</value></data>
+</root>

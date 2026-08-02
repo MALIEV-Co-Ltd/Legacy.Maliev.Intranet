@@ -9,11 +9,10 @@
 <PageTitle>@Text["PageTitle"]</PageTitle>
 
 <MudContainer MaxWidth="MaxWidth.ExtraLarge">
-    <MudText Typo="Typo.overline">@Text["Procurement"]</MudText>
-    <div class="d-flex flex-wrap align-center justify-space-between gap-3 mb-4">
-        <MudText Typo="Typo.h4" HtmlTag="h1">@Text["PurchaseOrders"]</MudText>
+    <header class="operations-page-header">
+        <div><MudText Typo="Typo.h4" HtmlTag="h1">@Text["PurchaseOrders"]</MudText><MudText Typo="Typo.body2">@Text["Procurement"]</MudText></div>
         <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="OpenCreate">@Text["CreatePurchaseOrder"]</MudButton>
-    </div>
+    </header>
 
     <MudPaper Class="pa-4 mb-4">
         <div class="d-flex flex-wrap gap-3 align-end">
@@ -31,7 +30,7 @@
 
     @if (loading)
     {
-        <MudProgressLinear Indeterminate="true" Color="Color.Primary" aria-label="@Text["Loading"]" />
+        <div role="status" aria-live="polite"><MudProgressLinear Indeterminate="true" Color="Color.Primary" aria-label="@Text["Loading"]" /><span class="visually-hidden">@Text["Loading"]</span></div>
     }
     else if (!string.IsNullOrWhiteSpace(error))
     {
@@ -43,7 +42,7 @@
     }
     else
     {
-        <MudTable Items="page.Items" Hover="true" Breakpoint="Breakpoint.Sm" Elevation="1">
+        <MudTable Items="page.Items" Hover="true" Breakpoint="Breakpoint.Sm" Elevation="1" aria-label="@Text["PurchaseOrdersTable"]">
             <HeaderContent>
                 <MudTh>@Text["Id"]</MudTh>
                 <MudTh>@Text["Employee"]</MudTh>
