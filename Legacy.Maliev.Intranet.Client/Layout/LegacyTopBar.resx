@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
+  <data name="Close navigation" xml:space="preserve"><value>Close navigation</value></data>
+  <data name="Open navigation" xml:space="preserve"><value>Open navigation</value></data>
+  <data name="MALIEV dashboard" xml:space="preserve"><value>MALIEV dashboard</value></data>
+  <data name="Primary navigation" xml:space="preserve"><value>Primary navigation</value></data>
+  <data name="Navigation" xml:space="preserve"><value>navigation</value></data>
+  <data name="More" xml:space="preserve"><value>More</value></data>
+  <data name="More navigation" xml:space="preserve"><value>More navigation</value></data>
+  <data name="Employee menu" xml:space="preserve"><value>Employee menu</value></data>
+  <data name="Employee" xml:space="preserve"><value>Employee</value></data>
+  <data name="Employee workspace" xml:space="preserve"><value>Employee workspace</value></data>
+  <data name="My profile" xml:space="preserve"><value>My profile</value></data>
+  <data name="Sign out" xml:space="preserve"><value>Sign out</value></data>
+  <data name="Sign in" xml:space="preserve"><value>Sign in</value></data>
+  <data name="Session unavailable" xml:space="preserve"><value>Session unavailable</value></data>
+  <data name="Workspace navigation" xml:space="preserve"><value>Workspace navigation</value></data>
+  <data name="Mobile navigation" xml:space="preserve"><value>Mobile navigation</value></data>
+  <data name="Use light theme" xml:space="preserve"><value>Use light theme</value></data>
+  <data name="Use dark theme" xml:space="preserve"><value>Use dark theme</value></data>
+  <data name="Light" xml:space="preserve"><value>Light</value></data>
+  <data name="Dark" xml:space="preserve"><value>Dark</value></data>
+  <data name="Sales" xml:space="preserve"><value>Sales</value></data>
+  <data name="Workspace overview" xml:space="preserve"><value>Workspace overview</value></data>
+  <data name="Customers" xml:space="preserve"><value>Customers</value></data>
+  <data name="Customer profiles" xml:space="preserve"><value>Customer profiles</value></data>
+  <data name="New customer" xml:space="preserve"><value>New customer</value></data>
+  <data name="Onboard a customer" xml:space="preserve"><value>Onboard a customer</value></data>
+  <data name="Orders" xml:space="preserve"><value>Orders</value></data>
+  <data name="Order queue and status" xml:space="preserve"><value>Order queue and status</value></data>
+  <data name="New order" xml:space="preserve"><value>New order</value></data>
+  <data name="Create an order" xml:space="preserve"><value>Create an order</value></data>
+  <data name="Quotation requests" xml:space="preserve"><value>Quotation requests</value></data>
+  <data name="Website quotation queue" xml:space="preserve"><value>Website quotation queue</value></data>
+  <data name="Quotations" xml:space="preserve"><value>Quotations</value></data>
+  <data name="Quotation lifecycle" xml:space="preserve"><value>Quotation lifecycle</value></data>
+  <data name="New quotation" xml:space="preserve"><value>New quotation</value></data>
+  <data name="Create a quotation" xml:space="preserve"><value>Create a quotation</value></data>
+  <data name="Finance" xml:space="preserve"><value>Finance</value></data>
+  <data name="Finance records and reports" xml:space="preserve"><value>Finance records and reports</value></data>
+  <data name="Accounting" xml:space="preserve"><value>Accounting</value></data>
+  <data name="Finance records" xml:space="preserve"><value>Finance records</value></data>
+  <data name="Payment records" xml:space="preserve"><value>Payment records</value></data>
+  <data name="New finance record" xml:space="preserve"><value>New finance record</value></data>
+  <data name="Record a payment" xml:space="preserve"><value>Record a payment</value></data>
+  <data name="Net profit" xml:space="preserve"><value>Net profit</value></data>
+  <data name="Net profit report" xml:space="preserve"><value>Net profit report</value></data>
+  <data name="Yearly activity" xml:space="preserve"><value>Yearly activity</value></data>
+  <data name="Yearly activity report" xml:space="preserve"><value>Yearly activity report</value></data>
+  <data name="Invoices" xml:space="preserve"><value>Invoices</value></data>
+  <data name="Invoice list and lifecycle" xml:space="preserve"><value>Invoice list and lifecycle</value></data>
+  <data name="New invoice" xml:space="preserve"><value>New invoice</value></data>
+  <data name="Create an invoice" xml:space="preserve"><value>Create an invoice</value></data>
+  <data name="Manufacturing" xml:space="preserve"><value>Manufacturing</value></data>
+  <data name="Materials" xml:space="preserve"><value>Materials</value></data>
+  <data name="Material catalog and properties" xml:space="preserve"><value>Material catalog and properties</value></data>
+  <data name="New material" xml:space="preserve"><value>New material</value></data>
+  <data name="Create a material" xml:space="preserve"><value>Create a material</value></data>
+  <data name="Purchasing" xml:space="preserve"><value>Purchasing</value></data>
+  <data name="Procurement queue" xml:space="preserve"><value>Procurement queue</value></data>
+  <data name="Purchase orders" xml:space="preserve"><value>Purchase orders</value></data>
+  <data name="New purchase order" xml:space="preserve"><value>New purchase order</value></data>
+  <data name="Create a purchase order" xml:space="preserve"><value>Create a purchase order</value></data>
+  <data name="Suppliers" xml:space="preserve"><value>Suppliers</value></data>
+  <data name="Supplier profiles" xml:space="preserve"><value>Supplier profiles</value></data>
+  <data name="New supplier" xml:space="preserve"><value>New supplier</value></data>
+  <data name="Create a supplier" xml:space="preserve"><value>Create a supplier</value></data>
+  <data name="People" xml:space="preserve"><value>People</value></data>
+  <data name="Employees" xml:space="preserve"><value>Employees</value></data>
+  <data name="Employee directory" xml:space="preserve"><value>Employee directory</value></data>
+  <data name="Employee profile" xml:space="preserve"><value>Employee profile</value></data>
+  <data name="Server errors" xml:space="preserve"><value>Server errors</value></data>
+  <data name="Legacy diagnostics" xml:space="preserve"><value>Legacy diagnostics</value></data>
+</root>

@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
+  <data name="PageTitle" xml:space="preserve"><value>MALIEV | Intranet Gateway</value></data>
+  <data name="Employee gateway" xml:space="preserve"><value>Employee gateway</value></data>
+  <data name="Sign in to" xml:space="preserve"><value>Sign in to</value></data>
+  <data name="Continue with Google" xml:space="preserve"><value>Continue with Google</value></data>
+  <data name="or continue with email" xml:space="preserve"><value>or continue with email</value></data>
+  <data name="Email" xml:space="preserve"><value>Email</value></data>
+  <data name="Use your MALIEV work email." xml:space="preserve"><value>Use your MALIEV work email.</value></data>
+  <data name="Continue with email" xml:space="preserve"><value>Continue with email</value></data>
+  <data name="Change" xml:space="preserve"><value>Change</value></data>
+  <data name="Password" xml:space="preserve"><value>Password</value></data>
+  <data name="Remember me" xml:space="preserve"><value>Remember me</value></data>
+  <data name="Signing in..." xml:space="preserve"><value>Signing in...</value></data>
+  <data name="Sign in with email" xml:space="preserve"><value>Sign in with email</value></data>
+  <data name="Not an employee? Visit our main page at" xml:space="preserve"><value>Not an employee? Visit our main page at</value></data>
+  <data name="Switch to light mode" xml:space="preserve"><value>Switch to light mode</value></data>
+  <data name="Switch to dark mode" xml:space="preserve"><value>Switch to dark mode</value></data>
+  <data name="Employee sign-in is temporarily unavailable." xml:space="preserve"><value>Employee sign-in is temporarily unavailable.</value></data>
+</root>

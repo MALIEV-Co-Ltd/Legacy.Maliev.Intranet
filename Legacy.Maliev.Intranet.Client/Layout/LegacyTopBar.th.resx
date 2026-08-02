@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
+  <data name="Close navigation" xml:space="preserve"><value>ปิดเมนูนำทาง</value></data>
+  <data name="Open navigation" xml:space="preserve"><value>เปิดเมนูนำทาง</value></data>
+  <data name="MALIEV dashboard" xml:space="preserve"><value>แดชบอร์ด MALIEV</value></data>
+  <data name="Primary navigation" xml:space="preserve"><value>เมนูหลัก</value></data>
+  <data name="Navigation" xml:space="preserve"><value>เมนูนำทาง</value></data>
+  <data name="More" xml:space="preserve"><value>เพิ่มเติม</value></data>
+  <data name="More navigation" xml:space="preserve"><value>เมนูเพิ่มเติม</value></data>
+  <data name="Employee menu" xml:space="preserve"><value>เมนูพนักงาน</value></data>
+  <data name="Employee" xml:space="preserve"><value>พนักงาน</value></data>
+  <data name="Employee workspace" xml:space="preserve"><value>พื้นที่ทำงานพนักงาน</value></data>
+  <data name="My profile" xml:space="preserve"><value>โปรไฟล์ของฉัน</value></data>
+  <data name="Sign out" xml:space="preserve"><value>ออกจากระบบ</value></data>
+  <data name="Sign in" xml:space="preserve"><value>เข้าสู่ระบบ</value></data>
+  <data name="Session unavailable" xml:space="preserve"><value>ไม่พบเซสชัน</value></data>
+  <data name="Workspace navigation" xml:space="preserve"><value>เมนูพื้นที่ทำงาน</value></data>
+  <data name="Mobile navigation" xml:space="preserve"><value>เมนูนำทางบนมือถือ</value></data>
+  <data name="Use light theme" xml:space="preserve"><value>ใช้โหมดสว่าง</value></data>
+  <data name="Use dark theme" xml:space="preserve"><value>ใช้โหมดมืด</value></data>
+  <data name="Light" xml:space="preserve"><value>สว่าง</value></data>
+  <data name="Dark" xml:space="preserve"><value>มืด</value></data>
+  <data name="Sales" xml:space="preserve"><value>งานขาย</value></data>
+  <data name="Workspace overview" xml:space="preserve"><value>ภาพรวมการทำงาน</value></data>
+  <data name="Customers" xml:space="preserve"><value>ลูกค้า</value></data>
+  <data name="Customer profiles" xml:space="preserve"><value>ข้อมูลลูกค้า</value></data>
+  <data name="New customer" xml:space="preserve"><value>เพิ่มลูกค้า</value></data>
+  <data name="Onboard a customer" xml:space="preserve"><value>เพิ่มข้อมูลลูกค้าใหม่</value></data>
+  <data name="Orders" xml:space="preserve"><value>คำสั่งซื้อ</value></data>
+  <data name="Order queue and status" xml:space="preserve"><value>รายการและสถานะคำสั่งซื้อ</value></data>
+  <data name="New order" xml:space="preserve"><value>สร้างคำสั่งซื้อ</value></data>
+  <data name="Create an order" xml:space="preserve"><value>สร้างคำสั่งซื้อใหม่</value></data>
+  <data name="Quotation requests" xml:space="preserve"><value>คำขอใบเสนอราคา</value></data>
+  <data name="Website quotation queue" xml:space="preserve"><value>รายการคำขอจากเว็บไซต์</value></data>
+  <data name="Quotations" xml:space="preserve"><value>ใบเสนอราคา</value></data>
+  <data name="Quotation lifecycle" xml:space="preserve"><value>การจัดการใบเสนอราคา</value></data>
+  <data name="New quotation" xml:space="preserve"><value>สร้างใบเสนอราคา</value></data>
+  <data name="Create a quotation" xml:space="preserve"><value>สร้างใบเสนอราคาใหม่</value></data>
+  <data name="Finance" xml:space="preserve"><value>การเงิน</value></data>
+  <data name="Finance records and reports" xml:space="preserve"><value>รายการและรายงานการเงิน</value></data>
+  <data name="Accounting" xml:space="preserve"><value>บัญชี</value></data>
+  <data name="Finance records" xml:space="preserve"><value>รายการการเงิน</value></data>
+  <data name="Payment records" xml:space="preserve"><value>รายการรับ–จ่าย</value></data>
+  <data name="New finance record" xml:space="preserve"><value>เพิ่มรายการการเงิน</value></data>
+  <data name="Record a payment" xml:space="preserve"><value>บันทึกรายการรับ–จ่าย</value></data>
+  <data name="Net profit" xml:space="preserve"><value>กำไรสุทธิ</value></data>
+  <data name="Net profit report" xml:space="preserve"><value>รายงานกำไรสุทธิ</value></data>
+  <data name="Yearly activity" xml:space="preserve"><value>กิจกรรมรายปี</value></data>
+  <data name="Yearly activity report" xml:space="preserve"><value>รายงานกิจกรรมรายปี</value></data>
+  <data name="Invoices" xml:space="preserve"><value>ใบแจ้งหนี้</value></data>
+  <data name="Invoice list and lifecycle" xml:space="preserve"><value>รายการและสถานะใบแจ้งหนี้</value></data>
+  <data name="New invoice" xml:space="preserve"><value>สร้างใบแจ้งหนี้</value></data>
+  <data name="Create an invoice" xml:space="preserve"><value>สร้างใบแจ้งหนี้ใหม่</value></data>
+  <data name="Manufacturing" xml:space="preserve"><value>งานผลิต</value></data>
+  <data name="Materials" xml:space="preserve"><value>วัสดุ</value></data>
+  <data name="Material catalog and properties" xml:space="preserve"><value>รายการวัสดุและคุณสมบัติ</value></data>
+  <data name="New material" xml:space="preserve"><value>เพิ่มวัสดุ</value></data>
+  <data name="Create a material" xml:space="preserve"><value>สร้างวัสดุ</value></data>
+  <data name="Purchasing" xml:space="preserve"><value>จัดซื้อ</value></data>
+  <data name="Procurement queue" xml:space="preserve"><value>รายการจัดซื้อ</value></data>
+  <data name="Purchase orders" xml:space="preserve"><value>ใบสั่งซื้อ</value></data>
+  <data name="New purchase order" xml:space="preserve"><value>สร้างใบสั่งซื้อ</value></data>
+  <data name="Create a purchase order" xml:space="preserve"><value>สร้างใบสั่งซื้อใหม่</value></data>
+  <data name="Suppliers" xml:space="preserve"><value>ผู้ขาย</value></data>
+  <data name="Supplier profiles" xml:space="preserve"><value>ข้อมูลผู้ขาย</value></data>
+  <data name="New supplier" xml:space="preserve"><value>เพิ่มผู้ขาย</value></data>
+  <data name="Create a supplier" xml:space="preserve"><value>สร้างข้อมูลผู้ขาย</value></data>
+  <data name="People" xml:space="preserve"><value>บุคลากร</value></data>
+  <data name="Employees" xml:space="preserve"><value>พนักงาน</value></data>
+  <data name="Employee directory" xml:space="preserve"><value>รายชื่อพนักงาน</value></data>
+  <data name="Employee profile" xml:space="preserve"><value>ข้อมูลพนักงาน</value></data>
+  <data name="Server errors" xml:space="preserve"><value>ข้อผิดพลาดของระบบ</value></data>
+  <data name="Legacy diagnostics" xml:space="preserve"><value>ตรวจสอบปัญหาระบบเดิม</value></data>
+</root>
