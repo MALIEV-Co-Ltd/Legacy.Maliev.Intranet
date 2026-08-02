@@ -32,6 +32,9 @@ builder.WebHost.UseStaticWebAssets();
 builder.AddServiceDefaults();
 builder.AddStandardMiddleware(options => options.EnableRequestLogging = true);
 builder.AddLegacyIntranetDataProtection();
+var allowLocalTestIdentity =
+    builder.Environment.IsDevelopment() &&
+    builder.Configuration.GetValue("Workspace:AllowLocalTestDomain", false);
 builder.Services.AddProblemDetails();
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddSingleton<DiagnosticEventStore>();
@@ -1462,7 +1465,7 @@ app.MapPost("/bff/login", async (
         return Results.ValidationProblem(errors);
     }
 
-    if (!WorkspaceIdentityRules.IsAllowedEmployeeEmail(request.Email))
+    if (!WorkspaceIdentityRules.IsAllowedEmployeeEmail(request.Email, allowLocalTestIdentity))
     {
         logger.LogWarning("Rejected employee login attempt outside the workspace email domain.");
         return Results.Unauthorized();
@@ -1502,7 +1505,7 @@ app.MapPost("/bff/login", async (
             statusCode: StatusCodes.Status401Unauthorized);
     }
 
-    if (!WorkspaceIdentityRules.IsAllowedEmployeeEmail(login.Identity?.Email))
+    if (!WorkspaceIdentityRules.IsAllowedEmployeeEmail(login.Identity?.Email, allowLocalTestIdentity))
     {
         logger.LogWarning("AuthService returned a non-workspace identity for an employee login.");
         return Results.Unauthorized();
@@ -1604,7 +1607,7 @@ app.MapPost("/bff/google", async (
     DeleteGoogleIdentityFlowCookie(context);
     var login = await authClient.ExchangeAsync(request.Credential, request.Nonce, cancellationToken);
     if (!login.Succeeded || login.Identity is null ||
-        !WorkspaceIdentityRules.IsAllowedEmployeeEmail(login.Identity.Email))
+        !WorkspaceIdentityRules.IsAllowedEmployeeEmail(login.Identity.Email, allowLocalTestIdentity))
     {
         logger.LogWarning("Legacy Intranet Google exchange did not produce an allowed employee identity.");
         return Results.Unauthorized();

@@ -84,8 +84,8 @@
 
     protected override async Task OnParametersSetAsync()
     {
-        Index = Math.Max(1, Index);
-        Size = Math.Clamp(Size, 1, 250);
+        Index = PaginationQueryDefaults.NormalizeIndex(Index);
+        Size = PaginationQueryDefaults.NormalizeSize(Size, fallback: 100, maximum: 250);
         currentSort = Enum.TryParse<SupplierListSort>(SortQuery, ignoreCase: true, out var parsedSort) && Enum.IsDefined(parsedSort)
             ? parsedSort
             : SupplierListSort.SupplierId_Descending;

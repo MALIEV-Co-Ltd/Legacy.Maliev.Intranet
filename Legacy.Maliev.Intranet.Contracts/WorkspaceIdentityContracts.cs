@@ -8,8 +8,19 @@ public static class WorkspaceIdentityRules
     /// <summary>The only email domain allowed for employee workspace sign-in.</summary>
     public const string AllowedEmailDomain = "maliev.com";
 
+    /// <summary>The non-production email domain reserved for local Aspire fixtures.</summary>
+    public const string LocalTestEmailDomain = "maliev.test";
+
     /// <summary>Returns whether an email is a well-formed MALIEV workspace address.</summary>
     public static bool IsAllowedEmployeeEmail(string? email)
+        => IsAllowedEmployeeEmail(email, allowLocalTestDomain: false);
+
+    /// <summary>
+    /// Returns whether an email is an allowed workspace address for the specified runtime.
+    /// The local fixture domain is opt-in so production callers remain restricted to MALIEV's
+    /// corporate domain.
+    /// </summary>
+    public static bool IsAllowedEmployeeEmail(string? email, bool allowLocalTestDomain)
     {
         var normalized = email?.Trim();
         if (string.IsNullOrWhiteSpace(normalized) || normalized.Any(char.IsWhiteSpace))
@@ -23,10 +34,10 @@ public static class WorkspaceIdentityRules
             return false;
         }
 
-        return string.Equals(
-            normalized[(atIndex + 1)..],
-            AllowedEmailDomain,
-            StringComparison.OrdinalIgnoreCase);
+        var domain = normalized[(atIndex + 1)..];
+        return string.Equals(domain, AllowedEmailDomain, StringComparison.OrdinalIgnoreCase) ||
+               (allowLocalTestDomain &&
+                string.Equals(domain, LocalTestEmailDomain, StringComparison.OrdinalIgnoreCase));
     }
 }
 

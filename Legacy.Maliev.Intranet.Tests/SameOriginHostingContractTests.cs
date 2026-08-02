@@ -78,6 +78,7 @@ public sealed class SameOriginHostingContractTests
             "/_framework/blazor.webassembly.js",
             "/_content/MudBlazor/MudBlazor.min.css",
             "/_content/MudBlazor/MudBlazor.min.js",
+            "/Legacy.Maliev.Intranet.Client.styles.css",
         })
         {
             using var assetResponse = await client.GetAsync(asset);
@@ -86,6 +87,11 @@ public sealed class SameOriginHostingContractTests
                 assetResponse.StatusCode == HttpStatusCode.OK,
                 $"{asset} returned {(int)assetResponse.StatusCode}: {assetBody}");
             Assert.Null(assetResponse.Headers.Location);
+
+            if (asset.EndsWith(".styles.css", StringComparison.Ordinal))
+            {
+                Assert.Contains("legacy-logo-link", assetBody, StringComparison.Ordinal);
+            }
         }
     }
 

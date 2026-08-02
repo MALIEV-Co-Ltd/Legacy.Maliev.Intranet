@@ -69,7 +69,7 @@
                                    type="email"
                                    class="legacy-login-input"
                                    placeholder="name@@maliev.com"
-                                   pattern="^[^@@\s]+@@maliev\.com$"
+                                   pattern="@EmailPattern"
                                    autocomplete="username"
                                    required
                                    aria-describedby="legacy-login-email-help"
@@ -149,11 +149,21 @@
 
     private bool IsEmailStep => _step == LoginStep.Email;
 
-    private bool EmailLooksValid => WorkspaceIdentityRules.IsAllowedEmployeeEmail(_emailInput.Trim());
+    private bool EmailLooksValid => WorkspaceIdentityRules.IsAllowedEmployeeEmail(
+        _emailInput.Trim(),
+        allowLocalTestDomain: IsLocalAspireHost);
 
     private bool CredentialsReady => EmailLooksValid && !string.IsNullOrWhiteSpace(_password);
 
     private string LocalReturnUrlForGoogle => IsLocalPath(ReturnUrl) ? ReturnUrl! : "/Dashboard";
+
+    private bool IsLocalAspireHost =>
+        Uri.TryCreate(Navigation.BaseUri, UriKind.Absolute, out var baseUri) &&
+        baseUri.Host is "localhost" or "127.0.0.1" or "::1";
+
+    private string EmailPattern => IsLocalAspireHost
+        ? "^[^@@\\s]+@@(maliev\\.com|maliev\\.test)$"
+        : "^[^@@\\s]+@@maliev\\.com$";
 
     private string ThemeToggleLabel => _isDarkMode ? Text["Switch to light mode"].Value : Text["Switch to dark mode"].Value;
 
