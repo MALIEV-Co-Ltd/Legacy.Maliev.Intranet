@@ -209,12 +209,25 @@ else if (page is not null)
         submitting = true; error = null; notice = null;
         try
         {
+            // The BFF key ring may rotate while this long-lived WASM page is open (for
+            // example, after an Aspire restart). Refresh the browser-safe session projection
+            // immediately before every write so the request token matches the current cookie.
+            session = await Http.GetFromJsonAsync<EmployeeSessionSummary>("/bff/session");
+            request.Headers.Remove("X-CSRF-TOKEN");
+            if (!string.IsNullOrWhiteSpace(session?.CsrfToken))
+            {
+                request.Headers.Add("X-CSRF-TOKEN", session.CsrfToken);
+            }
+
             using var response = await Http.SendAsync(request);
             if (response.StatusCode == HttpStatusCode.Conflict) { error = Text["Conflict"]; return; }
             if (!response.IsSuccessStatusCode) { error = ErrorFor(response.StatusCode); return; }
             notice = success; uploads.Clear(); await LoadAsync();
         }
-        catch (HttpRequestException) { error = Text["Unavailable"]; }
+        catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException)
+        {
+            error = Text["Unavailable"];
+        }
         finally { submitting = false; }
     }
 
