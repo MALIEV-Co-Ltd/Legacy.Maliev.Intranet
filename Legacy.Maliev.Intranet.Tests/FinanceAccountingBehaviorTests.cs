@@ -28,20 +28,28 @@ public sealed class FinanceAccountingBehaviorTests
     [Fact]
     public async Task Detail_AggregatesExactServiceBoundariesAndReturnsSignedFile()
     {
-        var accounting = AccountingBehaviorTestHost.Routes(request => request.RequestUri?.AbsolutePath switch
+        var accounting = AccountingBehaviorTestHost.Routes(request => (request.Method.Method, request.RequestUri?.AbsolutePath) switch
         {
-            "/payments/84" => AccountingBehaviorTestHost.Json(PaymentJson),
-            "/payments/directions" => AccountingBehaviorTestHost.Json("""[{"id":1,"name":"Income"}]"""),
-            "/payments/types" => AccountingBehaviorTestHost.Json("""[{"id":2,"name":"Job"}]"""),
-            "/payments/methods" => AccountingBehaviorTestHost.Json("""[{"id":3,"name":"Transfer"}]"""),
-            "/payments/84/files" => AccountingBehaviorTestHost.Json(FinanceFilesJson),
+            ("GET", "/payments/84") => AccountingBehaviorTestHost.Json(PaymentJson),
+            ("GET", "/payments/directions") => AccountingBehaviorTestHost.Json("""[{"id":1,"name":"Income"}]"""),
+            ("GET", "/payments/types") => AccountingBehaviorTestHost.Json("""[{"id":2,"name":"Job"}]"""),
+            ("GET", "/payments/methods") => AccountingBehaviorTestHost.Json("""[{"id":3,"name":"Transfer"}]"""),
+            ("GET", "/payments/84/files") => AccountingBehaviorTestHost.Json(FinanceFilesJson),
             _ => new(HttpStatusCode.NotFound),
         });
         var files = AccountingBehaviorTestHost.Routes(request =>
-            request.RequestUri?.AbsolutePath == "/uploads/SignedUrl"
+            request.Method == HttpMethod.Get && request.RequestUri?.AbsolutePath == "/uploads/SignedUrl"
                 ? AccountingBehaviorTestHost.Json("\"https://storage.test/clean/receipt.pdf\"")
                 : new(HttpStatusCode.NotFound));
-        await using var factory = AccountingBehaviorTestHost.CreateFactory(accounting, files);
+        var employees = AccountingBehaviorTestHost.Routes(request =>
+            request.Method == HttpMethod.Get && request.RequestUri?.PathAndQuery == "/employees?sort=EmployeeId_Ascending&search=&index=1&size=250"
+                ? AccountingBehaviorTestHost.Json("""{"items":[{"id":7,"fullName":"Natthapol V."}]}""")
+                : new(HttpStatusCode.NotFound));
+        var catalog = AccountingBehaviorTestHost.Routes(request =>
+            request.Method == HttpMethod.Get && request.RequestUri?.PathAndQuery == "/Currencies"
+                ? AccountingBehaviorTestHost.Json("""[{"id":1,"shortName":"THB"}]""")
+                : new(HttpStatusCode.NotFound));
+        await using var factory = AccountingBehaviorTestHost.CreateFactory(accounting, files, employees, catalog);
         using var client = AccountingBehaviorTestHost.CreateClient(factory);
         await AccountingBehaviorTestHost.SignInAsync(client);
 
@@ -53,22 +61,40 @@ public sealed class FinanceAccountingBehaviorTests
         Assert.Contains("\"name\":\"Natthapol V.\"", body, StringComparison.Ordinal);
         Assert.Contains("\"shortName\":\"THB\"", body, StringComparison.Ordinal);
         Assert.Contains("https://storage.test/clean/receipt.pdf", body, StringComparison.Ordinal);
-        Assert.Contains(accounting.Requests, request => request.Path == "/payments/84/files");
+        Assert.Equal(
+            [
+                "GET /payments/84",
+                "GET /payments/84/files",
+                "GET /payments/directions",
+                "GET /payments/methods",
+                "GET /payments/types",
+            ],
+            accounting.Requests.Select(RequestBoundary).Order(StringComparer.Ordinal));
         Assert.All(accounting.Requests, request => Assert.Equal("Bearer signed-service-token", request.Authorization));
-        Assert.Equal("/uploads/SignedUrl?bucket=maliev.com&objectName=accounting%2Fpayments%2F84%2Freceipt.pdf", Assert.Single(files.Requests).Path);
+        Assert.Equal("GET /uploads/SignedUrl?bucket=maliev.com&objectName=accounting%2Fpayments%2F84%2Freceipt.pdf", RequestBoundary(Assert.Single(files.Requests)));
+        Assert.Equal("GET /employees?sort=EmployeeId_Ascending&search=&index=1&size=250", RequestBoundary(Assert.Single(employees.Requests)));
+        Assert.Equal("GET /Currencies", RequestBoundary(Assert.Single(catalog.Requests)));
     }
 
     [Fact]
     public async Task CreateLookup_AggregatesOnlyAllowlistedReferenceRoutes()
     {
-        var accounting = AccountingBehaviorTestHost.Routes(request => request.RequestUri?.AbsolutePath switch
+        var accounting = AccountingBehaviorTestHost.Routes(request => (request.Method.Method, request.RequestUri?.AbsolutePath) switch
         {
-            "/payments/directions" => AccountingBehaviorTestHost.Json("""[{"id":1,"name":"Income"}]"""),
-            "/payments/types" => AccountingBehaviorTestHost.Json("""[{"id":2,"name":"Job"}]"""),
-            "/payments/methods" => AccountingBehaviorTestHost.Json("""[{"id":3,"name":"Transfer"}]"""),
+            ("GET", "/payments/directions") => AccountingBehaviorTestHost.Json("""[{"id":1,"name":"Income"}]"""),
+            ("GET", "/payments/types") => AccountingBehaviorTestHost.Json("""[{"id":2,"name":"Job"}]"""),
+            ("GET", "/payments/methods") => AccountingBehaviorTestHost.Json("""[{"id":3,"name":"Transfer"}]"""),
             _ => new(HttpStatusCode.NotFound),
         });
-        await using var factory = AccountingBehaviorTestHost.CreateFactory(accounting);
+        var employees = AccountingBehaviorTestHost.Routes(request =>
+            request.Method == HttpMethod.Get && request.RequestUri?.PathAndQuery == "/employees?sort=EmployeeId_Ascending&search=&index=1&size=250"
+                ? AccountingBehaviorTestHost.Json("""{"items":[{"id":7,"fullName":"Natthapol V."}]}""")
+                : new(HttpStatusCode.NotFound));
+        var catalog = AccountingBehaviorTestHost.Routes(request =>
+            request.Method == HttpMethod.Get && request.RequestUri?.PathAndQuery == "/Currencies"
+                ? AccountingBehaviorTestHost.Json("""[{"id":1,"shortName":"THB"}]""")
+                : new(HttpStatusCode.NotFound));
+        await using var factory = AccountingBehaviorTestHost.CreateFactory(accounting, employees: employees, catalog: catalog);
         using var client = AccountingBehaviorTestHost.CreateClient(factory);
         await AccountingBehaviorTestHost.SignInAsync(client);
 
@@ -82,8 +108,10 @@ public sealed class FinanceAccountingBehaviorTests
         Assert.Equal("Transfer", json.GetProperty("methods")[0].GetProperty("name").GetString());
         Assert.Equal("THB", json.GetProperty("currencies")[0].GetProperty("shortName").GetString());
         Assert.Equal(
-            ["/payments/directions", "/payments/methods", "/payments/types"],
-            accounting.Requests.Select(request => request.Path).Order());
+            ["GET /payments/directions", "GET /payments/methods", "GET /payments/types"],
+            accounting.Requests.Select(RequestBoundary).Order(StringComparer.Ordinal));
+        Assert.Equal("GET /employees?sort=EmployeeId_Ascending&search=&index=1&size=250", RequestBoundary(Assert.Single(employees.Requests)));
+        Assert.Equal("GET /Currencies", RequestBoundary(Assert.Single(catalog.Requests)));
     }
 
     [Fact]
@@ -166,7 +194,7 @@ public sealed class FinanceAccountingBehaviorTests
     }
 
     [Fact]
-    public async Task Upload_LinksScannedObjectThroughServerOwnedPaymentPath()
+    public async Task Upload_RetryUsesStableDistinctUploadAndLinkOperations()
     {
         var accounting = AccountingBehaviorTestHost.Routes(request => request.RequestUri?.AbsolutePath switch
         {
@@ -185,22 +213,35 @@ public sealed class FinanceAccountingBehaviorTests
         using var client = AccountingBehaviorTestHost.CreateClient(factory);
         var csrf = await AccountingBehaviorTestHost.SignInAsync(client);
         var operationId = Guid.Parse("72c35c7d-17f6-4a70-be6d-482021bbb06f");
-        using var form = new MultipartFormDataContent();
-        form.Add(new ByteArrayContent("safe-pdf"u8.ToArray()), "files", "receipt.pdf");
-        using var request = new HttpRequestMessage(HttpMethod.Post, "/bff/finances/84/files") { Content = form };
-        request.Headers.Add("X-CSRF-TOKEN", csrf);
-        request.Headers.Add("Idempotency-Key", operationId.ToString("D"));
+        async Task<HttpStatusCode> UploadOnceAsync()
+        {
+            using var form = new MultipartFormDataContent();
+            form.Add(new ByteArrayContent("safe-pdf"u8.ToArray()), "files", "receipt.pdf");
+            using var request = new HttpRequestMessage(HttpMethod.Post, "/bff/finances/84/files") { Content = form };
+            request.Headers.Add("X-CSRF-TOKEN", csrf);
+            request.Headers.Add("Idempotency-Key", operationId.ToString("D"));
+            using var response = await client.SendAsync(request);
+            return response.StatusCode;
+        }
 
-        using var response = await client.SendAsync(request);
+        Assert.Equal(HttpStatusCode.OK, await UploadOnceAsync());
+        Assert.Equal(HttpStatusCode.OK, await UploadOnceAsync());
 
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        var upload = Assert.Single(files.Requests);
-        Assert.Equal("/Uploads?bucket=maliev.com&path=accounting%2Fpayments%2F84", upload.Path);
-        Assert.NotEqual(operationId.ToString("D"), upload.IdempotencyKey);
-        var link = Assert.Single(accounting.Requests, request => request.Path == "/payments/files");
-        Assert.Contains("\"paymentId\":84", link.Body, StringComparison.Ordinal);
-        Assert.Contains("\"objectName\":\"accounting/payments/84/receipt.pdf\"", link.Body, StringComparison.Ordinal);
-        Assert.False(string.IsNullOrWhiteSpace(link.IdempotencyKey));
+        var uploads = files.Requests.ToArray();
+        Assert.Equal(2, uploads.Length);
+        Assert.All(uploads, upload => Assert.Equal("POST /Uploads?bucket=maliev.com&path=accounting%2Fpayments%2F84", RequestBoundary(upload)));
+        Assert.Equal(uploads[0].IdempotencyKey, uploads[1].IdempotencyKey);
+        var links = accounting.Requests.Where(request => request.Path == "/payments/files").ToArray();
+        Assert.Equal(2, links.Length);
+        Assert.All(links, link =>
+        {
+            Assert.Equal("POST /payments/files", RequestBoundary(link));
+            Assert.Contains("\"paymentId\":84", link.Body, StringComparison.Ordinal);
+            Assert.Contains("\"objectName\":\"accounting/payments/84/receipt.pdf\"", link.Body, StringComparison.Ordinal);
+        });
+        Assert.Equal(links[0].IdempotencyKey, links[1].IdempotencyKey);
+        Assert.NotEqual(operationId.ToString("D"), uploads[0].IdempotencyKey);
+        Assert.NotEqual(uploads[0].IdempotencyKey, links[0].IdempotencyKey);
     }
 
     [Fact]
@@ -266,6 +307,8 @@ public sealed class FinanceAccountingBehaviorTests
 
     internal const string FinanceFilesJson =
         """[{"id":17,"paymentId":84,"bucket":"maliev.com","objectName":"accounting/payments/84/receipt.pdf","createdDate":"2030-07-18T00:00:00Z"}]""";
+
+    private static string RequestBoundary(AccountingBehaviorTestHost.RequestRecord request) => $"{request.Method} {request.Path}";
 }
 
 internal static class AccountingBehaviorTestHost
