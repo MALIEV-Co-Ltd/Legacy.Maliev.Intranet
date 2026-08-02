@@ -3,7 +3,7 @@ namespace Legacy.Maliev.Intranet.Tests;
 public sealed class EmployeeProfileWasmMigrationContractTests
 {
     [Fact]
-    public void CurrentHrProfileRouteLoadsTheEmployeesFeatureAndUsesTheServerOwnedLegacyProfileContract()
+    public void CurrentHrProfileRouteLoadsTheEmployeesFeatureAndUsesTheIdFreeSelfProfileContract()
     {
         var root = FindRoot();
         var app = File.ReadAllText(Path.Combine(root, "Legacy.Maliev.Intranet.Client", "App.razor"));
@@ -17,16 +17,20 @@ public sealed class EmployeeProfileWasmMigrationContractTests
         Assert.Contains("Legacy.Maliev.Intranet.Client.Features.Employees.wasm", app, StringComparison.Ordinal);
         Assert.Contains("@page \"/hr/profile\"", page, StringComparison.Ordinal);
         Assert.Contains("[Authorize]", page, StringComparison.Ordinal);
+        Assert.Contains("Http.GetAsync(\"/bff/profile\")", page, StringComparison.Ordinal);
         Assert.Contains("/bff/session", page, StringComparison.Ordinal);
-        Assert.Contains("session.LegacyDatabaseId", page, StringComparison.Ordinal);
-        Assert.Contains("/bff/employees/{session.LegacyDatabaseId.Value}", page, StringComparison.Ordinal);
+        Assert.Contains("new EmployeeSelfProfileUpdateRequest(", page, StringComparison.Ordinal);
+        Assert.Contains("new HttpRequestMessage(HttpMethod.Put, \"/bff/profile\")", page, StringComparison.Ordinal);
+        Assert.Contains("X-CSRF-TOKEN", page, StringComparison.Ordinal);
+        Assert.DoesNotContain("LegacyDatabaseId", page, StringComparison.Ordinal);
+        Assert.DoesNotContain("/bff/employees/", page, StringComparison.Ordinal);
         Assert.DoesNotContain("AccessToken", page, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("RefreshToken", page, StringComparison.OrdinalIgnoreCase);
-        Assert.Contains("No editable field is written", page, StringComparison.Ordinal);
+        Assert.DoesNotContain("HttpMethod.Patch", page, StringComparison.Ordinal);
     }
 
     [Fact]
-    public void EmployeeProfilePageFailsClosedForMissingOrMismatchedLegacyIdentity()
+    public void EmployeeProfilePageKeepsAdministrativeFieldsReadOnlyAndLocalizesDates()
     {
         var root = FindRoot();
         var page = File.ReadAllText(Path.Combine(
@@ -35,10 +39,16 @@ public sealed class EmployeeProfileWasmMigrationContractTests
             "Pages",
             "EmployeeProfile.razor"));
 
-        Assert.Contains("session?.IsAuthenticated != true || session.LegacyDatabaseId is not > 0", page, StringComparison.Ordinal);
-        Assert.Contains("profile is null || profile.Id != session.LegacyDatabaseId.Value", page, StringComparison.Ordinal);
+        Assert.Contains("profile.Email", page, StringComparison.Ordinal);
+        Assert.Contains("profile.Role?.Name", page, StringComparison.Ordinal);
+        Assert.Contains("AddressLine(profile.HomeAddress)", page, StringComparison.Ordinal);
+        Assert.DoesNotContain("model.Email", page, StringComparison.Ordinal);
+        Assert.DoesNotContain("model.Role", page, StringComparison.Ordinal);
+        Assert.DoesNotContain("model.HomeAddress", page, StringComparison.Ordinal);
+        Assert.Contains("CultureInfo.CurrentCulture.DateTimeFormat.ShortDatePattern", page, StringComparison.Ordinal);
         Assert.Contains("HttpStatusCode.Forbidden", page, StringComparison.Ordinal);
         Assert.Contains("HttpStatusCode.NotFound", page, StringComparison.Ordinal);
+        Assert.Contains("HttpStatusCode.TooManyRequests", page, StringComparison.Ordinal);
     }
 
     private static string FindRoot()

@@ -5,19 +5,154 @@
 @inject IStringLocalizer<Index> Text
 
 <PageTitle>@Text["PageTitle"]</PageTitle>
+
 <MudContainer MaxWidth="MaxWidth.ExtraLarge">
-    <MudText Typo="Typo.h4" HtmlTag="h1" Class="mb-4">@Text["Heading"]</MudText>
-    <MudPaper Class="pa-4 mb-4"><div class="d-flex flex-wrap gap-3 align-end"><MudTextField @bind-Value="searchInput" Label="@Text["Search"]" /><MudSelect T="QuotationRequestSort" @bind-Value="sortInput" Label="@Text["Sort"]">@foreach(var value in Enum.GetValues<QuotationRequestSort>()){<MudSelectItem Value="value">@Text[value.ToString()]</MudSelectItem>}</MudSelect><MudNumericField T="int" @bind-Value="sizeInput" Min="1" Max="250" Label="@Text["PerPage"]" /><MudButton OnClick="ApplyAsync" Variant="Variant.Filled" Color="Color.Primary">@Text["Apply"]</MudButton></div></MudPaper>
-    @if(loading){<MudProgressLinear Indeterminate="true" aria-label="@Text["Loading"]"/>}
-    else if(error is not null){<MudAlert Severity="Severity.Error" aria-live="assertive">@error</MudAlert>}
-    else if(page is null || page.Items.Count==0){<MudAlert Severity="Severity.Info">@Text["Empty"]</MudAlert>}
-    else {<MudTable Items="page.Items" Hover="true" Breakpoint="Breakpoint.Sm"><HeaderContent><MudTh>@Text["Id"]</MudTh><MudTh>@Text["Customer"]</MudTh><MudTh>@Text["Company"]</MudTh><MudTh>@Text["Status"]</MudTh><MudTh>@Text["Created"]</MudTh></HeaderContent><RowTemplate><MudTd DataLabel="@Text["Id"]"><MudLink Href="@($"/QuotationRequests/View?id={context.Id}")">@context.Id</MudLink></MudTd><MudTd DataLabel="@Text["Customer"]">@Name(context)</MudTd><MudTd DataLabel="@Text["Company"]">@Fallback(context.CompanyName)</MudTd><MudTd DataLabel="@Text["Status"]">@(context.Done==true?Text["Done"]:Text["Open"])</MudTd><MudTd DataLabel="@Text["Created"]">@Format(context.CreatedDate)</MudTd></RowTemplate></MudTable><div class="d-flex justify-space-between align-center mt-4"><MudButton Disabled="@(!page.HasPreviousPage)" OnClick="PreviousAsync">@Text["Previous"]</MudButton><MudText>@Text["Page",page.PageIndex,page.TotalPages,page.TotalRecords]</MudText><MudButton Disabled="@(!page.HasNextPage)" OnClick="NextAsync">@Text["Next"]</MudButton></div>}
+    <header class="operations-page-header">
+        <div>
+            <MudText Typo="Typo.h4" HtmlTag="h1">@Text["Heading"]</MudText>
+            <MudText Typo="Typo.body1">@Text["Description"]</MudText>
+        </div>
+    </header>
+
+    <MudPaper Class="pa-4 mb-4">
+        <div class="d-flex flex-wrap gap-3 align-end" role="search" aria-label="@Text["FilterLabel"]">
+            <MudTextField @bind-Value="searchInput" Label="@Text["Search"]" />
+            <MudSelect T="QuotationRequestSort" @bind-Value="sortInput" Label="@Text["Sort"]">
+                @foreach (var value in Enum.GetValues<QuotationRequestSort>())
+                {
+                    <MudSelectItem T="QuotationRequestSort" Value="value">@Text[value.ToString()]</MudSelectItem>
+                }
+            </MudSelect>
+            <MudNumericField T="int" @bind-Value="sizeInput" Min="1" Max="250" Label="@Text["PerPage"]" />
+            <MudButton OnClick="ApplyAsync" Variant="Variant.Filled" Color="Color.Primary">@Text["Apply"]</MudButton>
+        </div>
+    </MudPaper>
+
+    @if (loading)
+    {
+        <div role="status" aria-live="polite">
+            <MudProgressLinear Indeterminate="true" aria-label="@Text["Loading"]" />
+            <span class="sr-only">@Text["Loading"]</span>
+        </div>
+    }
+    else if (error is not null)
+    {
+        <MudAlert Severity="Severity.Error" aria-live="assertive">@error</MudAlert>
+    }
+    else if (page is null || page.Items.Count == 0)
+    {
+        <MudAlert Severity="Severity.Info" aria-live="polite">@Text["Empty"]</MudAlert>
+    }
+    else
+    {
+        <MudText id="quotation-request-table-summary" Typo="Typo.caption" Class="mb-3">
+            @Text["RecordsSummary", page.TotalRecords]
+        </MudText>
+        <MudTable Items="page.Items" Hover="true" Breakpoint="Breakpoint.Sm" aria-label="@Text["TableCaption"]" aria-describedby="quotation-request-table-summary">
+            <HeaderContent>
+                <MudTh>@Text["Id"]</MudTh>
+                <MudTh>@Text["Customer"]</MudTh>
+                <MudTh>@Text["Company"]</MudTh>
+                <MudTh>@Text["Status"]</MudTh>
+                <MudTh>@Text["Created"]</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd DataLabel="@Text["Id"]"><MudLink Href="@($"/QuotationRequests/View?id={context.Id}")">@context.Id</MudLink></MudTd>
+                <MudTd DataLabel="@Text["Customer"]">@Name(context)</MudTd>
+                <MudTd DataLabel="@Text["Company"]">@Fallback(context.CompanyName)</MudTd>
+                <MudTd DataLabel="@Text["Status"]"><span class="@StatusClass(context.Done)">@(context.Done == true ? Text["Done"] : Text["Open"])</span></MudTd>
+                <MudTd DataLabel="@Text["Created"]">@Format(context.CreatedDate)</MudTd>
+            </RowTemplate>
+        </MudTable>
+        <nav class="d-flex justify-space-between align-center mt-4" aria-label="@Text["PaginationLabel"]">
+            <MudButton Disabled="@(!page.HasPreviousPage)" OnClick="PreviousAsync">@Text["Previous"]</MudButton>
+            <MudText aria-live="polite" aria-atomic="true">@Text["Page", page.PageIndex, page.TotalPages, page.TotalRecords]</MudText>
+            <MudButton Disabled="@(!page.HasNextPage)" OnClick="NextAsync">@Text["Next"]</MudButton>
+        </nav>
+    }
 </MudContainer>
-@code{
- [SupplyParameterFromQuery] public string? Search{get;set;} [SupplyParameterFromQuery] public string? Sort{get;set;} [SupplyParameterFromQuery(Name="index")] public int PageIndex{get;set;}=1; [SupplyParameterFromQuery] public int Size{get;set;}=25;
- private QuotationRequestPage? page; private bool loading=true; private string? error; private string? searchInput; private QuotationRequestSort sortInput; private int sizeInput;
-protected override async Task OnParametersSetAsync(){PageIndex=PaginationQueryDefaults.NormalizeIndex(PageIndex);Size=PaginationQueryDefaults.NormalizeSize(Size, fallback:25, maximum:250);sortInput=Enum.TryParse<QuotationRequestSort>(Sort,true,out var parsed)?parsed:QuotationRequestSort.RequestCreatedDate_Descending;searchInput=Search;sizeInput=Size;await LoadAsync();}
- private async Task LoadAsync(){loading=true;error=null;try{using var response=await Http.GetAsync($"/bff/quotation-requests?sort={sortInput}&search={Uri.EscapeDataString(Search??string.Empty)}&index={PageIndex}&size={Size}");if(response.StatusCode==HttpStatusCode.Unauthorized){Navigation.NavigateTo($"/Login?returnUrl={Uri.EscapeDataString(Navigation.ToBaseRelativePath(Navigation.Uri))}");return;}if(!response.IsSuccessStatusCode){error=Error(response.StatusCode);return;}page=await response.Content.ReadFromJsonAsync<QuotationRequestPage>();if(page is null)error=Text["Invalid"];}catch(Exception ex)when(ex is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException){error=Text["Unavailable"];}finally{loading=false;}}
- private Task ApplyAsync()=>NavigateAsync(1); private Task PreviousAsync()=>NavigateAsync(Math.Max(1,PageIndex-1)); private Task NextAsync()=>NavigateAsync(PageIndex+1); private Task NavigateAsync(int index){Navigation.NavigateTo($"/QuotationRequests/Index?search={Uri.EscapeDataString(searchInput??string.Empty)}&sort={sortInput}&index={index}&size={Math.Clamp(sizeInput,1,250)}");return Task.CompletedTask;}
- private string Error(HttpStatusCode value)=>value switch{HttpStatusCode.Forbidden=>Text["Forbidden"],HttpStatusCode.TooManyRequests=>Text["RateLimited"],HttpStatusCode.BadGateway=>Text["Invalid"],_=>Text["Unavailable"]}; private static string Name(QuotationRequestItem x)=>Fallback(string.Join(' ',new[]{x.FirstName,x.LastName}.Where(v=>!string.IsNullOrWhiteSpace(v))));private static string Fallback(string? x)=>string.IsNullOrWhiteSpace(x)?"-":x;private static string Format(DateTime? x)=>x?.ToString("d",CultureInfo.CurrentCulture)??"-";
+
+@code {
+    [SupplyParameterFromQuery] public string? Search { get; set; }
+    [SupplyParameterFromQuery] public string? Sort { get; set; }
+    [SupplyParameterFromQuery(Name = "index")] public int PageIndex { get; set; } = 1;
+    [SupplyParameterFromQuery] public int Size { get; set; } = 25;
+
+    private QuotationRequestPage? page;
+    private bool loading = true;
+    private string? error;
+    private string? searchInput;
+    private QuotationRequestSort sortInput;
+    private int sizeInput;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        PageIndex = PaginationQueryDefaults.NormalizeIndex(PageIndex);
+        Size = PaginationQueryDefaults.NormalizeSize(Size, fallback: 25, maximum: 250);
+        sortInput = Enum.TryParse<QuotationRequestSort>(Sort, true, out var parsed)
+            ? parsed
+            : QuotationRequestSort.RequestCreatedDate_Descending;
+        searchInput = Search;
+        sizeInput = Size;
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        loading = true;
+        error = null;
+        try
+        {
+            using var response = await Http.GetAsync($"/bff/quotation-requests?sort={sortInput}&search={Uri.EscapeDataString(Search ?? string.Empty)}&index={PageIndex}&size={Size}");
+            if (response.StatusCode == HttpStatusCode.Unauthorized)
+            {
+                Navigation.NavigateTo($"/Login?returnUrl={Uri.EscapeDataString(Navigation.ToBaseRelativePath(Navigation.Uri))}");
+                return;
+            }
+            if (!response.IsSuccessStatusCode)
+            {
+                error = Error(response.StatusCode);
+                return;
+            }
+            page = await response.Content.ReadFromJsonAsync<QuotationRequestPage>();
+            if (page is null)
+            {
+                error = Text["Invalid"];
+            }
+        }
+        catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException)
+        {
+            error = Text["Unavailable"];
+        }
+        finally
+        {
+            loading = false;
+        }
+    }
+
+    private Task ApplyAsync() => NavigateAsync(1);
+    private Task PreviousAsync() => NavigateAsync(Math.Max(1, PageIndex - 1));
+    private Task NextAsync() => NavigateAsync(PageIndex + 1);
+
+    private Task NavigateAsync(int index)
+    {
+        Navigation.NavigateTo($"/QuotationRequests/Index?search={Uri.EscapeDataString(searchInput ?? string.Empty)}&sort={sortInput}&index={index}&size={Math.Clamp(sizeInput, 1, 250)}");
+        return Task.CompletedTask;
+    }
+
+    private string Error(HttpStatusCode value) => value switch
+    {
+        HttpStatusCode.Forbidden => Text["Forbidden"],
+        HttpStatusCode.TooManyRequests => Text["RateLimited"],
+        HttpStatusCode.BadGateway => Text["Invalid"],
+        _ => Text["Unavailable"],
+    };
+
+    private static string Name(QuotationRequestItem value) =>
+        Fallback(string.Join(' ', new[] { value.FirstName, value.LastName }.Where(part => !string.IsNullOrWhiteSpace(part))));
+    private static string Fallback(string? value) => string.IsNullOrWhiteSpace(value) ? "-" : value;
+    private static string Format(DateTime? value) => value?.ToLocalTime().ToString("d", CultureInfo.CurrentCulture) ?? "-";
+    private static string StatusClass(bool? done) => done == true
+        ? "quotation-request-status quotation-request-status--done"
+        : "quotation-request-status quotation-request-status--open";
 }

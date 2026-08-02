@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
+  <data name="PageTitle" xml:space="preserve"><value>การชำระเงิน {0} | MALIEV Intranet</value></data>
+  <data name="Heading" xml:space="preserve"><value>การชำระเงิน {0}</value></data>
+  <data name="Back" xml:space="preserve"><value>กลับไปที่การเงิน</value></data>
+  <data name="Loading" xml:space="preserve"><value>กำลังโหลดการชำระเงิน</value></data>
+  <data name="Employee" xml:space="preserve"><value>พนักงาน</value></data>
+  <data name="Direction" xml:space="preserve"><value>ประเภทรายรับ/รายจ่าย</value></data>
+  <data name="Type" xml:space="preserve"><value>ประเภท</value></data>
+  <data name="Method" xml:space="preserve"><value>วิธี</value></data>
+  <data name="Amount" xml:space="preserve"><value>จำนวนเงิน</value></data>
+  <data name="Currency" xml:space="preserve"><value>สกุลเงิน</value></data>
+  <data name="Recipient" xml:space="preserve"><value>ผู้รับเงิน</value></data>
+  <data name="TransactionNumber" xml:space="preserve"><value>หมายเลขธุรกรรม</value></data>
+  <data name="PaymentDate" xml:space="preserve"><value>วันที่ชำระเงิน</value></data>
+  <data name="Description" xml:space="preserve"><value>คำอธิบาย</value></data>
+  <data name="Save" xml:space="preserve"><value>บันทึกการชำระเงิน</value></data>
+  <data name="Delete" xml:space="preserve"><value>ลบการชำระเงิน</value></data>
+  <data name="ConfirmDelete" xml:space="preserve"><value>ยืนยันการลบถาวร</value></data>
+  <data name="Cancel" xml:space="preserve"><value>ยกเลิก</value></data>
+  <data name="Files" xml:space="preserve"><value>ไฟล์แนบ</value></data>
+  <data name="Upload" xml:space="preserve"><value>อัปโหลดไฟล์ที่เลือก</value></data>
+  <data name="NoFiles" xml:space="preserve"><value>ไม่มีไฟล์แนบ</value></data>
+  <data name="RemoveFile" xml:space="preserve"><value>ลบ {0}</value></data>
+  <data name="Saved" xml:space="preserve"><value>บันทึกการชำระเงินแล้ว</value></data>
+  <data name="Uploaded" xml:space="preserve"><value>อัปโหลดและสแกนไฟล์แล้ว</value></data>
+  <data name="FileRemoved" xml:space="preserve"><value>นำไฟล์แนบออกแล้ว</value></data>
+  <data name="InvalidId" xml:space="preserve"><value>ต้องมีรหัสการชำระเงินที่ถูกต้อง</value></data>
+  <data name="NotFound" xml:space="preserve"><value>ไม่พบการชำระเงิน</value></data>
+  <data name="Conflict" xml:space="preserve"><value>การชำระเงินนี้เปลี่ยนแปลงหลังจากโหลดแล้ว โหลดซ้ำแล้วลองอีกครั้ง</value></data>
+  <data name="Forbidden" xml:space="preserve"><value>คุณไม่ได้รับอนุญาตให้ดำเนินการนี้</value></data>
+  <data name="RateLimited" xml:space="preserve"><value>ระบบบัญชีมีคำขอจำนวนมาก โปรดลองอีกครั้งในอีกสักครู่</value></data>
+  <data name="InvalidResponse" xml:space="preserve"><value>ระบบบัญชีส่งข้อมูลกลับมาไม่ถูกต้อง</value></data>
+  <data name="Unavailable" xml:space="preserve"><value>ระบบจัดการรายการเงินไม่พร้อมใช้งานชั่วคราว</value></data>
+  <data name="AmountThbOrCurrency" xml:space="preserve"><value>จำนวนเงิน</value></data>
+  <data name="CurrencyUnknown" xml:space="preserve"><value>สกุลเงิน</value></data>
+  <data name="PaymentActions" xml:space="preserve"><value>คำสั่งจัดการรายการเงิน</value></data>
+  <data name="DeleteConfirmation" xml:space="preserve"><value>ยืนยันการลบรายการเงิน</value></data>
+  <data name="FileActions" xml:space="preserve"><value>คำสั่งสำหรับไฟล์ {0}</value></data>
+  <data name="RemoveFileConfirmation" xml:space="preserve"><value>ยืนยันการนำไฟล์ {0} ออก</value></data>
+  <data name="ConfirmRemoveFile" xml:space="preserve"><value>ยืนยันการนำไฟล์ออก</value></data>
+</root>

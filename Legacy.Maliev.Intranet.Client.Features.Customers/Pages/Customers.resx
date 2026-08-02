@@ -39,4 +39,5 @@
   <data name="CustomerCreatedDate_Descending" xml:space="preserve"><value>Created newest first</value></data>
   <data name="CustomerModifiedDate_Ascending" xml:space="preserve"><value>Modified oldest first</value></data>
   <data name="CustomerModifiedDate_Descending" xml:space="preserve"><value>Modified newest first</value></data>
+  <data name="CustomersTable" xml:space="preserve"><value>Customer records</value></data>
 </root>

@@ -11,6 +11,10 @@
         }
     }
 
+    function localizedStatus(host, name, fallback) {
+        return host.dataset[name] || fallback;
+    }
+
     async function waitForGoogleIdentity() {
         const startedAt = Date.now();
         while (!window.google?.accounts?.id) {
@@ -41,7 +45,7 @@
     }
 
     async function completeSignIn(host, credential, nonce) {
-        setStatus(host, "Completing sign-in…");
+        setStatus(host, localizedStatus(host, "statusCompleting", "Completing Google sign-in..."));
         const response = await fetch("/bff/google", {
             method: "POST",
             credentials: "same-origin",
@@ -62,7 +66,7 @@
 
         host.dataset.googleSigninInitialized = "true";
         try {
-            setStatus(host, "Loading Google sign-in…");
+            setStatus(host, localizedStatus(host, "statusLoading", "Loading Google sign-in..."));
             const [configuration] = await Promise.all([
                 requestNonce(host.dataset.returnUrl || "/Dashboard"),
                 waitForGoogleIdentity()
@@ -78,7 +82,7 @@
                     try {
                         await completeSignIn(host, response.credential, configuration.nonce);
                     } catch {
-                        setStatus(host, "Sign-in could not be completed. Reloading…");
+                        setStatus(host, localizedStatus(host, "statusCompletionFailed", "Google sign-in could not be completed. Reloading..."));
                         window.setTimeout(() => window.location.reload(), 1200);
                     }
                 }
@@ -97,7 +101,7 @@
             setStatus(host, "");
         } catch {
             host.dataset.googleSigninInitialized = "false";
-            setStatus(host, "Google sign-in is temporarily unavailable. You can still use your work email.");
+            setStatus(host, localizedStatus(host, "statusUnavailable", "Google sign-in is temporarily unavailable. You can still use your work email."));
         }
     }
 

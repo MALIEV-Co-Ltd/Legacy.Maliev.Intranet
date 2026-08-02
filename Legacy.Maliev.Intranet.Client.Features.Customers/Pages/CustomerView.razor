@@ -19,16 +19,15 @@
     }
     else if (customer is not null)
     {
-        <MudText Typo="Typo.overline">@Text["CustomerNumber", customer.Id]</MudText>
-        <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="mb-4" Wrap="Wrap.Wrap">
-            <MudText Typo="Typo.h4" HtmlTag="h1">@customer.FullName</MudText>
+        <header class="operations-page-header">
+            <div><MudText Typo="Typo.h4" HtmlTag="h1">@customer.FullName</MudText><MudText Typo="Typo.body2">@Text["CustomerNumber", customer.Id]</MudText></div>
             @if (canEdit)
             {
                 <MudButton Variant="Variant.Outlined" Color="Color.Primary" Disabled="@submitting" OnClick="BeginEdit" aria-label="@Text["EditCustomer"]">
                     @Text["EditCustomer"]
                 </MudButton>
             }
-        </MudStack>
+        </header>
 
         <MudGrid Spacing="3">
             <MudItem xs="12" md="6">

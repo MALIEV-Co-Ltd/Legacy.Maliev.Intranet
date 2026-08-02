@@ -24,4 +24,6 @@
   <data name="RateLimited" xml:space="preserve"><value>Too many requests were submitted. Wait a moment and try again.</value></data>
   <data name="CreateFailed" xml:space="preserve"><value>The employee could not be created. No password was stored. Please retry.</value></data>
   <data name="InvalidResponse" xml:space="preserve"><value>The employee services returned an invalid response.</value></data>
+  <data name="AccountDetails" xml:space="preserve"><value>Employee account</value></data>
+  <data name="EmploymentDetails" xml:space="preserve"><value>Employment details</value></data>
 </root>

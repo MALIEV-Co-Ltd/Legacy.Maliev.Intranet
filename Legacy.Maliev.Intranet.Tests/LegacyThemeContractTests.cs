@@ -23,13 +23,13 @@ public sealed class LegacyThemeContractTests
         var root = FindRoot();
         var layout = File.ReadAllText(Path.Combine(root, "Legacy.Maliev.Intranet.Client", "Layout", "MainLayout.razor"));
         var topbar = File.ReadAllText(Path.Combine(root, "Legacy.Maliev.Intranet.Client", "Layout", "LegacyTopBar.razor"));
-        var css = File.ReadAllText(Path.Combine(root, "Legacy.Maliev.Intranet.Client", "wwwroot", "css", "app.css"));
+        var css = File.ReadAllText(Path.Combine(root, "Legacy.Maliev.Intranet.Client", "wwwroot", "css", "design-tokens.css"));
 
         Assert.Contains("IsDarkMode=\"@ThemeService.IsDarkMode\"", layout, StringComparison.Ordinal);
         Assert.Contains("PaletteDark", layout, StringComparison.Ordinal);
         Assert.Contains("ThemeLabel", topbar, StringComparison.Ordinal);
         Assert.Contains("@onclick=\"ToggleThemeAsync\"", topbar, StringComparison.Ordinal);
-        Assert.Contains("html[data-maliev-theme=\"dark\"]", css, StringComparison.Ordinal);
+        Assert.Contains(":root[data-maliev-theme=\"dark\"]", css, StringComparison.Ordinal);
         Assert.Contains("--legacy-background: #0d1117", css, StringComparison.Ordinal);
     }
 

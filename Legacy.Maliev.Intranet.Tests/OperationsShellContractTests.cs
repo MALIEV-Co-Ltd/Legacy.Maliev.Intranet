@@ -1,0 +1,122 @@
+namespace Legacy.Maliev.Intranet.Tests;
+
+public sealed class OperationsShellContractTests
+{
+    [Fact]
+    public void BlazorShell_UsesPersistentRailAuthorizedSearchAndAuthorizedQuickActions()
+    {
+        var root = FindRoot();
+        var layout = Read(root, "Legacy.Maliev.Intranet.Client", "Layout", "MainLayout.razor");
+        var navigation = Read(root, "Legacy.Maliev.Intranet.Client", "Components", "Shell", "LegacyNavigationRail.razor");
+        var search = Read(root, "Legacy.Maliev.Intranet.Client", "Components", "Shell", "LegacyGlobalSearch.razor");
+        var actions = Read(root, "Legacy.Maliev.Intranet.Client", "Components", "Shell", "LegacyQuickActions.razor");
+
+        Assert.Contains("<LegacyNavigationRail Session=\"session\" />", layout, StringComparison.Ordinal);
+        Assert.Contains("IsDrawer=\"true\"", layout, StringComparison.Ordinal);
+        Assert.Contains("LegacyNavigationAuthorization.IsEnabled", navigation, StringComparison.Ordinal);
+        Assert.Contains("LegacyNavigationAuthorization.IsEnabled", search, StringComparison.Ordinal);
+        Assert.Contains("LegacyAppNavigation.Groups", search, StringComparison.Ordinal);
+        Assert.Contains("role=\"combobox\"", search, StringComparison.Ordinal);
+        Assert.Contains("role=\"listbox\"", search, StringComparison.Ordinal);
+        Assert.Contains("aria-activedescendant", search, StringComparison.Ordinal);
+        Assert.Contains("legacy-global-search-option-", search, StringComparison.Ordinal);
+        Assert.Contains("ArrowDown", search, StringComparison.Ordinal);
+        Assert.Contains("ArrowUp", search, StringComparison.Ordinal);
+        Assert.Contains("Escape", search, StringComparison.Ordinal);
+        Assert.Contains("LegacyNavigationAuthorization.IsEnabled", actions, StringComparison.Ordinal);
+        Assert.Contains("/Quotations/Create", actions, StringComparison.Ordinal);
+        Assert.Contains("/Orders/Create", actions, StringComparison.Ordinal);
+        Assert.DoesNotContain("AccessToken", search, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("RefreshToken", search, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void BlazorShell_IsResponsiveAccessibleAndUsesApprovedTypography()
+    {
+        var root = FindRoot();
+        var railCss = Read(root, "Legacy.Maliev.Intranet.Client", "Components", "Shell", "LegacyNavigationRail.razor.css");
+        var searchCss = Read(root, "Legacy.Maliev.Intranet.Client", "Components", "Shell", "LegacyGlobalSearch.razor.css");
+        var actionsCss = Read(root, "Legacy.Maliev.Intranet.Client", "Components", "Shell", "LegacyQuickActions.razor.css");
+        var topBarCss = Read(root, "Legacy.Maliev.Intranet.Client", "Layout", "LegacyTopBar.razor.css");
+        var appCss = Read(root, "Legacy.Maliev.Intranet.Client", "wwwroot", "css", "app.css");
+        var tokens = Read(root, "Legacy.Maliev.Intranet.Client", "wwwroot", "css", "design-tokens.css");
+        var index = Read(root, "Legacy.Maliev.Intranet.Client", "wwwroot", "index.html");
+
+        Assert.Contains("position: fixed", railCss, StringComparison.Ordinal);
+        Assert.Contains("@media (max-width: 1180px)", railCss, StringComparison.Ordinal);
+        Assert.Contains("min-height: 44px", searchCss, StringComparison.Ordinal);
+        Assert.Contains("@media (max-width: 720px)", searchCss, StringComparison.Ordinal);
+        Assert.DoesNotContain(".legacy-quick-actions { display: none; }", actionsCss, StringComparison.Ordinal);
+        Assert.Contains("min-width: 44px", topBarCss, StringComparison.Ordinal);
+        Assert.Contains(".legacy-workspace-shell", appCss, StringComparison.Ordinal);
+        Assert.Contains(".legacy-navigation-backdrop", appCss, StringComparison.Ordinal);
+        Assert.Contains("--legacy-rail-width: 248px", tokens, StringComparison.Ordinal);
+        Assert.Contains("--maliev-font-sans:  'Inter', 'Noto Sans Thai', sans-serif", tokens, StringComparison.Ordinal);
+        Assert.Contains("family=Inter", index, StringComparison.Ordinal);
+        Assert.Contains("'Inter', 'Noto Sans Thai', sans-serif", index, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void CompatibilityHost_UsesTheSharedOperationsShellAndWorkingRouteSearch()
+    {
+        var root = FindRoot();
+        var layout = Read(root, "Legacy.Maliev.Intranet", "Pages", "Shared", "_Layout.cshtml");
+        var css = Read(root, "Legacy.Maliev.Intranet", "wwwroot", "css", "site.css");
+        var script = Read(root, "Legacy.Maliev.Intranet", "wwwroot", "js", "compat-shell.js");
+        var program = Read(root, "Legacy.Maliev.Intranet", "Program.cs");
+
+        Assert.Contains("class=\"compat-rail\"", layout, StringComparison.Ordinal);
+        Assert.Contains("class=\"compat-utility\"", layout, StringComparison.Ordinal);
+        Assert.Contains("id=\"compat-search\"", layout, StringComparison.Ordinal);
+        Assert.Contains("/Quotations/Create", layout, StringComparison.Ordinal);
+        Assert.Contains("/Orders/Create", layout, StringComparison.Ordinal);
+        Assert.Contains("HasPermission(\"legacy.quotations.create\")", layout, StringComparison.Ordinal);
+        Assert.Contains("HasPermission(\"legacy.orders.create\")", layout, StringComparison.Ordinal);
+        Assert.Contains("HasPermission(\"legacy-customer.customers.list\")", layout, StringComparison.Ordinal);
+        Assert.Contains("HasPermission(\"legacy-procurement.suppliers.read\")", layout, StringComparison.Ordinal);
+        Assert.Contains("@Html.AntiForgeryToken()", layout, StringComparison.Ordinal);
+        Assert.Contains("antiforgery.ValidateRequestAsync(context)", program, StringComparison.Ordinal);
+        Assert.Contains("User.FindAll(\"permissions\")", layout, StringComparison.Ordinal);
+        Assert.Contains("Inter:wght@400..800", layout, StringComparison.Ordinal);
+        Assert.Contains("width: var(--rail-width)", css, StringComparison.Ordinal);
+        Assert.Contains("@media (max-width: 1180px)", css, StringComparison.Ordinal);
+        Assert.Contains("window.location.assign(route)", script, StringComparison.Ordinal);
+        Assert.Contains("event.key.toLowerCase() === 'k'", script, StringComparison.Ordinal);
+        Assert.DoesNotContain("token", script, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("secret", script, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void LanguageSelector_OffersOneEnglishAndOneThaiChoiceAndRestoresTheSavedCultureBeforeStartup()
+    {
+        var root = FindRoot();
+        var selector = Read(root, "Legacy.Maliev.Intranet.Client", "Components", "Shell", "LegacyLanguageSelector.razor");
+        var program = Read(root, "Legacy.Maliev.Intranet.Client", "Program.cs");
+        var script = Read(root, "Legacy.Maliev.Intranet.Client", "wwwroot", "js", "workspace-culture.js");
+        var index = Read(root, "Legacy.Maliev.Intranet.Client", "wwwroot", "index.html");
+
+        Assert.Single(System.Text.RegularExpressions.Regex.Matches(selector, "<option value=\"en-TH\"").Cast<System.Text.RegularExpressions.Match>());
+        Assert.Single(System.Text.RegularExpressions.Regex.Matches(selector, "<option value=\"th-TH\"").Cast<System.Text.RegularExpressions.Match>());
+        Assert.DoesNotContain("<option value=\"en-US\"", selector, StringComparison.Ordinal);
+        Assert.Contains("malievCulture.set", selector, StringComparison.Ordinal);
+        Assert.Contains("malievCulture.get", program, StringComparison.Ordinal);
+        Assert.Contains("WorkspaceCulture.Apply(selectedCulture)", program, StringComparison.Ordinal);
+        Assert.Contains("localStorage.setItem('maliev_culture'", script, StringComparison.Ordinal);
+        Assert.Contains("document.documentElement.lang", script, StringComparison.Ordinal);
+        Assert.Contains("js/workspace-culture.js", index, StringComparison.Ordinal);
+    }
+
+    private static string Read(string root, params string[] segments) =>
+        File.ReadAllText(Path.Combine([root, .. segments]));
+
+    private static string FindRoot()
+    {
+        var directory = new DirectoryInfo(AppContext.BaseDirectory);
+        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "Legacy.Maliev.Intranet.slnx")))
+        {
+            directory = directory.Parent;
+        }
+
+        return directory?.FullName ?? throw new DirectoryNotFoundException("Could not find repository root.");
+    }
+}

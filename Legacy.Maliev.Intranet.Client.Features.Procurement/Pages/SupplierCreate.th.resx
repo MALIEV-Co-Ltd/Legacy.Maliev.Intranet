@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
+  <data name="PageTitle" xml:space="preserve"><value>เพิ่มผู้ขาย - MALIEV Intranet</value></data>
+  <data name="Procurement" xml:space="preserve"><value>การจัดซื้อ</value></data>
+  <data name="CreateSupplier" xml:space="preserve"><value>เพิ่มผู้ขาย</value></data>
+  <data name="Supplier" xml:space="preserve"><value>ผู้ขาย</value></data>
+  <data name="Name" xml:space="preserve"><value>ชื่อ</value></data>
+  <data name="Website" xml:space="preserve"><value>เว็บไซต์</value></data>
+  <data name="TaxNumber" xml:space="preserve"><value>เลขประจำตัวผู้เสียภาษี</value></data>
+  <data name="Email" xml:space="preserve"><value>อีเมล</value></data>
+  <data name="Telephone" xml:space="preserve"><value>โทรศัพท์</value></data>
+  <data name="Mobile" xml:space="preserve"><value>มือถือ</value></data>
+  <data name="Fax" xml:space="preserve"><value>โทรสาร</value></data>
+  <data name="Note" xml:space="preserve"><value>บันทึก</value></data>
+  <data name="Address" xml:space="preserve"><value>ที่อยู่</value></data>
+  <data name="Building" xml:space="preserve"><value>อาคาร</value></data>
+  <data name="Address1" xml:space="preserve"><value>ที่อยู่บรรทัดที่ 1</value></data>
+  <data name="Address2" xml:space="preserve"><value>ที่อยู่บรรทัดที่ 2</value></data>
+  <data name="City" xml:space="preserve"><value>เมือง</value></data>
+  <data name="State" xml:space="preserve"><value>จังหวัด/รัฐ</value></data>
+  <data name="PostalCode" xml:space="preserve"><value>รหัสไปรษณีย์</value></data>
+  <data name="CountryId" xml:space="preserve"><value>รหัสประเทศ</value></data>
+  <data name="Submitting" xml:space="preserve"><value>กำลังเพิ่มผู้ขาย…</value></data>
+  <data name="Cancel" xml:space="preserve"><value>ยกเลิก</value></data>
+  <data name="ValidationFailed" xml:space="preserve"><value>โปรดตรวจสอบช่องที่ระบุ แล้วลองอีกครั้ง</value></data>
+  <data name="Forbidden" xml:space="preserve"><value>คุณไม่มีสิทธิ์เพิ่มผู้ขาย</value></data>
+  <data name="Conflict" xml:space="preserve"><value>มีข้อมูลผู้ขายรายนี้อยู่แล้ว</value></data>
+  <data name="RateLimited" xml:space="preserve"><value>มีการส่งคำขอมากเกินไป รอสักครู่แล้วลองอีกครั้ง</value></data>
+  <data name="CreateFailed" xml:space="preserve"><value>เพิ่มผู้ขายไม่สำเร็จ ระบบไม่ได้บันทึกข้อมูลบางส่วนไว้</value></data>
+  <data name="InvalidResponse" xml:space="preserve"><value>บริการจัดซื้อส่งข้อมูลกลับมาไม่ถูกต้อง</value></data>
+</root>

@@ -50,7 +50,7 @@ internal static class LegacyAppNavigation
         [
             new("Employees", "/Employees/Index", Icons.Material.Outlined.Badge, RequiredPermission: "legacy-employee.employees.list", Description: "Employee directory"),
             new("My profile", "/hr/profile", Icons.Material.Outlined.AccountCircle, RequiredPermission: "legacy-employee.employees.read", Description: "Employee profile"),
-            new("Server errors", "/Server/ErrorReport", Icons.Material.Outlined.Dns, Description: "Legacy diagnostics"),
+            new("Server errors", "/Server/ErrorReport", Icons.Material.Outlined.Dns, RequiredPermission: "legacy-intranet.diagnostics.read", Description: "Legacy diagnostics"),
         ]),
     ];
 
@@ -68,6 +68,10 @@ internal static class LegacyAppNavigation
         Groups[3],
         Groups[4],
     ];
+
+    public static LegacyNavItem FindByHref(string href) => Groups
+        .SelectMany(group => group.Items)
+        .Single(item => string.Equals(item.Href, href, StringComparison.OrdinalIgnoreCase));
 }
 
 internal sealed record LegacyNavGroup(string Label, string Icon, IReadOnlyList<LegacyNavItem> Items);

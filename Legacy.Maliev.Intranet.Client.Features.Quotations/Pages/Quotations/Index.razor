@@ -7,14 +7,16 @@
 <PageTitle>@Text["PageTitle"]</PageTitle>
 
 <MudContainer MaxWidth="MaxWidth.ExtraLarge">
-    <MudText Typo="Typo.overline">@Text["Sales"]</MudText>
-    <div class="d-flex flex-wrap align-center justify-space-between gap-3 mb-4">
-        <MudText Typo="Typo.h4" HtmlTag="h1">@Text["Quotations"]</MudText>
-        <div class="d-flex flex-wrap gap-2">
+    <header class="operations-page-header">
+        <div>
+            <MudText Typo="Typo.h4" HtmlTag="h1">@Text["Quotations"]</MudText>
+            <MudText Typo="Typo.body1">@Text["Description"]</MudText>
+        </div>
+        <div class="d-flex flex-wrap gap-2" aria-label="@Text["Actions"]">
             <MudButton Href="/Quotations/Create" Variant="Variant.Filled" Color="Color.Primary">@Text["Create"]</MudButton>
             <MudButton Href="/Quotations/Estimate" Variant="Variant.Outlined">@Text["Estimate"]</MudButton>
         </div>
-    </div>
+    </header>
 
     @if (loading)
     {
@@ -28,10 +30,21 @@
     {
         @if (stats.Accepted + stats.Declined + stats.Open > 0)
         {
-            <MudPaper Class="pa-4 mb-4" Elevation="1">
-                <MudText Typo="Typo.h6" HtmlTag="h2" Class="mb-3">@Text["DecisionSummary"]</MudText>
-                <MudChart T="double" ChartType="ChartType.Donut" ChartSeries="decisionSeries" ChartLabels="decisionLabels" Width="100%" Height="300px" />
-            </MudPaper>
+            <section aria-labelledby="quotation-decision-heading">
+                <MudPaper Class="pa-4 mb-4 quotation-decision-summary" Elevation="1">
+                    <MudText id="quotation-decision-heading" Typo="Typo.h6" HtmlTag="h2" Class="mb-3">@Text["DecisionSummary"]</MudText>
+                    <div class="quotation-decision-layout">
+                        <div aria-hidden="true">
+                            <MudChart T="double" ChartType="ChartType.Donut" ChartSeries="decisionSeries" ChartLabels="decisionLabels" Width="100%" Height="260px" />
+                        </div>
+                        <dl class="quotation-decision-data" aria-label="@Text["DecisionData"]">
+                            <div><dt><span class="quotation-status quotation-status--accepted">@Text["Accepted"]</span></dt><dd>@stats.Accepted</dd></div>
+                            <div><dt><span class="quotation-status quotation-status--declined">@Text["Declined"]</span></dt><dd>@stats.Declined</dd></div>
+                            <div><dt><span class="quotation-status quotation-status--open">@Text["Open"]</span></dt><dd>@stats.Open</dd></div>
+                        </dl>
+                    </div>
+                </MudPaper>
+            </section>
         }
 
         <MudPaper Class="pa-4 mb-4">
@@ -53,13 +66,13 @@
 
         @if (page.Items.Count == 0)
         {
-            <MudAlert Severity="Severity.Info">@Text["NoQuotations"]</MudAlert>
+            <MudAlert Severity="Severity.Info" aria-live="polite">@Text["NoQuotations"]</MudAlert>
         }
         else
         {
             <MudPaper Class="pa-4 mb-4" Elevation="1">
-                <MudText Typo="Typo.caption" Class="mb-3">@Text["RecordsSummary", page.TotalRecords, page.TotalPages]</MudText>
-                <MudTable Items="page.Items" Hover="true" Breakpoint="Breakpoint.Sm" Elevation="0">
+                <MudText id="quotation-table-caption" Typo="Typo.caption" Class="mb-3">@Text["RecordsSummary", page.TotalRecords, page.TotalPages]</MudText>
+                <MudTable Items="page.Items" Hover="true" Breakpoint="Breakpoint.Sm" Elevation="0" aria-label="@Text["TableCaption"]" aria-describedby="quotation-table-caption">
                     <HeaderContent>
                         <MudTh>@Text["Id"]</MudTh>
                         <MudTh>@Text["CustomerId"]</MudTh>
@@ -90,7 +103,7 @@
                         <MudTd DataLabel="@Text["Fob"]">@ValueOrFallback(quotation.Fob)</MudTd>
                         <MudTd DataLabel="@Text["ShippedVia"]">@ValueOrFallback(quotation.ShippedVia)</MudTd>
                         <MudTd DataLabel="@Text["Terms"]">@ValueOrFallback(quotation.Terms)</MudTd>
-                        <MudTd DataLabel="@Text["Decision"]">@Decision(quotation.Accepted)</MudTd>
+                        <MudTd DataLabel="@Text["Decision"]"><span class="@DecisionClass(quotation.Accepted)">@Decision(quotation.Accepted)</span></MudTd>
                     </RowTemplate>
                 </MudTable>
             </MudPaper>
@@ -235,5 +248,11 @@
     private string FormatMoney(decimal value, int currencyId) => $"{value:N2} {(currencies.TryGetValue(currencyId, out var name) ? name : currencyId.ToString(CultureInfo.InvariantCulture))}";
     private static string FormatDate(DateTime value) => value.ToLocalTime().ToString("d", CultureInfo.CurrentCulture);
     private string Decision(bool? value) => value switch { true => Text["Accepted"], false => Text["Declined"], null => Text["Open"] };
+    private static string DecisionClass(bool? value) => value switch
+    {
+        true => "quotation-status quotation-status--accepted",
+        false => "quotation-status quotation-status--declined",
+        null => "quotation-status quotation-status--open",
+    };
     private static string ValueOrFallback(string? value) => string.IsNullOrWhiteSpace(value) ? "-" : value;
 }

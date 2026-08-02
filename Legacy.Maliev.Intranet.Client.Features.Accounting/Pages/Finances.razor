@@ -7,19 +7,21 @@
 <PageTitle>@Text["PageTitle"]</PageTitle>
 
 <MudContainer MaxWidth="MaxWidth.ExtraLarge">
-    <MudText Typo="Typo.overline">@Text["Accounting"]</MudText>
-    <div class="d-flex flex-wrap align-center justify-space-between gap-3 mb-4">
+    <div class="operations-page-header d-flex flex-wrap align-center justify-space-between gap-3 mb-4">
         <MudText Typo="Typo.h4" HtmlTag="h1">@Text["Finance"]</MudText>
-        <div class="d-flex flex-wrap gap-2">
+        <div class="d-flex flex-wrap gap-2" role="group" aria-label="@Text["FinanceActions"]">
             <MudButton Href="/Finances/Create" Variant="Variant.Filled" Color="Color.Primary">@Text["Create"]</MudButton>
             <MudButton Href="/Finances/YearlyActivityChart" Variant="Variant.Outlined">@Text["YearlyActivity"]</MudButton>
-            <MudButton Href="@($"/Finances/NetProfitChart?year={DateTime.UtcNow.Year}")" Variant="Variant.Outlined">@Text["NetProfit"]</MudButton>
+            <MudButton Href="@($"/Finances/NetProfitChart?year={BangkokYear}")" Variant="Variant.Outlined">@Text["NetProfit"]</MudButton>
         </div>
     </div>
 
     @if (loading)
     {
-        <MudProgressLinear Indeterminate="true" Color="Color.Primary" aria-label="@Text["Loading"]" />
+        <div role="status" aria-live="polite">
+            <MudProgressLinear Indeterminate="true" Color="Color.Primary" aria-label="@Text["Loading"]" />
+            <span class="visually-hidden">@Text["Loading"]</span>
+        </div>
     }
     else if (!string.IsNullOrWhiteSpace(error))
     {
@@ -54,9 +56,9 @@
 
         @if (TrendRows.Count > 0)
         {
-            <MudPaper Class="pa-4 mb-4" Elevation="1">
-                <MudText Typo="Typo.h6" HtmlTag="h2" Class="mb-3">@Text["YearlyTrend"]</MudText>
-                <MudTable Items="TrendRows" Hover="true" Breakpoint="Breakpoint.Sm" Elevation="0">
+            <MudPaper Class="pa-4 mb-4" Elevation="1" role="region" aria-labelledby="yearly-trend-heading">
+                <MudText id="yearly-trend-heading" Typo="Typo.h6" HtmlTag="h2" Class="mb-3">@Text["YearlyTrend"]</MudText>
+                <MudTable Items="TrendRows" Hover="true" Breakpoint="Breakpoint.Sm" Elevation="0" aria-label="@Text["YearlyTrendTable"]">
                     <HeaderContent>
                         <MudTh>@Text["Month"]</MudTh>
                         <MudTh>@Text["Income"]</MudTh>
@@ -89,11 +91,11 @@
 
         @if (Page is null || Page.Items.Count == 0)
         {
-            <MudAlert Severity="Severity.Info">@Text["NoPayments"]</MudAlert>
+            <MudAlert Severity="Severity.Info" aria-live="polite">@Text["NoPayments"]</MudAlert>
         }
         else
         {
-            <MudTable Items="Page.Items" Hover="true" Breakpoint="Breakpoint.Sm" Elevation="1">
+            <MudTable Items="Page.Items" Hover="true" Breakpoint="Breakpoint.Sm" Elevation="1" aria-label="@Text["PaymentsTable"]">
                 <HeaderContent>
                     <MudTh>@Text["Id"]</MudTh>
                     <MudTh>@Text["Direction"]</MudTh>
@@ -151,6 +153,7 @@
     private FinancePaymentSort sortInput;
     private FinancePaymentSort currentSort = FinancePaymentSort.PaymentCreatedDate_Descending;
     private int sizeInput;
+    private static int BangkokYear => TimeZoneInfo.ConvertTimeBySystemTimeZoneId(DateTimeOffset.UtcNow, "Asia/Bangkok").Year;
 
     private IReadOnlyList<(string Title, FinanceSummary Value)> SummaryCards =>
     [
@@ -220,7 +223,7 @@
             var currencyQuery = thbCurrencyId is int currencyId
                 ? $"&currencyId={currencyId.ToString(CultureInfo.InvariantCulture)}"
                 : string.Empty;
-            using var incomeResponse = await Http.GetAsync($"/bff/finances/trends/yearly-income?year={DateTime.UtcNow.Year}{currencyQuery}");
+            using var incomeResponse = await Http.GetAsync($"/bff/finances/trends/yearly-income?year={BangkokYear}{currencyQuery}");
             using var expenseResponse = await Http.GetAsync($"/bff/finances/trends/yearly-expense?{currencyQuery.TrimStart('&')}");
             if (HandleFailure([incomeResponse, expenseResponse]))
             {

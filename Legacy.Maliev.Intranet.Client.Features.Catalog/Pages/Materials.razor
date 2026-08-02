@@ -8,13 +8,15 @@
 <PageTitle>@Text["PageTitle"]</PageTitle>
 
 <MudContainer MaxWidth="MaxWidth.ExtraLarge">
-    <MudText Typo="Typo.overline">@Text["Catalog"]</MudText>
-    <div class="d-flex flex-wrap align-center justify-space-between gap-3 mb-4">
-        <MudText Typo="Typo.h4" HtmlTag="h1">@Text["Materials"]</MudText>
+    <header class="operations-page-header">
+        <div>
+            <MudText Typo="Typo.h4" HtmlTag="h1">@Text["Materials"]</MudText>
+            <MudText Typo="Typo.body2">@Text["Catalog"]</MudText>
+        </div>
         <MudButton Href="/Materials/Create" Variant="Variant.Filled" Color="Color.Primary">
             @Text["CreateMaterial"]
         </MudButton>
-    </div>
+    </header>
 
     <MudPaper Class="pa-4 mb-4">
         <div class="d-flex flex-wrap gap-3 align-end">
@@ -37,11 +39,11 @@
 
     @if (loading)
     {
-        <MudProgressLinear Indeterminate="true" Color="Color.Primary" aria-label="@Text["Loading"]" />
+        <div role="status" aria-live="polite"><MudProgressLinear Indeterminate="true" Color="Color.Primary" aria-label="@Text["Loading"]" /><span class="visually-hidden">@Text["Loading"]</span></div>
     }
     else if (!string.IsNullOrWhiteSpace(error))
     {
-        <MudAlert Severity="Severity.Error">@error</MudAlert>
+        <MudAlert Severity="Severity.Error" aria-live="assertive">@error</MudAlert>
     }
     else if (page is null || page.Items.Count == 0)
     {
@@ -49,7 +51,7 @@
     }
     else
     {
-        <MudTable Items="page.Items" Hover="true" Breakpoint="Breakpoint.Sm" Elevation="1">
+        <MudTable Items="page.Items" Hover="true" Breakpoint="Breakpoint.Sm" Elevation="1" aria-label="@Text["MaterialsTable"]">
             <HeaderContent>
                 <MudTh>@Text["Id"]</MudTh><MudTh>@Text["Group"]</MudTh><MudTh>@Text["Name"]</MudTh>
                 <MudTh>@Text["Number"]</MudTh><MudTh>@Text["Density"]</MudTh>
@@ -65,11 +67,11 @@
                 <MudTd DataLabel="@Text["Printable"]">@Text[context.Printable ? "Yes" : "No"]</MudTd>
             </RowTemplate>
         </MudTable>
-        <div class="d-flex flex-wrap align-center justify-space-between gap-3 mt-4" aria-label="@Text["MaterialPages"]">
+        <nav class="d-flex flex-wrap align-center justify-space-between gap-3 mt-4" aria-label="@Text["MaterialPages"]">
             <MudButton Disabled="@(!page.HasPreviousPage)" OnClick="PreviousPageAsync">@Text["Previous"]</MudButton>
-            <MudText>@Text["PageSummary", page.PageIndex, page.TotalPages, page.TotalRecords]</MudText>
+            <MudText aria-live="polite">@Text["PageSummary", page.PageIndex, page.TotalPages, page.TotalRecords]</MudText>
             <MudButton Disabled="@(!page.HasNextPage)" OnClick="NextPageAsync">@Text["Next"]</MudButton>
-        </div>
+        </nav>
     }
 </MudContainer>
 

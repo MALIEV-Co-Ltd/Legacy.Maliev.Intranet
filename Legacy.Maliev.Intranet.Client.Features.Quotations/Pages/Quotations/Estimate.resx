@@ -51,6 +51,7 @@
   <data name="SetupCostAllParts" xml:space="preserve"><value>Total setup cost</value></data>
   <data name="SetupCostPerPart" xml:space="preserve"><value>Setup cost per part: {0}</value></data>
   <data name="Summary" xml:space="preserve"><value>Summary</value></data>
+  <data name="SummaryCaption" xml:space="preserve"><value>CNC machining cost estimate in Thai baht</value></data>
   <data name="MaterialCost" xml:space="preserve"><value>Material cost</value></data>
   <data name="SetupCost" xml:space="preserve"><value>Setup cost</value></data>
   <data name="GrandTotal" xml:space="preserve"><value>Total</value></data>

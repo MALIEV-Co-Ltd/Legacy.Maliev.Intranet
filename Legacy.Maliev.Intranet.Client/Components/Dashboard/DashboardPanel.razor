@@ -1,0 +1,27 @@
+<section class="dashboard-panel @Class">
+    <header class="dashboard-panel-header">
+        <div>
+            <h2>@Title</h2>
+            @if (!string.IsNullOrWhiteSpace(Subtitle))
+            {
+                <p>@Subtitle</p>
+            }
+        </div>
+        @if (!string.IsNullOrWhiteSpace(NavigateTo))
+        {
+            <a href="@NavigateTo">@LinkText <span aria-hidden="true">→</span></a>
+        }
+    </header>
+    <div class="dashboard-panel-body">
+        @ChildContent
+    </div>
+</section>
+
+@code {
+    [Parameter, EditorRequired] public string Title { get; set; } = string.Empty;
+    [Parameter] public string? Subtitle { get; set; }
+    [Parameter] public string? NavigateTo { get; set; }
+    [Parameter] public string LinkText { get; set; } = string.Empty;
+    [Parameter] public string? Class { get; set; }
+    [Parameter, EditorRequired] public RenderFragment? ChildContent { get; set; }
+}

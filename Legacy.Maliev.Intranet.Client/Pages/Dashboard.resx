@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
+  <data name="PageTitle" xml:space="preserve"><value>Operations command center - MALIEV Intranet</value></data>
+  <data name="Heading" xml:space="preserve"><value>Operations command center</value></data>
+  <data name="Description" xml:space="preserve"><value>Permission-scoped operational data from the legacy CRM and ERP services.</value></data>
+  <data name="ConnectedSourcesOperational" xml:space="preserve"><value>Connected data sources are operating normally</value></data>
+  <data name="SourcesDegraded" xml:space="preserve"><value>{0} data source(s) temporarily unavailable</value></data>
+  <data name="UpdatedAt" xml:space="preserve"><value>Updated {0}</value></data>
+  <data name="Refresh" xml:space="preserve"><value>Refresh</value></data>
+  <data name="LoadingDashboard" xml:space="preserve"><value>Loading operations dashboard</value></data>
+  <data name="TryAgain" xml:space="preserve"><value>Try again</value></data>
+  <data name="NoWorkspaces" xml:space="preserve"><value>No dashboard workspaces are available for this employee session. Use the navigation to open an authorized feature.</value></data>
+  <data name="PartialDataWarning" xml:space="preserve"><value>Some legacy data sources are temporarily unavailable. Available panels remain safe to use and missing panels will return after recovery.</value></data>
+  <data name="WorkspaceTotals" xml:space="preserve"><value>Workspace totals</value></data>
+  <data name="OpenWorkspace" xml:space="preserve"><value>Open workspace</value></data>
+  <data name="ViewAll" xml:space="preserve"><value>View all</value></data>
+  <data name="ProductionPipeline" xml:space="preserve"><value>Production pipeline</value></data>
+  <data name="ProductionPipelineSubtitle" xml:space="preserve"><value>Newest orders and current quantity progress</value></data>
+  <data name="RecentProductionOrders" xml:space="preserve"><value>Recent production orders</value></data>
+  <data name="Order" xml:space="preserve"><value>Order</value></data>
+  <data name="OrderNumber" xml:space="preserve"><value>Order #{0}</value></data>
+  <data name="Part" xml:space="preserve"><value>Part</value></data>
+  <data name="Quantity" xml:space="preserve"><value>Quantity</value></data>
+  <data name="Remaining" xml:space="preserve"><value>Remaining</value></data>
+  <data name="Promised" xml:space="preserve"><value>Promised</value></data>
+  <data name="Progress" xml:space="preserve"><value>Progress</value></data>
+  <data name="RecentQuotations" xml:space="preserve"><value>Recent quotations</value></data>
+  <data name="RecentQuotationsSubtitle" xml:space="preserve"><value>Newest quotation records</value></data>
+  <data name="Quote" xml:space="preserve"><value>Quote</value></data>
+  <data name="Total" xml:space="preserve"><value>Total</value></data>
+  <data name="Expires" xml:space="preserve"><value>Expires</value></data>
+  <data name="Decision" xml:space="preserve"><value>Decision</value></data>
+  <data name="RecentActivity" xml:space="preserve"><value>Recent activity</value></data>
+  <data name="RecentActivitySubtitle" xml:space="preserve"><value>Latest requests and invoice activity</value></data>
+  <data name="RecentPayments" xml:space="preserve"><value>Recent payments</value></data>
+  <data name="RecentPaymentsSubtitle" xml:space="preserve"><value>Newest legacy accounting records</value></data>
+  <data name="Payment" xml:space="preserve"><value>Payment</value></data>
+  <data name="Recipient" xml:space="preserve"><value>Recipient</value></data>
+  <data name="Amount" xml:space="preserve"><value>Amount</value></data>
+  <data name="Date" xml:space="preserve"><value>Date</value></data>
+  <data name="RecentCustomers" xml:space="preserve"><value>Recent customers</value></data>
+  <data name="RecentCustomersSubtitle" xml:space="preserve"><value>Newest customer profiles</value></data>
+  <data name="Customer" xml:space="preserve"><value>Customer</value></data>
+  <data name="Company" xml:space="preserve"><value>Company</value></data>
+  <data name="Email" xml:space="preserve"><value>Email</value></data>
+  <data name="InvoiceNumber" xml:space="preserve"><value>Invoice #{0}</value></data>
+  <data name="RequestNumber" xml:space="preserve"><value>Request #{0}</value></data>
+  <data name="Activity_invoice_paid" xml:space="preserve"><value>Invoice paid</value></data>
+  <data name="Activity_invoice_awaiting-payment" xml:space="preserve"><value>Invoice awaiting payment</value></data>
+  <data name="Activity_quotation-request_completed" xml:space="preserve"><value>Quotation request completed</value></data>
+  <data name="Activity_quotation-request_awaiting-review" xml:space="preserve"><value>Quotation request awaiting review</value></data>
+  <data name="FinancialSnapshot" xml:space="preserve"><value>Financial snapshot</value></data>
+  <data name="FinancialSnapshotSubtitle" xml:space="preserve"><value>AccountingService monthly summary</value></data>
+  <data name="ComparedWithPrevious" xml:space="preserve"><value>{0} vs previous period</value></data>
+  <data name="QuotationDecisions" xml:space="preserve"><value>Quotation decisions</value></data>
+  <data name="QuotationDecisionsSubtitle" xml:space="preserve"><value>Service-owned decision totals</value></data>
+  <data name="NoQuotationDecisions" xml:space="preserve"><value>No quotation decisions are available yet.</value></data>
+  <data name="Accepted" xml:space="preserve"><value>Accepted</value></data>
+  <data name="Declined" xml:space="preserve"><value>Declined</value></data>
+  <data name="Open" xml:space="preserve"><value>Open</value></data>
+  <data name="RecentOrderProgress" xml:space="preserve"><value>Recent order progress</value></data>
+  <data name="RecentOrderProgressSubtitle" xml:space="preserve"><value>Current state of the orders shown above</value></data>
+  <data name="Completed" xml:space="preserve"><value>Completed</value></data>
+  <data name="InProgress" xml:space="preserve"><value>In progress</value></data>
+  <data name="Queued" xml:space="preserve"><value>Queued</value></data>
+  <data name="DashboardUnavailable" xml:space="preserve"><value>The operations dashboard is temporarily unavailable.</value></data>
+  <data name="InvalidDashboardResponse" xml:space="preserve"><value>The operations dashboard returned an invalid response.</value></data>
+  <data name="DateUnavailable" xml:space="preserve"><value>Date unavailable</value></data>
+  <data name="MoneyFormat" xml:space="preserve"><value>{0} {1}</value></data>
+  <data name="CurrencyNumber" xml:space="preserve"><value>Currency {0}</value></data>
+  <data name="CurrencyUnavailable" xml:space="preserve"><value>Currency unavailable</value></data>
+  <data name="Metric_orders" xml:space="preserve"><value>Orders</value></data>
+  <data name="Metric_customers" xml:space="preserve"><value>Customers</value></data>
+  <data name="Metric_employees" xml:space="preserve"><value>Employees</value></data>
+  <data name="Metric_invoices" xml:space="preserve"><value>Invoices</value></data>
+  <data name="Metric_quotation-requests" xml:space="preserve"><value>Quotation requests</value></data>
+  <data name="Metric_quotations" xml:space="preserve"><value>Quotations</value></data>
+  <data name="Metric_suppliers" xml:space="preserve"><value>Suppliers</value></data>
+  <data name="Metric_purchase-orders" xml:space="preserve"><value>Purchase orders</value></data>
+  <data name="Metric_materials" xml:space="preserve"><value>Materials</value></data>
+  <data name="Metric_payments" xml:space="preserve"><value>Finance records</value></data>
+</root>

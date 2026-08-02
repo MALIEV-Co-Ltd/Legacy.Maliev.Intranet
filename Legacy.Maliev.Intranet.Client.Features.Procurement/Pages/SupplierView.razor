@@ -2,20 +2,21 @@
 @attribute [Authorize]
 @inject HttpClient Http
 @inject NavigationManager Navigation
+@inject IDialogService Dialogs
 @inject IStringLocalizer<SupplierView> Text
 @inject IStringLocalizer<SupplierCreate> Fields
 
 <PageTitle>@Text["PageTitle", Id]</PageTitle>
 <MudContainer MaxWidth="MaxWidth.Medium">
-    <MudText Typo="Typo.overline">@Text["SupplierNumber", Id]</MudText>
-    <MudText Typo="Typo.h4" HtmlTag="h1" Class="mb-4">@(detail?.Name ?? Text["Supplier"])</MudText>
-    @if (loading) { <MudProgressLinear Indeterminate="true" aria-label="@Text["Loading"]" /> }
+    <header class="operations-page-header"><div><MudText Typo="Typo.h4" HtmlTag="h1">@(detail?.Name ?? Text["Supplier"])</MudText><MudText Typo="Typo.body2">@Text["SupplierNumber", Id]</MudText></div></header>
+    @if (loading) { <div role="status" aria-live="polite"><MudProgressLinear Indeterminate="true" aria-label="@Text["Loading"]" /><span class="visually-hidden">@Text["Loading"]</span></div> }
     else if (!string.IsNullOrWhiteSpace(error)) { <MudAlert Severity="Severity.Error" Class="mb-4" aria-live="assertive">@error</MudAlert> }
     @if (detail is not null)
     {
-        @if (!string.IsNullOrWhiteSpace(notification)) { <MudAlert Severity="Severity.Success" Class="mb-4">@notification</MudAlert> }
+        @if (!string.IsNullOrWhiteSpace(notification)) { <MudAlert Severity="Severity.Success" Class="mb-4" aria-live="polite">@notification</MudAlert> }
         <MudForm @ref="form" Model="@model" @bind-IsValid="formValid">
-            <MudText Typo="Typo.h6" HtmlTag="h2">@Fields["Supplier"]</MudText>
+            <MudPaper Class="pa-4 mb-4" Elevation="1">
+            <MudText Typo="Typo.h6" HtmlTag="h2" id="supplier-edit-heading">@Fields["Supplier"]</MudText>
             <MudTextField @bind-Value="model.Name" For="@(() => model.Name)" Label="@Fields["Name"]" Required="true" />
             <MudTextField @bind-Value="model.Website" For="@(() => model.Website)" Label="@Fields["Website"]" InputType="InputType.Url" />
             <MudTextField @bind-Value="model.TaxNumber" Label="@Fields["TaxNumber"]" />
@@ -24,8 +25,10 @@
             <MudTextField @bind-Value="model.Mobile" Label="@Fields["Mobile"]" InputType="InputType.Telephone" />
             <MudTextField @bind-Value="model.Fax" Label="@Fields["Fax"]" />
             <MudTextField @bind-Value="model.Note" Label="@Fields["Note"]" Lines="3" />
+            </MudPaper>
 
-            <MudText Typo="Typo.h6" HtmlTag="h2" Class="mt-5">@Fields["Address"]</MudText>
+            <MudPaper Class="pa-4 mb-4" Elevation="1">
+            <MudText Typo="Typo.h6" HtmlTag="h2">@Fields["Address"]</MudText>
             <MudTextField @bind-Value="model.Building" Label="@Fields["Building"]" />
             <MudTextField @bind-Value="model.Address1" For="@(() => model.Address1)" Label="@Fields["Address1"]" Required="true" />
             <MudTextField @bind-Value="model.Address2" Label="@Fields["Address2"]" />
@@ -33,9 +36,10 @@
             <MudTextField @bind-Value="model.State" Label="@Fields["State"]" />
             <MudTextField @bind-Value="model.PostalCode" Label="@Fields["PostalCode"]" />
             <MudNumericField @bind-Value="model.CountryId" For="@(() => model.CountryId)" Label="@Fields["CountryId"]" Min="1" Required="true" />
+            </MudPaper>
             <MudStack Row="true" Spacing="2" Class="mt-4">
                 <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="@submitting" OnClick="SaveAsync">@Text["Save"]</MudButton>
-                <MudButton Variant="Variant.Filled" Color="Color.Error" Disabled="@submitting" OnClick="DeleteAsync">@Text["Delete"]</MudButton>
+                <MudButton Variant="Variant.Filled" Color="Color.Error" Disabled="@submitting" OnClick="ConfirmDeleteAsync">@Text["Delete"]</MudButton>
                 <MudButton Href="/Suppliers/Index" Variant="Variant.Text">@Text["Back"]</MudButton>
             </MudStack>
         </MudForm>
@@ -85,6 +89,19 @@
         using var response = await SendWriteAsync(HttpMethod.Delete);
         if (response is null || !HandleWrite(response)) return;
         Navigation.NavigateTo("/Suppliers/Index");
+    }
+
+    private async Task ConfirmDeleteAsync()
+    {
+        var confirmed = await Dialogs.ShowMessageBoxAsync(
+            Text["ConfirmDeleteTitle"],
+            Text["ConfirmDeleteBody"],
+            yesText: Text["Delete"],
+            cancelText: Text["Cancel"]);
+        if (confirmed is true)
+        {
+            await DeleteAsync();
+        }
     }
 
     private async Task<HttpResponseMessage?> SendWriteAsync(HttpMethod method)

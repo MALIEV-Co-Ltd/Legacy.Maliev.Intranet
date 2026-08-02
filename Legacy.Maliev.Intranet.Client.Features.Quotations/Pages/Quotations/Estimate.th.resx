@@ -51,6 +51,7 @@
   <data name="SetupCostAllParts" xml:space="preserve"><value>ต้นทุนการตั้งเครื่องรวม</value></data>
   <data name="SetupCostPerPart" xml:space="preserve"><value>ต้นทุนการตั้งเครื่องต่อชิ้น: {0}</value></data>
   <data name="Summary" xml:space="preserve"><value>สรุป</value></data>
+  <data name="SummaryCaption" xml:space="preserve"><value>สรุปประมาณการต้นทุนงาน CNC ในหน่วยบาท</value></data>
   <data name="MaterialCost" xml:space="preserve"><value>ต้นทุนวัสดุ</value></data>
   <data name="SetupCost" xml:space="preserve"><value>ต้นทุนการตั้งเครื่อง</value></data>
   <data name="GrandTotal" xml:space="preserve"><value>รวม</value></data>

@@ -1,0 +1,30 @@
+.quotation-request-status-summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin: 0.75rem 0 1.25rem;
+    color: var(--legacy-muted);
+}
+
+.quotation-request-status {
+    display: inline-flex;
+    align-items: center;
+    min-height: 1.75rem;
+    padding: 0.2rem 0.65rem;
+    border: 1px solid currentColor;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    line-height: 1.2;
+}
+
+.quotation-request-status--done {
+    color: var(--legacy-success, #087a45);
+    background: color-mix(in srgb, currentColor 9%, transparent);
+}
+
+.quotation-request-status--open {
+    color: var(--legacy-warning, #8a5b00);
+    background: color-mix(in srgb, currentColor 10%, transparent);
+}

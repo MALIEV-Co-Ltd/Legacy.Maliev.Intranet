@@ -7,8 +7,7 @@
 <PageTitle>@Text["PageTitle"]</PageTitle>
 
 <MudContainer MaxWidth="MaxWidth.ExtraLarge">
-    <MudText Typo="Typo.overline">@Text["Operations"]</MudText>
-    <MudText Typo="Typo.h4" HtmlTag="h1" Class="mb-2">@Text["Title"]</MudText>
+    <header class="operations-page-header"><div><MudText Typo="Typo.h4" HtmlTag="h1">@Text["Title"]</MudText><MudText Typo="Typo.body2">@Text["Operations"]</MudText></div></header>
     <MudAlert Severity="Severity.Info" Class="mb-4">@Text["PrivacyNote"]</MudAlert>
 
     <MudPaper Class="pa-4 mb-4">
@@ -32,11 +31,11 @@
 
     @if (loading)
     {
-        <MudProgressLinear Indeterminate="true" Color="Color.Primary" aria-label="@Text["Loading"]" />
+        <div role="status" aria-live="polite"><MudProgressLinear Indeterminate="true" Color="Color.Primary" aria-label="@Text["Loading"]" /><span class="visually-hidden">@Text["Loading"]</span></div>
     }
     else if (!string.IsNullOrWhiteSpace(error))
     {
-        <MudAlert Severity="Severity.Error">@error</MudAlert>
+        <MudAlert Severity="Severity.Error" aria-live="assertive">@error</MudAlert>
     }
     else if (page is null || page.Items.Count == 0)
     {
@@ -44,7 +43,7 @@
     }
     else
     {
-        <MudTable Items="page.Items" Hover="true" Breakpoint="Breakpoint.Sm" Elevation="1">
+        <MudTable Items="page.Items" Hover="true" Breakpoint="Breakpoint.Sm" Elevation="1" aria-label="@Text["DiagnosticsTable"]">
             <HeaderContent>
                 <MudTh>@Text["Timestamp"]</MudTh>
                 <MudTh>@Text["Level"]</MudTh>

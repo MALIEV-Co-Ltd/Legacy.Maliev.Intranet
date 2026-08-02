@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
+  <data name="PageTitle" xml:space="preserve"><value>ยืนยันอีเมล - MALIEV Intranet</value></data>
+  <data name="Heading" xml:space="preserve"><value>ยืนยันอีเมลพนักงาน</value></data>
+  <data name="Introduction" xml:space="preserve"><value>ยืนยันว่าที่อยู่อีเมลนี้เป็นของบัญชีพนักงานของคุณ</value></data>
+  <data name="Confirm" xml:space="preserve"><value>ยืนยันอีเมล</value></data>
+  <data name="Completed" xml:space="preserve"><value>อีเมลพนักงานของคุณได้รับการยืนยันแล้ว</value></data>
+  <data name="BackToLogin" xml:space="preserve"><value>กลับไปเข้าสู่ระบบ</value></data>
+  <data name="InvalidLink" xml:space="preserve"><value>ลิงก์ยืนยันนี้ไม่ถูกต้องหรือหมดอายุแล้ว</value></data>
+  <data name="RateLimited" xml:space="preserve"><value>มีการขอยืนยันอีเมลมากเกินไป โปรดรอสักครู่แล้วลองอีกครั้ง</value></data>
+  <data name="Unavailable" xml:space="preserve"><value>ระบบยืนยันอีเมลไม่พร้อมใช้งานชั่วคราว</value></data>
+  <data name="Processing" xml:space="preserve"><value>กำลังยืนยันอีเมล</value></data>
+</root>

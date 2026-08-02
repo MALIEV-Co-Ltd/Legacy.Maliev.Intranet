@@ -1,0 +1,71 @@
+@using Legacy.Maliev.Intranet.Client.Layout
+@inject NavigationManager Navigation
+@inject IStringLocalizer<LegacyTopBar> Text
+
+<aside id="@(IsDrawer ? "legacy-navigation-rail-drawer" : "legacy-navigation-rail")"
+       class="legacy-navigation-rail @(IsDrawer ? "drawer" : string.Empty)"
+       aria-label="@Text["Primary navigation"]"
+       @onkeydown="HandleKeyDown">
+    <div class="legacy-rail-header">
+        <a class="legacy-rail-logo legacy-logo-link" href="/Dashboard" aria-label="@Text["MALIEV dashboard"]">
+            <img src="images/MALIEV_BLACK.svg" alt="MALIEV" />
+        </a>
+        @if (IsDrawer)
+        {
+            <button type="button" class="legacy-rail-close" aria-label="@Text["Close navigation"]" autofocus @onclick="CloseAsync">
+                <MudIcon Icon="@Icons.Material.Filled.Close" Size="Size.Small" />
+            </button>
+        }
+    </div>
+
+    <nav class="legacy-rail-groups">
+        @foreach (var group in LegacyAppNavigation.Groups)
+        {
+            <section class="legacy-rail-group" aria-labelledby="@GroupId(group)">
+                <h2 id="@GroupId(group)">@Text[group.Label]</h2>
+                @foreach (var item in group.Items)
+                {
+                    @if (IsItemEnabled(item))
+                    {
+                        <a href="@item.Href"
+                           class="legacy-rail-link @(IsItemActive(item) ? "active" : string.Empty)"
+                           aria-current="@(IsItemActive(item) ? "page" : null)"
+                           title="@Text[item.Description ?? item.Label]"
+                           @onclick="CloseAsync">
+                            <MudIcon Icon="@item.Icon" Size="Size.Small" />
+                            <span>@Text[item.Label]</span>
+                        </a>
+                    }
+                }
+            </section>
+        }
+    </nav>
+</aside>
+
+@code {
+    [Parameter] public EmployeeSessionSummary? Session { get; set; }
+    [Parameter] public bool IsDrawer { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+
+    private bool IsItemEnabled(LegacyNavItem item) => LegacyNavigationAuthorization.IsEnabled(
+        Session?.IsAuthenticated == true,
+        item.RequiredPermission,
+        Session?.Permissions,
+        Session?.Roles);
+
+    private bool IsItemActive(LegacyNavItem item)
+    {
+        var current = Navigation.ToBaseRelativePath(Navigation.Uri).Split('?', '#')[0].Trim('/');
+        var target = item.Href.Trim('/').Split('?', '#')[0];
+        return item.Match == NavLinkMatch.All
+            ? string.Equals(current, target, StringComparison.OrdinalIgnoreCase)
+            : string.Equals(current, target, StringComparison.OrdinalIgnoreCase) ||
+              current.StartsWith($"{target}/", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static string GroupId(LegacyNavGroup group) => $"legacy-rail-{group.Label.ToLowerInvariant().Replace(' ', '-')}";
+
+    private Task CloseAsync() => IsDrawer ? OnClose.InvokeAsync() : Task.CompletedTask;
+
+    private Task HandleKeyDown(KeyboardEventArgs args) => args.Key == "Escape" ? CloseAsync() : Task.CompletedTask;
+}

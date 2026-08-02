@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
+  <data name="PageTitle" xml:space="preserve"><value>สร้างลูกค้า - MALIEV Intranet</value></data>
+  <data name="ProfileAndAccount" xml:space="preserve"><value>ข้อมูลลูกค้าและบัญชีผู้ใช้</value></data>
+  <data name="CreateCustomer" xml:space="preserve"><value>เพิ่มลูกค้า</value></data>
+  <data name="FirstName" xml:space="preserve"><value>ชื่อ</value></data>
+  <data name="LastName" xml:space="preserve"><value>นามสกุล</value></data>
+  <data name="Email" xml:space="preserve"><value>อีเมล</value></data>
+  <data name="Password" xml:space="preserve"><value>รหัสผ่าน</value></data>
+  <data name="ConfirmPassword" xml:space="preserve"><value>ยืนยันรหัสผ่าน</value></data>
+  <data name="PasswordPrivacy" xml:space="preserve"><value>รหัสผ่านจะถูกส่งไปยังระบบยืนยันตัวตนเท่านั้น และจะไม่บันทึกไว้กับข้อมูลลูกค้า</value></data>
+  <data name="Telephone" xml:space="preserve"><value>โทรศัพท์</value></data>
+  <data name="Mobile" xml:space="preserve"><value>มือถือ</value></data>
+  <data name="Fax" xml:space="preserve"><value>โทรสาร</value></data>
+  <data name="DateOfBirth" xml:space="preserve"><value>วันเกิด</value></data>
+  <data name="Submitting" xml:space="preserve"><value>กำลังเพิ่มลูกค้า…</value></data>
+  <data name="Cancel" xml:space="preserve"><value>ยกเลิก</value></data>
+  <data name="ValidationFailed" xml:space="preserve"><value>โปรดตรวจสอบช่องที่ระบุ แล้วลองอีกครั้ง</value></data>
+  <data name="Forbidden" xml:space="preserve"><value>คุณไม่ได้รับอนุญาตให้สร้างลูกค้า</value></data>
+  <data name="Conflict" xml:space="preserve"><value>มีบัญชีสำหรับที่อยู่อีเมลนี้อยู่แล้ว</value></data>
+  <data name="RateLimited" xml:space="preserve"><value>มีการส่งคำขอมากเกินไป รอสักครู่แล้วลองอีกครั้ง</value></data>
+  <data name="CreateFailed" xml:space="preserve"><value>ไม่สามารถสร้างลูกค้าได้ ไม่มีการเก็บรหัสผ่าน กรุณาลองอีกครั้ง</value></data>
+  <data name="InvalidResponse" xml:space="preserve"><value>ระบบข้อมูลลูกค้าส่งข้อมูลกลับมาไม่ถูกต้อง</value></data>
+  <data name="IdentityAndAccess" xml:space="preserve"><value>ข้อมูลประจำตัวและการเข้าถึงบัญชี</value></data>
+  <data name="ContactDetails" xml:space="preserve"><value>ข้อมูลการติดต่อ</value></data>
+</root>

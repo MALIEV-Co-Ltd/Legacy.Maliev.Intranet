@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
+  <data name="PageTitle" xml:space="preserve"><value>คำขอใบเสนอราคา | MALIEV Intranet</value></data>
+  <data name="Heading" xml:space="preserve"><value>คำขอใบเสนอราคา</value></data>
+  <data name="Description" xml:space="preserve"><value>ตรวจสอบความต้องการของลูกค้าและติดตามแต่ละคำขอจนพร้อมจัดทำใบเสนอราคา</value></data>
+  <data name="FilterLabel" xml:space="preserve"><value>กรองคำขอใบเสนอราคา</value></data>
+  <data name="Search" xml:space="preserve"><value>ค้นหา</value></data>
+  <data name="Sort" xml:space="preserve"><value>เรียงลำดับ</value></data>
+  <data name="PerPage" xml:space="preserve"><value>ต่อหน้า</value></data>
+  <data name="Apply" xml:space="preserve"><value>ใช้ตัวกรอง</value></data>
+  <data name="Loading" xml:space="preserve"><value>กำลังโหลดคำขอใบเสนอราคา</value></data>
+  <data name="Empty" xml:space="preserve"><value>ไม่มีคำขอใบเสนอราคาที่ตรงกับตัวกรองนี้</value></data>
+  <data name="Id" xml:space="preserve"><value>รหัส</value></data>
+  <data name="Customer" xml:space="preserve"><value>ลูกค้า</value></data>
+  <data name="Company" xml:space="preserve"><value>บริษัท</value></data>
+  <data name="Status" xml:space="preserve"><value>สถานะ</value></data>
+  <data name="Created" xml:space="preserve"><value>วันที่สร้าง</value></data>
+  <data name="TableCaption" xml:space="preserve"><value>รายการคำขอใบเสนอราคา</value></data>
+  <data name="RecordsSummary" xml:space="preserve"><value>คำขอใบเสนอราคา {0} รายการ</value></data>
+  <data name="PaginationLabel" xml:space="preserve"><value>หน้ารายการคำขอใบเสนอราคา</value></data>
+  <data name="Done" xml:space="preserve"><value>ดำเนินการเสร็จแล้ว</value></data>
+  <data name="Open" xml:space="preserve"><value>รอดำเนินการ</value></data>
+  <data name="Previous" xml:space="preserve"><value>ก่อนหน้า</value></data>
+  <data name="Next" xml:space="preserve"><value>ต่อไป</value></data>
+  <data name="Page" xml:space="preserve"><value>หน้า {0} จาก {1} · ทั้งหมด {2} รายการ</value></data>
+  <data name="Forbidden" xml:space="preserve"><value>คุณไม่มีสิทธิ์ดูคำขอใบเสนอราคา</value></data>
+  <data name="RateLimited" xml:space="preserve"><value>ระบบใบเสนอราคามีคำขอจำนวนมาก โปรดลองอีกครั้งในอีกสักครู่</value></data>
+  <data name="Invalid" xml:space="preserve"><value>ระบบใบเสนอราคาส่งข้อมูลกลับมาไม่ถูกต้อง</value></data>
+  <data name="Unavailable" xml:space="preserve"><value>ระบบใบเสนอราคาไม่พร้อมใช้งานชั่วคราว</value></data>
+  <data name="RequestId_Ascending" xml:space="preserve"><value>รหัส: น้อยไปมาก</value></data>
+  <data name="RequestId_Descending" xml:space="preserve"><value>รหัส: มากไปน้อย</value></data>
+  <data name="RequestCreatedDate_Ascending" xml:space="preserve"><value>วันที่สร้าง: เก่าไปใหม่</value></data>
+  <data name="RequestCreatedDate_Descending" xml:space="preserve"><value>วันที่สร้าง: ใหม่ไปเก่า</value></data>
+  <data name="RequestModifiedDate_Ascending" xml:space="preserve"><value>วันที่แก้ไข: เก่าไปใหม่</value></data>
+  <data name="RequestModifiedDate_Descending" xml:space="preserve"><value>วันที่แก้ไข: ใหม่ไปเก่า</value></data>
+</root>

@@ -1,90 +1,207 @@
 @page "/hr/profile"
 @attribute [Authorize]
+@using System.Globalization
 @using System.Net
 @using System.Net.Http.Json
 @using Legacy.Maliev.Intranet.Contracts
 @inject HttpClient Http
 @inject NavigationManager Navigation
+@inject IStringLocalizer<EmployeeProfile> Text
 
-<PageTitle>My Profile | MALIEV Intranet</PageTitle>
+<PageTitle>@Text["PageTitle"]</PageTitle>
 
 <MudContainer MaxWidth="MaxWidth.Medium" Class="employee-profile-page">
-    <div class="d-flex flex-wrap align-center justify-space-between gap-3 mb-4">
+    <header class="operations-page-header">
         <div>
-            <MudText Typo="Typo.overline">Employee workspace</MudText>
-            <MudText Typo="Typo.h4" HtmlTag="h1">My Profile</MudText>
-            <MudText Typo="Typo.body2" Class="text-secondary">Your current employee record from the legacy source of truth.</MudText>
+            <MudText Typo="Typo.h4" HtmlTag="h1">@Text["Heading"]</MudText>
+            <MudText Typo="Typo.body2" Class="text-secondary">@Text["Description"]</MudText>
         </div>
-        <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Outlined.Refresh" OnClick="LoadAsync" Disabled="loading">
-            Refresh
+        <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Outlined.Refresh" OnClick="LoadAsync" Disabled="@(loading || submitting)">
+            @Text["Refresh"]
         </MudButton>
-    </div>
+    </header>
 
     @if (loading)
     {
-        <MudProgressLinear Indeterminate="true" Color="Color.Primary" aria-label="Loading employee profile" />
-    }
-    else if (!string.IsNullOrWhiteSpace(error))
-    {
-        <MudAlert Severity="Severity.Error" aria-live="assertive">@error</MudAlert>
+        <div role="status" aria-live="polite">
+            <MudProgressLinear Indeterminate="true" Color="Color.Primary" aria-label="@Text["Loading"]" />
+            <span class="visually-hidden">@Text["Loading"]</span>
+        </div>
     }
     else if (profile is null)
     {
-        <MudAlert Severity="Severity.Warning" aria-live="polite">Your employee profile could not be found.</MudAlert>
+        <MudAlert Severity="@(string.IsNullOrWhiteSpace(error) ? Severity.Warning : Severity.Error)" aria-live="assertive">
+            @(string.IsNullOrWhiteSpace(error) ? Text["NotFound"] : error)
+        </MudAlert>
     }
     else
     {
+        @if (!string.IsNullOrWhiteSpace(error))
+        {
+            <MudAlert Severity="Severity.Error" Class="mb-4" aria-live="assertive">@error</MudAlert>
+        }
+        @if (!string.IsNullOrWhiteSpace(notice))
+        {
+            <MudAlert Severity="Severity.Success" Class="mb-4" aria-live="polite">@notice</MudAlert>
+        }
+
+        <MudPaper Class="pa-5 mb-4" Elevation="1">
+            <MudText Typo="Typo.h6" HtmlTag="h2" id="profile-editable-heading" Class="mb-1">@Text["EditableDetails"]</MudText>
+            <MudText Typo="Typo.body2" Class="text-secondary mb-4">@Text["EditableDetailsHelp"]</MudText>
+            <MudForm @ref="form" Model="@model" @bind-IsValid="formValid" aria-labelledby="profile-editable-heading">
+                <MudGrid Spacing="3">
+                    <MudItem xs="12" sm="6">
+                        <MudTextField @bind-Value="model.FirstName" For="@(() => model.FirstName)" Label="@Text["FirstName"]" Required="true" MaxLength="256" Disabled="@submitting" />
+                    </MudItem>
+                    <MudItem xs="12" sm="6">
+                        <MudTextField @bind-Value="model.LastName" For="@(() => model.LastName)" Label="@Text["LastName"]" Required="true" MaxLength="256" Disabled="@submitting" />
+                    </MudItem>
+                    <MudItem xs="12" sm="6">
+                        <MudTextField @bind-Value="model.PhoneNumber" For="@(() => model.PhoneNumber)" Label="@Text["Phone"]" InputType="InputType.Telephone" MaxLength="256" Disabled="@submitting" />
+                    </MudItem>
+                    <MudItem xs="12" sm="6">
+                        <MudDatePicker @bind-Date="model.DateOfBirth" For="@(() => model.DateOfBirth)" Label="@Text["DateOfBirth"]" DateFormat="@CultureInfo.CurrentCulture.DateTimeFormat.ShortDatePattern" Disabled="@submitting" />
+                    </MudItem>
+                </MudGrid>
+                <MudStack Row="true" Spacing="2" Class="mt-4">
+                    <MudButton ButtonType="ButtonType.Button" Variant="Variant.Filled" Color="Color.Primary" OnClick="SaveAsync" Disabled="@submitting">
+                        @(submitting ? Text["Saving"] : Text["SaveChanges"])
+                    </MudButton>
+                    <MudButton ButtonType="ButtonType.Button" Variant="Variant.Text" OnClick="ResetEditableFields" Disabled="@submitting">
+                        @Text["Reset"]
+                    </MudButton>
+                </MudStack>
+            </MudForm>
+        </MudPaper>
+
         <MudPaper Class="pa-5" Elevation="1">
-            <MudText Typo="Typo.h6" HtmlTag="h2" Class="mb-4">Employee details</MudText>
+            <MudText Typo="Typo.h6" HtmlTag="h2" Class="mb-1">@Text["ManagedDetails"]</MudText>
+            <MudText Typo="Typo.body2" Class="text-secondary mb-4">@Text["ManagedDetailsHelp"]</MudText>
             <MudGrid Spacing="3">
                 <MudItem xs="12" sm="6">
-                    <MudText Typo="Typo.caption">Name</MudText>
-                    <MudText>@profile.FullName</MudText>
-                </MudItem>
-                <MudItem xs="12" sm="6">
-                    <MudText Typo="Typo.caption">Employee number</MudText>
+                    <MudText Typo="Typo.caption">@Text["EmployeeNumber"]</MudText>
                     <MudText>@profile.Id</MudText>
                 </MudItem>
                 <MudItem xs="12" sm="6">
-                    <MudText Typo="Typo.caption">Email</MudText>
+                    <MudText Typo="Typo.caption">@Text["Email"]</MudText>
                     <MudText>@profile.Email</MudText>
                 </MudItem>
                 <MudItem xs="12" sm="6">
-                    <MudText Typo="Typo.caption">Phone</MudText>
-                    <MudText>@Display(profile.PhoneNumber)</MudText>
-                </MudItem>
-                <MudItem xs="12" sm="6">
-                    <MudText Typo="Typo.caption">Role</MudText>
+                    <MudText Typo="Typo.caption">@Text["Role"]</MudText>
                     <MudText>@Display(profile.Role?.Name)</MudText>
                 </MudItem>
-                <MudItem xs="12" sm="6">
-                    <MudText Typo="Typo.caption">Date of birth</MudText>
-                    <MudText>@(profile.DateOfBirth?.ToString("yyyy-MM-dd") ?? "Not provided")</MudText>
-                </MudItem>
                 <MudItem xs="12">
-                    <MudText Typo="Typo.caption">Home address</MudText>
+                    <MudText Typo="Typo.caption">@Text["HomeAddress"]</MudText>
                     <MudText>@Display(AddressLine(profile.HomeAddress))</MudText>
                 </MudItem>
             </MudGrid>
         </MudPaper>
-        <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Class="mt-4">
-            Profile preferences and self-service edits remain disabled until their owning EmployeeService contract is migrated. No editable field is written through this read-only parity route.
-        </MudAlert>
     }
 </MudContainer>
 
 @code {
+    private readonly EditableProfileModel model = new();
     private EmployeeDetail? profile;
+    private MudForm? form;
+    private bool formValid;
     private bool loading;
+    private bool submitting;
     private string? error;
+    private string? notice;
 
     protected override Task OnInitializedAsync() => LoadAsync();
 
-    private async Task LoadAsync()
+    private Task LoadAsync() => LoadAsync(clearNotice: true);
+
+    private async Task LoadAsync(bool clearNotice)
     {
         loading = true;
         error = null;
-        profile = null;
+        if (clearNotice)
+        {
+            notice = null;
+        }
+
+        try
+        {
+            using var response = await Http.GetAsync("/bff/profile");
+            if (response.StatusCode == HttpStatusCode.Unauthorized)
+            {
+                RedirectToLogin();
+                return;
+            }
+
+            if (response.StatusCode == HttpStatusCode.Forbidden)
+            {
+                profile = null;
+                error = Text["Forbidden"];
+                return;
+            }
+
+            if (response.StatusCode == HttpStatusCode.NotFound)
+            {
+                profile = null;
+                return;
+            }
+
+            if (response.StatusCode == HttpStatusCode.TooManyRequests)
+            {
+                error = Text["RateLimited"];
+                return;
+            }
+
+            if (response.StatusCode == HttpStatusCode.BadGateway)
+            {
+                profile = null;
+                error = Text["InvalidResponse"];
+                return;
+            }
+
+            if (!response.IsSuccessStatusCode)
+            {
+                error = Text["Unavailable"];
+                return;
+            }
+
+            var loaded = await response.Content.ReadFromJsonAsync<EmployeeDetail>();
+            if (loaded is null || loaded.Id <= 0)
+            {
+                profile = null;
+                error = Text["InvalidResponse"];
+                return;
+            }
+
+            profile = loaded;
+            ResetEditableFields();
+        }
+        catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException)
+        {
+            error = Text["Unavailable"];
+        }
+        finally
+        {
+            loading = false;
+        }
+    }
+
+    private async Task SaveAsync()
+    {
+        if (profile is null || form is null || submitting)
+        {
+            return;
+        }
+
+        await form.ValidateAsync();
+        if (!formValid || string.IsNullOrWhiteSpace(model.FirstName) || string.IsNullOrWhiteSpace(model.LastName))
+        {
+            error = Text["ValidationFailed"];
+            notice = null;
+            return;
+        }
+
+        submitting = true;
+        error = null;
+        notice = null;
         try
         {
             using var sessionResponse = await Http.GetAsync("/bff/session");
@@ -96,62 +213,99 @@
 
             if (!sessionResponse.IsSuccessStatusCode)
             {
-                error = "The employee session is unavailable.";
+                error = Text["SessionUnavailable"];
                 return;
             }
 
             var session = await sessionResponse.Content.ReadFromJsonAsync<EmployeeSessionSummary>();
-            if (session?.IsAuthenticated != true || session.LegacyDatabaseId is not > 0)
+            if (string.IsNullOrWhiteSpace(session?.CsrfToken))
             {
-                error = "The employee profile identifier is unavailable.";
+                error = Text["SessionUnavailable"];
                 return;
             }
 
-            using var profileResponse = await Http.GetAsync($"/bff/employees/{session.LegacyDatabaseId.Value}");
-            if (profileResponse.StatusCode == HttpStatusCode.Unauthorized)
+            var update = new EmployeeSelfProfileUpdateRequest(
+                model.FirstName.Trim(),
+                model.LastName.Trim(),
+                string.IsNullOrWhiteSpace(model.PhoneNumber) ? null : model.PhoneNumber.Trim(),
+                model.DateOfBirth);
+            using var request = new HttpRequestMessage(HttpMethod.Put, "/bff/profile")
+            {
+                Content = JsonContent.Create(update),
+            };
+            request.Headers.Add("X-CSRF-TOKEN", session.CsrfToken);
+            using var response = await Http.SendAsync(request);
+            if (response.StatusCode == HttpStatusCode.Unauthorized)
             {
                 RedirectToLogin();
                 return;
             }
 
-            if (profileResponse.StatusCode == HttpStatusCode.Forbidden)
+            if (response.StatusCode == HttpStatusCode.Forbidden)
             {
-                error = "You do not have permission to view this profile.";
+                error = Text["ForbiddenUpdate"];
                 return;
             }
 
-            if (profileResponse.StatusCode == HttpStatusCode.NotFound)
+            if (response.StatusCode == HttpStatusCode.BadRequest)
             {
+                error = Text["ValidationFailed"];
                 return;
             }
 
-            if (!profileResponse.IsSuccessStatusCode)
-            {
-                error = "The EmployeeService profile is temporarily unavailable.";
-                return;
-            }
-
-            profile = await profileResponse.Content.ReadFromJsonAsync<EmployeeDetail>();
-            if (profile is null || profile.Id != session.LegacyDatabaseId.Value)
+            if (response.StatusCode == HttpStatusCode.NotFound)
             {
                 profile = null;
-                error = "The EmployeeService returned an invalid profile.";
+                error = Text["NotFound"];
+                return;
+            }
+
+            if (response.StatusCode == HttpStatusCode.TooManyRequests)
+            {
+                error = Text["RateLimited"];
+                return;
+            }
+
+            if (!response.IsSuccessStatusCode)
+            {
+                error = Text["SaveFailed"];
+                return;
+            }
+
+            await LoadAsync(clearNotice: false);
+            if (profile is not null && string.IsNullOrWhiteSpace(error))
+            {
+                notice = Text["Saved"];
             }
         }
         catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException)
         {
-            error = "The EmployeeService profile is temporarily unavailable.";
+            error = Text["SaveFailed"];
         }
         finally
         {
-            loading = false;
+            submitting = false;
         }
+    }
+
+    private void ResetEditableFields()
+    {
+        if (profile is null)
+        {
+            return;
+        }
+
+        model.FirstName = profile.FirstName;
+        model.LastName = profile.LastName;
+        model.PhoneNumber = profile.PhoneNumber;
+        model.DateOfBirth = profile.DateOfBirth;
+        error = null;
     }
 
     private void RedirectToLogin() => Navigation.NavigateTo(
         $"/Login?returnUrl={Uri.EscapeDataString(Navigation.ToBaseRelativePath(Navigation.Uri))}");
 
-    private static string Display(string? value) => string.IsNullOrWhiteSpace(value) ? "Not provided" : value;
+    private string Display(string? value) => string.IsNullOrWhiteSpace(value) ? Text["NotProvided"] : value;
 
     private static string? AddressLine(EmployeeAddressDetail? address)
     {
@@ -163,5 +317,16 @@
         var parts = new[] { address.Building, address.AddressLine1, address.AddressLine2, address.City, address.State, address.PostalCode }
             .Where(value => !string.IsNullOrWhiteSpace(value));
         return string.Join(", ", parts);
+    }
+
+    private sealed class EditableProfileModel
+    {
+        public string FirstName { get; set; } = string.Empty;
+
+        public string LastName { get; set; } = string.Empty;
+
+        public string? PhoneNumber { get; set; }
+
+        public DateTime? DateOfBirth { get; set; }
     }
 }

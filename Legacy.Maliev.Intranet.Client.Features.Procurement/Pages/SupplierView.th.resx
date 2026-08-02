@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
+  <data name="PageTitle" xml:space="preserve"><value>ผู้ขาย {0} - MALIEV Intranet</value></data>
+  <data name="SupplierNumber" xml:space="preserve"><value>ผู้ขาย #{0}</value></data>
+  <data name="Supplier" xml:space="preserve"><value>ผู้ขาย</value></data>
+  <data name="Loading" xml:space="preserve"><value>กำลังโหลดข้อมูลผู้ขาย</value></data>
+  <data name="Save" xml:space="preserve"><value>บันทึกข้อมูลผู้ขาย</value></data>
+  <data name="Delete" xml:space="preserve"><value>ลบผู้ขาย</value></data>
+  <data name="Back" xml:space="preserve"><value>กลับไปยังรายชื่อผู้ขาย</value></data>
+  <data name="Saved" xml:space="preserve"><value>บันทึกข้อมูลผู้ขายแล้ว</value></data>
+  <data name="NotFound" xml:space="preserve"><value>ไม่พบผู้ขาย</value></data>
+  <data name="Forbidden" xml:space="preserve"><value>คุณไม่มีสิทธิ์จัดการข้อมูลผู้ขายรายนี้</value></data>
+  <data name="RateLimited" xml:space="preserve"><value>ระบบได้รับคำขอมากเกินไป โปรดรอสักครู่แล้วลองอีกครั้ง</value></data>
+  <data name="Unavailable" xml:space="preserve"><value>ระบบข้อมูลผู้ขายไม่พร้อมใช้งานชั่วคราว</value></data>
+  <data name="InvalidResponse" xml:space="preserve"><value>ระบบข้อมูลผู้ขายส่งข้อมูลกลับมาไม่ถูกต้อง</value></data>
+  <data name="ValidationFailed" xml:space="preserve"><value>โปรดตรวจสอบช่องที่ระบุ</value></data>
+  <data name="Conflict" xml:space="preserve"><value>ข้อมูลผู้ขายนี้ขัดแย้งกับรายการอื่น โปรดตรวจสอบข้อมูลล่าสุด</value></data>
+  <data name="ConfirmDeleteTitle" xml:space="preserve"><value>ลบผู้ขายรายนี้หรือไม่</value></data>
+  <data name="ConfirmDeleteBody" xml:space="preserve"><value>ข้อมูลผู้ขายจะถูกลบอย่างถาวร หากต้องการเก็บข้อมูลนี้ไว้ให้เลือกยกเลิก</value></data>
+  <data name="Cancel" xml:space="preserve"><value>ยกเลิก</value></data>
+</root>

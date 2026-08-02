@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
+  <data name="PageTitle" xml:space="preserve"><value>ใบสั่งผลิต - MALIEV Intranet</value></data>
+  <data name="Operations" xml:space="preserve"><value>การดำเนินงาน</value></data>
+  <data name="Orders" xml:space="preserve"><value>ใบสั่งผลิต</value></data>
+  <data name="PageSubtitle" xml:space="preserve"><value>ติดตามใบสั่งผลิตของลูกค้า การชำระเงิน ใบเสนอราคาที่ได้รับการยอมรับ และกำหนดส่งงาน</value></data>
+  <data name="CreateOrder" xml:space="preserve"><value>สร้างใบสั่งผลิต</value></data>
+  <data name="Search" xml:space="preserve"><value>ค้นหา</value></data>
+  <data name="Sort" xml:space="preserve"><value>เรียงลำดับ</value></data>
+  <data name="PerPage" xml:space="preserve"><value>ต่อหน้า</value></data>
+  <data name="Apply" xml:space="preserve"><value>ใช้ตัวกรอง</value></data>
+  <data name="Refresh" xml:space="preserve"><value>รีเฟรช</value></data>
+  <data name="Loading" xml:space="preserve"><value>กำลังโหลดใบสั่งผลิต</value></data>
+  <data name="AssignedToMe" xml:space="preserve"><value>มอบหมายให้ฉัน</value></data>
+  <data name="AwaitingAssignment" xml:space="preserve"><value>รอรับมอบหมาย</value></data>
+  <data name="AllOrders" xml:space="preserve"><value>ใบสั่งผลิตทั้งหมด</value></data>
+  <data name="OrderCount" xml:space="preserve"><value>ใบสั่งผลิต {0} รายการ</value></data>
+  <data name="Empty" xml:space="preserve"><value>ไม่มีใบสั่งผลิตที่ตรงกับตัวกรองนี้</value></data>
+  <data name="Id" xml:space="preserve"><value>รหัส</value></data>
+  <data name="Customer" xml:space="preserve"><value>ลูกค้า</value></data>
+  <data name="Process" xml:space="preserve"><value>กระบวนการ</value></data>
+  <data name="Name" xml:space="preserve"><value>ชื่อ</value></data>
+  <data name="Quantity" xml:space="preserve"><value>ปริมาณ</value></data>
+  <data name="Manufactured" xml:space="preserve"><value>ผลิตแล้ว</value></data>
+  <data name="Remaining" xml:space="preserve"><value>คงเหลือ</value></data>
+  <data name="Employee" xml:space="preserve"><value>พนักงาน</value></data>
+  <data name="Subtotal" xml:space="preserve"><value>ยอดก่อนภาษี</value></data>
+  <data name="Promised" xml:space="preserve"><value>กำหนดส่ง</value></data>
+  <data name="Confidential" xml:space="preserve"><value>เป็นความลับ</value></data>
+  <data name="OrderPages" xml:space="preserve"><value>หน้ารายการใบสั่งผลิต</value></data>
+  <data name="Previous" xml:space="preserve"><value>ก่อนหน้า</value></data>
+  <data name="Next" xml:space="preserve"><value>ต่อไป</value></data>
+  <data name="PageSummary" xml:space="preserve"><value>หน้า {0} จาก {1} · ทั้งหมด {2} รายการ</value></data>
+  <data name="Forbidden" xml:space="preserve"><value>คุณไม่มีสิทธิ์ดูใบสั่งผลิต</value></data>
+  <data name="RateLimited" xml:space="preserve"><value>ระบบได้รับคำขอข้อมูลใบสั่งผลิตมากเกินไป โปรดรอสักครู่แล้วลองอีกครั้ง</value></data>
+  <data name="Unavailable" xml:space="preserve"><value>ระบบใบสั่งผลิตไม่พร้อมใช้งานชั่วคราว</value></data>
+  <data name="InvalidResponse" xml:space="preserve"><value>ระบบเดิมส่งข้อมูลใบสั่งผลิตกลับมาไม่ถูกต้อง</value></data>
+  <data name="OrderId_Ascending" xml:space="preserve"><value>ID จากน้อยไปมาก</value></data>
+  <data name="OrderId_Descending" xml:space="preserve"><value>รหัส: มากไปน้อย</value></data>
+  <data name="OrderCreatedDate_Ascending" xml:space="preserve"><value>วันที่สร้างจากน้อยไปหามาก</value></data>
+  <data name="OrderCreatedDate_Descending" xml:space="preserve"><value>วันที่สร้างจากมากไปน้อย</value></data>
+  <data name="OrderModifiedDate_Ascending" xml:space="preserve"><value>วันที่แก้ไขจากน้อยไปหามาก</value></data>
+  <data name="OrderModifiedDate_Descending" xml:space="preserve"><value>วันที่แก้ไขจากมากไปน้อย</value></data>
+</root>

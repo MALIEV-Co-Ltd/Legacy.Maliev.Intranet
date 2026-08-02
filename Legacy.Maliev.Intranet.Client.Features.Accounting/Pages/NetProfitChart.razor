@@ -7,17 +7,17 @@
 <PageTitle>@Text["PageTitle"]</PageTitle>
 
 <MudContainer MaxWidth="MaxWidth.ExtraLarge">
-    <div class="d-flex flex-wrap align-center justify-space-between gap-3 mb-4">
-        <div>
-            <MudText Typo="Typo.overline">@Text["Accounting"]</MudText>
-            <MudText Typo="Typo.h4" HtmlTag="h1">@Text["Title", Year]</MudText>
-        </div>
+    <div class="operations-page-header d-flex flex-wrap align-center justify-space-between gap-3 mb-4">
+        <MudText Typo="Typo.h4" HtmlTag="h1">@Text["Title", Year]</MudText>
         <MudButton Href="/Finances/Index" Variant="Variant.Outlined">@Text["Back"]</MudButton>
     </div>
 
     @if (loading)
     {
-        <MudProgressLinear Indeterminate="true" Color="Color.Primary" aria-label="@Text["Loading"]" />
+        <div role="status" aria-live="polite">
+            <MudProgressLinear Indeterminate="true" Color="Color.Primary" aria-label="@Text["Loading"]" />
+            <span class="visually-hidden">@Text["Loading"]</span>
+        </div>
     }
     else if (!string.IsNullOrWhiteSpace(error))
     {
@@ -25,21 +25,46 @@
     }
     else if (chartData is null || chartData.Labels.Length == 0)
     {
-        <MudAlert Severity="Severity.Info">@Text["NoData", Year]</MudAlert>
+        <MudAlert Severity="Severity.Info" aria-live="polite">@Text["NoData", Year]</MudAlert>
     }
     else
     {
         <MudGrid>
             <MudItem xs="12">
-                <MudPaper Class="pa-4" Elevation="1">
-                    <MudText Typo="Typo.h6" HtmlTag="h2" Class="mb-3">@Text["Cumulative"]</MudText>
-                    <MudChart T="double" ChartType="ChartType.Line" ChartSeries="@cumulativeSeries" ChartLabels="@chartData.Labels" Width="100%" Height="360px" />
-                </MudPaper>
+                <section aria-labelledby="cumulative-income-heading">
+                    <MudPaper Class="pa-4" Elevation="1">
+                        <MudText id="cumulative-income-heading" Typo="Typo.h6" HtmlTag="h2" Class="mb-3">@Text["Cumulative"]</MudText>
+                        <div aria-hidden="true">
+                            <MudChart T="double" ChartType="ChartType.Line" ChartSeries="@cumulativeSeries" ChartLabels="@chartData.Labels" Width="100%" Height="360px" />
+                        </div>
+                    </MudPaper>
+                </section>
+            </MudItem>
+            <MudItem xs="12">
+                <section aria-labelledby="daily-income-heading">
+                    <MudPaper Class="pa-4" Elevation="1">
+                        <MudText id="daily-income-heading" Typo="Typo.h6" HtmlTag="h2" Class="mb-3">@Text["Daily"]</MudText>
+                        <div aria-hidden="true">
+                            <MudChart T="double" ChartType="ChartType.Bar" ChartSeries="@dailySeries" ChartLabels="@chartData.Labels" Width="100%" Height="360px" />
+                        </div>
+                    </MudPaper>
+                </section>
             </MudItem>
             <MudItem xs="12">
                 <MudPaper Class="pa-4" Elevation="1">
-                    <MudText Typo="Typo.h6" HtmlTag="h2" Class="mb-3">@Text["Daily"]</MudText>
-                    <MudChart T="double" ChartType="ChartType.Bar" ChartSeries="@dailySeries" ChartLabels="@chartData.Labels" Width="100%" Height="360px" />
+                    <MudText Typo="Typo.h6" HtmlTag="h2" Class="mb-3">@Text["TableHeading", Year]</MudText>
+                    <MudTable Items="IncomeRows" Breakpoint="Breakpoint.Sm" Elevation="0" aria-label="@Text["TableLabel", Year]">
+                        <HeaderContent>
+                            <MudTh>@Text["Date"]</MudTh>
+                            <MudTh>@Text["DailyThb"]</MudTh>
+                            <MudTh>@Text["CumulativeThb"]</MudTh>
+                        </HeaderContent>
+                        <RowTemplate>
+                            <MudTd DataLabel="@Text["Date"]">@context.Date</MudTd>
+                            <MudTd DataLabel="@Text["DailyThb"]">@FormatThb(context.Daily)</MudTd>
+                            <MudTd DataLabel="@Text["CumulativeThb"]">@FormatThb(context.Cumulative)</MudTd>
+                        </RowTemplate>
+                    </MudTable>
                 </MudPaper>
             </MudItem>
         </MudGrid>
@@ -56,9 +81,19 @@
     private bool loading;
     private string? error;
 
+    private static int BangkokYear => TimeZoneInfo.ConvertTimeBySystemTimeZoneId(DateTimeOffset.UtcNow, "Asia/Bangkok").Year;
+    private IReadOnlyList<IncomeRow> IncomeRows => chartData is null
+        ? []
+        : chartData.Labels.Select((date, index) => new IncomeRow(
+            date,
+            chartData.DailyAmounts[index],
+            chartData.CumulativeAmounts[index])).ToArray();
+
+    private static string FormatThb(double value) => $"{value:N2} THB";
+
     protected override async Task OnParametersSetAsync()
     {
-        Year = Math.Clamp(RequestedYear ?? DateTime.UtcNow.Year, 1900, DateTime.UtcNow.Year + 1);
+        Year = Math.Clamp(RequestedYear ?? BangkokYear, 1900, BangkokYear + 1);
         loading = true;
         error = null;
         try
@@ -98,4 +133,6 @@
             _ => Text["Unavailable"],
         };
     }
+
+    private sealed record IncomeRow(string Date, double Daily, double Cumulative);
 }

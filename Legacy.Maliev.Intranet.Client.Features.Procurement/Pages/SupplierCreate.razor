@@ -7,31 +7,38 @@
 <PageTitle>@Text["PageTitle"]</PageTitle>
 
 <MudContainer MaxWidth="MaxWidth.Medium">
-    <MudText Typo="Typo.overline">@Text["Procurement"]</MudText>
-    <MudText Typo="Typo.h4" HtmlTag="h1" Class="mb-4">@Text["CreateSupplier"]</MudText>
+    <header class="operations-page-header"><div><MudText Typo="Typo.h4" HtmlTag="h1">@Text["CreateSupplier"]</MudText><MudText Typo="Typo.body2">@Text["Procurement"]</MudText></div></header>
     @if (!string.IsNullOrWhiteSpace(error))
     {
         <MudAlert Severity="Severity.Error" Class="mb-4" aria-live="assertive">@error</MudAlert>
     }
     <MudForm @ref="form" Model="@model" @bind-IsValid="formValid">
-        <MudText Typo="Typo.h6" HtmlTag="h2">@Text["Supplier"]</MudText>
-        <MudTextField @bind-Value="model.Name" For="@(() => model.Name)" Label="@Text["Name"]" Required="true" />
-        <MudTextField @bind-Value="model.Website" For="@(() => model.Website)" Label="@Text["Website"]" InputType="InputType.Url" />
-        <MudTextField @bind-Value="model.TaxNumber" For="@(() => model.TaxNumber)" Label="@Text["TaxNumber"]" />
-        <MudTextField @bind-Value="model.Email" For="@(() => model.Email)" Label="@Text["Email"]" InputType="InputType.Email" />
-        <MudTextField @bind-Value="model.Telephone" For="@(() => model.Telephone)" Label="@Text["Telephone"]" InputType="InputType.Telephone" />
-        <MudTextField @bind-Value="model.Mobile" For="@(() => model.Mobile)" Label="@Text["Mobile"]" InputType="InputType.Telephone" />
-        <MudTextField @bind-Value="model.Fax" For="@(() => model.Fax)" Label="@Text["Fax"]" />
-        <MudTextField @bind-Value="model.Note" For="@(() => model.Note)" Label="@Text["Note"]" Lines="3" />
+        <MudPaper Class="pa-4 mb-4" Elevation="1">
+            <MudText Typo="Typo.h6" HtmlTag="h2" id="supplier-details-heading">@Text["Supplier"]</MudText>
+            <MudGrid Spacing="3" aria-labelledby="supplier-details-heading">
+                <MudItem xs="12"><MudTextField @bind-Value="model.Name" For="@(() => model.Name)" Label="@Text["Name"]" Required="true" /></MudItem>
+                <MudItem xs="12" md="6"><MudTextField @bind-Value="model.Website" For="@(() => model.Website)" Label="@Text["Website"]" InputType="InputType.Url" /></MudItem>
+                <MudItem xs="12" md="6"><MudTextField @bind-Value="model.TaxNumber" For="@(() => model.TaxNumber)" Label="@Text["TaxNumber"]" /></MudItem>
+                <MudItem xs="12" md="6"><MudTextField @bind-Value="model.Email" For="@(() => model.Email)" Label="@Text["Email"]" InputType="InputType.Email" /></MudItem>
+                <MudItem xs="12" md="6"><MudTextField @bind-Value="model.Telephone" For="@(() => model.Telephone)" Label="@Text["Telephone"]" InputType="InputType.Telephone" /></MudItem>
+                <MudItem xs="12" md="6"><MudTextField @bind-Value="model.Mobile" For="@(() => model.Mobile)" Label="@Text["Mobile"]" InputType="InputType.Telephone" /></MudItem>
+                <MudItem xs="12" md="6"><MudTextField @bind-Value="model.Fax" For="@(() => model.Fax)" Label="@Text["Fax"]" /></MudItem>
+                <MudItem xs="12"><MudTextField @bind-Value="model.Note" For="@(() => model.Note)" Label="@Text["Note"]" Lines="3" /></MudItem>
+            </MudGrid>
+        </MudPaper>
 
-        <MudText Typo="Typo.h6" HtmlTag="h2" Class="mt-5">@Text["Address"]</MudText>
-        <MudTextField @bind-Value="model.Building" For="@(() => model.Building)" Label="@Text["Building"]" />
-        <MudTextField @bind-Value="model.Address1" For="@(() => model.Address1)" Label="@Text["Address1"]" Required="true" />
-        <MudTextField @bind-Value="model.Address2" For="@(() => model.Address2)" Label="@Text["Address2"]" />
-        <MudTextField @bind-Value="model.City" For="@(() => model.City)" Label="@Text["City"]" />
-        <MudTextField @bind-Value="model.State" For="@(() => model.State)" Label="@Text["State"]" />
-        <MudTextField @bind-Value="model.PostalCode" For="@(() => model.PostalCode)" Label="@Text["PostalCode"]" />
-        <MudNumericField @bind-Value="model.CountryId" For="@(() => model.CountryId)" Label="@Text["CountryId"]" Min="1" Required="true" />
+        <MudPaper Class="pa-4 mb-4" Elevation="1">
+            <MudText Typo="Typo.h6" HtmlTag="h2" id="supplier-address-heading">@Text["Address"]</MudText>
+            <MudGrid Spacing="3" aria-labelledby="supplier-address-heading">
+                <MudItem xs="12" md="6"><MudTextField @bind-Value="model.Building" For="@(() => model.Building)" Label="@Text["Building"]" /></MudItem>
+                <MudItem xs="12"><MudTextField @bind-Value="model.Address1" For="@(() => model.Address1)" Label="@Text["Address1"]" Required="true" /></MudItem>
+                <MudItem xs="12"><MudTextField @bind-Value="model.Address2" For="@(() => model.Address2)" Label="@Text["Address2"]" /></MudItem>
+                <MudItem xs="12" md="6"><MudTextField @bind-Value="model.City" For="@(() => model.City)" Label="@Text["City"]" /></MudItem>
+                <MudItem xs="12" md="6"><MudTextField @bind-Value="model.State" For="@(() => model.State)" Label="@Text["State"]" /></MudItem>
+                <MudItem xs="12" md="6"><MudTextField @bind-Value="model.PostalCode" For="@(() => model.PostalCode)" Label="@Text["PostalCode"]" /></MudItem>
+                <MudItem xs="12" md="6"><MudNumericField @bind-Value="model.CountryId" For="@(() => model.CountryId)" Label="@Text["CountryId"]" Min="1" Required="true" /></MudItem>
+            </MudGrid>
+        </MudPaper>
 
         <MudStack Row="true" Spacing="2" Class="mt-4">
             <MudButton ButtonType="ButtonType.Button" Variant="Variant.Filled" Color="Color.Primary" Disabled="@submitting" OnClick="SubmitAsync">

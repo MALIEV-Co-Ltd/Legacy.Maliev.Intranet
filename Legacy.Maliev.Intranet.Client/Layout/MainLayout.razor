@@ -1,3 +1,4 @@
+@using Legacy.Maliev.Intranet.Client.Components.Shell
 @inherits LayoutComponentBase
 @inject EmployeeSessionClient SessionClient
 @inject EmployeeAuthenticationClient AuthenticationClient
@@ -14,12 +15,26 @@
 <a class="legacy-skip-link" href="#main-content">@Text["Skip to content"]</a>
 
 <MudLayout Class="legacy-layout">
-    <LegacyTopBar Session="@session" OnSignOut="SignOutAsync" />
-    <MudMainContent Class="legacy-main-content">
-        <main id="main-content" class="legacy-page-container" tabindex="-1">
-            @Body
-        </main>
-    </MudMainContent>
+    <LegacyNavigationRail Session="session" />
+
+    @if (_navigationOpen)
+    {
+        <div class="legacy-navigation-backdrop" aria-hidden="true" @onclick="CloseNavigationAsync"></div>
+        <LegacyNavigationRail Session="session" IsDrawer="true" OnClose="CloseNavigationAsync" />
+    }
+
+    <div class="legacy-workspace-shell">
+        <LegacyTopBar Session="session"
+                      NavigationOpen="_navigationOpen"
+                      OnToggleNavigation="ToggleNavigationAsync"
+                      OnCloseNavigation="CloseNavigationAsync"
+                      OnSignOut="SignOutAsync" />
+        <MudMainContent Class="legacy-main-content">
+            <main id="main-content" class="legacy-page-container" tabindex="-1">
+                @Body
+            </main>
+        </MudMainContent>
+    </div>
 </MudLayout>
 
 @code {
@@ -27,12 +42,12 @@
     {
         PaletteLight = new PaletteLight
         {
-            Primary = "#2f6fed",
-            AppbarBackground = "#f6f8fa",
-            AppbarText = "#2f2f2f",
-            Background = "#f4f5f7",
+            Primary = "#0a72ef",
+            AppbarBackground = "#ffffff",
+            AppbarText = "#14213a",
+            Background = "#f7f8fb",
             DrawerBackground = "#ffffff",
-            DrawerText = "#3d3d3d",
+            DrawerText = "#34415a",
         },
         PaletteDark = new PaletteDark
         {
@@ -49,13 +64,15 @@
     };
 
     private EmployeeSessionSummary? session;
+    private bool _navigationOpen;
 
-    protected override void OnInitialized() => ThemeService.Changed += OnThemeChanged;
-
-    protected override async Task OnInitializedAsync()
+    protected override void OnInitialized()
     {
-        session = await SessionClient.GetAsync();
+        ThemeService.Changed += OnThemeChanged;
+        Navigation.LocationChanged += OnLocationChanged;
     }
+
+    protected override async Task OnInitializedAsync() => session = await SessionClient.GetAsync();
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -66,14 +83,35 @@
         }
     }
 
+    private Task ToggleNavigationAsync()
+    {
+        _navigationOpen = !_navigationOpen;
+        return Task.CompletedTask;
+    }
+
+    private Task CloseNavigationAsync()
+    {
+        _navigationOpen = false;
+        return Task.CompletedTask;
+    }
+
     private async Task SignOutAsync()
     {
         await AuthenticationClient.SignOutAsync();
         Navigation.NavigateTo("/Login", forceLoad: true);
     }
 
+    private void OnLocationChanged(object? sender, LocationChangedEventArgs args)
+    {
+        _navigationOpen = false;
+        _ = InvokeAsync(StateHasChanged);
+    }
+
     private void OnThemeChanged(object? sender, EventArgs args) => _ = InvokeAsync(StateHasChanged);
 
-    public void Dispose() => ThemeService.Changed -= OnThemeChanged;
-
+    public void Dispose()
+    {
+        ThemeService.Changed -= OnThemeChanged;
+        Navigation.LocationChanged -= OnLocationChanged;
+    }
 }

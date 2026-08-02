@@ -1,6 +1,7 @@
 @page "/Login"
 @attribute [AllowAnonymous]
 @layout Layout.EmptyLayout
+@using Legacy.Maliev.Intranet.Client.Components.Shell
 @inject EmployeeAuthenticationClient AuthenticationClient
 @inject NavigationManager Navigation
 @inject AuthenticationStateProvider AuthenticationStateProvider
@@ -14,17 +15,20 @@
 <div class="legacy-login-page @(_isDarkMode ? "dark-theme" : string.Empty)">
     <header class="legacy-login-header">
         <div class="legacy-login-header-content">
-            <a class="legacy-login-brand" href="/" aria-label="MALIEV Intranet home">
+            <a class="legacy-login-brand" href="/" aria-label="@Text["HomeLabel"]">
                 <img src="images/MALIEV_BLACK.svg" alt="MALIEV" class="legacy-login-brand-image" />
             </a>
-            <button type="button"
-                    class="legacy-login-theme-toggle"
-                    @onclick="ToggleThemeAsync"
-                    aria-label="@ThemeToggleLabel"
-                    title="@ThemeToggleLabel">
-                <MudIcon Icon="@(_isDarkMode ? Icons.Material.Outlined.LightMode : Icons.Material.Outlined.DarkMode)"
-                         Size="Size.Small" />
-            </button>
+            <div class="legacy-login-header-actions">
+                <LegacyLanguageSelector />
+                <button type="button"
+                        class="legacy-login-theme-toggle"
+                        @onclick="ToggleThemeAsync"
+                        aria-label="@ThemeToggleLabel"
+                        title="@ThemeToggleLabel">
+                    <MudIcon Icon="@(_isDarkMode ? Icons.Material.Outlined.LightMode : Icons.Material.Outlined.DarkMode)"
+                             Size="Size.Small" />
+                </button>
+            </div>
         </div>
     </header>
 
@@ -33,7 +37,6 @@
         {
             <section class="legacy-login-card" aria-labelledby="legacy-login-title">
                 <div class="legacy-login-heading">
-                    <p class="legacy-login-kicker">@Text["Employee gateway"]</p>
                     <h1 id="legacy-login-title" class="legacy-login-title">
                         <span>@Text["Sign in to"]</span>
                         <img src="images/MALIEV_BLACK.svg" alt="" aria-hidden="true" class="legacy-login-title-logo" />
@@ -50,6 +53,10 @@
                          class="legacy-google-signin-host"
                          data-google-signin-host
                          data-return-url="@LocalReturnUrlForGoogle"
+                         data-status-loading="@Text["Loading Google sign-in..."]"
+                         data-status-completing="@Text["Completing Google sign-in..."]"
+                         data-status-completion-failed="@Text["Google sign-in could not be completed. Reloading..."]"
+                         data-status-unavailable="@Text["Google sign-in is temporarily unavailable. You can still use your work email."]"
                          aria-label="@Text["Continue with Google"]"></div>
                     <p class="legacy-google-signin-status" data-google-signin-status role="status" aria-live="polite" hidden></p>
                 </div>

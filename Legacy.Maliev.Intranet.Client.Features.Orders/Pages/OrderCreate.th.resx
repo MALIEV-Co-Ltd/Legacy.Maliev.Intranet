@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
+  <data name="PageTitle" xml:space="preserve"><value>สร้างใบสั่งผลิต - MALIEV Intranet</value></data>
+  <data name="Heading" xml:space="preserve"><value>สร้างใบสั่งผลิต</value></data>
+  <data name="BackToOrders" xml:space="preserve"><value>กลับไปยังรายการใบสั่งผลิต</value></data>
+  <data name="Loading" xml:space="preserve"><value>กำลังโหลดแบบฟอร์มใบสั่งผลิต</value></data>
+  <data name="CustomerId" xml:space="preserve"><value>รหัสลูกค้า</value></data>
+  <data name="FindCustomer" xml:space="preserve"><value>ค้นหาและตรวจสอบลูกค้า</value></data>
+  <data name="CustomerNotFound" xml:space="preserve"><value>ไม่พบลูกค้า</value></data>
+  <data name="ValidateCustomer" xml:space="preserve"><value>โปรดตรวจสอบลูกค้าที่เลือกก่อนสร้างใบสั่งผลิต</value></data>
+  <data name="Name" xml:space="preserve"><value>ชื่องาน</value></data>
+  <data name="Process" xml:space="preserve"><value>กระบวนการ</value></data>
+  <data name="Material" xml:space="preserve"><value>วัสดุ</value></data>
+  <data name="Color" xml:space="preserve"><value>สี</value></data>
+  <data name="SurfaceFinish" xml:space="preserve"><value>การตกแต่งพื้นผิว</value></data>
+  <data name="Quantity" xml:space="preserve"><value>ปริมาณ</value></data>
+  <data name="Requirements" xml:space="preserve"><value>ข้อกำหนดของงาน</value></data>
+  <data name="SendConfirmationEmail" xml:space="preserve"><value>ส่งอีเมลยืนยันให้ลูกค้า</value></data>
+  <data name="AllowSocialMedia" xml:space="preserve"><value>อนุญาตให้เผยแพร่ผลงานบนสื่อสังคมออนไลน์</value></data>
+  <data name="Files" xml:space="preserve"><value>ไฟล์ที่จะอัปโหลดและสแกนมัลแวร์</value></data>
+  <data name="SelectedFiles" xml:space="preserve"><value>เลือกแล้ว {0} ไฟล์</value></data>
+  <data name="FilesTooLarge" xml:space="preserve"><value>ขนาดไฟล์รวมต้องไม่เกิน 200 MB</value></data>
+  <data name="Create" xml:space="preserve"><value>สร้างใบสั่งผลิต</value></data>
+  <data name="Creating" xml:space="preserve"><value>กำลังสร้างใบสั่งผลิต…</value></data>
+  <data name="ViewOrder" xml:space="preserve"><value>ดูใบสั่งผลิตที่สร้างแล้ว</value></data>
+  <data name="NotificationWarning" xml:space="preserve"><value>สร้างใบสั่งผลิตแล้ว แต่ส่งอีเมลยืนยันไม่สำเร็จ</value></data>
+  <data name="InvalidRequest" xml:space="preserve"><value>ตรวจสอบค่าแบบฟอร์มแล้วลองอีกครั้ง</value></data>
+  <data name="Forbidden" xml:space="preserve"><value>คุณไม่มีสิทธิ์สร้างใบสั่งผลิต</value></data>
+  <data name="RateLimited" xml:space="preserve"><value>ระบบได้รับคำขอเกี่ยวกับใบสั่งผลิตมากเกินไป โปรดลองอีกครั้งในอีกสักครู่</value></data>
+  <data name="Unavailable" xml:space="preserve"><value>ระบบสร้างใบสั่งผลิตไม่พร้อมใช้งานชั่วคราว</value></data>
+  <data name="InvalidResponse" xml:space="preserve"><value>ระบบเดิมส่งข้อมูลใบสั่งผลิตกลับมาไม่ถูกต้อง</value></data>
+  <data name="OrderDetails" xml:space="preserve"><value>รายละเอียดใบสั่งผลิต</value></data>
+</root>

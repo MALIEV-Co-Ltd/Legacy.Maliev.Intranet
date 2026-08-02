@@ -1,5 +1,5 @@
 .mlv-button {
-    height: 32px;
+    min-height: 40px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -10,7 +10,8 @@
     font-size: var(--maliev-font-small);
     font-weight: 600;
     text-decoration: none;
-    white-space: nowrap;
+    white-space: normal;
+    text-align: center;
     cursor: pointer;
     transition: background 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
 }
@@ -35,6 +36,22 @@
 .mlv-button:disabled {
     opacity: 0.55;
     cursor: not-allowed;
+}
+
+@media (pointer: coarse) {
+    .mlv-button {
+        min-height: 44px;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .mlv-button {
+        transition: none;
+    }
+
+    .mlv-button.primary:hover {
+        transform: none;
+    }
 }
 
 .mlv-button-spinner {

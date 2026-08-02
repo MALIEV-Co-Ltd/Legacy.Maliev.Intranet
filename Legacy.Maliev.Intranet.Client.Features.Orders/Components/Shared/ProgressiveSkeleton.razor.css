@@ -33,7 +33,8 @@
     padding: 12px;
     border-radius: var(--maliev-radius-md);
     background: var(--maliev-panel);
-    box-shadow: var(--maliev-shadow-ring);
+    border: 1px solid var(--legacy-border);
+    box-shadow: none;
 }
 
 .mlv-progressive-skeleton-head,
@@ -81,7 +82,17 @@
     padding: 12px;
     border-radius: var(--maliev-radius-md);
     background: var(--maliev-panel);
-    box-shadow: var(--maliev-shadow-ring);
+    border: 1px solid var(--legacy-border);
+    box-shadow: none;
+}
+
+@media (forced-colors: active) {
+    .mlv-progressive-skeleton-table,
+    .mlv-progressive-skeleton-list,
+    .mlv-progressive-skeleton-panel,
+    .mlv-progressive-skeleton-stat {
+        border-color: CanvasText;
+    }
 }
 
 .mlv-progressive-skeleton-grid {

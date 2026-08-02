@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
+  <data name="PageTitle" xml:space="preserve"><value>ประวัติพนักงาน - MALIEV Intranet</value></data>
+  <data name="EmployeePageTitle" xml:space="preserve"><value>{0} - MALIEV Intranet</value></data>
+  <data name="Loading" xml:space="preserve"><value>กำลังโหลดข้อมูลพนักงาน</value></data>
+  <data name="EmployeeNumber" xml:space="preserve"><value>พนักงานรหัส #{0}</value></data>
+  <data name="Email" xml:space="preserve"><value>อีเมล</value></data>
+  <data name="PhoneNumber" xml:space="preserve"><value>หมายเลขโทรศัพท์</value></data>
+  <data name="DateOfBirth" xml:space="preserve"><value>วันเกิด</value></data>
+  <data name="Role" xml:space="preserve"><value>บทบาท</value></data>
+  <data name="Address" xml:space="preserve"><value>ที่อยู่</value></data>
+  <data name="NotProvided" xml:space="preserve"><value>ไม่ได้ระบุ</value></data>
+  <data name="BackToEmployees" xml:space="preserve"><value>กลับไปยังรายชื่อพนักงาน</value></data>
+  <data name="Forbidden" xml:space="preserve"><value>คุณไม่ได้รับอนุญาตให้ดูพนักงานรายนี้</value></data>
+  <data name="NotFound" xml:space="preserve"><value>ไม่พบข้อมูลพนักงาน</value></data>
+  <data name="RateLimited" xml:space="preserve"><value>ระบบได้รับคำขอข้อมูลพนักงานมากเกินไป โปรดรอสักครู่แล้วลองอีกครั้ง</value></data>
+  <data name="Unavailable" xml:space="preserve"><value>ระบบข้อมูลพนักงานไม่พร้อมใช้งานชั่วคราว</value></data>
+  <data name="InvalidResponse" xml:space="preserve"><value>ระบบข้อมูลพนักงานส่งข้อมูลกลับมาไม่ถูกต้อง</value></data>
+</root>

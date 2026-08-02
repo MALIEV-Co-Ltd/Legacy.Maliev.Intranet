@@ -2,35 +2,19 @@ html,
 body {
     margin: 0;
     min-height: 100%;
-    font-family: "Geist", "Noto Sans Thai", sans-serif;
+    font-family: 'Inter', 'Noto Sans Thai', sans-serif;
     background: #f6f8fb;
     color: #172033;
-}
-
-:root {
-    --legacy-primary: #2f6fed;
-    --legacy-ink: #172033;
-    --legacy-muted: #68758b;
-    --legacy-border: #e2e8f0;
-    --legacy-surface: #ffffff;
-    --legacy-surface-muted: #f1f5f9;
-    --legacy-background: #f6f8fb;
-}
-
-html[data-maliev-theme="dark"] {
-    --legacy-ink: #e6edf3;
-    --legacy-muted: #9aa7b7;
-    --legacy-border: #283044;
-    --legacy-surface: #111620;
-    --legacy-surface-muted: #1a2230;
-    --legacy-background: #0d1117;
 }
 
 *, *::before, *::after { box-sizing: border-box; }
 body { background: var(--legacy-background); color: var(--legacy-ink); }
 .legacy-layout { min-height: 100dvh; background: var(--legacy-background); }
-.legacy-main-content { min-height: calc(100dvh - 52px); padding: 0 !important; }
-.legacy-page-container { width: min(1440px, 100%); margin: 0 auto; padding: clamp(1rem, 2.5vw, 2.5rem); }
+.legacy-workspace-shell { width: calc(100% - var(--legacy-rail-width)); min-width: 0; margin-left: var(--legacy-rail-width); }
+.legacy-main-content { min-height: calc(100dvh - var(--legacy-utility-height)); padding: 0 !important; }
+.legacy-page-container { width: min(1480px, 100%); margin: 0 auto; padding: clamp(1rem, 2vw, 2rem); }
+.legacy-navigation-backdrop { position: fixed; inset: 0; z-index: 29; background: rgba(15,23,42,.46); }
+.visually-hidden { position: absolute !important; width: 1px !important; height: 1px !important; padding: 0 !important; margin: -1px !important; overflow: hidden !important; clip: rect(0,0,0,0) !important; white-space: nowrap !important; border: 0 !important; }
 .legacy-empty-layout { min-height: 100dvh; display: grid; place-items: center; padding: 1rem; background: var(--legacy-background); }
 .legacy-skip-link { position: fixed; top: .5rem; left: .5rem; z-index: 100; padding: .5rem .75rem; border-radius: .5rem; background: var(--legacy-ink); color: #fff; transform: translateY(-180%); transition: transform .15s ease; }
 .legacy-skip-link:focus { transform: translateY(0); }
@@ -76,7 +60,8 @@ body { background: var(--legacy-background); color: var(--legacy-ink); }
     border-right: 1px solid #e0e0e0;
 }
 
-@media (max-width: 1280px) {
+@media (max-width: 1180px) {
+    .legacy-workspace-shell { width: 100%; margin-left: 0; }
     .legacy-page-container { padding-bottom: calc(1rem + env(safe-area-inset-bottom)); }
 }
 
@@ -118,6 +103,7 @@ body { background: var(--legacy-background); color: var(--legacy-ink); }
     justify-content: space-between;
     gap: 1rem;
 }
+.legacy-login-header-actions { display: flex; align-items: center; gap: .5rem; }
 
 .legacy-login-brand,
 .legacy-login-footer a {
@@ -139,8 +125,8 @@ body { background: var(--legacy-background); color: var(--legacy-ink); }
 .legacy-login-theme-toggle {
     display: inline-grid;
     place-items: center;
-    width: 2rem;
-    height: 2rem;
+    width: 2.75rem;
+    height: 2.75rem;
     padding: 0;
     border: 0;
     border-radius: .5rem;
@@ -187,14 +173,6 @@ body { background: var(--legacy-background); color: var(--legacy-ink); }
 }
 
 .legacy-login-heading { margin-bottom: 1.5rem; }
-.legacy-login-kicker {
-    margin: 0 0 .5rem;
-    color: var(--legacy-muted);
-    font-size: var(--mud-typography-caption-size);
-    font-weight: 600;
-    letter-spacing: .04em;
-    text-transform: uppercase;
-}
 
 .legacy-login-title {
     display: flex;
@@ -256,7 +234,7 @@ body { background: var(--legacy-background); color: var(--legacy-ink); }
 .legacy-login-field small { color: var(--legacy-muted); font-size: var(--mud-typography-caption-size); }
 .legacy-login-input {
     width: 100%;
-    min-height: 2.625rem;
+    min-height: 2.75rem;
     padding: .625rem .75rem;
     border: 1px solid var(--legacy-border);
     border-radius: .5rem;
@@ -275,7 +253,7 @@ body { background: var(--legacy-background); color: var(--legacy-ink); }
     align-items: center;
     justify-content: center;
     gap: .5rem;
-    min-height: 2.625rem;
+    min-height: 2.75rem;
     margin-top: .25rem;
     padding: .625rem 1rem;
     border: 0;

@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
+  <data name="PageTitle" xml:space="preserve"><value>ใบสั่งผลิต {0} - MALIEV Intranet</value></data>
+  <data name="OrderHeading" xml:space="preserve"><value>ใบสั่งผลิต #{0}</value></data>
+  <data name="BackToOrders" xml:space="preserve"><value>กลับไปยังรายการใบสั่งผลิต</value></data>
+  <data name="OrderLabel" xml:space="preserve"><value>ป้ายกำกับใบสั่งผลิต (PDF)</value></data>
+  <data name="Loading" xml:space="preserve"><value>กำลังโหลดใบสั่งผลิต</value></data>
+  <data name="InvalidId" xml:space="preserve"><value>โปรดระบุรหัสใบสั่งผลิตที่ถูกต้อง</value></data>
+  <data name="NotFound" xml:space="preserve"><value>ไม่พบใบสั่งผลิต</value></data>
+  <data name="Forbidden" xml:space="preserve"><value>คุณไม่มีสิทธิ์จัดการใบสั่งผลิตนี้</value></data>
+  <data name="RateLimited" xml:space="preserve"><value>ระบบได้รับคำขอเกี่ยวกับใบสั่งผลิตมากเกินไป โปรดลองอีกครั้งในอีกสักครู่</value></data>
+  <data name="Unavailable" xml:space="preserve"><value>ระบบใบสั่งผลิตไม่พร้อมใช้งานชั่วคราว</value></data>
+  <data name="InvalidResponse" xml:space="preserve"><value>ระบบเดิมส่งข้อมูลใบสั่งผลิตกลับมาไม่ถูกต้อง</value></data>
+  <data name="Conflict" xml:space="preserve"><value>ใบสั่งผลิตนี้ถูกแก้ไขจากคำขออื่น โปรดโหลดข้อมูลล่าสุดแล้วตรวจสอบอีกครั้ง</value></data>
+  <data name="CustomerId" xml:space="preserve"><value>รหัสลูกค้า</value></data>
+  <data name="CustomerInfo" xml:space="preserve"><value>ข้อมูลลูกค้า</value></data>
+  <data name="Employee" xml:space="preserve"><value>พนักงานที่ได้รับมอบหมาย</value></data>
+  <data name="Name" xml:space="preserve"><value>ชื่องาน</value></data>
+  <data name="Quantity" xml:space="preserve"><value>ปริมาณ</value></data>
+  <data name="Manufactured" xml:space="preserve"><value>ผลิตแล้ว</value></data>
+  <data name="Remaining" xml:space="preserve"><value>คงเหลือ</value></data>
+  <data name="Process" xml:space="preserve"><value>กระบวนการ</value></data>
+  <data name="Material" xml:space="preserve"><value>วัสดุ</value></data>
+  <data name="Color" xml:space="preserve"><value>สี</value></data>
+  <data name="SurfaceFinish" xml:space="preserve"><value>การตกแต่งพื้นผิว</value></data>
+  <data name="UnitPrice" xml:space="preserve"><value>ราคาต่อหน่วย</value></data>
+  <data name="Discount" xml:space="preserve"><value>ส่วนลด (%)</value></data>
+  <data name="Currency" xml:space="preserve"><value>สกุลเงิน</value></data>
+  <data name="LeadTime" xml:space="preserve"><value>ระยะเวลาดำเนินการ (วัน)</value></data>
+  <data name="PromisedDate" xml:space="preserve"><value>วันที่กำหนดส่ง</value></data>
+  <data name="FinishedDate" xml:space="preserve"><value>วันที่เสร็จสิ้น</value></data>
+  <data name="TrackingNumber" xml:space="preserve"><value>หมายเลขติดตาม</value></data>
+  <data name="Requirements" xml:space="preserve"><value>ข้อกำหนดของงาน</value></data>
+  <data name="Comment" xml:space="preserve"><value>ความคิดเห็นภายใน</value></data>
+  <data name="AllowSocialMedia" xml:space="preserve"><value>อนุญาตให้เผยแพร่ผลงานบนสื่อสังคมออนไลน์</value></data>
+  <data name="AllowCancellation" xml:space="preserve"><value>ลูกค้าสามารถยกเลิกได้</value></data>
+  <data name="AllowPayment" xml:space="preserve"><value>เปิดใช้งานการชำระเงินแล้ว</value></data>
+  <data name="Save" xml:space="preserve"><value>บันทึกใบสั่งผลิต</value></data>
+  <data name="OrderSaved" xml:space="preserve"><value>อัปเดตใบสั่งผลิตแล้ว</value></data>
+  <data name="Status" xml:space="preserve"><value>สถานะ</value></data>
+  <data name="CurrentStatus" xml:space="preserve"><value>สถานะปัจจุบัน</value></data>
+  <data name="NextStatus" xml:space="preserve"><value>สถานะต่อไป</value></data>
+  <data name="ApplyStatus" xml:space="preserve"><value>อัปเดตสถานะ</value></data>
+  <data name="StatusSaved" xml:space="preserve"><value>อัปเดตสถานะแล้ว</value></data>
+  <data name="Files" xml:space="preserve"><value>ไฟล์</value></data>
+  <data name="Upload" xml:space="preserve"><value>อัปโหลดและสแกน</value></data>
+  <data name="FilesUploaded" xml:space="preserve"><value>อัปโหลดไฟล์แล้ว</value></data>
+  <data name="FileRemoved" xml:space="preserve"><value>ลบไฟล์แล้ว</value></data>
+  <data name="OrderDetails" xml:space="preserve"><value>รายละเอียดใบสั่งผลิต</value></data>
+  <data name="RemoveFile" xml:space="preserve"><value>ลบ {0}</value></data>
+</root>

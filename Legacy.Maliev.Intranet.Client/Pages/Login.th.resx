@@ -5,6 +5,7 @@
   <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
   <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
   <data name="PageTitle" xml:space="preserve"><value>MALIEV | ประตูทางเข้าอินทราเน็ต</value></data>
+  <data name="HomeLabel" xml:space="preserve"><value>หน้าหลัก MALIEV Intranet</value></data>
   <data name="Employee gateway" xml:space="preserve"><value>ทางเข้าสำหรับพนักงาน</value></data>
   <data name="Sign in to" xml:space="preserve"><value>เข้าสู่ระบบ</value></data>
   <data name="Continue with Google" xml:space="preserve"><value>ดำเนินการต่อด้วย Google</value></data>
@@ -21,4 +22,8 @@
   <data name="Switch to light mode" xml:space="preserve"><value>เปลี่ยนเป็นโหมดสว่าง</value></data>
   <data name="Switch to dark mode" xml:space="preserve"><value>เปลี่ยนเป็นโหมดมืด</value></data>
   <data name="Employee sign-in is temporarily unavailable." xml:space="preserve"><value>ระบบเข้าสู่ระบบพนักงานไม่พร้อมใช้งานชั่วคราว</value></data>
+  <data name="Loading Google sign-in..." xml:space="preserve"><value>กำลังโหลดการเข้าสู่ระบบด้วย Google...</value></data>
+  <data name="Completing Google sign-in..." xml:space="preserve"><value>กำลังเข้าสู่ระบบด้วย Google...</value></data>
+  <data name="Google sign-in could not be completed. Reloading..." xml:space="preserve"><value>เข้าสู่ระบบด้วย Google ไม่สำเร็จ กำลังโหลดหน้าใหม่...</value></data>
+  <data name="Google sign-in is temporarily unavailable. You can still use your work email." xml:space="preserve"><value>ขณะนี้เข้าสู่ระบบด้วย Google ไม่ได้ คุณยังใช้อีเมลที่ทำงานเข้าสู่ระบบได้</value></data>
 </root>

@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
+  <data name="PageTitle" xml:space="preserve"><value>วัสดุ {0} - MALIEV Intranet</value></data>
+  <data name="Catalog" xml:space="preserve"><value>แคตตาล็อก</value></data>
+  <data name="Material" xml:space="preserve"><value>วัสดุ {0}</value></data>
+  <data name="Loading" xml:space="preserve"><value>กำลังโหลดวัสดุ</value></data>
+  <data name="Id" xml:space="preserve"><value>รหัส</value></data>
+  <data name="Group" xml:space="preserve"><value>กลุ่ม</value></data>
+  <data name="Name" xml:space="preserve"><value>ชื่อ</value></data>
+  <data name="Number" xml:space="preserve"><value>หมายเลขวัสดุ</value></data>
+  <data name="Density" xml:space="preserve"><value>ความหนาแน่น</value></data>
+  <data name="Machinable" xml:space="preserve"><value>ตัดเฉือนได้</value></data>
+  <data name="Printable" xml:space="preserve"><value>พิมพ์ 3 มิติได้</value></data>
+  <data name="AvailableColors" xml:space="preserve"><value>สีที่มีจำหน่าย</value></data>
+  <data name="AvailableSurfaceFinishes" xml:space="preserve"><value>ผิวสำเร็จที่รองรับ</value></data>
+  <data name="Yes" xml:space="preserve"><value>ใช่</value></data>
+  <data name="No" xml:space="preserve"><value>ไม่</value></data>
+  <data name="NotAvailable" xml:space="preserve"><value>ไม่มีข้อมูล</value></data>
+  <data name="MaterialNotFound" xml:space="preserve"><value>ไม่พบวัสดุที่ต้องการ</value></data>
+  <data name="BackToMaterials" xml:space="preserve"><value>กลับไปที่วัสดุ</value></data>
+  <data name="Forbidden" xml:space="preserve"><value>คุณไม่มีสิทธิ์ดูวัสดุนี้</value></data>
+  <data name="RateLimited" xml:space="preserve"><value>ระบบได้รับคำขอข้อมูลวัสดุมากเกินไป โปรดรอสักครู่แล้วลองอีกครั้ง</value></data>
+  <data name="Unavailable" xml:space="preserve"><value>แค็ตตาล็อกวัสดุไม่พร้อมใช้งานชั่วคราว</value></data>
+  <data name="InvalidResponse" xml:space="preserve"><value>ระบบวัสดุส่งข้อมูลกลับมาไม่ถูกต้อง</value></data>
+  <data name="SaveMaterial" xml:space="preserve"><value>บันทึกวัสดุ</value></data>
+  <data name="Saving" xml:space="preserve"><value>กำลังบันทึก…</value></data>
+  <data name="MaterialSaved" xml:space="preserve"><value>บันทึกวัสดุแล้ว</value></data>
+  <data name="SaveFailed" xml:space="preserve"><value>ไม่สามารถบันทึกวัสดุได้ ลองอีกครั้ง</value></data>
+  <data name="AssociationSaveFailed" xml:space="preserve"><value>บันทึกวัสดุแล้ว แต่ไม่สามารถอัปเดตตัวเลือกสีหรือการตกแต่งพื้นผิวได้ ลองอีกครั้ง</value></data>
+  <data name="ValidationFailed" xml:space="preserve"><value>โปรดแก้ไขช่องที่ระบุก่อนบันทึก</value></data>
+  <data name="Conflict" xml:space="preserve"><value>ข้อมูลวัสดุมีการเปลี่ยนแปลงระหว่างที่คุณแก้ไข โปรดโหลดหน้าใหม่แล้วลองอีกครั้ง</value></data>
+</root>

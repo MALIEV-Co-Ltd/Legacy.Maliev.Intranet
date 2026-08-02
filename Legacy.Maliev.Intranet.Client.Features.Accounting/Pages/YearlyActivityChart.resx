@@ -16,4 +16,9 @@
   <data name="RateLimited" xml:space="preserve"><value>Accounting is busy. Try again shortly.</value></data>
   <data name="InvalidResponse" xml:space="preserve"><value>Accounting returned invalid chart data.</value></data>
   <data name="Unavailable" xml:space="preserve"><value>Accounting is temporarily unavailable.</value></data>
+  <data name="ChartHeading" xml:space="preserve"><value>Income and expense activity for {0}</value></data>
+  <data name="TableLabel" xml:space="preserve"><value>Financial activity data for {0}, amounts in Thai baht</value></data>
+  <data name="Date" xml:space="preserve"><value>Date</value></data>
+  <data name="IncomeThb" xml:space="preserve"><value>Income (THB)</value></data>
+  <data name="ExpenseThb" xml:space="preserve"><value>Expense (THB)</value></data>
 </root>

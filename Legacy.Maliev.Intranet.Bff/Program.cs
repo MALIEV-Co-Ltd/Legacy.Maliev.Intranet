@@ -587,6 +587,13 @@ builder.Services
 builder.Services.AddOptions<CookieAuthenticationOptions>(CookieAuthenticationDefaults.AuthenticationScheme)
     .Configure<DistributedTicketStore>((options, store) => options.SessionStore = store);
 builder.Services.AddAuthorizationBuilder()
+    .AddPolicy(LegacyEmployeePermissions.DiagnosticsRead, policy => policy
+        .RequireAuthenticatedUser()
+        .RequireAssertion(context => LegacyNavigationAuthorization.IsEnabled(
+            true,
+            LegacyEmployeePermissions.DiagnosticsRead,
+            context.User.FindAll("permissions").Select(static claim => claim.Value),
+            context.User.FindAll(ClaimTypes.Role).Select(static claim => claim.Value))))
     .AddPolicy(LegacyEmployeePermissions.AccountingRead, policy => policy
         .RequireAuthenticatedUser()
         .RequireClaim("permissions", LegacyEmployeePermissions.AccountingRead))
@@ -745,6 +752,67 @@ app.MapGet("/bff/session", (HttpContext context, IAntiforgery antiforgery) =>
             .ToArray()));
 }).AllowAnonymous();
 
+app.MapGet("/bff/profile", async (
+    HttpContext context,
+    EmployeesProxy employees,
+    CancellationToken cancellationToken) =>
+{
+    if (!TryGetLegacyEmployeeId(context.User, out var employeeId))
+    {
+        return Results.Forbid();
+    }
+
+    return await GetSelfProfileAsync(employeeId, employees, context, cancellationToken);
+})
+    .RequireAuthorization();
+
+app.MapPut("/bff/profile", async (
+    EmployeeSelfProfileUpdateRequest request,
+    HttpContext context,
+    EmployeesProxy employees,
+    CancellationToken cancellationToken) =>
+{
+    if (!TryGetLegacyEmployeeId(context.User, out var employeeId))
+    {
+        return Results.Forbid();
+    }
+
+    var validationResults = new List<ValidationResult>();
+    if (!Validator.TryValidateObject(request, new ValidationContext(request), validationResults, true) ||
+        string.IsNullOrWhiteSpace(request.FirstName) ||
+        string.IsNullOrWhiteSpace(request.LastName))
+    {
+        var errors = validationResults
+            .SelectMany(result => result.MemberNames.DefaultIfEmpty(string.Empty)
+                .Select(member => new
+                {
+                    member = string.IsNullOrEmpty(member)
+                        ? member
+                        : System.Text.Json.JsonNamingPolicy.CamelCase.ConvertName(member),
+                    message = result.ErrorMessage ?? "The value is invalid.",
+                }))
+            .GroupBy(error => error.member, StringComparer.Ordinal)
+            .ToDictionary(
+                group => group.Key,
+                group => group.Select(error => error.message).Distinct(StringComparer.Ordinal).ToArray(),
+                StringComparer.Ordinal);
+        if (string.IsNullOrWhiteSpace(request.FirstName))
+        {
+            errors["firstName"] = ["First name is required."];
+        }
+        if (string.IsNullOrWhiteSpace(request.LastName))
+        {
+            errors["lastName"] = ["Last name is required."];
+        }
+
+        return Results.ValidationProblem(errors);
+    }
+
+    return await UpdateSelfProfileAsync(employeeId, request, employees, context, cancellationToken);
+})
+    .AddEndpointFilter<AntiforgeryValidationFilter>()
+    .RequireAuthorization();
+
 app.MapGet("/bff/dashboard", (
     HttpContext context,
     LegacyDashboardAggregator dashboard,
@@ -761,7 +829,7 @@ app.MapGet("/bff/diagnostics/events", (
         search,
         Math.Max(1, index ?? 1),
         Math.Clamp(size ?? 50, 1, 100))))
-    .RequireAuthorization();
+    .RequireAuthorization(LegacyEmployeePermissions.DiagnosticsRead);
 
 app.MapPost("/bff/employee-recovery/password-reset/request", EmployeeRecoveryEndpointMapper.RequestPasswordResetAsync)
     .AddEndpointFilter<AntiforgeryValidationFilter>()
@@ -2441,6 +2509,142 @@ app.MapPut("/bff/catalog/materials/{id:int}", async (
 app.MapFallbackToFile("index.html").AllowAnonymous();
 
 await app.RunAsync();
+
+static bool TryGetLegacyEmployeeId(ClaimsPrincipal principal, out int employeeId) =>
+    int.TryParse(
+        principal.FindFirstValue(EmployeeSessionService.LegacyDatabaseIdClaim),
+        NumberStyles.None,
+        CultureInfo.InvariantCulture,
+        out employeeId) && employeeId > 0;
+
+static async Task<IResult> GetSelfProfileAsync(
+    int employeeId,
+    EmployeesProxy employees,
+    HttpContext context,
+    CancellationToken cancellationToken)
+{
+    HttpResponseMessage response;
+    try
+    {
+        response = await employees.GetByIdAsync(employeeId, cancellationToken);
+    }
+    catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+    {
+        return Results.Problem(statusCode: StatusCodes.Status503ServiceUnavailable, title: "EmployeeService unavailable");
+    }
+    catch (HttpRequestException)
+    {
+        return Results.Problem(statusCode: StatusCodes.Status503ServiceUnavailable, title: "EmployeeService unavailable");
+    }
+
+    using (response)
+    {
+        if (response.StatusCode == System.Net.HttpStatusCode.RequestTimeout)
+        {
+            return Results.Problem(statusCode: StatusCodes.Status503ServiceUnavailable, title: "EmployeeService unavailable");
+        }
+
+        if (response.StatusCode == System.Net.HttpStatusCode.TooManyRequests)
+        {
+            SetBoundedRetryAfter(context, response);
+            return Results.StatusCode(StatusCodes.Status429TooManyRequests);
+        }
+
+        if (response.StatusCode is System.Net.HttpStatusCode.BadRequest or
+            System.Net.HttpStatusCode.Unauthorized or
+            System.Net.HttpStatusCode.Forbidden or
+            System.Net.HttpStatusCode.NotFound)
+        {
+            return Results.StatusCode((int)response.StatusCode);
+        }
+
+        if (!response.IsSuccessStatusCode)
+        {
+            return Results.Problem(statusCode: StatusCodes.Status503ServiceUnavailable, title: "EmployeeService unavailable");
+        }
+
+        try
+        {
+            var profile = await response.Content.ReadFromJsonAsync<EmployeeDetail>(cancellationToken);
+            var invalid = profile is null ||
+                profile.Id != employeeId ||
+                string.IsNullOrWhiteSpace(profile.FirstName) ||
+                string.IsNullOrWhiteSpace(profile.LastName) ||
+                string.IsNullOrWhiteSpace(profile.FullName) ||
+                string.IsNullOrWhiteSpace(profile.Email);
+            return invalid
+                ? Results.Problem(statusCode: StatusCodes.Status502BadGateway, title: "Invalid EmployeeService response")
+                : Results.Ok(profile);
+        }
+        catch (System.Text.Json.JsonException)
+        {
+            return Results.Problem(statusCode: StatusCodes.Status502BadGateway, title: "Invalid EmployeeService response");
+        }
+    }
+}
+
+static async Task<IResult> UpdateSelfProfileAsync(
+    int employeeId,
+    EmployeeSelfProfileUpdateRequest request,
+    EmployeesProxy employees,
+    HttpContext context,
+    CancellationToken cancellationToken)
+{
+    HttpResponseMessage response;
+    try
+    {
+        response = await employees.UpdateSelfProfileAsync(employeeId, request, cancellationToken);
+    }
+    catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+    {
+        return Results.Problem(statusCode: StatusCodes.Status503ServiceUnavailable, title: "EmployeeService unavailable");
+    }
+    catch (HttpRequestException)
+    {
+        return Results.Problem(statusCode: StatusCodes.Status503ServiceUnavailable, title: "EmployeeService unavailable");
+    }
+
+    using (response)
+    {
+        if (response.StatusCode == System.Net.HttpStatusCode.RequestTimeout)
+        {
+            return Results.Problem(statusCode: StatusCodes.Status503ServiceUnavailable, title: "EmployeeService unavailable");
+        }
+
+        if (response.StatusCode == System.Net.HttpStatusCode.TooManyRequests)
+        {
+            SetBoundedRetryAfter(context, response);
+            return Results.StatusCode(StatusCodes.Status429TooManyRequests);
+        }
+
+        if (response.StatusCode is System.Net.HttpStatusCode.BadRequest or
+            System.Net.HttpStatusCode.Unauthorized or
+            System.Net.HttpStatusCode.Forbidden or
+            System.Net.HttpStatusCode.NotFound)
+        {
+            return Results.StatusCode((int)response.StatusCode);
+        }
+
+        if (response.StatusCode == System.Net.HttpStatusCode.NoContent)
+        {
+            return Results.NoContent();
+        }
+
+        return response.IsSuccessStatusCode
+            ? Results.Problem(statusCode: StatusCodes.Status502BadGateway, title: "Invalid EmployeeService response")
+            : Results.Problem(statusCode: StatusCodes.Status503ServiceUnavailable, title: "EmployeeService unavailable");
+    }
+}
+
+static void SetBoundedRetryAfter(HttpContext context, HttpResponseMessage response)
+{
+    var retryAfter = response.Headers.RetryAfter?.Delta;
+    if (retryAfter.HasValue && retryAfter.Value > TimeSpan.Zero && retryAfter.Value <= TimeSpan.FromHours(1))
+    {
+        context.Response.Headers.RetryAfter = ((int)Math.Ceiling(retryAfter.Value.TotalSeconds))
+            .ToString(CultureInfo.InvariantCulture);
+    }
+}
 
 static Dictionary<string, string[]> ValidatePurchaseOrder(PurchaseOrderCreateRequest request)
 {

@@ -3,10 +3,10 @@ using Legacy.Maliev.Intranet.Contracts;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
+using Microsoft.JSInterop;
 using MudBlazor.Services;
 
 var builder = WebAssemblyHostBuilder.CreateDefault(args);
-WorkspaceCulture.Apply(null);
 builder.RootComponents.Add<App>("#app");
 builder.RootComponents.Add<HeadOutlet>("head::after");
 builder.Services.AddMudServices();
@@ -20,4 +20,8 @@ builder.Services.AddScoped<EmployeeAuthenticationStateProvider>();
 builder.Services.AddScoped<AuthenticationStateProvider>(provider =>
     provider.GetRequiredService<EmployeeAuthenticationStateProvider>());
 
-await builder.Build().RunAsync();
+var host = builder.Build();
+var js = host.Services.GetRequiredService<IJSRuntime>();
+var selectedCulture = await js.InvokeAsync<string?>("malievCulture.get");
+WorkspaceCulture.Apply(selectedCulture);
+await host.RunAsync();

@@ -1,0 +1,53 @@
+.dashboard-metric-card {
+    align-items: flex-start;
+    background: var(--maliev-surface, #fff);
+    border: 1px solid var(--maliev-border, #dce3ef);
+    border-radius: 14px;
+    display: flex;
+    gap: 0.85rem;
+    min-height: 8.75rem;
+    padding: 1.1rem;
+}
+
+.dashboard-metric-icon {
+    align-items: center;
+    background: #edf4ff;
+    border-radius: 10px;
+    color: #0866e8;
+    display: flex;
+    flex: 0 0 2.65rem;
+    height: 2.65rem;
+    justify-content: center;
+}
+
+.dashboard-metric-copy {
+    display: grid;
+    gap: 0.25rem;
+    min-width: 0;
+}
+
+.dashboard-metric-label {
+    color: var(--maliev-text-muted, #5b6980);
+    font-size: 0.78rem;
+    font-weight: 650;
+}
+
+.dashboard-metric-value {
+    color: var(--maliev-text, #0b1b35);
+    font-size: clamp(1.6rem, 2vw, 2.15rem);
+    font-variant-numeric: tabular-nums;
+    line-height: 1.08;
+}
+
+.dashboard-metric-link {
+    color: #075fd8;
+    font-size: 0.78rem;
+    font-weight: 650;
+    margin-top: 0.35rem;
+    text-decoration: none;
+}
+
+.dashboard-metric-link:hover,
+.dashboard-metric-link:focus-visible {
+    text-decoration: underline;
+}

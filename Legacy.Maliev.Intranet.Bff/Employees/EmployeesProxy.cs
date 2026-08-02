@@ -1,3 +1,5 @@
+using System.Net.Http.Json;
+
 using Legacy.Maliev.Intranet.Contracts;
 
 namespace Legacy.Maliev.Intranet.Bff.Employees;
@@ -9,6 +11,19 @@ public sealed class EmployeesProxy(HttpClient httpClient)
     public async Task<HttpResponseMessage> GetByIdAsync(int id, CancellationToken cancellationToken)
     {
         using var request = new HttpRequestMessage(HttpMethod.Get, $"/employees/{id}");
+        return await httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+    }
+
+    /// <summary>Updates only the authenticated employee's owned profile fields.</summary>
+    public async Task<HttpResponseMessage> UpdateSelfProfileAsync(
+        int id,
+        EmployeeSelfProfileUpdateRequest profile,
+        CancellationToken cancellationToken)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Put, $"/employees/{id}/profile")
+        {
+            Content = JsonContent.Create(profile),
+        };
         return await httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
     }
 

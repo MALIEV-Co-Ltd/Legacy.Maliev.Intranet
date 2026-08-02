@@ -64,37 +64,33 @@ public sealed class LegacyDashboardAggregator
         new(
             LegacyEmployeePermissions.OrdersRead,
             "orders",
-            "Orders",
             "/sales/orders",
             async (ct, state) => await CountAsync(
                 "orders",
-                "Orders",
                 "/sales/orders",
-                () => orders.GetAsync(OrderListSort.OrderCreatedDate_Descending, null, 1, 1, ct),
+                () => orders.GetAsync(OrderListSort.OrderCreatedDate_Descending, null, 1, 6, ct),
                 response => response.Content.ReadFromJsonAsync<OrderListPage>(ct),
                 page => page?.TotalRecords ?? 0,
-                state)),
+                state,
+                (page, dashboard) => dashboard.SetRecentOrders(page?.Items ?? []))),
         new(
             LegacyEmployeePermissions.CustomersList,
             "customers",
-            "Customers",
             "/customers",
             async (ct, state) => await CountAsync(
                 "customers",
-                "Customers",
                 "/customers",
-                () => customers.GetAsync(CustomerListSort.CustomerCreatedDate_Descending, null, 1, 1, ct),
+                () => customers.GetAsync(CustomerListSort.CustomerCreatedDate_Descending, null, 1, 6, ct),
                 response => response.Content.ReadFromJsonAsync<CustomerListPage>(ct),
                 page => page?.TotalRecords ?? 0,
-                state)),
+                state,
+                (page, dashboard) => dashboard.SetRecentCustomers(page?.Items ?? []))),
         new(
             LegacyEmployeePermissions.EmployeesList,
             "employees",
-            "Employees",
             "/Employees/Index",
             async (ct, state) => await CountAsync(
                 "employees",
-                "Employees",
                 "/Employees/Index",
                 () => employees.GetAsync(EmployeeListSort.EmployeeId_Descending, null, 1, 1, ct),
                 response => response.Content.ReadFromJsonAsync<EmployeeListPage>(ct),
@@ -103,50 +99,45 @@ public sealed class LegacyDashboardAggregator
         new(
             LegacyEmployeePermissions.AccountingRead,
             "invoices",
-            "Invoices",
             "/accounting",
             async (ct, state) => await CountAsync(
                 "invoices",
-                "Invoices",
                 "/accounting",
-                () => invoices.GetPageAsync(InvoiceListSort.InvoiceCreatedDate_Descending, null, 1, 1, false, ct),
+                () => invoices.GetPageAsync(InvoiceListSort.InvoiceCreatedDate_Descending, null, 1, 5, false, ct),
                 response => response.Content.ReadFromJsonAsync<InvoiceListPage>(ct),
                 page => page?.TotalRecords ?? 0,
-                state)),
+                state,
+                (page, dashboard) => dashboard.AddInvoiceActivity(page?.Items ?? []))),
         new(
             LegacyEmployeePermissions.QuotationRequestsRead,
             "quotation-requests",
-            "Quotation requests",
             "/QuotationRequests/Index",
             async (ct, state) => await CountAsync(
                 "quotation-requests",
-                "Quotation requests",
                 "/QuotationRequests/Index",
-                () => quotationRequests.GetPageAsync(QuotationRequestSort.RequestCreatedDate_Descending, null, 1, 1, ct),
+                () => quotationRequests.GetPageAsync(QuotationRequestSort.RequestCreatedDate_Descending, null, 1, 5, ct),
                 response => response.Content.ReadFromJsonAsync<QuotationRequestPage>(ct),
                 page => page?.TotalRecords ?? 0,
-                state)),
+                state,
+                (page, dashboard) => dashboard.AddQuotationRequestActivity(page?.Items ?? []))),
         new(
             LegacyEmployeePermissions.QuotationsRead,
             "quotations",
-            "Quotations",
             "/Quotations/Index",
             async (ct, state) => await CountAsync(
                 "quotations",
-                "Quotations",
                 "/Quotations/Index",
-                () => quotations.GetPageAsync(QuotationListSort.QuotationCreatedDate_Descending, null, 1, 1, ct),
+                () => quotations.GetPageAsync(QuotationListSort.QuotationCreatedDate_Descending, null, 1, 6, ct),
                 response => response.Content.ReadFromJsonAsync<QuotationListPage>(ct),
                 page => page?.TotalRecords ?? 0,
-                state)),
+                state,
+                (page, dashboard) => dashboard.SetRecentQuotations(page?.Items ?? []))),
         new(
             LegacyEmployeePermissions.SuppliersRead,
             "suppliers",
-            "Suppliers",
             "/purchasing/suppliers",
             async (ct, state) => await CountAsync(
                 "suppliers",
-                "Suppliers",
                 "/purchasing/suppliers",
                 () => suppliers.GetAsync(SupplierListSort.SupplierId_Descending, null, 1, 1, ct),
                 response => response.Content.ReadFromJsonAsync<SupplierListPage>(ct),
@@ -155,11 +146,9 @@ public sealed class LegacyDashboardAggregator
         new(
             LegacyEmployeePermissions.PurchaseOrdersRead,
             "purchase-orders",
-            "Purchase orders",
             "/purchasing",
             async (ct, state) => await CountAsync(
                 "purchase-orders",
-                "Purchase orders",
                 "/purchasing",
                 () => purchaseOrders.GetAsync(PurchaseOrderListSort.PurchaseOrderCreatedDate_Descending, null, 1, 1, ct),
                 response => response.Content.ReadFromJsonAsync<PurchaseOrderListPage>(ct),
@@ -168,11 +157,9 @@ public sealed class LegacyDashboardAggregator
         new(
             LegacyEmployeePermissions.CatalogMaterialsRead,
             "materials",
-            "Materials",
             "/mfg/materials",
             async (ct, state) => await CountAsync(
                 "materials",
-                "Materials",
                 "/mfg/materials",
                 () => materials.GetAsync(CatalogMaterialSort.MaterialId_Descending, null, 1, 1, ct),
                 response => response.Content.ReadFromJsonAsync<CatalogMaterialPage>(ct),
@@ -181,16 +168,15 @@ public sealed class LegacyDashboardAggregator
         new(
             LegacyEmployeePermissions.AccountingRead,
             "payments",
-            "Finance records",
             "/Finances/Index",
             async (ct, state) => await CountAsync(
                 "payments",
-                "Finance records",
                 "/Finances/Index",
-                () => finances.GetPageAsync(FinancePaymentSort.PaymentCreatedDate_Descending, null, 1, 1, ct),
+                () => finances.GetPageAsync(FinancePaymentSort.PaymentCreatedDate_Descending, null, 1, 6, ct),
                 response => response.Content.ReadFromJsonAsync<FinancePaymentPage>(ct),
                 page => page?.TotalRecords ?? 0,
-                state)),
+                state,
+                (page, dashboard) => dashboard.SetRecentPayments(page?.Items ?? []))),
         ];
     }
 
@@ -210,8 +196,18 @@ public sealed class LegacyDashboardAggregator
             .Where(source => allowed.Contains(source.Permission))
             .Select(source => source.Fetch(cancellationToken, state))
             .ToArray();
+        var supplementalWork = new List<Task>();
+        if (allowed.Contains(LegacyEmployeePermissions.QuotationsRead))
+        {
+            supplementalWork.Add(LoadQuotationSummaryAsync(cancellationToken, state));
+        }
 
-        await Task.WhenAll(work);
+        if (allowed.Contains(LegacyEmployeePermissions.AccountingRead))
+        {
+            supplementalWork.Add(LoadMonthlyFinanceAsync(cancellationToken, state));
+        }
+
+        await Task.WhenAll(work.Cast<Task>().Concat(supplementalWork));
 
         var cards = work
             .Select(task => task.Result)
@@ -219,17 +215,26 @@ public sealed class LegacyDashboardAggregator
             .Select(result => result!.ToCard())
             .ToArray();
 
-        return new(timeProvider.GetUtcNow(), cards, state.DegradedSources.Order(StringComparer.Ordinal).ToArray());
+        return new(timeProvider.GetUtcNow(), cards, state.DegradedSources.Order(StringComparer.Ordinal).ToArray())
+        {
+            RecentOrders = state.RecentOrders,
+            RecentQuotations = state.RecentQuotations,
+            RecentCustomers = state.RecentCustomers,
+            RecentPayments = state.RecentPayments,
+            RecentActivity = state.RecentActivity,
+            QuotationSummary = state.QuotationSummary,
+            MonthlyFinance = state.MonthlyFinance,
+        };
     }
 
     private static async Task<DashboardCardResult?> CountAsync<TPage>(
         string key,
-        string label,
         string navigateTo,
         Func<Task<HttpResponseMessage>> send,
         Func<HttpResponseMessage, Task<TPage?>> deserialize,
         Func<TPage?, int> count,
-        DashboardState state)
+        DashboardState state,
+        Action<TPage?, DashboardState>? project = null)
     {
         try
         {
@@ -246,7 +251,8 @@ public sealed class LegacyDashboardAggregator
             }
 
             var page = await deserialize(response);
-            return page is null ? null : new DashboardCardResult(key, label, navigateTo, count(page));
+            project?.Invoke(page, state);
+            return page is null ? null : new DashboardCardResult(key, navigateTo, count(page));
         }
         catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException)
         {
@@ -255,22 +261,90 @@ public sealed class LegacyDashboardAggregator
         }
     }
 
+    private async Task LoadQuotationSummaryAsync(CancellationToken cancellationToken, DashboardState state)
+    {
+        try
+        {
+            using var response = await quotations.GetStatsAsync(cancellationToken);
+            if (response.StatusCode is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden)
+            {
+                return;
+            }
+
+            if (!response.IsSuccessStatusCode)
+            {
+                state.MarkDegraded("quotations-summary");
+                return;
+            }
+
+            var summary = await response.Content.ReadFromJsonAsync<QuotationStats>(cancellationToken);
+            if (summary is null || summary.Accepted < 0 || summary.Declined < 0 || summary.Open < 0)
+            {
+                state.MarkDegraded("quotations-summary");
+                return;
+            }
+
+            state.SetQuotationSummary(summary);
+        }
+        catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException)
+        {
+            state.MarkDegraded("quotations-summary");
+        }
+    }
+
+    private async Task LoadMonthlyFinanceAsync(CancellationToken cancellationToken, DashboardState state)
+    {
+        try
+        {
+            using var response = await finances.GetSummaryAsync("/payments/summaries/monthly", cancellationToken);
+            if (response.StatusCode is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden)
+            {
+                return;
+            }
+
+            if (!response.IsSuccessStatusCode)
+            {
+                state.MarkDegraded("finance-summary");
+                return;
+            }
+
+            var summary = await response.Content.ReadFromJsonAsync<FinanceSummary>(cancellationToken);
+            if (summary?.Details is null || summary.Details.Any(detail => string.IsNullOrWhiteSpace(detail.CurrencyId)))
+            {
+                state.MarkDegraded("finance-summary");
+                return;
+            }
+
+            state.SetMonthlyFinance(summary.Details);
+        }
+        catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException)
+        {
+            state.MarkDegraded("finance-summary");
+        }
+    }
+
     private sealed record LegacyDashboardSource(
         string Permission,
         string Key,
-        string Label,
         string NavigateTo,
         Func<CancellationToken, DashboardState, Task<DashboardCardResult?>> Fetch);
 
-    private sealed record DashboardCardResult(string Key, string Label, string NavigateTo, int Count)
+    private sealed record DashboardCardResult(string Key, string NavigateTo, int Count)
     {
-        public LegacyDashboardCard ToCard() => new(Key, Label, Count, NavigateTo);
+        public LegacyDashboardCard ToCard() => new(Key, Count, NavigateTo);
     }
 
     private sealed class DashboardState
     {
         private readonly object gate = new();
         private readonly HashSet<string> degradedSources = new(StringComparer.Ordinal);
+        private IReadOnlyList<LegacyDashboardOrder> recentOrders = [];
+        private IReadOnlyList<LegacyDashboardQuotation> recentQuotations = [];
+        private IReadOnlyList<LegacyDashboardCustomer> recentCustomers = [];
+        private IReadOnlyList<LegacyDashboardPayment> recentPayments = [];
+        private readonly List<LegacyDashboardActivity> recentActivity = [];
+        private QuotationStats? quotationSummary;
+        private IReadOnlyList<FinanceSummaryDetail> monthlyFinance = [];
 
         public IReadOnlySet<string> DegradedSources
         {
@@ -283,12 +357,166 @@ public sealed class LegacyDashboardAggregator
             }
         }
 
+        public IReadOnlyList<LegacyDashboardOrder> RecentOrders
+        {
+            get { lock (gate) { return recentOrders.ToArray(); } }
+        }
+
+        public IReadOnlyList<LegacyDashboardQuotation> RecentQuotations
+        {
+            get { lock (gate) { return recentQuotations.ToArray(); } }
+        }
+
+        public IReadOnlyList<LegacyDashboardCustomer> RecentCustomers
+        {
+            get { lock (gate) { return recentCustomers.ToArray(); } }
+        }
+
+        public IReadOnlyList<LegacyDashboardPayment> RecentPayments
+        {
+            get { lock (gate) { return recentPayments.ToArray(); } }
+        }
+
+        public IReadOnlyList<LegacyDashboardActivity> RecentActivity
+        {
+            get
+            {
+                lock (gate)
+                {
+                    return recentActivity
+                        .OrderByDescending(activity => activity.OccurredAt)
+                        .Take(6)
+                        .ToArray();
+                }
+            }
+        }
+
+        public QuotationStats? QuotationSummary
+        {
+            get { lock (gate) { return quotationSummary; } }
+        }
+
+        public IReadOnlyList<FinanceSummaryDetail> MonthlyFinance
+        {
+            get { lock (gate) { return monthlyFinance.ToArray(); } }
+        }
+
         public void MarkDegraded(string source)
         {
             lock (gate)
             {
                 degradedSources.Add(source);
             }
+        }
+
+        public void SetRecentOrders(IReadOnlyList<OrderListItem> items)
+        {
+            lock (gate)
+            {
+                recentOrders = items.Take(6).Select(item => new LegacyDashboardOrder(
+                    item.Id,
+                    item.Name,
+                    item.Quantity,
+                    item.Manufactured,
+                    item.Remaining,
+                    item.PromisedDate,
+                    $"/sales/orders/{item.Id}"))
+                    .ToArray();
+            }
+        }
+
+        public void SetRecentQuotations(IReadOnlyList<QuotationListItem> items)
+        {
+            lock (gate)
+            {
+                recentQuotations = items.Take(6).Select(item => new LegacyDashboardQuotation(
+                    item.Id,
+                    item.Total,
+                    item.QuotedAmount,
+                    item.CurrencyId,
+                    item.ExpirationDate,
+                    item.Accepted,
+                    item.CreatedDate,
+                    $"/Quotations/View?id={item.Id}"))
+                    .ToArray();
+            }
+        }
+
+        public void SetRecentCustomers(IReadOnlyList<CustomerListItem> items)
+        {
+            lock (gate)
+            {
+                recentCustomers = items.Take(6).Select(item => new LegacyDashboardCustomer(
+                    item.Id,
+                    item.FullName,
+                    item.Email,
+                    item.Company?.Name,
+                    $"/Customers/View?id={item.Id}"))
+                    .ToArray();
+            }
+        }
+
+        public void SetRecentPayments(IReadOnlyList<FinancePaymentItem> items)
+        {
+            lock (gate)
+            {
+                recentPayments = items.Take(6).Select(item => new LegacyDashboardPayment(
+                    item.Id,
+                    item.Amount,
+                    item.CurrencyId,
+                    item.Recipient,
+                    item.PaymentDate,
+                    item.CreatedDate,
+                    $"/Finances/View?id={item.Id}"))
+                    .ToArray();
+            }
+        }
+
+        public void AddInvoiceActivity(IReadOnlyList<InvoiceListItem> items)
+        {
+            lock (gate)
+            {
+                recentActivity.AddRange(items.Take(4).Select(item => new LegacyDashboardActivity(
+                    "invoice",
+                    item.Number,
+                    item.IsPaid ? "paid" : "awaiting-payment",
+                    item.CreatedDate,
+                    $"/Invoices/View?id={item.Id}")));
+            }
+        }
+
+        public void AddQuotationRequestActivity(IReadOnlyList<QuotationRequestItem> items)
+        {
+            lock (gate)
+            {
+                recentActivity.AddRange(items.Take(4).Select(item => new LegacyDashboardActivity(
+                    "quotation-request",
+                    ActivityTitle(item),
+                    item.Done == true ? "completed" : "awaiting-review",
+                    item.CreatedDate,
+                    $"/QuotationRequests/View?id={item.Id}")));
+            }
+        }
+
+        public void SetQuotationSummary(QuotationStats summary)
+        {
+            lock (gate) { quotationSummary = summary; }
+        }
+
+        public void SetMonthlyFinance(IReadOnlyList<FinanceSummaryDetail> details)
+        {
+            lock (gate) { monthlyFinance = details.ToArray(); }
+        }
+
+        private static string? ActivityTitle(QuotationRequestItem item)
+        {
+            if (!string.IsNullOrWhiteSpace(item.CompanyName))
+            {
+                return item.CompanyName;
+            }
+
+            var name = $"{item.FirstName} {item.LastName}".Trim();
+            return string.IsNullOrWhiteSpace(name) ? null : name;
         }
     }
 }

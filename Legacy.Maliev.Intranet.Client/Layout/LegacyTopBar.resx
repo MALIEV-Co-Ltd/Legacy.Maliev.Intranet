@@ -24,6 +24,11 @@
   <data name="Use dark theme" xml:space="preserve"><value>Use dark theme</value></data>
   <data name="Light" xml:space="preserve"><value>Light</value></data>
   <data name="Dark" xml:space="preserve"><value>Dark</value></data>
+  <data name="Search workspace" xml:space="preserve"><value>Search workspace</value></data>
+  <data name="Search customers, orders, quotations and more" xml:space="preserve"><value>Search customers, orders, quotations and more</value></data>
+  <data name="Search results" xml:space="preserve"><value>Search results</value></data>
+  <data name="No matching workspace pages" xml:space="preserve"><value>No matching workspace pages</value></data>
+  <data name="Quick actions" xml:space="preserve"><value>Quick actions</value></data>
   <data name="Sales" xml:space="preserve"><value>Sales</value></data>
   <data name="Workspace overview" xml:space="preserve"><value>Workspace overview</value></data>
   <data name="Customers" xml:space="preserve"><value>Customers</value></data>
@@ -75,4 +80,5 @@
   <data name="Employee profile" xml:space="preserve"><value>Employee profile</value></data>
   <data name="Server errors" xml:space="preserve"><value>Server errors</value></data>
   <data name="Legacy diagnostics" xml:space="preserve"><value>Legacy diagnostics</value></data>
+  <data name="Language" xml:space="preserve"><value>Language</value></data>
 </root>

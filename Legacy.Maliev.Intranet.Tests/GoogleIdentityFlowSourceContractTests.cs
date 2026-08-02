@@ -24,6 +24,8 @@ public sealed class GoogleIdentityFlowSourceContractTests
         Assert.Contains("google.accounts.id.initialize", client, StringComparison.Ordinal);
         Assert.Contains("google.accounts.id.renderButton", client, StringComparison.Ordinal);
         Assert.Contains("data-google-signin-host", login, StringComparison.Ordinal);
+        Assert.Contains("data-status-unavailable", login, StringComparison.Ordinal);
+        Assert.Contains("localizedStatus(host, \"statusUnavailable\"", client, StringComparison.Ordinal);
         Assert.Contains("https://accounts.google.com/gsi/client", index, StringComparison.Ordinal);
         Assert.Contains("google-identity-signin.js", index, StringComparison.Ordinal);
         Assert.DoesNotContain("client_secret", client, StringComparison.OrdinalIgnoreCase);
