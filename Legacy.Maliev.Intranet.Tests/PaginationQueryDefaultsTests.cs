@@ -36,19 +36,21 @@ public sealed class PaginationQueryDefaultsTests
     }
 
     [Theory]
-    [InlineData("Legacy.Maliev.Intranet.Client.Features.Accounting\\Pages\\Finances.razor", "fallback: 25", "maximum: 100")]
-    [InlineData("Legacy.Maliev.Intranet.Client.Features.Catalog\\Pages\\Materials.razor", "fallback: 100", "maximum: 250")]
-    [InlineData("Legacy.Maliev.Intranet.Client.Features.Customers\\Pages\\Customers.razor", "fallback: 25", "maximum: 250")]
-    [InlineData("Legacy.Maliev.Intranet.Client.Features.Diagnostics\\Pages\\ErrorReport.razor", "fallback: 50", "maximum: 100")]
-    [InlineData("Legacy.Maliev.Intranet.Client.Features.Employees\\Pages\\Employees.razor", "fallback: 25", "maximum: 250")]
-    [InlineData("Legacy.Maliev.Intranet.Client.Features.Orders\\Pages\\Orders.razor", "fallback: 25", "maximum: 250")]
-    [InlineData("Legacy.Maliev.Intranet.Client.Features.Procurement\\Pages\\PurchaseOrders.razor", "fallback: 25", "maximum: 250")]
-    [InlineData("Legacy.Maliev.Intranet.Client.Features.Procurement\\Pages\\Suppliers.razor", "fallback: 100", "maximum: 250")]
-    [InlineData("Legacy.Maliev.Intranet.Client.Features.Quotations\\Pages\\QuotationRequests\\Index.razor", "fallback:25", "maximum:250")]
+    [InlineData("Legacy.Maliev.Intranet.Client.Features.Accounting/Pages/Finances.razor", "fallback: 25", "maximum: 100")]
+    [InlineData("Legacy.Maliev.Intranet.Client.Features.Catalog/Pages/Materials.razor", "fallback: 100", "maximum: 250")]
+    [InlineData("Legacy.Maliev.Intranet.Client.Features.Customers/Pages/Customers.razor", "fallback: 25", "maximum: 250")]
+    [InlineData("Legacy.Maliev.Intranet.Client.Features.Diagnostics/Pages/ErrorReport.razor", "fallback: 50", "maximum: 100")]
+    [InlineData("Legacy.Maliev.Intranet.Client.Features.Employees/Pages/Employees.razor", "fallback: 25", "maximum: 250")]
+    [InlineData("Legacy.Maliev.Intranet.Client.Features.Orders/Pages/Orders.razor", "fallback: 25", "maximum: 250")]
+    [InlineData("Legacy.Maliev.Intranet.Client.Features.Procurement/Pages/PurchaseOrders.razor", "fallback: 25", "maximum: 250")]
+    [InlineData("Legacy.Maliev.Intranet.Client.Features.Procurement/Pages/Suppliers.razor", "fallback: 100", "maximum: 250")]
+    [InlineData("Legacy.Maliev.Intranet.Client.Features.Quotations/Pages/QuotationRequests/Index.razor", "fallback:25", "maximum:250")]
     public void PaginatedFeaturePages_UseExplicitQueryDefaults(string relativePath, string fallback, string maximum)
     {
         var root = FindRoot();
-        var source = File.ReadAllText(Path.Combine(root, relativePath));
+        var source = File.ReadAllText(Path.Combine(
+            root,
+            relativePath.Replace('/', Path.DirectorySeparatorChar)));
 
         Assert.Contains("PaginationQueryDefaults.NormalizeIndex", source, StringComparison.Ordinal);
         Assert.Contains("PaginationQueryDefaults.NormalizeSize", source, StringComparison.Ordinal);
