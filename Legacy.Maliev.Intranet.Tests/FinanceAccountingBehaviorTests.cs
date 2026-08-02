@@ -113,10 +113,38 @@ public sealed class FinanceAccountingBehaviorTests
         Assert.Equal("/payments", forwarded.Path);
         Assert.Equal(operationId.ToString("D"), forwarded.IdempotencyKey);
         using var body = JsonDocument.Parse(forwarded.Body!);
-        Assert.Equal(1234.56m, body.RootElement.GetProperty("amount").GetDecimal());
+        Assert.Equal(
+            [
+                "amount",
+                "createdDate",
+                "currencyId",
+                "description",
+                "employeeId",
+                "modifiedDate",
+                "paymentDate",
+                "paymentDirectionId",
+                "paymentMethodId",
+                "paymentTypeId",
+                "recipient",
+                "transactionNumber",
+            ],
+            body.RootElement.EnumerateObject().Select(property => property.Name).Order());
+        Assert.Equal(7, body.RootElement.GetProperty("employeeId").GetInt32());
+        Assert.Equal(1, body.RootElement.GetProperty("paymentDirectionId").GetInt32());
+        Assert.Equal(2, body.RootElement.GetProperty("paymentTypeId").GetInt32());
         Assert.Equal("THB transfer", body.RootElement.GetProperty("description").GetString());
-        Assert.True(body.RootElement.TryGetProperty("createdDate", out _));
-        Assert.True(body.RootElement.TryGetProperty("modifiedDate", out _));
+        Assert.Equal(3, body.RootElement.GetProperty("paymentMethodId").GetInt32());
+        Assert.Equal(1234.56m, body.RootElement.GetProperty("amount").GetDecimal());
+        Assert.Equal(1, body.RootElement.GetProperty("currencyId").GetInt32());
+        Assert.Equal("MALIEV", body.RootElement.GetProperty("recipient").GetString());
+        Assert.Equal("TX-91", body.RootElement.GetProperty("transactionNumber").GetString());
+        Assert.Equal(
+            DateTime.Parse("2030-07-18T00:00:00Z").ToUniversalTime(),
+            body.RootElement.GetProperty("paymentDate").GetDateTime().ToUniversalTime());
+        var createdDate = body.RootElement.GetProperty("createdDate").GetDateTime();
+        var modifiedDate = body.RootElement.GetProperty("modifiedDate").GetDateTime();
+        Assert.Equal(DateTimeKind.Utc, createdDate.Kind);
+        Assert.Equal(createdDate, modifiedDate);
     }
 
     [Fact]
