@@ -5,6 +5,7 @@
   <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
   <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
   <data name="PageTitle" xml:space="preserve"><value>MALIEV | Intranet Gateway</value></data>
+  <data name="HomeLabel" xml:space="preserve"><value>MALIEV Intranet home</value></data>
   <data name="Employee gateway" xml:space="preserve"><value>Employee gateway</value></data>
   <data name="Sign in to" xml:space="preserve"><value>Sign in to</value></data>
   <data name="Continue with Google" xml:space="preserve"><value>Continue with Google</value></data>
@@ -21,4 +22,8 @@
   <data name="Switch to light mode" xml:space="preserve"><value>Switch to light mode</value></data>
   <data name="Switch to dark mode" xml:space="preserve"><value>Switch to dark mode</value></data>
   <data name="Employee sign-in is temporarily unavailable." xml:space="preserve"><value>Employee sign-in is temporarily unavailable.</value></data>
+  <data name="Loading Google sign-in..." xml:space="preserve"><value>Loading Google sign-in...</value></data>
+  <data name="Completing Google sign-in..." xml:space="preserve"><value>Completing Google sign-in...</value></data>
+  <data name="Google sign-in could not be completed. Reloading..." xml:space="preserve"><value>Google sign-in could not be completed. Reloading...</value></data>
+  <data name="Google sign-in is temporarily unavailable. You can still use your work email." xml:space="preserve"><value>Google sign-in is temporarily unavailable. You can still use your work email.</value></data>
 </root>

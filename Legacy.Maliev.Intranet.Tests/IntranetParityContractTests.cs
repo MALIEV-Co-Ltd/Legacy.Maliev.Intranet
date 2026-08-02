@@ -9,25 +9,24 @@ public sealed class IntranetParityContractTests
         var layout = File.ReadAllText(Path.Combine(root, "Legacy.Maliev.Intranet.Client", "Layout", "MainLayout.razor"));
         var topbar = File.ReadAllText(Path.Combine(root, "Legacy.Maliev.Intranet.Client", "Layout", "LegacyTopBar.razor"));
         var css = File.ReadAllText(Path.Combine(root, "Legacy.Maliev.Intranet.Client", "Layout", "LegacyTopBar.razor.css"));
+        var rail = File.ReadAllText(Path.Combine(root, "Legacy.Maliev.Intranet.Client", "Components", "Shell", "LegacyNavigationRail.razor"));
+        var railCss = File.ReadAllText(Path.Combine(root, "Legacy.Maliev.Intranet.Client", "Components", "Shell", "LegacyNavigationRail.razor.css"));
         var navigation = File.ReadAllText(Path.Combine(root, "Legacy.Maliev.Intranet.Client", "Layout", "LegacyAppNavigation.cs"));
 
         Assert.Contains("<LegacyTopBar", layout, StringComparison.Ordinal);
+        Assert.Contains("<LegacyNavigationRail Session=\"session\" />", layout, StringComparison.Ordinal);
+        Assert.Contains("IsDrawer=\"true\"", layout, StringComparison.Ordinal);
         Assert.Contains("OnSignOut=\"SignOutAsync\"", layout, StringComparison.Ordinal);
-        Assert.Contains("MALIEV_BLACK.svg", topbar, StringComparison.Ordinal);
+        Assert.Contains("MALIEV_BLACK.svg", rail, StringComparison.Ordinal);
         Assert.DoesNotContain("legacy-workspace-label", topbar, StringComparison.Ordinal);
         Assert.Contains("aria-label", topbar, StringComparison.Ordinal);
-        Assert.Contains("aria-controls=\"legacy-mobile-nav\"", topbar, StringComparison.Ordinal);
-        Assert.Contains("role=\"dialog\"", topbar, StringComparison.Ordinal);
-        Assert.Contains("aria-modal=\"true\"", topbar, StringComparison.Ordinal);
-        Assert.Contains("aria-current=\"@GetAriaCurrent(item)\"", topbar, StringComparison.Ordinal);
-        Assert.Contains("Navigation.LocationChanged", topbar, StringComparison.Ordinal);
+        Assert.Contains("aria-controls=\"legacy-navigation-rail-drawer\"", topbar, StringComparison.Ordinal);
+        Assert.Contains("aria-current", rail, StringComparison.Ordinal);
+        Assert.Contains("Navigation.LocationChanged", layout, StringComparison.Ordinal);
         Assert.Contains("Escape", topbar, StringComparison.Ordinal);
-        Assert.Contains("@media (max-width: 1600px)", css, StringComparison.Ordinal);
-        Assert.Contains("@media (max-width: 1280px)", css, StringComparison.Ordinal);
+        Assert.Contains("@media (max-width: 1180px)", railCss, StringComparison.Ordinal);
         Assert.Contains("@media (max-width: 720px)", css, StringComparison.Ordinal);
-        Assert.Contains("@media (max-width: 640px)", css, StringComparison.Ordinal);
         Assert.Contains("@media (max-width: 420px)", css, StringComparison.Ordinal);
-        Assert.Contains("inset: 0 0 calc(52px + env(safe-area-inset-bottom))", css, StringComparison.Ordinal);
         Assert.Contains("/customers", navigation, StringComparison.Ordinal);
         Assert.Contains("/sales/orders", navigation, StringComparison.Ordinal);
         Assert.Contains("/purchasing", navigation, StringComparison.Ordinal);
@@ -57,11 +56,11 @@ public sealed class IntranetParityContractTests
         var index = File.ReadAllText(Path.Combine(root, "Legacy.Maliev.Intranet.Client", "wwwroot", "index.html"));
         var css = File.ReadAllText(Path.Combine(root, "Legacy.Maliev.Intranet.Client", "wwwroot", "css", "app.css"));
 
-        Assert.Contains("family=Geist", index, StringComparison.Ordinal);
+        Assert.Contains("family=Inter", index, StringComparison.Ordinal);
         Assert.Contains("family=Noto+Sans+Thai", index, StringComparison.Ordinal);
-        Assert.Contains("'Geist', 'Noto Sans Thai', sans-serif", index, StringComparison.Ordinal);
-        Assert.Contains("\"Geist\", \"Noto Sans Thai\", sans-serif", css, StringComparison.Ordinal);
-        Assert.DoesNotContain("font-family: Inter", css, StringComparison.Ordinal);
+        Assert.Contains("'Inter', 'Noto Sans Thai', sans-serif", index, StringComparison.Ordinal);
+        Assert.Contains("'Inter', 'Noto Sans Thai', sans-serif", css, StringComparison.Ordinal);
+        Assert.DoesNotContain("Geist", css, StringComparison.Ordinal);
     }
 
     [Fact]

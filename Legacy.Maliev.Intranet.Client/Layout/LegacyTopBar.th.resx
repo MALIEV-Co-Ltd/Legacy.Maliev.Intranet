@@ -14,7 +14,7 @@
   <data name="Employee menu" xml:space="preserve"><value>เมนูพนักงาน</value></data>
   <data name="Employee" xml:space="preserve"><value>พนักงาน</value></data>
   <data name="Employee workspace" xml:space="preserve"><value>พื้นที่ทำงานพนักงาน</value></data>
-  <data name="My profile" xml:space="preserve"><value>โปรไฟล์ของฉัน</value></data>
+  <data name="My profile" xml:space="preserve"><value>ข้อมูลของฉัน</value></data>
   <data name="Sign out" xml:space="preserve"><value>ออกจากระบบ</value></data>
   <data name="Sign in" xml:space="preserve"><value>เข้าสู่ระบบ</value></data>
   <data name="Session unavailable" xml:space="preserve"><value>ไม่พบเซสชัน</value></data>
@@ -24,16 +24,21 @@
   <data name="Use dark theme" xml:space="preserve"><value>ใช้โหมดมืด</value></data>
   <data name="Light" xml:space="preserve"><value>สว่าง</value></data>
   <data name="Dark" xml:space="preserve"><value>มืด</value></data>
+  <data name="Search workspace" xml:space="preserve"><value>ค้นหาในพื้นที่ทำงาน</value></data>
+  <data name="Search customers, orders, quotations and more" xml:space="preserve"><value>ค้นหาลูกค้า ใบสั่งผลิต ใบเสนอราคา และรายการอื่น ๆ</value></data>
+  <data name="Search results" xml:space="preserve"><value>ผลการค้นหา</value></data>
+  <data name="No matching workspace pages" xml:space="preserve"><value>ไม่พบหน้าที่ตรงกับคำค้นหา</value></data>
+  <data name="Quick actions" xml:space="preserve"><value>ทางลัดสำหรับสร้างรายการ</value></data>
   <data name="Sales" xml:space="preserve"><value>งานขาย</value></data>
   <data name="Workspace overview" xml:space="preserve"><value>ภาพรวมการทำงาน</value></data>
   <data name="Customers" xml:space="preserve"><value>ลูกค้า</value></data>
   <data name="Customer profiles" xml:space="preserve"><value>ข้อมูลลูกค้า</value></data>
   <data name="New customer" xml:space="preserve"><value>เพิ่มลูกค้า</value></data>
   <data name="Onboard a customer" xml:space="preserve"><value>เพิ่มข้อมูลลูกค้าใหม่</value></data>
-  <data name="Orders" xml:space="preserve"><value>คำสั่งซื้อ</value></data>
-  <data name="Order queue and status" xml:space="preserve"><value>รายการและสถานะคำสั่งซื้อ</value></data>
-  <data name="New order" xml:space="preserve"><value>สร้างคำสั่งซื้อ</value></data>
-  <data name="Create an order" xml:space="preserve"><value>สร้างคำสั่งซื้อใหม่</value></data>
+  <data name="Orders" xml:space="preserve"><value>ใบสั่งผลิต</value></data>
+  <data name="Order queue and status" xml:space="preserve"><value>รายการและสถานะใบสั่งผลิต</value></data>
+  <data name="New order" xml:space="preserve"><value>สร้างใบสั่งผลิต</value></data>
+  <data name="Create an order" xml:space="preserve"><value>สร้างใบสั่งผลิตใหม่</value></data>
   <data name="Quotation requests" xml:space="preserve"><value>คำขอใบเสนอราคา</value></data>
   <data name="Website quotation queue" xml:space="preserve"><value>รายการคำขอจากเว็บไซต์</value></data>
   <data name="Quotations" xml:space="preserve"><value>ใบเสนอราคา</value></data>
@@ -75,4 +80,5 @@
   <data name="Employee profile" xml:space="preserve"><value>ข้อมูลพนักงาน</value></data>
   <data name="Server errors" xml:space="preserve"><value>ข้อผิดพลาดของระบบ</value></data>
   <data name="Legacy diagnostics" xml:space="preserve"><value>ตรวจสอบปัญหาระบบเดิม</value></data>
+  <data name="Language" xml:space="preserve"><value>ภาษา</value></data>
 </root>

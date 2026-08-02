@@ -1,31 +1,100 @@
+@using System.Globalization
 <!doctype html>
-<html lang="en">
+<html lang="@CultureInfo.CurrentUICulture.TwoLetterISOLanguageName">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="robots" content="noindex,nofollow,noarchive" />
     <title>@ViewData["Title"] - MALIEV Intranet</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400..800&family=Noto+Sans+Thai:wght@100..900&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
 </head>
 <body>
-    <header class="topbar">
-        <a class="brand" asp-page="/Index" aria-label="MALIEV Intranet home">MALIEV <span>Intranet</span></a>
-        @if (User.Identity?.IsAuthenticated == true)
-        {
-            <nav aria-label="Primary">
-                <a asp-page="/Dashboard">Dashboard</a>
-                <a href="/QuotationRequests/Index">Requests</a>
-                <a href="/Orders/Index">Orders</a>
-                <a href="/Customers/Index">Customers</a>
-                <form method="post" action="/Logout" class="inline-form">
-                    <button type="submit" class="link-button">Sign out</button>
-                </form>
+    <a class="skip-link" href="#main-content">@T("Skip to content", "ข้ามไปยังเนื้อหา")</a>
+    @if (User.Identity?.IsAuthenticated == true)
+    {
+        <aside id="compat-navigation" class="compat-rail" aria-label="@T("Primary navigation", "เมนูหลัก")">
+            <div class="compat-rail-brand"><a asp-page="/Dashboard" aria-label="@T("MALIEV dashboard", "ภาพรวมระบบ MALIEV")">MALIEV</a></div>
+            <nav>
+                <section><h2>@T("Core", "เมนูหลัก")</h2><a asp-page="/Dashboard">@T("Dashboard", "ภาพรวม")</a>@if (HasPermission("legacy-customer.customers.list")) { <a href="/Customers/Index">@T("Customers", "ลูกค้า")</a> }</section>
+                <section><h2>@T("Sales", "ฝ่ายขาย")</h2>@if (HasPermission("legacy.orders.read")) { <a href="/Orders/Index">@T("Orders", "ใบสั่งผลิต")</a> }@if (HasPermission("legacy.quotations.read")) { <a href="/Quotations/Index">@T("Quotations", "ใบเสนอราคา")</a> }@if (HasPermission("legacy.quotation-requests.read")) { <a href="/QuotationRequests/Index">@T("Quotation requests", "คำขอใบเสนอราคา")</a> }</section>
+                <section><h2>@T("Operations", "งานดำเนินการ")</h2>@if (HasPermission("legacy.accounting.read")) { <a href="/Invoices/Index">@T("Invoices", "ใบแจ้งหนี้")</a><a href="/Finances/Index">@T("Finances", "การเงิน")</a> }@if (HasPermission("legacy-employee.employees.list")) { <a href="/Employees/Index">@T("Employees", "พนักงาน")</a> }@if (HasPermission("legacy-procurement.suppliers.read")) { <a href="/Suppliers/Index">@T("Suppliers", "ผู้จำหน่าย")</a> }@if (HasPermission("legacy-procurement.purchase-orders.read")) { <a href="/PurchaseOrders/Index">@T("Purchase orders", "ใบสั่งซื้อ")</a> }@if (HasPermission("legacy-catalog.materials.read")) { <a href="/Materials/Index">@T("Materials", "วัสดุ")</a> }</section>
             </nav>
-        }
-    </header>
-    <main id="main-content" class="shell">
-        @RenderBody()
-    </main>
+        </aside>
+
+        <div class="compat-workspace">
+            <header class="compat-utility">
+                <button id="compat-menu-button" type="button" aria-label="@T("Open navigation", "เปิดเมนู")" aria-expanded="false" aria-controls="compat-navigation"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16" /></svg></button>
+                <form id="compat-search" class="compat-search" role="search">
+                    <label class="visually-hidden" for="compat-search-input">@T("Search workspace", "ค้นหาในระบบ")</label>
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6" /><path d="m16 16 4 4" /></svg>
+                    <input id="compat-search-input" type="search" autocomplete="off" placeholder="@T("Search customers, orders, quotations and more", "ค้นหาลูกค้า ใบสั่งผลิต ใบเสนอราคา และรายการอื่น")" list="compat-search-routes" />
+                    <datalist id="compat-search-routes">
+                        <option value="@T("Dashboard", "ภาพรวม")" data-route="/Dashboard"></option>
+                        @if (HasPermission("legacy-customer.customers.list")) { <option value="@T("Customers", "ลูกค้า")" data-route="/Customers/Index"></option> }
+                        @if (HasPermission("legacy.orders.read")) { <option value="@T("Orders", "ใบสั่งผลิต")" data-route="/Orders/Index"></option> }
+                        @if (HasPermission("legacy.quotations.read")) { <option value="@T("Quotations", "ใบเสนอราคา")" data-route="/Quotations/Index"></option> }
+                        @if (HasPermission("legacy.quotation-requests.read")) { <option value="@T("Quotation requests", "คำขอใบเสนอราคา")" data-route="/QuotationRequests/Index"></option> }
+                        @if (HasPermission("legacy.accounting.read")) { <option value="@T("Invoices", "ใบแจ้งหนี้")" data-route="/Invoices/Index"></option><option value="@T("Finances", "การเงิน")" data-route="/Finances/Index"></option> }
+                        @if (HasPermission("legacy-employee.employees.list")) { <option value="@T("Employees", "พนักงาน")" data-route="/Employees/Index"></option> }
+                        @if (HasPermission("legacy-procurement.suppliers.read")) { <option value="@T("Suppliers", "ผู้จำหน่าย")" data-route="/Suppliers/Index"></option> }
+                        @if (HasPermission("legacy-procurement.purchase-orders.read")) { <option value="@T("Purchase orders", "ใบสั่งซื้อ")" data-route="/PurchaseOrders/Index"></option> }
+                        @if (HasPermission("legacy-catalog.materials.read")) { <option value="@T("Materials", "วัสดุ")" data-route="/Materials/Index"></option> }
+                    </datalist>
+                </form>
+                <div class="compat-actions">
+                    @if (HasPermission("legacy.quotations.create"))
+                    {
+                        <a href="/Quotations/Create"><span aria-hidden="true">+</span> @T("Create quote", "สร้างใบเสนอราคา")</a>
+                    }
+                    @if (HasPermission("legacy.orders.create"))
+                    {
+                        <a class="primary" href="/Orders/Create"><span aria-hidden="true">+</span> @T("New order", "สร้างใบสั่งผลิต")</a>
+                    }
+                </div>
+                <label class="compat-language"><span class="visually-hidden">@T("Language", "ภาษา")</span><select id="compat-language" aria-label="@T("Language", "ภาษา")"><option value="en-TH" selected="@(!IsThai)">English</option><option value="th-TH" selected="@IsThai">ไทย</option></select></label>
+                <form method="post" action="/Logout" class="compat-signout">@Html.AntiForgeryToken()<button type="submit">@T("Sign out", "ออกจากระบบ")</button></form>
+            </header>
+            <main id="main-content" class="shell" tabindex="-1">@RenderBody()</main>
+        </div>
+        <div id="compat-backdrop" class="compat-backdrop" hidden></div>
+    }
+    else
+    {
+        <main id="main-content" class="shell anonymous-shell" tabindex="-1">@RenderBody()</main>
+    }
     @await RenderSectionAsync("Scripts", required: false)
+    <script src="~/js/compat-shell.js" asp-append-version="true"></script>
 </body>
 </html>
+
+@functions {
+    private bool IsThai => CultureInfo.CurrentUICulture.TwoLetterISOLanguageName == "th";
+    private string T(string english, string thai) => IsThai ? thai : english;
+
+    private bool HasPermission(string requiredPermission)
+    {
+        if (User.IsInRole("platform.owner"))
+        {
+            return true;
+        }
+
+        foreach (var value in User.FindAll("permissions").Select(claim => claim.Value))
+        {
+            if (value == "*" || string.Equals(value, requiredPermission, StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+
+            if (value.EndsWith(".*", StringComparison.Ordinal) &&
+                requiredPermission.StartsWith(value[..^1], StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+}

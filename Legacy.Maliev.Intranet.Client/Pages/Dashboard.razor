@@ -1,65 +1,304 @@
 @page "/Dashboard"
 @attribute [Authorize]
+@using Legacy.Maliev.Intranet.Client.Components.Dashboard
 @inject HttpClient Http
 @inject NavigationManager Navigation
+@inject IStringLocalizer<Dashboard> Text
 
-<PageTitle>Employee dashboard - MALIEV Intranet</PageTitle>
+<PageTitle>@Text["PageTitle"]</PageTitle>
 
-<MudContainer MaxWidth="MaxWidth.Large">
-    <MudStack Spacing="1" Class="mb-6">
-        <MudText Typo="Typo.overline" Color="Color.Primary">MALIEV WORKSPACE</MudText>
-        <MudText Typo="Typo.h4" HtmlTag="h1">Employee dashboard</MudText>
-        <MudText Typo="Typo.body1" Color="Color.Secondary">
-            Permission-scoped counts from the legacy CRM and ERP services.
-        </MudText>
-    </MudStack>
+<main class="dashboard-page" aria-labelledby="dashboard-heading">
+    <header class="dashboard-heading">
+        <div>
+            <h1 id="dashboard-heading">@Text["Heading"]</h1>
+            <p>@Text["Description"]</p>
+        </div>
+        <div class="dashboard-freshness" aria-live="polite">
+            @if (_snapshot is not null)
+            {
+                <span class="dashboard-health @(_snapshot.DegradedSources.Count == 0 ? "is-healthy" : "is-degraded")">
+                    <span aria-hidden="true"></span>
+                    @(_snapshot.DegradedSources.Count == 0 ? Text["ConnectedSourcesOperational"] : Text["SourcesDegraded", _snapshot.DegradedSources.Count])
+                </span>
+                <time datetime="@_snapshot.GeneratedAt.ToString("O")">@Text["UpdatedAt", FormatTimestamp(_snapshot.GeneratedAt)]</time>
+            }
+            <MudButton Variant="Variant.Outlined" Size="Size.Small" Disabled="_loading" OnClick="RefreshAsync" StartIcon="@Icons.Material.Outlined.Refresh">
+                @Text["Refresh"]
+            </MudButton>
+        </div>
+    </header>
 
     @if (_loading)
     {
-        <MudProgressLinear Indeterminate="true" Color="Color.Primary" Class="mb-4" />
-        <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="120px" />
+        <div class="dashboard-loading" aria-label="@Text["LoadingDashboard"]" aria-busy="true">
+            <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+            <div class="dashboard-loading-grid">
+                @for (var index = 0; index < 4; index++)
+                {
+                    <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="140px" />
+                }
+            </div>
+            <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="320px" />
+        </div>
     }
     else if (!string.IsNullOrWhiteSpace(_error))
     {
-        <MudAlert Severity="Severity.Error">@_error</MudAlert>
+        <MudAlert Severity="Severity.Error" Variant="Variant.Outlined" Class="dashboard-alert" aria-live="assertive">
+            @_error
+            <MudButton Variant="Variant.Text" Color="Color.Error" OnClick="RefreshAsync" Class="ml-2">@Text["TryAgain"]</MudButton>
+        </MudAlert>
     }
-    else if (_snapshot is { Cards.Count: 0 })
+    else if (_snapshot is { Cards.Count: 0 } && !HasOperationalContent)
     {
-        <MudAlert Severity="Severity.Info">
-            No dashboard cards are available for this employee session. Open a feature from the navigation to continue.
+        <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Class="dashboard-alert">
+            @Text["NoWorkspaces"]
         </MudAlert>
     }
     else if (_snapshot is not null)
     {
-        <MudGrid Spacing="3">
-            @foreach (var card in _snapshot.Cards)
-            {
-                <MudItem xs="12" sm="6" md="4" lg="3">
-                    <MudPaper Class="dashboard-card pa-4" Elevation="0">
-                        <MudText Typo="Typo.caption" Color="Color.Secondary">@card.Label</MudText>
-                        <MudText Typo="Typo.h4" Class="mt-2">@card.Count.ToString("N0")</MudText>
-                        <MudLink Href="@card.NavigateTo" Class="dashboard-card-link mt-3">Open workspace</MudLink>
-                    </MudPaper>
-                </MudItem>
-            }
-        </MudGrid>
-
         @if (_snapshot.DegradedSources.Count > 0)
         {
-            <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined" Class="mt-6">
-                Some legacy sources were unavailable. The cards above are still safe to use; retry after the service recovers.
+            <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined" Class="dashboard-alert" aria-live="polite">
+                @Text["PartialDataWarning"]
             </MudAlert>
         }
+
+        @if (_snapshot.Cards.Count > 0)
+        {
+            <section class="dashboard-metrics" aria-label="@Text["WorkspaceTotals"]">
+                @foreach (var card in _snapshot.Cards)
+                {
+                    <DashboardMetricCard Label="@MetricLabel(card.Key)"
+                                         Value="@card.Count.ToString("N0")"
+                                         NavigateTo="@card.NavigateTo"
+                                         LinkText="@Text["OpenWorkspace"]"
+                                         Icon="@IconFor(card.Key)" />
+                }
+            </section>
+        }
+
+        <div class="dashboard-primary-grid">
+            @if (_snapshot.RecentOrders.Count > 0)
+            {
+                <DashboardPanel Title="@Text["ProductionPipeline"]"
+                                Subtitle="@Text["ProductionPipelineSubtitle"]"
+                                NavigateTo="/sales/orders"
+                                LinkText="@Text["ViewAll"]"
+                                Class="dashboard-wide-panel">
+                    <div class="dashboard-table-scroll">
+                        <table class="dashboard-table">
+                            <caption class="sr-only">@Text["RecentProductionOrders"]</caption>
+                            <thead><tr><th scope="col">@Text["Order"]</th><th scope="col">@Text["Part"]</th><th scope="col">@Text["Quantity"]</th><th scope="col">@Text["Remaining"]</th><th scope="col">@Text["Promised"]</th><th scope="col">@Text["Progress"]</th></tr></thead>
+                            <tbody>
+                                @foreach (var order in _snapshot.RecentOrders)
+                                {
+                                    <tr>
+                                        <td><a href="@order.NavigateTo">#@order.Id</a></td>
+                                        <td class="dashboard-table-primary">@(string.IsNullOrWhiteSpace(order.Name) ? Text["OrderNumber", order.Id] : order.Name)</td>
+                                        <td>@order.Quantity.ToString("N0")</td>
+                                        <td>@Remaining(order).ToString("N0")</td>
+                                        <td>@FormatDate(order.PromisedDate)</td>
+                                        <td><span class="dashboard-status @OrderStatusClass(order)">@OrderStatus(order)</span></td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </DashboardPanel>
+            }
+
+            @if (_snapshot.RecentQuotations.Count > 0)
+            {
+                <DashboardPanel Title="@Text["RecentQuotations"]"
+                                Subtitle="@Text["RecentQuotationsSubtitle"]"
+                                NavigateTo="/Quotations/Index"
+                                LinkText="@Text["ViewAll"]">
+                    <div class="dashboard-table-scroll">
+                        <table class="dashboard-table dashboard-table-compact">
+                            <caption class="sr-only">@Text["RecentQuotations"]</caption>
+                            <thead><tr><th scope="col">@Text["Quote"]</th><th scope="col">@Text["Total"]</th><th scope="col">@Text["Expires"]</th><th scope="col">@Text["Decision"]</th></tr></thead>
+                            <tbody>
+                                @foreach (var quotation in _snapshot.RecentQuotations)
+                                {
+                                    <tr>
+                                        <td><a href="@quotation.NavigateTo">#@quotation.Id</a></td>
+                                        <td class="dashboard-money">@FormatMoney(quotation.QuotedAmount ?? quotation.Total, quotation.CurrencyId)</td>
+                                        <td>@FormatDate(quotation.ExpirationDate)</td>
+                                        <td><span class="dashboard-status @DecisionClass(quotation.Accepted)">@Decision(quotation.Accepted)</span></td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </DashboardPanel>
+            }
+        </div>
+
+        <div class="dashboard-primary-grid">
+            @if (_snapshot.RecentPayments.Count > 0)
+            {
+                <DashboardPanel Title="@Text["RecentPayments"]"
+                                Subtitle="@Text["RecentPaymentsSubtitle"]"
+                                NavigateTo="/Finances/Index"
+                                LinkText="@Text["ViewAll"]">
+                    <div class="dashboard-table-scroll">
+                        <table class="dashboard-table dashboard-table-compact">
+                            <caption class="sr-only">@Text["RecentPayments"]</caption>
+                            <thead><tr><th scope="col">@Text["Payment"]</th><th scope="col">@Text["Recipient"]</th><th scope="col">@Text["Amount"]</th><th scope="col">@Text["Date"]</th></tr></thead>
+                            <tbody>
+                                @foreach (var payment in _snapshot.RecentPayments)
+                                {
+                                    <tr>
+                                        <td><a href="@payment.NavigateTo">#@payment.Id</a></td>
+                                        <td class="dashboard-table-primary">@(string.IsNullOrWhiteSpace(payment.Recipient) ? "—" : payment.Recipient)</td>
+                                        <td class="dashboard-money">@FormatMoney(payment.Amount, payment.CurrencyId)</td>
+                                        <td>@FormatDate(payment.PaymentDate ?? payment.CreatedDate)</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </DashboardPanel>
+            }
+
+            @if (_snapshot.RecentCustomers.Count > 0)
+            {
+                <DashboardPanel Title="@Text["RecentCustomers"]"
+                                Subtitle="@Text["RecentCustomersSubtitle"]"
+                                NavigateTo="/customers"
+                                LinkText="@Text["ViewAll"]">
+                    <div class="dashboard-table-scroll">
+                        <table class="dashboard-table dashboard-table-compact">
+                            <caption class="sr-only">@Text["RecentCustomers"]</caption>
+                            <thead><tr><th scope="col">@Text["Customer"]</th><th scope="col">@Text["Company"]</th><th scope="col">@Text["Email"]</th></tr></thead>
+                            <tbody>
+                                @foreach (var customer in _snapshot.RecentCustomers)
+                                {
+                                    <tr>
+                                        <td><a href="@customer.NavigateTo">@customer.FullName</a></td>
+                                        <td class="dashboard-table-primary">@(string.IsNullOrWhiteSpace(customer.Company) ? "—" : customer.Company)</td>
+                                        <td>@customer.Email</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </DashboardPanel>
+            }
+        </div>
+
+        <div class="dashboard-secondary-grid">
+            @if (_snapshot.RecentActivity.Count > 0)
+            {
+                <DashboardPanel Title="@Text["RecentActivity"]" Subtitle="@Text["RecentActivitySubtitle"]">
+                    <ol class="dashboard-activity-list">
+                        @foreach (var activity in _snapshot.RecentActivity)
+                        {
+                            <li>
+                                <span class="dashboard-activity-icon" aria-hidden="true"><MudIcon Icon="@ActivityIcon(activity.Kind)" /></span>
+                                <div>
+                                    <a href="@activity.NavigateTo">@ActivityTitle(activity)</a>
+                                    <span>@ActivityDetail(activity)</span>
+                                </div>
+                                <time datetime="@DateTimeAttribute(activity.OccurredAt)">@FormatRelativeDate(activity.OccurredAt)</time>
+                            </li>
+                        }
+                    </ol>
+                </DashboardPanel>
+            }
+
+            @if (_snapshot.MonthlyFinance.Count > 0)
+            {
+                <DashboardPanel Title="@Text["FinancialSnapshot"]" Subtitle="@Text["FinancialSnapshotSubtitle"]" NavigateTo="/Finances/Index" LinkText="@Text["ViewAll"]">
+                    <div class="dashboard-finance-grid">
+                        @foreach (var detail in _snapshot.MonthlyFinance)
+                        {
+                            <article>
+                                <span>@CurrencyName(detail.CurrencyId)</span>
+                                <strong>@FormatMoney(detail.CurrentAmount, detail.CurrencyId)</strong>
+                                <small class="@(detail.DeltaAmount >= 0 ? "is-positive" : "is-negative")">
+                                    @Text["ComparedWithPrevious", SignedPercent(detail.DeltaPercent)]
+                                </small>
+                            </article>
+                        }
+                    </div>
+                </DashboardPanel>
+            }
+
+            @if (_snapshot.QuotationSummary is not null)
+            {
+                var quotationTotal = _snapshot.QuotationSummary.Accepted + _snapshot.QuotationSummary.Declined + _snapshot.QuotationSummary.Open;
+                <DashboardPanel Title="@Text["QuotationDecisions"]" Subtitle="@Text["QuotationDecisionsSubtitle"]" NavigateTo="/Quotations/Index" LinkText="@Text["ViewAll"]">
+                    @if (quotationTotal == 0)
+                    {
+                        <p class="dashboard-panel-empty">@Text["NoQuotationDecisions"]</p>
+                    }
+                    else
+                    {
+                        <div class="dashboard-decision-summary">
+                            <div class="dashboard-decision-total"><strong>@quotationTotal.ToString("N0")</strong><span>@Text["Total"]</span></div>
+                            <ul>
+                                <li><span class="dashboard-dot is-accepted"></span><span>@Text["Accepted"]</span><strong>@_snapshot.QuotationSummary.Accepted.ToString("N0")</strong><small>@Percent(_snapshot.QuotationSummary.Accepted, quotationTotal)</small></li>
+                                <li><span class="dashboard-dot is-declined"></span><span>@Text["Declined"]</span><strong>@_snapshot.QuotationSummary.Declined.ToString("N0")</strong><small>@Percent(_snapshot.QuotationSummary.Declined, quotationTotal)</small></li>
+                                <li><span class="dashboard-dot is-open"></span><span>@Text["Open"]</span><strong>@_snapshot.QuotationSummary.Open.ToString("N0")</strong><small>@Percent(_snapshot.QuotationSummary.Open, quotationTotal)</small></li>
+                            </ul>
+                        </div>
+                    }
+                </DashboardPanel>
+            }
+
+            @if (_snapshot.RecentOrders.Count > 0)
+            {
+                <DashboardPanel Title="@Text["RecentOrderProgress"]" Subtitle="@Text["RecentOrderProgressSubtitle"]" NavigateTo="/sales/orders" LinkText="@Text["ViewAll"]">
+                    <div class="dashboard-progress-summary">
+                        @foreach (var status in OrderProgress)
+                        {
+                            <div>
+                                <span><i class="dashboard-dot @status.Class"></i>@status.Label</span>
+                                <strong>@status.Count.ToString("N0")</strong>
+                            </div>
+                        }
+                    </div>
+                </DashboardPanel>
+            }
+        </div>
     }
-</MudContainer>
+</main>
 
 @code {
+    private static readonly TimeSpan BangkokOffset = TimeSpan.FromHours(7);
     private LegacyDashboardSnapshot? _snapshot;
     private string? _error;
     private bool _loading = true;
 
-    protected override async Task OnInitializedAsync()
+    private bool HasOperationalContent => _snapshot is not null &&
+        (_snapshot.RecentOrders.Count > 0 || _snapshot.RecentQuotations.Count > 0 ||
+         _snapshot.RecentCustomers.Count > 0 || _snapshot.RecentPayments.Count > 0 ||
+         _snapshot.RecentActivity.Count > 0 || _snapshot.MonthlyFinance.Count > 0 ||
+         _snapshot.QuotationSummary is not null);
+
+    private IReadOnlyList<(string Label, int Count, string Class)> OrderProgress
     {
+        get
+        {
+            var orders = _snapshot?.RecentOrders ?? [];
+            return
+            [
+                (Text["Completed"].Value, orders.Count(order => Remaining(order) <= 0), "is-complete"),
+                (Text["InProgress"].Value, orders.Count(order => Remaining(order) > 0 && order.Manufactured > 0), "is-progress"),
+                (Text["Queued"].Value, orders.Count(order => Remaining(order) > 0 && order.Manufactured <= 0), "is-queued"),
+            ];
+        }
+    }
+
+    protected override Task OnInitializedAsync() => LoadAsync();
+
+    private Task RefreshAsync() => LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        _error = null;
         try
         {
             using var response = await Http.GetAsync("/bff/dashboard");
@@ -71,20 +310,107 @@
 
             if (!response.IsSuccessStatusCode)
             {
-                _error = "The dashboard is temporarily unavailable.";
+                _error = Text["DashboardUnavailable"];
                 return;
             }
 
             _snapshot = await response.Content.ReadFromJsonAsync<LegacyDashboardSnapshot>();
-            _error = _snapshot is null ? "The dashboard returned an invalid response." : null;
+            _error = _snapshot is null ? Text["InvalidDashboardResponse"].Value : null;
         }
         catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException)
         {
-            _error = "The dashboard is temporarily unavailable.";
+            _error = Text["DashboardUnavailable"];
         }
         finally
         {
             _loading = false;
         }
+    }
+
+    private static string IconFor(string key) => key switch
+    {
+        "orders" => Icons.Material.Outlined.Inventory2,
+        "customers" => Icons.Material.Outlined.Groups,
+        "employees" => Icons.Material.Outlined.Badge,
+        "invoices" => Icons.Material.Outlined.ReceiptLong,
+        "quotation-requests" => Icons.Material.Outlined.MarkUnreadChatAlt,
+        "quotations" => Icons.Material.Outlined.RequestQuote,
+        "suppliers" => Icons.Material.Outlined.Handshake,
+        "purchase-orders" => Icons.Material.Outlined.ShoppingCart,
+        "materials" => Icons.Material.Outlined.Category,
+        "payments" => Icons.Material.Outlined.AccountBalanceWallet,
+        _ => Icons.Material.Outlined.Dashboard,
+    };
+
+    private static string ActivityIcon(string kind) => kind switch
+    {
+        "invoice" => Icons.Material.Outlined.ReceiptLong,
+        "quotation-request" => Icons.Material.Outlined.MarkUnreadChatAlt,
+        _ => Icons.Material.Outlined.NotificationsNone,
+    };
+
+    private string MetricLabel(string key) => Text[$"Metric_{key}"];
+
+    private string ActivityTitle(LegacyDashboardActivity activity) => string.IsNullOrWhiteSpace(activity.Title)
+        ? Text[activity.Kind == "invoice" ? "InvoiceNumber" : "RequestNumber", ActivityId(activity.NavigateTo)]
+        : activity.Title;
+
+    private string ActivityDetail(LegacyDashboardActivity activity) => Text[$"Activity_{activity.Kind}_{activity.State}"];
+
+    private static string ActivityId(string navigateTo)
+    {
+        var marker = navigateTo.LastIndexOf('=');
+        return marker >= 0 && marker < navigateTo.Length - 1 ? navigateTo[(marker + 1)..] : "—";
+    }
+
+    private static int Remaining(LegacyDashboardOrder order) => order.Remaining ?? Math.Max(0, order.Quantity - order.Manufactured);
+
+    private string OrderStatus(LegacyDashboardOrder order) => Remaining(order) <= 0
+        ? Text["Completed"]
+        : order.Manufactured > 0 ? Text["InProgress"] : Text["Queued"];
+
+    private static string OrderStatusClass(LegacyDashboardOrder order) => Remaining(order) <= 0
+        ? "is-complete"
+        : order.Manufactured > 0 ? "is-progress" : "is-queued";
+
+    private string Decision(bool? accepted) => accepted switch { true => Text["Accepted"], false => Text["Declined"], null => Text["Open"] };
+    private static string DecisionClass(bool? accepted) => accepted switch { true => "is-complete", false => "is-declined", null => "is-open" };
+
+    private string FormatMoney(decimal value, int currencyId) => Text["MoneyFormat", value.ToString("N2", System.Globalization.CultureInfo.CurrentCulture), CurrencyName(currencyId.ToString(System.Globalization.CultureInfo.InvariantCulture))];
+    private string FormatMoney(decimal value, int? currencyId) => currencyId is int valueId
+        ? FormatMoney(value, valueId)
+        : Text["MoneyFormat", value.ToString("N2", System.Globalization.CultureInfo.CurrentCulture), Text["CurrencyUnavailable"]];
+    private string FormatMoney(decimal value, string currencyId) => Text["MoneyFormat", value.ToString("N2", System.Globalization.CultureInfo.CurrentCulture), CurrencyName(currencyId)];
+    private string CurrencyName(string currencyId)
+    {
+        if (currencyId.Equals("THB", StringComparison.OrdinalIgnoreCase) || currencyId == "1")
+        {
+            return "THB";
+        }
+
+        return int.TryParse(currencyId, out _) ? Text["CurrencyNumber", currencyId] : currencyId.ToUpperInvariant();
+    }
+    private static string Percent(int value, int total) => $"{(total == 0 ? 0m : value * 100m / total).ToString("N1", System.Globalization.CultureInfo.CurrentCulture)}%";
+    private static string SignedPercent(decimal value) => $"{(value >= 0 ? "+" : string.Empty)}{value.ToString("N1", System.Globalization.CultureInfo.CurrentCulture)}%";
+
+    private static string FormatTimestamp(DateTimeOffset value) => value.ToOffset(BangkokOffset).ToString("dd MMM yyyy, HH:mm 'ICT'", System.Globalization.CultureInfo.CurrentCulture);
+    private static string FormatDate(DateTime? value) => value is null ? "—" : Bangkok(value.Value).ToString("dd MMM yyyy", System.Globalization.CultureInfo.CurrentCulture);
+    private static string FormatDate(DateTime value) => Bangkok(value).ToString("dd MMM yyyy", System.Globalization.CultureInfo.CurrentCulture);
+    private static string DateTimeAttribute(DateTime? value) => value is null ? string.Empty : Bangkok(value.Value).ToString("O");
+
+    private string FormatRelativeDate(DateTime? value)
+    {
+        if (value is null)
+        {
+            return Text["DateUnavailable"];
+        }
+
+        return Bangkok(value.Value).ToString("dd MMM, HH:mm", System.Globalization.CultureInfo.CurrentCulture);
+    }
+
+    private static DateTimeOffset Bangkok(DateTime value)
+    {
+        var utc = value.Kind == DateTimeKind.Utc ? value : DateTime.SpecifyKind(value, DateTimeKind.Utc);
+        return new DateTimeOffset(utc).ToOffset(BangkokOffset);
     }
 }

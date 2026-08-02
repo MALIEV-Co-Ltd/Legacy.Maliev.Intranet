@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
+  <data name="PageTitle" xml:space="preserve"><value>ศูนย์ควบคุมการปฏิบัติงาน - อินทราเน็ต MALIEV</value></data>
+  <data name="Heading" xml:space="preserve"><value>ศูนย์ควบคุมการปฏิบัติงาน</value></data>
+  <data name="Description" xml:space="preserve"><value>ข้อมูลการดำเนินงานจากระบบ CRM และ ERP เดิม โดยแสดงเฉพาะส่วนที่คุณมีสิทธิ์เข้าถึง</value></data>
+  <data name="ConnectedSourcesOperational" xml:space="preserve"><value>แหล่งข้อมูลที่เชื่อมต่อทำงานเป็นปกติ</value></data>
+  <data name="SourcesDegraded" xml:space="preserve"><value>แหล่งข้อมูล {0} รายการไม่พร้อมใช้งานชั่วคราว</value></data>
+  <data name="UpdatedAt" xml:space="preserve"><value>อัปเดตเมื่อ {0}</value></data>
+  <data name="Refresh" xml:space="preserve"><value>รีเฟรช</value></data>
+  <data name="LoadingDashboard" xml:space="preserve"><value>กำลังโหลดภาพรวมการปฏิบัติงาน</value></data>
+  <data name="TryAgain" xml:space="preserve"><value>ลองอีกครั้ง</value></data>
+  <data name="NoWorkspaces" xml:space="preserve"><value>บัญชีพนักงานนี้ยังไม่มีพื้นที่ทำงานที่แสดงบนแดชบอร์ด โปรดเลือกฟังก์ชันที่คุณมีสิทธิ์ใช้งานจากเมนูนำทาง</value></data>
+  <data name="PartialDataWarning" xml:space="preserve"><value>แหล่งข้อมูลเดิมบางส่วนไม่พร้อมใช้งานชั่วคราว คุณยังใช้งานส่วนที่แสดงอยู่ได้ตามปกติ และส่วนที่ขาดหายจะกลับมาเมื่อระบบฟื้นตัว</value></data>
+  <data name="WorkspaceTotals" xml:space="preserve"><value>ยอดรวมของแต่ละพื้นที่ทำงาน</value></data>
+  <data name="OpenWorkspace" xml:space="preserve"><value>เปิดพื้นที่ทำงาน</value></data>
+  <data name="ViewAll" xml:space="preserve"><value>ดูทั้งหมด</value></data>
+  <data name="ProductionPipeline" xml:space="preserve"><value>ภาพรวมงานผลิต</value></data>
+  <data name="ProductionPipelineSubtitle" xml:space="preserve"><value>ใบสั่งผลิตล่าสุดและความคืบหน้าตามจำนวนชิ้นงาน</value></data>
+  <data name="RecentProductionOrders" xml:space="preserve"><value>ใบสั่งผลิตล่าสุด</value></data>
+  <data name="Order" xml:space="preserve"><value>ใบสั่งผลิต</value></data>
+  <data name="OrderNumber" xml:space="preserve"><value>ใบสั่งผลิต #{0}</value></data>
+  <data name="Part" xml:space="preserve"><value>ชิ้นงาน</value></data>
+  <data name="Quantity" xml:space="preserve"><value>จำนวน</value></data>
+  <data name="Remaining" xml:space="preserve"><value>คงเหลือ</value></data>
+  <data name="Promised" xml:space="preserve"><value>กำหนดส่ง</value></data>
+  <data name="Progress" xml:space="preserve"><value>ความคืบหน้า</value></data>
+  <data name="RecentQuotations" xml:space="preserve"><value>ใบเสนอราคาล่าสุด</value></data>
+  <data name="RecentQuotationsSubtitle" xml:space="preserve"><value>รายการใบเสนอราคาที่สร้างล่าสุด</value></data>
+  <data name="Quote" xml:space="preserve"><value>ใบเสนอราคา</value></data>
+  <data name="Total" xml:space="preserve"><value>ยอดรวม</value></data>
+  <data name="Expires" xml:space="preserve"><value>หมดอายุ</value></data>
+  <data name="Decision" xml:space="preserve"><value>ผลการพิจารณา</value></data>
+  <data name="RecentActivity" xml:space="preserve"><value>กิจกรรมล่าสุด</value></data>
+  <data name="RecentActivitySubtitle" xml:space="preserve"><value>ความเคลื่อนไหวล่าสุดของคำขอและใบแจ้งหนี้</value></data>
+  <data name="RecentPayments" xml:space="preserve"><value>รายการชำระเงินล่าสุด</value></data>
+  <data name="RecentPaymentsSubtitle" xml:space="preserve"><value>รายการทางบัญชีล่าสุดจากระบบเดิม</value></data>
+  <data name="Payment" xml:space="preserve"><value>รายการชำระเงิน</value></data>
+  <data name="Recipient" xml:space="preserve"><value>ผู้รับเงิน</value></data>
+  <data name="Amount" xml:space="preserve"><value>จำนวนเงิน</value></data>
+  <data name="Date" xml:space="preserve"><value>วันที่</value></data>
+  <data name="RecentCustomers" xml:space="preserve"><value>ลูกค้าล่าสุด</value></data>
+  <data name="RecentCustomersSubtitle" xml:space="preserve"><value>ข้อมูลลูกค้าที่เพิ่มล่าสุด</value></data>
+  <data name="Customer" xml:space="preserve"><value>ลูกค้า</value></data>
+  <data name="Company" xml:space="preserve"><value>บริษัท</value></data>
+  <data name="Email" xml:space="preserve"><value>อีเมล</value></data>
+  <data name="InvoiceNumber" xml:space="preserve"><value>ใบแจ้งหนี้ #{0}</value></data>
+  <data name="RequestNumber" xml:space="preserve"><value>คำขอ #{0}</value></data>
+  <data name="Activity_invoice_paid" xml:space="preserve"><value>ชำระใบแจ้งหนี้แล้ว</value></data>
+  <data name="Activity_invoice_awaiting-payment" xml:space="preserve"><value>ใบแจ้งหนี้อยู่ระหว่างรอชำระ</value></data>
+  <data name="Activity_quotation-request_completed" xml:space="preserve"><value>ดำเนินการคำขอใบเสนอราคาเรียบร้อยแล้ว</value></data>
+  <data name="Activity_quotation-request_awaiting-review" xml:space="preserve"><value>คำขอใบเสนอราคาอยู่ระหว่างรอตรวจสอบ</value></data>
+  <data name="FinancialSnapshot" xml:space="preserve"><value>ภาพรวมการเงิน</value></data>
+  <data name="FinancialSnapshotSubtitle" xml:space="preserve"><value>สรุปรายเดือนจากระบบบัญชี</value></data>
+  <data name="ComparedWithPrevious" xml:space="preserve"><value>{0} เทียบกับงวดก่อนหน้า</value></data>
+  <data name="QuotationDecisions" xml:space="preserve"><value>ผลการพิจารณาใบเสนอราคา</value></data>
+  <data name="QuotationDecisionsSubtitle" xml:space="preserve"><value>ยอดรวมผลการพิจารณาจากระบบใบเสนอราคา</value></data>
+  <data name="NoQuotationDecisions" xml:space="preserve"><value>ยังไม่มีผลการพิจารณาใบเสนอราคา</value></data>
+  <data name="Accepted" xml:space="preserve"><value>ยอมรับแล้ว</value></data>
+  <data name="Declined" xml:space="preserve"><value>ปฏิเสธแล้ว</value></data>
+  <data name="Open" xml:space="preserve"><value>รอการพิจารณา</value></data>
+  <data name="RecentOrderProgress" xml:space="preserve"><value>ความคืบหน้าของใบสั่งผลิตล่าสุด</value></data>
+  <data name="RecentOrderProgressSubtitle" xml:space="preserve"><value>สถานะปัจจุบันของใบสั่งผลิตที่แสดงด้านบน</value></data>
+  <data name="Completed" xml:space="preserve"><value>เสร็จสิ้น</value></data>
+  <data name="InProgress" xml:space="preserve"><value>กำลังดำเนินการ</value></data>
+  <data name="Queued" xml:space="preserve"><value>รอดำเนินการ</value></data>
+  <data name="DashboardUnavailable" xml:space="preserve"><value>ไม่สามารถเปิดภาพรวมการปฏิบัติงานได้ชั่วคราว</value></data>
+  <data name="InvalidDashboardResponse" xml:space="preserve"><value>ระบบส่งข้อมูลภาพรวมการปฏิบัติงานกลับมาไม่ถูกต้อง</value></data>
+  <data name="DateUnavailable" xml:space="preserve"><value>ไม่มีข้อมูลวันที่</value></data>
+  <data name="MoneyFormat" xml:space="preserve"><value>{0} {1}</value></data>
+  <data name="CurrencyNumber" xml:space="preserve"><value>สกุลเงิน {0}</value></data>
+  <data name="CurrencyUnavailable" xml:space="preserve"><value>ไม่พบข้อมูลสกุลเงิน</value></data>
+  <data name="Metric_orders" xml:space="preserve"><value>ใบสั่งผลิต</value></data>
+  <data name="Metric_customers" xml:space="preserve"><value>ลูกค้า</value></data>
+  <data name="Metric_employees" xml:space="preserve"><value>พนักงาน</value></data>
+  <data name="Metric_invoices" xml:space="preserve"><value>ใบแจ้งหนี้</value></data>
+  <data name="Metric_quotation-requests" xml:space="preserve"><value>คำขอใบเสนอราคา</value></data>
+  <data name="Metric_quotations" xml:space="preserve"><value>ใบเสนอราคา</value></data>
+  <data name="Metric_suppliers" xml:space="preserve"><value>ผู้ขาย</value></data>
+  <data name="Metric_purchase-orders" xml:space="preserve"><value>ใบสั่งซื้อ</value></data>
+  <data name="Metric_materials" xml:space="preserve"><value>วัสดุ</value></data>
+  <data name="Metric_payments" xml:space="preserve"><value>รายการทางการเงิน</value></data>
+</root>

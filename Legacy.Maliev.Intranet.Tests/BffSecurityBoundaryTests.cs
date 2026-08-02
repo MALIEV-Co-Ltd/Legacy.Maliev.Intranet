@@ -29,7 +29,9 @@ public sealed class BffSecurityBoundaryTests
             BaseAddress = new Uri("https://localhost"),
         });
 
-        using var response = await client.GetAsync("/bff/diagnostics/events?sort=LogTimestamp_Descending&index=1&size=50");
+        using var request = new HttpRequestMessage(HttpMethod.Get, "/bff/diagnostics/events?sort=LogTimestamp_Descending&index=1&size=50");
+        request.Headers.Add("X-Test-Diagnostics", "allowed");
+        using var response = await client.SendAsync(request);
         var json = await response.Content.ReadAsStringAsync();
         using var document = JsonDocument.Parse(json);
         var item = Assert.Single(document.RootElement.GetProperty("items").EnumerateArray());
@@ -42,6 +44,21 @@ public sealed class BffSecurityBoundaryTests
         Assert.DoesNotContain("stackTrace", json, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("username", json, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("message", json, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task AuthenticatedDiagnostics_WithoutDedicatedPermission_IsForbidden()
+    {
+        await using var factory = new BffFactory();
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            AllowAutoRedirect = false,
+            BaseAddress = new Uri("https://localhost"),
+        });
+
+        using var response = await client.GetAsync("/bff/diagnostics/events?index=1&size=50");
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
     }
 
     [Fact]
@@ -110,12 +127,18 @@ public sealed class BffSecurityBoundaryTests
 
         protected override Task<AuthenticateResult> HandleAuthenticateAsync()
         {
-            var identity = new ClaimsIdentity(
-            [
+            var claims = new List<Claim>
+            {
                 new Claim(ClaimTypes.NameIdentifier, "employee-id"),
                 new Claim(ClaimTypes.Name, "MALIEV Employee"),
                 new Claim(ClaimTypes.Role, "Employee"),
-            ], SchemeName);
+            };
+            if (Request.Headers.ContainsKey("X-Test-Diagnostics"))
+            {
+                claims.Add(new Claim("permissions", "legacy-intranet.diagnostics.read"));
+            }
+
+            var identity = new ClaimsIdentity(claims, SchemeName);
             return Task.FromResult(AuthenticateResult.Success(
                 new AuthenticationTicket(new ClaimsPrincipal(identity), SchemeName)));
         }

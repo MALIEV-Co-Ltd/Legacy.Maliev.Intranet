@@ -92,7 +92,7 @@
     --maliev-font-small: 12px;
     --maliev-font-base:  13px;
     --maliev-font-large: 14px;
-    --maliev-font-sans:  'Geist', 'Noto Sans Thai', sans-serif;
+    --maliev-font-sans:  'Inter', 'Noto Sans Thai', sans-serif;
     --maliev-font-mono:  'Geist Mono', 'Noto Sans Thai', ui-monospace, SFMono-Regular, Menlo, Monaco, 'Courier New', monospace;
 
     /* Icon sizes */
@@ -107,6 +107,26 @@
 
     /* MudBlazor gap-filler (text-tertiary not in MudBlazor 9 palette) */
     --mud-palette-text-tertiary: #666666;
+
+    /* Shared operations shell */
+    --legacy-primary: #0a72ef;
+    --legacy-primary-hover: #075fc9;
+    --legacy-primary-soft: #eaf3ff;
+    --legacy-ink: #14213a;
+    --legacy-ink-secondary: #34415a;
+    --legacy-muted: #68758b;
+    --legacy-border: #dfe5ee;
+    --legacy-surface: #ffffff;
+    --legacy-surface-muted: #f3f6fa;
+    --legacy-background: #f7f8fb;
+    --legacy-warn-bg: #fff6e5;
+    --legacy-warn-border: #f2d28a;
+    --legacy-warn-fg: #7a3f00;
+    --legacy-rail-width: 248px;
+    --legacy-utility-height: 68px;
+    --legacy-radius-md: 8px;
+    --legacy-radius-lg: 10px;
+    --legacy-focus-ring: 0 0 0 2px var(--legacy-surface), 0 0 0 4px var(--legacy-primary);
 }
 
 /* ── Dark mode ────────────────────────────────────────────────── */
@@ -158,6 +178,20 @@
     --maliev-scroll-hover: #666666;
 
     --mud-palette-text-tertiary: #808080;
+
+    --legacy-primary: #6ea8fe;
+    --legacy-primary-hover: #89b9ff;
+    --legacy-primary-soft: #172b49;
+    --legacy-ink: #e6edf3;
+    --legacy-ink-secondary: #c6d0dd;
+    --legacy-muted: #9aa7b7;
+    --legacy-border: #283044;
+    --legacy-surface: #111620;
+    --legacy-surface-muted: #1a2230;
+    --legacy-background: #0d1117;
+    --legacy-warn-bg: #3a2a14;
+    --legacy-warn-border: #6a4a1a;
+    --legacy-warn-fg: #f0c274;
 }
 
 /* Scrollbar theming */

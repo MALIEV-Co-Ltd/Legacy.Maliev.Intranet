@@ -82,7 +82,7 @@ public sealed class BlazorWasmArchitectureContractTests
         Assert.Contains("@page \"/Dashboard\"", dashboard, StringComparison.Ordinal);
         Assert.Contains("@attribute [Authorize]", dashboard, StringComparison.Ordinal);
         Assert.Contains("<PageTitle>", dashboard, StringComparison.Ordinal);
-        Assert.Contains("HtmlTag=\"h1\"", dashboard, StringComparison.Ordinal);
+        Assert.Contains("<h1 id=\"dashboard-heading\">", dashboard, StringComparison.Ordinal);
         Assert.DoesNotContain("DbContext", dashboard, StringComparison.Ordinal);
         Assert.DoesNotContain("AccessToken", dashboard, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("RefreshToken", dashboard, StringComparison.OrdinalIgnoreCase);
@@ -94,6 +94,8 @@ public sealed class BlazorWasmArchitectureContractTests
         Assert.Contains("<NotAuthorized Context=\"authState\">", app, StringComparison.Ordinal);
         Assert.Contains("<LoginRedirect", app, StringComparison.Ordinal);
         Assert.Contains("/Login?returnUrl=", redirect, StringComparison.Ordinal);
+        Assert.Contains("IStringLocalizer<LoginRedirect>", redirect, StringComparison.Ordinal);
+        Assert.Contains("Text[\"Redirecting\"]", redirect, StringComparison.Ordinal);
     }
 
     [Fact]

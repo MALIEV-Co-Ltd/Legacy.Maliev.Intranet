@@ -1,104 +1,22 @@
+@using Legacy.Maliev.Intranet.Client.Components.Shell
 @using Legacy.Maliev.Intranet.Contracts
-@using Microsoft.AspNetCore.Components.Authorization
-@inject NavigationManager Navigation
 @inject LegacyThemeService ThemeService
 @inject IStringLocalizer<LegacyTopBar> Text
 @implements IDisposable
 
 <header class="legacy-topbar" @onkeydown="HandleKeyDown">
-    <div class="legacy-topbar-brand">
-        <button type="button"
-                class="legacy-mobile-menu-button"
-                aria-label="@(_mobileOpen ? Text["Close navigation"] : Text["Open navigation"])"
-                aria-expanded="@_mobileOpen"
-                aria-controls="legacy-mobile-nav"
-                @onclick="ToggleMobileAsync">
-            <MudIcon Icon="@(_mobileOpen ? Icons.Material.Filled.Close : Icons.Material.Filled.Menu)" Size="Size.Small" />
-        </button>
-        <a class="legacy-logo-link" href="/Dashboard" aria-label="@Text["MALIEV dashboard"]">
-            <img src="images/MALIEV_BLACK.svg" alt="MALIEV" />
-        </a>
-    </div>
+    <button type="button"
+            class="legacy-mobile-menu-button"
+            aria-label="@Text["Open navigation"]"
+            aria-expanded="@NavigationOpen"
+            aria-controls="legacy-navigation-rail-drawer"
+            @onclick="OnToggleNavigation">
+        <MudIcon Icon="@Icons.Material.Filled.Menu" Size="Size.Small" />
+    </button>
 
-    <nav class="legacy-desktop-nav" aria-label="@Text["Primary navigation"]">
-        @foreach (var group in _desktopNavGroups)
-        {
-            <MudMenu Dense="true" AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft" Class="legacy-nav-menu">
-                <ActivatorContent>
-                    <button type="button"
-                            class="legacy-nav-trigger @(IsGroupActive(group) ? "active" : string.Empty)"
-                            aria-label="@NavigationLabel(group.Label)"
-                            @onclick="context.ToggleAsync">
-                        <MudIcon Icon="@group.Icon" Size="Size.Small" />
-                        <span>@Text[group.Label]</span>
-                        <MudIcon Icon="@Icons.Material.Filled.KeyboardArrowDown" Size="Size.Small" />
-                    </button>
-                </ActivatorContent>
-                <ChildContent>
-                    @foreach (var item in group.Items)
-                    {
-                        <MudMenuItem Href="@item.Href"
-                                     Icon="@item.Icon"
-                                     Disabled="@(!IsItemEnabled(item))"
-                                     Class="@(GetDesktopItemClass(item))">
-                            <div class="legacy-nav-menu-copy">
-                                <span>@Text[item.Label]</span>
-                                @if (!string.IsNullOrWhiteSpace(item.Description))
-                                {
-                                    <small>@Text[item.Description]</small>
-                                }
-                            </div>
-                        </MudMenuItem>
-                    }
-                </ChildContent>
-            </MudMenu>
-        }
-
-        <MudMenu Dense="true"
-                 AnchorOrigin="Origin.BottomRight"
-                 TransformOrigin="Origin.TopRight"
-                 Class="legacy-nav-menu legacy-nav-more-menu">
-            <ActivatorContent>
-                <button type="button"
-                        class="legacy-nav-trigger legacy-nav-more-trigger @(IsOverflowActive() ? "active" : string.Empty)"
-                        aria-label="@Text["More navigation"]"
-                        @onclick="context.ToggleAsync">
-                    <MudIcon Icon="@Icons.Material.Outlined.Apps" Size="Size.Small" />
-                    <span>@Text["More"]</span>
-                    <MudIcon Icon="@Icons.Material.Filled.KeyboardArrowDown" Size="Size.Small" />
-                </button>
-            </ActivatorContent>
-            <ChildContent>
-                @foreach (var group in _desktopOverflowNavGroups)
-                {
-                    <div class="legacy-nav-more-section" role="presentation">
-                        <div class="legacy-nav-more-section-title">
-                            <MudIcon Icon="@group.Icon" Size="Size.Small" />
-                            <span>@Text[group.Label]</span>
-                        </div>
-
-                        @foreach (var item in group.Items)
-                        {
-                            <MudMenuItem Href="@item.Href"
-                                         Icon="@item.Icon"
-                                         Disabled="@(!IsItemEnabled(item))"
-                                         Class="@(GetDesktopItemClass(item))">
-                                <div class="legacy-nav-menu-copy">
-                                    <span>@Text[item.Label]</span>
-                                    @if (!string.IsNullOrWhiteSpace(item.Description))
-                                    {
-                                        <small>@Text[item.Description]</small>
-                                    }
-                                </div>
-                            </MudMenuItem>
-                        }
-                    </div>
-                }
-            </ChildContent>
-        </MudMenu>
-    </nav>
-
-    <div class="legacy-topbar-spacer"></div>
+    <LegacyGlobalSearch Session="Session" />
+    <LegacyQuickActions Session="Session" />
+    <LegacyLanguageSelector />
 
     <button type="button"
             class="legacy-theme-toggle"
@@ -133,7 +51,7 @@
                             <MudIcon Icon="@Icons.Material.Outlined.AccountCircle" Size="Size.Small" />
                             <span>@Text["My profile"]</span>
                         </a>
-                        <div class="legacy-profile-menu-divider" />
+                        <div class="legacy-profile-menu-divider"></div>
                         <button type="button" class="legacy-profile-action" role="menuitem" @onclick="SignOutFromProfileAsync">
                             <MudIcon Icon="@Icons.Material.Outlined.Logout" Size="Size.Small" />
                             <span>@Text["Sign out"]</span>
@@ -146,109 +64,23 @@
             <a class="legacy-signin-link" href="/Login">@Text["Sign in"]</a>
         </NotAuthorized>
     </AuthorizeView>
+
     @if (Session is null)
     {
         <span class="legacy-session-status" role="status">@Text["Session unavailable"]</span>
     }
 </header>
 
-@if (_mobileOpen)
-{
-    <div class="legacy-mobile-backdrop" aria-hidden="true" @onclick="CloseMobileAsync"></div>
-    <aside id="legacy-mobile-nav" class="legacy-mobile-nav" role="dialog" aria-modal="true" aria-label="@Text["Mobile navigation"]">
-        <div class="legacy-mobile-nav-header">
-            <span>@Text["Workspace navigation"]</span>
-            <button type="button" class="legacy-icon-button" aria-label="@Text["Close navigation"]" @onclick="CloseMobileAsync">
-                <MudIcon Icon="@Icons.Material.Filled.Close" Size="Size.Small" />
-            </button>
-        </div>
-        @foreach (var group in LegacyAppNavigation.Groups)
-        {
-            <section class="legacy-mobile-group" aria-label="@Text[group.Label]">
-                <div class="legacy-mobile-group-title">
-                    <MudIcon Icon="@group.Icon" Size="Size.Small" />
-                    <span>@Text[group.Label]</span>
-                </div>
-                @foreach (var item in group.Items)
-                {
-                    @if (IsItemEnabled(item))
-                    {
-                        <a href="@item.Href"
-                           class="legacy-mobile-link @(IsItemActive(item) ? "active" : string.Empty)"
-                           aria-current="@GetAriaCurrent(item)"
-                           @onclick="CloseMobileAsync">
-                            <MudIcon Icon="@item.Icon" Size="Size.Small" />
-                            <span>@Text[item.Label]</span>
-                        </a>
-                    }
-                    else
-                    {
-                        <span class="legacy-mobile-link disabled"
-                              aria-disabled="true"
-                              tabindex="-1">
-                            <MudIcon Icon="@item.Icon" Size="Size.Small" />
-                            <span>@Text[item.Label]</span>
-                        </span>
-                    }
-                }
-            </section>
-        }
-    </aside>
-}
-
 @code {
     [Parameter] public EmployeeSessionSummary? Session { get; set; }
+    [Parameter] public bool NavigationOpen { get; set; }
+    [Parameter] public EventCallback OnToggleNavigation { get; set; }
+    [Parameter] public EventCallback OnCloseNavigation { get; set; }
     [Parameter] public EventCallback OnSignOut { get; set; }
 
-    private static readonly IReadOnlyList<LegacyNavGroup> _desktopNavGroups = LegacyAppNavigation.DesktopGroups;
-    private static readonly IReadOnlyList<LegacyNavGroup> _desktopOverflowNavGroups = LegacyAppNavigation.DesktopOverflowGroups;
-
-    private bool _mobileOpen;
     private bool _profileMenuOpen;
 
-    protected override void OnInitialized()
-    {
-        Navigation.LocationChanged += OnLocationChanged;
-        ThemeService.Changed += OnThemeChanged;
-    }
-
-    private bool IsGroupActive(LegacyNavGroup group) => group.Items.Any(IsItemActive);
-
-    private bool IsOverflowActive() => _desktopOverflowNavGroups.Any(IsGroupActive);
-
-    private bool IsItemEnabled(LegacyNavItem item) => LegacyNavigationAuthorization.IsEnabled(
-        Session?.IsAuthenticated == true,
-        item.RequiredPermission,
-        Session?.Permissions,
-        Session?.Roles);
-
-    private string GetDesktopItemClass(LegacyNavItem item)
-    {
-        var classes = IsItemActive(item) ? "legacy-nav-item active" : "legacy-nav-item";
-        return IsItemEnabled(item) ? classes : $"{classes} disabled";
-    }
-
-    private bool IsItemActive(LegacyNavItem item)
-    {
-        var current = Navigation.ToBaseRelativePath(Navigation.Uri).Split('?', '#')[0].Trim('/');
-        var target = item.Href.Trim('/').Split('?', '#')[0];
-        return item.Match == NavLinkMatch.All
-            ? string.Equals(current, target, StringComparison.OrdinalIgnoreCase)
-            : string.Equals(current, target, StringComparison.OrdinalIgnoreCase) ||
-              current.StartsWith($"{target}/", StringComparison.OrdinalIgnoreCase);
-    }
-
-    private Task ToggleMobileAsync()
-    {
-        _mobileOpen = !_mobileOpen;
-        return Task.CompletedTask;
-    }
-
-    private Task CloseMobileAsync()
-    {
-        _mobileOpen = false;
-        return Task.CompletedTask;
-    }
+    protected override void OnInitialized() => ThemeService.Changed += OnThemeChanged;
 
     private Task ToggleProfileMenuAsync()
     {
@@ -265,42 +97,23 @@
     private async Task SignOutFromProfileAsync()
     {
         _profileMenuOpen = false;
-        await SignOutAsync();
+        await OnSignOut.InvokeAsync();
     }
 
-    private string? GetAriaCurrent(LegacyNavItem item) => IsItemActive(item) ? "page" : null;
-
-    private void OnLocationChanged(object? sender, LocationChangedEventArgs args)
-    {
-        _mobileOpen = false;
-        _profileMenuOpen = false;
-        _ = InvokeAsync(StateHasChanged);
-    }
-
-    private Task SignOutAsync() => OnSignOut.InvokeAsync();
-
-    private string ThemeLabel => ThemeService.IsDarkMode ? Text["Use light theme"].Value : Text["Use dark theme"].Value;
-
-    private string NavigationLabel(string groupLabel) => $"{Text[groupLabel].Value} {Text["Navigation"].Value}";
-
-    private Task ToggleThemeAsync() => ThemeService.ToggleAsync();
-
-    private void OnThemeChanged(object? sender, EventArgs args) => _ = InvokeAsync(StateHasChanged);
-
-    private void HandleKeyDown(KeyboardEventArgs args)
+    private async Task HandleKeyDown(KeyboardEventArgs args)
     {
         if (args.Key == "Escape")
         {
-            _mobileOpen = false;
             _profileMenuOpen = false;
+            await OnCloseNavigation.InvokeAsync();
         }
     }
 
-    public void Dispose()
-    {
-        Navigation.LocationChanged -= OnLocationChanged;
-        ThemeService.Changed -= OnThemeChanged;
-    }
+    private string ThemeLabel => ThemeService.IsDarkMode ? Text["Use light theme"].Value : Text["Use dark theme"].Value;
+    private Task ToggleThemeAsync() => ThemeService.ToggleAsync();
+    private void OnThemeChanged(object? sender, EventArgs args) => _ = InvokeAsync(StateHasChanged);
+
+    public void Dispose() => ThemeService.Changed -= OnThemeChanged;
 
     private static string GetInitials(string? name)
     {

@@ -9,6 +9,7 @@ using Legacy.Maliev.Intranet.Suppliers;
 using Maliev.Aspire.ServiceDefaults;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Http.Features;
+using System.Globalization;
 
 var builder = WebApplication.CreateBuilder(args);
 const long maximumUploadBytes = 200L * 1024L * 1024L;
@@ -144,6 +145,14 @@ var app = builder.Build();
 
 app.UseStandardMiddleware();
 app.UseStaticFiles();
+app.Use(async (context, next) =>
+{
+    var culture = Legacy.Maliev.Intranet.Contracts.WorkspaceCulture.GetCulture(
+        context.Request.Cookies["maliev_culture"]);
+    CultureInfo.CurrentCulture = culture;
+    CultureInfo.CurrentUICulture = culture;
+    await next(context);
+});
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapDefaultEndpoints("intranet");
@@ -155,8 +164,9 @@ foreach (var route in LegacyRoutes.Retired)
         title: "Retired legacy route",
         detail: "This historical route never had an operational domain or API contract."));
 }
-app.MapPost("/Logout", async (HttpContext context, EmployeeSessionService sessions, CancellationToken cancellationToken) =>
+app.MapPost("/Logout", async (HttpContext context, Microsoft.AspNetCore.Antiforgery.IAntiforgery antiforgery, EmployeeSessionService sessions, CancellationToken cancellationToken) =>
 {
+    await antiforgery.ValidateRequestAsync(context);
     await sessions.SignOutAsync(context, cancellationToken);
     return Results.LocalRedirect("/Login");
 }).RequireAuthorization();

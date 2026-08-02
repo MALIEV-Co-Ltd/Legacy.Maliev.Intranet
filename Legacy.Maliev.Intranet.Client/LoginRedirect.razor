@@ -1,8 +1,9 @@
 @inject NavigationManager Navigation
+@inject IStringLocalizer<LoginRedirect> Text
 
 <MudStack AlignItems="AlignItems.Center" Spacing="2" Class="pa-6">
     <MudProgressCircular Indeterminate="true" Color="Color.Primary" />
-    <MudText Typo="Typo.body2">Redirecting to employee sign in…</MudText>
+    <MudText Typo="Typo.body2">@Text["Redirecting"]</MudText>
 </MudStack>
 
 @code {

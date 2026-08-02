@@ -1,0 +1,125 @@
+@using Legacy.Maliev.Intranet.Client.Layout
+@inject NavigationManager Navigation
+@inject IStringLocalizer<LegacyTopBar> Text
+
+<div class="legacy-global-search" @onkeydown="HandleKeyDown" @onfocusout="Close">
+    <label class="visually-hidden" for="legacy-global-search-input">@Text["Search workspace"]</label>
+    <MudIcon Icon="@Icons.Material.Outlined.Search" Size="Size.Small" />
+    <input id="legacy-global-search-input"
+           type="search"
+           placeholder="@Text["Search customers, orders, quotations and more"]"
+           autocomplete="off"
+           value="@_query"
+           @oninput="OnInput"
+           @onfocus="Open"
+           aria-expanded="@_open"
+           aria-controls="legacy-global-search-results"
+           aria-activedescendant="@ActiveDescendantId"
+           aria-autocomplete="list"
+           role="combobox" />
+    @if (_open)
+    {
+        <div id="legacy-global-search-results" class="legacy-search-results" role="listbox" aria-label="@Text["Search results"]">
+            @if (Results.Count == 0)
+            {
+                <p role="status">@Text["No matching workspace pages"]</p>
+            }
+            else
+            {
+                @for (var index = 0; index < Results.Count; index++)
+                {
+                    var result = Results[index];
+                    <button type="button"
+                            id="@OptionId(index)"
+                            role="option"
+                            aria-selected="@(index == _activeIndex)"
+                            class="legacy-search-result @(index == _activeIndex ? "active" : string.Empty)"
+                            @onmousedown:preventDefault="true"
+                            @onclick="() => NavigateTo(result.Item.Href)">
+                        <MudIcon Icon="@result.Item.Icon" Size="Size.Small" />
+                        <span><strong>@Text[result.Item.Label]</strong><small>@Text[result.Group.Label] · @Text[result.Item.Description ?? result.Item.Label]</small></span>
+                    </button>
+                }
+            }
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public EmployeeSessionSummary? Session { get; set; }
+
+    private string _query = string.Empty;
+    private bool _open;
+    private int _activeIndex;
+
+    private string? ActiveDescendantId => _open && Results.Count > 0
+        ? OptionId(Math.Clamp(_activeIndex, 0, Results.Count - 1))
+        : null;
+
+    private static string OptionId(int index) => $"legacy-global-search-option-{index}";
+
+    private IReadOnlyList<SearchResult> Results => LegacyAppNavigation.Groups
+        .SelectMany(group => group.Items.Select(item => new SearchResult(group, item)))
+        .Where(result => IsItemEnabled(result.Item))
+        .Where(result => string.IsNullOrWhiteSpace(_query) || SearchText(result).Contains(_query.Trim(), StringComparison.CurrentCultureIgnoreCase))
+        .Take(8)
+        .ToArray();
+
+    private bool IsItemEnabled(LegacyNavItem item) => LegacyNavigationAuthorization.IsEnabled(
+        Session?.IsAuthenticated == true,
+        item.RequiredPermission,
+        Session?.Permissions,
+        Session?.Roles);
+
+    private string SearchText(SearchResult result) => string.Join(' ',
+        Text[result.Group.Label].Value,
+        Text[result.Item.Label].Value,
+        Text[result.Item.Description ?? result.Item.Label].Value,
+        result.Item.Href);
+
+    private void OnInput(ChangeEventArgs args)
+    {
+        _query = args.Value?.ToString() ?? string.Empty;
+        _activeIndex = 0;
+        _open = true;
+    }
+
+    private void Open(FocusEventArgs _) => _open = true;
+    private void Close(FocusEventArgs _) => _open = false;
+
+    private void HandleKeyDown(KeyboardEventArgs args)
+    {
+        if (args.Key == "Escape")
+        {
+            _open = false;
+            return;
+        }
+
+        if (!_open || Results.Count == 0)
+        {
+            return;
+        }
+
+        if (args.Key == "ArrowDown")
+        {
+            _activeIndex = (_activeIndex + 1) % Results.Count;
+        }
+        else if (args.Key == "ArrowUp")
+        {
+            _activeIndex = (_activeIndex - 1 + Results.Count) % Results.Count;
+        }
+        else if (args.Key == "Enter")
+        {
+            NavigateTo(Results[Math.Clamp(_activeIndex, 0, Results.Count - 1)].Item.Href);
+        }
+    }
+
+    private void NavigateTo(string href)
+    {
+        _open = false;
+        _query = string.Empty;
+        Navigation.NavigateTo(href);
+    }
+
+    private sealed record SearchResult(LegacyNavGroup Group, LegacyNavItem Item);
+}

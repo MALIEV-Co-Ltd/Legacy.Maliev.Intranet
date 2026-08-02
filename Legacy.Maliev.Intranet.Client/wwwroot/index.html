@@ -60,34 +60,35 @@
     <link href="css/module-pages.css" rel="stylesheet" />
     <link href="css/utilities.css" rel="stylesheet" />
     <link href="css/mudblazor-overrides.css" rel="stylesheet" />
+    <link href="css/operations-pages.css" rel="stylesheet" />
     <link href="css/loading-shell.css" rel="stylesheet" />
     <link href="Legacy.Maliev.Intranet.Client.styles.css" rel="stylesheet" />
     <link rel="icon" type="image/svg+xml" href="images/favicon.svg" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400..700&family=Geist+Mono:wght@400..600&family=Noto+Sans+Thai:wght@100..900&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400..800&family=Geist+Mono:wght@400..600&family=Noto+Sans+Thai:wght@100..900&display=swap" rel="stylesheet" />
     <style>
         :root {
-            --mud-typography-default-family: 'Geist', 'Noto Sans Thai', sans-serif;
-            --mud-typography-h1-family: 'Geist', 'Noto Sans Thai', sans-serif;
-            --mud-typography-h2-family: 'Geist', 'Noto Sans Thai', sans-serif;
-            --mud-typography-h3-family: 'Geist', 'Noto Sans Thai', sans-serif;
-            --mud-typography-h4-family: 'Geist', 'Noto Sans Thai', sans-serif;
-            --mud-typography-h5-family: 'Geist', 'Noto Sans Thai', sans-serif;
-            --mud-typography-h6-family: 'Geist', 'Noto Sans Thai', sans-serif;
-            --mud-typography-body1-family: 'Geist', 'Noto Sans Thai', sans-serif;
-            --mud-typography-body2-family: 'Geist', 'Noto Sans Thai', sans-serif;
-            --mud-typography-button-family: 'Geist', 'Noto Sans Thai', sans-serif;
+            --mud-typography-default-family: 'Inter', 'Noto Sans Thai', sans-serif;
+            --mud-typography-h1-family: 'Inter', 'Noto Sans Thai', sans-serif;
+            --mud-typography-h2-family: 'Inter', 'Noto Sans Thai', sans-serif;
+            --mud-typography-h3-family: 'Inter', 'Noto Sans Thai', sans-serif;
+            --mud-typography-h4-family: 'Inter', 'Noto Sans Thai', sans-serif;
+            --mud-typography-h5-family: 'Inter', 'Noto Sans Thai', sans-serif;
+            --mud-typography-h6-family: 'Inter', 'Noto Sans Thai', sans-serif;
+            --mud-typography-body1-family: 'Inter', 'Noto Sans Thai', sans-serif;
+            --mud-typography-body2-family: 'Inter', 'Noto Sans Thai', sans-serif;
+            --mud-typography-button-family: 'Inter', 'Noto Sans Thai', sans-serif;
         }
 
         body {
-            font-family: 'Geist', 'Noto Sans Thai', sans-serif !important;
+            font-family: 'Inter', 'Noto Sans Thai', sans-serif !important;
         }
     </style>
 </head>
 <body>
     <div id="app">
-        <div class="legacy-wasm-loading" role="status" aria-live="polite" aria-label="Loading MALIEV Intranet">
+        <div id="workspace-loading" class="legacy-wasm-loading" role="status" aria-live="polite" aria-label="Loading MALIEV Intranet">
             <svg class="loading-progress" aria-hidden="true" focusable="false">
                 <circle r="40%" cx="50%" cy="50%" />
                 <circle r="40%" cx="50%" cy="50%" />
@@ -96,13 +97,14 @@
         </div>
     </div>
     <div id="blazor-error-ui" role="alert">
-        <span>An unhandled error has occurred.</span>
-        <a href="." class="reload">Reload</a>
-        <button type="button" class="dismiss" aria-label="Dismiss error">&times;</button>
+        <span id="workspace-fatal-message">An unexpected error occurred.</span>
+        <a id="workspace-reload" href="." class="reload">Reload</a>
+        <button id="workspace-dismiss" type="button" class="dismiss" aria-label="Dismiss error">&times;</button>
     </div>
     <script src="_content/MudBlazor/MudBlazor.min.js"></script>
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <script src="js/google-identity-signin.js"></script>
+    <script src="js/workspace-culture.js"></script>
     <script src="_framework/blazor.webassembly.js"></script>
 </body>
 </html>

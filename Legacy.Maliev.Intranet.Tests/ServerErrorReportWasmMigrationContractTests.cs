@@ -9,6 +9,7 @@ public sealed class ServerErrorReportWasmMigrationContractTests
         var featureProject = Path.Combine(root, "Legacy.Maliev.Intranet.Client.Features.Diagnostics", "Legacy.Maliev.Intranet.Client.Features.Diagnostics.csproj");
         var featurePage = Path.Combine(root, "Legacy.Maliev.Intranet.Client.Features.Diagnostics", "Pages", "ErrorReport.razor");
         var bffProgram = File.ReadAllText(Path.Combine(root, "Legacy.Maliev.Intranet.Bff", "Program.cs"));
+        var authContracts = File.ReadAllText(Path.Combine(root, "Legacy.Maliev.Intranet.Server", "Auth", "AuthContracts.cs"));
         var app = File.ReadAllText(Path.Combine(root, "Legacy.Maliev.Intranet.Client", "App.razor"));
         var clientProject = File.ReadAllText(Path.Combine(root, "Legacy.Maliev.Intranet.Client", "Legacy.Maliev.Intranet.Client.csproj"));
         var legacyRoutes = File.ReadAllText(Path.Combine(root, "Legacy.Maliev.Intranet", "LegacyRoutes.cs"));
@@ -28,7 +29,8 @@ public sealed class ServerErrorReportWasmMigrationContractTests
         Assert.DoesNotContain("Username", page, StringComparison.OrdinalIgnoreCase);
 
         Assert.Contains("MapGet(\"/bff/diagnostics/events\"", bffProgram, StringComparison.Ordinal);
-        Assert.Contains("RequireAuthorization()", bffProgram, StringComparison.Ordinal);
+        Assert.Contains("RequireAuthorization(LegacyEmployeePermissions.DiagnosticsRead)", bffProgram, StringComparison.Ordinal);
+        Assert.Contains("legacy-intranet.diagnostics.read", authContracts, StringComparison.Ordinal);
         Assert.Contains("Legacy.Maliev.Intranet.Client.Features.Diagnostics.wasm", app, StringComparison.Ordinal);
         Assert.Contains("Legacy.Maliev.Intranet.Client.Features.Diagnostics.wasm", clientProject, StringComparison.Ordinal);
         Assert.DoesNotContain("\"/Server/ErrorReport\"", legacyRoutes, StringComparison.Ordinal);

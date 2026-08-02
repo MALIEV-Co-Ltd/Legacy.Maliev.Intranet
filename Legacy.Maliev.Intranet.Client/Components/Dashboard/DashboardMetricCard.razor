@@ -1,0 +1,18 @@
+<article class="dashboard-metric-card">
+    <div class="dashboard-metric-icon" aria-hidden="true">
+        <MudIcon Icon="@Icon" />
+    </div>
+    <div class="dashboard-metric-copy">
+        <span class="dashboard-metric-label">@Label</span>
+        <strong class="dashboard-metric-value">@Value</strong>
+        <a class="dashboard-metric-link" href="@NavigateTo">@LinkText <span aria-hidden="true">→</span></a>
+    </div>
+</article>
+
+@code {
+    [Parameter, EditorRequired] public string Label { get; set; } = string.Empty;
+    [Parameter, EditorRequired] public string Value { get; set; } = string.Empty;
+    [Parameter, EditorRequired] public string NavigateTo { get; set; } = string.Empty;
+    [Parameter, EditorRequired] public string LinkText { get; set; } = string.Empty;
+    [Parameter] public string Icon { get; set; } = Icons.Material.Outlined.Dashboard;
+}

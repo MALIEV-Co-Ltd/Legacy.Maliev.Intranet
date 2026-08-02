@@ -3,11 +3,12 @@
 @page "/mfg/procurement/{Id:int}"
 @attribute [Authorize]
 @inject NavigationManager Navigation
+@inject IStringLocalizer<CompatibilityDetailRedirect> Text
 
-<PageTitle>Opening workspace record</PageTitle>
+<PageTitle>@Text["PageTitle"]</PageTitle>
 
 <div class="legacy-route-redirect" role="status" aria-live="polite">
-    <MudProgressLinear Indeterminate="true" aria-label="Opening workspace record" />
+    <MudProgressLinear Indeterminate="true" aria-label="@Text["Opening"]" />
 </div>
 
 @code {

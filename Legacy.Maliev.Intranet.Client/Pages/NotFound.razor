@@ -1,10 +1,11 @@
 @page "/not-found"
 @attribute [AllowAnonymous]
+@inject IStringLocalizer<NotFound> Text
 
-<PageTitle>Page Not Found - MALIEV Intranet</PageTitle>
+<PageTitle>@Text["PageTitle"]</PageTitle>
 
 <div class="legacy-not-found" role="alert">
-    <MudText Typo="Typo.h4" HtmlTag="h1">Page not found</MudText>
-    <MudText Typo="Typo.body1">The workspace page you requested does not exist.</MudText>
-    <MudButton Variant="Variant.Filled" Color="Color.Primary" Href="/Dashboard">Go to dashboard</MudButton>
+    <MudText Typo="Typo.h4" HtmlTag="h1">@Text["Heading"]</MudText>
+    <MudText Typo="Typo.body1">@Text["Description"]</MudText>
+    <MudButton Variant="Variant.Filled" Color="Color.Primary" Href="/Dashboard">@Text["Dashboard"]</MudButton>
 </div>

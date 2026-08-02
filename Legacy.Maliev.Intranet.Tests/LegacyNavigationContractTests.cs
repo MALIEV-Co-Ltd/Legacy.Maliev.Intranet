@@ -75,11 +75,12 @@ public sealed class LegacyNavigationContractTests
             "Legacy.Maliev.Intranet.Client",
             "Layout",
             "LegacyAppNavigation.cs"));
-        var topbar = File.ReadAllText(Path.Combine(
+        var rail = File.ReadAllText(Path.Combine(
             root,
             "Legacy.Maliev.Intranet.Client",
-            "Layout",
-            "LegacyTopBar.razor"));
+            "Components",
+            "Shell",
+            "LegacyNavigationRail.razor"));
         var css = File.ReadAllText(Path.Combine(
             root,
             "Legacy.Maliev.Intranet.Client",
@@ -88,14 +89,14 @@ public sealed class LegacyNavigationContractTests
 
         Assert.Contains("RequiredPermission", navigation, StringComparison.Ordinal);
         Assert.Contains("legacy.orders.read", navigation, StringComparison.Ordinal);
-        Assert.Contains("LegacyNavigationAuthorization.IsEnabled", topbar, StringComparison.Ordinal);
-        Assert.Contains("Disabled=\"@(!IsItemEnabled(item))\"", topbar, StringComparison.Ordinal);
-        Assert.Contains("aria-disabled=\"true\"", topbar, StringComparison.Ordinal);
-        Assert.Contains(".legacy-mobile-link.disabled", css, StringComparison.Ordinal);
+        Assert.Contains("LegacyNavigationAuthorization.IsEnabled", rail, StringComparison.Ordinal);
+        Assert.Contains("@if (IsItemEnabled(item))", rail, StringComparison.Ordinal);
+        Assert.DoesNotContain("aria-disabled=\"true\"", rail, StringComparison.Ordinal);
+        Assert.DoesNotContain(".legacy-mobile-link.disabled", css, StringComparison.Ordinal);
     }
 
     [Fact]
-    public void DesktopNavigation_UsesCurrentPrimaryAndOverflowGroupingForLegacyWorkflows()
+    public void DesktopNavigation_UsesPersistentGroupedRailForLegacyWorkflows()
     {
         var root = FindRoot();
         var navigation = File.ReadAllText(Path.Combine(
@@ -103,20 +104,18 @@ public sealed class LegacyNavigationContractTests
             "Legacy.Maliev.Intranet.Client",
             "Layout",
             "LegacyAppNavigation.cs"));
-        var topbar = File.ReadAllText(Path.Combine(
+        var rail = File.ReadAllText(Path.Combine(
             root,
             "Legacy.Maliev.Intranet.Client",
-            "Layout",
-            "LegacyTopBar.razor"));
+            "Components",
+            "Shell",
+            "LegacyNavigationRail.razor"));
 
-        Assert.Contains("DesktopGroups", navigation, StringComparison.Ordinal);
-        Assert.Contains("DesktopOverflowGroups", navigation, StringComparison.Ordinal);
         Assert.Contains("Description", navigation, StringComparison.Ordinal);
-        Assert.Contains("_desktopNavGroups", topbar, StringComparison.Ordinal);
-        Assert.Contains("_desktopOverflowNavGroups", topbar, StringComparison.Ordinal);
-        Assert.Contains("legacy-nav-more-trigger", topbar, StringComparison.Ordinal);
-        Assert.Contains("legacy-nav-more-section", topbar, StringComparison.Ordinal);
-        Assert.Contains("legacy-nav-menu-copy", topbar, StringComparison.Ordinal);
+        Assert.Contains("LegacyAppNavigation.Groups", rail, StringComparison.Ordinal);
+        Assert.Contains("legacy-rail-group", rail, StringComparison.Ordinal);
+        Assert.Contains("aria-current", rail, StringComparison.Ordinal);
+        Assert.DoesNotContain("legacy-nav-more-trigger", rail, StringComparison.Ordinal);
 
         // The primary desktop groups mirror current workspace ordering while
         // retaining only contracts that are actually owned by the migration.
