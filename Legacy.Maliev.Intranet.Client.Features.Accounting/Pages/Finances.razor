@@ -173,8 +173,8 @@
 
     protected override async Task OnParametersSetAsync()
     {
-        Index = Math.Max(1, Index);
-        Size = Math.Clamp(Size, 1, 100);
+        Index = PaginationQueryDefaults.NormalizeIndex(Index);
+        Size = PaginationQueryDefaults.NormalizeSize(Size, fallback: 25, maximum: 100);
         currentSort = Enum.TryParse<FinancePaymentSort>(SortQuery, true, out var parsed)
             ? parsed
             : FinancePaymentSort.PaymentCreatedDate_Descending;

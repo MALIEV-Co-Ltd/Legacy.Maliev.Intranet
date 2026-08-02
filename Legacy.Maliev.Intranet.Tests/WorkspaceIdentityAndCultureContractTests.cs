@@ -27,6 +27,14 @@ public sealed class WorkspaceIdentityAndCultureContractTests
     }
 
     [Fact]
+    public void WorkspaceEmailPolicy_AllowsLocalFixtureDomainOnlyWhenExplicitlyEnabled()
+    {
+        Assert.False(WorkspaceIdentityRules.IsAllowedEmployeeEmail("local.employee@maliev.test"));
+        Assert.True(WorkspaceIdentityRules.IsAllowedEmployeeEmail("local.employee@maliev.test", allowLocalTestDomain: true));
+        Assert.False(WorkspaceIdentityRules.IsAllowedEmployeeEmail("employee@example.com", allowLocalTestDomain: true));
+    }
+
+    [Fact]
     public void WorkspaceCulture_UsesTheCurrentSupportedLanguageContract()
     {
         Assert.Equal("en-TH", WorkspaceCulture.DefaultCultureName);

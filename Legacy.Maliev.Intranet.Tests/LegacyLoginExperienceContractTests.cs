@@ -18,6 +18,8 @@ public sealed class LegacyLoginExperienceContractTests
         Assert.Contains("EmployeeAuthenticationClient", login, StringComparison.Ordinal);
         Assert.Contains("Remember me", login, StringComparison.Ordinal);
         Assert.Contains("WorkspaceIdentityRules.IsAllowedEmployeeEmail", login, StringComparison.Ordinal);
+        Assert.Contains("IsLocalAspireHost", login, StringComparison.Ordinal);
+        Assert.Contains("maliev\\\\.test", login, StringComparison.Ordinal);
         Assert.Contains("@onsubmit:preventDefault", login, StringComparison.Ordinal);
         Assert.DoesNotContain("access_token", login, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("refresh_token", login, StringComparison.OrdinalIgnoreCase);
