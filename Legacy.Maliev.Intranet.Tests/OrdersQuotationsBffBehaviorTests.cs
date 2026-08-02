@@ -39,10 +39,14 @@ public sealed class OrdersQuotationsBffBehaviorTests
         using var body = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        Assert.Contains(downstream.Requests, item => item.Method == "GET" && item.PathAndQuery == "/employees?sort=EmployeeId_Ascending&search=&index=1&size=250");
-        Assert.Contains(downstream.Requests, item => item.Method == "GET" && item.PathAndQuery == "/Currencies");
-        Assert.Contains(downstream.Requests, item => item.Method == "GET" && item.PathAndQuery == "/customers/42");
-        Assert.Contains(downstream.Requests, item => item.Method == "GET" && item.PathAndQuery == "/Orders/customers/42?sort=OrderCreatedDate_Descending&search=&index=1&size=250");
+        Assert.Equal(
+            [
+                "GET /Currencies",
+                "GET /Orders/customers/42?sort=OrderCreatedDate_Descending&search=&index=1&size=250",
+                "GET /customers/42",
+                "GET /employees?sort=EmployeeId_Ascending&search=&index=1&size=250",
+            ],
+            downstream.Requests.Select(RequestBoundary).Order(StringComparer.Ordinal));
         Assert.All(downstream.Requests, item => Assert.Equal("Bearer bff-service-token", item.Authorization));
         Assert.Equal(7, body.RootElement.GetProperty("currentEmployeeId").GetInt32());
         Assert.Equal("THB", body.RootElement.GetProperty("currencies")[0].GetProperty("shortName").GetString());
@@ -62,7 +66,9 @@ public sealed class OrdersQuotationsBffBehaviorTests
         using var response = await client.GetAsync("/bff/quotations/create/orders?search=%20bolt%20&customerId=42");
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        Assert.Contains(downstream.Requests, item => item.PathAndQuery == "/Orders/customers/42?sort=OrderCreatedDate_Descending&search=bolt&index=1&size=10");
+        Assert.Equal(
+            "GET /Orders/customers/42?sort=OrderCreatedDate_Descending&search=bolt&index=1&size=10",
+            RequestBoundary(Assert.Single(downstream.Requests)));
 
         downstream.OrderCustomerId = 99;
         using var invalid = await client.GetAsync("/bff/quotations/create/orders?search=bolt&customerId=42");
@@ -82,9 +88,9 @@ public sealed class OrdersQuotationsBffBehaviorTests
         using var detailBody = JsonDocument.Parse(await detail.Content.ReadAsStringAsync());
 
         Assert.Equal(HttpStatusCode.OK, detail.StatusCode);
-        Assert.Contains(downstream.Requests, item => item.Method == "GET" && item.PathAndQuery == "/quotationrequests/9");
-        Assert.Contains(downstream.Requests, item => item.Method == "GET" && item.PathAndQuery == "/quotationrequests/9/files");
-        Assert.Contains(downstream.Requests, item => item.Method == "GET" && item.PathAndQuery == "/uploads/SignedUrl?bucket=maliev.com&objectName=requests%2F9%2Fdrawing.step");
+        Assert.Contains(downstream.Requests, item => RequestBoundary(item) == "GET /quotationrequests/9");
+        Assert.Contains(downstream.Requests, item => RequestBoundary(item) == "GET /quotationrequests/9/files");
+        Assert.Contains(downstream.Requests, item => RequestBoundary(item) == "GET /uploads/SignedUrl?bucket=maliev.com&objectName=requests%2F9%2Fdrawing.step");
         Assert.Equal("https://files.example.test/request-9", detailBody.RootElement.GetProperty("files")[0].GetProperty("uri").GetString());
 
         var update = new
@@ -156,15 +162,21 @@ public sealed class OrdersQuotationsBffBehaviorTests
 
         using var create = await client.GetAsync("/bff/orders/create?customerId=42");
         Assert.Equal(HttpStatusCode.OK, create.StatusCode);
-        Assert.Contains(downstream.Requests, item => item.PathAndQuery == "/orders/processes");
-        Assert.Contains(downstream.Requests, item => item.PathAndQuery == "/Materials?sort=MaterialId_Ascending&search=&index=1&size=1000");
-        Assert.Contains(downstream.Requests, item => item.PathAndQuery == "/customers/42");
+        Assert.Equal(
+            [
+                "GET /Materials?sort=MaterialId_Ascending&search=&index=1&size=1000",
+                "GET /customers/42",
+                "GET /orders/processes",
+            ],
+            downstream.Requests.Select(RequestBoundary).Order(StringComparer.Ordinal));
 
+        downstream.Requests.Clear();
         using var options = await client.GetAsync("/bff/orders/create/materials/5");
         using var json = JsonDocument.Parse(await options.Content.ReadAsStringAsync());
         Assert.Equal(HttpStatusCode.OK, options.StatusCode);
-        Assert.Contains(downstream.Requests, item => item.PathAndQuery == "/materials/5/colors");
-        Assert.Contains(downstream.Requests, item => item.PathAndQuery == "/materials/5/surfacefinishes");
+        Assert.Equal(
+            ["GET /materials/5/colors", "GET /materials/5/surfacefinishes"],
+            downstream.Requests.Select(RequestBoundary).Order(StringComparer.Ordinal));
         Assert.Equal("Black", json.RootElement.GetProperty("colors")[0].GetProperty("name").GetString());
     }
 
@@ -199,9 +211,44 @@ public sealed class OrdersQuotationsBffBehaviorTests
         using var removed = await client.SendAsync(remove);
         Assert.Equal(HttpStatusCode.NoContent, removed.StatusCode);
         Assert.Collection(
-            downstream.Requests.Where(item => item.Method == "DELETE").OrderBy(item => item.Host),
-            item => Assert.Equal("/Uploads?bucket=maliev.com&objectName=orders%2F42%2Fdrawing.step", item.PathAndQuery),
-            item => Assert.Equal("/orders/files/901", item.PathAndQuery));
+            downstream.Requests,
+            item => Assert.Equal("GET /orders/84/files", RequestBoundary(item)),
+            item => Assert.Equal("DELETE /Uploads?bucket=maliev.com&objectName=orders%2F42%2Fdrawing.step", RequestBoundary(item)),
+            item => Assert.Equal("DELETE /orders/files/901", RequestBoundary(item)));
+    }
+
+    [Fact]
+    public async Task OrderFileRemove_WithoutCsrf_IsRejectedBeforeAnyDownstreamCall()
+    {
+        var downstream = new RoutingHandler();
+        await using var factory = new Factory(downstream);
+        using var client = CreateClient(factory);
+        await SignInAsync(client);
+        downstream.Requests.Clear();
+
+        using var response = await client.DeleteAsync("/bff/orders/84/files/901");
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Empty(downstream.Requests);
+    }
+
+    [Theory]
+    [InlineData(LegacyEmployeePermissions.OrderFilesDelete)]
+    [InlineData(LegacyEmployeePermissions.FileUploadsDelete)]
+    public async Task OrderFileRemove_WithoutRequiredPermission_IsForbiddenBeforeAnyDownstreamCall(string omittedPermission)
+    {
+        var downstream = new RoutingHandler();
+        await using var factory = new Factory(downstream, Permissions.Where(permission => permission != omittedPermission).ToArray());
+        using var client = CreateClient(factory);
+        var csrf = await SignInAsync(client);
+        downstream.Requests.Clear();
+        using var request = new HttpRequestMessage(HttpMethod.Delete, "/bff/orders/84/files/901");
+        request.Headers.Add("X-CSRF-TOKEN", csrf);
+
+        using var response = await client.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+        Assert.Empty(downstream.Requests);
     }
 
     private static MultipartFormDataContent UploadContent()
@@ -237,7 +284,7 @@ public sealed class OrdersQuotationsBffBehaviorTests
         return authenticated.GetProperty("csrfToken").GetString() ?? throw new InvalidOperationException("Missing CSRF token.");
     }
 
-    private sealed class Factory(RoutingHandler downstream) : WebApplicationFactory<BffProgram>
+    private sealed class Factory(RoutingHandler downstream, IReadOnlyList<string>? permissions = null) : WebApplicationFactory<BffProgram>
     {
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
@@ -246,7 +293,7 @@ public sealed class OrdersQuotationsBffBehaviorTests
             builder.ConfigureServices(services =>
             {
                 services.RemoveAll<ILegacyAuthClient>();
-                services.AddSingleton<ILegacyAuthClient>(new AuthClient());
+                services.AddSingleton<ILegacyAuthClient>(new AuthClient(permissions ?? Permissions));
                 services.RemoveAll<IServiceAccessTokenProvider>();
                 var tokens = new TokenProvider();
                 services.AddSingleton<IServiceAccessTokenProvider>(tokens);
@@ -282,36 +329,10 @@ public sealed class OrdersQuotationsBffBehaviorTests
         public void Invalidate(string token) { }
     }
 
-    private sealed class AuthClient : ILegacyAuthClient
+    private sealed class AuthClient(IReadOnlyList<string> permissions) : ILegacyAuthClient
     {
-        private static readonly string[] Permissions =
-        [
-            LegacyEmployeePermissions.QuotationsRead,
-            LegacyEmployeePermissions.QuotationsCreate,
-            LegacyEmployeePermissions.QuotationLinesWrite,
-            LegacyEmployeePermissions.QuotationOrdersWrite,
-            LegacyEmployeePermissions.QuotationOrdersRead,
-            LegacyEmployeePermissions.QuotationFilesRead,
-            LegacyEmployeePermissions.QuotationRequestsRead,
-            LegacyEmployeePermissions.QuotationRequestsUpdate,
-            LegacyEmployeePermissions.CustomersRead,
-            LegacyEmployeePermissions.EmployeesRead,
-            LegacyEmployeePermissions.CatalogCurrenciesRead,
-            LegacyEmployeePermissions.OrdersRead,
-            LegacyEmployeePermissions.OrdersCreate,
-            LegacyEmployeePermissions.OrderCatalogRead,
-            LegacyEmployeePermissions.CatalogMaterialsRead,
-            LegacyEmployeePermissions.OrderFilesRead,
-            LegacyEmployeePermissions.OrderFilesWrite,
-            LegacyEmployeePermissions.OrderFilesDelete,
-            LegacyEmployeePermissions.FileUploadsRead,
-            LegacyEmployeePermissions.FileUploadsCreate,
-            LegacyEmployeePermissions.FileUploadsDelete,
-            LegacyEmployeePermissions.AccountingRead,
-        ];
-
         public Task<EmployeeLoginResult> LoginAsync(string email, string password, CancellationToken cancellationToken) =>
-            Task.FromResult(new EmployeeLoginResult(true, new("browser-access", "browser-refresh", "Bearer", 900, DateTimeOffset.UtcNow.AddHours(1)), new("employee", email, email, Permissions, 7)));
+            Task.FromResult(new EmployeeLoginResult(true, new("browser-access", "browser-refresh", "Bearer", 900, DateTimeOffset.UtcNow.AddHours(1)), new("employee", email, email, permissions, 7)));
         public Task<EmployeeRefreshResult?> RefreshAsync(string refreshToken, CancellationToken cancellationToken) => Task.FromResult<EmployeeRefreshResult?>(null);
         public Task RevokeAsync(string refreshToken, CancellationToken cancellationToken) => Task.CompletedTask;
         public Task<CustomerIdentityResponse?> CreateCustomerIdentityAsync(int databaseId, CreateCustomerIdentityRequest request, string accessToken, CancellationToken cancellationToken) => Task.FromResult<CustomerIdentityResponse?>(null);
@@ -320,7 +341,7 @@ public sealed class OrdersQuotationsBffBehaviorTests
 
     private sealed class RoutingHandler : HttpMessageHandler
     {
-        public ConcurrentBag<RecordedRequest> Requests { get; } = [];
+        public ConcurrentQueue<RecordedRequest> Requests { get; } = [];
         public int OrderCustomerId { get; set; } = 42;
         public HttpStatusCode QuotationPageStatus { get; set; } = HttpStatusCode.OK;
         public bool InvalidQuotationPage { get; set; }
@@ -328,7 +349,7 @@ public sealed class OrdersQuotationsBffBehaviorTests
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
             var body = request.Content is null ? null : await request.Content.ReadAsStringAsync(cancellationToken);
-            Requests.Add(new(
+            Requests.Enqueue(new(
                 request.Method.Method,
                 request.RequestUri?.Host ?? string.Empty,
                 request.RequestUri?.PathAndQuery ?? string.Empty,
@@ -376,6 +397,34 @@ public sealed class OrdersQuotationsBffBehaviorTests
     }
 
     private sealed record RecordedRequest(string Method, string Host, string PathAndQuery, string? Authorization, string? ExpectedModifiedDate, string? Body);
+
+    private static readonly string[] Permissions =
+    [
+        LegacyEmployeePermissions.QuotationsRead,
+        LegacyEmployeePermissions.QuotationsCreate,
+        LegacyEmployeePermissions.QuotationLinesWrite,
+        LegacyEmployeePermissions.QuotationOrdersWrite,
+        LegacyEmployeePermissions.QuotationOrdersRead,
+        LegacyEmployeePermissions.QuotationFilesRead,
+        LegacyEmployeePermissions.QuotationRequestsRead,
+        LegacyEmployeePermissions.QuotationRequestsUpdate,
+        LegacyEmployeePermissions.CustomersRead,
+        LegacyEmployeePermissions.EmployeesRead,
+        LegacyEmployeePermissions.CatalogCurrenciesRead,
+        LegacyEmployeePermissions.OrdersRead,
+        LegacyEmployeePermissions.OrdersCreate,
+        LegacyEmployeePermissions.OrderCatalogRead,
+        LegacyEmployeePermissions.CatalogMaterialsRead,
+        LegacyEmployeePermissions.OrderFilesRead,
+        LegacyEmployeePermissions.OrderFilesWrite,
+        LegacyEmployeePermissions.OrderFilesDelete,
+        LegacyEmployeePermissions.FileUploadsRead,
+        LegacyEmployeePermissions.FileUploadsCreate,
+        LegacyEmployeePermissions.FileUploadsDelete,
+        LegacyEmployeePermissions.AccountingRead,
+    ];
+
+    private static string RequestBoundary(RecordedRequest request) => $"{request.Method} {request.PathAndQuery}";
 
     private static string OrderPageJson(int customerId) => $$"""{"Items":[{"Id":84,"CustomerId":{{customerId}},"EmployeeId":7,"Name":"Fixture","ProcessId":3,"Quantity":2,"Manufactured":0,"Remaining":2,"Subtotal":null,"PromisedDate":null,"AllowSocialMedia":false}],"PageIndex":1,"TotalPages":1,"TotalRecords":1,"HasNextPage":false,"HasPreviousPage":false}""";
     private const string EmployeePageJson = """{"Items":[{"Id":7,"FirstName":"Nat","LastName":"V","FullName":"Nat V","Email":"employee@maliev.com","Role":null}],"PageIndex":1,"TotalPages":1,"TotalRecords":1,"HasNextPage":false,"HasPreviousPage":false}""";
