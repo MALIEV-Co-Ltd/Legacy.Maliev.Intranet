@@ -38,3 +38,20 @@ jobs:
         with:
           solution: Legacy.Maliev.Intranet.slnx
           use-local-maliev-dependencies: 'true'
+      - name: Collect and gate Intranet coverage
+        shell: bash
+        run: |
+          export GITHUB_ACTIONS=false
+          dotnet test Legacy.Maliev.Intranet.Tests/Legacy.Maliev.Intranet.Tests.csproj \
+            --configuration Release \
+            --no-build \
+            --no-restore \
+            --collect:"XPlat Code Coverage" \
+            --settings coverage.runsettings \
+            --results-directory TestResults
+          coverage_file="$(find TestResults -name coverage.cobertura.xml -print -quit)"
+          if [[ -z "$coverage_file" ]]; then
+            echo "The Intranet coverage collector did not produce coverage.cobertura.xml." >&2
+            exit 1
+          fi
+          pwsh -NoProfile -File scripts/verify-test-coverage.ps1 -CoverageFile "$coverage_file"
