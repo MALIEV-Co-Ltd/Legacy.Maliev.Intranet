@@ -720,6 +720,18 @@ app.UseStandardMiddleware();
 app.UseBlazorFrameworkFiles();
 app.UseStaticFiles();
 app.UseRouting();
+app.Use(async (context, next) =>
+{
+    if (context.Request.Path.StartsWithSegments("/bff", StringComparison.OrdinalIgnoreCase) &&
+        context.GetEndpoint() is RouteEndpoint endpoint &&
+        endpoint.RoutePattern.RawText?.StartsWith("/bff/", StringComparison.Ordinal) != true)
+    {
+        context.Response.StatusCode = StatusCodes.Status404NotFound;
+        return;
+    }
+
+    await next(context);
+});
 app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
