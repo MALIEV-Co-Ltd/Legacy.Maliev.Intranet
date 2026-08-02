@@ -60,12 +60,9 @@ public sealed class InvoiceAccountingBehaviorTests
         Assert.Equal("POST", forwarded.Method);
         Assert.Equal("/invoices/from-quotation/84", forwarded.Path);
         Assert.Equal(operationId.ToString("D"), forwarded.IdempotencyKey);
-        Assert.Contains("\"invoiceNumber\":\"INV-84\"", forwarded.Body, StringComparison.Ordinal);
-        Assert.DoesNotContain("customerId", forwarded.Body, StringComparison.OrdinalIgnoreCase);
-        Assert.DoesNotContain("subtotal", forwarded.Body, StringComparison.OrdinalIgnoreCase);
-        Assert.DoesNotContain("vat", forwarded.Body, StringComparison.OrdinalIgnoreCase);
-        Assert.DoesNotContain("total", forwarded.Body, StringComparison.OrdinalIgnoreCase);
-        Assert.DoesNotContain("orderItems", forwarded.Body, StringComparison.OrdinalIgnoreCase);
+        using var expected = JsonDocument.Parse(CreateInvoiceJson);
+        using var actual = JsonDocument.Parse(forwarded.Body!);
+        Assert.True(JsonElement.DeepEquals(expected.RootElement, actual.RootElement));
     }
 
     [Fact]
@@ -119,7 +116,8 @@ public sealed class InvoiceAccountingBehaviorTests
     [Fact]
     public async Task Update_TooManyRequests_PreservesBoundedRetryAfter()
     {
-        var accounting = AccountingBehaviorTestHost.Routes(request => request.Method == HttpMethod.Put
+        var accounting = AccountingBehaviorTestHost.Routes(request =>
+            request.Method == HttpMethod.Put && request.RequestUri?.AbsolutePath == "/invoices/7"
             ? RetryAfter(HttpStatusCode.TooManyRequests, 3)
             : request.RequestUri?.AbsolutePath == "/invoices/7"
                 ? AccountingBehaviorTestHost.Json(InvoiceJson)
@@ -144,7 +142,33 @@ public sealed class InvoiceAccountingBehaviorTests
         Assert.Equal(HttpStatusCode.TooManyRequests, response.StatusCode);
         Assert.Equal(TimeSpan.FromSeconds(3), response.Headers.RetryAfter?.Delta);
         var update = Assert.Single(accounting.Requests, item => item.Method == "PUT");
+        Assert.Equal("/invoices/7", update.Path);
         Assert.Equal("2030-07-18T00:00:00.0000000Z", update.IfUnmodifiedSince);
+        using var original = JsonDocument.Parse(InvoiceJson);
+        using var forwarded = JsonDocument.Parse(update.Body!);
+        Assert.Equal(
+            original.RootElement.EnumerateObject().Select(property => property.Name).Order(),
+            forwarded.RootElement.EnumerateObject().Select(property => property.Name).Order());
+        foreach (var property in original.RootElement.EnumerateObject())
+        {
+            if (property.Name is "isPaid" or "paymentDate" or "internalComment" or "modifiedDate")
+            {
+                continue;
+            }
+
+            Assert.True(
+                JsonElement.DeepEquals(property.Value, forwarded.RootElement.GetProperty(property.Name)),
+                $"Invoice update changed immutable field '{property.Name}'.");
+        }
+
+        Assert.True(forwarded.RootElement.GetProperty("isPaid").GetBoolean());
+        Assert.Equal("paid", forwarded.RootElement.GetProperty("internalComment").GetString());
+        Assert.Equal(
+            DateTime.Parse("2030-07-18T00:00:00Z").ToUniversalTime(),
+            forwarded.RootElement.GetProperty("paymentDate").GetDateTime().ToUniversalTime());
+        Assert.Equal(
+            DateTime.Parse("2030-07-18T00:00:00Z").ToUniversalTime(),
+            forwarded.RootElement.GetProperty("modifiedDate").GetDateTime().ToUniversalTime());
     }
 
     [Fact]
@@ -188,17 +212,18 @@ public sealed class InvoiceAccountingBehaviorTests
         using var response = await client.SendAsync(request);
 
         Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+        Assert.Equal("accounting:GET:/invoices/7", order[0]);
+        Assert.Equal(
+            ["accounting:GET:/invoices/7/files", "accounting:GET:/invoices/7/orderitems"],
+            order.Skip(1).Take(2).Order());
         Assert.Equal(
             [
-                "accounting:GET:/invoices/7",
-                "accounting:GET:/invoices/7/orderitems",
-                "accounting:GET:/invoices/7/files",
                 "files:DELETE:/Uploads",
                 "accounting:DELETE:/invoices/files/31",
                 "accounting:DELETE:/invoices/orderitems/21",
                 "accounting:DELETE:/invoices/7",
             ],
-            order);
+            order.Skip(3));
         Assert.Equal("/Uploads?bucket=maliev.com&objectName=accounting%2Finvoices%2F7%2Finvoice.pdf", Assert.Single(files.Requests).Path);
     }
 
