@@ -90,6 +90,7 @@
     private bool submitting;
     private string? error;
     private string? warning;
+    private string orderSearch = string.Empty;
 
     protected override async Task OnParametersSetAsync()
     {
@@ -98,6 +99,23 @@
     }
 
     private async Task LoadCustomerAsync() => await LoadPageAsync(model.CustomerId > 0 ? model.CustomerId : null);
+
+    private async Task SearchOrdersAsync()
+    {
+        if (page is null || string.IsNullOrWhiteSpace(orderSearch)) return;
+        try
+        {
+            using var response = await Http.GetAsync($"/bff/quotations/create/orders?search={Uri.EscapeDataString(orderSearch)}&customerId={model.CustomerId}");
+            if (response.StatusCode == HttpStatusCode.Unauthorized) { NavigateToLogin(); return; }
+            if (!response.IsSuccessStatusCode) { error = Text["Unavailable"]; return; }
+            var orders = await response.Content.ReadFromJsonAsync<IReadOnlyList<OrderListItem>>();
+            page = page with { Orders = orders ?? [] };
+        }
+        catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException)
+        {
+            error = Text["Unavailable"];
+        }
+    }
 
     private async Task LoadPageAsync(int? customerId)
     {
