@@ -48,11 +48,11 @@ public sealed partial class RoutedPageLocalizationParityTests
         var root = FindRepositoryRoot();
         var relativePaths = new[]
         {
-            @"Legacy.Maliev.Intranet.Client\Pages\CompatibilityDetailRedirect.razor",
-            @"Legacy.Maliev.Intranet.Client\Pages\Foundation.razor",
-            @"Legacy.Maliev.Intranet.Client\Pages\NotFound.razor",
-            @"Legacy.Maliev.Intranet.Client.Features.Accounting\Pages\FinanceCreate.razor",
-            @"Legacy.Maliev.Intranet.Client.Features.Employees\Pages\EmployeeProfile.razor"
+            "Legacy.Maliev.Intranet.Client/Pages/CompatibilityDetailRedirect.razor",
+            "Legacy.Maliev.Intranet.Client/Pages/Foundation.razor",
+            "Legacy.Maliev.Intranet.Client/Pages/NotFound.razor",
+            "Legacy.Maliev.Intranet.Client.Features.Accounting/Pages/FinanceCreate.razor",
+            "Legacy.Maliev.Intranet.Client.Features.Employees/Pages/EmployeeProfile.razor"
         };
 
         foreach (var relativePath in relativePaths)
@@ -98,17 +98,17 @@ public sealed partial class RoutedPageLocalizationParityTests
 
         var expectedTerms = new (string RelativePath, string Key, string Value)[]
         {
-            (@"Legacy.Maliev.Intranet.Client.Features.Orders\Pages\Orders.th.resx", "Orders", "ใบสั่งผลิต"),
-            (@"Legacy.Maliev.Intranet.Client.Features.Orders\Pages\OrderDetail.th.resx", "PromisedDate", "วันที่กำหนดส่ง"),
-            (@"Legacy.Maliev.Intranet.Client.Features.Procurement\Pages\Suppliers.th.resx", "Suppliers", "ผู้ขาย"),
-            (@"Legacy.Maliev.Intranet.Client.Features.Procurement\Pages\SupplierCreate.th.resx", "State", "จังหวัด/รัฐ"),
-            (@"Legacy.Maliev.Intranet.Client.Features.Procurement\Pages\PurchaseOrders.th.resx", "PurchaseOrders", "ใบสั่งซื้อ"),
-            (@"Legacy.Maliev.Intranet.Client.Features.Accounting\Pages\Invoices.th.resx", "Outstanding", "ยอดค้างชำระ"),
-            (@"Legacy.Maliev.Intranet.Client.Features.Accounting\Pages\NetProfitChart.th.resx", "NetIncome", "กำไรสุทธิ"),
-            (@"Legacy.Maliev.Intranet.Client.Features.Quotations\Pages\Quotations\Index.th.resx", "Decision", "ผลการพิจารณา"),
-            (@"Legacy.Maliev.Intranet.Client.Features.Catalog\Pages\MaterialCreate.th.resx", "MachinabilityPercent", "ความสามารถในการตัดเฉือน (%)"),
-            (@"Legacy.Maliev.Intranet.Client.Features.Catalog\Pages\MaterialCreate.th.resx", "Aisi", "AISI"),
-            (@"Legacy.Maliev.Intranet.Client.Features.Catalog\Pages\MaterialCreate.th.resx", "En", "EN")
+            ("Legacy.Maliev.Intranet.Client.Features.Orders/Pages/Orders.th.resx", "Orders", "ใบสั่งผลิต"),
+            ("Legacy.Maliev.Intranet.Client.Features.Orders/Pages/OrderDetail.th.resx", "PromisedDate", "วันที่กำหนดส่ง"),
+            ("Legacy.Maliev.Intranet.Client.Features.Procurement/Pages/Suppliers.th.resx", "Suppliers", "ผู้ขาย"),
+            ("Legacy.Maliev.Intranet.Client.Features.Procurement/Pages/SupplierCreate.th.resx", "State", "จังหวัด/รัฐ"),
+            ("Legacy.Maliev.Intranet.Client.Features.Procurement/Pages/PurchaseOrders.th.resx", "PurchaseOrders", "ใบสั่งซื้อ"),
+            ("Legacy.Maliev.Intranet.Client.Features.Accounting/Pages/Invoices.th.resx", "Outstanding", "ยอดค้างชำระ"),
+            ("Legacy.Maliev.Intranet.Client.Features.Accounting/Pages/NetProfitChart.th.resx", "NetIncome", "กำไรสุทธิ"),
+            ("Legacy.Maliev.Intranet.Client.Features.Quotations/Pages/Quotations/Index.th.resx", "Decision", "ผลการพิจารณา"),
+            ("Legacy.Maliev.Intranet.Client.Features.Catalog/Pages/MaterialCreate.th.resx", "MachinabilityPercent", "ความสามารถในการตัดเฉือน (%)"),
+            ("Legacy.Maliev.Intranet.Client.Features.Catalog/Pages/MaterialCreate.th.resx", "Aisi", "AISI"),
+            ("Legacy.Maliev.Intranet.Client.Features.Catalog/Pages/MaterialCreate.th.resx", "En", "EN")
         };
 
         foreach (var (relativePath, key, value) in expectedTerms)
