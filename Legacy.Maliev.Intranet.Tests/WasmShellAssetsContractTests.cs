@@ -20,6 +20,10 @@ public sealed class WasmShellAssetsContractTests
 
         Assert.Contains("rel=\"preload\" id=\"webassembly\"", index, StringComparison.Ordinal);
         Assert.Contains("css/loading-shell.css", index, StringComparison.Ordinal);
+        Assert.Contains(
+            "Legacy.Maliev.Intranet.Client.styles.css",
+            index,
+            StringComparison.Ordinal);
         Assert.Contains("rel=\"icon\" type=\"image/svg+xml\" href=\"images/favicon.svg\"", index, StringComparison.Ordinal);
         Assert.Contains("class=\"legacy-wasm-loading\"", index, StringComparison.Ordinal);
         Assert.Contains("role=\"status\" aria-live=\"polite\"", index, StringComparison.Ordinal);
