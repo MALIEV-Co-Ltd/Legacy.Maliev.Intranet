@@ -17,6 +17,10 @@
     else if (!string.IsNullOrWhiteSpace(error))
     {
         <MudAlert Severity="Severity.Error" aria-live="assertive">@error</MudAlert>
+        <div class="d-flex flex-wrap gap-2 mt-4">
+            <MudButton OnClick="LoadAsync" Variant="Variant.Filled" Color="Color.Primary">@Text["Retry"]</MudButton>
+            <MudButton Href="/Invoices/Index" Variant="Variant.Text">@Text["Back"]</MudButton>
+        </div>
     }
     else if (detailPage is not null)
     {
@@ -159,8 +163,8 @@
         if (Id is not > 0) { error = Text["InvalidId"]; loading = false; return; }
         try
         {
-            session = await Http.GetFromJsonAsync<EmployeeSessionSummary>("/bff/session");
-            using var response = await Http.GetAsync($"/bff/invoices/{Id.Value}");
+            session = await Http.GetFromJsonForPresentationAsync<EmployeeSessionSummary>("/bff/session");
+            using var response = await Http.GetForPresentationAsync($"/bff/invoices/{Id.Value}");
             if (response.StatusCode == HttpStatusCode.Unauthorized) { Navigation.NavigateTo($"/Login?returnUrl={Uri.EscapeDataString(Navigation.ToBaseRelativePath(Navigation.Uri))}"); return; }
             if (response.StatusCode == HttpStatusCode.NotFound) { error = Text["NotFound"]; return; }
             if (!response.IsSuccessStatusCode) { error = ErrorFor(response.StatusCode); return; }
@@ -245,15 +249,8 @@
     private void CancelEmailReceipt() => emailReceiptArmed = false;
     private string ErrorFor(HttpStatusCode status) => status switch { HttpStatusCode.Forbidden => Text["Forbidden"], HttpStatusCode.TooManyRequests => Text["RateLimited"], HttpStatusCode.BadGateway => Text["InvalidResponse"], _ => Text["Unavailable"] };
     private string Money(decimal? value) => value is null ? "-" : $"{value:N2} {detailPage?.Invoice.Currency}";
-    private static string FormatDate(DateTime? value)
-    {
-        if (value is null) return "-";
-        var utc = value.Value.Kind == DateTimeKind.Unspecified
-            ? DateTime.SpecifyKind(value.Value, DateTimeKind.Utc)
-            : value.Value.ToUniversalTime();
-        return TimeZoneInfo.ConvertTimeBySystemTimeZoneId(new DateTimeOffset(utc), "Asia/Bangkok")
-            .ToString("g", CultureInfo.CurrentCulture);
-    }
+    private static string FormatDate(DateTime? value) =>
+        LegacyPresentation.FormatUtcDateTime(value, CultureInfo.CurrentCulture, "-");
     private static string Value(string? value) => string.IsNullOrWhiteSpace(value) ? "-" : value;
     private static string Address(InvoiceDetail value, bool shipping) => string.Join(Environment.NewLine, (shipping
         ? new[] { value.ShippingAddressRecipient, value.ShippingAddressCompany, value.ShippingAddressBuilding, value.ShippingAddressLine1, value.ShippingAddressLine2, value.ShippingAddressCity, value.ShippingAddressState, value.ShippingAddressPostalCode, value.ShippingAddressCountry }

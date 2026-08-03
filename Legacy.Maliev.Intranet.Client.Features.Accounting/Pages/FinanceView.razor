@@ -17,6 +17,10 @@
     else if (!string.IsNullOrWhiteSpace(error))
     {
         <MudAlert Severity="Severity.Error" aria-live="assertive">@error</MudAlert>
+        <div class="d-flex flex-wrap gap-2 mt-4">
+            <MudButton OnClick="LoadAsync" Variant="Variant.Filled" Color="Color.Primary">@Text["Retry"]</MudButton>
+            <MudButton Href="/Finances/Index" Variant="Variant.Text">@Text["Back"]</MudButton>
+        </div>
     }
     else if (page is not null)
     {
@@ -115,8 +119,8 @@
         if (Id is not > 0) { error = Text["InvalidId"]; loading = false; return; }
         try
         {
-            session = await Http.GetFromJsonAsync<EmployeeSessionSummary>("/bff/session");
-            using var response = await Http.GetAsync($"/bff/finances/{Id.Value}");
+            session = await Http.GetFromJsonForPresentationAsync<EmployeeSessionSummary>("/bff/session");
+            using var response = await Http.GetForPresentationAsync($"/bff/finances/{Id.Value}");
             if (response.StatusCode == HttpStatusCode.Unauthorized) { Navigation.NavigateTo($"/Login?returnUrl={Uri.EscapeDataString(Navigation.ToBaseRelativePath(Navigation.Uri))}"); return; }
             if (response.StatusCode == HttpStatusCode.NotFound) { error = Text["NotFound"]; return; }
             if (!response.IsSuccessStatusCode) { error = ErrorFor(response.StatusCode); return; }

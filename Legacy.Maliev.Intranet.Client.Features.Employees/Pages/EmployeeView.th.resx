@@ -20,4 +20,5 @@
   <data name="RateLimited" xml:space="preserve"><value>ระบบได้รับคำขอข้อมูลพนักงานมากเกินไป โปรดรอสักครู่แล้วลองอีกครั้ง</value></data>
   <data name="Unavailable" xml:space="preserve"><value>ระบบข้อมูลพนักงานไม่พร้อมใช้งานชั่วคราว</value></data>
   <data name="InvalidResponse" xml:space="preserve"><value>ระบบข้อมูลพนักงานส่งข้อมูลกลับมาไม่ถูกต้อง</value></data>
+  <data name="Retry" xml:space="preserve"><value>ลองอีกครั้ง</value></data>
 </root>

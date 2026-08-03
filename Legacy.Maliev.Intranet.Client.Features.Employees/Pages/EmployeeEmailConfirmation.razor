@@ -80,7 +80,7 @@
 
     private async Task<string?> GetCsrfAsync()
     {
-        using var response = await Http.GetAsync("/bff/session");
+        using var response = await Http.GetForPresentationAsync("/bff/session");
         if (!response.IsSuccessStatusCode) return null;
         return (await response.Content.ReadFromJsonAsync<EmployeeSessionSummary>())?.CsrfToken;
     }

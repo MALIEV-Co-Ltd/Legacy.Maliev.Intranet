@@ -54,4 +54,5 @@
   <data name="Forbidden" xml:space="preserve"><value>คุณไม่มีสิทธิ์ดูใบเสนอราคานี้</value></data>
   <data name="InvalidResponse" xml:space="preserve"><value>ระบบส่งข้อมูลใบเสนอราคากลับมาไม่ถูกต้อง</value></data>
   <data name="Unavailable" xml:space="preserve"><value>รายละเอียดใบเสนอราคาไม่พร้อมใช้งานชั่วคราว</value></data>
+  <data name="Retry" xml:space="preserve"><value>ลองอีกครั้ง</value></data>
 </root>

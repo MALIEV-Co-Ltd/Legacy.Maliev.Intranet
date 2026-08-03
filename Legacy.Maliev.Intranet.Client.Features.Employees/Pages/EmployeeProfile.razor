@@ -124,7 +124,7 @@
 
         try
         {
-            using var response = await Http.GetAsync("/bff/profile");
+            using var response = await Http.GetForPresentationAsync("/bff/profile");
             if (response.StatusCode == HttpStatusCode.Unauthorized)
             {
                 RedirectToLogin();
@@ -204,7 +204,7 @@
         notice = null;
         try
         {
-            using var sessionResponse = await Http.GetAsync("/bff/session");
+            using var sessionResponse = await Http.GetForPresentationAsync("/bff/session");
             if (sessionResponse.StatusCode == HttpStatusCode.Unauthorized)
             {
                 RedirectToLogin();

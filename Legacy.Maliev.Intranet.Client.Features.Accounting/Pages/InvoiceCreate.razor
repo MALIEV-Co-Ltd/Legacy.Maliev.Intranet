@@ -117,8 +117,8 @@
 
     protected override async Task OnInitializedAsync()
     {
-        try { session = await Http.GetFromJsonAsync<EmployeeSessionSummary>("/bff/session"); }
-        catch (Exception exception) when (exception is HttpRequestException or System.Text.Json.JsonException) { error = Text["Unavailable"]; }
+        try { session = await Http.GetFromJsonForPresentationAsync<EmployeeSessionSummary>("/bff/session"); }
+        catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException) { error = Text["Unavailable"]; }
         if (QuotationIdInput is > 0) { quotationId = QuotationIdInput.Value; await LoadPreviewAsync(); }
     }
 
@@ -128,7 +128,7 @@
         loading = true; error = null;
         try
         {
-            using var response = await Http.GetAsync($"/bff/invoices/from-quotation/{quotationId}/preview");
+            using var response = await Http.GetForPresentationAsync($"/bff/invoices/from-quotation/{quotationId}/preview");
             if (!response.IsSuccessStatusCode) { error = ErrorFor(response.StatusCode); preview = null; return; }
             preview = await response.Content.ReadFromJsonAsync<InvoiceCreationPreview>();
             if (preview is null) { error = Text["InvalidResponse"]; return; }
@@ -136,7 +136,7 @@
             operationId = Guid.NewGuid();
             pendingRequest = null;
         }
-        catch (Exception exception) when (exception is HttpRequestException or System.Text.Json.JsonException) { error = Text["Unavailable"]; }
+        catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException) { error = Text["Unavailable"]; }
         finally { loading = false; }
     }
 

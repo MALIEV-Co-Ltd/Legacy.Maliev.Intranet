@@ -32,4 +32,23 @@
   <data name="Unavailable" xml:space="preserve"><value>แค็ตตาล็อกวัสดุไม่พร้อมใช้งานชั่วคราว</value></data>
   <data name="InvalidResponse" xml:space="preserve"><value>ระบบวัสดุส่งข้อมูลกลับมาไม่ถูกต้อง</value></data>
   <data name="MaterialsTable" xml:space="preserve"><value>ตารางวัสดุ</value></data>
+  <data name="MaterialId_Ascending" xml:space="preserve"><value>รหัส: น้อยไปมาก</value></data>
+  <data name="MaterialId_Descending" xml:space="preserve"><value>รหัส: มากไปน้อย</value></data>
+  <data name="MaterialName_Ascending" xml:space="preserve"><value>ชื่อ: ก ถึง ฮ</value></data>
+  <data name="MaterialName_Descending" xml:space="preserve"><value>ชื่อ: ฮ ถึง ก</value></data>
+  <data name="MaterialMachinability_Ascending" xml:space="preserve"><value>ความสามารถในการตัดเฉือน: ต่ำไปสูง</value></data>
+  <data name="MaterialMachinability_Descending" xml:space="preserve"><value>ความสามารถในการตัดเฉือน: สูงไปต่ำ</value></data>
+  <data name="MaterialCreatedDate_Ascending" xml:space="preserve"><value>วันที่สร้าง: เก่าไปใหม่</value></data>
+  <data name="MaterialCreatedDate_Descending" xml:space="preserve"><value>วันที่สร้าง: ใหม่ไปเก่า</value></data>
+  <data name="MaterialModifiedDate_Ascending" xml:space="preserve"><value>วันที่แก้ไข: เก่าไปใหม่</value></data>
+  <data name="MaterialModifiedDate_Descending" xml:space="preserve"><value>วันที่แก้ไข: ใหม่ไปเก่า</value></data>
+  <data name="MaterialGroup_Ascending" xml:space="preserve"><value>กลุ่มวัสดุ: ก ถึง ฮ</value></data>
+  <data name="MaterialGroup_Descending" xml:space="preserve"><value>กลุ่มวัสดุ: ฮ ถึง ก</value></data>
+  <data name="MaterialDensity_Ascending" xml:space="preserve"><value>ความหนาแน่น: ต่ำไปสูง</value></data>
+  <data name="MaterialDensity_Descending" xml:space="preserve"><value>ความหนาแน่น: สูงไปต่ำ</value></data>
+  <data name="MaterialThermalConductivity_Ascending" xml:space="preserve"><value>การนำความร้อน: ต่ำไปสูง</value></data>
+  <data name="MaterialThermalConductivity_Descending" xml:space="preserve"><value>การนำความร้อน: สูงไปต่ำ</value></data>
+  <data name="MaterialNumber_Ascending" xml:space="preserve"><value>หมายเลขวัสดุ: น้อยไปมาก</value></data>
+  <data name="MaterialNumber_Descending" xml:space="preserve"><value>หมายเลขวัสดุ: มากไปน้อย</value></data>
+  <data name="Retry" xml:space="preserve"><value>ลองอีกครั้ง</value></data>
 </root>

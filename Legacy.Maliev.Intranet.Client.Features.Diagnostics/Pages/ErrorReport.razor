@@ -53,7 +53,7 @@
                 <MudTh>@Text["CorrelationId"]</MudTh>
             </HeaderContent>
             <RowTemplate>
-                <MudTd DataLabel="@Text["Timestamp"]">@context.Timestamp.ToLocalTime().ToString("g")</MudTd>
+                <MudTd DataLabel="@Text["Timestamp"]">@LegacyPresentation.FormatUtcDateTime(context.Timestamp, CultureInfo.CurrentCulture)</MudTd>
                 <MudTd DataLabel="@Text["Level"]">@context.Level</MudTd>
                 <MudTd DataLabel="@Text["Code"]"><code>@context.Code</code></MudTd>
                 <MudTd DataLabel="@Text["Category"]">@context.Category</MudTd>
@@ -103,7 +103,7 @@
         try
         {
             var uri = $"/bff/diagnostics/events?sort={currentSort}&search={Uri.EscapeDataString(Search ?? string.Empty)}&index={Index}&size={Size}";
-            using var response = await Http.GetAsync(uri);
+            using var response = await Http.GetForPresentationAsync(uri);
             if (response.StatusCode == HttpStatusCode.Unauthorized)
             {
                 Navigation.NavigateTo($"/Login?returnUrl={Uri.EscapeDataString(Navigation.ToBaseRelativePath(Navigation.Uri))}");

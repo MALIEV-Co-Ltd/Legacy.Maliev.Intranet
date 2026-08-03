@@ -17,6 +17,10 @@
     else if (error is not null)
     {
         <MudAlert Severity="Severity.Error" aria-live="assertive">@error</MudAlert>
+        <div class="d-flex flex-wrap gap-2 mt-4">
+            <MudButton OnClick="LoadAsync" Variant="Variant.Filled" Color="Color.Primary">@Text["Retry"]</MudButton>
+            <MudButton Href="/QuotationRequests/Index" Variant="Variant.Text">@Text["Back"]</MudButton>
+        </div>
     }
     else if (detail is not null)
     {
@@ -134,8 +138,8 @@
 
         try
         {
-            session = await Http.GetFromJsonAsync<EmployeeSessionSummary>("/bff/session");
-            using var response = await Http.GetAsync($"/bff/quotation-requests/{Id}");
+            session = await Http.GetFromJsonForPresentationAsync<EmployeeSessionSummary>("/bff/session");
+            using var response = await Http.GetForPresentationAsync($"/bff/quotation-requests/{Id}");
             if (response.StatusCode == HttpStatusCode.Unauthorized)
             {
                 Navigation.NavigateTo($"/Login?returnUrl={Uri.EscapeDataString(Navigation.ToBaseRelativePath(Navigation.Uri))}");

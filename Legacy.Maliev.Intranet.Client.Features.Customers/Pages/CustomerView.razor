@@ -15,7 +15,13 @@
     else if (!string.IsNullOrWhiteSpace(error))
     {
         <MudAlert Severity="errorSeverity" Class="mb-4" aria-live="assertive">@error</MudAlert>
-        <MudButton Href="/Customers/Index" Variant="Variant.Text">@Text["BackToCustomers"]</MudButton>
+        <div class="d-flex flex-wrap gap-2">
+            @if (!notFound)
+            {
+                <MudButton OnClick="LoadAsync" Variant="Variant.Filled" Color="Color.Primary">@Text["Retry"]</MudButton>
+            }
+            <MudButton Href="/Customers/Index" Variant="Variant.Text">@Text["BackToCustomers"]</MudButton>
+        </div>
     }
     else if (customer is not null)
     {
@@ -137,12 +143,16 @@
     private string? error;
     private Severity errorSeverity = Severity.Error;
     private bool loading;
+    private bool notFound;
 
-    protected override async Task OnParametersSetAsync()
+    protected override Task OnParametersSetAsync() => LoadAsync();
+
+    private async Task LoadAsync()
     {
         customer = null;
         error = null;
         errorSeverity = Severity.Error;
+        notFound = false;
         editing = false;
         submitting = false;
         var authenticationState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
@@ -153,13 +163,14 @@
         {
             error = Text["NotFound"];
             errorSeverity = Severity.Warning;
+            notFound = true;
             return;
         }
 
         loading = true;
         try
         {
-            using var response = await Http.GetAsync($"/bff/customers/{Id}");
+            using var response = await Http.GetForPresentationAsync($"/bff/customers/{Id}");
             if (response.StatusCode == HttpStatusCode.Unauthorized)
             {
                 NavigateToLogin();
@@ -176,6 +187,7 @@
             {
                 error = Text["NotFound"];
                 errorSeverity = Severity.Warning;
+                notFound = true;
                 return;
             }
 
@@ -254,7 +266,7 @@
         error = null;
         try
         {
-            using var sessionResponse = await Http.GetAsync("/bff/session");
+            using var sessionResponse = await Http.GetForPresentationAsync("/bff/session");
             if (sessionResponse.StatusCode == HttpStatusCode.Unauthorized)
             {
                 NavigateToLogin();
@@ -343,11 +355,11 @@
 
     private string Display(string? value) => string.IsNullOrWhiteSpace(value) ? Text["NotAvailable"] : value;
 
-    private string DisplayDate(DateTime? value) => value?.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture)
-        ?? Text["NotAvailable"];
+    private string DisplayDate(DateTime? value) =>
+        LegacyPresentation.FormatCalendarDate(value, System.Globalization.CultureInfo.CurrentCulture, Text["NotAvailable"]);
 
-    private string DisplayDateTime(DateTime? value) => value?.ToString("yyyy-MM-dd HH:mm", System.Globalization.CultureInfo.InvariantCulture)
-        ?? Text["NotAvailable"];
+    private string DisplayDateTime(DateTime? value) =>
+        LegacyPresentation.FormatUtcDateTime(value, System.Globalization.CultureInfo.CurrentCulture, Text["NotAvailable"]);
 
     private string DisplayAddress(CustomerAddressDetail? address)
     {

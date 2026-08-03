@@ -63,4 +63,5 @@
   <data name="RemoveReceiptConfirmation" xml:space="preserve"><value>ยืนยันการนำใบเสร็จออก</value></data>
   <data name="InvoiceActionGroup" xml:space="preserve"><value>คำสั่งจัดการใบแจ้งหนี้</value></data>
   <data name="DeleteConfirmation" xml:space="preserve"><value>ยืนยันการลบใบแจ้งหนี้</value></data>
+  <data name="Retry" xml:space="preserve"><value>ลองอีกครั้ง</value></data>
 </root>

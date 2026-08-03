@@ -17,7 +17,8 @@ public sealed class EmployeeProfileWasmMigrationContractTests
         Assert.Contains("Legacy.Maliev.Intranet.Client.Features.Employees.wasm", app, StringComparison.Ordinal);
         Assert.Contains("@page \"/hr/profile\"", page, StringComparison.Ordinal);
         Assert.Contains("[Authorize]", page, StringComparison.Ordinal);
-        Assert.Contains("Http.GetAsync(\"/bff/profile\")", page, StringComparison.Ordinal);
+        Assert.Contains("Http.GetForPresentationAsync(\"/bff/profile\")", page, StringComparison.Ordinal);
+        Assert.DoesNotContain("Http.GetAsync(\"/bff/profile\")", page, StringComparison.Ordinal);
         Assert.Contains("/bff/session", page, StringComparison.Ordinal);
         Assert.Contains("new EmployeeSelfProfileUpdateRequest(", page, StringComparison.Ordinal);
         Assert.Contains("new HttpRequestMessage(HttpMethod.Put, \"/bff/profile\")", page, StringComparison.Ordinal);

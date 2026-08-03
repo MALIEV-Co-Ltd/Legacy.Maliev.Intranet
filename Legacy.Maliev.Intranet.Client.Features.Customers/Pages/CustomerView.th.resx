@@ -40,4 +40,5 @@
   <data name="ValidationFailed" xml:space="preserve"><value>โปรดตรวจสอบข้อมูลลูกค้าในช่องที่ระบุ</value></data>
   <data name="Conflict" xml:space="preserve"><value>ข้อมูลลูกค้าถูกแก้ไขจากที่อื่น โปรดโหลดข้อมูลล่าสุดแล้วลองอีกครั้ง</value></data>
   <data name="SaveFailed" xml:space="preserve"><value>บันทึกข้อมูลลูกค้าไม่สำเร็จ</value></data>
+  <data name="Retry" xml:space="preserve"><value>ลองอีกครั้ง</value></data>
 </root>

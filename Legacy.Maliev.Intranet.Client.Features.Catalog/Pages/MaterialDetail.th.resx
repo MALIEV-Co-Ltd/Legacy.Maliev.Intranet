@@ -33,4 +33,6 @@
   <data name="AssociationSaveFailed" xml:space="preserve"><value>บันทึกวัสดุแล้ว แต่ไม่สามารถอัปเดตตัวเลือกสีหรือการตกแต่งพื้นผิวได้ ลองอีกครั้ง</value></data>
   <data name="ValidationFailed" xml:space="preserve"><value>โปรดแก้ไขช่องที่ระบุก่อนบันทึก</value></data>
   <data name="Conflict" xml:space="preserve"><value>ข้อมูลวัสดุมีการเปลี่ยนแปลงระหว่างที่คุณแก้ไข โปรดโหลดหน้าใหม่แล้วลองอีกครั้ง</value></data>
+  <data name="Retry" xml:space="preserve"><value>ลองอีกครั้ง</value></data>
+  <data name="Back" xml:space="preserve"><value>กลับไปยังรายการวัสดุ</value></data>
 </root>
