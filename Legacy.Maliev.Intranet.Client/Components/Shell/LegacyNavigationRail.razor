@@ -4,15 +4,21 @@
 
 <aside id="@(IsDrawer ? "legacy-navigation-rail-drawer" : "legacy-navigation-rail")"
        class="legacy-navigation-rail @(IsDrawer ? "drawer" : string.Empty)"
+       role="@(IsDrawer ? "dialog" : null)"
+       aria-modal="@(IsDrawer ? "true" : null)"
        aria-label="@Text["Primary navigation"]"
        @onkeydown="HandleKeyDown">
+    @if (IsDrawer)
+    {
+        <span class="legacy-drawer-focus-sentinel" tabindex="0" @onfocus="FocusLastAsync"></span>
+    }
     <div class="legacy-rail-header">
         <a class="legacy-rail-logo legacy-logo-link" href="/Dashboard" aria-label="@Text["MALIEV dashboard"]">
             <img src="images/MALIEV_BLACK.svg" alt="MALIEV" />
         </a>
         @if (IsDrawer)
         {
-            <button type="button" class="legacy-rail-close" aria-label="@Text["Close navigation"]" autofocus @onclick="CloseAsync">
+            <button type="button" class="legacy-rail-close" aria-label="@Text["Close navigation"]" @ref="_closeButton" @onclick="CloseAsync">
                 <MudIcon Icon="@Icons.Material.Filled.Close" Size="Size.Small" />
             </button>
         }
@@ -28,6 +34,7 @@
                     @if (IsItemEnabled(item))
                     {
                         <a href="@item.Href"
+                           @ref="_lastNavigationLink"
                            class="legacy-rail-link @(IsItemActive(item) ? "active" : string.Empty)"
                            aria-current="@(IsItemActive(item) ? "page" : null)"
                            title="@Text[item.Description ?? item.Label]"
@@ -40,12 +47,27 @@
             </section>
         }
     </nav>
+    @if (IsDrawer)
+    {
+        <span class="legacy-drawer-focus-sentinel" tabindex="0" @onfocus="FocusFirstAsync"></span>
+    }
 </aside>
 
 @code {
     [Parameter] public EmployeeSessionSummary? Session { get; set; }
     [Parameter] public bool IsDrawer { get; set; }
     [Parameter] public EventCallback OnClose { get; set; }
+
+    private ElementReference _closeButton;
+    private ElementReference _lastNavigationLink;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (IsDrawer && firstRender)
+        {
+            await _closeButton.FocusAsync();
+        }
+    }
 
     private bool IsItemEnabled(LegacyNavItem item) => LegacyNavigationAuthorization.IsEnabled(
         Session?.IsAuthenticated == true,
@@ -68,4 +90,17 @@
     private Task CloseAsync() => IsDrawer ? OnClose.InvokeAsync() : Task.CompletedTask;
 
     private Task HandleKeyDown(KeyboardEventArgs args) => args.Key == "Escape" ? CloseAsync() : Task.CompletedTask;
+
+    private async Task FocusFirstAsync(FocusEventArgs _) => await _closeButton.FocusAsync();
+
+    private async Task FocusLastAsync(FocusEventArgs _)
+    {
+        if (LegacyAppNavigation.Groups.SelectMany(group => group.Items).Any(IsItemEnabled))
+        {
+            await _lastNavigationLink.FocusAsync();
+            return;
+        }
+
+        await _closeButton.FocusAsync();
+    }
 }

@@ -1,4 +1,4 @@
-.legacy-global-search { position: relative; display: flex; min-width: 220px; max-width: 520px; flex: 1 1 420px; align-items: center; }
+.legacy-global-search { position: relative; display: flex; min-width: 0; max-width: 520px; flex: 1 1 220px; align-items: center; }
 .legacy-global-search > ::deep .mud-icon-root { position: absolute; left: 13px; z-index: 1; color: var(--legacy-muted); pointer-events: none; }
 .legacy-global-search input {
     width: 100%;

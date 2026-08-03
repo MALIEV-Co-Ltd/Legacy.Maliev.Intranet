@@ -125,6 +125,10 @@ public sealed class DashboardCommandCenterProjectionTests
         Assert.Contains("Text[\"QuotationDecisions\"]", dashboard, StringComparison.Ordinal);
         Assert.Contains("aria-live=\"assertive\"", dashboard, StringComparison.Ordinal);
         Assert.Contains("<caption class=\"sr-only\">", dashboard, StringComparison.Ordinal);
+        Assert.Contains("data-label=", dashboard, StringComparison.Ordinal);
+        Assert.Contains("content: attr(data-label)", styles, StringComparison.Ordinal);
+        Assert.Contains(".dashboard-table thead { display: none; }", styles, StringComparison.Ordinal);
+        Assert.Contains("min-height: 44px", styles, StringComparison.Ordinal);
         Assert.Contains("@media (max-width: 760px)", styles, StringComparison.Ordinal);
         Assert.Contains("@media (prefers-reduced-motion: reduce)", styles, StringComparison.Ordinal);
         Assert.DoesNotContain("dashboard-eyebrow", dashboard, StringComparison.Ordinal);

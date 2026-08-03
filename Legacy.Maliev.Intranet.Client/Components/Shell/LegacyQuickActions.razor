@@ -1,15 +1,18 @@
 @using Legacy.Maliev.Intranet.Client.Layout
 @inject IStringLocalizer<LegacyTopBar> Text
 
-<div class="legacy-quick-actions" aria-label="@Text["Quick actions"]">
+<nav class="legacy-quick-actions" aria-label="@Text["Quick actions"]">
     @foreach (var item in _actions.Where(IsItemEnabled))
     {
-        <a href="@item.Href" class="legacy-quick-action @(item.Href == "/Orders/Create" ? "primary" : string.Empty)">
+        <a href="@item.Href"
+           class="legacy-quick-action @(item.Href == "/Orders/Create" ? "primary" : string.Empty)"
+           aria-label="@Text[item.Label]"
+           title="@Text[item.Label]">
             <MudIcon Icon="@Icons.Material.Filled.Add" Size="Size.Small" />
             <span>@Text[item.Label]</span>
         </a>
     }
-</div>
+</nav>
 
 @code {
     [Parameter] public EmployeeSessionSummary? Session { get; set; }

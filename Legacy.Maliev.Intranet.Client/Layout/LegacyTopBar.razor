@@ -7,6 +7,7 @@
 <header class="legacy-topbar" @onkeydown="HandleKeyDown">
     <button type="button"
             class="legacy-mobile-menu-button"
+            @ref="_navigationToggle"
             aria-label="@Text["Open navigation"]"
             aria-expanded="@NavigationOpen"
             aria-controls="legacy-navigation-rail-drawer"
@@ -79,8 +80,20 @@
     [Parameter] public EventCallback OnSignOut { get; set; }
 
     private bool _profileMenuOpen;
+    private bool _wasNavigationOpen;
+    private ElementReference _navigationToggle;
 
     protected override void OnInitialized() => ThemeService.Changed += OnThemeChanged;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender && _wasNavigationOpen && !NavigationOpen)
+        {
+            await _navigationToggle.FocusAsync();
+        }
+
+        _wasNavigationOpen = NavigationOpen;
+    }
 
     private Task ToggleProfileMenuAsync()
     {

@@ -9,4 +9,5 @@
   <data name="Heading" xml:space="preserve"><value>อินทราเน็ต MALIEV</value></data>
   <data name="Description" xml:space="preserve"><value>พื้นที่ปลอดภัยสำหรับการทำงานของทีม MALIEV</value></data>
   <data name="SignIn" xml:space="preserve"><value>เข้าสู่ระบบ</value></data>
+  <data name="CheckingSession" xml:space="preserve"><value>กำลังตรวจสอบเซสชันพนักงาน</value></data>
 </root>

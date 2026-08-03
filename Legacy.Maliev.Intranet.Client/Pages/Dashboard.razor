@@ -93,12 +93,12 @@
                                 @foreach (var order in _snapshot.RecentOrders)
                                 {
                                     <tr>
-                                        <td><a href="@order.NavigateTo">#@order.Id</a></td>
-                                        <td class="dashboard-table-primary">@(string.IsNullOrWhiteSpace(order.Name) ? Text["OrderNumber", order.Id] : order.Name)</td>
-                                        <td>@order.Quantity.ToString("N0")</td>
-                                        <td>@Remaining(order).ToString("N0")</td>
-                                        <td>@FormatDate(order.PromisedDate)</td>
-                                        <td><span class="dashboard-status @OrderStatusClass(order)">@OrderStatus(order)</span></td>
+                                        <td data-label="@Text["Order"]"><a href="@order.NavigateTo">#@order.Id</a></td>
+                                        <td data-label="@Text["Part"]" class="dashboard-table-primary">@(string.IsNullOrWhiteSpace(order.Name) ? Text["OrderNumber", order.Id] : order.Name)</td>
+                                        <td data-label="@Text["Quantity"]">@order.Quantity.ToString("N0")</td>
+                                        <td data-label="@Text["Remaining"]">@Remaining(order).ToString("N0")</td>
+                                        <td data-label="@Text["Promised"]">@FormatDate(order.PromisedDate)</td>
+                                        <td data-label="@Text["Progress"]"><span class="dashboard-status @OrderStatusClass(order)">@OrderStatus(order)</span></td>
                                     </tr>
                                 }
                             </tbody>
@@ -121,10 +121,10 @@
                                 @foreach (var quotation in _snapshot.RecentQuotations)
                                 {
                                     <tr>
-                                        <td><a href="@quotation.NavigateTo">#@quotation.Id</a></td>
-                                        <td class="dashboard-money">@FormatMoney(quotation.QuotedAmount ?? quotation.Total, quotation.CurrencyId)</td>
-                                        <td>@FormatDate(quotation.ExpirationDate)</td>
-                                        <td><span class="dashboard-status @DecisionClass(quotation.Accepted)">@Decision(quotation.Accepted)</span></td>
+                                        <td data-label="@Text["Quote"]"><a href="@quotation.NavigateTo">#@quotation.Id</a></td>
+                                        <td data-label="@Text["Total"]" class="dashboard-money">@FormatMoney(quotation.QuotedAmount ?? quotation.Total, quotation.CurrencyId)</td>
+                                        <td data-label="@Text["Expires"]">@FormatDate(quotation.ExpirationDate)</td>
+                                        <td data-label="@Text["Decision"]"><span class="dashboard-status @DecisionClass(quotation.Accepted)">@Decision(quotation.Accepted)</span></td>
                                     </tr>
                                 }
                             </tbody>
@@ -149,10 +149,10 @@
                                 @foreach (var payment in _snapshot.RecentPayments)
                                 {
                                     <tr>
-                                        <td><a href="@payment.NavigateTo">#@payment.Id</a></td>
-                                        <td class="dashboard-table-primary">@(string.IsNullOrWhiteSpace(payment.Recipient) ? "—" : payment.Recipient)</td>
-                                        <td class="dashboard-money">@FormatMoney(payment.Amount, payment.CurrencyId)</td>
-                                        <td>@FormatDate(payment.PaymentDate ?? payment.CreatedDate)</td>
+                                        <td data-label="@Text["Payment"]"><a href="@payment.NavigateTo">#@payment.Id</a></td>
+                                        <td data-label="@Text["Recipient"]" class="dashboard-table-primary">@(string.IsNullOrWhiteSpace(payment.Recipient) ? "—" : payment.Recipient)</td>
+                                        <td data-label="@Text["Amount"]" class="dashboard-money">@FormatMoney(payment.Amount, payment.CurrencyId)</td>
+                                        <td data-label="@Text["Date"]">@FormatDate(payment.PaymentDate ?? payment.CreatedDate)</td>
                                     </tr>
                                 }
                             </tbody>
@@ -175,9 +175,9 @@
                                 @foreach (var customer in _snapshot.RecentCustomers)
                                 {
                                     <tr>
-                                        <td><a href="@customer.NavigateTo">@customer.FullName</a></td>
-                                        <td class="dashboard-table-primary">@(string.IsNullOrWhiteSpace(customer.Company) ? "—" : customer.Company)</td>
-                                        <td>@customer.Email</td>
+                                        <td data-label="@Text["Customer"]"><a href="@customer.NavigateTo">@customer.FullName</a></td>
+                                        <td data-label="@Text["Company"]" class="dashboard-table-primary">@(string.IsNullOrWhiteSpace(customer.Company) ? "—" : customer.Company)</td>
+                                        <td data-label="@Text["Email"]">@customer.Email</td>
                                     </tr>
                                 }
                             </tbody>

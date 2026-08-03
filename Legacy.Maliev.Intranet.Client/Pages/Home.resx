@@ -7,4 +7,5 @@
   <data name="Heading" xml:space="preserve"><value>MALIEV Intranet</value></data>
   <data name="Description" xml:space="preserve"><value>Secure access for MALIEV staff workflows.</value></data>
   <data name="SignIn" xml:space="preserve"><value>Sign in</value></data>
+  <data name="CheckingSession" xml:space="preserve"><value>Checking your employee session</value></data>
 </root>

@@ -23,7 +23,7 @@
         <LegacyNavigationRail Session="session" IsDrawer="true" OnClose="CloseNavigationAsync" />
     }
 
-    <div class="legacy-workspace-shell">
+    <div class="legacy-workspace-shell" @attributes="WorkspaceAccessibilityAttributes">
         <LegacyTopBar Session="session"
                       NavigationOpen="_navigationOpen"
                       OnToggleNavigation="ToggleNavigationAsync"
@@ -65,6 +65,20 @@
 
     private EmployeeSessionSummary? session;
     private bool _navigationOpen;
+
+    private IReadOnlyDictionary<string, object> WorkspaceAccessibilityAttributes => _navigationOpen
+        ? DrawerOpenWorkspaceAttributes
+        : EmptyWorkspaceAttributes;
+
+    private static readonly IReadOnlyDictionary<string, object> DrawerOpenWorkspaceAttributes =
+        new Dictionary<string, object>
+        {
+            ["inert"] = string.Empty,
+            ["aria-hidden"] = "true",
+        };
+
+    private static readonly IReadOnlyDictionary<string, object> EmptyWorkspaceAttributes =
+        new Dictionary<string, object>();
 
     protected override void OnInitialized()
     {

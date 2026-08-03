@@ -20,6 +20,9 @@ public sealed class StaticShellWasmMigrationContractTests
         Assert.Contains("@attribute [AllowAnonymous]", home, StringComparison.Ordinal);
         Assert.Contains("IStringLocalizer<Home>", home, StringComparison.Ordinal);
         Assert.Contains("Href=\"/Login\"", home, StringComparison.Ordinal);
+        Assert.Contains("EmployeeSessionClient SessionClient", home, StringComparison.Ordinal);
+        Assert.Contains("session?.IsAuthenticated == true", home, StringComparison.Ordinal);
+        Assert.Contains("Navigation.NavigateTo(\"/Dashboard\", replace: true)", home, StringComparison.Ordinal);
         Assert.DoesNotContain("forceLoad: true", home, StringComparison.Ordinal);
         Assert.Contains("@page \"/AccessDenied\"", denied, StringComparison.Ordinal);
         Assert.Contains("@attribute [AllowAnonymous]", denied, StringComparison.Ordinal);
