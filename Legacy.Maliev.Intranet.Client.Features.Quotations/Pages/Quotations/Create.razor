@@ -56,10 +56,58 @@
                     <MudText Typo="Typo.h6" HtmlTag="h2">@Text["Lines"]</MudText>
                     <MudButton ButtonType="ButtonType.Button" Variant="Variant.Outlined" OnClick="AddLine">@Text["AddLine"]</MudButton>
                 </div>
+                @if (page?.Customer is not null)
+                {
+                    <section class="quotation-order-candidates" aria-labelledby="quotation-order-candidates-heading">
+                        <div class="quotation-order-candidates-heading">
+                            <div>
+                                <MudText id="quotation-order-candidates-heading" Typo="Typo.subtitle1" HtmlTag="h3">@Text["CustomerOrders"]</MudText>
+                                <MudText Typo="Typo.caption">@Text["CustomerOrdersSummary", page.Orders.Count]</MudText>
+                            </div>
+                            <div class="quotation-order-search">
+                                <MudTextField T="string" @bind-Value="orderSearch" Label="@Text["SearchOrders"]" Immediate="true"
+                                              Variant="Variant.Outlined" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Outlined.Search" />
+                                <MudButton ButtonType="ButtonType.Button" Variant="Variant.Outlined" OnClick="SearchOrdersAsync">@Text["Search"]</MudButton>
+                            </div>
+                        </div>
+                        @if (VisibleOrders.Count == 0)
+                        {
+                            <MudAlert Severity="Severity.Info" Variant="Variant.Outlined">@Text[page.Orders.Count == 0 ? "NoCustomerOrders" : "NoMatchingOrders"]</MudAlert>
+                        }
+                        else
+                        {
+                            <div class="quotation-order-table-scroll">
+                                <table class="quotation-order-table">
+                                    <thead>
+                                        <tr><th scope="col">@Text["OrderId"]</th><th scope="col">@Text["OrderName"]</th><th scope="col">@Text["Quantity"]</th><th scope="col">@Text["UnitPrice"]</th><th scope="col">@Text["Discount"]</th><th scope="col"><span class="visually-hidden">@Text["Actions"]</span></th></tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach (var order in VisibleOrders)
+                                        {
+                                            <tr>
+                                                <td data-label="@Text["OrderId"]">#@order.Id</td>
+                                                <td data-label="@Text["OrderName"]">@(string.IsNullOrWhiteSpace(order.Name) ? Text["UnnamedOrder"] : order.Name)</td>
+                                                <td data-label="@Text["Quantity"]">@order.Quantity.ToString("N0")</td>
+                                                <td data-label="@Text["UnitPrice"]">@FormatOrderMoney(order.UnitPrice)</td>
+                                                <td data-label="@Text["Discount"]">@FormatDiscount(order.DiscountPercent)</td>
+                                                <td data-label="@Text["Actions"]">
+                                                    <MudButton ButtonType="ButtonType.Button" Variant="Variant.Outlined" Size="Size.Small"
+                                                               Disabled="@IsOrderSelected(order.Id)" OnClick="@(() => AddOrder(order))">
+                                                        @Text[IsOrderSelected(order.Id) ? "OrderAdded" : "AddOrder"]
+                                                    </MudButton>
+                                                </td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+                        }
+                    </section>
+                }
                 @foreach (var line in model.Lines)
                 {
                     <MudGrid Class="mb-3">
-                        <MudItem xs="12" md="2"><MudSelect T="int?" @bind-Value="line.OrderId" Label="@Text["Order"]" Clearable="true">@foreach (var order in page?.Orders ?? []) { <MudSelectItem T="int?" Value="order.Id">#@order.Id @order.Name</MudSelectItem> }</MudSelect></MudItem>
+                        <MudItem xs="12" md="2"><MudSelect T="int?" Value="line.OrderId" ValueChanged="@((int? value) => SelectOrder(line, value))" Label="@Text["Order"]" Clearable="true">@foreach (var order in page?.Orders ?? []) { <MudSelectItem T="int?" Value="order.Id">#@order.Id @order.Name</MudSelectItem> }</MudSelect></MudItem>
                         <MudItem xs="12" md="4"><MudTextField @bind-Value="line.Description" Label="@Text["Description"]" Required="true" /></MudItem>
                         <MudItem xs="6" md="2"><MudNumericField T="int" @bind-Value="line.Quantity" Label="@Text["Quantity"]" Min="1" Required="true" /></MudItem>
                         <MudItem xs="6" md="2"><MudNumericField T="decimal" @bind-Value="line.UnitPrice" Label="@Text["UnitPrice"]" Min="0" Required="true" /></MudItem>
@@ -109,7 +157,7 @@
             using var response = await Http.GetForPresentationAsync($"/bff/quotations/create/orders?search={Uri.EscapeDataString(orderSearch)}&customerId={model.CustomerId}");
             if (response.StatusCode == HttpStatusCode.Unauthorized) { NavigateToLogin(); return; }
             if (!response.IsSuccessStatusCode) { error = Text["Unavailable"]; return; }
-            var orders = await response.Content.ReadFromJsonAsync<IReadOnlyList<OrderListItem>>();
+            var orders = await response.Content.ReadFromJsonAsync<IReadOnlyList<QuotationOrderCandidate>>();
             page = page with { Orders = orders ?? [] };
         }
         catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException)
@@ -130,6 +178,8 @@
             if (!response.IsSuccessStatusCode) { error = response.StatusCode == HttpStatusCode.Forbidden ? Text["Forbidden"] : Text["Unavailable"]; return; }
             page = await response.Content.ReadFromJsonAsync<QuotationCreatePage>();
             if (page is null) { error = Text["InvalidResponse"]; return; }
+            model.Lines.RemoveAll(line => line.OrderId is int orderId && page.Orders.All(order => order.Id != orderId));
+            if (model.Lines.Count == 0) model.Lines.Add(new());
             if (model.EmployeeId <= 0) model.EmployeeId = page.CurrentEmployeeId ?? page.Employees.FirstOrDefault()?.Id ?? 0;
             if (model.CurrencyId <= 0) model.CurrencyId = page.Currencies.FirstOrDefault(value => value.ShortName == "THB")?.Id ?? page.Currencies.FirstOrDefault()?.Id ?? 0;
         }
@@ -139,6 +189,28 @@
 
     private void AddLine() => model.Lines.Add(new());
     private void RemoveLine(LineModel line) { if (model.Lines.Count > 1) model.Lines.Remove(line); }
+    private void AddOrder(QuotationOrderCandidate order)
+    {
+        if (IsOrderSelected(order.Id)) return;
+        var line = model.Lines.FirstOrDefault(value => value.OrderId is null && string.IsNullOrWhiteSpace(value.Description) && value.UnitPrice == 0m)
+            ?? new LineModel();
+        if (!model.Lines.Contains(line)) model.Lines.Add(line);
+        PopulateLine(line, order);
+    }
+    private void SelectOrder(LineModel line, int? orderId)
+    {
+        line.OrderId = orderId;
+        if (orderId is int value && page?.Orders.FirstOrDefault(order => order.Id == value) is { } order) PopulateLine(line, order);
+    }
+    private static void PopulateLine(LineModel line, QuotationOrderCandidate order)
+    {
+        line.OrderId = order.Id;
+        line.Description = string.IsNullOrWhiteSpace(order.Description) ? order.Name ?? $"Order #{order.Id}" : order.Description;
+        line.Quantity = Math.Max(1, order.Quantity);
+        line.UnitPrice = order.UnitPrice ?? (order.Subtotal is decimal subtotal ? subtotal / Math.Max(1, order.Quantity) : 0m);
+        line.DiscountPercent = order.DiscountPercent ?? 0m;
+    }
+    private bool IsOrderSelected(int orderId) => model.Lines.Any(line => line.OrderId == orderId);
 
     private async Task SubmitAsync()
     {
@@ -173,7 +245,21 @@
     }
 
     private decimal EstimatedSubtotal => model.Lines.Sum(line => Math.Round((line.UnitPrice * (1m - line.DiscountPercent / 100m)) * line.Quantity, 2, MidpointRounding.AwayFromZero));
-    private string CurrencyLabel => page?.Currencies.FirstOrDefault(value => value.Id == model.CurrencyId)?.ShortName ?? string.Empty;
+    private IReadOnlyList<QuotationOrderCandidate> VisibleOrders => page?.Orders
+        .Where(order => string.IsNullOrWhiteSpace(orderSearch)
+            || order.Id.ToString(CultureInfo.InvariantCulture).Contains(orderSearch.Trim(), StringComparison.OrdinalIgnoreCase)
+            || (order.Name?.Contains(orderSearch.Trim(), StringComparison.CurrentCultureIgnoreCase) ?? false))
+        .ToArray() ?? [];
+    private string CurrencyLabel
+    {
+        get
+        {
+            var currency = page?.Currencies.FirstOrDefault(value => value.Id == model.CurrencyId)?.ShortName ?? string.Empty;
+            return currency.Equals("THB", StringComparison.OrdinalIgnoreCase) && CultureInfo.CurrentUICulture.TwoLetterISOLanguageName == "th" ? "บาท" : currency;
+        }
+    }
+    private string FormatOrderMoney(decimal? value) => value is null ? "—" : $"{value.Value.ToString("N2", CultureInfo.CurrentCulture)} {CurrencyLabel}";
+    private static string FormatDiscount(decimal? value) => $"{(value ?? 0m).ToString("N2", CultureInfo.CurrentCulture)}%";
     private void NavigateToLogin() => Navigation.NavigateTo($"/Login?returnUrl={Uri.EscapeDataString(Navigation.ToBaseRelativePath(Navigation.Uri))}");
 
     private sealed class FormModel

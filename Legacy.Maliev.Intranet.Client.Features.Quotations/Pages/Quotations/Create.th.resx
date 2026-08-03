@@ -1,4 +1,3 @@
-<?xml version="1.0" encoding="utf-8"?>
 <root>
   <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
   <resheader name="version"><value>2.0</value></resheader>
@@ -40,4 +39,16 @@
   <data name="ValidationFailed" xml:space="preserve"><value>โปรดตรวจสอบลูกค้า ช่องที่จำเป็น และรายการในใบเสนอราคา</value></data>
   <data name="Conflict" xml:space="preserve"><value>คำขอนี้กำลังประมวลผลอยู่ หรือมีการใช้รหัสคำขอเดิมกับข้อมูลชุดอื่น</value></data>
   <data name="CreateFailed" xml:space="preserve"><value>ยังสร้างใบเสนอราคาไม่สำเร็จ โปรดส่งแบบฟอร์มเดิมซ้ำเพื่อดำเนินการต่ออย่างปลอดภัย</value></data>
+  <data name="CustomerOrders" xml:space="preserve"><value>ใบสั่งผลิตของลูกค้า</value></data>
+  <data name="CustomerOrdersSummary" xml:space="preserve"><value>มีใบสั่งผลิตที่นำมาจัดทำใบเสนอราคาได้ {0} รายการ</value></data>
+  <data name="SearchOrders" xml:space="preserve"><value>ค้นหาใบสั่งผลิตของลูกค้า</value></data>
+  <data name="Search" xml:space="preserve"><value>ค้นหา</value></data>
+  <data name="NoCustomerOrders" xml:space="preserve"><value>ลูกค้ารายนี้ยังไม่มีใบสั่งผลิตที่นำมาจัดทำใบเสนอราคาได้</value></data>
+  <data name="NoMatchingOrders" xml:space="preserve"><value>ไม่พบใบสั่งผลิตของลูกค้าที่ตรงกับคำค้นหา</value></data>
+  <data name="OrderId" xml:space="preserve"><value>ใบสั่งผลิต</value></data>
+  <data name="OrderName" xml:space="preserve"><value>ชื่องาน</value></data>
+  <data name="Actions" xml:space="preserve"><value>การดำเนินการ</value></data>
+  <data name="AddOrder" xml:space="preserve"><value>เพิ่มในใบเสนอราคา</value></data>
+  <data name="OrderAdded" xml:space="preserve"><value>เพิ่มแล้ว</value></data>
+  <data name="UnnamedOrder" xml:space="preserve"><value>ยังไม่ได้ตั้งชื่องาน</value></data>
 </root>

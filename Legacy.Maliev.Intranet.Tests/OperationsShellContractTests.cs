@@ -163,6 +163,8 @@ public sealed class OperationsShellContractTests
         Assert.DoesNotContain("Text[\"Light\"]", topBar, StringComparison.Ordinal);
         Assert.DoesNotContain("Text[\"Dark\"]", topBar, StringComparison.Ordinal);
         Assert.Contains("aria-label=\"@ThemeLabel\"", topBar, StringComparison.Ordinal);
+        Assert.Contains("class=\"legacy-topbar-utilities\"", topBar, StringComparison.Ordinal);
+        Assert.Contains("margin-left: auto", topBarCss, StringComparison.Ordinal);
         Assert.Contains("flex: 0 0 var(--legacy-rail-width)", topBarCss, StringComparison.Ordinal);
         Assert.Contains("margin-block: -10px", topBarCss, StringComparison.Ordinal);
         Assert.Contains("border: 1px solid var(--legacy-border)", topBarCss, StringComparison.Ordinal);

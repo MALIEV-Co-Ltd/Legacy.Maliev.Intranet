@@ -146,6 +146,11 @@ public sealed class DashboardCommandCenterProjectionTests
         Assert.Contains(".dashboard-activity-list a { align-items: center;", styles, StringComparison.Ordinal);
         Assert.Contains("@media (max-width: 760px)", styles, StringComparison.Ordinal);
         Assert.Contains("@media (prefers-reduced-motion: reduce)", styles, StringComparison.Ordinal);
+        Assert.DoesNotContain("DashboardMetricCard", dashboard, StringComparison.Ordinal);
+        Assert.Contains("Class=\"dashboard-wide-panel\"", dashboard, StringComparison.Ordinal);
+        Assert.Contains(".dashboard-secondary-grid { grid-template-columns: repeat(2", styles, StringComparison.Ordinal);
+        Assert.Contains("currencyId is \"1\" or \"138\"", dashboard, StringComparison.Ordinal);
+        Assert.Contains("? \"บาท\" : \"THB\"", dashboard, StringComparison.Ordinal);
         Assert.DoesNotContain("dashboard-eyebrow", dashboard, StringComparison.Ordinal);
         Assert.DoesNotContain("sparkline", dashboard, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("revenue", dashboard, StringComparison.OrdinalIgnoreCase);

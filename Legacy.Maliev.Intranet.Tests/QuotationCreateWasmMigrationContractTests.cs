@@ -56,8 +56,16 @@ public sealed class QuotationCreateWasmMigrationContractTests
         Assert.Contains("X-CSRF-TOKEN", page, StringComparison.Ordinal);
         Assert.Contains("Idempotency-Key", page, StringComparison.Ordinal);
         Assert.Contains("/bff/quotations/create", page, StringComparison.Ordinal);
+        Assert.Contains("quotation-order-candidates", page, StringComparison.Ordinal);
+        Assert.Contains("PopulateLine", page, StringComparison.Ordinal);
+        Assert.Contains("order.UnitPrice", page, StringComparison.Ordinal);
+        Assert.Contains("order.DiscountPercent", page, StringComparison.Ordinal);
+        Assert.Contains("CultureInfo.CurrentUICulture.TwoLetterISOLanguageName == \"th\" ? \"บาท\"", page, StringComparison.Ordinal);
         Assert.Contains("/Quotations/View?id=", page, StringComparison.Ordinal);
         Assert.DoesNotContain("jquery", page, StringComparison.OrdinalIgnoreCase);
+        var english = System.Xml.Linq.XDocument.Load(resourcePath).Root!.Elements("data").Select(node => node.Attribute("name")!.Value).Order(StringComparer.Ordinal).ToArray();
+        var thai = System.Xml.Linq.XDocument.Load(Path.ChangeExtension(pagePath, ".th.resx")).Root!.Elements("data").Select(node => node.Attribute("name")!.Value).Order(StringComparer.Ordinal).ToArray();
+        Assert.Equal(english, thai);
         var rollbackRoutes = File.ReadAllText(Path.Combine(root, "Legacy.Maliev.Intranet", "LegacyRoutes.cs"));
         Assert.Contains("/Quotations/Create", rollbackRoutes, StringComparison.Ordinal);
     }

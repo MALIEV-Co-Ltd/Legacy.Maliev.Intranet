@@ -1,0 +1,81 @@
+.quotation-order-candidates {
+    margin-bottom: 1.25rem;
+    padding: 1rem;
+    border: 1px solid var(--legacy-border);
+    border-radius: var(--legacy-radius-md);
+    background: var(--legacy-surface-muted);
+}
+
+.quotation-order-candidates-heading {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(14rem, 22rem);
+    align-items: end;
+    gap: 1rem;
+    margin-bottom: 0.85rem;
+}
+
+.quotation-order-candidates-heading ::deep h3 {
+    margin: 0;
+    color: var(--legacy-ink);
+    font-size: 0.95rem;
+    font-weight: 750;
+}
+
+.quotation-order-candidates-heading ::deep .mud-typography-caption {
+    color: var(--legacy-muted);
+}
+
+.quotation-order-search { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: 0.5rem; }
+
+.quotation-order-table-scroll {
+    max-width: 100%;
+    overflow-x: auto;
+    border: 1px solid var(--legacy-border);
+    border-radius: var(--legacy-radius-md);
+    background: var(--legacy-surface);
+}
+
+.quotation-order-table {
+    width: 100%;
+    min-width: 46rem;
+    border-collapse: collapse;
+    font-family: var(--maliev-font-sans);
+}
+
+.quotation-order-table th,
+.quotation-order-table td {
+    padding: 0.65rem 0.75rem;
+    border-bottom: 1px solid var(--legacy-border);
+    color: var(--legacy-ink-secondary);
+    font-size: 0.78rem;
+    line-height: 1.35;
+    text-align: left;
+    vertical-align: middle;
+}
+
+.quotation-order-table th {
+    background: var(--legacy-surface-muted);
+    color: var(--legacy-muted);
+    font-size: 0.7rem;
+    font-weight: 750;
+}
+
+.quotation-order-table tbody tr:last-child td { border-bottom: 0; }
+.quotation-order-table td:nth-child(3),
+.quotation-order-table td:nth-child(4),
+.quotation-order-table td:nth-child(5) { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.quotation-order-table td:last-child { text-align: right; }
+
+@media (max-width: 760px) {
+    .quotation-order-candidates { padding: 0.75rem; }
+    .quotation-order-candidates-heading { grid-template-columns: minmax(0, 1fr); }
+    .quotation-order-search { grid-template-columns: minmax(0, 1fr); }
+    .quotation-order-table-scroll { overflow: visible; border: 0; background: transparent; }
+    .quotation-order-table { display: block; min-width: 0; }
+    .quotation-order-table thead { display: none; }
+    .quotation-order-table tbody { display: grid; gap: 0.65rem; }
+    .quotation-order-table tr { display: grid; overflow: hidden; border: 1px solid var(--legacy-border); border-radius: var(--legacy-radius-md); background: var(--legacy-surface); }
+    .quotation-order-table td { display: grid; grid-template-columns: minmax(7rem, 40%) minmax(0, 1fr); gap: 0.75rem; border-bottom: 1px solid var(--legacy-border); overflow-wrap: anywhere; }
+    .quotation-order-table td::before { content: attr(data-label); color: var(--legacy-muted); font-size: 0.7rem; font-weight: 750; }
+    .quotation-order-table td:last-child { text-align: left; }
+}

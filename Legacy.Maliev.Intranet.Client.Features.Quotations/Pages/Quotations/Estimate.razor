@@ -127,7 +127,7 @@
     private decimal setupCost;
 
     private decimal GrandTotal => Math.Round(machineCost + materialCost + electricityCost + setupCost, 2, MidpointRounding.AwayFromZero);
-    private static string FormatMoney(decimal value) => $"{value.ToString("N2", CultureInfo.CurrentCulture)} THB";
+    private static string FormatMoney(decimal value) => $"{value.ToString("N2", CultureInfo.CurrentCulture)} {(CultureInfo.CurrentUICulture.TwoLetterISOLanguageName == "th" ? "บาท" : "THB")}";
 
     protected override void OnInitialized() => ApplyCalculatedValues();
 

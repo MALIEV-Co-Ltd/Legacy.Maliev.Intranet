@@ -63,20 +63,6 @@
             </MudAlert>
         }
 
-        @if (_snapshot.Cards.Count > 0)
-        {
-            <section class="dashboard-metrics" aria-label="@Text["WorkspaceTotals"]">
-                @foreach (var card in _snapshot.Cards)
-                {
-                    <DashboardMetricCard Label="@MetricLabel(card.Key)"
-                                         Value="@card.Count.ToString("N0")"
-                                         NavigateTo="@card.NavigateTo"
-                                         LinkText="@Text["OpenWorkspace"]"
-                                         Icon="@IconFor(card.Key)" />
-                }
-            </section>
-        }
-
         <div class="dashboard-primary-grid">
             @if (_snapshot.RecentOrders.Count > 0)
             {
@@ -112,7 +98,8 @@
                 <DashboardPanel Title="@Text["RecentQuotations"]"
                                 Subtitle="@Text["RecentQuotationsSubtitle"]"
                                 NavigateTo="/Quotations/Index"
-                                LinkText="@Text["ViewAll"]">
+                                LinkText="@Text["ViewAll"]"
+                                Class="dashboard-wide-panel">
                     <div class="dashboard-table-scroll">
                         <table class="dashboard-table dashboard-table-compact">
                             <caption class="sr-only">@Text["RecentQuotations"]</caption>
@@ -327,29 +314,12 @@
         }
     }
 
-    private static string IconFor(string key) => key switch
-    {
-        "orders" => Icons.Material.Outlined.Inventory2,
-        "customers" => Icons.Material.Outlined.Groups,
-        "employees" => Icons.Material.Outlined.Badge,
-        "invoices" => Icons.Material.Outlined.ReceiptLong,
-        "quotation-requests" => Icons.Material.Outlined.MarkUnreadChatAlt,
-        "quotations" => Icons.Material.Outlined.RequestQuote,
-        "suppliers" => Icons.Material.Outlined.Handshake,
-        "purchase-orders" => Icons.Material.Outlined.ShoppingCart,
-        "materials" => Icons.Material.Outlined.Category,
-        "payments" => Icons.Material.Outlined.AccountBalanceWallet,
-        _ => Icons.Material.Outlined.Dashboard,
-    };
-
     private static string ActivityIcon(string kind) => kind switch
     {
         "invoice" => Icons.Material.Outlined.ReceiptLong,
         "quotation-request" => Icons.Material.Outlined.MarkUnreadChatAlt,
         _ => Icons.Material.Outlined.NotificationsNone,
     };
-
-    private string MetricLabel(string key) => Text[$"Metric_{key}"];
 
     private string ActivityTitle(LegacyDashboardActivity activity) => string.IsNullOrWhiteSpace(activity.Title)
         ? Text[activity.Kind == "invoice" ? "InvoiceNumber" : "RequestNumber", ActivityId(activity.NavigateTo)]
@@ -383,9 +353,9 @@
     private string FormatMoney(decimal value, string currencyId) => Text["MoneyFormat", value.ToString("N2", System.Globalization.CultureInfo.CurrentCulture), CurrencyName(currencyId)];
     private string CurrencyName(string currencyId)
     {
-        if (currencyId.Equals("THB", StringComparison.OrdinalIgnoreCase) || currencyId == "1")
+        if (currencyId.Equals("THB", StringComparison.OrdinalIgnoreCase) || currencyId is "1" or "138")
         {
-            return "THB";
+            return System.Globalization.CultureInfo.CurrentUICulture.TwoLetterISOLanguageName == "th" ? "บาท" : "THB";
         }
 
         return int.TryParse(currencyId, out _) ? Text["CurrencyNumber", currencyId] : currencyId.ToUpperInvariant();

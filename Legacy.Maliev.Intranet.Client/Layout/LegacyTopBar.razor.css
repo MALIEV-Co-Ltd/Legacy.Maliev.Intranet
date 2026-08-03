@@ -56,6 +56,7 @@
 .legacy-theme-toggle:focus-visible { outline: none; box-shadow: var(--legacy-focus-ring); }
 
 .legacy-session-avatar { display: grid; width: 34px; height: 34px; flex: 0 0 auto; place-items: center; border-radius: 50%; background: var(--legacy-primary-soft); color: var(--legacy-primary); font-size: .7rem; font-weight: 800; }
+.legacy-topbar-utilities { display: flex; min-width: 0; flex: 0 0 auto; align-items: center; gap: 8px; margin-left: auto; }
 .legacy-session-copy { display: flex; min-width: 0; flex-direction: column; gap: 2px; line-height: 1.1; }
 .legacy-session-copy strong { max-width: 155px; overflow: hidden; color: var(--legacy-ink); font-size: .76rem; text-overflow: ellipsis; white-space: nowrap; }
 .legacy-session-copy small { color: var(--legacy-muted); font-size: .66rem; }
@@ -104,6 +105,7 @@
     .legacy-session-copy,
     .legacy-profile-chevron { display: none; }
     .legacy-profile { padding: 4px; }
+    .legacy-topbar-utilities { margin-left: auto; }
 }
 
 @media (max-width: 420px) {

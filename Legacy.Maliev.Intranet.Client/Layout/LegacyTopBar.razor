@@ -21,19 +21,20 @@
 
     <LegacyGlobalSearch Session="Session" />
     <LegacyQuickActions Session="Session" />
-    <LegacyLanguageSelector />
+    <div class="legacy-topbar-utilities">
+        <LegacyLanguageSelector />
 
-    <button type="button"
-            class="legacy-theme-toggle"
-            aria-label="@ThemeLabel"
-            title="@ThemeLabel"
-            @onclick="ToggleThemeAsync">
-        <MudIcon Icon="@(ThemeService.IsDarkMode ? Icons.Material.Outlined.LightMode : Icons.Material.Outlined.DarkMode)" Size="Size.Small" />
-    </button>
+        <button type="button"
+                class="legacy-theme-toggle"
+                aria-label="@ThemeLabel"
+                title="@ThemeLabel"
+                @onclick="ToggleThemeAsync">
+            <MudIcon Icon="@(ThemeService.IsDarkMode ? Icons.Material.Outlined.LightMode : Icons.Material.Outlined.DarkMode)" Size="Size.Small" />
+        </button>
 
-    <AuthorizeView>
-        <Authorized Context="auth">
-            <div class="legacy-profile-menu">
+        <AuthorizeView>
+            <Authorized Context="auth">
+                <div class="legacy-profile-menu">
                 <button type="button"
                         class="legacy-profile"
                         aria-haspopup="menu"
@@ -62,12 +63,13 @@
                         </button>
                     </div>
                 }
-            </div>
-        </Authorized>
-        <NotAuthorized>
-            <a class="legacy-signin-link" href="/Login">@Text["Sign in"]</a>
-        </NotAuthorized>
-    </AuthorizeView>
+                </div>
+            </Authorized>
+            <NotAuthorized>
+                <a class="legacy-signin-link" href="/Login">@Text["Sign in"]</a>
+            </NotAuthorized>
+        </AuthorizeView>
+    </div>
 
     @if (Session is null)
     {

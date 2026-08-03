@@ -54,6 +54,18 @@ public sealed record QuotationEmployee(int Id, string FullName, string Email);
 /// <summary>Currency label owned by CatalogService.</summary>
 public sealed record QuotationCurrency(int Id, string ShortName, string LongName);
 
+/// <summary>Customer order fields required to populate one editable quotation line.</summary>
+public sealed record QuotationOrderCandidate(
+    int Id,
+    int CustomerId,
+    string? Name,
+    string? Description,
+    int Quantity,
+    decimal? UnitPrice,
+    decimal? DiscountPercent,
+    decimal? Subtotal,
+    int? LeadTime);
+
 /// <summary>Invoice label owned by AccountingService.</summary>
 public sealed record QuotationInvoice(int Id, string Number);
 
@@ -102,5 +114,5 @@ public sealed record QuotationCreatePage(
     IReadOnlyList<QuotationEmployee> Employees,
     IReadOnlyList<QuotationCurrency> Currencies,
     QuotationCustomer? Customer,
-    IReadOnlyList<OrderListItem> Orders,
+    IReadOnlyList<QuotationOrderCandidate> Orders,
     int? CurrentEmployeeId);
