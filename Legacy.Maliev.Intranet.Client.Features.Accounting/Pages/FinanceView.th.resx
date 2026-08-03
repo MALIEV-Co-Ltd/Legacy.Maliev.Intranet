@@ -43,4 +43,5 @@
   <data name="FileActions" xml:space="preserve"><value>คำสั่งสำหรับไฟล์ {0}</value></data>
   <data name="RemoveFileConfirmation" xml:space="preserve"><value>ยืนยันการนำไฟล์ {0} ออก</value></data>
   <data name="ConfirmRemoveFile" xml:space="preserve"><value>ยืนยันการนำไฟล์ออก</value></data>
+  <data name="Retry" xml:space="preserve"><value>ลองอีกครั้ง</value></data>
 </root>

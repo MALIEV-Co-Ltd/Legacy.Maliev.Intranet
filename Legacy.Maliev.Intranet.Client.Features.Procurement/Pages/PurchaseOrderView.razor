@@ -7,10 +7,21 @@
 
 <PageTitle>@(detail is null ? Text["PageTitle"] : Text["PageTitleWithId", detail.Id])</PageTitle>
 
-<MudContainer MaxWidth="MaxWidth.Large">
+<MudContainer MaxWidth="MaxWidth.Large" Class="purchase-order-view-page">
     @if (loading)
     {
         <div role="status" aria-live="polite"><MudProgressLinear Indeterminate="true" Color="Color.Primary" aria-label="@Text["Loading"]" /><span class="visually-hidden">@Text["Loading"]</span></div>
+    }
+    else if (!string.IsNullOrWhiteSpace(error) && detail is null)
+    {
+        <MudAlert Severity="Severity.Error" Class="mb-4" aria-live="assertive">@error</MudAlert>
+        <div class="d-flex flex-wrap gap-2">
+            @if (!forbidden)
+            {
+                <MudButton OnClick="LoadAsync" Variant="Variant.Filled" Color="Color.Primary">@Text["Retry"]</MudButton>
+            }
+            <MudButton Href="/PurchaseOrders/Index" Variant="Variant.Text">@Text["Back"]</MudButton>
+        </div>
     }
     else if (notFound)
     {
@@ -21,12 +32,11 @@
     {
         <header class="operations-page-header">
             <div><MudText Typo="Typo.h4" HtmlTag="h1">@Text["PurchaseOrder", detail.Id]</MudText><MudText Typo="Typo.body2">@Text["Procurement"]</MudText></div>
-            <MudStack Row="true" Spacing="2">
+            <MudStack Row="true" Spacing="2" Class="purchase-order-downloads">
                 @foreach (var download in detail.Downloads)
                 {
                     <MudButton Href="@download.Url.AbsoluteUri" Target="_blank" Rel="noopener" Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Download">@Text["DownloadPdf"]</MudButton>
                 }
-                <MudButton Color="Color.Error" Variant="Variant.Filled" Disabled="@deleting" OnClick="ConfirmDeleteAsync">@Text["Delete"]</MudButton>
             </MudStack>
         </header>
         @if (!string.IsNullOrWhiteSpace(error))
@@ -45,7 +55,7 @@
                 <MudItem xs="12"><MudText Typo="Typo.caption">@Text["Notes"]</MudText><MudText>@Value(detail.Notes)</MudText></MudItem>
             </MudGrid>
         </MudPaper>
-        <MudTable Items="detail.Items" Hover="true" Breakpoint="Breakpoint.Sm" Elevation="1" aria-label="@Text["LineItemsTable"]">
+        <MudTable Items="detail.Items" Hover="true" Breakpoint="Breakpoint.Md" Elevation="1" Class="purchase-order-lines" aria-label="@Text["LineItemsTable"]">
             <HeaderContent><MudTh>@Text["PartNumber"]</MudTh><MudTh>@Text["Description"]</MudTh><MudTh>@Text["UnitPrice"]</MudTh><MudTh>@Text["Quantity"]</MudTh><MudTh>@Text["Subtotal"]</MudTh></HeaderContent>
             <RowTemplate>
                 <MudTd DataLabel="@Text["PartNumber"]">@Value(context.PartNumber)</MudTd>
@@ -55,6 +65,10 @@
                 <MudTd DataLabel="@Text["Subtotal"]">@Money(context.Subtotal)</MudTd>
             </RowTemplate>
         </MudTable>
+
+        <MudPaper Class="pa-4 mt-6 purchase-order-danger-zone" Elevation="0">
+            <MudButton Color="Color.Error" Variant="Variant.Filled" Disabled="@deleting" OnClick="ConfirmDeleteAsync">@Text["Delete"]</MudButton>
+        </MudPaper>
     }
 </MudContainer>
 
@@ -64,17 +78,20 @@
     private bool loading = true;
     private bool notFound;
     private bool deleting;
+    private bool forbidden;
     private string? error;
 
-    protected override async Task OnParametersSetAsync()
+    protected override Task OnParametersSetAsync() => LoadAsync();
+
+    private async Task LoadAsync()
     {
-        loading = true; notFound = false; error = null; detail = null;
+        loading = true; notFound = false; forbidden = false; error = null; detail = null;
         if (Id <= 0) { notFound = true; loading = false; return; }
         try
         {
-            using var response = await Http.GetAsync($"/bff/purchase-orders/{Id}");
+            using var response = await Http.GetForPresentationAsync($"/bff/purchase-orders/{Id}");
             if (response.StatusCode == HttpStatusCode.Unauthorized) { NavigateToLogin(); return; }
-            if (response.StatusCode == HttpStatusCode.Forbidden) { error = Text["Forbidden"]; return; }
+            if (response.StatusCode == HttpStatusCode.Forbidden) { forbidden = true; error = Text["Forbidden"]; return; }
             if (response.StatusCode == HttpStatusCode.NotFound) { notFound = true; return; }
             if (response.StatusCode == HttpStatusCode.TooManyRequests) { error = Text["RateLimited"]; return; }
             if (!response.IsSuccessStatusCode) { error = Text["Unavailable"]; return; }
@@ -91,7 +108,7 @@
         deleting = true; error = null;
         try
         {
-            using var sessionResponse = await Http.GetAsync("/bff/session");
+            using var sessionResponse = await Http.GetForPresentationAsync("/bff/session");
             if (sessionResponse.StatusCode == HttpStatusCode.Unauthorized) { NavigateToLogin(); return; }
             sessionResponse.EnsureSuccessStatusCode();
             var session = await sessionResponse.Content.ReadFromJsonAsync<EmployeeSessionSummary>();
@@ -125,6 +142,7 @@
 
     private string Value(string? value) => string.IsNullOrWhiteSpace(value) ? "-" : value;
     private static string Money(decimal value) => $"{value:N2} THB";
-    private static string FormatDate(DateTime? value) => value?.ToString("u", CultureInfo.InvariantCulture) ?? "-";
+    private static string FormatDate(DateTime? value) =>
+        LegacyPresentation.FormatUtcDateTime(value, CultureInfo.CurrentCulture, "-");
     private void NavigateToLogin() => Navigation.NavigateTo($"/Login?returnUrl={Uri.EscapeDataString(Navigation.ToBaseRelativePath(Navigation.Uri))}");
 }

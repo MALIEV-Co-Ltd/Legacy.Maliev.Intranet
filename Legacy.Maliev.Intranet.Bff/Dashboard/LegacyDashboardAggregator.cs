@@ -302,6 +302,15 @@ public sealed class LegacyDashboardAggregator
                 return;
             }
 
+            if (response.StatusCode == HttpStatusCode.NotFound)
+            {
+                // Accounting returns 404 when the selected period contains no
+                // payments. That is a valid empty business period, not a
+                // degraded dependency.
+                state.SetMonthlyFinance([]);
+                return;
+            }
+
             if (!response.IsSuccessStatusCode)
             {
                 state.MarkDegraded("finance-summary");

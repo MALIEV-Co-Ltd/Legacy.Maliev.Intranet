@@ -1,0 +1,119 @@
+.order-detail-header,
+.order-header-actions,
+.order-customer-context,
+.order-status-actions,
+.order-upload-actions {
+    display: flex;
+    gap: 0.75rem;
+}
+
+.order-header-actions,
+.order-status-actions,
+.order-upload-actions {
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.order-customer-context {
+    align-items: flex-end;
+}
+
+.order-edit-form {
+    display: grid;
+    gap: 0.875rem;
+}
+
+.order-edit-section {
+    overflow: clip;
+    border: 1px solid var(--legacy-border);
+    border-radius: var(--maliev-radius-md);
+    background: var(--legacy-surface);
+    box-shadow: var(--maliev-shadow-sm);
+}
+
+.order-edit-section > summary {
+    min-height: 48px;
+    padding: 0.875rem 1rem;
+    color: var(--maliev-ink);
+    cursor: pointer;
+    font-weight: 700;
+    list-style-position: inside;
+}
+
+.order-edit-section > summary:hover,
+.order-edit-section > summary:focus-visible {
+    background: var(--legacy-surface-muted);
+}
+
+.order-edit-section-body {
+    padding: 0 1rem 1rem;
+    border-top: 1px solid var(--legacy-border);
+}
+
+.order-save-bar {
+    position: sticky;
+    bottom: 0;
+    z-index: 2;
+    display: flex;
+    justify-content: flex-end;
+    padding: 0.75rem;
+    border: 1px solid var(--legacy-border);
+    border-radius: var(--maliev-radius-md);
+    background: color-mix(in srgb, var(--legacy-surface) 94%, transparent);
+    box-shadow: var(--maliev-shadow-sm);
+    backdrop-filter: blur(10px);
+}
+
+.order-history {
+    max-height: min(22rem, 48dvh);
+    overflow: auto;
+    overscroll-behavior: contain;
+}
+
+.order-files-panel .mud-list-item,
+.order-workflow-panel .mud-list-item {
+    min-height: 44px;
+}
+
+@media (max-width: 720px) {
+    .order-detail-header,
+    .order-customer-context,
+    .order-status-actions,
+    .order-upload-actions {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .order-header-actions > *,
+    .order-customer-context > *,
+    .order-status-actions > *,
+    .order-upload-actions > *,
+    .order-save-bar .mud-button-root {
+        width: 100%;
+    }
+
+    .order-edit-section-body {
+        padding-inline: 0.75rem;
+    }
+
+    .order-save-bar {
+        padding: 0.625rem;
+    }
+}
+
+@media (pointer: coarse) {
+    .order-detail-header .mud-button-root,
+    .order-edit-form .mud-button-root,
+    .order-workflow-panel .mud-button-root,
+    .order-files-panel .mud-button-root,
+    .order-files-panel .mud-icon-button {
+        min-width: 44px;
+        min-height: 44px;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .order-edit-section > summary {
+        scroll-behavior: auto;
+    }
+}

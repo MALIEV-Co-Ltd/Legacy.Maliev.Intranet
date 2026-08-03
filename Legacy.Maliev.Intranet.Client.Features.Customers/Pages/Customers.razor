@@ -112,7 +112,7 @@
         try
         {
             var uri = $"/bff/customers?sort={currentSort}&search={Uri.EscapeDataString(Search ?? string.Empty)}&index={Index}&size={Size}";
-            using var response = await Http.GetAsync(uri);
+            using var response = await Http.GetForPresentationAsync(uri);
             if (response.StatusCode == HttpStatusCode.Unauthorized)
             {
                 Navigation.NavigateTo($"/Login?returnUrl={Uri.EscapeDataString(Navigation.ToBaseRelativePath(Navigation.Uri))}");

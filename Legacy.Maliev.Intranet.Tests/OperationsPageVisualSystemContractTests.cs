@@ -30,6 +30,10 @@ public sealed class OperationsPageVisualSystemContractTests
         Assert.Contains("@media (max-width: 420px)", css, StringComparison.Ordinal);
         Assert.Contains("@media (pointer: coarse)", css, StringComparison.Ordinal);
         Assert.Contains("min-height: 44px", css, StringComparison.Ordinal);
+        Assert.Contains("min-width: 2.75rem", css, StringComparison.Ordinal);
+        Assert.Contains(".mud-picker .mud-icon-button-root", css, StringComparison.Ordinal);
+        Assert.Contains(".mud-input-adornment-icon-button", css, StringComparison.Ordinal);
+        Assert.Contains(".finance-summary-grid.mud-grid-spacing-xs-6", css, StringComparison.Ordinal);
         Assert.Contains("@media (prefers-reduced-motion: reduce)", css, StringComparison.Ordinal);
         Assert.Contains("@media (forced-colors: active)", css, StringComparison.Ordinal);
         Assert.Contains(":focus-visible", css, StringComparison.Ordinal);
@@ -94,6 +98,7 @@ public sealed class OperationsPageVisualSystemContractTests
         Assert.Contains("@media (max-width: 420px)", css, StringComparison.Ordinal);
         Assert.Contains("@media (pointer: coarse)", css, StringComparison.Ordinal);
         Assert.Contains("min-height: 44px", css, StringComparison.Ordinal);
+        Assert.Contains("min-width: 44px", css, StringComparison.Ordinal);
     }
 
     private static string Read(string root, params string[] segments) =>

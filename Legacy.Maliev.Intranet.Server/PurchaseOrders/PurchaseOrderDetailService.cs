@@ -98,8 +98,19 @@ public sealed class PurchaseOrderDetailService(IPurchaseOrderDetailGateway gatew
             var downloads = new List<PurchaseOrderDownloadLink>();
             foreach (var file in files)
             {
-                var uri = await gateway.GetSignedUrlAsync(file.Bucket, file.ObjectName, cancellationToken);
-                if (uri is not null) downloads.Add(new(Path.GetFileName(file.ObjectName), uri));
+                try
+                {
+                    var uri = await gateway.GetSignedUrlAsync(file.Bucket, file.ObjectName, cancellationToken);
+                    if (uri is not null) downloads.Add(new(Path.GetFileName(file.ObjectName), uri));
+                }
+                catch (Exception exception) when (IsRecoverable(exception, cancellationToken))
+                {
+                    logger.LogWarning(
+                        exception,
+                        "Purchase-order {PurchaseOrderId} attachment {AttachmentId} could not obtain a signed read URL; the detail remains available without that download.",
+                        id,
+                        file.Id);
+                }
             }
             return new(PurchaseOrderDetailStatus.Success, new PurchaseOrderDetail(
                 id, await supplierTask, order.SupplierContactPerson, await employeeTask, order.ShippingMethod,

@@ -14,7 +14,13 @@
     else if (!string.IsNullOrWhiteSpace(error))
     {
         <MudAlert Severity="@(notFound ? Severity.Warning : Severity.Error)" aria-live="assertive">@error</MudAlert>
-        <MudButton Href="/Employees/Index" Variant="Variant.Text" Class="mt-4">@Text["BackToEmployees"]</MudButton>
+        <div class="d-flex flex-wrap gap-2 mt-4">
+            @if (!notFound)
+            {
+                <MudButton OnClick="LoadAsync" Variant="Variant.Filled" Color="Color.Primary">@Text["Retry"]</MudButton>
+            }
+            <MudButton Href="/Employees/Index" Variant="Variant.Text">@Text["BackToEmployees"]</MudButton>
+        </div>
     }
     else if (detail is not null)
     {
@@ -46,7 +52,9 @@
     private bool loading;
     private bool notFound;
 
-    protected override async Task OnParametersSetAsync()
+    protected override Task OnParametersSetAsync() => LoadAsync();
+
+    private async Task LoadAsync()
     {
         loading = true;
         detail = null;
@@ -54,7 +62,7 @@
         notFound = false;
         try
         {
-            using var response = await Http.GetAsync($"/bff/employees/{Id}");
+            using var response = await Http.GetForPresentationAsync($"/bff/employees/{Id}");
             if (response.StatusCode == HttpStatusCode.Unauthorized)
             {
                 Navigation.NavigateTo($"/Login?returnUrl={Uri.EscapeDataString(Navigation.ToBaseRelativePath(Navigation.Uri))}");
@@ -110,5 +118,6 @@
 
     private string ValueOrFallback(string? value) => string.IsNullOrWhiteSpace(value) ? Text["NotProvided"] : value;
 
-    private string FormatDate(DateTime? value) => value?.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture) ?? Text["NotProvided"];
+    private string FormatDate(DateTime? value) =>
+        LegacyPresentation.FormatCalendarDate(value, System.Globalization.CultureInfo.CurrentCulture, Text["NotProvided"]);
 }

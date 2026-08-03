@@ -1,5 +1,5 @@
 .mlv-button {
-    min-height: 40px;
+    min-height: 44px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -34,12 +34,6 @@
 .mlv-button:disabled {
     opacity: 0.55;
     cursor: not-allowed;
-}
-
-@media (pointer: coarse) {
-    .mlv-button {
-        min-height: 44px;
-    }
 }
 
 @media (prefers-reduced-motion: reduce) {

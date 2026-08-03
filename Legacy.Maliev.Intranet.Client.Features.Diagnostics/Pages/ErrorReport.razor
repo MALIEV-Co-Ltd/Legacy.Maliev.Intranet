@@ -20,6 +20,7 @@
                 }
             </MudSelect>
             <MudSelect T="int" @bind-Value="sizeInput" Label="@Text["PerPage"]" Variant="Variant.Outlined">
+                <MudSelectItem Value="10">10</MudSelectItem>
                 <MudSelectItem Value="25">25</MudSelectItem>
                 <MudSelectItem Value="50">50</MudSelectItem>
                 <MudSelectItem Value="100">100</MudSelectItem>
@@ -53,7 +54,7 @@
                 <MudTh>@Text["CorrelationId"]</MudTh>
             </HeaderContent>
             <RowTemplate>
-                <MudTd DataLabel="@Text["Timestamp"]">@context.Timestamp.ToLocalTime().ToString("g")</MudTd>
+                <MudTd DataLabel="@Text["Timestamp"]">@LegacyPresentation.FormatUtcDateTime(context.Timestamp, CultureInfo.CurrentCulture)</MudTd>
                 <MudTd DataLabel="@Text["Level"]">@context.Level</MudTd>
                 <MudTd DataLabel="@Text["Code"]"><code>@context.Code</code></MudTd>
                 <MudTd DataLabel="@Text["Category"]">@context.Category</MudTd>
@@ -73,7 +74,7 @@
     [SupplyParameterFromQuery(Name = "search")] public string? Search { get; set; }
     [SupplyParameterFromQuery(Name = "sort")] public string? SortQuery { get; set; }
     [SupplyParameterFromQuery(Name = "index")] public int Index { get; set; } = 1;
-    [SupplyParameterFromQuery(Name = "size")] public int Size { get; set; } = 50;
+    [SupplyParameterFromQuery(Name = "size")] public int Size { get; set; } = 10;
 
     private DiagnosticEventPage? page;
     private string? error;
@@ -81,12 +82,12 @@
     private string? searchInput;
     private DiagnosticEventSort sortInput;
     private DiagnosticEventSort currentSort = DiagnosticEventSort.LogTimestamp_Descending;
-    private int sizeInput = 50;
+    private int sizeInput = 10;
 
     protected override async Task OnParametersSetAsync()
     {
         Index = PaginationQueryDefaults.NormalizeIndex(Index);
-        Size = PaginationQueryDefaults.NormalizeSize(Size, fallback: 50, maximum: 100);
+        Size = PaginationQueryDefaults.NormalizeSize(Size, fallback: 10, maximum: 100);
         currentSort = Enum.TryParse<DiagnosticEventSort>(SortQuery, true, out var parsed)
             ? parsed
             : DiagnosticEventSort.LogTimestamp_Descending;
@@ -103,7 +104,7 @@
         try
         {
             var uri = $"/bff/diagnostics/events?sort={currentSort}&search={Uri.EscapeDataString(Search ?? string.Empty)}&index={Index}&size={Size}";
-            using var response = await Http.GetAsync(uri);
+            using var response = await Http.GetForPresentationAsync(uri);
             if (response.StatusCode == HttpStatusCode.Unauthorized)
             {
                 Navigation.NavigateTo($"/Login?returnUrl={Uri.EscapeDataString(Navigation.ToBaseRelativePath(Navigation.Uri))}");

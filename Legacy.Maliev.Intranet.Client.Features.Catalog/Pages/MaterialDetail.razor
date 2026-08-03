@@ -17,10 +17,15 @@
     else if (notFound)
     {
         <MudAlert Severity="Severity.Info" aria-live="polite">@error</MudAlert>
+        <MudButton Href="/Materials/Index" Variant="Variant.Text" Class="mt-4">@Text["Back"]</MudButton>
     }
     else if (!string.IsNullOrWhiteSpace(error))
     {
         <MudAlert Severity="Severity.Error" aria-live="assertive">@error</MudAlert>
+        <div class="d-flex flex-wrap gap-2 mt-4">
+            <MudButton OnClick="LoadAsync" Variant="Variant.Filled" Color="Color.Primary">@Text["Retry"]</MudButton>
+            <MudButton Href="/Materials/Index" Variant="Variant.Text">@Text["Back"]</MudButton>
+        </div>
     }
     else if (material is not null)
     {
@@ -192,7 +197,9 @@
     private HashSet<int> selectedSurfaceFinishIds = [];
     private HashSet<int> persistedSurfaceFinishIds = [];
 
-    protected override async Task OnParametersSetAsync()
+    protected override Task OnParametersSetAsync() => LoadAsync();
+
+    private async Task LoadAsync()
     {
         material = null;
         error = null;
@@ -262,7 +269,7 @@
 
     private async Task<CatalogMaterialDetail> LoadMaterialAsync()
     {
-        using var response = await Http.GetAsync($"/bff/catalog/materials/{Id}");
+        using var response = await Http.GetForPresentationAsync($"/bff/catalog/materials/{Id}");
         if (response.StatusCode == HttpStatusCode.Unauthorized) throw new UnauthorizedAccessException();
         if (response.StatusCode == HttpStatusCode.Forbidden) throw new CatalogForbiddenException();
         if (response.StatusCode == HttpStatusCode.NotFound) throw new MaterialNotFoundException();
@@ -274,7 +281,7 @@
 
     private async Task<IReadOnlyList<T>> LoadLookupAsync<T>(string path)
     {
-        using var response = await Http.GetAsync(path);
+        using var response = await Http.GetForPresentationAsync(path);
         if (response.StatusCode == HttpStatusCode.Unauthorized) throw new UnauthorizedAccessException();
         if (response.StatusCode == HttpStatusCode.Forbidden) throw new CatalogForbiddenException();
         if (response.StatusCode == HttpStatusCode.TooManyRequests) throw new CatalogRateLimitedException();
@@ -284,7 +291,7 @@
 
     private async Task<IReadOnlyList<T>> LoadAssociationLookupAsync<T>(string path)
     {
-        using var response = await Http.GetAsync(path);
+        using var response = await Http.GetForPresentationAsync(path);
         if (response.StatusCode == HttpStatusCode.Unauthorized) throw new UnauthorizedAccessException();
         if (response.StatusCode == HttpStatusCode.Forbidden) throw new CatalogForbiddenException();
         if (response.StatusCode == HttpStatusCode.TooManyRequests) throw new CatalogRateLimitedException();
@@ -308,7 +315,7 @@
         notification = null;
         try
         {
-            var session = await Http.GetFromJsonAsync<EmployeeSessionSummary>("/bff/session");
+            var session = await Http.GetFromJsonForPresentationAsync<EmployeeSessionSummary>("/bff/session");
             if (string.IsNullOrWhiteSpace(session?.CsrfToken))
             {
                 error = Text["SaveFailed"];
@@ -383,7 +390,7 @@
         IEnumerable<int> selected,
         string segment)
     {
-        var session = await Http.GetFromJsonAsync<EmployeeSessionSummary>("/bff/session");
+        var session = await Http.GetFromJsonForPresentationAsync<EmployeeSessionSummary>("/bff/session");
         if (string.IsNullOrWhiteSpace(session?.CsrfToken))
         {
             throw new AssociationSaveException();

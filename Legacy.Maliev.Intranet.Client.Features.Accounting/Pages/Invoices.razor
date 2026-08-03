@@ -24,6 +24,8 @@
                 }
             </MudSelect>
             <MudSelect T="int" @bind-Value="sizeInput" Label="@Text["PerPage"]" Variant="Variant.Outlined">
+                <MudSelectItem T="int" Value="10">10</MudSelectItem>
+                <MudSelectItem T="int" Value="25">25</MudSelectItem>
                 <MudSelectItem T="int" Value="50">50</MudSelectItem>
                 <MudSelectItem T="int" Value="100">100</MudSelectItem>
                 <MudSelectItem T="int" Value="150">150</MudSelectItem>
@@ -94,8 +96,8 @@
                             <MudTd DataLabel="@Text["Total"]">@FormatMoney(invoice.Total, invoice.Currency)</MudTd>
                             <MudTd DataLabel="@Text["WithholdingTax"]">@FormatMoney(invoice.WithholdingTax, invoice.Currency, negate: true)</MudTd>
                             <MudTd DataLabel="@Text["Outstanding"]"><strong>@FormatMoney(invoice.Outstanding, invoice.Currency)</strong></MudTd>
-                            <MudTd DataLabel="@Text["PaymentDate"]">@FormatDate(invoice.PaymentDate)</MudTd>
-                            <MudTd DataLabel="@Text["CreatedDate"]">@FormatDate(invoice.CreatedDate)</MudTd>
+                            <MudTd DataLabel="@Text["PaymentDate"]">@FormatCalendarDate(invoice.PaymentDate)</MudTd>
+                            <MudTd DataLabel="@Text["CreatedDate"]">@FormatTimestamp(invoice.CreatedDate)</MudTd>
                         </RowTemplate>
                     </MudTable>
                 }
@@ -114,7 +116,7 @@
     [SupplyParameterFromQuery(Name = "search")] public string? Search { get; set; }
     [SupplyParameterFromQuery(Name = "sort")] public string? SortQuery { get; set; }
     [SupplyParameterFromQuery(Name = "index")] public int Index { get; set; } = 1;
-    [SupplyParameterFromQuery(Name = "size")] public int Size { get; set; } = 50;
+    [SupplyParameterFromQuery(Name = "size")] public int Size { get; set; } = 10;
 
     private static readonly InvoiceListPage EmptyPage = new([], 1, 0, 0, false, false);
     private InvoiceListPage paidInvoices = EmptyPage;
@@ -122,7 +124,7 @@
     private InvoiceListSort currentSort = InvoiceListSort.InvoiceCreatedDate_Descending;
     private InvoiceListSort sortInput;
     private string? searchInput;
-    private int sizeInput = 50;
+    private int sizeInput = 10;
     private bool loading;
     private string? error;
 
@@ -139,7 +141,7 @@
     protected override async Task OnParametersSetAsync()
     {
         Index = Math.Max(1, Index);
-        Size = Size is 50 or 100 or 150 ? Size : 50;
+        Size = Size is 10 or 25 or 50 or 100 or 150 ? Size : 10;
         currentSort = Enum.TryParse<InvoiceListSort>(SortQuery, true, out var parsed)
             ? parsed
             : InvoiceListSort.InvoiceCreatedDate_Descending;
@@ -158,8 +160,8 @@
         {
             var query = $"sort={currentSort}&search={Uri.EscapeDataString(Search ?? string.Empty)}&index={Index}&size={Size}";
             responses = await Task.WhenAll(
-                Http.GetAsync($"/bff/invoices?{query}&paid=true"),
-                Http.GetAsync($"/bff/invoices?{query}&paid=false"));
+                Http.GetForPresentationAsync($"/bff/invoices?{query}&paid=true"),
+                Http.GetForPresentationAsync($"/bff/invoices?{query}&paid=false"));
             if (HandleFailure(responses))
             {
                 return;
@@ -224,14 +226,9 @@
 
     private static string FormatMoney(decimal? value, string? currency, bool negate = false) =>
         value is null ? "-" : $"{(negate ? -value.Value : value.Value):N2} {ValueOrFallback(currency)}";
-    private static string FormatDate(DateTime? value)
-    {
-        if (value is null) return "-";
-        var utc = value.Value.Kind == DateTimeKind.Unspecified
-            ? DateTime.SpecifyKind(value.Value, DateTimeKind.Utc)
-            : value.Value.ToUniversalTime();
-        return TimeZoneInfo.ConvertTimeBySystemTimeZoneId(new DateTimeOffset(utc), "Asia/Bangkok")
-            .ToString("g", CultureInfo.CurrentCulture);
-    }
+    private static string FormatTimestamp(DateTime? value) =>
+        LegacyPresentation.FormatUtcDateTime(value, CultureInfo.CurrentCulture, "-");
+    private static string FormatCalendarDate(DateTime? value) =>
+        LegacyPresentation.FormatCalendarDate(value, CultureInfo.CurrentCulture, "-");
     private static string ValueOrFallback(string? value) => string.IsNullOrWhiteSpace(value) ? "-" : value;
 }

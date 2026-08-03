@@ -19,6 +19,21 @@ public sealed class PurchaseOrderDetailServiceTests
     }
 
     [Fact]
+    public async Task GetAsync_WhenOptionalSignedUrlIsUnavailable_KeepsOrderDetailUsable()
+    {
+        var gateway = new Gateway { FailSignedUrl = true };
+
+        var result = await new PurchaseOrderDetailService(
+            gateway,
+            NullLogger<PurchaseOrderDetailService>.Instance).GetAsync(84, CancellationToken.None);
+
+        Assert.Equal(PurchaseOrderDetailStatus.Success, result.Status);
+        Assert.Equal("Acme", result.Detail?.SupplierName);
+        Assert.Equal(200m, result.Detail?.Items.Single().Subtotal);
+        Assert.Empty(result.Detail?.Downloads ?? []);
+    }
+
+    [Fact]
     public async Task DeleteAsync_RemovesStorageMetadataItemsThenParent()
     {
         var gateway = new Gateway();
@@ -39,13 +54,17 @@ public sealed class PurchaseOrderDetailServiceTests
     private sealed class Gateway : IPurchaseOrderDetailGateway
     {
         public bool FailLink { get; init; }
+        public bool FailSignedUrl { get; init; }
         public List<string> Deletes { get; } = [];
         public Task<PurchaseOrderDetailData?> GetOrderAsync(int id, CancellationToken cancellationToken) => Task.FromResult<PurchaseOrderDetailData?>(new(id, 42, "Buyer", 7, "Courier", "Bangkok", "Net 30", "Note", new DateTime(2026, 7, 18)));
         public Task<string?> GetSupplierNameAsync(int id, CancellationToken cancellationToken) => Task.FromResult<string?>("Acme");
         public Task<string?> GetEmployeeNameAsync(int id, CancellationToken cancellationToken) => Task.FromResult<string?>("Somchai");
         public Task<IReadOnlyList<PurchaseOrderDetailItemData>> GetItemsAsync(int orderId, CancellationToken cancellationToken) => Task.FromResult<IReadOnlyList<PurchaseOrderDetailItemData>>([new(9, orderId, "R-1", "Resin", 2, 100, null)]);
         public Task<IReadOnlyList<PurchaseOrderDetailFileData>> GetFilesAsync(int orderId, CancellationToken cancellationToken) => Task.FromResult<IReadOnlyList<PurchaseOrderDetailFileData>>([new(5, orderId, "maliev.com", "purchaseorders/PurchaseOrder_84.pdf")]);
-        public Task<Uri?> GetSignedUrlAsync(string bucket, string objectName, CancellationToken cancellationToken) => Task.FromResult<Uri?>(new("https://storage.test/signed"));
+        public Task<Uri?> GetSignedUrlAsync(string bucket, string objectName, CancellationToken cancellationToken) =>
+            FailSignedUrl
+                ? Task.FromException<Uri?>(new HttpRequestException("storage unavailable"))
+                : Task.FromResult<Uri?>(new("https://storage.test/signed"));
         public Task DeleteStoredFileAsync(string bucket, string objectName, CancellationToken cancellationToken) { Deletes.Add("stored:po.pdf"); return Task.CompletedTask; }
         public Task DeleteFileLinkAsync(int id, CancellationToken cancellationToken) { if (FailLink) throw new HttpRequestException("failed"); Deletes.Add($"link:{id}"); return Task.CompletedTask; }
         public Task DeleteItemAsync(int id, CancellationToken cancellationToken) { Deletes.Add($"item:{id}"); return Task.CompletedTask; }

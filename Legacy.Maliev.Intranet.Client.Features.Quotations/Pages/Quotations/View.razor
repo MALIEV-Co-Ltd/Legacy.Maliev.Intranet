@@ -17,6 +17,10 @@
     else if (!string.IsNullOrWhiteSpace(error))
     {
         <MudAlert Severity="Severity.Error" aria-live="assertive">@error</MudAlert>
+        <div class="d-flex flex-wrap gap-2 mt-4">
+            <MudButton OnClick="LoadAsync" Variant="Variant.Filled" Color="Color.Primary">@Text["Retry"]</MudButton>
+            <MudButton Href="/Quotations/Index" Variant="Variant.Text">@Text["Back"]</MudButton>
+        </div>
     }
     else if (page is not null)
     {
@@ -42,8 +46,8 @@
                     <MudPaper Class="pa-4 h-100">
                         <MudText id="quotation-information-heading" Typo="Typo.h6" HtmlTag="h2">@Text["Quotation"]</MudText>
                         <dl class="quotation-detail-list">
-                            <div><dt>@Text["CreatedLabel"]</dt><dd>@FormatDate(page.Quotation.CreatedDate)</dd></div>
-                            <div><dt>@Text["ModifiedLabel"]</dt><dd>@FormatDate(page.Quotation.ModifiedDate)</dd></div>
+                            <div><dt>@Text["CreatedLabel"]</dt><dd>@FormatTimestamp(page.Quotation.CreatedDate)</dd></div>
+                            <div><dt>@Text["ModifiedLabel"]</dt><dd>@FormatTimestamp(page.Quotation.ModifiedDate)</dd></div>
                             <div><dt>@Text["EmployeeLabel"]</dt><dd>@(page.Employee?.FullName ?? "-")</dd></div>
                             <div><dt>@Text["PeriodLabel"]</dt><dd>@Text["PeriodValue", page.Quotation.Period]</dd></div>
                             <div><dt>@Text["ExpirationLabel"]</dt><dd>@FormatDate(page.Quotation.ExpirationDate)</dd></div>
@@ -155,7 +159,9 @@
     private bool loading = true;
     private string? error;
 
-    protected override async Task OnParametersSetAsync()
+    protected override Task OnParametersSetAsync() => LoadAsync();
+
+    private async Task LoadAsync()
     {
         loading = true;
         error = null;
@@ -167,7 +173,7 @@
         }
         try
         {
-            using var response = await Http.GetAsync($"/bff/quotations/{Id.Value}");
+            using var response = await Http.GetForPresentationAsync($"/bff/quotations/{Id.Value}");
             if (response.StatusCode == HttpStatusCode.Unauthorized)
             {
                 Navigation.NavigateTo($"/Login?returnUrl={Uri.EscapeDataString(Navigation.ToBaseRelativePath(Navigation.Uri))}");
@@ -212,6 +218,7 @@
         false => "quotation-status quotation-status--declined",
         null => "quotation-status quotation-status--open",
     };
-    private static string FormatDate(DateTime? value) => value?.ToLocalTime().ToString("g", CultureInfo.CurrentCulture) ?? "-";
+    private static string FormatDate(DateTime? value) => LegacyPresentation.FormatCalendarDate(value, CultureInfo.CurrentCulture, "-");
+    private static string FormatTimestamp(DateTime? value) => LegacyPresentation.FormatUtcDateTime(value, CultureInfo.CurrentCulture, "-");
     private static string Value(string? value) => string.IsNullOrWhiteSpace(value) ? "-" : value;
 }

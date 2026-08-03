@@ -63,6 +63,19 @@
     scroll-margin: 1rem;
 }
 
+.orders-working-set {
+    max-height: min(32rem, 52dvh);
+    overflow: auto;
+    overscroll-behavior: contain;
+}
+
+.orders-working-set thead {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    background: var(--legacy-surface);
+}
+
 .orders-table-scroll:focus-visible {
     outline: 2px solid var(--legacy-primary);
     outline-offset: 3px;
@@ -77,7 +90,9 @@
 .orders-table a {
     display: inline-flex;
     align-items: center;
-    min-height: 2.25rem;
+    justify-content: center;
+    min-width: 44px;
+    min-height: 44px;
     color: var(--mud-palette-primary);
     font-weight: 600;
     text-decoration: none;
@@ -112,11 +127,25 @@
 }
 
 @media (max-width: 720px) {
+    .orders-results-panel {
+        min-height: 0;
+    }
+
+    .orders-working-set {
+        max-height: min(34rem, 62dvh);
+        padding-inline-end: 2px;
+    }
+
     .orders-toolbar .mud-input-control,
     .orders-toolbar .mlv-search-box,
     .orders-toolbar .mlv-button {
         flex: 1 1 100%;
         min-width: 0;
+    }
+
+    .orders-module-shell .mlv-button,
+    .orders-table a {
+        min-height: 44px;
     }
 
     .orders-table {
@@ -141,6 +170,17 @@
         border: 1px solid var(--legacy-border);
         border-radius: var(--legacy-radius-lg);
         background: var(--legacy-surface);
+    }
+
+    .orders-pager {
+        align-items: stretch;
+        flex-direction: column;
+        text-align: center;
+    }
+
+    .orders-pager .mlv-button {
+        width: 100%;
+        min-height: 44px;
     }
 
     .orders-table tr:last-child {

@@ -76,9 +76,19 @@ public sealed class IntranetParityContractTests
         Assert.Contains("FindAll(\"permissions\")", aggregator, StringComparison.Ordinal);
         Assert.Contains("ReadFromJsonAsync", aggregator, StringComparison.Ordinal);
         Assert.DoesNotContain("DbContext", aggregator, StringComparison.OrdinalIgnoreCase);
-        Assert.Contains("GetAsync(\"/bff/dashboard\"", page, StringComparison.Ordinal);
+        Assert.Contains("GetForPresentationAsync(\"/bff/dashboard\"", page, StringComparison.Ordinal);
         Assert.DoesNotContain("AccessToken", page, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("RefreshToken", page, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void DashboardMetricLinks_AreTouchSized()
+    {
+        var root = FindRoot();
+        var styles = File.ReadAllText(Path.Combine(root, "Legacy.Maliev.Intranet.Client", "Components", "Dashboard", "DashboardMetricCard.razor.css"));
+
+        Assert.Contains(".dashboard-metric-link", styles, StringComparison.Ordinal);
+        Assert.Contains("min-height: 44px", styles, StringComparison.Ordinal);
     }
 
     [Fact]

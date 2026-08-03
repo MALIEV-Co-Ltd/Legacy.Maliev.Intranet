@@ -11,6 +11,11 @@ public sealed class CustomersViewWasmMigrationContractTests
             "Legacy.Maliev.Intranet.Client.Features.Customers",
             "Pages",
             "CustomerView.razor");
+        var featureStyles = Path.Combine(
+            root,
+            "Legacy.Maliev.Intranet.Client.Features.Customers",
+            "Pages",
+            "CustomerView.razor.css");
         var contracts = Path.Combine(
             root,
             "Legacy.Maliev.Intranet.Contracts",
@@ -37,6 +42,9 @@ public sealed class CustomersViewWasmMigrationContractTests
         Assert.Contains("HttpStatusCode.TooManyRequests", page, StringComparison.Ordinal);
         Assert.Contains("aria-live=\"polite\"", page, StringComparison.Ordinal);
         Assert.Contains("Href=\"/Customers/Index\"", page, StringComparison.Ordinal);
+        var styles = File.ReadAllText(featureStyles);
+        Assert.Contains("a[href^=\"mailto:\"]", styles, StringComparison.Ordinal);
+        Assert.Contains("min-height: 44px", styles, StringComparison.Ordinal);
 
         Assert.True(File.Exists(contracts), "The browser-safe full customer detail DTO is missing.");
         var contractSource = File.ReadAllText(contracts);

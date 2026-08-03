@@ -57,6 +57,47 @@ public sealed class OperationsShellContractTests
     }
 
     [Fact]
+    public void MobileNavigation_TrapsFocusMakesWorkspaceInertAndRestoresTheMenuTrigger()
+    {
+        var root = FindRoot();
+        var layout = Read(root, "Legacy.Maliev.Intranet.Client", "Layout", "MainLayout.razor");
+        var topBar = Read(root, "Legacy.Maliev.Intranet.Client", "Layout", "LegacyTopBar.razor");
+        var navigation = Read(root, "Legacy.Maliev.Intranet.Client", "Components", "Shell", "LegacyNavigationRail.razor");
+
+        Assert.Contains("@attributes=\"WorkspaceAccessibilityAttributes\"", layout, StringComparison.Ordinal);
+        Assert.Contains("[\"inert\"] = string.Empty", layout, StringComparison.Ordinal);
+        Assert.Contains("[\"aria-hidden\"] = \"true\"", layout, StringComparison.Ordinal);
+        Assert.Contains("@ref=\"_navigationToggle\"", topBar, StringComparison.Ordinal);
+        Assert.Contains("await _navigationToggle.FocusAsync()", topBar, StringComparison.Ordinal);
+        Assert.Contains("role=\"@(IsDrawer ? \"dialog\" : null)\"", navigation, StringComparison.Ordinal);
+        Assert.Contains("aria-modal=\"@(IsDrawer ? \"true\" : null)\"", navigation, StringComparison.Ordinal);
+        Assert.Contains("legacy-drawer-focus-sentinel", navigation, StringComparison.Ordinal);
+        Assert.Contains("FocusFirstAsync", navigation, StringComparison.Ordinal);
+        Assert.Contains("FocusLastAsync", navigation, StringComparison.Ordinal);
+        Assert.Contains("await _closeButton.FocusAsync()", navigation, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ResponsiveShell_PreservesNamedQuickActionsAndTouchSizedControlsWithoutOverflow()
+    {
+        var root = FindRoot();
+        var topBarCss = Read(root, "Legacy.Maliev.Intranet.Client", "Layout", "LegacyTopBar.razor.css");
+        var railCss = Read(root, "Legacy.Maliev.Intranet.Client", "Components", "Shell", "LegacyNavigationRail.razor.css");
+        var actions = Read(root, "Legacy.Maliev.Intranet.Client", "Components", "Shell", "LegacyQuickActions.razor");
+        var actionsCss = Read(root, "Legacy.Maliev.Intranet.Client", "Components", "Shell", "LegacyQuickActions.razor.css");
+        var appCss = Read(root, "Legacy.Maliev.Intranet.Client", "wwwroot", "css", "app.css");
+
+        Assert.Contains("<nav class=\"legacy-quick-actions\"", actions, StringComparison.Ordinal);
+        Assert.Contains("aria-label=\"@Text[item.Label]\"", actions, StringComparison.Ordinal);
+        Assert.Contains("min-width: 0", topBarCss, StringComparison.Ordinal);
+        Assert.Contains("@media (max-width: 960px)", topBarCss, StringComparison.Ordinal);
+        Assert.Contains("min-width: 44px", actionsCss, StringComparison.Ordinal);
+        Assert.Contains("min-height: 44px", railCss, StringComparison.Ordinal);
+        Assert.Contains("max-width: 100%", appCss, StringComparison.Ordinal);
+        Assert.Contains("@media (prefers-reduced-motion: reduce)", railCss, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void CompatibilityHost_UsesTheSharedOperationsShellAndWorkingRouteSearch()
     {
         var root = FindRoot();

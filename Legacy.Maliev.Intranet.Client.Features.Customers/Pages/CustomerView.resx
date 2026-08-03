@@ -40,4 +40,5 @@
   <data name="ValidationFailed" xml:space="preserve"><value>Check the highlighted customer fields.</value></data>
   <data name="Conflict" xml:space="preserve"><value>The customer profile changed before it could be saved.</value></data>
   <data name="SaveFailed" xml:space="preserve"><value>The customer profile could not be saved.</value></data>
+  <data name="Retry" xml:space="preserve"><value>Try again</value></data>
 </root>

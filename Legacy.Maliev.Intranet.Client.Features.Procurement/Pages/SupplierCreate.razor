@@ -6,13 +6,13 @@
 
 <PageTitle>@Text["PageTitle"]</PageTitle>
 
-<MudContainer MaxWidth="MaxWidth.Medium">
+<MudContainer MaxWidth="MaxWidth.Medium" Class="supplier-editor-page">
     <header class="operations-page-header"><div><MudText Typo="Typo.h4" HtmlTag="h1">@Text["CreateSupplier"]</MudText><MudText Typo="Typo.body2">@Text["Procurement"]</MudText></div></header>
     @if (!string.IsNullOrWhiteSpace(error))
     {
         <MudAlert Severity="Severity.Error" Class="mb-4" aria-live="assertive">@error</MudAlert>
     }
-    <MudForm @ref="form" Model="@model" @bind-IsValid="formValid">
+    <MudForm @ref="form" Model="@model" @bind-IsValid="formValid" Class="supplier-editor-form">
         <MudPaper Class="pa-4 mb-4" Elevation="1">
             <MudText Typo="Typo.h6" HtmlTag="h2" id="supplier-details-heading">@Text["Supplier"]</MudText>
             <MudGrid Spacing="3" aria-labelledby="supplier-details-heading">
@@ -36,11 +36,11 @@
                 <MudItem xs="12" md="6"><MudTextField @bind-Value="model.City" For="@(() => model.City)" Label="@Text["City"]" /></MudItem>
                 <MudItem xs="12" md="6"><MudTextField @bind-Value="model.State" For="@(() => model.State)" Label="@Text["State"]" /></MudItem>
                 <MudItem xs="12" md="6"><MudTextField @bind-Value="model.PostalCode" For="@(() => model.PostalCode)" Label="@Text["PostalCode"]" /></MudItem>
-                <MudItem xs="12" md="6"><MudNumericField @bind-Value="model.CountryId" For="@(() => model.CountryId)" Label="@Text["CountryId"]" Min="1" Required="true" /></MudItem>
+                <MudItem xs="12" md="6"><MudNumericField T="int?" @bind-Value="countryId" Label="@Text["CountryId"]" Min="1" Required="true" /></MudItem>
             </MudGrid>
         </MudPaper>
 
-        <MudStack Row="true" Spacing="2" Class="mt-4">
+        <MudStack Row="true" Spacing="2" Class="mt-4 supplier-editor-actions">
             <MudButton ButtonType="ButtonType.Button" Variant="Variant.Filled" Color="Color.Primary" Disabled="@submitting" OnClick="SubmitAsync">
                 @(submitting ? Text["Submitting"] : Text["CreateSupplier"])
             </MudButton>
@@ -55,12 +55,13 @@
     private bool formValid;
     private bool submitting;
     private string? error;
+    private int? countryId;
 
     private async Task SubmitAsync()
     {
         if (submitting || form is null) return;
         await form.ValidateAsync();
-        if (!formValid)
+        if (!formValid || countryId is not > 0)
         {
             error = Text["ValidationFailed"];
             return;
@@ -68,9 +69,10 @@
 
         submitting = true;
         error = null;
+        model.CountryId = countryId.Value;
         try
         {
-            using var sessionResponse = await Http.GetAsync("/bff/session");
+            using var sessionResponse = await Http.GetForPresentationAsync("/bff/session");
             if (sessionResponse.StatusCode == HttpStatusCode.Unauthorized) { NavigateToLogin(); return; }
             sessionResponse.EnsureSuccessStatusCode();
             var session = await sessionResponse.Content.ReadFromJsonAsync<EmployeeSessionSummary>();

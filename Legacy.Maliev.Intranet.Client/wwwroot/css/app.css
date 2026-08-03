@@ -9,10 +9,10 @@ body {
 
 *, *::before, *::after { box-sizing: border-box; }
 body { background: var(--legacy-background); color: var(--legacy-ink); }
-.legacy-layout { min-height: 100dvh; background: var(--legacy-background); }
-.legacy-workspace-shell { width: calc(100% - var(--legacy-rail-width)); min-width: 0; margin-left: var(--legacy-rail-width); }
-.legacy-main-content { min-height: calc(100dvh - var(--legacy-utility-height)); padding: 0 !important; }
-.legacy-page-container { width: min(1480px, 100%); margin: 0 auto; padding: clamp(1rem, 2vw, 2rem); }
+.legacy-layout { max-width: 100%; min-height: 100dvh; background: var(--legacy-background); }
+.legacy-workspace-shell { width: calc(100% - var(--legacy-rail-width)); max-width: 100%; min-width: 0; margin-left: var(--legacy-rail-width); }
+.legacy-main-content { max-width: 100%; min-height: calc(100dvh - var(--legacy-utility-height)); min-width: 0; padding: 0 !important; }
+.legacy-page-container { width: min(1480px, 100%); max-width: 100%; min-width: 0; margin: 0 auto; padding: clamp(1rem, 2vw, 2rem); }
 .legacy-navigation-backdrop { position: fixed; inset: 0; z-index: 29; background: rgba(15,23,42,.46); }
 .visually-hidden { position: absolute !important; width: 1px !important; height: 1px !important; padding: 0 !important; margin: -1px !important; overflow: hidden !important; clip: rect(0,0,0,0) !important; white-space: nowrap !important; border: 0 !important; }
 .legacy-empty-layout { min-height: 100dvh; display: grid; place-items: center; padding: 1rem; background: var(--legacy-background); }
@@ -23,6 +23,7 @@ body { background: var(--legacy-background); color: var(--legacy-ink); }
 .dashboard-card-link:hover { text-decoration: underline; }
 
 #blazor-error-ui {
+    display: none;
     background: #b91c1c;
     bottom: 0;
     color: #fff;

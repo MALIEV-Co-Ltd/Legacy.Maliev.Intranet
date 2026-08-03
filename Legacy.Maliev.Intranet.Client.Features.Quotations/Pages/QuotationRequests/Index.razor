@@ -103,7 +103,7 @@
         error = null;
         try
         {
-            using var response = await Http.GetAsync($"/bff/quotation-requests?sort={sortInput}&search={Uri.EscapeDataString(Search ?? string.Empty)}&index={PageIndex}&size={Size}");
+            using var response = await Http.GetForPresentationAsync($"/bff/quotation-requests?sort={sortInput}&search={Uri.EscapeDataString(Search ?? string.Empty)}&index={PageIndex}&size={Size}");
             if (response.StatusCode == HttpStatusCode.Unauthorized)
             {
                 Navigation.NavigateTo($"/Login?returnUrl={Uri.EscapeDataString(Navigation.ToBaseRelativePath(Navigation.Uri))}");
@@ -151,7 +151,7 @@
     private static string Name(QuotationRequestItem value) =>
         Fallback(string.Join(' ', new[] { value.FirstName, value.LastName }.Where(part => !string.IsNullOrWhiteSpace(part))));
     private static string Fallback(string? value) => string.IsNullOrWhiteSpace(value) ? "-" : value;
-    private static string Format(DateTime? value) => value?.ToLocalTime().ToString("d", CultureInfo.CurrentCulture) ?? "-";
+    private static string Format(DateTime? value) => LegacyPresentation.FormatUtcDate(value, CultureInfo.CurrentCulture, "-");
     private static string StatusClass(bool? done) => done == true
         ? "quotation-request-status quotation-request-status--done"
         : "quotation-request-status quotation-request-status--open";

@@ -65,7 +65,7 @@
                             }
                             else
                             {
-                                <div class="orders-table-scroll" tabindex="0" aria-label="@section.Title">
+                                <div class="orders-table-scroll @(section.ShowCount ? "orders-working-set" : "")" tabindex="0" aria-label="@section.Title">
                                     <table class="mlv-table orders-table">
                                         <caption class="visually-hidden">@section.Title</caption>
                                         <thead>
@@ -131,7 +131,7 @@
     [SupplyParameterFromQuery(Name = "search")] public string? Search { get; set; }
     [SupplyParameterFromQuery(Name = "sort")] public string? SortQuery { get; set; }
     [SupplyParameterFromQuery(Name = "index")] public int Index { get; set; } = 1;
-    [SupplyParameterFromQuery(Name = "size")] public int Size { get; set; } = 25;
+    [SupplyParameterFromQuery(Name = "size")] public int Size { get; set; } = 10;
 
     private OrderListPage? Page { get; set; }
     private IReadOnlyList<OrderListItem> AssignedOrders { get; set; } = [];
@@ -155,7 +155,7 @@
     protected override async Task OnParametersSetAsync()
     {
         Index = PaginationQueryDefaults.NormalizeIndex(Index);
-        Size = PaginationQueryDefaults.NormalizeSize(Size, fallback: 25, maximum: 250);
+        Size = PaginationQueryDefaults.NormalizeSize(Size, fallback: 10, maximum: 250);
         currentSort = Enum.TryParse<OrderListSort>(SortQuery, ignoreCase: true, out var parsedSort)
             ? parsedSort
             : OrderListSort.OrderCreatedDate_Descending;
@@ -175,11 +175,11 @@
         HttpResponseMessage[]? responses = null;
         try
         {
-            var pageTask = Http.GetAsync($"/bff/orders?sort={currentSort}&search={Uri.EscapeDataString(Search ?? string.Empty)}&index={Index}&size={Size}");
-            var pendingTask = Http.GetAsync($"/bff/orders/pending?size={PendingWorkingSetSize}");
-            var processesTask = Http.GetAsync("/bff/order-processes");
-            var employeesTask = Http.GetAsync("/bff/employees?sort=EmployeeId_Ascending&search=&index=1&size=250");
-            var sessionTask = Http.GetAsync("/bff/session");
+            var pageTask = Http.GetForPresentationAsync($"/bff/orders?sort={currentSort}&search={Uri.EscapeDataString(Search ?? string.Empty)}&index={Index}&size={Size}");
+            var pendingTask = Http.GetForPresentationAsync($"/bff/orders/pending?size={PendingWorkingSetSize}");
+            var processesTask = Http.GetForPresentationAsync("/bff/order-processes");
+            var employeesTask = Http.GetForPresentationAsync("/bff/employees?sort=EmployeeId_Ascending&search=&index=1&size=250");
+            var sessionTask = Http.GetForPresentationAsync("/bff/session");
             responses = await Task.WhenAll(pageTask, pendingTask, processesTask, employeesTask, sessionTask);
 
             if (HandleFailure(responses))
@@ -277,7 +277,8 @@
     private static string ValueOrFallback(string? value) => string.IsNullOrWhiteSpace(value) ? "-" : value;
     private static string ValueOrFallback(int? value) => value?.ToString(CultureInfo.InvariantCulture) ?? "-";
     private static string FormatAmount(decimal? value) => value?.ToString("N2", CultureInfo.CurrentCulture) ?? "-";
-    private static string FormatDate(DateTime? value) => value?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) ?? "-";
+    private static string FormatDate(DateTime? value) =>
+        LegacyPresentation.FormatCalendarDate(value, CultureInfo.CurrentCulture, "-");
     private static string SectionId(string title) => $"orders-{title.Replace(' ', '-').ToLowerInvariant()}";
 
     private sealed record OrderSection(string Title, IReadOnlyList<OrderListItem> Items, bool ShowCount);

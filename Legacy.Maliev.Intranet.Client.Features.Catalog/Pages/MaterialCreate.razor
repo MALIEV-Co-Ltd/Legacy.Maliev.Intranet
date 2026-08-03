@@ -136,7 +136,7 @@
 
     private async Task<IReadOnlyList<T>> LoadLookupAsync<T>(string path)
     {
-        using var response = await Http.GetAsync(path);
+        using var response = await Http.GetForPresentationAsync(path);
         if (response.StatusCode == HttpStatusCode.Unauthorized)
         {
             throw new UnauthorizedAccessException();
@@ -164,7 +164,7 @@
         error = null;
         try
         {
-            var session = await Http.GetFromJsonAsync<EmployeeSessionSummary>("/bff/session");
+            var session = await Http.GetFromJsonForPresentationAsync<EmployeeSessionSummary>("/bff/session");
             if (string.IsNullOrWhiteSpace(session?.CsrfToken))
             {
                 error = Text["CreateFailed"];

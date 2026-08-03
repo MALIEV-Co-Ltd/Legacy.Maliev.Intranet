@@ -46,6 +46,17 @@
   <data name="NextStatus" xml:space="preserve"><value>สถานะต่อไป</value></data>
   <data name="ApplyStatus" xml:space="preserve"><value>อัปเดตสถานะ</value></data>
   <data name="StatusSaved" xml:space="preserve"><value>อัปเดตสถานะแล้ว</value></data>
+  <data name="StatusNew" xml:space="preserve"><value>งานใหม่</value></data>
+  <data name="StatusReviewing" xml:space="preserve"><value>กำลังตรวจสอบ</value></data>
+  <data name="StatusReviewed" xml:space="preserve"><value>ตรวจสอบแล้ว</value></data>
+  <data name="StatusQuoted" xml:space="preserve"><value>เสนอราคาแล้ว</value></data>
+  <data name="StatusAccepted" xml:space="preserve"><value>ลูกค้ายอมรับแล้ว</value></data>
+  <data name="StatusPaid" xml:space="preserve"><value>ชำระเงินแล้ว</value></data>
+  <data name="StatusInProgress" xml:space="preserve"><value>กำลังดำเนินการ</value></data>
+  <data name="StatusCompleted" xml:space="preserve"><value>เสร็จสิ้นแล้ว</value></data>
+  <data name="StatusCancelled" xml:space="preserve"><value>ยกเลิกแล้ว</value></data>
+  <data name="StatusShipped" xml:space="preserve"><value>จัดส่งแล้ว</value></data>
+  <data name="StatusDelivered" xml:space="preserve"><value>ส่งมอบแล้ว</value></data>
   <data name="Files" xml:space="preserve"><value>ไฟล์</value></data>
   <data name="Upload" xml:space="preserve"><value>อัปโหลดและสแกน</value></data>
   <data name="FilesUploaded" xml:space="preserve"><value>อัปโหลดไฟล์แล้ว</value></data>

@@ -2,14 +2,46 @@
 @page "/Index"
 @attribute [AllowAnonymous]
 @inject Microsoft.Extensions.Localization.IStringLocalizer<Home> Text
+@inject EmployeeSessionClient SessionClient
+@inject NavigationManager Navigation
 
 <PageTitle>@Text["PageTitle"]</PageTitle>
 
-<MudContainer MaxWidth="MaxWidth.Medium" Class="py-8">
-    <MudPaper Class="pa-8 text-center" Elevation="1">
-        <MudText Typo="Typo.overline">@Text["Eyebrow"]</MudText>
-        <MudText Typo="Typo.h2" HtmlTag="h1" Class="mb-3">@Text["Heading"]</MudText>
-        <MudText Typo="Typo.body1" Class="mb-6">@Text["Description"]</MudText>
-        <MudButton Href="/Login" Variant="Variant.Filled" Color="Color.Primary" Size="Size.Large">@Text["SignIn"]</MudButton>
-    </MudPaper>
-</MudContainer>
+@if (_checkingSession)
+{
+    <MudContainer MaxWidth="MaxWidth.Medium" Class="py-8" aria-busy="true" aria-label="@Text["CheckingSession"]">
+        <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+    </MudContainer>
+}
+else
+{
+    <MudContainer MaxWidth="MaxWidth.Medium" Class="py-8">
+        <MudPaper Class="pa-8 text-center" Elevation="1">
+            <MudText Typo="Typo.overline">@Text["Eyebrow"]</MudText>
+            <MudText Typo="Typo.h2" HtmlTag="h1" Class="mb-3">@Text["Heading"]</MudText>
+            <MudText Typo="Typo.body1" Class="mb-6">@Text["Description"]</MudText>
+            <MudButton Href="/Login" Variant="Variant.Filled" Color="Color.Primary" Size="Size.Large">@Text["SignIn"]</MudButton>
+        </MudPaper>
+    </MudContainer>
+}
+
+@code {
+    private bool _checkingSession = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var session = await SessionClient.GetAsync();
+            if (session?.IsAuthenticated == true)
+            {
+                Navigation.NavigateTo("/Dashboard", replace: true);
+                return;
+            }
+        }
+        finally
+        {
+            _checkingSession = false;
+        }
+    }
+}

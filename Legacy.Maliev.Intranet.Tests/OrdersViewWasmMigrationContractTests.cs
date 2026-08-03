@@ -55,7 +55,8 @@ public sealed class OrdersViewWasmMigrationContractTests
         Assert.Contains("/Customers/View?id={customerId}", page, StringComparison.Ordinal);
         Assert.Contains("/bff/orders/", page, StringComparison.Ordinal);
         Assert.Contains("X-CSRF-TOKEN", page, StringComparison.Ordinal);
-        Assert.Contains("GetFromJsonAsync<EmployeeSessionSummary>(\"/bff/session\")", page, StringComparison.Ordinal);
+        Assert.Contains("GetForPresentationAsync(\"/bff/session\")", page, StringComparison.Ordinal);
+        Assert.Contains("ReadFromJsonAsync<EmployeeSessionSummary>()", page, StringComparison.Ordinal);
         Assert.Contains("request.Headers.Remove(\"X-CSRF-TOKEN\")", page, StringComparison.Ordinal);
         Assert.Contains("HttpStatusCode.Conflict", page, StringComparison.Ordinal);
         Assert.Contains("multipart/form-data", page, StringComparison.Ordinal);

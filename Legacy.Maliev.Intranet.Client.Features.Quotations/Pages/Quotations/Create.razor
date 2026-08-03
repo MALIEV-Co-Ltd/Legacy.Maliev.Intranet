@@ -106,7 +106,7 @@
         if (page is null || string.IsNullOrWhiteSpace(orderSearch)) return;
         try
         {
-            using var response = await Http.GetAsync($"/bff/quotations/create/orders?search={Uri.EscapeDataString(orderSearch)}&customerId={model.CustomerId}");
+            using var response = await Http.GetForPresentationAsync($"/bff/quotations/create/orders?search={Uri.EscapeDataString(orderSearch)}&customerId={model.CustomerId}");
             if (response.StatusCode == HttpStatusCode.Unauthorized) { NavigateToLogin(); return; }
             if (!response.IsSuccessStatusCode) { error = Text["Unavailable"]; return; }
             var orders = await response.Content.ReadFromJsonAsync<IReadOnlyList<OrderListItem>>();
@@ -124,7 +124,7 @@
         try
         {
             var uri = customerId is > 0 ? $"/bff/quotations/create?customerId={customerId}" : "/bff/quotations/create";
-            using var response = await Http.GetAsync(uri);
+            using var response = await Http.GetForPresentationAsync(uri);
             if (response.StatusCode == HttpStatusCode.Unauthorized) { NavigateToLogin(); return; }
             if (response.StatusCode == HttpStatusCode.NotFound) { error = Text["CustomerNotFound"]; return; }
             if (!response.IsSuccessStatusCode) { error = response.StatusCode == HttpStatusCode.Forbidden ? Text["Forbidden"] : Text["Unavailable"]; return; }
@@ -148,7 +148,7 @@
         submitting = true; error = null; warning = null;
         try
         {
-            using var sessionResponse = await Http.GetAsync("/bff/session");
+            using var sessionResponse = await Http.GetForPresentationAsync("/bff/session");
             sessionResponse.EnsureSuccessStatusCode();
             var session = await sessionResponse.Content.ReadFromJsonAsync<EmployeeSessionSummary>();
             if (string.IsNullOrWhiteSpace(session?.CsrfToken)) { error = Text["CreateFailed"]; return; }
