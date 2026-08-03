@@ -704,7 +704,11 @@ builder.Services.AddAuthorizationBuilder()
         .RequireClaim("permissions", LegacyEmployeePermissions.PurchaseOrdersDelete))
     .AddPolicy(LegacyEmployeePermissions.QuotationsRead, policy => policy
         .RequireAuthenticatedUser()
-        .RequireClaim("permissions", LegacyEmployeePermissions.QuotationsRead))
+        .RequireAssertion(context => LegacyNavigationAuthorization.IsEnabled(
+            true,
+            LegacyEmployeePermissions.QuotationsRead,
+            context.User.FindAll("permissions").Select(static claim => claim.Value),
+            context.User.FindAll(ClaimTypes.Role).Select(static claim => claim.Value))))
     .AddPolicy(LegacyEmployeePermissions.QuotationsCreate, policy => policy
         .RequireAuthenticatedUser()
         .RequireClaim("permissions", LegacyEmployeePermissions.QuotationsCreate)

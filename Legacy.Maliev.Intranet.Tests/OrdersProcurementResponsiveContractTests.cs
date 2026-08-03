@@ -9,6 +9,9 @@ public sealed class OrdersProcurementResponsiveContractTests
         var page = Read(root, "Legacy.Maliev.Intranet.Client.Features.Orders", "Pages", "Orders.razor");
         var styles = Read(root, "Legacy.Maliev.Intranet.Client.Features.Orders", "Pages", "Orders.razor.css");
         var globalStyles = Read(root, "Legacy.Maliev.Intranet.Client", "wwwroot", "css", "operations-pages.css");
+        var searchStyles = Read(root, "Legacy.Maliev.Intranet.Client.Features.Orders", "Components", "Shared", "SearchBox.razor.css");
+        var primaryButtonStyles = Read(root, "Legacy.Maliev.Intranet.Client.Features.Orders", "Components", "Shared", "PrimaryButton.razor.css");
+        var secondaryButtonStyles = Read(root, "Legacy.Maliev.Intranet.Client.Features.Orders", "Components", "Shared", "SecondaryButton.razor.css");
 
         Assert.Contains("orders-working-set", page, StringComparison.Ordinal);
         Assert.Contains("max-height:", styles, StringComparison.Ordinal);
@@ -23,6 +26,9 @@ public sealed class OrdersProcurementResponsiveContractTests
         Assert.Contains("min-height: 44px", styles, StringComparison.Ordinal);
         Assert.Contains(".orders-module-shell .orders-toolbar", globalStyles, StringComparison.Ordinal);
         Assert.Contains(".orders-module-shell .orders-toolbar .mud-input-slot", globalStyles, StringComparison.Ordinal);
+        Assert.Equal(2, CountOccurrences(searchStyles, "min-height: 44px"));
+        Assert.Contains("min-height: 44px", primaryButtonStyles, StringComparison.Ordinal);
+        Assert.Contains("min-height: 44px", secondaryButtonStyles, StringComparison.Ordinal);
         Assert.Contains("LegacyPresentation.FormatCalendarDate", page, StringComparison.Ordinal);
     }
 

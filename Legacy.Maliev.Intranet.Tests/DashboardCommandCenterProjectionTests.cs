@@ -129,6 +129,7 @@ public sealed class DashboardCommandCenterProjectionTests
         Assert.Contains("content: attr(data-label)", styles, StringComparison.Ordinal);
         Assert.Contains(".dashboard-table thead { display: none; }", styles, StringComparison.Ordinal);
         Assert.Contains("min-height: 44px", styles, StringComparison.Ordinal);
+        Assert.Contains(".dashboard-activity-list a { align-items: center;", styles, StringComparison.Ordinal);
         Assert.Contains("@media (max-width: 760px)", styles, StringComparison.Ordinal);
         Assert.Contains("@media (prefers-reduced-motion: reduce)", styles, StringComparison.Ordinal);
         Assert.DoesNotContain("dashboard-eyebrow", dashboard, StringComparison.Ordinal);

@@ -102,9 +102,10 @@ public sealed class LegacyNavigationContractTests
         var bff = File.ReadAllText(Path.Combine(root, "Legacy.Maliev.Intranet.Bff", "Program.cs"));
 
         Assert.Contains("LegacyEmployeePermissions.QuotationRequestsRead, policy => policy", bff, StringComparison.Ordinal);
+        Assert.Contains("LegacyEmployeePermissions.QuotationsRead, policy => policy", bff, StringComparison.Ordinal);
         Assert.Contains("LegacyEmployeePermissions.PurchaseOrdersRead, policy => policy", bff, StringComparison.Ordinal);
         Assert.True(
-            bff.Split("LegacyNavigationAuthorization.IsEnabled", StringSplitOptions.None).Length - 1 >= 3,
+            bff.Split("LegacyNavigationAuthorization.IsEnabled", StringSplitOptions.None).Length - 1 >= 4,
             "Navigation and protected read policies must share owner/wildcard semantics.");
     }
 

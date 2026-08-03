@@ -1,5 +1,5 @@
 .mlv-search-box {
-    min-height: 40px;
+    min-height: 44px;
     display: inline-flex;
     align-items: center;
     gap: 7px;
@@ -17,6 +17,7 @@
 }
 
 .mlv-search-box input {
+    min-height: 44px;
     min-width: 0;
     flex: 1;
     border: 0;
@@ -29,11 +30,4 @@
 
 .mlv-search-box input::placeholder {
     color: var(--maliev-muted-2);
-}
-
-@media (pointer: coarse) {
-    .mlv-search-box,
-    .mlv-search-box input {
-        min-height: 44px;
-    }
 }
