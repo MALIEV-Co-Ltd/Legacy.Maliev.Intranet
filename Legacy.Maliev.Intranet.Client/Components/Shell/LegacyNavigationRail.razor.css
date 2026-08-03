@@ -1,10 +1,10 @@
 .legacy-navigation-rail {
     position: fixed;
-    inset: 0 auto 0 0;
+    inset: var(--legacy-utility-height) auto 0 0;
     z-index: 30;
     display: flex;
     width: var(--legacy-rail-width);
-    min-height: 100dvh;
+    height: calc(100dvh - var(--legacy-utility-height));
     flex-direction: column;
     overflow-y: auto;
     border-right: 1px solid var(--legacy-border);
@@ -68,8 +68,10 @@
 .legacy-rail-link ::deep .mud-icon-root { width: 20px; height: 20px; color: currentColor; }
 
 .legacy-navigation-rail.drawer {
+    inset: 0 auto 0 0;
     display: none;
     width: min(290px, calc(100vw - 48px));
+    height: 100dvh;
     box-shadow: 22px 0 52px rgba(15,23,42,.22);
 }
 

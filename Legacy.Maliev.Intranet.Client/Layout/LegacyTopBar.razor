@@ -5,6 +5,10 @@
 @implements IDisposable
 
 <header class="legacy-topbar" @onkeydown="HandleKeyDown">
+    <a class="legacy-topbar-logo" href="/Dashboard" aria-label="@Text["MALIEV dashboard"]">
+        <img src="images/MALIEV_BLACK.svg" alt="MALIEV" />
+    </a>
+
     <button type="button"
             class="legacy-mobile-menu-button"
             @ref="_navigationToggle"
@@ -25,7 +29,6 @@
             title="@ThemeLabel"
             @onclick="ToggleThemeAsync">
         <MudIcon Icon="@(ThemeService.IsDarkMode ? Icons.Material.Outlined.LightMode : Icons.Material.Outlined.DarkMode)" Size="Size.Small" />
-        <span>@(ThemeService.IsDarkMode ? Text["Light"] : Text["Dark"])</span>
     </button>
 
     <AuthorizeView>

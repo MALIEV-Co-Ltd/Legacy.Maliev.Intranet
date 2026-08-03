@@ -11,18 +11,15 @@
     @if (IsDrawer)
     {
         <span class="legacy-drawer-focus-sentinel" tabindex="0" @onfocus="FocusLastAsync"></span>
-    }
-    <div class="legacy-rail-header">
-        <a class="legacy-rail-logo legacy-logo-link" href="/Dashboard" aria-label="@Text["MALIEV dashboard"]">
-            <img src="images/MALIEV_BLACK.svg" alt="MALIEV" />
-        </a>
-        @if (IsDrawer)
-        {
+        <div class="legacy-rail-header">
+            <a class="legacy-rail-logo legacy-logo-link" href="/Dashboard" aria-label="@Text["MALIEV dashboard"]">
+                <img src="images/MALIEV_BLACK.svg" alt="MALIEV" />
+            </a>
             <button type="button" class="legacy-rail-close" aria-label="@Text["Close navigation"]" @ref="_closeButton" @onclick="CloseAsync">
                 <MudIcon Icon="@Icons.Material.Filled.Close" Size="Size.Small" />
             </button>
-        }
-    </div>
+        </div>
+    }
 
     <nav class="legacy-rail-groups">
         @foreach (var group in LegacyAppNavigation.Groups)

@@ -7,11 +7,13 @@ public sealed class OperationsShellContractTests
     {
         var root = FindRoot();
         var layout = Read(root, "Legacy.Maliev.Intranet.Client", "Layout", "MainLayout.razor");
+        var topBar = Read(root, "Legacy.Maliev.Intranet.Client", "Layout", "LegacyTopBar.razor");
         var navigation = Read(root, "Legacy.Maliev.Intranet.Client", "Components", "Shell", "LegacyNavigationRail.razor");
         var search = Read(root, "Legacy.Maliev.Intranet.Client", "Components", "Shell", "LegacyGlobalSearch.razor");
         var actions = Read(root, "Legacy.Maliev.Intranet.Client", "Components", "Shell", "LegacyQuickActions.razor");
 
         Assert.Contains("<LegacyNavigationRail Session=\"session\" />", layout, StringComparison.Ordinal);
+        Assert.Contains("class=\"legacy-topbar-logo\"", topBar, StringComparison.Ordinal);
         Assert.Contains("IsDrawer=\"true\"", layout, StringComparison.Ordinal);
         Assert.Contains("LegacyNavigationAuthorization.IsEnabled", navigation, StringComparison.Ordinal);
         Assert.Contains("LegacyNavigationAuthorization.IsEnabled", search, StringComparison.Ordinal);
@@ -139,12 +141,34 @@ public sealed class OperationsShellContractTests
         Assert.Single(System.Text.RegularExpressions.Regex.Matches(selector, "<option value=\"en-TH\"").Cast<System.Text.RegularExpressions.Match>());
         Assert.Single(System.Text.RegularExpressions.Regex.Matches(selector, "<option value=\"th-TH\"").Cast<System.Text.RegularExpressions.Match>());
         Assert.DoesNotContain("<option value=\"en-US\"", selector, StringComparison.Ordinal);
+        Assert.DoesNotContain("<MudIcon", selector, StringComparison.Ordinal);
         Assert.Contains("malievCulture.set", selector, StringComparison.Ordinal);
         Assert.Contains("malievCulture.get", program, StringComparison.Ordinal);
         Assert.Contains("WorkspaceCulture.Apply(selectedCulture)", program, StringComparison.Ordinal);
         Assert.Contains("localStorage.setItem('maliev_culture'", script, StringComparison.Ordinal);
         Assert.Contains("document.documentElement.lang", script, StringComparison.Ordinal);
         Assert.Contains("js/workspace-culture.js", index, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void TopBar_UsesFixedBrandMinimalUtilityControlsAndVisibleProfileChrome()
+    {
+        var root = FindRoot();
+        var topBar = Read(root, "Legacy.Maliev.Intranet.Client", "Layout", "LegacyTopBar.razor");
+        var topBarCss = Read(root, "Legacy.Maliev.Intranet.Client", "Layout", "LegacyTopBar.razor.css");
+        var navigation = Read(root, "Legacy.Maliev.Intranet.Client", "Components", "Shell", "LegacyNavigationRail.razor");
+        var railCss = Read(root, "Legacy.Maliev.Intranet.Client", "Components", "Shell", "LegacyNavigationRail.razor.css");
+
+        Assert.Contains("class=\"legacy-topbar-logo\"", topBar, StringComparison.Ordinal);
+        Assert.DoesNotContain("Text[\"Light\"]", topBar, StringComparison.Ordinal);
+        Assert.DoesNotContain("Text[\"Dark\"]", topBar, StringComparison.Ordinal);
+        Assert.Contains("aria-label=\"@ThemeLabel\"", topBar, StringComparison.Ordinal);
+        Assert.Contains("flex: 0 0 var(--legacy-rail-width)", topBarCss, StringComparison.Ordinal);
+        Assert.Contains("margin-block: -10px", topBarCss, StringComparison.Ordinal);
+        Assert.Contains("border: 1px solid var(--legacy-border)", topBarCss, StringComparison.Ordinal);
+        Assert.Contains("@if (IsDrawer)", navigation, StringComparison.Ordinal);
+        Assert.Contains("inset: var(--legacy-utility-height) auto 0 0", railCss, StringComparison.Ordinal);
+        Assert.Contains("height: calc(100dvh - var(--legacy-utility-height))", railCss, StringComparison.Ordinal);
     }
 
     private static string Read(string root, params string[] segments) =>
