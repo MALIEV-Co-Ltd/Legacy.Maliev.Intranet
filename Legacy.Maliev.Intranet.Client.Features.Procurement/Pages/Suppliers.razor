@@ -7,14 +7,14 @@
 
 <PageTitle>@Text["PageTitle"]</PageTitle>
 
-<MudContainer MaxWidth="MaxWidth.ExtraLarge">
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="procurement-list-page">
     <header class="operations-page-header">
         <div><MudText Typo="Typo.h4" HtmlTag="h1">@Text["Suppliers"]</MudText><MudText Typo="Typo.body2">@Text["Procurement"]</MudText></div>
         <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="OpenCreate">@Text["CreateSupplier"]</MudButton>
     </header>
 
-    <MudPaper Class="pa-4 mb-4">
-        <div class="d-flex flex-wrap gap-3 align-end">
+    <MudPaper Class="pa-4 mb-4 procurement-filter-panel">
+        <div class="procurement-filter-grid">
             <MudTextField T="string" @bind-Value="searchInput" Label="@Text["Search"]" Variant="Variant.Outlined" Immediate="true" />
             <MudSelect T="SupplierListSort" @bind-Value="sortInput" Label="@Text["Sort"]" Variant="Variant.Outlined">
                 @foreach (var option in Enum.GetValues<SupplierListSort>())
@@ -41,7 +41,7 @@
     }
     else
     {
-        <MudTable Items="page.Items" Hover="true" Breakpoint="Breakpoint.Sm" Elevation="1" aria-label="@Text["SuppliersTable"]">
+        <MudTable Items="page.Items" Hover="true" Breakpoint="Breakpoint.Md" Elevation="1" Class="procurement-responsive-table" aria-label="@Text["SuppliersTable"]">
             <HeaderContent>
                 <MudTh>@Text["Id"]</MudTh>
                 <MudTh>@Text["Name"]</MudTh>
@@ -59,7 +59,7 @@
                 <MudTd DataLabel="@Text["Telephone"]">@ValueOrFallback(context.Telephone)</MudTd>
             </RowTemplate>
         </MudTable>
-        <nav class="d-flex flex-wrap align-center justify-space-between gap-3 mt-4" aria-label="@Text["SupplierPages"]">
+        <nav class="procurement-pager" aria-label="@Text["SupplierPages"]">
             <MudButton Disabled="@(!page.HasPreviousPage)" OnClick="PreviousPageAsync">@Text["Previous"]</MudButton>
             <MudText aria-live="polite">@Text["PageSummary", page.PageIndex, page.TotalPages, page.TotalRecords]</MudText>
             <MudButton Disabled="@(!page.HasNextPage)" OnClick="NextPageAsync">@Text["Next"]</MudButton>
@@ -71,7 +71,7 @@
     [SupplyParameterFromQuery(Name = "search")] public string? Search { get; set; }
     [SupplyParameterFromQuery(Name = "sort")] public string? SortQuery { get; set; }
     [SupplyParameterFromQuery(Name = "index")] public int Index { get; set; } = 1;
-    [SupplyParameterFromQuery(Name = "size")] public int Size { get; set; } = 100;
+    [SupplyParameterFromQuery(Name = "size")] public int Size { get; set; } = 25;
 
     private SupplierListPage? page;
     private string? error;
@@ -84,7 +84,7 @@
     protected override async Task OnParametersSetAsync()
     {
         Index = PaginationQueryDefaults.NormalizeIndex(Index);
-        Size = PaginationQueryDefaults.NormalizeSize(Size, fallback: 100, maximum: 250);
+        Size = PaginationQueryDefaults.NormalizeSize(Size, fallback: 25, maximum: 250);
         currentSort = Enum.TryParse<SupplierListSort>(SortQuery, ignoreCase: true, out var parsedSort) && Enum.IsDefined(parsedSort)
             ? parsedSort
             : SupplierListSort.SupplierId_Descending;

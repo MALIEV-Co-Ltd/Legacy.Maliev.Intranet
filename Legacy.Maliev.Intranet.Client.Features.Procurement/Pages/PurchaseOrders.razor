@@ -8,14 +8,14 @@
 
 <PageTitle>@Text["PageTitle"]</PageTitle>
 
-<MudContainer MaxWidth="MaxWidth.ExtraLarge">
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="procurement-list-page">
     <header class="operations-page-header">
         <div><MudText Typo="Typo.h4" HtmlTag="h1">@Text["PurchaseOrders"]</MudText><MudText Typo="Typo.body2">@Text["Procurement"]</MudText></div>
         <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="OpenCreate">@Text["CreatePurchaseOrder"]</MudButton>
     </header>
 
-    <MudPaper Class="pa-4 mb-4">
-        <div class="d-flex flex-wrap gap-3 align-end">
+    <MudPaper Class="pa-4 mb-4 procurement-filter-panel">
+        <div class="procurement-filter-grid">
             <MudTextField T="string" @bind-Value="searchInput" Label="@Text["Search"]" Variant="Variant.Outlined" Immediate="true" />
             <MudSelect T="PurchaseOrderListSort" @bind-Value="sortInput" Label="@Text["Sort"]" Variant="Variant.Outlined">
                 @foreach (var option in Enum.GetValues<PurchaseOrderListSort>())
@@ -42,7 +42,7 @@
     }
     else
     {
-        <MudTable Items="page.Items" Hover="true" Breakpoint="Breakpoint.Sm" Elevation="1" aria-label="@Text["PurchaseOrdersTable"]">
+        <MudTable Items="page.Items" Hover="true" Breakpoint="Breakpoint.Md" Elevation="1" Class="procurement-responsive-table" aria-label="@Text["PurchaseOrdersTable"]">
             <HeaderContent>
                 <MudTh>@Text["Id"]</MudTh>
                 <MudTh>@Text["Employee"]</MudTh>
@@ -64,7 +64,7 @@
                 <MudTd DataLabel="@Text["Created"]">@FormatDate(context.CreatedDate)</MudTd>
             </RowTemplate>
         </MudTable>
-        <nav class="d-flex flex-wrap align-center justify-space-between gap-3 mt-4" aria-label="@Text["PurchaseOrderPages"]">
+        <nav class="procurement-pager" aria-label="@Text["PurchaseOrderPages"]">
             <MudButton Disabled="@(!page.HasPreviousPage)" OnClick="PreviousPageAsync">@Text["Previous"]</MudButton>
             <MudText aria-live="polite">@Text["PageSummary", page.PageIndex, page.TotalPages, page.TotalRecords]</MudText>
             <MudButton Disabled="@(!page.HasNextPage)" OnClick="NextPageAsync">@Text["Next"]</MudButton>
@@ -191,5 +191,6 @@
 
     private string EmployeeName(int? id) => id is int value && employeeNames.TryGetValue(value, out var name) ? name : "-";
     private static string ValueOrFallback(string? value) => string.IsNullOrWhiteSpace(value) ? "-" : value;
-    private static string FormatDate(DateTime? value) => value?.ToString("u", CultureInfo.InvariantCulture) ?? "-";
+    private static string FormatDate(DateTime? value) =>
+        LegacyPresentation.FormatUtcDateTime(value, CultureInfo.CurrentCulture, "-");
 }

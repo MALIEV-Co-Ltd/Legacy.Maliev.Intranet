@@ -1,0 +1,29 @@
+.supplier-editor-form {
+    display: grid;
+    gap: 0;
+}
+
+.supplier-editor-actions {
+    position: sticky;
+    bottom: 0;
+    z-index: 2;
+    align-items: center;
+    padding: 0.75rem;
+    border: 1px solid var(--legacy-border);
+    border-radius: var(--maliev-radius-md);
+    background: color-mix(in srgb, var(--legacy-surface) 94%, transparent);
+    box-shadow: var(--maliev-shadow-sm);
+    backdrop-filter: blur(10px);
+}
+
+@media (max-width: 600px) {
+    .supplier-editor-actions {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .supplier-editor-actions .mud-button-root {
+        width: 100%;
+        min-height: 44px;
+    }
+}

@@ -65,7 +65,7 @@
                             }
                             else
                             {
-                                <div class="orders-table-scroll" tabindex="0" aria-label="@section.Title">
+                                <div class="orders-table-scroll @(section.ShowCount ? "orders-working-set" : "")" tabindex="0" aria-label="@section.Title">
                                     <table class="mlv-table orders-table">
                                         <caption class="visually-hidden">@section.Title</caption>
                                         <thead>
@@ -277,7 +277,8 @@
     private static string ValueOrFallback(string? value) => string.IsNullOrWhiteSpace(value) ? "-" : value;
     private static string ValueOrFallback(int? value) => value?.ToString(CultureInfo.InvariantCulture) ?? "-";
     private static string FormatAmount(decimal? value) => value?.ToString("N2", CultureInfo.CurrentCulture) ?? "-";
-    private static string FormatDate(DateTime? value) => value?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) ?? "-";
+    private static string FormatDate(DateTime? value) =>
+        LegacyPresentation.FormatCalendarDate(value, CultureInfo.CurrentCulture, "-");
     private static string SectionId(string title) => $"orders-{title.Replace(' ', '-').ToLowerInvariant()}";
 
     private sealed record OrderSection(string Title, IReadOnlyList<OrderListItem> Items, bool ShowCount);
