@@ -310,7 +310,8 @@
     white-space: normal;
 }
 
-.legacy-page-container .mud-picker .mud-icon-button-root {
+.legacy-page-container .mud-picker .mud-icon-button-root,
+.legacy-page-container .mud-input-adornment-icon-button {
     min-width: 2.75rem;
 }
 

@@ -90,7 +90,9 @@
 .orders-table a {
     display: inline-flex;
     align-items: center;
-    min-height: 2.25rem;
+    justify-content: center;
+    min-width: 44px;
+    min-height: 44px;
     color: var(--mud-palette-primary);
     font-weight: 600;
     text-decoration: none;
