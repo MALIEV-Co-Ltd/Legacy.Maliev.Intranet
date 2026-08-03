@@ -233,7 +233,9 @@
 .legacy-page-container .mud-table-cell a {
     display: inline-flex;
     align-items: center;
-    min-height: 2.25rem;
+    justify-content: center;
+    min-width: 2.75rem;
+    min-height: 2.75rem;
     color: var(--legacy-primary);
     font-weight: 650;
     text-underline-offset: 0.18em;
@@ -308,6 +310,10 @@
     white-space: normal;
 }
 
+.legacy-page-container .mud-picker .mud-icon-button-root {
+    min-width: 2.75rem;
+}
+
 .legacy-page-container svg,
 .legacy-page-container canvas {
     max-width: 100%;
@@ -330,6 +336,11 @@
 }
 
 @media (max-width: 720px) {
+    .legacy-page-container .finance-summary-grid.mud-grid-spacing-xs-6 {
+        width: 100% !important;
+        margin-inline: 0 !important;
+    }
+
     .orders-module-shell .orders-toolbar :where(.mud-input-control, .mlv-search-box, .mud-button-root),
     .orders-module-shell .orders-toolbar :where(input, button) {
         min-height: 44px;
