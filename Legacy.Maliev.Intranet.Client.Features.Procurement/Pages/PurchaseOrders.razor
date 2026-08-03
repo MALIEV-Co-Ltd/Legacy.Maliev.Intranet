@@ -109,8 +109,8 @@
         HttpResponseMessage[]? responses = null;
         try
         {
-            var ordersTask = Http.GetAsync($"/bff/purchase-orders?sort={currentSort}&search={Uri.EscapeDataString(Search ?? string.Empty)}&index={Index}&size={Size}");
-            var employeesTask = Http.GetAsync("/bff/employees?sort=EmployeeId_Ascending&search=&index=1&size=250");
+            var ordersTask = Http.GetForPresentationAsync($"/bff/purchase-orders?sort={currentSort}&search={Uri.EscapeDataString(Search ?? string.Empty)}&index={Index}&size={Size}");
+            var employeesTask = Http.GetForPresentationAsync("/bff/employees?sort=EmployeeId_Ascending&search=&index=1&size=250");
             responses = await Task.WhenAll(ordersTask, employeesTask);
             if (HandleFailure(responses))
             {

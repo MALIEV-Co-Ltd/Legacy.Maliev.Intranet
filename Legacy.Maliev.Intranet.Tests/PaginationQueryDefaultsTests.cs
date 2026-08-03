@@ -37,11 +37,11 @@ public sealed class PaginationQueryDefaultsTests
 
     [Theory]
     [InlineData("Legacy.Maliev.Intranet.Client.Features.Accounting/Pages/Finances.razor", "fallback: 25", "maximum: 100")]
-    [InlineData("Legacy.Maliev.Intranet.Client.Features.Catalog/Pages/Materials.razor", "fallback: 100", "maximum: 250")]
+    [InlineData("Legacy.Maliev.Intranet.Client.Features.Catalog/Pages/Materials.razor", "fallback: 10", "maximum: 250")]
     [InlineData("Legacy.Maliev.Intranet.Client.Features.Customers/Pages/Customers.razor", "fallback: 25", "maximum: 250")]
-    [InlineData("Legacy.Maliev.Intranet.Client.Features.Diagnostics/Pages/ErrorReport.razor", "fallback: 50", "maximum: 100")]
+    [InlineData("Legacy.Maliev.Intranet.Client.Features.Diagnostics/Pages/ErrorReport.razor", "fallback: 10", "maximum: 100")]
     [InlineData("Legacy.Maliev.Intranet.Client.Features.Employees/Pages/Employees.razor", "fallback: 25", "maximum: 250")]
-    [InlineData("Legacy.Maliev.Intranet.Client.Features.Orders/Pages/Orders.razor", "fallback: 25", "maximum: 250")]
+    [InlineData("Legacy.Maliev.Intranet.Client.Features.Orders/Pages/Orders.razor", "fallback: 10", "maximum: 250")]
     [InlineData("Legacy.Maliev.Intranet.Client.Features.Procurement/Pages/PurchaseOrders.razor", "fallback: 25", "maximum: 250")]
     [InlineData("Legacy.Maliev.Intranet.Client.Features.Procurement/Pages/Suppliers.razor", "fallback: 25", "maximum: 250")]
     [InlineData("Legacy.Maliev.Intranet.Client.Features.Quotations/Pages/QuotationRequests/Index.razor", "fallback: 25", "maximum: 250")]
@@ -56,6 +56,19 @@ public sealed class PaginationQueryDefaultsTests
         Assert.Contains("PaginationQueryDefaults.NormalizeSize", source, StringComparison.Ordinal);
         Assert.Contains(fallback, source, StringComparison.Ordinal);
         Assert.Contains(maximum, source, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("Legacy.Maliev.Intranet.Client.Features.Accounting/Pages/Invoices.razor")]
+    [InlineData("Legacy.Maliev.Intranet.Client.Features.Quotations/Pages/Quotations/Index.razor")]
+    public void ResponsiveRecordLists_DefaultToTenItems(string relativePath)
+    {
+        var root = FindRoot();
+        var source = File.ReadAllText(Path.Combine(root, relativePath.Replace('/', Path.DirectorySeparatorChar)));
+
+        Assert.Contains("public int Size { get; set; } = 10", source, StringComparison.Ordinal);
+        Assert.Contains("private int sizeInput = 10", source, StringComparison.Ordinal);
+        Assert.Contains("Value=\"10\"", source, StringComparison.Ordinal);
     }
 
     private static string FindRoot()

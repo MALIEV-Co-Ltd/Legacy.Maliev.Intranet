@@ -131,15 +131,15 @@ else if (page is not null)
 
     <MudPaper Class="pa-4 mt-4 order-workflow-panel">
         <MudText Typo="Typo.h5" HtmlTag="h2">@Text["Status"]</MudText>
-        <MudText Class="mt-2">@Text["CurrentStatus"]: <span class="operations-status-pill">@(page.CurrentStatus?.Name ?? "-")</span></MudText>
+        <MudText Class="mt-2">@Text["CurrentStatus"]: <span class="operations-status-pill">@StatusLabel(page.CurrentStatus?.Name)</span></MudText>
         <div class="order-status-actions my-3">
             <MudSelect T="int?" Label="@Text["NextStatus"]" @bind-Value="selectedStatus">
-                @foreach (var status in page.AvailableStatuses) { <MudSelectItem T="int?" Value="@((int?)status.Id)">@status.Name</MudSelectItem> }
+                @foreach (var status in page.AvailableStatuses) { <MudSelectItem T="int?" Value="@((int?)status.Id)">@StatusLabel(status.Name)</MudSelectItem> }
             </MudSelect>
             <MudButton OnClick="TransitionAsync" Disabled="@(submitting || selectedStatus is null)" Variant="Variant.Filled">@Text["ApplyStatus"]</MudButton>
         </div>
         <div class="order-history" tabindex="0">
-            <MudList T="string">@foreach (var item in page.History.OrderByDescending(value => value.CreatedDate)) { <MudListItem T="string">@item.Name · @LegacyPresentation.FormatUtcDateTime(item.CreatedDate, CultureInfo.CurrentCulture, "-")</MudListItem> }</MudList>
+            <MudList T="string">@foreach (var item in page.History.OrderByDescending(value => value.CreatedDate)) { <MudListItem T="string">@StatusLabel(item.Name) · @LegacyPresentation.FormatUtcDateTime(item.CreatedDate, CultureInfo.CurrentCulture, "-")</MudListItem> }</MudList>
         </div>
     </MudPaper>
 
@@ -182,8 +182,11 @@ else if (page is not null)
         if (Id is not > 0) { error = Text["InvalidId"]; loading = false; return; }
         try
         {
-            session = await Http.GetFromJsonAsync<EmployeeSessionSummary>("/bff/session");
-            using var response = await Http.GetAsync($"/bff/orders/{Id.Value}");
+            using var sessionResponse = await Http.GetForPresentationAsync("/bff/session");
+            session = sessionResponse.IsSuccessStatusCode
+                ? await sessionResponse.Content.ReadFromJsonAsync<EmployeeSessionSummary>()
+                : null;
+            using var response = await Http.GetForPresentationAsync($"/bff/orders/{Id.Value}");
             if (response.StatusCode == HttpStatusCode.Unauthorized) { Navigation.NavigateTo($"/Login?returnUrl={Uri.EscapeDataString(Navigation.ToBaseRelativePath(Navigation.Uri))}"); return; }
             if (response.StatusCode == HttpStatusCode.NotFound) { error = Text["NotFound"]; return; }
             if (!response.IsSuccessStatusCode) { error = ErrorFor(response.StatusCode); return; }
@@ -255,7 +258,10 @@ else if (page is not null)
             // The BFF key ring may rotate while this long-lived WASM page is open (for
             // example, after an Aspire restart). Refresh the browser-safe session projection
             // immediately before every write so the request token matches the current cookie.
-            session = await Http.GetFromJsonAsync<EmployeeSessionSummary>("/bff/session");
+            using var sessionResponse = await Http.GetForPresentationAsync("/bff/session");
+            session = sessionResponse.IsSuccessStatusCode
+                ? await sessionResponse.Content.ReadFromJsonAsync<EmployeeSessionSummary>()
+                : null;
             request.Headers.Remove("X-CSRF-TOKEN");
             if (!string.IsNullOrWhiteSpace(session?.CsrfToken))
             {
@@ -275,6 +281,23 @@ else if (page is not null)
     }
 
     private string ErrorFor(HttpStatusCode status) => status switch { HttpStatusCode.Forbidden => Text["Forbidden"], HttpStatusCode.TooManyRequests => Text["RateLimited"], HttpStatusCode.BadGateway => Text["InvalidResponse"], _ => Text["Unavailable"] };
+
+    private string StatusLabel(string? status) => status?.Trim().ToLowerInvariant() switch
+    {
+        "new" => Text["StatusNew"],
+        "reviewing" => Text["StatusReviewing"],
+        "reviewed" => Text["StatusReviewed"],
+        "quoted" => Text["StatusQuoted"],
+        "accepted" => Text["StatusAccepted"],
+        "paid" => Text["StatusPaid"],
+        "in progress" or "inprogress" => Text["StatusInProgress"],
+        "completed" => Text["StatusCompleted"],
+        "cancelled" or "canceled" => Text["StatusCancelled"],
+        "shipped" => Text["StatusShipped"],
+        "delivered" => Text["StatusDelivered"],
+        null or "" => "-",
+        _ => status,
+    };
 
     private sealed class OrderEditModel
     {

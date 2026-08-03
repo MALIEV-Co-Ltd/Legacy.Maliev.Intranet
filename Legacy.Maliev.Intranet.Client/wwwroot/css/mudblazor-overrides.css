@@ -39,6 +39,16 @@
     font-size: var(--maliev-icon-md);
 }
 
+@media (max-width: 760px) {
+    .mud-input-control.mud-input-number-control .mud-input-numeric-spin {
+        display: none;
+    }
+
+    .mud-input-control.mud-input-number-control .mud-input-slot {
+        min-height: 44px;
+    }
+}
+
 /* !important required: MudBlazor 9 generates higher-specificity
    selectors (.mud-input.mud-input-outlined .mud-input-label) that
    otherwise win without it. */

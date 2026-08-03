@@ -36,6 +36,16 @@
 }
 
 @media (max-width: 600px) {
+    .purchase-order-addresses {
+        width: 100%;
+        margin: 0;
+    }
+
+    .purchase-order-addresses > .mud-grid-item {
+        width: 100%;
+        padding-inline: 0;
+    }
+
     .purchase-order-lines-header,
     .purchase-order-form-actions {
         align-items: stretch;

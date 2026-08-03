@@ -63,7 +63,7 @@
         loading = true; error = null; detail = null;
         try
         {
-            using var response = await Http.GetAsync($"/bff/suppliers/{Id}");
+            using var response = await Http.GetForPresentationAsync($"/bff/suppliers/{Id}");
             if (response.StatusCode == HttpStatusCode.Unauthorized) { Login(); return; }
             if (response.StatusCode == HttpStatusCode.Forbidden) { error = Text["Forbidden"]; return; }
             if (response.StatusCode == HttpStatusCode.NotFound) { error = Text["NotFound"]; return; }
@@ -112,7 +112,10 @@
         submitting = true; error = null; notification = null;
         try
         {
-            var session = await Http.GetFromJsonAsync<EmployeeSessionSummary>("/bff/session");
+            using var sessionResponse = await Http.GetForPresentationAsync("/bff/session");
+            var session = sessionResponse.IsSuccessStatusCode
+                ? await sessionResponse.Content.ReadFromJsonAsync<EmployeeSessionSummary>()
+                : null;
             if (string.IsNullOrWhiteSpace(session?.CsrfToken)) { error = Text["Unavailable"]; return null; }
             using var request = new HttpRequestMessage(method, $"/bff/suppliers/{Id}");
             if (method == HttpMethod.Put) request.Content = JsonContent.Create(model);

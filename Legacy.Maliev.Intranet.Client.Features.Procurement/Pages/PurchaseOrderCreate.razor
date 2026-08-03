@@ -129,7 +129,7 @@
     {
         try
         {
-            using var response = await Http.GetAsync("/bff/purchase-orders/create-options");
+            using var response = await Http.GetForPresentationAsync("/bff/purchase-orders/create-options");
             if (response.StatusCode == HttpStatusCode.Unauthorized) { NavigateToLogin(); return; }
             if (response.StatusCode == HttpStatusCode.Forbidden) { error = Text["Forbidden"]; return; }
             if (response.StatusCode == HttpStatusCode.TooManyRequests) { error = Text["RateLimited"]; return; }
@@ -171,7 +171,7 @@
         error = null;
         try
         {
-            using var sessionResponse = await Http.GetAsync("/bff/session");
+            using var sessionResponse = await Http.GetForPresentationAsync("/bff/session");
             if (sessionResponse.StatusCode == HttpStatusCode.Unauthorized) { NavigateToLogin(); return; }
             sessionResponse.EnsureSuccessStatusCode();
             var session = await sessionResponse.Content.ReadFromJsonAsync<EmployeeSessionSummary>();

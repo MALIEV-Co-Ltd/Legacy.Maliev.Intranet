@@ -120,9 +120,12 @@ else
         error = null;
         try
         {
-            session = await Http.GetFromJsonAsync<EmployeeSessionSummary>("/bff/session");
+            using var sessionResponse = await Http.GetForPresentationAsync("/bff/session");
+            session = sessionResponse.IsSuccessStatusCode
+                ? await sessionResponse.Content.ReadFromJsonAsync<EmployeeSessionSummary>()
+                : null;
             var path = customerId is > 0 ? $"/bff/orders/create?customerId={customerId.Value}" : "/bff/orders/create";
-            using var response = await Http.GetAsync(path);
+            using var response = await Http.GetForPresentationAsync(path);
             if (response.StatusCode == HttpStatusCode.Unauthorized)
             {
                 Navigation.NavigateTo($"/Login?returnUrl={Uri.EscapeDataString(Navigation.ToBaseRelativePath(Navigation.Uri))}");
@@ -149,7 +152,7 @@ else
         if (model.MaterialId is not int materialId) return;
         try
         {
-            using var response = await Http.GetAsync($"/bff/orders/create/materials/{materialId}");
+            using var response = await Http.GetForPresentationAsync($"/bff/orders/create/materials/{materialId}");
             if (!response.IsSuccessStatusCode) { error = ErrorFor(response.StatusCode); return; }
             materialOptions = await response.Content.ReadFromJsonAsync<OrderMaterialOptions>() ?? new([], []);
         }

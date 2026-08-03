@@ -94,7 +94,10 @@ public sealed class PresentationBoundaryTests
             "Legacy.Maliev.Intranet.Client.Features.Customers",
             "Legacy.Maliev.Intranet.Client.Features.Diagnostics",
             "Legacy.Maliev.Intranet.Client.Features.Employees",
+            "Legacy.Maliev.Intranet.Client.Features.Orders",
+            "Legacy.Maliev.Intranet.Client.Features.Procurement",
             "Legacy.Maliev.Intranet.Client.Features.Quotations",
+            "Legacy.Maliev.Intranet.Client",
         };
 
         foreach (var featureFolder in featureFolders)

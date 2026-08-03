@@ -76,7 +76,7 @@ public sealed class IntranetParityContractTests
         Assert.Contains("FindAll(\"permissions\")", aggregator, StringComparison.Ordinal);
         Assert.Contains("ReadFromJsonAsync", aggregator, StringComparison.Ordinal);
         Assert.DoesNotContain("DbContext", aggregator, StringComparison.OrdinalIgnoreCase);
-        Assert.Contains("GetAsync(\"/bff/dashboard\"", page, StringComparison.Ordinal);
+        Assert.Contains("GetForPresentationAsync(\"/bff/dashboard\"", page, StringComparison.Ordinal);
         Assert.DoesNotContain("AccessToken", page, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("RefreshToken", page, StringComparison.OrdinalIgnoreCase);
     }

@@ -75,7 +75,7 @@
         if (Id <= 0) { notFound = true; loading = false; return; }
         try
         {
-            using var response = await Http.GetAsync($"/bff/purchase-orders/{Id}");
+            using var response = await Http.GetForPresentationAsync($"/bff/purchase-orders/{Id}");
             if (response.StatusCode == HttpStatusCode.Unauthorized) { NavigateToLogin(); return; }
             if (response.StatusCode == HttpStatusCode.Forbidden) { error = Text["Forbidden"]; return; }
             if (response.StatusCode == HttpStatusCode.NotFound) { notFound = true; return; }
@@ -94,7 +94,7 @@
         deleting = true; error = null;
         try
         {
-            using var sessionResponse = await Http.GetAsync("/bff/session");
+            using var sessionResponse = await Http.GetForPresentationAsync("/bff/session");
             if (sessionResponse.StatusCode == HttpStatusCode.Unauthorized) { NavigateToLogin(); return; }
             sessionResponse.EnsureSuccessStatusCode();
             var session = await sessionResponse.Content.ReadFromJsonAsync<EmployeeSessionSummary>();

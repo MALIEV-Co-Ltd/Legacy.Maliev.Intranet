@@ -20,6 +20,7 @@
                 }
             </MudSelect>
             <MudSelect T="int" @bind-Value="sizeInput" Label="@Text["PerPage"]" Variant="Variant.Outlined">
+                <MudSelectItem Value="10">10</MudSelectItem>
                 <MudSelectItem Value="25">25</MudSelectItem>
                 <MudSelectItem Value="50">50</MudSelectItem>
                 <MudSelectItem Value="100">100</MudSelectItem>
@@ -73,7 +74,7 @@
     [SupplyParameterFromQuery(Name = "search")] public string? Search { get; set; }
     [SupplyParameterFromQuery(Name = "sort")] public string? SortQuery { get; set; }
     [SupplyParameterFromQuery(Name = "index")] public int Index { get; set; } = 1;
-    [SupplyParameterFromQuery(Name = "size")] public int Size { get; set; } = 50;
+    [SupplyParameterFromQuery(Name = "size")] public int Size { get; set; } = 10;
 
     private DiagnosticEventPage? page;
     private string? error;
@@ -81,12 +82,12 @@
     private string? searchInput;
     private DiagnosticEventSort sortInput;
     private DiagnosticEventSort currentSort = DiagnosticEventSort.LogTimestamp_Descending;
-    private int sizeInput = 50;
+    private int sizeInput = 10;
 
     protected override async Task OnParametersSetAsync()
     {
         Index = PaginationQueryDefaults.NormalizeIndex(Index);
-        Size = PaginationQueryDefaults.NormalizeSize(Size, fallback: 50, maximum: 100);
+        Size = PaginationQueryDefaults.NormalizeSize(Size, fallback: 10, maximum: 100);
         currentSort = Enum.TryParse<DiagnosticEventSort>(SortQuery, true, out var parsed)
             ? parsed
             : DiagnosticEventSort.LogTimestamp_Descending;

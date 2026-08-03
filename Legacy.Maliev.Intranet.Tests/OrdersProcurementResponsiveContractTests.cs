@@ -15,6 +15,10 @@ public sealed class OrdersProcurementResponsiveContractTests
         Assert.Contains("position: sticky", styles, StringComparison.Ordinal);
         Assert.Contains("data-label=", page, StringComparison.Ordinal);
         Assert.Contains("@media (max-width: 720px)", styles, StringComparison.Ordinal);
+        Assert.Contains("public int Size { get; set; } = 10", page, StringComparison.Ordinal);
+        Assert.Contains("fallback: 10", page, StringComparison.Ordinal);
+        Assert.Contains(".orders-module-shell .mlv-button", styles, StringComparison.Ordinal);
+        Assert.Contains(".orders-table a", styles, StringComparison.Ordinal);
         Assert.Contains("min-height: 44px", styles, StringComparison.Ordinal);
         Assert.Contains("LegacyPresentation.FormatCalendarDate", page, StringComparison.Ordinal);
     }
@@ -40,6 +44,8 @@ public sealed class OrdersProcurementResponsiveContractTests
         Assert.Contains("multipart/form-data", page, StringComparison.Ordinal);
         Assert.Contains("X-CSRF-TOKEN", page, StringComparison.Ordinal);
         Assert.Contains("LegacyPresentation.FormatUtcDateTime", page, StringComparison.Ordinal);
+        Assert.Contains("StatusLabel(page.CurrentStatus?.Name)", page, StringComparison.Ordinal);
+        Assert.Contains("StatusLabel(item.Name)", page, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -82,6 +88,8 @@ public sealed class OrdersProcurementResponsiveContractTests
         Assert.Contains("model.EmployeeId <= 0", create, StringComparison.Ordinal);
         Assert.Contains("position: sticky", createStyles, StringComparison.Ordinal);
         Assert.Contains("min-height: 44px", createStyles, StringComparison.Ordinal);
+        Assert.Contains(".purchase-order-addresses", createStyles, StringComparison.Ordinal);
+        Assert.Contains("margin: 0", createStyles, StringComparison.Ordinal);
 
         Assert.Contains("MudNumericField T=\"int?\" @bind-Value=\"countryId\"", supplierCreate, StringComparison.Ordinal);
         Assert.Contains("model.CountryId = countryId.Value", supplierCreate, StringComparison.Ordinal);

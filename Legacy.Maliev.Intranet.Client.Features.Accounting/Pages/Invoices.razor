@@ -24,6 +24,8 @@
                 }
             </MudSelect>
             <MudSelect T="int" @bind-Value="sizeInput" Label="@Text["PerPage"]" Variant="Variant.Outlined">
+                <MudSelectItem T="int" Value="10">10</MudSelectItem>
+                <MudSelectItem T="int" Value="25">25</MudSelectItem>
                 <MudSelectItem T="int" Value="50">50</MudSelectItem>
                 <MudSelectItem T="int" Value="100">100</MudSelectItem>
                 <MudSelectItem T="int" Value="150">150</MudSelectItem>
@@ -114,7 +116,7 @@
     [SupplyParameterFromQuery(Name = "search")] public string? Search { get; set; }
     [SupplyParameterFromQuery(Name = "sort")] public string? SortQuery { get; set; }
     [SupplyParameterFromQuery(Name = "index")] public int Index { get; set; } = 1;
-    [SupplyParameterFromQuery(Name = "size")] public int Size { get; set; } = 50;
+    [SupplyParameterFromQuery(Name = "size")] public int Size { get; set; } = 10;
 
     private static readonly InvoiceListPage EmptyPage = new([], 1, 0, 0, false, false);
     private InvoiceListPage paidInvoices = EmptyPage;
@@ -122,7 +124,7 @@
     private InvoiceListSort currentSort = InvoiceListSort.InvoiceCreatedDate_Descending;
     private InvoiceListSort sortInput;
     private string? searchInput;
-    private int sizeInput = 50;
+    private int sizeInput = 10;
     private bool loading;
     private string? error;
 
@@ -139,7 +141,7 @@
     protected override async Task OnParametersSetAsync()
     {
         Index = Math.Max(1, Index);
-        Size = Size is 50 or 100 or 150 ? Size : 50;
+        Size = Size is 10 or 25 or 50 or 100 or 150 ? Size : 10;
         currentSort = Enum.TryParse<InvoiceListSort>(SortQuery, true, out var parsed)
             ? parsed
             : InvoiceListSort.InvoiceCreatedDate_Descending;

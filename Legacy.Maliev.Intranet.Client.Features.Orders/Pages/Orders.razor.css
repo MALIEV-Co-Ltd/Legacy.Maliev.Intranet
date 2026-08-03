@@ -141,6 +141,11 @@
         min-width: 0;
     }
 
+    .orders-module-shell .mlv-button,
+    .orders-table a {
+        min-height: 44px;
+    }
+
     .orders-table {
         min-width: 0;
     }

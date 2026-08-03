@@ -301,7 +301,7 @@
         _error = null;
         try
         {
-            using var response = await Http.GetAsync("/bff/dashboard");
+            using var response = await Http.GetForPresentationAsync("/bff/dashboard");
             if (response.StatusCode is System.Net.HttpStatusCode.Unauthorized or System.Net.HttpStatusCode.Forbidden)
             {
                 Navigation.NavigateTo($"/Login?returnUrl={Uri.EscapeDataString(Navigation.ToBaseRelativePath(Navigation.Uri))}");

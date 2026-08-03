@@ -57,6 +57,8 @@
                     }
                 </MudSelect>
                 <MudSelect T="int" @bind-Value="sizeInput" Label="@Text["PerPage"]" Variant="Variant.Outlined">
+                    <MudSelectItem T="int" Value="10">10</MudSelectItem>
+                    <MudSelectItem T="int" Value="25">25</MudSelectItem>
                     <MudSelectItem T="int" Value="100">100</MudSelectItem>
                     <MudSelectItem T="int" Value="250">250</MudSelectItem>
                 </MudSelect>
@@ -121,7 +123,7 @@
     [SupplyParameterFromQuery(Name = "search")] public string? Search { get; set; }
     [SupplyParameterFromQuery(Name = "sort")] public string? SortQuery { get; set; }
     [SupplyParameterFromQuery(Name = "index")] public int PageIndex { get; set; } = 1;
-    [SupplyParameterFromQuery(Name = "size")] public int Size { get; set; } = 100;
+    [SupplyParameterFromQuery(Name = "size")] public int Size { get; set; } = 10;
 
     private static readonly QuotationListPage EmptyPage = new([], 1, 0, 0, false, false);
     private QuotationListPage page = EmptyPage;
@@ -133,14 +135,14 @@
     private QuotationListSort currentSort = QuotationListSort.QuotationCreatedDate_Descending;
     private QuotationListSort sortInput;
     private string? searchInput;
-    private int sizeInput = 100;
+    private int sizeInput = 10;
     private bool loading;
     private string? error;
 
     protected override async Task OnParametersSetAsync()
     {
         PageIndex = Math.Max(1, PageIndex);
-        Size = Size is 100 or 250 ? Size : 100;
+        Size = Size is 10 or 25 or 100 or 250 ? Size : 10;
         currentSort = Enum.TryParse<QuotationListSort>(SortQuery, true, out var parsed)
             ? parsed
             : QuotationListSort.QuotationCreatedDate_Descending;

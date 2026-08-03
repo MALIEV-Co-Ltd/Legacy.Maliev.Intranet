@@ -23,6 +23,7 @@ body { background: var(--legacy-background); color: var(--legacy-ink); }
 .dashboard-card-link:hover { text-decoration: underline; }
 
 #blazor-error-ui {
+    display: none;
     background: #b91c1c;
     bottom: 0;
     color: #fff;
