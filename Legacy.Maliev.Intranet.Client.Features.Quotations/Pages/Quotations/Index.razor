@@ -247,7 +247,12 @@
         builder.CloseComponent();
     };
     private string EmployeeName(int? id) => id is int value && employees.TryGetValue(value, out var name) ? name : id?.ToString(CultureInfo.InvariantCulture) ?? "-";
-    private string FormatMoney(decimal value, int currencyId) => $"{value:N2} {(currencies.TryGetValue(currencyId, out var name) ? name : currencyId.ToString(CultureInfo.InvariantCulture))}";
+    private string FormatMoney(decimal value, int currencyId)
+    {
+        var currency = currencies.TryGetValue(currencyId, out var name) ? name : currencyId.ToString(CultureInfo.InvariantCulture);
+        if (currency.Equals("THB", StringComparison.OrdinalIgnoreCase) && CultureInfo.CurrentUICulture.TwoLetterISOLanguageName == "th") currency = "บาท";
+        return $"{value:N2} {currency}";
+    }
     private static string FormatDate(DateTime value) => LegacyPresentation.FormatCalendarDate(value, CultureInfo.CurrentCulture, "-");
     private string Decision(bool? value) => value switch { true => Text["Accepted"], false => Text["Declined"], null => Text["Open"] };
     private static string DecisionClass(bool? value) => value switch

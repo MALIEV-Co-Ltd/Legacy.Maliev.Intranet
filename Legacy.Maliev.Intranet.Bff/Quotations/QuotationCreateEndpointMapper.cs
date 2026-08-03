@@ -23,7 +23,7 @@ internal static class QuotationCreateEndpointMapper
         CancellationToken cancellationToken)
     {
         var normalizedSearch = search?.Trim() ?? string.Empty;
-        if (normalizedSearch.Length == 0) return Results.Ok(Array.Empty<OrderListItem>());
+        if (normalizedSearch.Length == 0) return Results.Ok(Array.Empty<QuotationOrderCandidate>());
         try
         {
             using var response = customerId is > 0
@@ -32,9 +32,9 @@ internal static class QuotationCreateEndpointMapper
             if (response.StatusCode == HttpStatusCode.NotFound) return Results.Ok(Array.Empty<OrderListItem>());
             var failure = MapFailure(response);
             if (failure is not null) return failure;
-            var page = await response.Content.ReadFromJsonAsync<OrderListPage>(cancellationToken);
-            if (page?.Items is null || page.Items.Any(item => item.Id < 1 || customerId is > 0 && item.CustomerId != customerId)) return InvalidResponse();
-            return Results.Ok(page.Items);
+            var page = await response.Content.ReadFromJsonAsync<QuotationOrderSourcePage>(cancellationToken);
+            if (page?.Items is null || page.Items.Any(item => item.Id < 1 || item.CustomerId is null || customerId is > 0 && item.CustomerId != customerId)) return InvalidResponse();
+            return Results.Ok(page.Items.Select(ToCandidate));
         }
         catch (Exception exception) when (IsUnavailable(exception, cancellationToken))
         {
@@ -66,7 +66,7 @@ internal static class QuotationCreateEndpointMapper
             if (employeePage?.Items is null || currencies is null) return InvalidResponse();
 
             QuotationCustomer? customer = null;
-            IReadOnlyList<OrderListItem> customerOrders = [];
+            IReadOnlyList<QuotationOrderCandidate> customerOrders = [];
             if (customerId is > 0)
             {
                 using var customerResponse = await customers.GetByIdAsync(customerId.Value, cancellationToken);
@@ -80,9 +80,9 @@ internal static class QuotationCreateEndpointMapper
                 if (ordersResponse.StatusCode != HttpStatusCode.NotFound)
                 {
                     if ((failure = MapFailure(ordersResponse)) is not null) return failure;
-                    var page = await ordersResponse.Content.ReadFromJsonAsync<OrderListPage>(cancellationToken);
+                    var page = await ordersResponse.Content.ReadFromJsonAsync<QuotationOrderSourcePage>(cancellationToken);
                     if (page?.Items is null || page.Items.Any(item => item.CustomerId != customerId)) return InvalidResponse();
-                    customerOrders = page.Items;
+                    customerOrders = page.Items.Select(ToCandidate).ToArray();
                 }
             }
 
@@ -247,5 +247,27 @@ internal static class QuotationCreateEndpointMapper
         statusCode: StatusCodes.Status502BadGateway,
         title: "A required legacy service returned an invalid response.");
 
+    private static QuotationOrderCandidate ToCandidate(QuotationOrderSource value) => new(
+        value.Id,
+        value.CustomerId!.Value,
+        value.Name,
+        value.Description,
+        value.Quantity,
+        value.UnitPrice,
+        value.DiscountPercent,
+        value.Subtotal,
+        value.LeadTime);
+
     private sealed record CurrencySource(int Id, string ShortName, string? LongName);
+    private sealed record QuotationOrderSourcePage(IReadOnlyList<QuotationOrderSource> Items);
+    private sealed record QuotationOrderSource(
+        int Id,
+        int? CustomerId,
+        string? Name,
+        string? Description,
+        int Quantity,
+        decimal? UnitPrice,
+        decimal? DiscountPercent,
+        decimal? Subtotal,
+        int? LeadTime);
 }

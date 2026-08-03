@@ -32,6 +32,27 @@ public sealed class BffQuotationCreationContractTests
     ];
 
     [Fact]
+    public async Task CustomerCreateReferences_PreserveEditableLegacyOrderFields()
+    {
+        var handler = new ReferenceHandler();
+        await using var factory = new Factory(handler, new Gateway(), CreatePermissions);
+        using var client = CreateClient(factory);
+        await SignInAsync(client);
+
+        using var response = await client.GetAsync("/bff/quotations/create?customerId=3");
+        var errorBody = await response.Content.ReadAsStringAsync();
+        Assert.True(response.IsSuccessStatusCode, $"{response.StatusCode}: {errorBody}; paths={string.Join(',', handler.Paths)}");
+        var page = await response.Content.ReadFromJsonAsync<QuotationCreatePage>();
+
+        var order = Assert.Single(Assert.IsType<QuotationCreatePage>(page).Orders);
+        Assert.Equal(42, order.Id);
+        Assert.Equal("Thai tone mark น้ำ", order.Description);
+        Assert.Equal(50m, order.UnitPrice);
+        Assert.Equal(5m, order.DiscountPercent);
+        Assert.Equal(3, order.LeadTime);
+    }
+
+    [Fact]
     public async Task MissingOneWritePermission_IsRejectedBeforeDownstreamReads()
     {
         var handler = new ReferenceHandler();
@@ -162,15 +183,18 @@ public sealed class BffQuotationCreationContractTests
     private sealed class ReferenceHandler : HttpMessageHandler
     {
         public int Calls { get; private set; }
+        public List<string> Paths { get; } = [];
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
             Calls++;
+            Paths.Add(request.RequestUri!.AbsolutePath);
             var body = request.RequestUri!.AbsolutePath switch
             {
                 "/customers/3" => CustomerJson,
                 "/employees/2" => EmployeeJson,
+                "/employees" => "{\"items\":[{\"id\":2,\"roleId\":1,\"firstName\":\"Grace\",\"lastName\":\"Hopper\",\"fullName\":\"Grace Hopper\",\"phoneNumber\":\"081\",\"email\":\"grace@example.test\"}],\"pageIndex\":1,\"totalPages\":1,\"totalRecords\":1,\"hasNextPage\":false,\"hasPreviousPage\":false}",
                 "/Currencies" => "[{\"id\":1,\"shortName\":\"THB\",\"longName\":\"Thai Baht\"}]",
-                "/Orders/customers/3" => "{\"items\":[{\"id\":42,\"customerId\":3,\"employeeId\":2,\"name\":\"Order\",\"processId\":1,\"quantity\":2,\"manufactured\":0,\"remaining\":2,\"subtotal\":100,\"promisedDate\":null,\"allowSocialMedia\":false}],\"pageIndex\":1,\"totalPages\":1,\"totalRecords\":1,\"hasNextPage\":false,\"hasPreviousPage\":false}",
+                "/Orders/customers/3" => "{\"items\":[{\"id\":42,\"customerId\":3,\"employeeId\":2,\"name\":\"Order\",\"processId\":1,\"quantity\":2,\"manufactured\":0,\"remaining\":2,\"subtotal\":95,\"promisedDate\":null,\"allowSocialMedia\":false,\"description\":\"Thai tone mark น้ำ\",\"unitPrice\":50,\"discountPercent\":5,\"leadTime\":3}],\"pageIndex\":1,\"totalPages\":1,\"totalRecords\":1,\"hasNextPage\":false,\"hasPreviousPage\":false}",
                 _ => "{}",
             };
             return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(body, Encoding.UTF8, "application/json") });

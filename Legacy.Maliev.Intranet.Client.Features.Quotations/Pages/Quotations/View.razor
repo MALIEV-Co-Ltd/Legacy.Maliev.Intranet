@@ -205,7 +205,12 @@
         }
     }
 
-    private string Money(decimal value) => $"{value:N2} {page?.Currency.ShortName}";
+    private string Money(decimal value)
+    {
+        var currency = page?.Currency.ShortName ?? string.Empty;
+        if (currency.Equals("THB", StringComparison.OrdinalIgnoreCase) && CultureInfo.CurrentUICulture.TwoLetterISOLanguageName == "th") currency = "บาท";
+        return $"{value:N2} {currency}";
+    }
     private string Decision(bool? value) => value switch
     {
         true => Text["Accepted"],

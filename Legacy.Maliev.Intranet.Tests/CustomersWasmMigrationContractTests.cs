@@ -35,6 +35,14 @@ public sealed class CustomersWasmMigrationContractTests
         Assert.Contains("Disabled=\"@loading\"", page, StringComparison.Ordinal);
         Assert.Contains("@Text[\"Refresh\"]", page, StringComparison.Ordinal);
         Assert.Contains("private Task ReloadAsync() => LoadAsync();", page, StringComparison.Ordinal);
+        Assert.Contains("Class=\"customers-page\"", page, StringComparison.Ordinal);
+        Assert.Contains("customers-filter-grid", page, StringComparison.Ordinal);
+        Assert.Contains("Class=\"customers-table\"", page, StringComparison.Ordinal);
+        Assert.Contains("MudSelectItem T=\"int\" Value=\"25\"", page, StringComparison.Ordinal);
+        var styles = File.ReadAllText(Path.ChangeExtension(featurePage, ".razor.css"));
+        Assert.Contains("font-family: var(--maliev-font-sans)", styles, StringComparison.Ordinal);
+        Assert.Contains("border-radius: var(--legacy-radius-lg)", styles, StringComparison.Ordinal);
+        Assert.Contains("@media (max-width: 720px)", styles, StringComparison.Ordinal);
 
         Assert.Contains("LegacyEmployeePermissions.CustomersList", bffProgram, StringComparison.Ordinal);
         Assert.Contains("public const string CustomersList = \"legacy-customer.customers.list\";", authContracts, StringComparison.Ordinal);
