@@ -2,7 +2,6 @@
     display: inline-flex;
     min-height: 44px;
     align-items: center;
-    gap: 5px;
     color: var(--legacy-muted);
 }
 
@@ -22,10 +21,4 @@
 .legacy-language-selector select:focus-visible {
     outline: 3px solid color-mix(in srgb, var(--legacy-primary) 35%, transparent);
     outline-offset: 2px;
-}
-
-@media (max-width: 720px) {
-    .legacy-language-selector > :first-child {
-        display: none;
-    }
 }
