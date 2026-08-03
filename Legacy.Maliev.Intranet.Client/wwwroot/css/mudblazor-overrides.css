@@ -39,7 +39,7 @@
     font-size: var(--maliev-icon-md);
 }
 
-@media (max-width: 760px) {
+@media (max-width: 1024px) {
     .mud-input-control.mud-input-number-control .mud-input-numeric-spin {
         display: none;
     }

@@ -82,6 +82,16 @@ public sealed class IntranetParityContractTests
     }
 
     [Fact]
+    public void DashboardMetricLinks_AreTouchSized()
+    {
+        var root = FindRoot();
+        var styles = File.ReadAllText(Path.Combine(root, "Legacy.Maliev.Intranet.Client", "Components", "Dashboard", "DashboardMetricCard.razor.css"));
+
+        Assert.Contains(".dashboard-metric-link", styles, StringComparison.Ordinal);
+        Assert.Contains("min-height: 44px", styles, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void SessionProjection_PreservesValidatedPermissionsWithoutExposingTokens()
     {
         var root = FindRoot();

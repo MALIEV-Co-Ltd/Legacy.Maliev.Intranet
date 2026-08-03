@@ -89,12 +89,16 @@ public sealed class OrdersProcurementResponsiveContractTests
         Assert.Contains("position: sticky", createStyles, StringComparison.Ordinal);
         Assert.Contains("min-height: 44px", createStyles, StringComparison.Ordinal);
         Assert.Contains(".purchase-order-addresses", createStyles, StringComparison.Ordinal);
-        Assert.Contains("margin: 0", createStyles, StringComparison.Ordinal);
+        Assert.Contains("margin: 0 !important", createStyles, StringComparison.Ordinal);
+        Assert.Contains("::deep > .mud-grid-item", createStyles, StringComparison.Ordinal);
 
         Assert.Contains("MudNumericField T=\"int?\" @bind-Value=\"countryId\"", supplierCreate, StringComparison.Ordinal);
         Assert.Contains("model.CountryId = countryId.Value", supplierCreate, StringComparison.Ordinal);
         Assert.Contains("supplier-danger-zone", supplierView, StringComparison.Ordinal);
         Assert.Contains("purchase-order-danger-zone", purchaseView, StringComparison.Ordinal);
+        Assert.Contains("else if (!string.IsNullOrWhiteSpace(error) && detail is null)", purchaseView, StringComparison.Ordinal);
+        Assert.Contains("OnClick=\"LoadAsync\"", purchaseView, StringComparison.Ordinal);
+        Assert.Contains("Text[\"Retry\"]", purchaseView, StringComparison.Ordinal);
 
         // Auth, CSRF, idempotency and downstream write contracts remain intact.
         Assert.Contains("X-CSRF-TOKEN", create, StringComparison.Ordinal);

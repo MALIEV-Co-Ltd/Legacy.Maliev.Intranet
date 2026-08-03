@@ -620,7 +620,11 @@ builder.Services.AddAuthorizationBuilder()
         .RequireClaim("permissions", LegacyEmployeePermissions.FileUploadsDelete))
     .AddPolicy(LegacyEmployeePermissions.QuotationRequestsRead, policy => policy
         .RequireAuthenticatedUser()
-        .RequireClaim("permissions", LegacyEmployeePermissions.QuotationRequestsRead))
+        .RequireAssertion(context => LegacyNavigationAuthorization.IsEnabled(
+            true,
+            LegacyEmployeePermissions.QuotationRequestsRead,
+            context.User.FindAll("permissions").Select(static claim => claim.Value),
+            context.User.FindAll(ClaimTypes.Role).Select(static claim => claim.Value))))
     .AddPolicy(LegacyEmployeePermissions.QuotationRequestsUpdate, policy => policy
         .RequireAuthenticatedUser()
         .RequireClaim("permissions", LegacyEmployeePermissions.QuotationRequestsUpdate))
@@ -687,7 +691,11 @@ builder.Services.AddAuthorizationBuilder()
         .RequireAuthenticatedUser().RequireClaim("permissions", LegacyEmployeePermissions.SuppliersDelete))
     .AddPolicy(LegacyEmployeePermissions.PurchaseOrdersRead, policy => policy
         .RequireAuthenticatedUser()
-        .RequireClaim("permissions", LegacyEmployeePermissions.PurchaseOrdersRead))
+        .RequireAssertion(context => LegacyNavigationAuthorization.IsEnabled(
+            true,
+            LegacyEmployeePermissions.PurchaseOrdersRead,
+            context.User.FindAll("permissions").Select(static claim => claim.Value),
+            context.User.FindAll(ClaimTypes.Role).Select(static claim => claim.Value))))
     .AddPolicy(LegacyEmployeePermissions.PurchaseOrdersCreate, policy => policy
         .RequireAuthenticatedUser()
         .RequireClaim("permissions", LegacyEmployeePermissions.PurchaseOrdersCreate))

@@ -96,6 +96,19 @@ public sealed class LegacyNavigationContractTests
     }
 
     [Fact]
+    public void OwnerWildcardSemantics_MatchQuotationAndPurchaseOrderReadPolicies()
+    {
+        var root = FindRoot();
+        var bff = File.ReadAllText(Path.Combine(root, "Legacy.Maliev.Intranet.Bff", "Program.cs"));
+
+        Assert.Contains("LegacyEmployeePermissions.QuotationRequestsRead, policy => policy", bff, StringComparison.Ordinal);
+        Assert.Contains("LegacyEmployeePermissions.PurchaseOrdersRead, policy => policy", bff, StringComparison.Ordinal);
+        Assert.True(
+            bff.Split("LegacyNavigationAuthorization.IsEnabled", StringSplitOptions.None).Length - 1 >= 3,
+            "Navigation and protected read policies must share owner/wildcard semantics.");
+    }
+
+    [Fact]
     public void DesktopNavigation_UsesPersistentGroupedRailForLegacyWorkflows()
     {
         var root = FindRoot();

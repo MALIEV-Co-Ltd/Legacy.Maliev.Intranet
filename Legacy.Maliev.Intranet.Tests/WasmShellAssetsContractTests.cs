@@ -73,7 +73,7 @@ public sealed class WasmShellAssetsContractTests
             "css",
             "mudblazor-overrides.css"));
 
-        Assert.Contains("@media (max-width: 760px)", css, StringComparison.Ordinal);
+        Assert.Contains("@media (max-width: 1024px)", css, StringComparison.Ordinal);
         Assert.Contains(
             ".mud-input-control.mud-input-number-control .mud-input-numeric-spin",
             css,

@@ -12,6 +12,17 @@
     {
         <div role="status" aria-live="polite"><MudProgressLinear Indeterminate="true" Color="Color.Primary" aria-label="@Text["Loading"]" /><span class="visually-hidden">@Text["Loading"]</span></div>
     }
+    else if (!string.IsNullOrWhiteSpace(error) && detail is null)
+    {
+        <MudAlert Severity="Severity.Error" Class="mb-4" aria-live="assertive">@error</MudAlert>
+        <div class="d-flex flex-wrap gap-2">
+            @if (!forbidden)
+            {
+                <MudButton OnClick="LoadAsync" Variant="Variant.Filled" Color="Color.Primary">@Text["Retry"]</MudButton>
+            }
+            <MudButton Href="/PurchaseOrders/Index" Variant="Variant.Text">@Text["Back"]</MudButton>
+        </div>
+    }
     else if (notFound)
     {
         <MudAlert Severity="Severity.Warning">@Text["NotFound"]</MudAlert>
@@ -67,17 +78,20 @@
     private bool loading = true;
     private bool notFound;
     private bool deleting;
+    private bool forbidden;
     private string? error;
 
-    protected override async Task OnParametersSetAsync()
+    protected override Task OnParametersSetAsync() => LoadAsync();
+
+    private async Task LoadAsync()
     {
-        loading = true; notFound = false; error = null; detail = null;
+        loading = true; notFound = false; forbidden = false; error = null; detail = null;
         if (Id <= 0) { notFound = true; loading = false; return; }
         try
         {
             using var response = await Http.GetForPresentationAsync($"/bff/purchase-orders/{Id}");
             if (response.StatusCode == HttpStatusCode.Unauthorized) { NavigateToLogin(); return; }
-            if (response.StatusCode == HttpStatusCode.Forbidden) { error = Text["Forbidden"]; return; }
+            if (response.StatusCode == HttpStatusCode.Forbidden) { forbidden = true; error = Text["Forbidden"]; return; }
             if (response.StatusCode == HttpStatusCode.NotFound) { notFound = true; return; }
             if (response.StatusCode == HttpStatusCode.TooManyRequests) { error = Text["RateLimited"]; return; }
             if (!response.IsSuccessStatusCode) { error = Text["Unavailable"]; return; }

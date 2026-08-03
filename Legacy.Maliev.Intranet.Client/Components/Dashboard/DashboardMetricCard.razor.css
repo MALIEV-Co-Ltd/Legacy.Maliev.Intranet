@@ -40,10 +40,13 @@
 }
 
 .dashboard-metric-link {
+    align-items: center;
     color: #075fd8;
+    display: inline-flex;
     font-size: 0.78rem;
     font-weight: 650;
     margin-top: 0.35rem;
+    min-height: 44px;
     text-decoration: none;
 }
 
