@@ -36,16 +36,6 @@
 }
 
 @media (max-width: 600px) {
-    .purchase-order-addresses {
-        width: 100% !important;
-        margin: 0 !important;
-    }
-
-    .purchase-order-addresses ::deep > .mud-grid-item {
-        width: 100% !important;
-        padding-inline: 0 !important;
-    }
-
     .purchase-order-lines-header,
     .purchase-order-form-actions {
         align-items: stretch;

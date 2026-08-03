@@ -330,6 +330,16 @@
 }
 
 @media (max-width: 720px) {
+    .orders-module-shell .orders-toolbar :where(.mud-input-control, .mlv-search-box, .mud-button-root),
+    .orders-module-shell .orders-toolbar :where(input, button) {
+        min-height: 44px;
+    }
+
+    .orders-module-shell .orders-toolbar .mud-input-slot {
+        min-height: 44px;
+        padding-block: 0.65rem;
+    }
+
     .legacy-page-container :where(h1, .mud-typography-h4) {
         max-width: none;
         font-size: clamp(1.45rem, 7vw, 1.85rem);
@@ -428,6 +438,18 @@
 
     .legacy-page-container .mud-stack-row > .mud-button-root {
         width: 100%;
+    }
+}
+
+@media (max-width: 600px) {
+    .purchase-order-addresses.mud-grid-spacing-xs-6 {
+        width: 100% !important;
+        margin: 0 !important;
+    }
+
+    .purchase-order-addresses.mud-grid-spacing-xs-6 > .mud-grid-item {
+        width: 100% !important;
+        padding-inline: 0 !important;
     }
 }
 

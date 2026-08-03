@@ -8,6 +8,7 @@ public sealed class OrdersProcurementResponsiveContractTests
         var root = FindRoot();
         var page = Read(root, "Legacy.Maliev.Intranet.Client.Features.Orders", "Pages", "Orders.razor");
         var styles = Read(root, "Legacy.Maliev.Intranet.Client.Features.Orders", "Pages", "Orders.razor.css");
+        var globalStyles = Read(root, "Legacy.Maliev.Intranet.Client", "wwwroot", "css", "operations-pages.css");
 
         Assert.Contains("orders-working-set", page, StringComparison.Ordinal);
         Assert.Contains("max-height:", styles, StringComparison.Ordinal);
@@ -20,6 +21,8 @@ public sealed class OrdersProcurementResponsiveContractTests
         Assert.Contains(".orders-module-shell .mlv-button", styles, StringComparison.Ordinal);
         Assert.Contains(".orders-table a", styles, StringComparison.Ordinal);
         Assert.Contains("min-height: 44px", styles, StringComparison.Ordinal);
+        Assert.Contains(".orders-module-shell .orders-toolbar", globalStyles, StringComparison.Ordinal);
+        Assert.Contains(".orders-module-shell .orders-toolbar .mud-input-slot", globalStyles, StringComparison.Ordinal);
         Assert.Contains("LegacyPresentation.FormatCalendarDate", page, StringComparison.Ordinal);
     }
 
@@ -74,6 +77,7 @@ public sealed class OrdersProcurementResponsiveContractTests
         var root = FindRoot();
         var create = Read(root, "Legacy.Maliev.Intranet.Client.Features.Procurement", "Pages", "PurchaseOrderCreate.razor");
         var createStyles = Read(root, "Legacy.Maliev.Intranet.Client.Features.Procurement", "Pages", "PurchaseOrderCreate.razor.css");
+        var globalStyles = Read(root, "Legacy.Maliev.Intranet.Client", "wwwroot", "css", "operations-pages.css");
         var supplierCreate = Read(root, "Legacy.Maliev.Intranet.Client.Features.Procurement", "Pages", "SupplierCreate.razor");
         var supplierView = Read(root, "Legacy.Maliev.Intranet.Client.Features.Procurement", "Pages", "SupplierView.razor");
         var purchaseView = Read(root, "Legacy.Maliev.Intranet.Client.Features.Procurement", "Pages", "PurchaseOrderView.razor");
@@ -88,9 +92,9 @@ public sealed class OrdersProcurementResponsiveContractTests
         Assert.Contains("model.EmployeeId <= 0", create, StringComparison.Ordinal);
         Assert.Contains("position: sticky", createStyles, StringComparison.Ordinal);
         Assert.Contains("min-height: 44px", createStyles, StringComparison.Ordinal);
-        Assert.Contains(".purchase-order-addresses", createStyles, StringComparison.Ordinal);
-        Assert.Contains("margin: 0 !important", createStyles, StringComparison.Ordinal);
-        Assert.Contains("::deep > .mud-grid-item", createStyles, StringComparison.Ordinal);
+        Assert.Contains(".purchase-order-addresses.mud-grid-spacing-xs-6", globalStyles, StringComparison.Ordinal);
+        Assert.Contains("margin: 0 !important", globalStyles, StringComparison.Ordinal);
+        Assert.Contains("> .mud-grid-item", globalStyles, StringComparison.Ordinal);
 
         Assert.Contains("MudNumericField T=\"int?\" @bind-Value=\"countryId\"", supplierCreate, StringComparison.Ordinal);
         Assert.Contains("model.CountryId = countryId.Value", supplierCreate, StringComparison.Ordinal);
