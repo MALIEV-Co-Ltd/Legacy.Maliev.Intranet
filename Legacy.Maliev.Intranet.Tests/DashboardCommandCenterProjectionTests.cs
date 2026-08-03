@@ -82,6 +82,20 @@ public sealed class DashboardCommandCenterProjectionTests
     }
 
     [Fact]
+    public async Task GetAsync_EmptyMonthlyAccountingPeriodRemainsHealthy()
+    {
+        var handler = new CommandCenterHandler { EmptyMonthlySummary = true };
+        var result = await CreateAggregator(handler).GetAsync(
+            Employee(LegacyEmployeePermissions.AccountingRead),
+            CancellationToken.None);
+
+        Assert.Empty(result.MonthlyFinance);
+        Assert.Empty(result.DegradedSources);
+        Assert.Single(result.RecentPayments);
+        Assert.Contains("/payments/summaries/monthly", handler.Paths, StringComparer.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public async Task GetAsync_CustomerPermissionRetainsOriginalRecentCustomerPanelData()
     {
         var handler = new CommandCenterHandler();
@@ -215,6 +229,7 @@ public sealed class DashboardCommandCenterProjectionTests
     {
         public List<string> Paths { get; } = [];
         public bool FailQuotationSummary { get; init; }
+        public bool EmptyMonthlySummary { get; init; }
 
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
@@ -223,6 +238,14 @@ public sealed class DashboardCommandCenterProjectionTests
             if (FailQuotationSummary && path.Equals("/quotations/stats", StringComparison.OrdinalIgnoreCase))
             {
                 return Task.FromResult(new HttpResponseMessage(HttpStatusCode.ServiceUnavailable)
+                {
+                    RequestMessage = request,
+                });
+            }
+
+            if (EmptyMonthlySummary && path.Equals("/payments/summaries/monthly", StringComparison.OrdinalIgnoreCase))
+            {
+                return Task.FromResult(new HttpResponseMessage(HttpStatusCode.NotFound)
                 {
                     RequestMessage = request,
                 });
