@@ -129,6 +129,32 @@
     --legacy-radius-md: 8px;
     --legacy-radius-lg: 10px;
     --legacy-focus-ring: 0 0 0 2px var(--legacy-surface), 0 0 0 4px var(--legacy-primary);
+
+    /* Shadcn-inspired semantic layer.  The structure follows the open,
+       composable token model while retaining MALIEV blue for primary actions. */
+    --shadcn-background: var(--maliev-bg);
+    --shadcn-foreground: var(--maliev-ink);
+    --shadcn-card: var(--maliev-panel);
+    --shadcn-card-foreground: var(--maliev-ink);
+    --shadcn-popover: var(--maliev-panel);
+    --shadcn-popover-foreground: var(--maliev-ink);
+    --shadcn-primary: var(--legacy-primary);
+    --shadcn-primary-foreground: #ffffff;
+    --shadcn-secondary: var(--maliev-panel-3);
+    --shadcn-secondary-foreground: var(--maliev-ink);
+    --shadcn-muted: var(--maliev-panel-3);
+    --shadcn-muted-foreground: var(--maliev-muted);
+    --shadcn-accent: var(--maliev-accent-soft);
+    --shadcn-accent-foreground: var(--maliev-ink);
+    --shadcn-destructive: var(--maliev-danger);
+    --shadcn-destructive-foreground: #ffffff;
+    --shadcn-border: var(--maliev-border);
+    --shadcn-input: var(--maliev-border);
+    --shadcn-ring: var(--maliev-focus-color);
+    --shadcn-radius: 0.5rem;
+    --shadcn-shadow-xs: 0 1px 2px rgb(15 23 42 / 0.05);
+    --shadcn-shadow-sm: 0 1px 2px rgb(15 23 42 / 0.06), 0 0 0 1px rgb(15 23 42 / 0.04);
+    --shadcn-shadow-md: 0 8px 24px rgb(15 23 42 / 0.08), 0 0 0 1px rgb(15 23 42 / 0.05);
 }
 
 /* ── Dark mode ────────────────────────────────────────────────── */
@@ -194,6 +220,12 @@
     --legacy-warn-bg: #3a2a14;
     --legacy-warn-border: #6a4a1a;
     --legacy-warn-fg: #f0c274;
+
+    --shadcn-primary-foreground: #18181b;
+    --shadcn-destructive-foreground: #ffffff;
+    --shadcn-shadow-xs: 0 1px 2px rgb(0 0 0 / 0.24);
+    --shadcn-shadow-sm: 0 1px 2px rgb(0 0 0 / 0.28), 0 0 0 1px rgb(255 255 255 / 0.06);
+    --shadcn-shadow-md: 0 8px 24px rgb(0 0 0 / 0.36), 0 0 0 1px rgb(255 255 255 / 0.08);
 }
 
 /* Scrollbar theming */
