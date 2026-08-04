@@ -46,7 +46,7 @@
     margin: 0;
     color: var(--maliev-ink);
     font-size: var(--mud-typography-subtitle1-size);
-    font-weight: 650;
+    font-weight: 600;
 }
 
 .orders-section-count {
@@ -94,7 +94,7 @@
     min-width: 44px;
     min-height: 44px;
     color: var(--mud-palette-primary);
-    font-weight: 600;
+    font-weight: 400;
     text-decoration: none;
 }
 
@@ -112,7 +112,7 @@
     background: var(--maliev-warn-bg);
     color: var(--maliev-warn-fg);
     font-size: var(--maliev-font-nano);
-    font-weight: 600;
+    font-weight: 400;
 }
 
 .orders-pager {
@@ -201,7 +201,7 @@
         content: attr(data-label);
         color: var(--maliev-muted);
         font-size: var(--maliev-font-small);
-        font-weight: 600;
+        font-weight: 400;
     }
 
     .orders-section-heading {

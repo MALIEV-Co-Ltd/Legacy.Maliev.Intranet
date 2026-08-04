@@ -1,6 +1,7 @@
 :root {
     color-scheme: light;
-    font-family: Inter, "Noto Sans Thai", sans-serif;
+    font-family: 'IBM Plex Sans Thai', sans-serif;
+    font-synthesis: none;
     --primary: #0a72ef;
     --primary-hover: #075fc9;
     --primary-soft: #eaf3ff;
@@ -18,18 +19,21 @@
 }
 * { box-sizing: border-box; }
 html, body { margin: 0; min-height: 100%; }
-body { min-height: 100vh; background: var(--canvas); color: var(--ink); }
+body { min-height: 100vh; background: var(--canvas); color: var(--ink); font-weight: 400; }
+button, input, select, textarea { font-family: inherit; font-weight: 400; }
+strong, b { font-weight: 400; }
+h1, h2, h3, h4, h5, h6 { font-weight: 600; }
 a { color: inherit; }
 .visually-hidden { position: absolute !important; width: 1px !important; height: 1px !important; padding: 0 !important; margin: -1px !important; overflow: hidden !important; clip: rect(0,0,0,0) !important; white-space: nowrap !important; border: 0 !important; }
 .skip-link { position: fixed; top: 8px; left: 8px; z-index: 100; padding: 8px 12px; border-radius: 6px; background: var(--ink); color: #fff; transform: translateY(-180%); }
 .skip-link:focus { transform: translateY(0); }
 .compat-rail { position: fixed; inset: 0 auto 0 0; z-index: 30; width: var(--rail-width); overflow-y: auto; border-right: 1px solid var(--border); background: var(--surface); }
 .compat-rail-brand { display: flex; min-height: var(--utility-height); align-items: center; padding: 0 20px; border-bottom: 1px solid var(--border); }
-.compat-rail-brand a { color: #050b16; font-size: 1.65rem; font-weight: 900; letter-spacing: -.06em; text-decoration: none; }
+.compat-rail-brand a { color: #050b16; font-size: 1.65rem; font-weight: 600; letter-spacing: -.06em; text-decoration: none; }
 .compat-rail nav { display: grid; gap: 18px; padding: 18px 14px 28px; }
 .compat-rail section { display: grid; gap: 3px; }
 .compat-rail h2 { margin: 0 10px 5px; color: var(--muted); font-size: .68rem; letter-spacing: .08em; text-transform: uppercase; }
-.compat-rail nav a { display: flex; min-height: 44px; align-items: center; padding: 8px 10px; border-radius: 8px; color: var(--ink-secondary); font-size: .84rem; font-weight: 600; text-decoration: none; }
+.compat-rail nav a { display: flex; min-height: 44px; align-items: center; padding: 8px 10px; border-radius: 8px; color: var(--ink-secondary); font-size: .84rem; font-weight: 400; text-decoration: none; }
 .compat-rail nav a:hover { background: var(--surface-muted); color: var(--ink); }
 .compat-workspace { width: calc(100% - var(--rail-width)); min-height: 100dvh; margin-left: var(--rail-width); }
 .compat-utility { position: sticky; top: 0; z-index: 20; display: flex; min-height: var(--utility-height); align-items: center; gap: 10px; padding: 10px 18px; border-bottom: 1px solid var(--border); background: rgba(255,255,255,.94); backdrop-filter: blur(14px); }
@@ -40,19 +44,19 @@ a { color: inherit; }
 .compat-search input { width: 100%; min-height: 44px; padding: 9px 12px 9px 42px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); color: var(--ink); font: inherit; }
 .compat-search input:focus-visible, a:focus-visible, button:focus-visible, select:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
 .compat-actions { display: flex; align-items: center; gap: 8px; }
-.compat-actions a { display: inline-flex; min-height: 44px; align-items: center; padding: 8px 13px; border: 1px solid var(--border); border-radius: 8px; color: var(--primary); font-size: .78rem; font-weight: 700; text-decoration: none; white-space: nowrap; }
+.compat-actions a { display: inline-flex; min-height: 44px; align-items: center; padding: 8px 13px; border: 1px solid var(--border); border-radius: 8px; color: var(--primary); font-size: .78rem; font-weight: 400; text-decoration: none; white-space: nowrap; }
 .compat-actions a.primary { border-color: var(--primary); background: var(--primary); color: #fff; }
 .compat-actions a.primary:hover { background: var(--primary-hover); }
 .compat-signout { margin: 0; }
 .compat-signout button { min-height: 44px; margin: 0; padding: 8px 10px; border: 0; border-radius: 8px; background: transparent; color: var(--muted); font: inherit; font-size: .76rem; cursor: pointer; }
 .compat-language { display: inline-flex; min-height: 44px; align-items: center; }
-.compat-language select { width: auto; min-height: 44px; padding: 7px 28px 7px 9px; font-size: .76rem; font-weight: 700; }
+.compat-language select { width: auto; min-height: 44px; padding: 7px 28px 7px 9px; font-size: .76rem; font-weight: 400; }
 .shell { width: min(1480px, 100%); margin: 0 auto; padding: clamp(1rem, 2vw, 2rem); }
 .anonymous-shell { min-height: 100dvh; display: grid; place-items: center; }
 .hero, .panel { padding: clamp(1.25rem, 3vw, 2.5rem); border: 1px solid var(--border); border-radius: 10px; background: var(--surface); box-shadow: 0 12px 34px rgba(15,23,42,.08); }
 .narrow { width: min(520px, 100%); margin: 0 auto; }
 h1 { margin: .25rem 0 1rem; color: var(--ink); font-size: clamp(2rem, 4vw, 3.5rem); line-height: 1.05; }
-.eyebrow { margin: 0; color: var(--primary); font-size: .75rem; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
+.eyebrow { margin: 0; color: var(--primary); font-size: .75rem; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; }
 .button, button { display: inline-flex; min-height: 44px; align-items: center; justify-content: center; margin-top: 1rem; padding: .7rem 1rem; border: 0; border-radius: 8px; background: var(--primary); color: #fff; font: inherit; text-decoration: none; }
 button:disabled { opacity: .5; cursor: not-allowed; }
 form { display: grid; gap: .6rem; margin-top: 1.25rem; }
@@ -70,7 +74,7 @@ th { color: var(--muted); font-size: .72rem; letter-spacing: .04em; text-transfo
 .pager { margin-top: 1.5rem; }
 .customer-form { max-width: 680px; }
 .purchase-order-form fieldset { border: 1px solid var(--border); padding: 1rem; display: grid; gap: .75rem; }
-.purchase-order-form legend { color: var(--primary); font-weight: 700; }
+.purchase-order-form legend { color: var(--primary); font-weight: 600; }
 .form-columns, .order-item { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 1rem; }
 .order-item { grid-template-columns: 1fr 2fr 1fr 1fr; padding: 1rem 0; border-bottom: 1px solid var(--border); }
 .secondary { background: var(--muted); }.danger { background: #b42318; }

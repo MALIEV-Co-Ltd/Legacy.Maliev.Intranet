@@ -28,7 +28,7 @@
     margin: 0 0 0.35rem;
     color: var(--legacy-ink);
     font-size: clamp(1.55rem, 1.2rem + 0.8vw, 2.15rem);
-    font-weight: 750;
+    font-weight: 600;
     line-height: 1.15;
     letter-spacing: -0.025em;
     overflow-wrap: anywhere;
@@ -39,7 +39,7 @@
     margin: 0 0 0.75rem;
     color: var(--legacy-ink);
     font-size: clamp(1.05rem, 0.98rem + 0.25vw, 1.3rem);
-    font-weight: 700;
+    font-weight: 600;
     line-height: 1.25;
     letter-spacing: -0.015em;
     overflow-wrap: anywhere;
@@ -208,7 +208,7 @@
     border-bottom: 1px solid var(--legacy-border);
     color: var(--legacy-muted);
     font-size: 0.72rem;
-    font-weight: 700;
+    font-weight: 600;
     line-height: 1.25;
     letter-spacing: 0.015em;
     text-transform: none;
@@ -239,7 +239,7 @@
     min-width: 2.75rem;
     min-height: 2.75rem;
     color: var(--legacy-primary);
-    font-weight: 650;
+    font-weight: 400;
     text-underline-offset: 0.18em;
 }
 
@@ -434,7 +434,7 @@
         width: auto;
         color: var(--legacy-muted);
         font-size: 0.75rem;
-        font-weight: 650;
+        font-weight: 400;
         line-height: 1.4;
         text-align: start;
         white-space: normal;

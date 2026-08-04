@@ -18,7 +18,7 @@
     margin: 0;
     color: var(--legacy-ink);
     font-size: 0.95rem;
-    font-weight: 750;
+    font-weight: 600;
 }
 
 .quotation-order-candidates-heading ::deep .mud-typography-caption {
@@ -57,7 +57,7 @@
     background: var(--legacy-surface-muted);
     color: var(--legacy-muted);
     font-size: 0.7rem;
-    font-weight: 750;
+    font-weight: 600;
 }
 
 .quotation-order-table tbody tr:last-child td { border-bottom: 0; }
@@ -76,6 +76,6 @@
     .quotation-order-table tbody { display: grid; gap: 0.65rem; }
     .quotation-order-table tr { display: grid; overflow: hidden; border: 1px solid var(--legacy-border); border-radius: var(--legacy-radius-md); background: var(--legacy-surface); }
     .quotation-order-table td { display: grid; grid-template-columns: minmax(7rem, 40%) minmax(0, 1fr); gap: 0.75rem; border-bottom: 1px solid var(--legacy-border); overflow-wrap: anywhere; }
-    .quotation-order-table td::before { content: attr(data-label); color: var(--legacy-muted); font-size: 0.7rem; font-weight: 750; }
+    .quotation-order-table td::before { content: attr(data-label); color: var(--legacy-muted); font-size: 0.7rem; font-weight: 400; }
     .quotation-order-table td:last-child { text-align: left; }
 }

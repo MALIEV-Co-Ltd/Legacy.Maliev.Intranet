@@ -62,7 +62,7 @@
     background: transparent;
     color: var(--maliev-muted);
     font-size: var(--maliev-font-small);
-    font-weight: 600;
+    font-weight: 400;
     cursor: pointer;
 }
 
@@ -188,7 +188,7 @@
 
 .mlv-row-main {
     color: var(--maliev-ink);
-    font-weight: 600;
+    font-weight: 400;
 }
 
 .mlv-row-sub {
@@ -330,7 +330,7 @@
     margin: 0;
     min-width: 0;
     color: var(--maliev-ink);
-    font-weight: 600;
+    font-weight: 400;
     overflow-wrap: anywhere;
 }
 
@@ -387,7 +387,7 @@
 
 .mlv-prerequisite-card strong {
     color: var(--maliev-ink);
-    font-weight: 700;
+    font-weight: 400;
 }
 
 .mlv-prerequisite-card span {
@@ -465,7 +465,7 @@
 .accounting-report-title {
     color: var(--maliev-ink);
     font-size: var(--maliev-font-large);
-    font-weight: 700;
+    font-weight: 600;
 }
 
 .accounting-report-period {
@@ -484,7 +484,7 @@
     margin: 0;
     color: var(--maliev-ink);
     font-size: var(--maliev-font-base);
-    font-weight: 700;
+    font-weight: 600;
 }
 
 .accounting-report-table {

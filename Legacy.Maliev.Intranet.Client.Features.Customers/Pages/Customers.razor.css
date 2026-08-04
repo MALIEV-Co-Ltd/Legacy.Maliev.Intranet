@@ -10,7 +10,7 @@
 .customers-page-header ::deep h1 {
     font-family: var(--maliev-font-sans) !important;
     font-size: clamp(1.55rem, 1.25rem + 0.65vw, 2rem);
-    font-weight: 760;
+    font-weight: 600;
     letter-spacing: -0.03em;
     line-height: 1.08;
 }
