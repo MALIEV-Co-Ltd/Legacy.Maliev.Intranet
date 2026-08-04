@@ -11,7 +11,6 @@
   <data name="Search" xml:space="preserve"><value>ค้นหา</value></data>
   <data name="Sort" xml:space="preserve"><value>เรียงลำดับ</value></data>
   <data name="PerPage" xml:space="preserve"><value>ต่อหน้า</value></data>
-  <data name="Apply" xml:space="preserve"><value>ใช้ตัวกรอง</value></data>
   <data name="Loading" xml:space="preserve"><value>กำลังโหลดข้อมูลผู้ขาย</value></data>
   <data name="Empty" xml:space="preserve"><value>ไม่พบผู้ขายที่ตรงกับคำค้นหา</value></data>
   <data name="Id" xml:space="preserve"><value>รหัส</value></data>

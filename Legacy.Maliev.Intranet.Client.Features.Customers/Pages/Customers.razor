@@ -2,6 +2,7 @@
 @page "/customers"
 @page "/sales/customers"
 @attribute [Authorize]
+@implements IDisposable
 @inject HttpClient Http
 @inject NavigationManager Navigation
 @inject IStringLocalizer<Customers> Text
@@ -16,34 +17,14 @@
         </MudButton>
     </header>
 
-    <MudPaper Class="pa-4 mb-4 customers-filter-panel" Elevation="0">
-        <div class="customers-filter-grid">
-            <MudTextField T="string" @bind-Value="searchInput" Label="@Text["Search"]"
-                          Variant="Variant.Outlined" Immediate="true" Class="customers-search"
-                          Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Outlined.Search" />
-            <MudSelect T="CustomerListSort" @bind-Value="sortInput" Label="@Text["Sort"]"
-                       Variant="Variant.Outlined">
-                @foreach (var option in Enum.GetValues<CustomerListSort>())
-                {
-                    <MudSelectItem Value="option">@Text[option.ToString()]</MudSelectItem>
-                }
-            </MudSelect>
-            <MudSelect T="int" @bind-Value="sizeInput" Label="@Text["PerPage"]" Variant="Variant.Outlined">
-                <MudSelectItem T="int" Value="25">25</MudSelectItem>
-                <MudSelectItem T="int" Value="50">50</MudSelectItem>
-                <MudSelectItem T="int" Value="100">100</MudSelectItem>
-                <MudSelectItem T="int" Value="250">250</MudSelectItem>
-            </MudSelect>
-            <div class="customers-filter-actions">
-                <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="ApplyFiltersAsync" StartIcon="@Icons.Material.Outlined.FilterAlt">
-                    @Text["Apply"]
-                </MudButton>
-                <MudButton Variant="Variant.Outlined" Color="Color.Default" OnClick="ReloadAsync" Disabled="@loading" StartIcon="@Icons.Material.Outlined.Refresh">
-                    @Text["Refresh"]
-                </MudButton>
-            </div>
-        </div>
-    </MudPaper>
+    <ListToolbar TSort="CustomerListSort"
+                 Value="@ToolbarState"
+                 Defaults="@DefaultToolbarState"
+                 SortOptions="@SortOptions"
+                 PageSizeOptions="@PageSizeOptions"
+                 SearchLabel="@Text["Search"]"
+                 IsBusy="@loading"
+                 OnRequest="HandleToolbarRequestAsync" />
 
     @if (loading)
     {
@@ -96,10 +77,16 @@
     private CustomerListPage? page;
     private string? error;
     private bool loading;
-    private string? searchInput;
-    private CustomerListSort sortInput;
     private CustomerListSort currentSort = CustomerListSort.CustomerCreatedDate_Descending;
-    private int sizeInput;
+    private readonly LatestRequestGate requestGate = new();
+    private static readonly ListToolbarState<CustomerListSort> DefaultToolbarState =
+        new(null, CustomerListSort.CustomerCreatedDate_Descending, 25);
+    private static readonly int[] PageSizeOptions = [25, 50, 100, 250];
+    private ListToolbarState<CustomerListSort> ToolbarState => new(Search, currentSort, Size);
+    private IReadOnlyList<ListToolbarOption<CustomerListSort>> SortOptions =>
+        Enum.GetValues<CustomerListSort>()
+            .Select(option => new ListToolbarOption<CustomerListSort>(option, Text[option.ToString()]))
+            .ToArray();
 
     protected override async Task OnParametersSetAsync()
     {
@@ -108,20 +95,26 @@
         currentSort = Enum.TryParse<CustomerListSort>(SortQuery, ignoreCase: true, out var parsedSort)
             ? parsedSort
             : CustomerListSort.CustomerCreatedDate_Descending;
-        searchInput = Search;
-        sortInput = currentSort;
-        sizeInput = Size;
         await LoadAsync();
     }
 
-    private async Task LoadAsync()
+    private async Task LoadAsync(
+        ListToolbarState<CustomerListSort>? requestedState = null,
+        CancellationToken cancellationToken = default)
     {
+        using var lease = requestGate.Begin(cancellationToken);
+        var state = (requestedState ?? ToolbarState).Normalize();
         loading = true;
         error = null;
         try
         {
-            var uri = $"/bff/customers?sort={currentSort}&search={Uri.EscapeDataString(Search ?? string.Empty)}&index={Index}&size={Size}";
-            using var response = await Http.GetForPresentationAsync(uri);
+            var uri = $"/bff/customers?sort={state.Sort}&search={Uri.EscapeDataString(state.Search ?? string.Empty)}&index={Index}&size={state.PageSize}";
+            using var response = await Http.GetForPresentationAsync(uri, lease.CancellationToken);
+            if (!lease.IsCurrent)
+            {
+                return;
+            }
+
             if (response.StatusCode == HttpStatusCode.Unauthorized)
             {
                 Navigation.NavigateTo($"/Login?returnUrl={Uri.EscapeDataString(Navigation.ToBaseRelativePath(Navigation.Uri))}");
@@ -146,31 +139,58 @@
                 return;
             }
 
-            page = await response.Content.ReadFromJsonAsync<CustomerListPage>();
-            if (page is null)
+            var loadedPage = await response.Content.ReadFromJsonAsync<CustomerListPage>(cancellationToken: lease.CancellationToken);
+            if (!lease.IsCurrent)
+            {
+                return;
+            }
+
+            page = loadedPage;
+            if (loadedPage is null)
             {
                 error = Text["InvalidResponse"];
             }
         }
+        catch (OperationCanceledException) when (!lease.IsCurrent || lease.CancellationToken.IsCancellationRequested)
+        {
+            // A newer toolbar request owns the visible state.
+        }
         catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException)
         {
-            error = Text["Unavailable"];
+            if (lease.IsCurrent)
+            {
+                error = Text["Unavailable"];
+            }
         }
         finally
         {
-            loading = false;
+            if (lease.IsCurrent)
+            {
+                loading = false;
+            }
         }
     }
 
-    private Task ApplyFiltersAsync() => NavigateAsync(1, searchInput, sortInput, sizeInput);
-    private Task ReloadAsync() => LoadAsync();
     private Task PreviousPageAsync() => NavigateAsync(Math.Max(1, Index - 1), Search, currentSort, Size);
     private Task NextPageAsync() => NavigateAsync(Index + 1, Search, currentSort, Size);
 
-    private Task NavigateAsync(int index, string? search, CustomerListSort sort, int size)
+    private Task HandleToolbarRequestAsync(ListToolbarRequest<CustomerListSort> request)
+    {
+        var state = request.State.Normalize();
+        if (request.Reason == ListToolbarChangeReason.Refreshed && state == ToolbarState.Normalize())
+        {
+            return LoadAsync();
+        }
+
+        return NavigateAsync(1, state.Search, state.Sort, state.PageSize, replace: true);
+    }
+
+    private Task NavigateAsync(int index, string? search, CustomerListSort sort, int size, bool replace = false)
     {
         var uri = $"/Customers/Index?search={Uri.EscapeDataString(search ?? string.Empty)}&sort={sort}&index={index}&size={Math.Clamp(size, 1, 250)}";
-        Navigation.NavigateTo(uri);
+        Navigation.NavigateTo(uri, replace: replace);
         return Task.CompletedTask;
     }
+
+    public void Dispose() => requestGate.Dispose();
 }

@@ -11,7 +11,6 @@
   <data name="Search" xml:space="preserve"><value>Search</value></data>
   <data name="Sort" xml:space="preserve"><value>Sort</value></data>
   <data name="PerPage" xml:space="preserve"><value>Per page</value></data>
-  <data name="Apply" xml:space="preserve"><value>Apply</value></data>
   <data name="Loading" xml:space="preserve"><value>Loading purchase orders</value></data>
   <data name="Empty" xml:space="preserve"><value>No purchase orders matched this query.</value></data>
   <data name="Id" xml:space="preserve"><value>ID</value></data>

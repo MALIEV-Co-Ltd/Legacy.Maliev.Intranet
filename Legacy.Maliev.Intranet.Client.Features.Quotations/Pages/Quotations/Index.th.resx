@@ -17,7 +17,6 @@
   <data name="Search" xml:space="preserve"><value>ค้นหาใบเสนอราคา</value></data>
   <data name="Sort" xml:space="preserve"><value>เรียงลำดับ</value></data>
   <data name="PerPage" xml:space="preserve"><value>ต่อหน้า</value></data>
-  <data name="Apply" xml:space="preserve"><value>ใช้ตัวกรอง</value></data>
   <data name="NoQuotations" xml:space="preserve"><value>ไม่มีใบเสนอราคาที่ตรงกับตัวกรองนี้</value></data>
   <data name="RecordsSummary" xml:space="preserve"><value>{0} บันทึก; {1} หน้า</value></data>
   <data name="TableCaption" xml:space="preserve"><value>รายการใบเสนอราคา</value></data>

@@ -13,6 +13,7 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Legacy.Maliev.Intranet.Contracts\Legacy.Maliev.Intranet.Contracts.csproj" />
+    <ProjectReference Include="..\Legacy.Maliev.Intranet.Client.Shared\Legacy.Maliev.Intranet.Client.Shared.csproj" />
     <ProjectReference Include="..\Legacy.Maliev.Intranet.Client.Features.Accounting\Legacy.Maliev.Intranet.Client.Features.Accounting.csproj" />
     <ProjectReference Include="..\Legacy.Maliev.Intranet.Client.Features.Catalog\Legacy.Maliev.Intranet.Client.Features.Catalog.csproj" />
     <ProjectReference Include="..\Legacy.Maliev.Intranet.Client.Features.Customers\Legacy.Maliev.Intranet.Client.Features.Customers.csproj" />

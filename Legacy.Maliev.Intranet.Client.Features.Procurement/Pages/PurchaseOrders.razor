@@ -2,6 +2,7 @@
 @page "/purchasing"
 @page "/mfg/procurement"
 @attribute [Authorize]
+@implements IDisposable
 @inject HttpClient Http
 @inject NavigationManager Navigation
 @inject IStringLocalizer<PurchaseOrders> Text
@@ -14,19 +15,16 @@
         <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="OpenCreate">@Text["CreatePurchaseOrder"]</MudButton>
     </header>
 
-    <MudPaper Class="pa-4 mb-4 procurement-filter-panel">
-        <div class="procurement-filter-grid">
-            <MudTextField T="string" @bind-Value="searchInput" Label="@Text["Search"]" Variant="Variant.Outlined" Immediate="true" />
-            <MudSelect T="PurchaseOrderListSort" @bind-Value="sortInput" Label="@Text["Sort"]" Variant="Variant.Outlined">
-                @foreach (var option in Enum.GetValues<PurchaseOrderListSort>())
-                {
-                    <MudSelectItem Value="option">@Text[option.ToString()]</MudSelectItem>
-                }
-            </MudSelect>
-            <MudNumericField T="int" @bind-Value="sizeInput" Label="@Text["PerPage"]" Min="1" Max="250" Variant="Variant.Outlined" />
-            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="ApplyFiltersAsync">@Text["Apply"]</MudButton>
-        </div>
-    </MudPaper>
+    <ListToolbar TSort="PurchaseOrderListSort"
+                 Value="@ToolbarValue"
+                 Defaults="@ToolbarDefaults"
+                 SortOptions="@ToolbarSortOptions"
+                 PageSizeOptions="@ToolbarPageSizes"
+                 SearchLabel="@Text["Search"]"
+                 ResultsId="purchase-orders-results"
+                 ResultsStatus="@ToolbarResultsStatus"
+                 IsBusy="@loading"
+                 OnRequest="HandleToolbarRequestAsync" />
 
     @if (loading)
     {
@@ -42,6 +40,7 @@
     }
     else
     {
+        <div id="purchase-orders-results" aria-busy="false">
         <MudTable Items="page.Items" Hover="true" Breakpoint="Breakpoint.Md" Elevation="1" Class="procurement-responsive-table" aria-label="@Text["PurchaseOrdersTable"]">
             <HeaderContent>
                 <MudTh>@Text["Id"]</MudTh>
@@ -64,6 +63,7 @@
                 <MudTd DataLabel="@Text["Created"]">@FormatDate(context.CreatedDate)</MudTd>
             </RowTemplate>
         </MudTable>
+        </div>
         <nav class="procurement-pager" aria-label="@Text["PurchaseOrderPages"]">
             <MudButton Disabled="@(!page.HasPreviousPage)" OnClick="PreviousPageAsync">@Text["Previous"]</MudButton>
             <MudText aria-live="polite">@Text["PageSummary", page.PageIndex, page.TotalPages, page.TotalRecords]</MudText>
@@ -73,6 +73,8 @@
 </MudContainer>
 
 @code {
+    private static readonly int[] ToolbarPageSizes = [10, 25, 50, 100, 250];
+
     [SupplyParameterFromQuery(Name = "search")] public string? Search { get; set; }
     [SupplyParameterFromQuery(Name = "sort")] public string? SortQuery { get; set; }
     [SupplyParameterFromQuery(Name = "index")] public int Index { get; set; } = 1;
@@ -82,10 +84,19 @@
     private IReadOnlyDictionary<int, string> employeeNames = new Dictionary<int, string>();
     private string? error;
     private bool loading;
-    private string? searchInput;
-    private PurchaseOrderListSort sortInput;
     private PurchaseOrderListSort currentSort = PurchaseOrderListSort.PurchaseOrderId_Descending;
-    private int sizeInput;
+    private readonly LatestRequestGate loadGate = new();
+
+    private ListToolbarState<PurchaseOrderListSort> ToolbarValue => new(Search, currentSort, Size);
+    private static ListToolbarState<PurchaseOrderListSort> ToolbarDefaults =>
+        new(null, PurchaseOrderListSort.PurchaseOrderId_Descending, 25);
+    private IReadOnlyList<ListToolbarOption<PurchaseOrderListSort>> ToolbarSortOptions =>
+        Enum.GetValues<PurchaseOrderListSort>()
+            .Select(value => new ListToolbarOption<PurchaseOrderListSort>(value, Text[value.ToString()].Value))
+            .ToArray();
+    private string? ToolbarResultsStatus => page is null
+        ? null
+        : Text["PageSummary", page.PageIndex, page.TotalPages, page.TotalRecords].Value;
 
     protected override async Task OnParametersSetAsync()
     {
@@ -94,42 +105,54 @@
         currentSort = Enum.TryParse<PurchaseOrderListSort>(SortQuery, ignoreCase: true, out var parsedSort) && Enum.IsDefined(parsedSort)
             ? parsedSort
             : PurchaseOrderListSort.PurchaseOrderId_Descending;
-        searchInput = Search;
-        sortInput = currentSort;
-        sizeInput = Size;
         await LoadAsync();
     }
 
     private async Task LoadAsync()
     {
-        loading = true;
-        error = null;
-        page = null;
-        employeeNames = new Dictionary<int, string>();
+        using var lease = loadGate.Begin();
+        if (lease.IsCurrent)
+        {
+            loading = true;
+            error = null;
+            page = null;
+            employeeNames = new Dictionary<int, string>();
+        }
         HttpResponseMessage[]? responses = null;
         try
         {
-            var ordersTask = Http.GetForPresentationAsync($"/bff/purchase-orders?sort={currentSort}&search={Uri.EscapeDataString(Search ?? string.Empty)}&index={Index}&size={Size}");
-            var employeesTask = Http.GetForPresentationAsync("/bff/employees?sort=EmployeeId_Ascending&search=&index=1&size=250");
+            var ordersTask = Http.GetForPresentationAsync($"/bff/purchase-orders?sort={currentSort}&search={Uri.EscapeDataString(Search ?? string.Empty)}&index={Index}&size={Size}", lease.CancellationToken);
+            var employeesTask = Http.GetForPresentationAsync("/bff/employees?sort=EmployeeId_Ascending&search=&index=1&size=250", lease.CancellationToken);
             responses = await Task.WhenAll(ordersTask, employeesTask);
-            if (HandleFailure(responses))
+            if (!lease.IsCurrent || HandleFailure(responses))
             {
                 return;
             }
 
-            page = await responses[0].Content.ReadFromJsonAsync<PurchaseOrderListPage>();
-            var employees = await responses[1].Content.ReadFromJsonAsync<EmployeeListPage>();
-            if (page?.Items is null || employees?.Items is null)
+            var nextPage = await responses[0].Content.ReadFromJsonAsync<PurchaseOrderListPage>(cancellationToken: lease.CancellationToken);
+            var employees = await responses[1].Content.ReadFromJsonAsync<EmployeeListPage>(cancellationToken: lease.CancellationToken);
+            if (!lease.IsCurrent)
+            {
+                return;
+            }
+            if (nextPage?.Items is null || employees?.Items is null)
             {
                 error = Text["InvalidResponse"];
                 return;
             }
 
+            page = nextPage;
             employeeNames = employees.Items.ToDictionary(value => value.Id, value => value.FullName);
+        }
+        catch (OperationCanceledException) when (!lease.IsCurrent)
+        {
         }
         catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException)
         {
-            error = Text["Unavailable"];
+            if (lease.IsCurrent)
+            {
+                error = Text["Unavailable"];
+            }
         }
         finally
         {
@@ -141,7 +164,10 @@
                 }
             }
 
-            loading = false;
+            if (lease.IsCurrent)
+            {
+                loading = false;
+            }
         }
     }
 
@@ -177,17 +203,28 @@
         return true;
     }
 
-    private Task ApplyFiltersAsync() => NavigateAsync(1, searchInput, sortInput, sizeInput);
+    private Task HandleToolbarRequestAsync(ListToolbarRequest<PurchaseOrderListSort> request)
+    {
+        if (request.Reason == ListToolbarChangeReason.Refreshed && request.State == ToolbarValue)
+        {
+            return LoadAsync();
+        }
+
+        return NavigateAsync(1, request.State.Search, request.State.Sort, request.State.PageSize, replace: true);
+    }
+
     private Task PreviousPageAsync() => NavigateAsync(Math.Max(1, Index - 1), Search, currentSort, Size);
     private Task NextPageAsync() => NavigateAsync(Index + 1, Search, currentSort, Size);
     private void OpenCreate() => Navigation.NavigateTo("/PurchaseOrders/Create");
     private void OpenPurchaseOrder(int id) => Navigation.NavigateTo($"/PurchaseOrders/View?id={id}");
 
-    private Task NavigateAsync(int index, string? search, PurchaseOrderListSort sort, int size)
+    private Task NavigateAsync(int index, string? search, PurchaseOrderListSort sort, int size, bool replace = false)
     {
-        Navigation.NavigateTo($"/PurchaseOrders/Index?search={Uri.EscapeDataString(search ?? string.Empty)}&sort={sort}&index={index}&size={Math.Clamp(size, 1, 250)}");
+        Navigation.NavigateTo($"/PurchaseOrders/Index?search={Uri.EscapeDataString(search ?? string.Empty)}&sort={sort}&index={index}&size={Math.Clamp(size, 1, 250)}", replace: replace);
         return Task.CompletedTask;
     }
+
+    public void Dispose() => loadGate.Dispose();
 
     private string EmployeeName(int? id) => id is int value && employeeNames.TryGetValue(value, out var name) ? name : "-";
     private static string ValueOrFallback(string? value) => string.IsNullOrWhiteSpace(value) ? "-" : value;

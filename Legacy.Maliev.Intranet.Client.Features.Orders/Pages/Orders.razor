@@ -1,6 +1,7 @@
 @page "/Orders/Index"
 @page "/sales/orders"
 @attribute [Authorize]
+@implements IDisposable
 @inject HttpClient Http
 @inject NavigationManager Navigation
 @inject IStringLocalizer<Orders> Text
@@ -9,9 +10,6 @@
 
 <div class="mlv-module-shell orders-module-shell">
     <ModuleHeader Title="@Text["Orders"]" Subtitle="@Text["PageSubtitle"]">
-        <SecondaryButton Icon="@Icons.Material.Outlined.Refresh" Disabled="@loading" OnClick="ReloadAsync">
-            @Text["Refresh"]
-        </SecondaryButton>
         <PrimaryButton Icon="@Icons.Material.Outlined.Add" Href="/Orders/Create">
             @Text["CreateOrder"]
         </PrimaryButton>
@@ -24,22 +22,16 @@
         }
 
         <PanelCard Title="@Text["Orders"]" Class="orders-results-panel">
-            <div class="mlv-toolbar orders-toolbar">
-                <div class="mlv-toolbar-left">
-                    <SearchBox Placeholder="@Text["Search"]"
-                               Value="@searchInput"
-                               ValueChanged="OnSearchInputChanged"
-                               OnEnter="ApplyFiltersAsync" />
-                    <MudSelect T="OrderListSort" @bind-Value="sortInput" Label="@Text["Sort"]" Variant="Variant.Outlined" Dense="true">
-                        @foreach (var option in Enum.GetValues<OrderListSort>())
-                        {
-                            <MudSelectItem T="OrderListSort" Value="@option">@Text[option.ToString()]</MudSelectItem>
-                        }
-                    </MudSelect>
-                    <MudNumericField T="int" @bind-Value="sizeInput" Label="@Text["PerPage"]" Min="1" Max="250" Variant="Variant.Outlined" />
-                    <SecondaryButton OnClick="ApplyFiltersAsync">@Text["Apply"]</SecondaryButton>
-                </div>
-            </div>
+            <ListToolbar TSort="OrderListSort"
+                         Value="@ToolbarValue"
+                         Defaults="@ToolbarDefaults"
+                         SortOptions="@ToolbarSortOptions"
+                         PageSizeOptions="@ToolbarPageSizes"
+                         SearchLabel="@Text["Search"]"
+                         ResultsId="orders-results"
+                         ResultsStatus="@ToolbarResultsStatus"
+                         IsBusy="@loading"
+                         OnRequest="HandleToolbarRequestAsync" />
 
             @if (loading)
             {
@@ -47,7 +39,7 @@
             }
             else
             {
-                <div class="orders-sections">
+                <div id="orders-results" class="orders-sections" aria-busy="false">
                     @foreach (var section in Sections)
                     {
                         <section class="orders-section" aria-labelledby="@SectionId(section.Title)">
@@ -127,6 +119,7 @@
 
 @code {
     private const int PendingWorkingSetSize = 1000;
+    private static readonly int[] ToolbarPageSizes = [10, 25, 50, 100, 250];
 
     [SupplyParameterFromQuery(Name = "search")] public string? Search { get; set; }
     [SupplyParameterFromQuery(Name = "sort")] public string? SortQuery { get; set; }
@@ -140,10 +133,19 @@
     private IReadOnlyDictionary<int, string> processNames = new Dictionary<int, string>();
     private string? error;
     private bool loading;
-    private string? searchInput;
-    private OrderListSort sortInput;
     private OrderListSort currentSort = OrderListSort.OrderCreatedDate_Descending;
-    private int sizeInput;
+    private readonly LatestRequestGate loadGate = new();
+
+    private ListToolbarState<OrderListSort> ToolbarValue => new(Search, currentSort, Size);
+    private static ListToolbarState<OrderListSort> ToolbarDefaults =>
+        new(null, OrderListSort.OrderCreatedDate_Descending, 10);
+    private IReadOnlyList<ListToolbarOption<OrderListSort>> ToolbarSortOptions =>
+        Enum.GetValues<OrderListSort>()
+            .Select(value => new ListToolbarOption<OrderListSort>(value, Text[value.ToString()].Value))
+            .ToArray();
+    private string? ToolbarResultsStatus => Page is null
+        ? null
+        : Text["PageSummary", Page.PageIndex, Page.TotalPages, Page.TotalRecords].Value;
 
     private IReadOnlyList<OrderSection> Sections =>
     [
@@ -159,45 +161,51 @@
         currentSort = Enum.TryParse<OrderListSort>(SortQuery, ignoreCase: true, out var parsedSort)
             ? parsedSort
             : OrderListSort.OrderCreatedDate_Descending;
-        searchInput = Search;
-        sortInput = currentSort;
-        sizeInput = Size;
         await LoadAsync();
     }
 
     private async Task LoadAsync()
     {
-        loading = true;
-        error = null;
-        Page = null;
-        AssignedOrders = [];
-        UnassignedOrders = [];
+        using var lease = loadGate.Begin();
+        if (lease.IsCurrent)
+        {
+            loading = true;
+            error = null;
+            Page = null;
+            AssignedOrders = [];
+            UnassignedOrders = [];
+        }
         HttpResponseMessage[]? responses = null;
         try
         {
-            var pageTask = Http.GetForPresentationAsync($"/bff/orders?sort={currentSort}&search={Uri.EscapeDataString(Search ?? string.Empty)}&index={Index}&size={Size}");
-            var pendingTask = Http.GetForPresentationAsync($"/bff/orders/pending?size={PendingWorkingSetSize}");
-            var processesTask = Http.GetForPresentationAsync("/bff/order-processes");
-            var employeesTask = Http.GetForPresentationAsync("/bff/employees?sort=EmployeeId_Ascending&search=&index=1&size=250");
-            var sessionTask = Http.GetForPresentationAsync("/bff/session");
+            var pageTask = Http.GetForPresentationAsync($"/bff/orders?sort={currentSort}&search={Uri.EscapeDataString(Search ?? string.Empty)}&index={Index}&size={Size}", lease.CancellationToken);
+            var pendingTask = Http.GetForPresentationAsync($"/bff/orders/pending?size={PendingWorkingSetSize}", lease.CancellationToken);
+            var processesTask = Http.GetForPresentationAsync("/bff/order-processes", lease.CancellationToken);
+            var employeesTask = Http.GetForPresentationAsync("/bff/employees?sort=EmployeeId_Ascending&search=&index=1&size=250", lease.CancellationToken);
+            var sessionTask = Http.GetForPresentationAsync("/bff/session", lease.CancellationToken);
             responses = await Task.WhenAll(pageTask, pendingTask, processesTask, employeesTask, sessionTask);
 
-            if (HandleFailure(responses))
+            if (!lease.IsCurrent || HandleFailure(responses))
             {
                 return;
             }
 
-            Page = await responses[0].Content.ReadFromJsonAsync<OrderListPage>();
-            var pending = await responses[1].Content.ReadFromJsonAsync<OrderListPage>();
-            var processes = await responses[2].Content.ReadFromJsonAsync<List<OrderProcessItem>>();
-            var employees = await responses[3].Content.ReadFromJsonAsync<EmployeeListPage>();
-            var session = await responses[4].Content.ReadFromJsonAsync<EmployeeSessionSummary>();
-            if (Page?.Items is null || pending?.Items is null || processes is null || employees?.Items is null || session is null)
+            var nextPage = await responses[0].Content.ReadFromJsonAsync<OrderListPage>(cancellationToken: lease.CancellationToken);
+            var pending = await responses[1].Content.ReadFromJsonAsync<OrderListPage>(cancellationToken: lease.CancellationToken);
+            var processes = await responses[2].Content.ReadFromJsonAsync<List<OrderProcessItem>>(cancellationToken: lease.CancellationToken);
+            var employees = await responses[3].Content.ReadFromJsonAsync<EmployeeListPage>(cancellationToken: lease.CancellationToken);
+            var session = await responses[4].Content.ReadFromJsonAsync<EmployeeSessionSummary>(cancellationToken: lease.CancellationToken);
+            if (!lease.IsCurrent)
+            {
+                return;
+            }
+            if (nextPage?.Items is null || pending?.Items is null || processes is null || employees?.Items is null || session is null)
             {
                 error = Text["InvalidResponse"];
                 return;
             }
 
+            Page = nextPage;
             employeeNames = employees.Items.ToDictionary(value => value.Id, value => value.FullName);
             processNames = processes.ToDictionary(value => value.Id, value => value.Name);
             AssignedOrders = session.LegacyDatabaseId is not int employeeId
@@ -205,9 +213,15 @@
                 : pending.Items.Where(value => value.EmployeeId == employeeId).ToArray();
             UnassignedOrders = pending.Items.Where(value => value.EmployeeId is null).ToArray();
         }
+        catch (OperationCanceledException) when (!lease.IsCurrent)
+        {
+        }
         catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException)
         {
-            error = Text["Unavailable"];
+            if (lease.IsCurrent)
+            {
+                error = Text["Unavailable"];
+            }
         }
         finally
         {
@@ -219,7 +233,10 @@
                 }
             }
 
-            loading = false;
+            if (lease.IsCurrent)
+            {
+                loading = false;
+            }
         }
     }
 
@@ -255,22 +272,26 @@
         return true;
     }
 
-    private Task OnSearchInputChanged(string? value)
+    private Task HandleToolbarRequestAsync(ListToolbarRequest<OrderListSort> request)
     {
-        searchInput = value;
-        return Task.CompletedTask;
+        if (request.Reason == ListToolbarChangeReason.Refreshed && request.State == ToolbarValue)
+        {
+            return LoadAsync();
+        }
+
+        return NavigateAsync(1, request.State.Search, request.State.Sort, request.State.PageSize, replace: true);
     }
 
-    private Task ApplyFiltersAsync() => NavigateAsync(1, searchInput, sortInput, sizeInput);
-    private async Task ReloadAsync() => await LoadAsync();
     private Task PreviousPageAsync() => NavigateAsync(Math.Max(1, Index - 1), Search, currentSort, Size);
     private Task NextPageAsync() => NavigateAsync(Index + 1, Search, currentSort, Size);
 
-    private Task NavigateAsync(int index, string? search, OrderListSort sort, int size)
+    private Task NavigateAsync(int index, string? search, OrderListSort sort, int size, bool replace = false)
     {
-        Navigation.NavigateTo($"/Orders/Index?search={Uri.EscapeDataString(search ?? string.Empty)}&sort={sort}&index={index}&size={Math.Clamp(size, 1, 250)}");
+        Navigation.NavigateTo($"/Orders/Index?search={Uri.EscapeDataString(search ?? string.Empty)}&sort={sort}&index={index}&size={Math.Clamp(size, 1, 250)}", replace: replace);
         return Task.CompletedTask;
     }
+
+    public void Dispose() => loadGate.Dispose();
 
     private string ProcessName(int id) => processNames.TryGetValue(id, out var name) ? name : id.ToString(CultureInfo.InvariantCulture);
     private string EmployeeName(int? id) => id is int value && employeeNames.TryGetValue(value, out var name) ? name : "-";

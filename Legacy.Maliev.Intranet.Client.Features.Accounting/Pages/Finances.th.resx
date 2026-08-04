@@ -24,7 +24,6 @@
   <data name="Search" xml:space="preserve"><value>ค้นหา</value></data>
   <data name="Sort" xml:space="preserve"><value>เรียงลำดับ</value></data>
   <data name="PerPage" xml:space="preserve"><value>ต่อหน้า</value></data>
-  <data name="Apply" xml:space="preserve"><value>ใช้ตัวกรอง</value></data>
   <data name="NoPayments" xml:space="preserve"><value>ไม่มีรายการการเงินที่ตรงกับตัวกรองนี้</value></data>
   <data name="Id" xml:space="preserve"><value>รหัส</value></data>
   <data name="Direction" xml:space="preserve"><value>ประเภทรายการ</value></data>

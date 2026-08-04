@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
+  <data name="FilterLabel" xml:space="preserve"><value>ค้นหาและกำหนดการแสดงผล</value></data>
+  <data name="Search" xml:space="preserve"><value>ค้นหา</value></data>
+  <data name="Sort" xml:space="preserve"><value>เรียงตาม</value></data>
+  <data name="PerPage" xml:space="preserve"><value>จำนวนต่อหน้า</value></data>
+  <data name="Clear" xml:space="preserve"><value>ล้างตัวกรอง</value></data>
+  <data name="Refresh" xml:space="preserve"><value>รีเฟรชข้อมูล</value></data>
+  <data name="Filtering" xml:space="preserve"><value>กำลังอัปเดตผลลัพธ์</value></data>
+</root>

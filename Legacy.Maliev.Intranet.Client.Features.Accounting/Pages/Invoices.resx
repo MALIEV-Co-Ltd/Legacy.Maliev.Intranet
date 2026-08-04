@@ -11,7 +11,6 @@
   <data name="Search" xml:space="preserve"><value>Search invoices</value></data>
   <data name="Sort" xml:space="preserve"><value>Sort</value></data>
   <data name="PerPage" xml:space="preserve"><value>Per page</value></data>
-  <data name="Apply" xml:space="preserve"><value>Apply</value></data>
   <data name="Loading" xml:space="preserve"><value>Loading invoices</value></data>
   <data name="UnpaidInvoices" xml:space="preserve"><value>Unpaid invoices</value></data>
   <data name="PaidInvoices" xml:space="preserve"><value>Paid invoices</value></data>

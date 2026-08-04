@@ -1,6 +1,7 @@
 @page "/Suppliers/Index"
 @page "/purchasing/suppliers"
 @attribute [Authorize]
+@implements IDisposable
 @inject HttpClient Http
 @inject NavigationManager Navigation
 @inject IStringLocalizer<Suppliers> Text
@@ -13,19 +14,16 @@
         <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="OpenCreate">@Text["CreateSupplier"]</MudButton>
     </header>
 
-    <MudPaper Class="pa-4 mb-4 procurement-filter-panel">
-        <div class="procurement-filter-grid">
-            <MudTextField T="string" @bind-Value="searchInput" Label="@Text["Search"]" Variant="Variant.Outlined" Immediate="true" />
-            <MudSelect T="SupplierListSort" @bind-Value="sortInput" Label="@Text["Sort"]" Variant="Variant.Outlined">
-                @foreach (var option in Enum.GetValues<SupplierListSort>())
-                {
-                    <MudSelectItem Value="option">@Text[option.ToString()]</MudSelectItem>
-                }
-            </MudSelect>
-            <MudNumericField T="int" @bind-Value="sizeInput" Label="@Text["PerPage"]" Min="1" Max="250" Variant="Variant.Outlined" />
-            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="ApplyFiltersAsync">@Text["Apply"]</MudButton>
-        </div>
-    </MudPaper>
+    <ListToolbar TSort="SupplierListSort"
+                 Value="@ToolbarValue"
+                 Defaults="@ToolbarDefaults"
+                 SortOptions="@ToolbarSortOptions"
+                 PageSizeOptions="@ToolbarPageSizes"
+                 SearchLabel="@Text["Search"]"
+                 ResultsId="suppliers-results"
+                 ResultsStatus="@ToolbarResultsStatus"
+                 IsBusy="@loading"
+                 OnRequest="HandleToolbarRequestAsync" />
 
     @if (loading)
     {
@@ -41,6 +39,7 @@
     }
     else
     {
+        <div id="suppliers-results" aria-busy="false">
         <MudTable Items="page.Items" Hover="true" Breakpoint="Breakpoint.Md" Elevation="1" Class="procurement-responsive-table" aria-label="@Text["SuppliersTable"]">
             <HeaderContent>
                 <MudTh>@Text["Id"]</MudTh>
@@ -59,6 +58,7 @@
                 <MudTd DataLabel="@Text["Telephone"]">@ValueOrFallback(context.Telephone)</MudTd>
             </RowTemplate>
         </MudTable>
+        </div>
         <nav class="procurement-pager" aria-label="@Text["SupplierPages"]">
             <MudButton Disabled="@(!page.HasPreviousPage)" OnClick="PreviousPageAsync">@Text["Previous"]</MudButton>
             <MudText aria-live="polite">@Text["PageSummary", page.PageIndex, page.TotalPages, page.TotalRecords]</MudText>
@@ -68,6 +68,8 @@
 </MudContainer>
 
 @code {
+    private static readonly int[] ToolbarPageSizes = [10, 25, 50, 100, 250];
+
     [SupplyParameterFromQuery(Name = "search")] public string? Search { get; set; }
     [SupplyParameterFromQuery(Name = "sort")] public string? SortQuery { get; set; }
     [SupplyParameterFromQuery(Name = "index")] public int Index { get; set; } = 1;
@@ -76,10 +78,19 @@
     private SupplierListPage? page;
     private string? error;
     private bool loading;
-    private string? searchInput;
-    private SupplierListSort sortInput;
     private SupplierListSort currentSort = SupplierListSort.SupplierId_Descending;
-    private int sizeInput;
+    private readonly LatestRequestGate loadGate = new();
+
+    private ListToolbarState<SupplierListSort> ToolbarValue => new(Search, currentSort, Size);
+    private static ListToolbarState<SupplierListSort> ToolbarDefaults =>
+        new(null, SupplierListSort.SupplierId_Descending, 25);
+    private IReadOnlyList<ListToolbarOption<SupplierListSort>> ToolbarSortOptions =>
+        Enum.GetValues<SupplierListSort>()
+            .Select(value => new ListToolbarOption<SupplierListSort>(value, Text[value.ToString()].Value))
+            .ToArray();
+    private string? ToolbarResultsStatus => page is null
+        ? null
+        : Text["PageSummary", page.PageIndex, page.TotalPages, page.TotalRecords].Value;
 
     protected override async Task OnParametersSetAsync()
     {
@@ -88,21 +99,26 @@
         currentSort = Enum.TryParse<SupplierListSort>(SortQuery, ignoreCase: true, out var parsedSort) && Enum.IsDefined(parsedSort)
             ? parsedSort
             : SupplierListSort.SupplierId_Descending;
-        searchInput = Search;
-        sortInput = currentSort;
-        sizeInput = Size;
         await LoadAsync();
     }
 
     private async Task LoadAsync()
     {
-        loading = true;
-        error = null;
-        page = null;
+        using var lease = loadGate.Begin();
+        if (lease.IsCurrent)
+        {
+            loading = true;
+            error = null;
+            page = null;
+        }
         try
         {
             var uri = $"/bff/suppliers?sort={currentSort}&search={Uri.EscapeDataString(Search ?? string.Empty)}&index={Index}&size={Size}";
-            using var response = await Http.GetForPresentationAsync(uri);
+            using var response = await Http.GetForPresentationAsync(uri, lease.CancellationToken);
+            if (!lease.IsCurrent)
+            {
+                return;
+            }
             if (response.StatusCode == HttpStatusCode.Unauthorized)
             {
                 Navigation.NavigateTo($"/Login?returnUrl={Uri.EscapeDataString(Navigation.ToBaseRelativePath(Navigation.Uri))}");
@@ -133,23 +149,47 @@
                 return;
             }
 
-            page = await response.Content.ReadFromJsonAsync<SupplierListPage>();
-            if (page?.Items is null)
+            var nextPage = await response.Content.ReadFromJsonAsync<SupplierListPage>(cancellationToken: lease.CancellationToken);
+            if (!lease.IsCurrent)
+            {
+                return;
+            }
+            if (nextPage?.Items is null)
             {
                 error = Text["InvalidResponse"];
+                return;
             }
+            page = nextPage;
+        }
+        catch (OperationCanceledException) when (!lease.IsCurrent)
+        {
         }
         catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException)
         {
-            error = Text["Unavailable"];
+            if (lease.IsCurrent)
+            {
+                error = Text["Unavailable"];
+            }
         }
         finally
         {
-            loading = false;
+            if (lease.IsCurrent)
+            {
+                loading = false;
+            }
         }
     }
 
-    private Task ApplyFiltersAsync() => NavigateAsync(1, searchInput, sortInput, sizeInput);
+    private Task HandleToolbarRequestAsync(ListToolbarRequest<SupplierListSort> request)
+    {
+        if (request.Reason == ListToolbarChangeReason.Refreshed && request.State == ToolbarValue)
+        {
+            return LoadAsync();
+        }
+
+        return NavigateAsync(1, request.State.Search, request.State.Sort, request.State.PageSize, replace: true);
+    }
+
     private Task PreviousPageAsync() => NavigateAsync(Math.Max(1, Index - 1), Search, currentSort, Size);
     private Task NextPageAsync() => NavigateAsync(Index + 1, Search, currentSort, Size);
 
@@ -157,11 +197,13 @@
 
     private void OpenSupplier(int id) => Navigation.NavigateTo($"/Suppliers/View?id={id}");
 
-    private Task NavigateAsync(int index, string? search, SupplierListSort sort, int size)
+    private Task NavigateAsync(int index, string? search, SupplierListSort sort, int size, bool replace = false)
     {
-        Navigation.NavigateTo($"/Suppliers/Index?search={Uri.EscapeDataString(search ?? string.Empty)}&sort={sort}&index={index}&size={Math.Clamp(size, 1, 250)}");
+        Navigation.NavigateTo($"/Suppliers/Index?search={Uri.EscapeDataString(search ?? string.Empty)}&sort={sort}&index={index}&size={Math.Clamp(size, 1, 250)}", replace: replace);
         return Task.CompletedTask;
     }
+
+    public void Dispose() => loadGate.Dispose();
 
     private static string ValueOrFallback(string? value) => string.IsNullOrWhiteSpace(value) ? "-" : value;
 }

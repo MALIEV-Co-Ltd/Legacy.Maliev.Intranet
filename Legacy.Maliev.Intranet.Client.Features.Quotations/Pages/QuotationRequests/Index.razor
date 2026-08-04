@@ -1,5 +1,6 @@
 @page "/QuotationRequests/Index"
 @attribute [Authorize]
+@implements IDisposable
 @inject HttpClient Http
 @inject NavigationManager Navigation
 @inject IStringLocalizer<Index> Text
@@ -14,19 +15,14 @@
         </div>
     </header>
 
-    <MudPaper Class="pa-4 mb-4">
-        <div class="d-flex flex-wrap gap-3 align-end" role="search" aria-label="@Text["FilterLabel"]">
-            <MudTextField @bind-Value="searchInput" Label="@Text["Search"]" />
-            <MudSelect T="QuotationRequestSort" @bind-Value="sortInput" Label="@Text["Sort"]">
-                @foreach (var value in Enum.GetValues<QuotationRequestSort>())
-                {
-                    <MudSelectItem T="QuotationRequestSort" Value="value">@Text[value.ToString()]</MudSelectItem>
-                }
-            </MudSelect>
-            <MudNumericField T="int" @bind-Value="sizeInput" Min="1" Max="250" Label="@Text["PerPage"]" />
-            <MudButton OnClick="ApplyAsync" Variant="Variant.Filled" Color="Color.Primary">@Text["Apply"]</MudButton>
-        </div>
-    </MudPaper>
+    <ListToolbar TSort="QuotationRequestSort"
+                 Value="@ToolbarValue"
+                 Defaults="@ToolbarDefaults"
+                 SortOptions="@ToolbarSortOptions"
+                 PageSizeOptions="@StandardPageSizes"
+                 SearchLabel="@Text["Search"]"
+                 IsBusy="@loading"
+                 OnRequest="HandleToolbarRequestAsync" />
 
     @if (loading)
     {
@@ -79,11 +75,16 @@
     [SupplyParameterFromQuery] public int Size { get; set; } = 25;
 
     private QuotationRequestPage? page;
+    private static readonly int[] StandardPageSizes = [10, 25, 50, 100, 250];
+    private readonly LatestRequestGate requestGate = new();
     private bool loading = true;
     private string? error;
-    private string? searchInput;
     private QuotationRequestSort sortInput;
-    private int sizeInput;
+    private ListToolbarState<QuotationRequestSort> ToolbarValue => new(Search, sortInput, Size);
+    private static ListToolbarState<QuotationRequestSort> ToolbarDefaults =>
+        new(null, QuotationRequestSort.RequestCreatedDate_Descending, 25);
+    private IReadOnlyList<ListToolbarOption<QuotationRequestSort>> ToolbarSortOptions =>
+        Enum.GetValues<QuotationRequestSort>().Select(option => new ListToolbarOption<QuotationRequestSort>(option, Text[option.ToString()])).ToArray();
 
     protected override async Task OnParametersSetAsync()
     {
@@ -92,18 +93,21 @@
         sortInput = Enum.TryParse<QuotationRequestSort>(Sort, true, out var parsed)
             ? parsed
             : QuotationRequestSort.RequestCreatedDate_Descending;
-        searchInput = Search;
-        sizeInput = Size;
         await LoadAsync();
     }
 
     private async Task LoadAsync()
     {
+        using var lease = requestGate.Begin();
         loading = true;
         error = null;
         try
         {
-            using var response = await Http.GetForPresentationAsync($"/bff/quotation-requests?sort={sortInput}&search={Uri.EscapeDataString(Search ?? string.Empty)}&index={PageIndex}&size={Size}");
+            using var response = await Http.GetForPresentationAsync($"/bff/quotation-requests?sort={sortInput}&search={Uri.EscapeDataString(Search ?? string.Empty)}&index={PageIndex}&size={Size}", lease.CancellationToken);
+            if (!lease.IsCurrent)
+            {
+                return;
+            }
             if (response.StatusCode == HttpStatusCode.Unauthorized)
             {
                 Navigation.NavigateTo($"/Login?returnUrl={Uri.EscapeDataString(Navigation.ToBaseRelativePath(Navigation.Uri))}");
@@ -114,11 +118,21 @@
                 error = Error(response.StatusCode);
                 return;
             }
-            page = await response.Content.ReadFromJsonAsync<QuotationRequestPage>();
-            if (page is null)
+            var loadedPage = await response.Content.ReadFromJsonAsync<QuotationRequestPage>(lease.CancellationToken);
+            if (!lease.IsCurrent)
+            {
+                return;
+            }
+            if (loadedPage is null)
             {
                 error = Text["Invalid"];
+                return;
             }
+
+            page = loadedPage;
+        }
+        catch (OperationCanceledException) when (!lease.IsCurrent)
+        {
         }
         catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException)
         {
@@ -126,19 +140,28 @@
         }
         finally
         {
-            loading = false;
+            if (lease.IsCurrent)
+            {
+                loading = false;
+            }
         }
     }
 
-    private Task ApplyAsync() => NavigateAsync(1);
-    private Task PreviousAsync() => NavigateAsync(Math.Max(1, PageIndex - 1));
-    private Task NextAsync() => NavigateAsync(PageIndex + 1);
+    private Task PreviousAsync() => NavigateAsync(Math.Max(1, PageIndex - 1), Search, sortInput, Size);
+    private Task NextAsync() => NavigateAsync(PageIndex + 1, Search, sortInput, Size);
 
-    private Task NavigateAsync(int index)
+    private Task HandleToolbarRequestAsync(ListToolbarRequest<QuotationRequestSort> request) =>
+        request.Reason == ListToolbarChangeReason.Refreshed && request.State.Normalize() == ToolbarValue.Normalize()
+            ? LoadAsync()
+            : NavigateAsync(1, request.State.Search, request.State.Sort, request.State.PageSize, replace: true);
+
+    private Task NavigateAsync(int index, string? search, QuotationRequestSort sort, int size, bool replace = false)
     {
-        Navigation.NavigateTo($"/QuotationRequests/Index?search={Uri.EscapeDataString(searchInput ?? string.Empty)}&sort={sortInput}&index={index}&size={Math.Clamp(sizeInput, 1, 250)}");
+        Navigation.NavigateTo($"/QuotationRequests/Index?search={Uri.EscapeDataString(search ?? string.Empty)}&sort={sort}&index={index}&size={Math.Clamp(size, 1, 250)}", replace: replace);
         return Task.CompletedTask;
     }
+
+    public void Dispose() => requestGate.Dispose();
 
     private string Error(HttpStatusCode value) => value switch
     {

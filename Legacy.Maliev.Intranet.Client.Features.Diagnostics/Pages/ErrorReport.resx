@@ -11,7 +11,6 @@
   <data name="Search" xml:space="preserve"><value>Search code, category, path, or correlation ID</value></data>
   <data name="Sort" xml:space="preserve"><value>Sort</value></data>
   <data name="PerPage" xml:space="preserve"><value>Per page</value></data>
-  <data name="Apply" xml:space="preserve"><value>Apply</value></data>
   <data name="Refresh" xml:space="preserve"><value>Refresh</value></data>
   <data name="Loading" xml:space="preserve"><value>Loading recent failures</value></data>
   <data name="Empty" xml:space="preserve"><value>No recent BFF failures were recorded.</value></data>

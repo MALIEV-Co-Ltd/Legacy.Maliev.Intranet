@@ -1,0 +1,101 @@
+@typeparam TSort where TSort : struct, Enum
+@implements IAsyncDisposable
+@inject IStringLocalizer<ListToolbarResources> Text
+
+<MudPaper Class="list-toolbar" Elevation="0" role="search" aria-label="@Text["FilterLabel"]" aria-busy="@IsBusy.ToString().ToLowerInvariant()">
+    <div class="list-toolbar__grid">
+        <MudTextField T="string"
+                      Value="@controller!.Current.Search"
+                      ValueChanged="ChangeSearchAsync"
+                      Label="@(SearchLabel ?? Text["Search"])"
+                      Variant="Variant.Outlined"
+                      Immediate="true"
+                      Clearable="true"
+                      Adornment="Adornment.Start"
+                      AdornmentIcon="@Icons.Material.Outlined.Search"
+                      aria-controls="@ResultsId" />
+        <MudSelect T="TSort"
+                   Value="@controller.Current.Sort"
+                   ValueChanged="ChangeSortAsync"
+                   Label="@Text["Sort"]"
+                   Variant="Variant.Outlined"
+                   aria-controls="@ResultsId">
+            @foreach (var option in SortOptions)
+            {
+                <MudSelectItem T="TSort" Value="option.Value">@option.Label</MudSelectItem>
+            }
+        </MudSelect>
+        <MudSelect T="int"
+                   Value="@controller.Current.PageSize"
+                   ValueChanged="ChangePageSizeAsync"
+                   Label="@Text["PerPage"]"
+                   Variant="Variant.Outlined"
+                   aria-controls="@ResultsId">
+            @foreach (var pageSize in PageSizeOptions)
+            {
+                <MudSelectItem T="int" Value="pageSize">@pageSize</MudSelectItem>
+            }
+        </MudSelect>
+        <div class="list-toolbar__actions">
+            @if (controller.CanClear)
+            {
+                <MudButton Variant="Variant.Text" Color="Color.Default" OnClick="ClearAsync" StartIcon="@Icons.Material.Outlined.FilterAltOff">
+                    @Text["Clear"]
+                </MudButton>
+            }
+            <MudButton Variant="Variant.Outlined" Color="Color.Default" OnClick="RefreshAsync" Disabled="@IsBusy" StartIcon="@Icons.Material.Outlined.Refresh">
+                @Text["Refresh"]
+            </MudButton>
+        </div>
+    </div>
+    <span class="visually-hidden" role="status" aria-live="polite">
+        @(IsBusy ? Text["Filtering"] : ResultsStatus)
+    </span>
+</MudPaper>
+
+@code {
+    [Parameter, EditorRequired] public ListToolbarState<TSort> Value { get; set; }
+    [Parameter, EditorRequired] public ListToolbarState<TSort> Defaults { get; set; }
+    [Parameter, EditorRequired] public IReadOnlyList<ListToolbarOption<TSort>> SortOptions { get; set; } = [];
+    [Parameter, EditorRequired] public IReadOnlyList<int> PageSizeOptions { get; set; } = [];
+    [Parameter, EditorRequired] public EventCallback<ListToolbarRequest<TSort>> OnRequest { get; set; }
+    [Parameter] public string? SearchLabel { get; set; }
+    [Parameter] public string? ResultsId { get; set; }
+    [Parameter] public string? ResultsStatus { get; set; }
+    [Parameter] public bool IsBusy { get; set; }
+    [Parameter] public int DebounceMilliseconds { get; set; } = 350;
+
+    private DebouncedListToolbarController<TSort>? controller;
+    private ListToolbarState<TSort>? observedValue;
+    private ListToolbarState<TSort>? observedDefaults;
+
+    protected override void OnParametersSet()
+    {
+        if (controller is null)
+        {
+            controller = new(Value, Defaults, debounceDelay: TimeSpan.FromMilliseconds(DebounceMilliseconds));
+        }
+        else if (observedValue != Value || observedDefaults != Defaults)
+        {
+            controller.Hydrate(Value, Defaults);
+        }
+
+        observedValue = Value;
+        observedDefaults = Defaults;
+    }
+
+    private Task ChangeSearchAsync(string? value) => controller!.ChangeSearchAsync(value, EmitAsync);
+    private Task ChangeSortAsync(TSort value) => controller!.ChangeSortAsync(value, EmitAsync);
+    private Task ChangePageSizeAsync(int value) => controller!.ChangePageSizeAsync(value, EmitAsync);
+    private Task ClearAsync() => controller!.ClearAsync(EmitAsync);
+    private Task RefreshAsync() => controller!.RefreshAsync(EmitAsync);
+    private Task EmitAsync(ListToolbarRequest<TSort> request, CancellationToken _) => OnRequest.InvokeAsync(request);
+
+    public async ValueTask DisposeAsync()
+    {
+        if (controller is not null)
+        {
+            await controller.DisposeAsync();
+        }
+    }
+}
