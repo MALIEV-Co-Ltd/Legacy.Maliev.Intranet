@@ -34,7 +34,7 @@
 .loading-progress-text {
     min-height: 1.5rem;
     text-align: center;
-    font-weight: 600;
+    font-weight: 400;
 }
 
 .loading-progress-text::after {
@@ -57,7 +57,7 @@
 #blazor-error-ui .reload {
     margin-inline-start: 0.75rem;
     color: inherit;
-    font-weight: 700;
+    font-weight: 400;
 }
 
 #blazor-error-ui .dismiss {

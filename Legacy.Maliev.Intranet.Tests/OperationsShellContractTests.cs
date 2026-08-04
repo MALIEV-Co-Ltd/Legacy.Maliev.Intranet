@@ -53,9 +53,9 @@ public sealed class OperationsShellContractTests
         Assert.Contains(".legacy-workspace-shell", appCss, StringComparison.Ordinal);
         Assert.Contains(".legacy-navigation-backdrop", appCss, StringComparison.Ordinal);
         Assert.Contains("--legacy-rail-width: 248px", tokens, StringComparison.Ordinal);
-        Assert.Contains("--maliev-font-sans:  'Inter', 'Noto Sans Thai', sans-serif", tokens, StringComparison.Ordinal);
-        Assert.Contains("family=Inter", index, StringComparison.Ordinal);
-        Assert.Contains("'Inter', 'Noto Sans Thai', sans-serif", index, StringComparison.Ordinal);
+        Assert.Contains("--maliev-font-sans: 'IBM Plex Sans Thai', sans-serif", tokens, StringComparison.Ordinal);
+        Assert.Contains("css/ibm-plex-sans-thai.css", index, StringComparison.Ordinal);
+        Assert.Contains("'IBM Plex Sans Thai', sans-serif", index, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -120,7 +120,7 @@ public sealed class OperationsShellContractTests
         Assert.Contains("@Html.AntiForgeryToken()", layout, StringComparison.Ordinal);
         Assert.Contains("antiforgery.ValidateRequestAsync(context)", program, StringComparison.Ordinal);
         Assert.Contains("User.FindAll(\"permissions\")", layout, StringComparison.Ordinal);
-        Assert.Contains("Inter:wght@400..800", layout, StringComparison.Ordinal);
+        Assert.Contains("~/css/ibm-plex-sans-thai.css", layout, StringComparison.Ordinal);
         Assert.Contains("width: var(--rail-width)", css, StringComparison.Ordinal);
         Assert.Contains("@media (max-width: 1180px)", css, StringComparison.Ordinal);
         Assert.Contains("window.location.assign(route)", script, StringComparison.Ordinal);

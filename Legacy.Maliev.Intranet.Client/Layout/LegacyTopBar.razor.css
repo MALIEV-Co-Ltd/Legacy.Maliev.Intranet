@@ -46,7 +46,7 @@
     color: var(--legacy-muted);
     font: inherit;
     font-size: .72rem;
-    font-weight: 600;
+    font-weight: 400;
     cursor: pointer;
 }
 .legacy-mobile-menu-button { display: none; }
@@ -55,7 +55,7 @@
 .legacy-mobile-menu-button:focus-visible,
 .legacy-theme-toggle:focus-visible { outline: none; box-shadow: var(--legacy-focus-ring); }
 
-.legacy-session-avatar { display: grid; width: 34px; height: 34px; flex: 0 0 auto; place-items: center; border-radius: 50%; background: var(--legacy-primary-soft); color: var(--legacy-primary); font-size: .7rem; font-weight: 800; }
+.legacy-session-avatar { display: grid; width: 34px; height: 34px; flex: 0 0 auto; place-items: center; border-radius: 50%; background: var(--legacy-primary-soft); color: var(--legacy-primary); font-size: .7rem; font-weight: 400; }
 .legacy-topbar-utilities { display: flex; min-width: 0; flex: 0 0 auto; align-items: center; gap: 8px; margin-left: auto; }
 .legacy-session-copy { display: flex; min-width: 0; flex-direction: column; gap: 2px; line-height: 1.1; }
 .legacy-session-copy strong { max-width: 155px; overflow: hidden; color: var(--legacy-ink); font-size: .76rem; text-overflow: ellipsis; white-space: nowrap; }
@@ -70,7 +70,7 @@
 .legacy-profile-action:hover { background: var(--legacy-surface-muted); }
 .legacy-profile-action:focus-visible { outline: none; box-shadow: var(--legacy-focus-ring); }
 .legacy-profile-menu-divider { height: 1px; margin: 3px; background: var(--legacy-border); }
-.legacy-signin-link { display: inline-flex; min-height: 44px; align-items: center; color: var(--legacy-primary); font-size: .8rem; font-weight: 700; text-decoration: none; }
+.legacy-signin-link { display: inline-flex; min-height: 44px; align-items: center; color: var(--legacy-primary); font-size: .8rem; font-weight: 400; text-decoration: none; }
 .legacy-session-status { position: absolute; top: 100%; right: 16px; padding: 3px 7px; border: 1px solid var(--legacy-warn-border); border-radius: 5px; background: var(--legacy-warn-bg); color: var(--legacy-warn-fg); font-size: .65rem; }
 
 @media (max-width: 1180px) {

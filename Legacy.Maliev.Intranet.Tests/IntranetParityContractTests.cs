@@ -56,11 +56,10 @@ public sealed class IntranetParityContractTests
         var index = File.ReadAllText(Path.Combine(root, "Legacy.Maliev.Intranet.Client", "wwwroot", "index.html"));
         var css = File.ReadAllText(Path.Combine(root, "Legacy.Maliev.Intranet.Client", "wwwroot", "css", "app.css"));
 
-        Assert.Contains("family=Inter", index, StringComparison.Ordinal);
-        Assert.Contains("family=Noto+Sans+Thai", index, StringComparison.Ordinal);
-        Assert.Contains("'Inter', 'Noto Sans Thai', sans-serif", index, StringComparison.Ordinal);
-        Assert.Contains("'Inter', 'Noto Sans Thai', sans-serif", css, StringComparison.Ordinal);
-        Assert.DoesNotContain("Geist", css, StringComparison.Ordinal);
+        Assert.Contains("css/ibm-plex-sans-thai.css", index, StringComparison.Ordinal);
+        Assert.Contains("'IBM Plex Sans Thai', sans-serif", index, StringComparison.Ordinal);
+        Assert.Contains("var(--maliev-font-sans)", css, StringComparison.Ordinal);
+        Assert.DoesNotContain("fonts.googleapis.com", index, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]

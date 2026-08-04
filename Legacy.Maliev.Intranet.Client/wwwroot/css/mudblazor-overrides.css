@@ -151,7 +151,7 @@
 }
 
 .mud-popover .suggestion-card strong {
-    font-weight: 750;
+    font-weight: 400;
 }
 
 .mud-popover .suggestion-card span,
@@ -200,7 +200,7 @@
 .mud-button-root {
     padding: 5px 12px;
     font-size: var(--mud-typography-button-size);
-    font-weight: 600;
+    font-weight: 400;
     box-shadow: var(--maliev-shadow-ring);
     border-radius: var(--maliev-radius-sm);
     min-width: unset;

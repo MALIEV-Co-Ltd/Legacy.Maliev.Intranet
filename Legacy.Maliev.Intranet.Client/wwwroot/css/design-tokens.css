@@ -92,8 +92,10 @@
     --maliev-font-small: 12px;
     --maliev-font-base:  13px;
     --maliev-font-large: 14px;
-    --maliev-font-sans:  'Inter', 'Noto Sans Thai', sans-serif;
-    --maliev-font-mono:  'Geist Mono', 'Noto Sans Thai', ui-monospace, SFMono-Regular, Menlo, Monaco, 'Courier New', monospace;
+    --maliev-font-sans: 'IBM Plex Sans Thai', sans-serif;
+    --maliev-font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, 'Courier New', monospace;
+    --maliev-font-weight-body: 400;
+    --maliev-font-weight-heading: 600;
 
     /* Icon sizes */
     --maliev-icon-sm: 14px;

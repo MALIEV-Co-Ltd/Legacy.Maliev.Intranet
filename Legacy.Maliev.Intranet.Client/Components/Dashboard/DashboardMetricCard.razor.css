@@ -29,7 +29,7 @@
 .dashboard-metric-label {
     color: var(--maliev-text-muted, #5b6980);
     font-size: 0.78rem;
-    font-weight: 650;
+    font-weight: 400;
 }
 
 .dashboard-metric-value {
@@ -44,7 +44,7 @@
     color: #075fd8;
     display: inline-flex;
     font-size: 0.78rem;
-    font-weight: 650;
+    font-weight: 400;
     margin-top: 0.35rem;
     min-height: 44px;
     text-decoration: none;

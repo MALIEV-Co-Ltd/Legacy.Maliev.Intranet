@@ -35,7 +35,7 @@
 }
 
 .dashboard-freshness time { color: var(--maliev-text-muted, #637089); }
-.dashboard-health { align-items: center; display: inline-flex; font-weight: 650; gap: 0.4rem; }
+.dashboard-health { align-items: center; display: inline-flex; font-weight: 400; gap: 0.4rem; }
 .dashboard-health > span { background: #16a061; border-radius: 50%; height: 0.48rem; width: 0.48rem; }
 .dashboard-health.is-degraded > span { background: #d88a00; }
 
@@ -54,10 +54,10 @@
 .dashboard-table-compact { min-width: 31rem; }
 .dashboard-table th,
 .dashboard-table td { border-bottom: 1px solid var(--maliev-border, #e4e9f1); font-size: 0.76rem; padding: 0.72rem 0.75rem; text-align: left; vertical-align: middle; }
-.dashboard-table th { color: var(--maliev-text-muted, #637089); font-size: 0.68rem; font-weight: 700; letter-spacing: 0.025em; text-transform: uppercase; }
+.dashboard-table th { color: var(--maliev-text-muted, #637089); font-size: 0.68rem; font-weight: 600; letter-spacing: 0.025em; text-transform: uppercase; }
 .dashboard-table tbody tr:last-child td { border-bottom: 0; }
 .dashboard-table a,
-.dashboard-activity-list a { align-items: center; justify-content: center; color: #075fd8; display: inline-flex; min-width: 44px; min-height: 44px; font-weight: 680; text-decoration: none; }
+.dashboard-activity-list a { align-items: center; justify-content: center; color: #075fd8; display: inline-flex; min-width: 44px; min-height: 44px; font-weight: 400; text-decoration: none; }
 .dashboard-table a:hover,
 .dashboard-table a:focus-visible,
 .dashboard-activity-list a:hover,
@@ -65,7 +65,7 @@
 .dashboard-table-primary { max-width: 14rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .dashboard-money { font-variant-numeric: tabular-nums; white-space: nowrap; }
 
-.dashboard-status { border-radius: 999px; display: inline-flex; font-size: 0.68rem; font-weight: 700; padding: 0.23rem 0.52rem; white-space: nowrap; }
+.dashboard-status { border-radius: 999px; display: inline-flex; font-size: 0.68rem; font-weight: 400; padding: 0.23rem 0.52rem; white-space: nowrap; }
 .dashboard-status.is-complete { background: #e4f6ec; color: #0b7044; }
 .dashboard-status.is-progress { background: #e7f0ff; color: #0757c5; }
 .dashboard-status.is-queued,
@@ -144,7 +144,7 @@
         color: var(--maliev-text-muted, #637089);
         content: attr(data-label);
         font-size: 0.72rem;
-        font-weight: 700;
+        font-weight: 400;
     }
     .dashboard-table-primary { max-width: none; white-space: normal; }
     .dashboard-table a,

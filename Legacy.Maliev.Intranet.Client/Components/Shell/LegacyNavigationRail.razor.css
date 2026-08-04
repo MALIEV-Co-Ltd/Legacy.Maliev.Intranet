@@ -44,7 +44,7 @@
     margin: 0 10px 5px;
     color: var(--legacy-muted);
     font-size: .68rem;
-    font-weight: 800;
+    font-weight: var(--maliev-font-weight-heading);
     letter-spacing: .08em;
     line-height: 1.4;
     text-transform: uppercase;
@@ -59,7 +59,7 @@
     border-radius: var(--legacy-radius-md);
     color: var(--legacy-ink-secondary);
     font-size: .84rem;
-    font-weight: 600;
+    font-weight: var(--maliev-font-weight-body);
     text-decoration: none;
 }
 .legacy-rail-link:hover { background: var(--legacy-surface-muted); color: var(--legacy-ink); }

@@ -2,12 +2,21 @@ html,
 body {
     margin: 0;
     min-height: 100%;
-    font-family: 'Inter', 'Noto Sans Thai', sans-serif;
+    font-family: var(--maliev-font-sans);
+    font-synthesis: none;
+    font-weight: var(--maliev-font-weight-body);
     background: #f6f8fb;
     color: #172033;
 }
 
 *, *::before, *::after { box-sizing: border-box; }
+button, input, select, textarea { font-family: inherit; font-weight: var(--maliev-font-weight-body); }
+strong, b { font-weight: var(--maliev-font-weight-body); }
+h1, h2, h3, h4, h5, h6,
+.mud-typography-h1, .mud-typography-h2, .mud-typography-h3,
+.mud-typography-h4, .mud-typography-h5, .mud-typography-h6 {
+    font-weight: var(--maliev-font-weight-heading);
+}
 body { background: var(--legacy-background); color: var(--legacy-ink); }
 .legacy-layout { max-width: 100%; min-height: 100dvh; background: var(--legacy-background); }
 .legacy-workspace-shell { width: calc(100% - var(--legacy-rail-width)); max-width: 100%; min-width: 0; margin-left: var(--legacy-rail-width); }
@@ -19,7 +28,7 @@ body { background: var(--legacy-background); color: var(--legacy-ink); }
 .legacy-skip-link { position: fixed; top: .5rem; left: .5rem; z-index: 100; padding: .5rem .75rem; border-radius: .5rem; background: var(--legacy-ink); color: #fff; transform: translateY(-180%); transition: transform .15s ease; }
 .legacy-skip-link:focus { transform: translateY(0); }
 .dashboard-card { height: 100%; border: 1px solid var(--legacy-border); background: var(--legacy-surface); }
-.dashboard-card-link { color: var(--legacy-primary); font-size: .8rem; font-weight: 600; text-decoration: none; }
+.dashboard-card-link { color: var(--legacy-primary); font-size: .8rem; font-weight: 400; text-decoration: none; }
 .dashboard-card-link:hover { text-decoration: underline; }
 
 #blazor-error-ui {
@@ -231,7 +240,7 @@ body { background: var(--legacy-background); color: var(--legacy-ink); }
 
 .legacy-login-form { display: grid; gap: .75rem; }
 .legacy-login-field { display: grid; gap: .375rem; }
-.legacy-login-field label { font-size: var(--mud-typography-body2-size); font-weight: 600; }
+.legacy-login-field label { font-size: var(--mud-typography-body2-size); font-weight: 400; }
 .legacy-login-field small { color: var(--legacy-muted); font-size: var(--mud-typography-caption-size); }
 .legacy-login-input {
     width: 100%;
@@ -262,7 +271,7 @@ body { background: var(--legacy-background); color: var(--legacy-ink); }
     background: var(--legacy-primary);
     color: #fff;
     font: inherit;
-    font-weight: 700;
+    font-weight: 400;
     cursor: pointer;
 }
 
@@ -289,14 +298,14 @@ body { background: var(--legacy-background); color: var(--legacy-ink); }
     color: var(--legacy-primary);
     font: inherit;
     font-size: var(--mud-typography-caption-size);
-    font-weight: 700;
+    font-weight: 400;
     cursor: pointer;
 }
 
 .legacy-login-remember { display: inline-flex; align-items: center; gap: .5rem; color: var(--legacy-muted); font-size: var(--mud-typography-body2-size); }
 .legacy-login-remember input { accent-color: var(--legacy-primary); }
 .legacy-login-footer-note { margin: 1.5rem 0 0; color: var(--legacy-muted); font-size: var(--mud-typography-caption-size); line-height: 1.45; text-align: center; }
-.legacy-login-footer-note a { color: var(--legacy-primary); font-weight: 700; }
+.legacy-login-footer-note a { color: var(--legacy-primary); font-weight: 400; }
 .legacy-login-footer { display: flex; align-items: center; justify-content: space-between; gap: .75rem; color: var(--legacy-muted); font-size: var(--mud-typography-caption-size); }
 .legacy-login-footer a:hover { color: var(--legacy-primary); }
 

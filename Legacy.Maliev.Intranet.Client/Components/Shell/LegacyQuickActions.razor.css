@@ -1,5 +1,5 @@
 .legacy-quick-actions { display: flex; flex: 0 0 auto; align-items: center; gap: 8px; }
-.legacy-quick-action { display: inline-flex; min-height: 44px; align-items: center; justify-content: center; gap: 6px; padding: 8px 13px; border: 1px solid var(--legacy-border); border-radius: var(--legacy-radius-md); background: var(--legacy-surface); color: var(--legacy-primary); font-size: .78rem; font-weight: 700; text-decoration: none; white-space: nowrap; }
+.legacy-quick-action { display: inline-flex; min-height: 44px; align-items: center; justify-content: center; gap: 6px; padding: 8px 13px; border: 1px solid var(--legacy-border); border-radius: var(--legacy-radius-md); background: var(--legacy-surface); color: var(--legacy-primary); font-size: .78rem; font-weight: 400; text-decoration: none; white-space: nowrap; }
 .legacy-quick-action:hover { border-color: var(--legacy-primary); background: var(--legacy-primary-soft); }
 .legacy-quick-action.primary { border-color: var(--legacy-primary); background: var(--legacy-primary); color: #fff; box-shadow: 0 7px 18px rgba(10,114,239,.18); }
 .legacy-quick-action.primary:hover { background: var(--legacy-primary-hover); }

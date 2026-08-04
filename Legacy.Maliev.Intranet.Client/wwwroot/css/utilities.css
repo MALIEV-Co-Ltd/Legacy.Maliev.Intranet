@@ -44,7 +44,7 @@
     padding: var(--maliev-space-1) var(--maliev-space-3);
     border-radius: var(--maliev-radius-pill);
     font-size: var(--maliev-font-micro);
-    font-weight: 600;
+    font-weight: 400;
     line-height: 1.4;
 }
 
@@ -77,7 +77,7 @@
     padding: var(--maliev-space-2) var(--maliev-space-4);
     border-radius: var(--maliev-space-3);
     font-size: var(--maliev-font-small);
-    font-weight: 500;
+    font-weight: 400;
     background: var(--maliev-accent-soft);
     color: var(--mud-palette-primary);
     border: 1px solid var(--maliev-accent-soft);
