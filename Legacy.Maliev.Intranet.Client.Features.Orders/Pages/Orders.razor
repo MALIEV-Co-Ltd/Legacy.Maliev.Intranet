@@ -58,7 +58,7 @@
                             else
                             {
                                 <div class="orders-table-scroll @(section.ShowCount ? "orders-working-set" : "")" tabindex="0" aria-label="@section.Title">
-                                    <table class="mlv-table orders-table">
+                                    <MudSimpleTable Class="mlv-table orders-table" Dense="true" Hover="true">
                                         <caption class="visually-hidden">@section.Title</caption>
                                         <thead>
                                             <tr>
@@ -97,7 +97,7 @@
                                                 </tr>
                                             }
                                         </tbody>
-                                    </table>
+                                    </MudSimpleTable>
                                 </div>
                             }
                         </section>

@@ -15,9 +15,8 @@
             <a class="legacy-rail-logo legacy-logo-link" href="/Dashboard" aria-label="@Text["MALIEV dashboard"]">
                 <img src="images/MALIEV_BLACK.svg" alt="MALIEV" />
             </a>
-            <button type="button" class="legacy-rail-close" aria-label="@Text["Close navigation"]" @ref="_closeButton" @onclick="CloseAsync">
-                <MudIcon Icon="@Icons.Material.Filled.Close" Size="Size.Small" />
-            </button>
+            <MudIconButton ButtonType="ButtonType.Button" Class="legacy-rail-close" Icon="@Icons.Material.Filled.Close"
+                           Size="Size.Small" aria-label="@Text["Close navigation"]" @ref="_closeButton" OnClick="CloseAsync" />
         </div>
     }
 
@@ -55,14 +54,17 @@
     [Parameter] public bool IsDrawer { get; set; }
     [Parameter] public EventCallback OnClose { get; set; }
 
-    private ElementReference _closeButton;
+    private MudIconButton? _closeButton;
     private ElementReference _lastNavigationLink;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (IsDrawer && firstRender)
         {
-            await _closeButton.FocusAsync();
+            if (_closeButton is not null)
+            {
+                await _closeButton.FocusAsync();
+            }
         }
     }
 
@@ -88,7 +90,13 @@
 
     private Task HandleKeyDown(KeyboardEventArgs args) => args.Key == "Escape" ? CloseAsync() : Task.CompletedTask;
 
-    private async Task FocusFirstAsync(FocusEventArgs _) => await _closeButton.FocusAsync();
+    private async Task FocusFirstAsync(FocusEventArgs _)
+    {
+        if (_closeButton is not null)
+        {
+            await _closeButton.FocusAsync();
+        }
+    }
 
     private async Task FocusLastAsync(FocusEventArgs _)
     {
@@ -98,6 +106,9 @@
             return;
         }
 
-        await _closeButton.FocusAsync();
+        if (_closeButton is not null)
+        {
+            await _closeButton.FocusAsync();
+        }
     }
 }

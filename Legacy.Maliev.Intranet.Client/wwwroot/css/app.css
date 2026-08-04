@@ -239,23 +239,13 @@ body { background: var(--legacy-background); color: var(--legacy-ink); }
 .legacy-login-divider span { height: 1px; background: var(--legacy-border); }
 
 .legacy-login-form { display: grid; gap: .75rem; }
-.legacy-login-field { display: grid; gap: .375rem; }
-.legacy-login-field label { font-size: var(--mud-typography-body2-size); font-weight: 400; }
-.legacy-login-field small { color: var(--legacy-muted); font-size: var(--mud-typography-caption-size); }
 .legacy-login-input {
     width: 100%;
-    min-height: 2.75rem;
-    padding: .625rem .75rem;
-    border: 1px solid var(--legacy-border);
-    border-radius: .5rem;
-    background: var(--legacy-surface);
-    color: inherit;
-    font: inherit;
 }
 
-.legacy-login-input:focus-visible {
-    outline: .125rem solid var(--legacy-primary);
-    outline-offset: .0625rem;
+.legacy-login-input .mud-input-control,
+.legacy-login-input .mud-input {
+    width: 100%;
 }
 
 .legacy-login-primary {
@@ -302,8 +292,7 @@ body { background: var(--legacy-background); color: var(--legacy-ink); }
     cursor: pointer;
 }
 
-.legacy-login-remember { display: inline-flex; align-items: center; gap: .5rem; color: var(--legacy-muted); font-size: var(--mud-typography-body2-size); }
-.legacy-login-remember input { accent-color: var(--legacy-primary); }
+.legacy-login-remember { color: var(--legacy-muted); font-size: var(--mud-typography-body2-size); }
 .legacy-login-footer-note { margin: 1.5rem 0 0; color: var(--legacy-muted); font-size: var(--mud-typography-caption-size); line-height: 1.45; text-align: center; }
 .legacy-login-footer-note a { color: var(--legacy-primary); font-weight: 400; }
 .legacy-login-footer { display: flex; align-items: center; justify-content: space-between; gap: .75rem; color: var(--legacy-muted); font-size: var(--mud-typography-caption-size); }

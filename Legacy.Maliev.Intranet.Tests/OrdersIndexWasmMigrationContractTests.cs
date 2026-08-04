@@ -41,7 +41,7 @@ public sealed class OrdersIndexWasmMigrationContractTests
         Assert.Contains("<ListToolbar", page, StringComparison.Ordinal);
         Assert.Contains("HandleToolbarRequestAsync", page, StringComparison.Ordinal);
         Assert.Contains("<ProgressiveSkeleton", page, StringComparison.Ordinal);
-        Assert.Contains("class=\"mlv-table orders-table\"", page, StringComparison.Ordinal);
+        Assert.Contains("<MudSimpleTable Class=\"mlv-table orders-table\"", page, StringComparison.Ordinal);
         Assert.Contains("data-label=", page, StringComparison.Ordinal);
         Assert.Contains("aria-live=\"polite\"", page, StringComparison.Ordinal);
         Assert.Contains("/Orders/Create", page, StringComparison.Ordinal);

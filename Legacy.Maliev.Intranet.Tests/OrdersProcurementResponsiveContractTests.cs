@@ -42,7 +42,8 @@ public sealed class OrdersProcurementResponsiveContractTests
         var page = Read(root, "Legacy.Maliev.Intranet.Client.Features.Orders", "Pages", "OrderDetail.razor");
         var styles = Read(root, "Legacy.Maliev.Intranet.Client.Features.Orders", "Pages", "OrderDetail.razor.css");
 
-        Assert.Equal(5, CountOccurrences(page, "class=\"order-edit-section\""));
+        Assert.Equal(5, CountOccurrences(page, "<MudExpansionPanel Class=\"order-edit-section\""));
+        Assert.Contains("<MudExpansionPanels", page, StringComparison.Ordinal);
         Assert.Contains("class=\"order-save-bar\"", page, StringComparison.Ordinal);
         Assert.Contains("class=\"order-history\" tabindex=\"0\"", page, StringComparison.Ordinal);
         Assert.Contains("position: sticky", styles, StringComparison.Ordinal);

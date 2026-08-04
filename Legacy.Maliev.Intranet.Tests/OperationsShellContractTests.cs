@@ -138,9 +138,11 @@ public sealed class OperationsShellContractTests
         var script = Read(root, "Legacy.Maliev.Intranet.Client", "wwwroot", "js", "workspace-culture.js");
         var index = Read(root, "Legacy.Maliev.Intranet.Client", "wwwroot", "index.html");
 
-        Assert.Single(System.Text.RegularExpressions.Regex.Matches(selector, "<option value=\"en-TH\"").Cast<System.Text.RegularExpressions.Match>());
-        Assert.Single(System.Text.RegularExpressions.Regex.Matches(selector, "<option value=\"th-TH\"").Cast<System.Text.RegularExpressions.Match>());
-        Assert.DoesNotContain("<option value=\"en-US\"", selector, StringComparison.Ordinal);
+        Assert.Equal(2, System.Text.RegularExpressions.Regex.Matches(selector, "<MudSelectItem").Count);
+        Assert.Contains(@"<MudSelectItem T=""string"" Value=""@(""en-TH"")"">English", selector, StringComparison.Ordinal);
+        Assert.Contains(@"<MudSelectItem T=""string"" Value=""@(""th-TH"")"">ไทย", selector, StringComparison.Ordinal);
+        Assert.DoesNotContain("en-US", selector, StringComparison.Ordinal);
+        Assert.Contains("<MudSelect", selector, StringComparison.Ordinal);
         Assert.DoesNotContain("<MudIcon", selector, StringComparison.Ordinal);
         Assert.Contains("malievCulture.set", selector, StringComparison.Ordinal);
         Assert.Contains("malievCulture.get", program, StringComparison.Ordinal);

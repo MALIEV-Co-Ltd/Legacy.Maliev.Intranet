@@ -62,11 +62,13 @@
 .legacy-session-copy small { color: var(--legacy-muted); font-size: .66rem; }
 .legacy-profile-menu { position: relative; flex: 0 0 auto; min-width: 0; }
 .legacy-profile { display: flex; min-height: 44px; align-items: center; gap: 8px; padding: 4px 7px 4px 4px; border: 1px solid var(--legacy-border); border-radius: 999px; background: var(--legacy-surface); color: inherit; font: inherit; box-shadow: 0 1px 2px rgba(15,23,42,.06); cursor: pointer; }
+.legacy-profile ::deep .mud-button-label { display: flex; min-width: 0; align-items: center; gap: 8px; }
 .legacy-profile:hover { border-color: color-mix(in srgb, var(--legacy-primary) 40%, var(--legacy-border)); background: var(--legacy-surface-muted); }
 .legacy-profile:focus-visible { outline: none; box-shadow: var(--legacy-focus-ring); }
 .legacy-profile-chevron { flex: 0 0 auto; color: var(--legacy-muted); }
 .legacy-profile-popover { position: absolute; top: calc(100% + 8px); right: 0; z-index: 60; display: grid; width: 210px; gap: 3px; padding: 6px; border: 1px solid var(--legacy-border); border-radius: var(--legacy-radius-lg); background: var(--legacy-surface); box-shadow: 0 16px 38px rgba(15,23,42,.18); }
 .legacy-profile-action { display: grid; grid-template-columns: 24px minmax(0,1fr); min-height: 44px; align-items: center; gap: 8px; padding: 7px 9px; border: 0; border-radius: 7px; background: transparent; color: var(--legacy-ink); font: inherit; font-size: .78rem; text-align: left; text-decoration: none; cursor: pointer; }
+.legacy-profile-action ::deep .mud-button-label { display: grid; width: 100%; grid-template-columns: 24px minmax(0,1fr); align-items: center; gap: 8px; text-align: left; }
 .legacy-profile-action:hover { background: var(--legacy-surface-muted); }
 .legacy-profile-action:focus-visible { outline: none; box-shadow: var(--legacy-focus-ring); }
 .legacy-profile-menu-divider { height: 1px; margin: 3px; background: var(--legacy-border); }

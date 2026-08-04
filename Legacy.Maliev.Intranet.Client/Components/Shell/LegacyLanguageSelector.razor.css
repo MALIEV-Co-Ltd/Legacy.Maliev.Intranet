@@ -1,24 +1,24 @@
 .legacy-language-selector {
     display: inline-flex;
+    width: 5.5rem;
     min-height: 44px;
     align-items: center;
     color: var(--legacy-muted);
 }
 
-.legacy-language-selector select {
-    min-height: 44px;
-    padding: 0 28px 0 8px;
-    border: 1px solid var(--legacy-border);
-    border-radius: var(--legacy-radius-md);
-    background: var(--legacy-surface);
-    color: var(--legacy-ink);
-    font: inherit;
-    font-size: .78rem;
-    font-weight: 400;
-    cursor: pointer;
+.legacy-language-selector ::deep .mud-input-control,
+.legacy-language-selector ::deep .mud-input {
+    width: 100%;
+    margin: 0;
 }
 
-.legacy-language-selector select:focus-visible {
-    outline: 3px solid color-mix(in srgb, var(--legacy-primary) 35%, transparent);
-    outline-offset: 2px;
+.legacy-language-selector ::deep .mud-input {
+    min-height: 44px;
+    color: var(--legacy-ink);
+    font-size: .78rem;
+    font-weight: 400;
+}
+
+.legacy-language-selector ::deep .mud-input-slot {
+    padding-inline-start: 8px;
 }
