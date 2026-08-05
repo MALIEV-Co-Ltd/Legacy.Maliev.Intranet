@@ -42,9 +42,9 @@
     --maliev-info:        #0072f5;
     --maliev-info-bg:     #ebf5ff;
     --maliev-info-fg:     #0068d6;
-    --maliev-action-primary:       #0a72ef;
-    --maliev-action-primary-hover: #075fc9;
-    --maliev-action-primary-text:  #ffffff;
+    --maliev-action-primary:       var(--shadcn-primary);
+    --maliev-action-primary-hover: color-mix(in srgb, var(--shadcn-primary) 88%, var(--shadcn-background));
+    --maliev-action-primary-text:  var(--shadcn-primary-foreground);
 
     /* Shadows */
     --maliev-shadow-ring:      rgba(0,0,0,0.08) 0 0 0 1px;
@@ -53,12 +53,12 @@
     --maliev-shadow-md:        rgba(0,0,0,0.08) 0 0 0 1px, rgba(0,0,0,0.04) 0 2px 6px;
     --maliev-shadow-lg:        rgba(0,0,0,0.10) 0 0 0 1px, rgba(0,0,0,0.08) 0 16px 40px -24px;
     --maliev-shadow-card:      rgba(0,0,0,0.08) 0 0 0 1px, rgba(0,0,0,0.04) 0 2px 2px, rgba(0,0,0,0.04) 0 8px 8px -8px, #fafafa 0 0 0 1px inset;
-    --maliev-focus-color:      hsla(212, 100%, 48%, 1);
-    --maliev-focus-ring:       0 0 0 2px #ffffff, 0 0 0 4px var(--maliev-focus-color);
-    --maliev-reconnect-button-bg: #0a72ef;
-    --maliev-reconnect-button-hover: #075fc9;
-    --maliev-reconnect-button-text: #ffffff;
-    --maliev-reconnect-button-focus: rgba(10, 114, 239, 0.24);
+    --maliev-focus-color:      var(--shadcn-ring);
+    --maliev-focus-ring:       0 0 0 2px var(--shadcn-background), 0 0 0 4px var(--shadcn-ring);
+    --maliev-reconnect-button-bg: var(--shadcn-primary);
+    --maliev-reconnect-button-hover: color-mix(in srgb, var(--shadcn-primary) 88%, var(--shadcn-background));
+    --maliev-reconnect-button-text: var(--shadcn-primary-foreground);
+    --maliev-reconnect-button-focus: color-mix(in srgb, var(--shadcn-ring) 24%, transparent);
 
     /* Radius scale */
     --maliev-radius-xs:   3px;
@@ -111,9 +111,9 @@
     --mud-palette-text-tertiary: #666666;
 
     /* Shared operations shell */
-    --legacy-primary: #0a72ef;
-    --legacy-primary-hover: #075fc9;
-    --legacy-primary-soft: #eaf3ff;
+    --legacy-primary: var(--shadcn-primary);
+    --legacy-primary-hover: color-mix(in srgb, var(--shadcn-primary) 88%, var(--shadcn-background));
+    --legacy-primary-soft: var(--shadcn-accent);
     --legacy-ink: #14213a;
     --legacy-ink-secondary: #34415a;
     --legacy-muted: #68758b;
@@ -128,33 +128,51 @@
     --legacy-utility-height: 68px;
     --legacy-radius-md: 8px;
     --legacy-radius-lg: 10px;
-    --legacy-focus-ring: 0 0 0 2px var(--legacy-surface), 0 0 0 4px var(--legacy-primary);
+    --legacy-focus-ring: 0 0 0 2px var(--shadcn-background), 0 0 0 4px var(--shadcn-ring);
 
-    /* Shadcn-inspired semantic layer.  The structure follows the open,
-       composable token model while retaining MALIEV blue for primary actions. */
-    --shadcn-background: var(--maliev-bg);
-    --shadcn-foreground: var(--maliev-ink);
-    --shadcn-card: var(--maliev-panel);
-    --shadcn-card-foreground: var(--maliev-ink);
-    --shadcn-popover: var(--maliev-panel);
-    --shadcn-popover-foreground: var(--maliev-ink);
-    --shadcn-primary: var(--legacy-primary);
-    --shadcn-primary-foreground: #ffffff;
-    --shadcn-secondary: var(--maliev-panel-3);
-    --shadcn-secondary-foreground: var(--maliev-ink);
-    --shadcn-muted: var(--maliev-panel-3);
-    --shadcn-muted-foreground: var(--maliev-muted);
-    --shadcn-accent: var(--maliev-accent-soft);
-    --shadcn-accent-foreground: var(--maliev-ink);
-    --shadcn-destructive: var(--maliev-danger);
-    --shadcn-destructive-foreground: #ffffff;
-    --shadcn-border: var(--maliev-border);
-    --shadcn-input: var(--maliev-border);
-    --shadcn-ring: var(--maliev-focus-color);
-    --shadcn-radius: 0.5rem;
-    --shadcn-shadow-xs: 0 1px 2px rgb(15 23 42 / 0.05);
-    --shadcn-shadow-sm: 0 1px 2px rgb(15 23 42 / 0.06), 0 0 0 1px rgb(15 23 42 / 0.04);
-    --shadcn-shadow-md: 0 8px 24px rgb(15 23 42 / 0.08), 0 0 0 1px rgb(15 23 42 / 0.05);
+    /* Shadcn neutral semantic layer.  These are the official neutral theme
+       primitives; MudBlazor renders them without changing its component API. */
+    --shadcn-background: oklch(1 0 0);
+    --shadcn-foreground: oklch(0.145 0 0);
+    --shadcn-card: oklch(1 0 0);
+    --shadcn-card-foreground: oklch(0.145 0 0);
+    --shadcn-popover: oklch(1 0 0);
+    --shadcn-popover-foreground: oklch(0.145 0 0);
+    --shadcn-primary: oklch(0.205 0 0);
+    --shadcn-primary-foreground: oklch(0.985 0 0);
+    --shadcn-secondary: oklch(0.97 0 0);
+    --shadcn-secondary-foreground: oklch(0.205 0 0);
+    --shadcn-muted: oklch(0.97 0 0);
+    --shadcn-muted-foreground: oklch(0.556 0 0);
+    --shadcn-accent: oklch(0.97 0 0);
+    --shadcn-accent-foreground: oklch(0.205 0 0);
+    --shadcn-destructive: oklch(0.577 0.245 27.325);
+    --shadcn-destructive-foreground: oklch(0.985 0 0);
+    --shadcn-border: oklch(0.922 0 0);
+    --shadcn-input: oklch(0.922 0 0);
+    --shadcn-ring: oklch(0.708 0 0);
+    --shadcn-chart-1: oklch(0.646 0.222 41.116);
+    --shadcn-chart-2: oklch(0.6 0.118 184.704);
+    --shadcn-chart-3: oklch(0.398 0.07 227.392);
+    --shadcn-chart-4: oklch(0.828 0.189 84.429);
+    --shadcn-chart-5: oklch(0.769 0.188 70.08);
+    --shadcn-sidebar: oklch(0.985 0 0);
+    --shadcn-sidebar-foreground: oklch(0.145 0 0);
+    --shadcn-sidebar-primary: oklch(0.205 0 0);
+    --shadcn-sidebar-primary-foreground: oklch(0.985 0 0);
+    --shadcn-sidebar-accent: oklch(0.97 0 0);
+    --shadcn-sidebar-accent-foreground: oklch(0.205 0 0);
+    --shadcn-sidebar-border: oklch(0.922 0 0);
+    --shadcn-sidebar-ring: oklch(0.708 0 0);
+    --shadcn-radius: 0.625rem;
+    --shadcn-radius-sm: calc(var(--shadcn-radius) * 0.6);
+    --shadcn-radius-md: calc(var(--shadcn-radius) * 0.8);
+    --shadcn-radius-lg: var(--shadcn-radius);
+    --shadcn-radius-xl: calc(var(--shadcn-radius) * 1.4);
+    --shadcn-radius-2xl: calc(var(--shadcn-radius) * 1.8);
+    --shadcn-shadow-xs: 0 1px 2px rgb(0 0 0 / 0.05);
+    --shadcn-shadow-sm: 0 1px 2px rgb(0 0 0 / 0.06), 0 0 0 1px rgb(0 0 0 / 0.04);
+    --shadcn-shadow-md: 0 8px 24px rgb(0 0 0 / 0.08), 0 0 0 1px rgb(0 0 0 / 0.05);
 }
 
 /* ── Dark mode ────────────────────────────────────────────────── */
@@ -185,9 +203,9 @@
     --maliev-info:        #60a5fa;
     --maliev-info-bg:     #0b2f62;
     --maliev-info-fg:     #bfdbfe;
-    --maliev-action-primary:       #0a72ef;
-    --maliev-action-primary-hover: #2686ff;
-    --maliev-action-primary-text:  #ffffff;
+    --maliev-action-primary:       var(--shadcn-primary);
+    --maliev-action-primary-hover: color-mix(in srgb, var(--shadcn-primary) 88%, var(--shadcn-background));
+    --maliev-action-primary-text:  var(--shadcn-primary-foreground);
 
     --maliev-shadow-ring:      rgba(255,255,255,0.12) 0 0 0 1px;
     --maliev-shadow-ring-soft: rgba(255,255,255,0.08) 0 0 0 1px;
@@ -195,11 +213,11 @@
     --maliev-shadow-md:        rgba(255,255,255,0.12) 0 0 0 1px, rgba(0,0,0,0.32) 0 2px 8px;
     --maliev-shadow-lg:        rgba(255,255,255,0.12) 0 0 0 1px, rgba(0,0,0,0.46) 0 16px 40px -24px;
     --maliev-shadow-card:      rgba(255,255,255,0.12) 0 0 0 1px, rgba(0,0,0,0.36) 0 2px 2px, rgba(0,0,0,0.36) 0 8px 8px -8px, rgba(255,255,255,0.06) 0 0 0 1px inset;
-    --maliev-focus-ring:       0 0 0 2px #0a0a0a, 0 0 0 4px var(--maliev-focus-color);
-    --maliev-reconnect-button-bg: #0a72ef;
-    --maliev-reconnect-button-hover: #2686ff;
-    --maliev-reconnect-button-text: #ffffff;
-    --maliev-reconnect-button-focus: rgba(10, 114, 239, 0.32);
+    --maliev-focus-ring:       0 0 0 2px var(--shadcn-background), 0 0 0 4px var(--shadcn-ring);
+    --maliev-reconnect-button-bg: var(--shadcn-primary);
+    --maliev-reconnect-button-hover: color-mix(in srgb, var(--shadcn-primary) 88%, var(--shadcn-background));
+    --maliev-reconnect-button-text: var(--shadcn-primary-foreground);
+    --maliev-reconnect-button-focus: color-mix(in srgb, var(--shadcn-ring) 32%, transparent);
 
     --maliev-viewer-bg:    linear-gradient(180deg, #111111 0%, #171717 100%);
     --maliev-scroll:       #404040;
@@ -207,9 +225,9 @@
 
     --mud-palette-text-tertiary: #808080;
 
-    --legacy-primary: #6ea8fe;
-    --legacy-primary-hover: #89b9ff;
-    --legacy-primary-soft: #172b49;
+    --legacy-primary: var(--shadcn-primary);
+    --legacy-primary-hover: color-mix(in srgb, var(--shadcn-primary) 88%, var(--shadcn-background));
+    --legacy-primary-soft: var(--shadcn-accent);
     --legacy-ink: #e6edf3;
     --legacy-ink-secondary: #c6d0dd;
     --legacy-muted: #9aa7b7;
@@ -221,8 +239,43 @@
     --legacy-warn-border: #6a4a1a;
     --legacy-warn-fg: #f0c274;
 
-    --shadcn-primary-foreground: #18181b;
-    --shadcn-destructive-foreground: #ffffff;
+    --shadcn-background: oklch(0.145 0 0);
+    --shadcn-foreground: oklch(0.985 0 0);
+    --shadcn-card: oklch(0.205 0 0);
+    --shadcn-card-foreground: oklch(0.985 0 0);
+    --shadcn-popover: oklch(0.205 0 0);
+    --shadcn-popover-foreground: oklch(0.985 0 0);
+    --shadcn-primary: oklch(0.922 0 0);
+    --shadcn-primary-foreground: oklch(0.205 0 0);
+    --shadcn-secondary: oklch(0.269 0 0);
+    --shadcn-secondary-foreground: oklch(0.985 0 0);
+    --shadcn-muted: oklch(0.269 0 0);
+    --shadcn-muted-foreground: oklch(0.708 0 0);
+    --shadcn-accent: oklch(0.269 0 0);
+    --shadcn-accent-foreground: oklch(0.985 0 0);
+    --shadcn-destructive: oklch(0.704 0.191 22.216);
+    --shadcn-destructive-foreground: oklch(0.985 0 0);
+    --shadcn-border: oklch(1 0 0 / 10%);
+    --shadcn-input: oklch(1 0 0 / 15%);
+    --shadcn-ring: oklch(0.556 0 0);
+    --shadcn-chart-1: oklch(0.488 0.243 264.376);
+    --shadcn-chart-2: oklch(0.696 0.17 162.48);
+    --shadcn-chart-3: oklch(0.769 0.188 70.08);
+    --shadcn-chart-4: oklch(0.627 0.265 303.9);
+    --shadcn-chart-5: oklch(0.645 0.246 16.439);
+    --shadcn-sidebar: oklch(0.205 0 0);
+    --shadcn-sidebar-foreground: oklch(0.985 0 0);
+    --shadcn-sidebar-primary: oklch(0.488 0.243 264.376);
+    --shadcn-sidebar-primary-foreground: oklch(0.985 0 0);
+    --shadcn-sidebar-accent: oklch(0.269 0 0);
+    --shadcn-sidebar-accent-foreground: oklch(0.985 0 0);
+    --shadcn-sidebar-border: oklch(1 0 0 / 10%);
+    --shadcn-sidebar-ring: oklch(0.556 0 0);
+    --shadcn-radius-sm: calc(var(--shadcn-radius) * 0.6);
+    --shadcn-radius-md: calc(var(--shadcn-radius) * 0.8);
+    --shadcn-radius-lg: var(--shadcn-radius);
+    --shadcn-radius-xl: calc(var(--shadcn-radius) * 1.4);
+    --shadcn-radius-2xl: calc(var(--shadcn-radius) * 1.8);
     --shadcn-shadow-xs: 0 1px 2px rgb(0 0 0 / 0.24);
     --shadcn-shadow-sm: 0 1px 2px rgb(0 0 0 / 0.28), 0 0 0 1px rgb(255 255 255 / 0.06);
     --shadcn-shadow-md: 0 8px 24px rgb(0 0 0 / 0.36), 0 0 0 1px rgb(255 255 255 / 0.08);

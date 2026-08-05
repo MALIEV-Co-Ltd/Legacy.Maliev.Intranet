@@ -63,7 +63,7 @@
     text-decoration: none;
 }
 .legacy-rail-link:hover { background: var(--legacy-surface-muted); color: var(--legacy-ink); }
-.legacy-rail-link.active { background: var(--legacy-primary); color: #fff; box-shadow: 0 7px 18px rgba(10,114,239,.18); }
+.legacy-rail-link.active { background: var(--shadcn-sidebar-primary); color: var(--shadcn-sidebar-primary-foreground); box-shadow: var(--shadcn-shadow-sm); }
 .legacy-rail-link:focus-visible { outline: none; box-shadow: var(--legacy-focus-ring); }
 .legacy-rail-link ::deep .mud-icon-root { width: 20px; height: 20px; color: currentColor; }
 

@@ -1,8 +1,8 @@
 /*
- * MALIEV shadcn-inspired component layer
+ * MALIEV shadcn semantic component layer
  *
  * shadcn/ui is an open, composable design approach rather than a runtime
- * widget dependency. This layer translates that approach to the existing
+ * widget dependency. This layer translates the neutral shadcn primitives to the existing
  * MudBlazor controls: semantic tokens, quiet borders, restrained elevation,
  * predictable focus rings, and small composable variants. It is deliberately
  * loaded last so every feature page receives the same visual contract without
@@ -27,6 +27,10 @@ body,
 .mud-typography,
 .mud-button-root,
 .mud-input-slot,
+input.mud-input-slot,
+textarea.mud-input-slot,
+.mud-select-input,
+.mud-autocomplete-input,
 .mud-input-label,
 .mud-input-helper-text,
 .mud-menu-item,
@@ -35,6 +39,7 @@ body,
 .mud-data-grid {
     font-family: var(--maliev-font-sans);
     font-weight: var(--maliev-font-weight-body);
+    letter-spacing: 0;
 }
 
 :where(h1, h2, h3, h4, h5, h6,
@@ -77,14 +82,14 @@ body,
 /* ── Buttons: shadcn-style variants ──────────────────────────── */
 
 .mud-button-root {
-    min-height: 2.5rem;
+    min-height: 2.25rem;
     border: 1px solid transparent;
-    border-radius: var(--shadcn-radius);
-    padding: 0.5rem 0.875rem;
+    border-radius: var(--shadcn-radius-md);
+    padding: 0.5rem 0.75rem;
     background: transparent;
     color: var(--shadcn-foreground);
     box-shadow: none !important;
-    font-size: var(--maliev-font-base);
+    font-size: 0.875rem;
     font-weight: var(--maliev-font-weight-body);
     letter-spacing: 0;
     line-height: 1.25;
@@ -104,7 +109,7 @@ body,
 .mud-button-root.mud-button-filled-primary:hover:not(:disabled),
 .mud-button-root.mud-button-filled-success:hover:not(:disabled),
 .mud-button-root.mud-button-filled-info:hover:not(:disabled) {
-    background: var(--legacy-primary-hover) !important;
+    background: color-mix(in srgb, var(--shadcn-primary) 90%, var(--shadcn-background)) !important;
 }
 
 .mud-button-root.mud-button-filled-secondary,
@@ -122,7 +127,7 @@ body,
 }
 
 .mud-button-root.mud-button-outlined {
-    border-color: var(--shadcn-border) !important;
+    border-color: var(--shadcn-input) !important;
     background: var(--shadcn-background) !important;
     color: var(--shadcn-foreground) !important;
 }
@@ -144,10 +149,10 @@ body,
 }
 
 .mud-icon-button-root {
-    min-width: 2.5rem;
-    min-height: 2.5rem;
+    min-width: 2.25rem;
+    min-height: 2.25rem;
     border: 1px solid transparent;
-    border-radius: var(--shadcn-radius);
+    border-radius: var(--shadcn-radius-md);
     color: var(--shadcn-muted-foreground);
     box-shadow: none !important;
 }
@@ -169,11 +174,11 @@ body,
 }
 
 .legacy-page-container .mud-checkbox > :where(.mud-icon-button-root, .mud-button-root.mud-icon-button) {
-    flex: 0 0 2.75rem;
-    width: 2.75rem;
-    min-width: 2.75rem;
-    height: 2.75rem;
-    min-height: 2.75rem;
+    flex: 0 0 2.25rem;
+    width: 2.25rem;
+    min-width: 2.25rem;
+    height: 2.25rem;
+    min-height: 2.25rem;
     padding: 0;
 }
 
@@ -196,15 +201,15 @@ body,
 }
 
 .mud-input.mud-input-outlined {
-    min-height: 2.5rem;
-    border-radius: var(--shadcn-radius);
+    min-height: 2.25rem;
+    border-radius: var(--shadcn-radius-md);
     background: var(--shadcn-background);
     box-shadow: none;
 }
 
 .mud-input.mud-input-outlined .mud-input-outlined-border {
     border: 1px solid var(--shadcn-input) !important;
-    border-radius: var(--shadcn-radius) !important;
+    border-radius: var(--shadcn-radius-md) !important;
     box-shadow: none !important;
 }
 
@@ -213,10 +218,10 @@ body,
    render the control with the same quiet border and focus treatment as the
    shadcn input primitive. */
 .mud-input.mud-input-underline {
-    min-height: 2.5rem;
+    min-height: 2.25rem;
     padding-inline: 0.75rem;
     border: 1px solid var(--shadcn-input) !important;
-    border-radius: var(--shadcn-radius);
+    border-radius: var(--shadcn-radius-md);
     background: var(--shadcn-background);
     box-shadow: none;
 }
@@ -236,8 +241,8 @@ body,
 }
 
 .mud-input.mud-input-underline .mud-input-slot {
-    min-height: 2.5rem;
-    padding-block: 0.65rem;
+    min-height: 2.25rem;
+    padding-block: 0.5rem;
 }
 
 .mud-input.mud-input-outlined:hover .mud-input-outlined-border {
@@ -251,12 +256,22 @@ body,
 }
 
 .mud-input-slot,
+input.mud-input-slot,
+textarea.mud-input-slot,
 .mud-input-label,
 .mud-input-helper-text,
 .mud-input-adornment,
 .mud-select-input,
 .mud-autocomplete-input {
     color: var(--shadcn-foreground);
+    font-family: var(--maliev-font-sans) !important;
+    letter-spacing: 0;
+}
+
+input.mud-input-slot,
+textarea.mud-input-slot {
+    box-sizing: border-box;
+    font-size: 0.875rem;
 }
 
 .mud-input-slot::placeholder {
@@ -302,7 +317,7 @@ textarea.mud-input-slot {
 .mud-autocomplete-list,
 .mud-select-input-control {
     border: 1px solid var(--shadcn-border);
-    border-radius: var(--shadcn-radius);
+    border-radius: var(--shadcn-radius-md);
     background: var(--shadcn-popover);
     color: var(--shadcn-popover-foreground);
     box-shadow: var(--shadcn-shadow-md);
@@ -317,7 +332,7 @@ textarea.mud-input-slot {
 .mud-list-item,
 .mud-menu-item {
     min-height: 2.25rem;
-    border-radius: calc(var(--shadcn-radius) - 2px);
+    border-radius: var(--shadcn-radius-sm);
     color: var(--shadcn-foreground);
     font-size: var(--maliev-font-base);
 }
@@ -332,7 +347,7 @@ textarea.mud-input-slot {
 
 .mud-dialog {
     border: 1px solid var(--shadcn-border);
-    border-radius: calc(var(--shadcn-radius) + 2px);
+    border-radius: var(--shadcn-radius-lg);
     background: var(--shadcn-card);
     box-shadow: var(--shadcn-shadow-md);
 }
@@ -360,7 +375,7 @@ textarea.mud-input-slot {
 .mud-data-grid,
 .mud-table-root {
     border: 1px solid var(--shadcn-border) !important;
-    border-radius: var(--shadcn-radius) !important;
+    border-radius: var(--shadcn-radius-lg) !important;
     background: var(--shadcn-card) !important;
     color: var(--shadcn-card-foreground);
     box-shadow: none !important;
@@ -423,7 +438,7 @@ textarea.mud-input-slot {
 
 .mud-alert {
     border: 1px solid var(--shadcn-border);
-    border-radius: var(--shadcn-radius);
+    border-radius: var(--shadcn-radius-md);
     background: var(--shadcn-muted);
     color: var(--shadcn-foreground);
     box-shadow: none !important;
@@ -463,7 +478,7 @@ textarea.mud-input-slot {
 
 .mud-snackbar {
     border: 1px solid var(--shadcn-border);
-    border-radius: var(--shadcn-radius);
+    border-radius: var(--shadcn-radius-lg);
     background: var(--shadcn-popover);
     color: var(--shadcn-popover-foreground);
     box-shadow: var(--shadcn-shadow-md);
@@ -480,13 +495,13 @@ textarea.mud-input-slot {
 }
 
 .mud-skeleton {
-    border-radius: calc(var(--shadcn-radius) - 2px);
+    border-radius: var(--shadcn-radius-sm);
     background: var(--shadcn-muted);
 }
 
 .mud-tooltip {
     border: 1px solid var(--shadcn-border);
-    border-radius: calc(var(--shadcn-radius) - 2px);
+    border-radius: var(--shadcn-radius-sm);
     background: var(--shadcn-foreground);
     color: var(--shadcn-background);
     box-shadow: var(--shadcn-shadow-xs);
@@ -495,10 +510,63 @@ textarea.mud-input-slot {
 /* ── Navigation and shell ────────────────────────────────────── */
 
 .legacy-workspace-shell .legacy-topbar {
+    min-height: 3.5rem;
+    padding: 0.5rem 1rem 0.5rem 0;
     border-bottom: 1px solid var(--shadcn-border);
     background: color-mix(in srgb, var(--shadcn-background) 94%, transparent);
     box-shadow: none;
     backdrop-filter: blur(10px);
+}
+
+.legacy-workspace-shell .legacy-topbar-logo {
+    margin-block: -0.5rem;
+}
+
+.legacy-workspace-shell .legacy-global-search,
+.legacy-workspace-shell .legacy-global-search .mud-input-control,
+.legacy-workspace-shell .legacy-language-selector,
+.legacy-workspace-shell .legacy-language-selector .mud-input-control {
+    margin: 0 !important;
+}
+
+.legacy-workspace-shell .legacy-global-search .mud-input-control,
+.legacy-workspace-shell .legacy-language-selector .mud-input-control {
+    height: 2.25rem;
+}
+
+.legacy-workspace-shell .legacy-global-search .mud-input,
+.legacy-workspace-shell .legacy-language-selector .mud-input {
+    min-height: 2.25rem;
+    border-radius: var(--shadcn-radius-md);
+}
+
+.legacy-workspace-shell .legacy-global-search input.mud-input-slot,
+.legacy-workspace-shell .legacy-language-selector input.mud-input-slot {
+    min-height: 2.25rem;
+    padding-block: 0.5rem;
+    font-family: var(--maliev-font-sans) !important;
+    font-size: 0.875rem;
+    letter-spacing: 0;
+}
+
+.legacy-workspace-shell .legacy-mobile-menu-button,
+.legacy-workspace-shell .legacy-theme-toggle {
+    min-width: 2.25rem;
+    min-height: 2.25rem;
+    width: 2.25rem;
+    height: 2.25rem;
+    padding: 0;
+    border-radius: var(--shadcn-radius-md);
+}
+
+.legacy-workspace-shell .legacy-profile {
+    min-height: 2.25rem;
+    padding: 0.25rem 0.5rem 0.25rem 0.25rem;
+}
+
+.legacy-workspace-shell .legacy-session-avatar {
+    width: 1.75rem;
+    height: 1.75rem;
 }
 
 .legacy-navigation-rail,
@@ -518,8 +586,9 @@ textarea.mud-input-slot {
 
 .legacy-navigation-rail .legacy-rail-link {
     border: 1px solid transparent;
-    border-radius: var(--shadcn-radius);
-    color: var(--shadcn-muted-foreground);
+    min-height: 2.25rem;
+    border-radius: var(--shadcn-radius-md);
+    color: var(--shadcn-sidebar-foreground);
     font-weight: var(--maliev-font-weight-body);
     transition: background-color 120ms ease, border-color 120ms ease, color 120ms ease;
 }
@@ -532,9 +601,9 @@ textarea.mud-input-slot {
 }
 
 .legacy-navigation-rail .legacy-rail-link.active {
-    border-color: color-mix(in srgb, var(--shadcn-primary) 28%, var(--shadcn-border));
-    background: color-mix(in srgb, var(--shadcn-primary) 10%, var(--shadcn-background));
-    color: var(--shadcn-primary);
+    border-color: transparent;
+    background: var(--shadcn-sidebar-primary);
+    color: var(--shadcn-sidebar-primary-foreground);
     box-shadow: none;
     font-weight: var(--maliev-font-weight-heading);
 }
@@ -543,7 +612,7 @@ textarea.mud-input-slot {
 .legacy-workspace-shell .legacy-quick-action,
 .legacy-workspace-shell .legacy-global-search {
     border-color: var(--shadcn-border);
-    border-radius: var(--shadcn-radius);
+    border-radius: var(--shadcn-radius-md);
     background: var(--shadcn-background);
     box-shadow: none;
 }
@@ -564,14 +633,14 @@ textarea.mud-input-slot {
 .legacy-workspace-shell .legacy-profile-popover,
 .legacy-workspace-shell .legacy-search-results {
     border: 1px solid var(--shadcn-border);
-    border-radius: var(--shadcn-radius);
+    border-radius: var(--shadcn-radius-lg);
     background: var(--shadcn-popover);
     box-shadow: var(--shadcn-shadow-md);
 }
 
 .legacy-workspace-shell .legacy-profile-action,
 .legacy-workspace-shell .legacy-search-result {
-    border-radius: calc(var(--shadcn-radius) - 2px);
+    border-radius: var(--shadcn-radius-sm);
 }
 
 .legacy-workspace-shell .legacy-profile-action:hover,
@@ -592,7 +661,7 @@ textarea.mud-input-slot {
 .mlv-segmented,
 .mlv-table {
     border-color: var(--shadcn-border) !important;
-    border-radius: var(--shadcn-radius) !important;
+    border-radius: var(--shadcn-radius-lg) !important;
     box-shadow: none !important;
 }
 
@@ -617,13 +686,13 @@ textarea.mud-input-slot {
 
 .legacy-page-container .mud-tabs-toolbar {
     border: 1px solid var(--shadcn-border);
-    border-radius: var(--shadcn-radius);
+    border-radius: var(--shadcn-radius-lg);
     background: var(--shadcn-muted);
     box-shadow: none;
 }
 
 .legacy-page-container .mud-tab {
-    border-radius: calc(var(--shadcn-radius) - 2px);
+    border-radius: var(--shadcn-radius-sm);
     color: var(--shadcn-muted-foreground);
     font-weight: var(--maliev-font-weight-body);
 }
@@ -646,11 +715,37 @@ textarea.mud-input-slot {
     .legacy-page-container .mud-card,
     .legacy-page-container .dashboard-panel,
     .legacy-page-container .dashboard-metric-card {
-        border-radius: calc(var(--shadcn-radius) - 2px) !important;
+        border-radius: var(--shadcn-radius-md) !important;
     }
 
     .legacy-page-container .mud-button-root {
         min-height: 2.75rem;
+    }
+}
+
+@media (max-width: 1180px) {
+    .legacy-workspace-shell .legacy-topbar {
+        padding-inline: 0.75rem;
+    }
+
+    .legacy-workspace-shell .legacy-topbar-logo {
+        margin-block: 0;
+    }
+}
+
+/* The shadcn primitives use a compact desktop density. Restore the 44px
+   touch target contract only for coarse pointers. */
+@media (pointer: coarse) {
+    .mud-button-root,
+    .mud-icon-button-root,
+    .legacy-navigation-rail .legacy-rail-link,
+    .legacy-page-container .mud-checkbox > :where(.mud-icon-button-root, .mud-button-root.mud-icon-button) {
+        min-height: 2.75rem;
+    }
+
+    .mud-icon-button-root,
+    .legacy-page-container .mud-checkbox > :where(.mud-icon-button-root, .mud-button-root.mud-icon-button) {
+        min-width: 2.75rem;
     }
 }
 
