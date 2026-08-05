@@ -84,6 +84,22 @@ public sealed class PresentationBoundaryTests
     }
 
     [Fact]
+    public async Task GetForPresentationAsync_HonorsCallerCancellationBeforeTerminalTimeout()
+    {
+        using var client = new HttpClient(new NeverCompletesHandler())
+        {
+            BaseAddress = new Uri("https://localhost"),
+        };
+        using var cancellation = new CancellationTokenSource(TimeSpan.FromMilliseconds(10));
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
+            client.GetForPresentationAsync(
+                "/bff/superseded",
+                cancellation.Token,
+                TimeSpan.FromSeconds(5)));
+    }
+
+    [Fact]
     public void MigratedFeatureReads_AreBoundedAndDetailFailuresOfferRecovery()
     {
         var root = FindRepositoryRoot();

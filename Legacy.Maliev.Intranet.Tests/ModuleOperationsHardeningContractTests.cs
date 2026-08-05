@@ -95,7 +95,15 @@ public sealed class ModuleOperationsHardeningContractTests
         var source = Read(FindRoot(), project, "Pages", file);
         Assert.Contains("operations-page-header", source, StringComparison.Ordinal);
         Assert.Contains("HtmlTag=\"h2\"", source, StringComparison.Ordinal);
-        Assert.Contains("aria-labelledby=", source, StringComparison.Ordinal);
+        if (file == "OrderDetail.razor")
+        {
+            Assert.Contains("<MudExpansionPanels", source, StringComparison.Ordinal);
+            Assert.Contains("Text=\"@Text[", source, StringComparison.Ordinal);
+        }
+        else
+        {
+            Assert.Contains("aria-labelledby=", source, StringComparison.Ordinal);
+        }
     }
 
     [Fact]

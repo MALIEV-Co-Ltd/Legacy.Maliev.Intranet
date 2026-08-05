@@ -9,45 +9,33 @@
         <img src="images/MALIEV_BLACK.svg" alt="MALIEV" />
     </a>
 
-    <button type="button"
-            class="legacy-mobile-menu-button"
-            @ref="_navigationToggle"
-            aria-label="@Text["Open navigation"]"
-            aria-expanded="@NavigationOpen"
-            aria-controls="legacy-navigation-rail-drawer"
-            @onclick="OnToggleNavigation">
-        <MudIcon Icon="@Icons.Material.Filled.Menu" Size="Size.Small" />
-    </button>
+    <MudIconButton Class="legacy-mobile-menu-button" ButtonType="ButtonType.Button"
+                   @ref="_navigationToggle" Icon="@Icons.Material.Filled.Menu" Size="Size.Small"
+                   aria-label="@Text["Open navigation"]" aria-expanded="@NavigationOpen"
+                   aria-controls="legacy-navigation-rail-drawer" OnClick="OnToggleNavigation" />
 
     <LegacyGlobalSearch Session="Session" />
     <LegacyQuickActions Session="Session" />
     <div class="legacy-topbar-utilities">
         <LegacyLanguageSelector />
 
-        <button type="button"
-                class="legacy-theme-toggle"
-                aria-label="@ThemeLabel"
-                title="@ThemeLabel"
-                @onclick="ToggleThemeAsync">
-            <MudIcon Icon="@(ThemeService.IsDarkMode ? Icons.Material.Outlined.LightMode : Icons.Material.Outlined.DarkMode)" Size="Size.Small" />
-        </button>
+        <MudIconButton Class="legacy-theme-toggle" ButtonType="ButtonType.Button"
+                       Icon="@(ThemeService.IsDarkMode ? Icons.Material.Outlined.LightMode : Icons.Material.Outlined.DarkMode)"
+                       Size="Size.Small" aria-label="@ThemeLabel" title="@ThemeLabel" OnClick="ToggleThemeAsync" />
 
         <AuthorizeView>
             <Authorized Context="auth">
                 <div class="legacy-profile-menu">
-                <button type="button"
-                        class="legacy-profile"
-                        aria-haspopup="menu"
-                        aria-expanded="@_profileMenuOpen"
-                        aria-label="@Text["Employee menu"]"
-                        @onclick="ToggleProfileMenuAsync">
+                <MudButton ButtonType="ButtonType.Button" Class="legacy-profile" Variant="Variant.Text"
+                           aria-haspopup="menu" aria-expanded="@_profileMenuOpen"
+                           aria-label="@Text["Employee menu"]" OnClick="ToggleProfileMenuAsync">
                     <span class="legacy-session-avatar" aria-hidden="true">@GetInitials(auth.User.Identity?.Name)</span>
                     <span class="legacy-session-copy">
                         <strong>@(Session?.DisplayName ?? auth.User.Identity?.Name ?? Text["Employee"])</strong>
                         <small>@Text["Employee workspace"]</small>
                     </span>
                     <MudIcon Icon="@Icons.Material.Filled.ExpandMore" Size="Size.Small" Class="legacy-profile-chevron" />
-                </button>
+                </MudButton>
 
                 @if (_profileMenuOpen)
                 {
@@ -57,10 +45,11 @@
                             <span>@Text["My profile"]</span>
                         </a>
                         <div class="legacy-profile-menu-divider"></div>
-                        <button type="button" class="legacy-profile-action" role="menuitem" @onclick="SignOutFromProfileAsync">
+                        <MudButton ButtonType="ButtonType.Button" Class="legacy-profile-action" Variant="Variant.Text"
+                                   role="menuitem" OnClick="SignOutFromProfileAsync">
                             <MudIcon Icon="@Icons.Material.Outlined.Logout" Size="Size.Small" />
                             <span>@Text["Sign out"]</span>
-                        </button>
+                        </MudButton>
                     </div>
                 }
                 </div>
@@ -86,7 +75,7 @@
 
     private bool _profileMenuOpen;
     private bool _wasNavigationOpen;
-    private ElementReference _navigationToggle;
+    private MudIconButton? _navigationToggle;
 
     protected override void OnInitialized() => ThemeService.Changed += OnThemeChanged;
 
@@ -94,7 +83,10 @@
     {
         if (!firstRender && _wasNavigationOpen && !NavigationOpen)
         {
-            await _navigationToggle.FocusAsync();
+            if (_navigationToggle is not null)
+            {
+                await _navigationToggle.FocusAsync();
+            }
         }
 
         _wasNavigationOpen = NavigationOpen;

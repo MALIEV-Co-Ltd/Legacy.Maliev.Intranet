@@ -1,5 +1,6 @@
 @page "/Quotations/Index"
 @attribute [Authorize]
+@implements IDisposable
 @inject HttpClient Http
 @inject NavigationManager Navigation
 @inject IStringLocalizer<Index> Text
@@ -47,24 +48,14 @@
             </section>
         }
 
-        <MudPaper Class="pa-4 mb-4">
-            <div class="d-flex flex-wrap gap-3 align-end">
-                <MudTextField T="string" @bind-Value="searchInput" Label="@Text["Search"]" Variant="Variant.Outlined" Immediate="true" />
-                <MudSelect T="QuotationListSort" @bind-Value="sortInput" Label="@Text["Sort"]" Variant="Variant.Outlined">
-                    @foreach (var option in Enum.GetValues<QuotationListSort>())
-                    {
-                        <MudSelectItem T="QuotationListSort" Value="option">@Text[option.ToString()]</MudSelectItem>
-                    }
-                </MudSelect>
-                <MudSelect T="int" @bind-Value="sizeInput" Label="@Text["PerPage"]" Variant="Variant.Outlined">
-                    <MudSelectItem T="int" Value="10">10</MudSelectItem>
-                    <MudSelectItem T="int" Value="25">25</MudSelectItem>
-                    <MudSelectItem T="int" Value="100">100</MudSelectItem>
-                    <MudSelectItem T="int" Value="250">250</MudSelectItem>
-                </MudSelect>
-                <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="ApplyFiltersAsync">@Text["Apply"]</MudButton>
-            </div>
-        </MudPaper>
+        <ListToolbar TSort="QuotationListSort"
+                     Value="@ToolbarValue"
+                     Defaults="@ToolbarDefaults"
+                     SortOptions="@ToolbarSortOptions"
+                     PageSizeOptions="@StandardPageSizes"
+                     SearchLabel="@Text["Search"]"
+                     IsBusy="@loading"
+                     OnRequest="HandleToolbarRequestAsync" />
 
         @if (page.Items.Count == 0)
         {
@@ -126,6 +117,8 @@
     [SupplyParameterFromQuery(Name = "size")] public int Size { get; set; } = 10;
 
     private static readonly QuotationListPage EmptyPage = new([], 1, 0, 0, false, false);
+    private static readonly int[] StandardPageSizes = [10, 25, 50, 100, 250];
+    private readonly LatestRequestGate requestGate = new();
     private QuotationListPage page = EmptyPage;
     private QuotationStats stats = new(0, 0, 0);
     private IReadOnlyDictionary<int, string> employees = new Dictionary<int, string>();
@@ -133,11 +126,13 @@
     private List<ChartSeries<double>> decisionSeries = [];
     private string[] decisionLabels = [];
     private QuotationListSort currentSort = QuotationListSort.QuotationCreatedDate_Descending;
-    private QuotationListSort sortInput;
-    private string? searchInput;
-    private int sizeInput = 10;
     private bool loading;
     private string? error;
+    private ListToolbarState<QuotationListSort> ToolbarValue => new(Search, currentSort, Size);
+    private static ListToolbarState<QuotationListSort> ToolbarDefaults =>
+        new(null, QuotationListSort.QuotationCreatedDate_Descending, 10);
+    private IReadOnlyList<ListToolbarOption<QuotationListSort>> ToolbarSortOptions =>
+        Enum.GetValues<QuotationListSort>().Select(option => new ListToolbarOption<QuotationListSort>(option, Text[option.ToString()])).ToArray();
 
     protected override async Task OnParametersSetAsync()
     {
@@ -146,44 +141,60 @@
         currentSort = Enum.TryParse<QuotationListSort>(SortQuery, true, out var parsed)
             ? parsed
             : QuotationListSort.QuotationCreatedDate_Descending;
-        searchInput = Search;
-        sortInput = currentSort;
-        sizeInput = Size;
         await LoadAsync();
     }
 
     private async Task LoadAsync()
     {
+        using var lease = requestGate.Begin();
         loading = true;
         error = null;
         HttpResponseMessage[]? responses = null;
         try
         {
             responses = await Task.WhenAll(
-                Http.GetForPresentationAsync($"/bff/quotations?sort={currentSort}&search={Uri.EscapeDataString(Search ?? string.Empty)}&index={PageIndex}&size={Size}"),
-                Http.GetForPresentationAsync("/bff/quotations/stats"),
-                Http.GetForPresentationAsync("/bff/catalog/currencies"),
-                Http.GetForPresentationAsync("/bff/employees?sort=EmployeeId_Ascending&index=1&size=100"));
+                Http.GetForPresentationAsync($"/bff/quotations?sort={currentSort}&search={Uri.EscapeDataString(Search ?? string.Empty)}&index={PageIndex}&size={Size}", lease.CancellationToken),
+                Http.GetForPresentationAsync("/bff/quotations/stats", lease.CancellationToken),
+                Http.GetForPresentationAsync("/bff/catalog/currencies", lease.CancellationToken),
+                Http.GetForPresentationAsync("/bff/employees?sort=EmployeeId_Ascending&index=1&size=100", lease.CancellationToken));
+            if (!lease.IsCurrent)
+            {
+                return;
+            }
             if (HandleFailure(responses[0]) || HandleFailure(responses[1]))
             {
                 return;
             }
 
-            page = await responses[0].Content.ReadFromJsonAsync<QuotationListPage>() ?? EmptyPage;
-            stats = await responses[1].Content.ReadFromJsonAsync<QuotationStats>() ?? new(0, 0, 0);
+            var loadedPage = await responses[0].Content.ReadFromJsonAsync<QuotationListPage>(lease.CancellationToken) ?? EmptyPage;
+            var loadedStats = await responses[1].Content.ReadFromJsonAsync<QuotationStats>(lease.CancellationToken) ?? new(0, 0, 0);
+            IReadOnlyDictionary<int, string> loadedCurrencies = currencies;
+            IReadOnlyDictionary<int, string> loadedEmployees = employees;
             if (responses[2].IsSuccessStatusCode)
             {
-                currencies = (await responses[2].Content.ReadFromJsonAsync<List<CatalogCurrency>>() ?? [])
+                loadedCurrencies = (await responses[2].Content.ReadFromJsonAsync<List<CatalogCurrency>>(lease.CancellationToken) ?? [])
                     .ToDictionary(item => item.Id, item => item.ShortName);
             }
             if (responses[3].IsSuccessStatusCode)
             {
-                employees = (await responses[3].Content.ReadFromJsonAsync<EmployeeListPage>() ?? new([], 1, 0, 0, false, false))
+                loadedEmployees = (await responses[3].Content.ReadFromJsonAsync<EmployeeListPage>(lease.CancellationToken) ?? new([], 1, 0, 0, false, false))
                     .Items.ToDictionary(item => item.Id, item => item.FullName);
             }
+            if (!lease.IsCurrent)
+            {
+                return;
+            }
+
+            page = loadedPage;
+            stats = loadedStats;
+            currencies = loadedCurrencies;
+            employees = loadedEmployees;
 
             decisionLabels = [Text["Accepted"], Text["Declined"], Text["Open"]];
             decisionSeries = [new ChartSeries<double> { Name = Text["DecisionSummary"], Data = new double[] { stats.Accepted, stats.Declined, stats.Open } }];
+        }
+        catch (OperationCanceledException) when (!lease.IsCurrent)
+        {
         }
         catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException)
         {
@@ -198,7 +209,10 @@
                     response.Dispose();
                 }
             }
-            loading = false;
+            if (lease.IsCurrent)
+            {
+                loading = false;
+            }
         }
     }
 
@@ -225,14 +239,21 @@
         return true;
     }
 
-    private Task ApplyFiltersAsync() => NavigateAsync(1, searchInput, sortInput, sizeInput);
     private Task PreviousPageAsync() => NavigateAsync(Math.Max(1, PageIndex - 1), Search, currentSort, Size);
     private Task NextPageAsync() => NavigateAsync(PageIndex + 1, Search, currentSort, Size);
-    private Task NavigateAsync(int index, string? search, QuotationListSort sort, int size)
+
+    private Task HandleToolbarRequestAsync(ListToolbarRequest<QuotationListSort> request) =>
+        request.Reason == ListToolbarChangeReason.Refreshed && request.State.Normalize() == ToolbarValue.Normalize()
+            ? LoadAsync()
+            : NavigateAsync(1, request.State.Search, request.State.Sort, request.State.PageSize, replace: true);
+
+    private Task NavigateAsync(int index, string? search, QuotationListSort sort, int size, bool replace = false)
     {
-        Navigation.NavigateTo($"/Quotations/Index?search={Uri.EscapeDataString(search ?? string.Empty)}&sort={sort}&index={index}&size={size}");
+        Navigation.NavigateTo($"/Quotations/Index?search={Uri.EscapeDataString(search ?? string.Empty)}&sort={sort}&index={index}&size={size}", replace: replace);
         return Task.CompletedTask;
     }
+
+    public void Dispose() => requestGate.Dispose();
 
     private RenderFragment CustomerLink(int? customerId) => builder =>
     {

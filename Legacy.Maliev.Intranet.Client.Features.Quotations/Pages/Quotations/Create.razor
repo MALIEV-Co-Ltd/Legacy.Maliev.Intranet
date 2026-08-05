@@ -77,7 +77,7 @@
                         else
                         {
                             <div class="quotation-order-table-scroll">
-                                <table class="quotation-order-table">
+                                <MudSimpleTable Class="quotation-order-table" Dense="true" Hover="true">
                                     <thead>
                                         <tr><th scope="col">@Text["OrderId"]</th><th scope="col">@Text["OrderName"]</th><th scope="col">@Text["Quantity"]</th><th scope="col">@Text["UnitPrice"]</th><th scope="col">@Text["Discount"]</th><th scope="col"><span class="visually-hidden">@Text["Actions"]</span></th></tr>
                                     </thead>
@@ -99,21 +99,38 @@
                                             </tr>
                                         }
                                     </tbody>
-                                </table>
+                                </MudSimpleTable>
                             </div>
                         }
                     </section>
                 }
                 @foreach (var line in model.Lines)
                 {
-                    <MudGrid Class="mb-3">
-                        <MudItem xs="12" md="2"><MudSelect T="int?" Value="line.OrderId" ValueChanged="@((int? value) => SelectOrder(line, value))" Label="@Text["Order"]" Clearable="true">@foreach (var order in page?.Orders ?? []) { <MudSelectItem T="int?" Value="order.Id">#@order.Id @order.Name</MudSelectItem> }</MudSelect></MudItem>
-                        <MudItem xs="12" md="4"><MudTextField @bind-Value="line.Description" Label="@Text["Description"]" Required="true" /></MudItem>
-                        <MudItem xs="6" md="2"><MudNumericField T="int" @bind-Value="line.Quantity" Label="@Text["Quantity"]" Min="1" Required="true" /></MudItem>
-                        <MudItem xs="6" md="2"><MudNumericField T="decimal" @bind-Value="line.UnitPrice" Label="@Text["UnitPrice"]" Min="0" Required="true" /></MudItem>
-                        <MudItem xs="6" md="1"><MudNumericField T="decimal" @bind-Value="line.DiscountPercent" Label="@Text["Discount"]" Min="0" Max="100" /></MudItem>
-                        <MudItem xs="6" md="1"><MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" Disabled="@(model.Lines.Count == 1)" OnClick="@(() => RemoveLine(line))" aria-label="@Text["RemoveLine"]" /></MudItem>
-                    </MudGrid>
+                    <div class="quotation-line-editor" data-testid="quotation-line-editor" @key="line">
+                        <MudSelect T="int?" Class="quotation-line-order" Value="line.OrderId"
+                                   ValueChanged="@((int? value) => SelectOrder(line, value))" Label="@Text["Order"]"
+                                   Variant="Variant.Outlined" Margin="Margin.Dense" Clearable="true">
+                            @foreach (var order in page?.Orders ?? [])
+                            {
+                                <MudSelectItem T="int?" Value="order.Id">#@order.Id @order.Name</MudSelectItem>
+                            }
+                        </MudSelect>
+                        <MudTextField Class="quotation-line-description" @bind-Value="line.Description"
+                                      Label="@Text["Description"]" Variant="Variant.Outlined" Margin="Margin.Dense" Required="true" />
+                        <div class="quotation-line-numbers">
+                            <MudNumericField T="int" @bind-Value="line.Quantity" Label="@Text["Quantity"]"
+                                             Variant="Variant.Outlined" Margin="Margin.Dense" HideSpinButtons="true" Min="1" Required="true" />
+                            <MudNumericField T="decimal" @bind-Value="line.UnitPrice" Label="@Text["UnitPrice"]"
+                                                 Variant="Variant.Outlined" Margin="Margin.Dense" HideSpinButtons="true" Min="0" Required="true" />
+                            <MudNumericField T="decimal" @bind-Value="line.DiscountPercent" Label="@Text["Discount"]"
+                                                 Variant="Variant.Outlined" Margin="Margin.Dense" HideSpinButtons="true" Min="0" Max="100" />
+                        </div>
+                        <div class="quotation-line-actions">
+                            <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" Variant="Variant.Outlined"
+                                           Disabled="@(model.Lines.Count == 1)" OnClick="@(() => RemoveLine(line))"
+                                           aria-label="@Text["RemoveLine"]" />
+                        </div>
+                    </div>
                 }
                 <MudDivider Class="my-3" />
                 <MudText Align="Align.Right">@Text["EstimatedSubtotal", EstimatedSubtotal.ToString("N2", CultureInfo.CurrentCulture), CurrencyLabel]</MudText>

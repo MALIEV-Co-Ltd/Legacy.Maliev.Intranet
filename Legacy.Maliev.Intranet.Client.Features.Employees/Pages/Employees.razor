@@ -1,5 +1,6 @@
 @page "/Employees/Index"
 @attribute [Authorize]
+@implements IDisposable
 @inject HttpClient Http
 @inject NavigationManager Navigation
 @inject IStringLocalizer<Employees> Text
@@ -14,24 +15,14 @@
         </MudButton>
     </header>
 
-    <MudPaper Class="pa-4 mb-4">
-        <div class="d-flex flex-wrap gap-3 align-end">
-            <MudTextField T="string" @bind-Value="searchInput" Label="@Text["Search"]"
-                          Variant="Variant.Outlined" Immediate="true" />
-            <MudSelect T="EmployeeListSort" @bind-Value="sortInput" Label="@Text["Sort"]"
-                       Variant="Variant.Outlined">
-                @foreach (var option in Enum.GetValues<EmployeeListSort>())
-                {
-                    <MudSelectItem Value="option">@Text[option.ToString()]</MudSelectItem>
-                }
-            </MudSelect>
-            <MudNumericField T="int" @bind-Value="sizeInput" Label="@Text["PerPage"]"
-                             Min="1" Max="250" Variant="Variant.Outlined" />
-            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="ApplyFiltersAsync">
-                @Text["Apply"]
-            </MudButton>
-        </div>
-    </MudPaper>
+    <ListToolbar TSort="EmployeeListSort"
+                 Value="@ToolbarState"
+                 Defaults="@DefaultToolbarState"
+                 SortOptions="@SortOptions"
+                 PageSizeOptions="@PageSizeOptions"
+                 SearchLabel="@Text["Search"]"
+                 IsBusy="@loading"
+                 OnRequest="HandleToolbarRequestAsync" />
 
     @if (loading)
     {
@@ -82,10 +73,16 @@
     private EmployeeListPage? page;
     private string? error;
     private bool loading;
-    private string? searchInput;
-    private EmployeeListSort sortInput;
     private EmployeeListSort currentSort = EmployeeListSort.EmployeeId_Descending;
-    private int sizeInput;
+    private readonly LatestRequestGate requestGate = new();
+    private static readonly ListToolbarState<EmployeeListSort> DefaultToolbarState =
+        new(null, EmployeeListSort.EmployeeId_Descending, 25);
+    private static readonly int[] PageSizeOptions = [10, 25, 50, 100, 250];
+    private ListToolbarState<EmployeeListSort> ToolbarState => new(Search, currentSort, Size);
+    private IReadOnlyList<ListToolbarOption<EmployeeListSort>> SortOptions =>
+        Enum.GetValues<EmployeeListSort>()
+            .Select(option => new ListToolbarOption<EmployeeListSort>(option, Text[option.ToString()]))
+            .ToArray();
 
     protected override async Task OnParametersSetAsync()
     {
@@ -94,20 +91,26 @@
         currentSort = Enum.TryParse<EmployeeListSort>(SortQuery, ignoreCase: true, out var parsedSort)
             ? parsedSort
             : EmployeeListSort.EmployeeId_Descending;
-        searchInput = Search;
-        sortInput = currentSort;
-        sizeInput = Size;
         await LoadAsync();
     }
 
-    private async Task LoadAsync()
+    private async Task LoadAsync(
+        ListToolbarState<EmployeeListSort>? requestedState = null,
+        CancellationToken cancellationToken = default)
     {
+        using var lease = requestGate.Begin(cancellationToken);
+        var state = (requestedState ?? ToolbarState).Normalize();
         loading = true;
         error = null;
         try
         {
-            var uri = $"/bff/employees?sort={currentSort}&search={Uri.EscapeDataString(Search ?? string.Empty)}&index={Index}&size={Size}";
-            using var response = await Http.GetForPresentationAsync(uri);
+            var uri = $"/bff/employees?sort={state.Sort}&search={Uri.EscapeDataString(state.Search ?? string.Empty)}&index={Index}&size={state.PageSize}";
+            using var response = await Http.GetForPresentationAsync(uri, lease.CancellationToken);
+            if (!lease.IsCurrent)
+            {
+                return;
+            }
+
             if (response.StatusCode == HttpStatusCode.Unauthorized)
             {
                 Navigation.NavigateTo($"/Login?returnUrl={Uri.EscapeDataString(Navigation.ToBaseRelativePath(Navigation.Uri))}");
@@ -132,30 +135,58 @@
                 return;
             }
 
-            page = await response.Content.ReadFromJsonAsync<EmployeeListPage>();
-            if (page is null)
+            var loadedPage = await response.Content.ReadFromJsonAsync<EmployeeListPage>(cancellationToken: lease.CancellationToken);
+            if (!lease.IsCurrent)
+            {
+                return;
+            }
+
+            page = loadedPage;
+            if (loadedPage is null)
             {
                 error = Text["InvalidResponse"];
             }
         }
+        catch (OperationCanceledException) when (!lease.IsCurrent || lease.CancellationToken.IsCancellationRequested)
+        {
+            // A newer toolbar request owns the visible state.
+        }
         catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException)
         {
-            error = Text["Unavailable"];
+            if (lease.IsCurrent)
+            {
+                error = Text["Unavailable"];
+            }
         }
         finally
         {
-            loading = false;
+            if (lease.IsCurrent)
+            {
+                loading = false;
+            }
         }
     }
 
-    private Task ApplyFiltersAsync() => NavigateAsync(1, searchInput, sortInput, sizeInput);
     private Task PreviousPageAsync() => NavigateAsync(Math.Max(1, Index - 1), Search, currentSort, Size);
     private Task NextPageAsync() => NavigateAsync(Index + 1, Search, currentSort, Size);
 
-    private Task NavigateAsync(int index, string? search, EmployeeListSort sort, int size)
+    private Task HandleToolbarRequestAsync(ListToolbarRequest<EmployeeListSort> request)
+    {
+        var state = request.State.Normalize();
+        if (request.Reason == ListToolbarChangeReason.Refreshed && state == ToolbarState.Normalize())
+        {
+            return LoadAsync();
+        }
+
+        return NavigateAsync(1, state.Search, state.Sort, state.PageSize, replace: true);
+    }
+
+    private Task NavigateAsync(int index, string? search, EmployeeListSort sort, int size, bool replace = false)
     {
         var uri = $"/Employees/Index?search={Uri.EscapeDataString(search ?? string.Empty)}&sort={sort}&index={index}&size={Math.Clamp(size, 1, 250)}";
-        Navigation.NavigateTo(uri);
+        Navigation.NavigateTo(uri, replace: replace);
         return Task.CompletedTask;
     }
+
+    public void Dispose() => requestGate.Dispose();
 }

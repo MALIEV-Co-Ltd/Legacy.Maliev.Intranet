@@ -1,23 +1,18 @@
 @if (!string.IsNullOrWhiteSpace(Href))
 {
-    <a class="mlv-button primary @Class" href="@Href">
-        @if (!string.IsNullOrWhiteSpace(Icon))
-        {
-            <MudIcon Icon="@Icon" Size="Size.Small" />
-        }
-        <span>@ChildContent</span>
-    </a>
+    <MudButton Class="@($"mlv-button primary {Class}")" Href="@Href" StartIcon="@Icon"
+               Variant="Variant.Filled" Color="Color.Primary">
+        @ChildContent
+    </MudButton>
 }
 else
 {
-    <button class="mlv-button primary @Class" type="@Type" disabled="@(Disabled || Busy)" aria-busy="@Busy" @onclick="OnClick">
+    <MudButton Class="@($"mlv-button primary {Class}")" ButtonType="@ResolvedButtonType"
+               Disabled="@(Disabled || Busy)" aria-busy="@Busy" OnClick="OnClick"
+               StartIcon="@(Busy ? null : Icon)" Variant="Variant.Filled" Color="Color.Primary">
         @if (Busy)
         {
             <MudProgressCircular Class="mlv-button-spinner" Size="Size.Small" Indeterminate="true" />
-        }
-        else if (!string.IsNullOrWhiteSpace(Icon))
-        {
-            <MudIcon Icon="@Icon" Size="Size.Small" />
         }
         @if (Busy && !string.IsNullOrWhiteSpace(BusyLabel))
         {
@@ -27,7 +22,7 @@ else
         {
             <span>@ChildContent</span>
         }
-    </button>
+    </MudButton>
 }
 
 @code {
@@ -40,4 +35,8 @@ else
     [Parameter] public string? BusyLabel { get; set; }
     [Parameter] public EventCallback<MouseEventArgs> OnClick { get; set; }
     [Parameter] public string? Class { get; set; }
+
+    private ButtonType ResolvedButtonType => string.Equals(Type, "submit", StringComparison.OrdinalIgnoreCase)
+        ? ButtonType.Submit
+        : ButtonType.Button;
 }

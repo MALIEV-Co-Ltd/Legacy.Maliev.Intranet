@@ -17,7 +17,6 @@
   <data name="Search" xml:space="preserve"><value>Search quotations</value></data>
   <data name="Sort" xml:space="preserve"><value>Sort</value></data>
   <data name="PerPage" xml:space="preserve"><value>Per page</value></data>
-  <data name="Apply" xml:space="preserve"><value>Apply</value></data>
   <data name="NoQuotations" xml:space="preserve"><value>No quotations match this view.</value></data>
   <data name="RecordsSummary" xml:space="preserve"><value>{0} records; {1} pages</value></data>
   <data name="TableCaption" xml:space="preserve"><value>Quotation records</value></data>

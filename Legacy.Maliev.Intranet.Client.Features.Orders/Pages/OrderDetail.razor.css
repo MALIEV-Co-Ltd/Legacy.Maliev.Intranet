@@ -31,19 +31,7 @@
     box-shadow: var(--maliev-shadow-sm);
 }
 
-.order-edit-section > summary {
-    min-height: 48px;
-    padding: 0.875rem 1rem;
-    color: var(--maliev-ink);
-    cursor: pointer;
-    font-weight: 600;
-    list-style-position: inside;
-}
-
-.order-edit-section > summary:hover,
-.order-edit-section > summary:focus-visible {
-    background: var(--legacy-surface-muted);
-}
+.order-edit-section ::deep .mud-expand-panel-header { min-height: 48px; font-weight: 600; }
 
 .order-edit-section-body {
     padding: 0 1rem 1rem;
@@ -109,11 +97,5 @@
     .order-files-panel .mud-icon-button {
         min-width: 44px;
         min-height: 44px;
-    }
-}
-
-@media (prefers-reduced-motion: reduce) {
-    .order-edit-section > summary {
-        scroll-behavior: auto;
     }
 }

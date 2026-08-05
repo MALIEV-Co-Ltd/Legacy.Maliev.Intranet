@@ -29,6 +29,19 @@ public static class LegacyPresentation
         return await client.GetAsync(requestUri, timeoutSource.Token).ConfigureAwait(false);
     }
 
+    /// <summary>Executes a UI read with both caller cancellation and a deterministic terminal timeout.</summary>
+    public static async Task<HttpResponseMessage> GetForPresentationAsync(
+        this HttpClient client,
+        string requestUri,
+        CancellationToken cancellationToken,
+        TimeSpan? timeout = null)
+    {
+        ArgumentNullException.ThrowIfNull(client);
+        using var timeoutSource = new CancellationTokenSource(timeout ?? RequestTimeout);
+        using var linkedSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, timeoutSource.Token);
+        return await client.GetAsync(requestUri, linkedSource.Token).ConfigureAwait(false);
+    }
+
     /// <summary>Executes and deserializes a UI read within the same terminal timeout.</summary>
     public static async Task<T?> GetFromJsonForPresentationAsync<T>(
         this HttpClient client,

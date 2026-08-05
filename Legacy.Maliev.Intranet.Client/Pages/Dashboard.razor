@@ -72,7 +72,7 @@
                                 LinkText="@Text["ViewAll"]"
                                 Class="dashboard-wide-panel">
                     <div class="dashboard-table-scroll">
-                        <table class="dashboard-table">
+                        <MudSimpleTable Class="dashboard-table" Dense="true" Hover="true">
                             <caption class="sr-only">@Text["RecentProductionOrders"]</caption>
                             <thead><tr><th scope="col">@Text["Order"]</th><th scope="col">@Text["Part"]</th><th scope="col">@Text["Quantity"]</th><th scope="col">@Text["Remaining"]</th><th scope="col">@Text["Promised"]</th><th scope="col">@Text["Progress"]</th></tr></thead>
                             <tbody>
@@ -88,7 +88,7 @@
                                     </tr>
                                 }
                             </tbody>
-                        </table>
+                        </MudSimpleTable>
                     </div>
                 </DashboardPanel>
             }
@@ -101,7 +101,7 @@
                                 LinkText="@Text["ViewAll"]"
                                 Class="dashboard-wide-panel">
                     <div class="dashboard-table-scroll">
-                        <table class="dashboard-table dashboard-table-compact">
+                        <MudSimpleTable Class="dashboard-table dashboard-table-compact" Dense="true" Hover="true">
                             <caption class="sr-only">@Text["RecentQuotations"]</caption>
                             <thead><tr><th scope="col">@Text["Quote"]</th><th scope="col">@Text["Total"]</th><th scope="col">@Text["Expires"]</th><th scope="col">@Text["Decision"]</th></tr></thead>
                             <tbody>
@@ -115,7 +115,7 @@
                                     </tr>
                                 }
                             </tbody>
-                        </table>
+                        </MudSimpleTable>
                     </div>
                 </DashboardPanel>
             }
@@ -129,7 +129,7 @@
                                 NavigateTo="/Finances/Index"
                                 LinkText="@Text["ViewAll"]">
                     <div class="dashboard-table-scroll">
-                        <table class="dashboard-table dashboard-table-compact">
+                        <MudSimpleTable Class="dashboard-table dashboard-table-compact" Dense="true" Hover="true">
                             <caption class="sr-only">@Text["RecentPayments"]</caption>
                             <thead><tr><th scope="col">@Text["Payment"]</th><th scope="col">@Text["Recipient"]</th><th scope="col">@Text["Amount"]</th><th scope="col">@Text["Date"]</th></tr></thead>
                             <tbody>
@@ -143,7 +143,7 @@
                                     </tr>
                                 }
                             </tbody>
-                        </table>
+                        </MudSimpleTable>
                     </div>
                 </DashboardPanel>
             }
@@ -155,7 +155,7 @@
                                 NavigateTo="/customers"
                                 LinkText="@Text["ViewAll"]">
                     <div class="dashboard-table-scroll">
-                        <table class="dashboard-table dashboard-table-compact">
+                        <MudSimpleTable Class="dashboard-table dashboard-table-compact" Dense="true" Hover="true">
                             <caption class="sr-only">@Text["RecentCustomers"]</caption>
                             <thead><tr><th scope="col">@Text["Customer"]</th><th scope="col">@Text["Company"]</th><th scope="col">@Text["Email"]</th></tr></thead>
                             <tbody>
@@ -168,7 +168,7 @@
                                     </tr>
                                 }
                             </tbody>
-                        </table>
+                        </MudSimpleTable>
                     </div>
                 </DashboardPanel>
             }

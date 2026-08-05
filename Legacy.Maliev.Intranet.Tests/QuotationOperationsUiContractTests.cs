@@ -27,7 +27,13 @@ public sealed class QuotationOperationsUiContractTests
         Assert.Contains("aria-live=\"polite\"", quotationIndex, StringComparison.Ordinal);
 
         var requestIndex = Read(feature, "QuotationRequests", "Index.razor");
-        Assert.Contains("role=\"search\"", requestIndex, StringComparison.Ordinal);
+        Assert.Contains("<ListToolbar", requestIndex, StringComparison.Ordinal);
+        var sharedToolbar = File.ReadAllText(Path.Combine(
+            root,
+            "Legacy.Maliev.Intranet.Client.Shared",
+            "Components",
+            "ListToolbar.razor"));
+        Assert.Contains("role=\"search\"", sharedToolbar, StringComparison.Ordinal);
         Assert.Contains("quotation-request-status", requestIndex, StringComparison.Ordinal);
         Assert.Contains("aria-label=\"@Text[\"PaginationLabel\"]\"", requestIndex, StringComparison.Ordinal);
         Assert.Contains("aria-describedby=\"quotation-request-table-summary\"", requestIndex, StringComparison.Ordinal);

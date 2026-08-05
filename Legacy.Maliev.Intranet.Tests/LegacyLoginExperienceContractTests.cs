@@ -20,7 +20,10 @@ public sealed class LegacyLoginExperienceContractTests
         Assert.Contains("WorkspaceIdentityRules.IsAllowedEmployeeEmail", login, StringComparison.Ordinal);
         Assert.Contains("IsLocalAspireHost", login, StringComparison.Ordinal);
         Assert.Contains("maliev\\\\.test", login, StringComparison.Ordinal);
-        Assert.Contains("@onsubmit:preventDefault", login, StringComparison.Ordinal);
+        Assert.Contains("<MudForm Class=\"legacy-login-form\">", login, StringComparison.Ordinal);
+        Assert.Contains("ButtonType=\"ButtonType.Button\"", login, StringComparison.Ordinal);
+        Assert.Contains("OnKeyDown=\"HandleEmailKeyDown\"", login, StringComparison.Ordinal);
+        Assert.Contains("OnKeyDown=\"HandlePasswordKeyDown\"", login, StringComparison.Ordinal);
         Assert.DoesNotContain("access_token", login, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("refresh_token", login, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("client_secret", login, StringComparison.OrdinalIgnoreCase);

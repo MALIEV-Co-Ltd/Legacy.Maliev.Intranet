@@ -1,22 +1,16 @@
 @if (!string.IsNullOrWhiteSpace(Href))
 {
-    <a class="mlv-button secondary @Class" href="@Href" download="@Download" aria-label="@AriaLabel">
-        @if (!string.IsNullOrWhiteSpace(Icon))
-        {
-            <MudIcon Icon="@Icon" Size="Size.Small" />
-        }
-        <span>@ChildContent</span>
-    </a>
+    <MudButton Class="@($"mlv-button secondary {Class}")" Href="@Href" download="@Download" aria-label="@AriaLabel"
+               StartIcon="@Icon" Variant="Variant.Outlined">
+        @ChildContent
+    </MudButton>
 }
 else
 {
-    <button class="mlv-button secondary @Class" type="@Type" disabled="@Disabled" @onclick="OnClick">
-        @if (!string.IsNullOrWhiteSpace(Icon))
-        {
-            <MudIcon Icon="@Icon" Size="Size.Small" />
-        }
-        <span>@ChildContent</span>
-    </button>
+    <MudButton Class="@($"mlv-button secondary {Class}")" ButtonType="@ResolvedButtonType" Disabled="@Disabled"
+               OnClick="OnClick" StartIcon="@Icon" Variant="Variant.Outlined">
+        @ChildContent
+    </MudButton>
 }
 
 @code {
@@ -29,4 +23,8 @@ else
     [Parameter] public string? Class { get; set; }
     [Parameter] public string? Download { get; set; }
     [Parameter] public string? AriaLabel { get; set; }
+
+    private ButtonType ResolvedButtonType => string.Equals(Type, "submit", StringComparison.OrdinalIgnoreCase)
+        ? ButtonType.Submit
+        : ButtonType.Button;
 }

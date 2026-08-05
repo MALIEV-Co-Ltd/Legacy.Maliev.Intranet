@@ -2,6 +2,7 @@
 @page "/accounting"
 @page "/finance/invoices"
 @attribute [Authorize]
+@implements IDisposable
 @inject HttpClient Http
 @inject NavigationManager Navigation
 @inject IStringLocalizer<Invoices> Text
@@ -14,25 +15,14 @@
         <MudButton Href="/Invoices/Create" Variant="Variant.Filled" Color="Color.Primary">@Text["Create"]</MudButton>
     </div>
 
-    <MudPaper Class="pa-4 mb-4">
-        <div class="d-flex flex-wrap gap-3 align-end">
-            <MudTextField T="string" @bind-Value="searchInput" Label="@Text["Search"]" Variant="Variant.Outlined" Immediate="true" />
-            <MudSelect T="InvoiceListSort" @bind-Value="sortInput" Label="@Text["Sort"]" Variant="Variant.Outlined">
-                @foreach (var option in Enum.GetValues<InvoiceListSort>())
-                {
-                    <MudSelectItem T="InvoiceListSort" Value="option">@Text[option.ToString()]</MudSelectItem>
-                }
-            </MudSelect>
-            <MudSelect T="int" @bind-Value="sizeInput" Label="@Text["PerPage"]" Variant="Variant.Outlined">
-                <MudSelectItem T="int" Value="10">10</MudSelectItem>
-                <MudSelectItem T="int" Value="25">25</MudSelectItem>
-                <MudSelectItem T="int" Value="50">50</MudSelectItem>
-                <MudSelectItem T="int" Value="100">100</MudSelectItem>
-                <MudSelectItem T="int" Value="150">150</MudSelectItem>
-            </MudSelect>
-            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="ApplyFiltersAsync">@Text["Apply"]</MudButton>
-        </div>
-    </MudPaper>
+    <ListToolbar TSort="InvoiceListSort"
+                 Value="@ToolbarValue"
+                 Defaults="@ToolbarDefaults"
+                 SortOptions="@ToolbarSortOptions"
+                 PageSizeOptions="@InvoicePageSizes"
+                 SearchLabel="@Text["Search"]"
+                 IsBusy="@loading"
+                 OnRequest="HandleToolbarRequestAsync" />
 
     @if (loading)
     {
@@ -119,14 +109,18 @@
     [SupplyParameterFromQuery(Name = "size")] public int Size { get; set; } = 10;
 
     private static readonly InvoiceListPage EmptyPage = new([], 1, 0, 0, false, false);
+    private static readonly int[] InvoicePageSizes = [10, 25, 50, 100, 150];
+    private readonly LatestRequestGate requestGate = new();
     private InvoiceListPage paidInvoices = EmptyPage;
     private InvoiceListPage unpaidInvoices = EmptyPage;
     private InvoiceListSort currentSort = InvoiceListSort.InvoiceCreatedDate_Descending;
-    private InvoiceListSort sortInput;
-    private string? searchInput;
-    private int sizeInput = 10;
     private bool loading;
     private string? error;
+    private ListToolbarState<InvoiceListSort> ToolbarValue => new(Search, currentSort, Size);
+    private static ListToolbarState<InvoiceListSort> ToolbarDefaults =>
+        new(null, InvoiceListSort.InvoiceCreatedDate_Descending, 10);
+    private IReadOnlyList<ListToolbarOption<InvoiceListSort>> ToolbarSortOptions =>
+        Enum.GetValues<InvoiceListSort>().Select(option => new ListToolbarOption<InvoiceListSort>(option, Text[option.ToString()])).ToArray();
 
     private IReadOnlyList<(string Title, string EmptyMessage, bool Paid, InvoiceListPage Page)> Sections =>
     [
@@ -145,14 +139,12 @@
         currentSort = Enum.TryParse<InvoiceListSort>(SortQuery, true, out var parsed)
             ? parsed
             : InvoiceListSort.InvoiceCreatedDate_Descending;
-        searchInput = Search;
-        sortInput = currentSort;
-        sizeInput = Size;
         await LoadAsync();
     }
 
     private async Task LoadAsync()
     {
+        using var lease = requestGate.Begin();
         loading = true;
         error = null;
         HttpResponseMessage[]? responses = null;
@@ -160,15 +152,29 @@
         {
             var query = $"sort={currentSort}&search={Uri.EscapeDataString(Search ?? string.Empty)}&index={Index}&size={Size}";
             responses = await Task.WhenAll(
-                Http.GetForPresentationAsync($"/bff/invoices?{query}&paid=true"),
-                Http.GetForPresentationAsync($"/bff/invoices?{query}&paid=false"));
+                Http.GetForPresentationAsync($"/bff/invoices?{query}&paid=true", lease.CancellationToken),
+                Http.GetForPresentationAsync($"/bff/invoices?{query}&paid=false", lease.CancellationToken));
+            if (!lease.IsCurrent)
+            {
+                return;
+            }
             if (HandleFailure(responses))
             {
                 return;
             }
 
-            paidInvoices = await responses[0].Content.ReadFromJsonAsync<InvoiceListPage>() ?? EmptyPage;
-            unpaidInvoices = await responses[1].Content.ReadFromJsonAsync<InvoiceListPage>() ?? EmptyPage;
+            var paid = await responses[0].Content.ReadFromJsonAsync<InvoiceListPage>(lease.CancellationToken) ?? EmptyPage;
+            var unpaid = await responses[1].Content.ReadFromJsonAsync<InvoiceListPage>(lease.CancellationToken) ?? EmptyPage;
+            if (!lease.IsCurrent)
+            {
+                return;
+            }
+
+            paidInvoices = paid;
+            unpaidInvoices = unpaid;
+        }
+        catch (OperationCanceledException) when (!lease.IsCurrent)
+        {
         }
         catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException)
         {
@@ -184,7 +190,10 @@
                 }
             }
 
-            loading = false;
+            if (lease.IsCurrent)
+            {
+                loading = false;
+            }
         }
     }
 
@@ -214,15 +223,21 @@
         return true;
     }
 
-    private Task ApplyFiltersAsync() => NavigateAsync(1, searchInput, sortInput, sizeInput);
     private Task PreviousPageAsync() => NavigateAsync(Math.Max(1, Index - 1), Search, currentSort, Size);
     private Task NextPageAsync() => NavigateAsync(Index + 1, Search, currentSort, Size);
 
-    private Task NavigateAsync(int index, string? search, InvoiceListSort sort, int size)
+    private Task HandleToolbarRequestAsync(ListToolbarRequest<InvoiceListSort> request) =>
+        request.Reason == ListToolbarChangeReason.Refreshed && request.State.Normalize() == ToolbarValue.Normalize()
+            ? LoadAsync()
+            : NavigateAsync(1, request.State.Search, request.State.Sort, request.State.PageSize, replace: true);
+
+    private Task NavigateAsync(int index, string? search, InvoiceListSort sort, int size, bool replace = false)
     {
-        Navigation.NavigateTo($"/Invoices/Index?search={Uri.EscapeDataString(search ?? string.Empty)}&sort={sort}&index={index}&size={size}");
+        Navigation.NavigateTo($"/Invoices/Index?search={Uri.EscapeDataString(search ?? string.Empty)}&sort={sort}&index={index}&size={size}", replace: replace);
         return Task.CompletedTask;
     }
+
+    public void Dispose() => requestGate.Dispose();
 
     private static string FormatMoney(decimal? value, string? currency, bool negate = false) =>
         value is null ? "-" : $"{(negate ? -value.Value : value.Value):N2} {ValueOrFallback(currency)}";

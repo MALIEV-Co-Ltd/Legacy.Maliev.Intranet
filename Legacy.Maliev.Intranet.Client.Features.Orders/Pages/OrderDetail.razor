@@ -30,10 +30,10 @@ else if (page is not null)
     }
 
     <MudForm @ref="form" Model="edit" Class="order-edit-form">
-        <details class="order-edit-section" open>
-            <summary id="order-edit-details-heading">@Text["OrderDetails"]</summary>
+        <MudExpansionPanels Class="order-edit-sections" MultiExpansion="true">
+        <MudExpansionPanel Class="order-edit-section" Expanded="true" Text="@Text["OrderDetails"]">
             <div class="order-edit-section-body">
-            <MudGrid aria-labelledby="order-edit-details-heading">
+            <MudGrid>
             <MudItem xs="12" md="6">
                 <div class="order-customer-context">
                     <MudTextField Label="@Text["CustomerId"]" Value="@(page.Order.CustomerId?.ToString(CultureInfo.CurrentCulture) ?? "-")" ReadOnly="true" />
@@ -54,12 +54,11 @@ else if (page is not null)
             <MudItem xs="12" md="4"><MudTextField Label="@Text["Remaining"]" Value="@(page.Order.Remaining?.ToString(CultureInfo.CurrentCulture) ?? "-")" ReadOnly="true" /></MudItem>
             </MudGrid>
             </div>
-        </details>
+        </MudExpansionPanel>
 
-        <details class="order-edit-section" open>
-            <summary id="order-manufacturing-heading">@Text["Process"]</summary>
+        <MudExpansionPanel Class="order-edit-section" Expanded="true" Text="@Text["Process"]">
             <div class="order-edit-section-body">
-            <MudGrid aria-labelledby="order-manufacturing-heading">
+            <MudGrid>
             <MudItem xs="12" md="6">
                 <MudSelect T="int" Label="@Text["Process"]" @bind-Value="edit.ProcessId" Required="true">
                     @foreach (var item in page.Processes) { <MudSelectItem T="int" Value="@item.Id">@item.Name</MudSelectItem> }
@@ -82,12 +81,11 @@ else if (page is not null)
             </MudItem>
             </MudGrid>
             </div>
-        </details>
+        </MudExpansionPanel>
 
-        <details class="order-edit-section">
-            <summary id="order-commercial-heading">@Text["UnitPrice"]</summary>
+        <MudExpansionPanel Class="order-edit-section" Text="@Text["UnitPrice"]">
             <div class="order-edit-section-body">
-            <MudGrid aria-labelledby="order-commercial-heading">
+            <MudGrid>
             <MudItem xs="12" md="4"><MudNumericField T="decimal?" Label="@Text["UnitPrice"]" @bind-Value="edit.UnitPrice" Min="0" /></MudItem>
             <MudItem xs="12" md="4"><MudNumericField T="decimal?" Label="@Text["Discount"]" @bind-Value="edit.DiscountPercent" Min="0" Max="100" /></MudItem>
             <MudItem xs="12" md="4">
@@ -97,24 +95,22 @@ else if (page is not null)
             </MudItem>
             </MudGrid>
             </div>
-        </details>
+        </MudExpansionPanel>
 
-        <details class="order-edit-section">
-            <summary id="order-fulfilment-heading">@Text["PromisedDate"]</summary>
+        <MudExpansionPanel Class="order-edit-section" Text="@Text["PromisedDate"]">
             <div class="order-edit-section-body">
-            <MudGrid aria-labelledby="order-fulfilment-heading">
+            <MudGrid>
             <MudItem xs="12" md="4"><MudNumericField T="int?" Label="@Text["LeadTime"]" @bind-Value="edit.LeadTime" Min="0" /></MudItem>
             <MudItem xs="12" md="4"><MudDatePicker Label="@Text["PromisedDate"]" @bind-Date="edit.PromisedDate" /></MudItem>
             <MudItem xs="12" md="4"><MudDatePicker Label="@Text["FinishedDate"]" @bind-Date="edit.FinishedDate" /></MudItem>
             <MudItem xs="12"><MudTextField Label="@Text["TrackingNumber"]" @bind-Value="edit.TrackingNumber" /></MudItem>
             </MudGrid>
             </div>
-        </details>
+        </MudExpansionPanel>
 
-        <details class="order-edit-section">
-            <summary id="order-notes-heading">@Text["Requirements"]</summary>
+        <MudExpansionPanel Class="order-edit-section" Text="@Text["Requirements"]">
             <div class="order-edit-section-body">
-            <MudGrid aria-labelledby="order-notes-heading">
+            <MudGrid>
             <MudItem xs="12"><MudTextField Label="@Text["Requirements"]" @bind-Value="edit.Description" Lines="5" /></MudItem>
             <MudItem xs="12"><MudTextField Label="@Text["Comment"]" @bind-Value="edit.Comment" Lines="4" /></MudItem>
             <MudItem xs="12" md="4"><MudCheckBox T="bool" Label="@Text["AllowSocialMedia"]" @bind-Value="edit.AllowSocialMedia" /></MudItem>
@@ -122,7 +118,8 @@ else if (page is not null)
             <MudItem xs="12" md="4"><MudCheckBox T="bool" Label="@Text["AllowPayment"]" @bind-Value="edit.AllowPayment" /></MudItem>
             </MudGrid>
             </div>
-        </details>
+        </MudExpansionPanel>
+        </MudExpansionPanels>
 
         <div class="order-save-bar">
             <MudButton OnClick="SaveAsync" Disabled="@submitting" Variant="Variant.Filled" Color="Color.Primary">@Text["Save"]</MudButton>

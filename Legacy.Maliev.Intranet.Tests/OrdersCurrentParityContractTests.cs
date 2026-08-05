@@ -15,7 +15,8 @@ public sealed class OrdersCurrentParityContractTests
         Assert.Contains("<ModuleHeader", source, StringComparison.Ordinal);
         Assert.Contains("<PageBody", source, StringComparison.Ordinal);
         Assert.Contains("<PanelCard", source, StringComparison.Ordinal);
-        Assert.Contains("<SearchBox", source, StringComparison.Ordinal);
+        Assert.Contains("<ListToolbar", source, StringComparison.Ordinal);
+        Assert.Contains("OnRequest=\"HandleToolbarRequestAsync\"", source, StringComparison.Ordinal);
         Assert.Contains("<ProgressiveSkeleton", source, StringComparison.Ordinal);
         Assert.Contains("<PrimaryButton", source, StringComparison.Ordinal);
         Assert.Contains("<SecondaryButton", source, StringComparison.Ordinal);

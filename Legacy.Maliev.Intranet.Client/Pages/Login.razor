@@ -20,14 +20,10 @@
             </a>
             <div class="legacy-login-header-actions">
                 <LegacyLanguageSelector />
-                <button type="button"
-                        class="legacy-login-theme-toggle"
-                        @onclick="ToggleThemeAsync"
-                        aria-label="@ThemeToggleLabel"
-                        title="@ThemeToggleLabel">
-                    <MudIcon Icon="@(_isDarkMode ? Icons.Material.Outlined.LightMode : Icons.Material.Outlined.DarkMode)"
-                             Size="Size.Small" />
-                </button>
+                <MudIconButton ButtonType="ButtonType.Button" Class="legacy-login-theme-toggle"
+                               Icon="@(_isDarkMode ? Icons.Material.Outlined.LightMode : Icons.Material.Outlined.DarkMode)"
+                               Size="Size.Small" OnClick="ToggleThemeAsync"
+                               aria-label="@ThemeToggleLabel" title="@ThemeToggleLabel" />
             </div>
         </div>
     </header>
@@ -45,7 +41,8 @@
 
                 @if (!string.IsNullOrWhiteSpace(_errorMessage))
                 {
-                    <div class="legacy-login-error" role="alert">@_errorMessage</div>
+                    <MudAlert Severity="Severity.Error" Variant="Variant.Outlined" Class="legacy-login-error"
+                              role="alert" aria-live="assertive">@_errorMessage</MudAlert>
                 }
 
                 <div class="legacy-google-signin-section">
@@ -69,46 +66,36 @@
 
                 @if (IsEmailStep)
                 {
-                    <form class="legacy-login-form" @onsubmit="ContinueWithEmail" @onsubmit:preventDefault>
-                        <div class="legacy-login-field">
-                            <label for="legacy-login-email">@Text["Email"]</label>
-                            <input id="legacy-login-email"
-                                   type="email"
-                                   class="legacy-login-input"
-                                   placeholder="name@@maliev.com"
-                                   pattern="@EmailPattern"
-                                   autocomplete="username"
-                                   required
-                                   aria-describedby="legacy-login-email-help"
-                                   @bind="_emailInput"
-                                   @bind:event="oninput" />
-                            <small id="legacy-login-email-help">@Text["Use your MALIEV work email."]</small>
-                        </div>
-                        <button type="submit" class="legacy-login-primary" disabled="@(!EmailLooksValid)">@Text["Continue with email"]</button>
-                    </form>
+                    <MudForm Class="legacy-login-form">
+                        <MudTextField T="string" InputId="legacy-login-email" Class="legacy-login-input"
+                                      Label="@Text["Email"]" Placeholder="@("name@maliev.com")"
+                                      InputType="InputType.Email" Variant="Variant.Outlined" Margin="Margin.Dense"
+                                      Value="@_emailInput" ValueChanged="@(value => _emailInput = value ?? string.Empty)"
+                                      Immediate="true" Required="true" HelperText="@Text["Use your MALIEV work email."]"
+                                      pattern="@EmailPattern" autocomplete="username" OnKeyDown="HandleEmailKeyDown" />
+                        <MudButton ButtonType="ButtonType.Button" Class="legacy-login-primary" FullWidth="true"
+                                   Variant="Variant.Filled" Color="Color.Primary" Disabled="@(!EmailLooksValid)"
+                                   OnClick="ContinueWithEmail">@Text["Continue with email"]</MudButton>
+                    </MudForm>
                 }
                 else
                 {
-                    <form class="legacy-login-form" @onsubmit="HandleLogin" @onsubmit:preventDefault>
+                    <MudForm Class="legacy-login-form">
                         <div class="legacy-login-email-summary">
                             <span>@_emailInput</span>
-                            <button type="button" class="legacy-login-change" @onclick="BackToEmailStep">@Text["Change"]</button>
+                            <MudButton ButtonType="ButtonType.Button" Class="legacy-login-change" Variant="Variant.Text"
+                                       OnClick="BackToEmailStep">@Text["Change"]</MudButton>
                         </div>
-                        <div class="legacy-login-field">
-                            <label for="legacy-login-password">@Text["Password"]</label>
-                            <input id="legacy-login-password"
-                                   type="password"
-                                   class="legacy-login-input"
-                                   autocomplete="current-password"
-                                   required
-                                   @bind="_password"
-                                   @bind:event="oninput" />
-                        </div>
-                        <label class="legacy-login-remember">
-                            <input type="checkbox" @bind="_rememberMe" />
-                            <span>@Text["Remember me"]</span>
-                        </label>
-                        <button type="submit" class="legacy-login-primary" disabled="@(_isProcessing || !CredentialsReady)">
+                        <MudTextField T="string" InputId="legacy-login-password" Class="legacy-login-input"
+                                      Label="@Text["Password"]" InputType="InputType.Password"
+                                      Variant="Variant.Outlined" Margin="Margin.Dense" Required="true"
+                                      Value="@_password" ValueChanged="@(value => _password = value ?? string.Empty)"
+                                      Immediate="true" autocomplete="current-password" OnKeyDown="HandlePasswordKeyDown" />
+                        <MudCheckBox T="bool" Class="legacy-login-remember" @bind-Value="_rememberMe"
+                                     Label="@Text["Remember me"]" />
+                        <MudButton ButtonType="ButtonType.Button" Class="legacy-login-primary" FullWidth="true"
+                                   Variant="Variant.Filled" Color="Color.Primary"
+                                   Disabled="@(_isProcessing || !CredentialsReady)" OnClick="HandleLogin">
                             @if (_isProcessing)
                             {
                                 <MudProgressCircular Size="Size.Small" Color="Color.Inherit" Indeterminate="true" />
@@ -118,8 +105,8 @@
                             {
                                 <span>@Text["Sign in with email"]</span>
                             }
-                        </button>
-                    </form>
+                        </MudButton>
+                    </MudForm>
                 }
 
                 <p class="legacy-login-footer-note">
@@ -169,8 +156,8 @@
         baseUri.Host is "localhost" or "127.0.0.1" or "::1";
 
     private string EmailPattern => IsLocalAspireHost
-        ? "^[^@@\\s]+@@(maliev\\.com|maliev\\.test)$"
-        : "^[^@@\\s]+@@maliev\\.com$";
+        ? "^[^@\\s]+@(maliev\\.com|maliev\\.test)$"
+        : "^[^@\\s]+@maliev\\.com$";
 
     private string ThemeToggleLabel => _isDarkMode ? Text["Switch to light mode"].Value : Text["Switch to dark mode"].Value;
 
@@ -251,6 +238,22 @@
 
         _errorMessage = null;
         _step = LoginStep.Credentials;
+    }
+
+    private void HandleEmailKeyDown(KeyboardEventArgs args)
+    {
+        if (args.Key == "Enter")
+        {
+            ContinueWithEmail();
+        }
+    }
+
+    private async Task HandlePasswordKeyDown(KeyboardEventArgs args)
+    {
+        if (args.Key == "Enter")
+        {
+            await HandleLogin();
+        }
     }
 
     private void BackToEmailStep()

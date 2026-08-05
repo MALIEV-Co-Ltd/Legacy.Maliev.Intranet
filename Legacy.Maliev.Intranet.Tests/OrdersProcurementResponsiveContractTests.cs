@@ -9,7 +9,8 @@ public sealed class OrdersProcurementResponsiveContractTests
         var page = Read(root, "Legacy.Maliev.Intranet.Client.Features.Orders", "Pages", "Orders.razor");
         var styles = Read(root, "Legacy.Maliev.Intranet.Client.Features.Orders", "Pages", "Orders.razor.css");
         var globalStyles = Read(root, "Legacy.Maliev.Intranet.Client", "wwwroot", "css", "operations-pages.css");
-        var searchStyles = Read(root, "Legacy.Maliev.Intranet.Client.Features.Orders", "Components", "Shared", "SearchBox.razor.css");
+        var toolbar = Read(root, "Legacy.Maliev.Intranet.Client.Shared", "Components", "ListToolbar.razor");
+        var toolbarStyles = Read(root, "Legacy.Maliev.Intranet.Client.Shared", "Components", "ListToolbar.razor.css");
         var primaryButtonStyles = Read(root, "Legacy.Maliev.Intranet.Client.Features.Orders", "Components", "Shared", "PrimaryButton.razor.css");
         var secondaryButtonStyles = Read(root, "Legacy.Maliev.Intranet.Client.Features.Orders", "Components", "Shared", "SecondaryButton.razor.css");
 
@@ -26,7 +27,9 @@ public sealed class OrdersProcurementResponsiveContractTests
         Assert.Contains("min-height: 44px", styles, StringComparison.Ordinal);
         Assert.Contains(".orders-module-shell .orders-toolbar", globalStyles, StringComparison.Ordinal);
         Assert.Contains(".orders-module-shell .orders-toolbar .mud-input-slot", globalStyles, StringComparison.Ordinal);
-        Assert.Equal(2, CountOccurrences(searchStyles, "min-height: 44px"));
+        Assert.Contains("role=\"search\"", toolbar, StringComparison.Ordinal);
+        Assert.Contains("@media (max-width: 600px)", toolbarStyles, StringComparison.Ordinal);
+        Assert.Contains("min-height: 44px", toolbarStyles, StringComparison.Ordinal);
         Assert.Contains("min-height: 44px", primaryButtonStyles, StringComparison.Ordinal);
         Assert.Contains("min-height: 44px", secondaryButtonStyles, StringComparison.Ordinal);
         Assert.Contains("LegacyPresentation.FormatCalendarDate", page, StringComparison.Ordinal);
@@ -39,7 +42,8 @@ public sealed class OrdersProcurementResponsiveContractTests
         var page = Read(root, "Legacy.Maliev.Intranet.Client.Features.Orders", "Pages", "OrderDetail.razor");
         var styles = Read(root, "Legacy.Maliev.Intranet.Client.Features.Orders", "Pages", "OrderDetail.razor.css");
 
-        Assert.Equal(5, CountOccurrences(page, "class=\"order-edit-section\""));
+        Assert.Equal(5, CountOccurrences(page, "<MudExpansionPanel Class=\"order-edit-section\""));
+        Assert.Contains("<MudExpansionPanels", page, StringComparison.Ordinal);
         Assert.Contains("class=\"order-save-bar\"", page, StringComparison.Ordinal);
         Assert.Contains("class=\"order-history\" tabindex=\"0\"", page, StringComparison.Ordinal);
         Assert.Contains("position: sticky", styles, StringComparison.Ordinal);
@@ -63,17 +67,15 @@ public sealed class OrdersProcurementResponsiveContractTests
         var root = FindRoot();
         var purchaseOrders = Read(root, "Legacy.Maliev.Intranet.Client.Features.Procurement", "Pages", "PurchaseOrders.razor");
         var suppliers = Read(root, "Legacy.Maliev.Intranet.Client.Features.Procurement", "Pages", "Suppliers.razor");
-        var purchaseStyles = Read(root, "Legacy.Maliev.Intranet.Client.Features.Procurement", "Pages", "PurchaseOrders.razor.css");
-        var supplierStyles = Read(root, "Legacy.Maliev.Intranet.Client.Features.Procurement", "Pages", "Suppliers.razor.css");
+        var toolbarStyles = Read(root, "Legacy.Maliev.Intranet.Client.Shared", "Components", "ListToolbar.razor.css");
 
         Assert.Contains("Breakpoint=\"Breakpoint.Md\"", purchaseOrders, StringComparison.Ordinal);
         Assert.Contains("Breakpoint=\"Breakpoint.Md\"", suppliers, StringComparison.Ordinal);
         Assert.Contains("public int Size { get; set; } = 25", suppliers, StringComparison.Ordinal);
         Assert.Contains("fallback: 25", suppliers, StringComparison.Ordinal);
-        Assert.Contains("grid-template-columns: 1fr", purchaseStyles, StringComparison.Ordinal);
-        Assert.Contains("grid-template-columns: 1fr", supplierStyles, StringComparison.Ordinal);
-        Assert.Contains("min-height: 44px", purchaseStyles, StringComparison.Ordinal);
-        Assert.Contains("min-height: 44px", supplierStyles, StringComparison.Ordinal);
+        Assert.Contains("@media (max-width: 600px)", toolbarStyles, StringComparison.Ordinal);
+        Assert.Contains("grid-template-columns: minmax(0, 1fr)", toolbarStyles, StringComparison.Ordinal);
+        Assert.Contains("min-height: 44px", toolbarStyles, StringComparison.Ordinal);
         Assert.Contains("LegacyPresentation.FormatUtcDateTime", purchaseOrders, StringComparison.Ordinal);
     }
 

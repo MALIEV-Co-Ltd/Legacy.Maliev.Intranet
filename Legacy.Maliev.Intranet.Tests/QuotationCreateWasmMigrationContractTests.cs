@@ -71,6 +71,31 @@ public sealed class QuotationCreateWasmMigrationContractTests
     }
 
     [Fact]
+    public void CreatePage_UsesResponsiveOutlinedMudBlazorLineEditors()
+    {
+        var root = FindRoot();
+        var pagePath = Path.Combine(root, "Legacy.Maliev.Intranet.Client.Features.Quotations", "Pages", "Quotations", "Create.razor");
+        var stylesPath = Path.ChangeExtension(pagePath, ".razor.css");
+        var page = File.ReadAllText(pagePath);
+        var styles = File.ReadAllText(stylesPath);
+
+        Assert.Contains("data-testid=\"quotation-line-editor\"", page, StringComparison.Ordinal);
+        Assert.Contains("@key=\"line\"", page, StringComparison.Ordinal);
+        Assert.Contains("quotation-line-order", page, StringComparison.Ordinal);
+        Assert.Contains("quotation-line-description", page, StringComparison.Ordinal);
+        Assert.Contains("quotation-line-numbers", page, StringComparison.Ordinal);
+        Assert.Contains("Variant=\"Variant.Outlined\"", page, StringComparison.Ordinal);
+        Assert.Contains("HideSpinButtons=\"true\"", page, StringComparison.Ordinal);
+        Assert.DoesNotContain("<MudGrid Class=\"mb-3\">", page, StringComparison.Ordinal);
+
+        Assert.Contains(".quotation-line-editor", styles, StringComparison.Ordinal);
+        Assert.Contains("grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr)", styles, StringComparison.Ordinal);
+        Assert.Contains("@media (max-width: 920px)", styles, StringComparison.Ordinal);
+        Assert.Contains("@media (max-width: 620px)", styles, StringComparison.Ordinal);
+        Assert.Contains(".quotation-line-editor ::deep .quotation-line-description", styles, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void CreateBff_UsesExactWritePermissionsAntiforgeryAndServerWorkflow()
     {
         var root = FindRoot();

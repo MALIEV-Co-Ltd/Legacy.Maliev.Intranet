@@ -6,25 +6,6 @@
     min-height: clamp(360px, 52dvh, 760px);
 }
 
-.orders-toolbar {
-    align-items: flex-end;
-}
-
-.orders-toolbar .mlv-toolbar-left {
-    flex: 1 1 100%;
-    flex-wrap: wrap;
-}
-
-.orders-toolbar .mlv-search-box {
-    flex: 1 1 20rem;
-    min-width: min(100%, 15rem);
-}
-
-.orders-toolbar .mud-input-control {
-    min-width: 11rem;
-    flex: 0 1 12rem;
-}
-
 .orders-sections {
     display: grid;
     gap: 14px;
@@ -134,13 +115,6 @@
     .orders-working-set {
         max-height: min(34rem, 62dvh);
         padding-inline-end: 2px;
-    }
-
-    .orders-toolbar .mud-input-control,
-    .orders-toolbar .mlv-search-box,
-    .orders-toolbar .mlv-button {
-        flex: 1 1 100%;
-        min-width: 0;
     }
 
     .orders-module-shell .mlv-button,

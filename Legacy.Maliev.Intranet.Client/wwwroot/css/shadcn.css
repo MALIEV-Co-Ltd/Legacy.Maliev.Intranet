@@ -1,0 +1,704 @@
+/*
+ * MALIEV shadcn-inspired component layer
+ *
+ * shadcn/ui is an open, composable design approach rather than a runtime
+ * widget dependency. This layer translates that approach to the existing
+ * MudBlazor controls: semantic tokens, quiet borders, restrained elevation,
+ * predictable focus rings, and small composable variants. It is deliberately
+ * loaded last so every feature page receives the same visual contract without
+ * changing its routes, DTOs, authorization, or interaction handlers.
+ */
+
+:root {
+    color-scheme: light;
+}
+
+:root[data-maliev-theme="dark"] {
+    color-scheme: dark;
+}
+
+html,
+body {
+    background: var(--shadcn-background);
+    color: var(--shadcn-foreground);
+}
+
+body,
+.mud-typography,
+.mud-button-root,
+.mud-input-slot,
+.mud-input-label,
+.mud-input-helper-text,
+.mud-menu-item,
+.mud-list-item,
+.mud-table-root,
+.mud-data-grid {
+    font-family: var(--maliev-font-sans);
+    font-weight: var(--maliev-font-weight-body);
+}
+
+:where(h1, h2, h3, h4, h5, h6,
+    .mud-typography-h1, .mud-typography-h2, .mud-typography-h3,
+    .mud-typography-h4, .mud-typography-h5, .mud-typography-h6) {
+    font-family: var(--maliev-font-sans);
+    font-weight: var(--maliev-font-weight-heading);
+    letter-spacing: -0.015em;
+}
+
+/* ── Shared surface and focus primitives ─────────────────────── */
+
+.legacy-workspace-shell,
+.legacy-main-content,
+.legacy-page-container,
+.mlv-module-shell {
+    background: var(--shadcn-background);
+    color: var(--shadcn-foreground);
+}
+
+.legacy-page-container,
+.legacy-page-container .mud-container,
+.legacy-page-container .mud-grid,
+.legacy-page-container .mud-stack {
+    min-width: 0;
+}
+
+:where(a, button, input, select, textarea, [role="button"], [tabindex]):focus-visible {
+    outline: 2px solid var(--shadcn-ring);
+    outline-offset: 2px;
+}
+
+:where(.mud-button-root, .mud-icon-button-root, .mud-input-control, .mud-select,
+    .mud-autocomplete, .mud-checkbox, .mud-radio, .mud-switch):focus-within,
+:where(.mud-button-root, .mud-icon-button-root):focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--shadcn-ring) 22%, transparent) !important;
+}
+
+/* ── Buttons: shadcn-style variants ──────────────────────────── */
+
+.mud-button-root {
+    min-height: 2.5rem;
+    border: 1px solid transparent;
+    border-radius: var(--shadcn-radius);
+    padding: 0.5rem 0.875rem;
+    background: transparent;
+    color: var(--shadcn-foreground);
+    box-shadow: none !important;
+    font-size: var(--maliev-font-base);
+    font-weight: var(--maliev-font-weight-body);
+    letter-spacing: 0;
+    line-height: 1.25;
+    text-transform: none;
+    transition: background-color 120ms ease, border-color 120ms ease, color 120ms ease,
+        box-shadow 120ms ease;
+}
+
+.mud-button-root.mud-button-filled-primary,
+.mud-button-root.mud-button-filled-success,
+.mud-button-root.mud-button-filled-info {
+    border-color: var(--shadcn-primary) !important;
+    background: var(--shadcn-primary) !important;
+    color: var(--shadcn-primary-foreground) !important;
+}
+
+.mud-button-root.mud-button-filled-primary:hover:not(:disabled),
+.mud-button-root.mud-button-filled-success:hover:not(:disabled),
+.mud-button-root.mud-button-filled-info:hover:not(:disabled) {
+    background: var(--legacy-primary-hover) !important;
+}
+
+.mud-button-root.mud-button-filled-secondary,
+.mud-button-root.mud-button-filled-default {
+    border-color: var(--shadcn-border) !important;
+    background: var(--shadcn-secondary) !important;
+    color: var(--shadcn-secondary-foreground) !important;
+}
+
+.mud-button-root.mud-button-filled-error,
+.mud-button-root.mud-button-filled-warning {
+    border-color: var(--shadcn-destructive) !important;
+    background: var(--shadcn-destructive) !important;
+    color: var(--shadcn-destructive-foreground) !important;
+}
+
+.mud-button-root.mud-button-outlined {
+    border-color: var(--shadcn-border) !important;
+    background: var(--shadcn-background) !important;
+    color: var(--shadcn-foreground) !important;
+}
+
+.mud-button-root.mud-button-outlined:hover:not(:disabled) {
+    border-color: var(--shadcn-ring) !important;
+    background: var(--shadcn-accent) !important;
+}
+
+.mud-button-root.mud-button-text {
+    border-color: transparent !important;
+    background: transparent !important;
+    color: var(--shadcn-foreground) !important;
+}
+
+.mud-button-root.mud-button-text:hover:not(:disabled) {
+    background: var(--shadcn-accent) !important;
+    color: var(--shadcn-accent-foreground) !important;
+}
+
+.mud-icon-button-root {
+    min-width: 2.5rem;
+    min-height: 2.5rem;
+    border: 1px solid transparent;
+    border-radius: var(--shadcn-radius);
+    color: var(--shadcn-muted-foreground);
+    box-shadow: none !important;
+}
+
+.mud-icon-button-root:hover:not(:disabled) {
+    background: var(--shadcn-accent);
+    color: var(--shadcn-foreground);
+}
+
+/* MudCheckBox renders its glyph as a nested MudIconButton. The responsive
+   page rule below intentionally makes textual buttons full width, but that
+   must never stretch the checkbox's icon and collapse its label column. */
+.legacy-page-container .mud-checkbox {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+    min-width: 0;
+    max-width: 100%;
+}
+
+.legacy-page-container .mud-checkbox > :where(.mud-icon-button-root, .mud-button-root.mud-icon-button) {
+    flex: 0 0 2.75rem;
+    width: 2.75rem;
+    min-width: 2.75rem;
+    height: 2.75rem;
+    min-height: 2.75rem;
+    padding: 0;
+}
+
+.legacy-page-container .mud-checkbox > .mud-typography {
+    min-width: 0;
+    flex: 1 1 auto;
+    overflow-wrap: anywhere;
+}
+
+.mud-button-root:disabled,
+.mud-icon-button-root:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+}
+
+/* ── Inputs and fields ────────────────────────────────────────── */
+
+.mud-input-control {
+    min-width: 0;
+}
+
+.mud-input.mud-input-outlined {
+    min-height: 2.5rem;
+    border-radius: var(--shadcn-radius);
+    background: var(--shadcn-background);
+    box-shadow: none;
+}
+
+.mud-input.mud-input-outlined .mud-input-outlined-border {
+    border: 1px solid var(--shadcn-input) !important;
+    border-radius: var(--shadcn-radius) !important;
+    box-shadow: none !important;
+}
+
+/* MudTextField defaults to the underline variant when a feature page does
+   not specify Variant.Outlined. Keep that existing component contract, but
+   render the control with the same quiet border and focus treatment as the
+   shadcn input primitive. */
+.mud-input.mud-input-underline {
+    min-height: 2.5rem;
+    padding-inline: 0.75rem;
+    border: 1px solid var(--shadcn-input) !important;
+    border-radius: var(--shadcn-radius);
+    background: var(--shadcn-background);
+    box-shadow: none;
+}
+
+.mud-input.mud-input-underline::before,
+.mud-input.mud-input-underline::after {
+    display: none;
+}
+
+.mud-input.mud-input-underline:hover {
+    border-color: color-mix(in srgb, var(--shadcn-foreground) 45%, var(--shadcn-input)) !important;
+}
+
+.mud-input-control:focus-within .mud-input.mud-input-underline {
+    border-color: var(--shadcn-ring) !important;
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--shadcn-ring) 18%, transparent) !important;
+}
+
+.mud-input.mud-input-underline .mud-input-slot {
+    min-height: 2.5rem;
+    padding-block: 0.65rem;
+}
+
+.mud-input.mud-input-outlined:hover .mud-input-outlined-border {
+    border-color: color-mix(in srgb, var(--shadcn-foreground) 45%, var(--shadcn-input)) !important;
+}
+
+.mud-input-control:focus-within .mud-input.mud-input-outlined,
+.mud-input-control:focus-within .mud-input.mud-input-outlined .mud-input-outlined-border {
+    border-color: var(--shadcn-ring) !important;
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--shadcn-ring) 18%, transparent) !important;
+}
+
+.mud-input-slot,
+.mud-input-label,
+.mud-input-helper-text,
+.mud-input-adornment,
+.mud-select-input,
+.mud-autocomplete-input {
+    color: var(--shadcn-foreground);
+}
+
+.mud-input-slot::placeholder {
+    color: var(--shadcn-muted-foreground);
+    opacity: 1;
+}
+
+.mud-input-label,
+.mud-input-helper-text {
+    font-size: var(--maliev-font-small) !important;
+    font-weight: var(--maliev-font-weight-body);
+}
+
+.mud-input-label.mud-shrink,
+.mud-input-label-inputcontrol.mud-shrink {
+    background: var(--shadcn-background) !important;
+    color: var(--shadcn-muted-foreground);
+}
+
+.mud-input-error .mud-input-outlined-border {
+    border-color: var(--shadcn-destructive) !important;
+}
+
+.mud-input-error .mud-input-label,
+.mud-input-error .mud-input-helper-text {
+    color: var(--shadcn-destructive) !important;
+}
+
+.mud-input-adornment .mud-icon-root {
+    color: var(--shadcn-muted-foreground);
+}
+
+textarea.mud-input-slot {
+    min-height: 7rem;
+    resize: vertical;
+}
+
+/* ── Menus, selects, popovers, dialogs ───────────────────────── */
+
+.mud-popover,
+.mud-menu,
+.mud-picker,
+.mud-autocomplete-list,
+.mud-select-input-control {
+    border: 1px solid var(--shadcn-border);
+    border-radius: var(--shadcn-radius);
+    background: var(--shadcn-popover);
+    color: var(--shadcn-popover-foreground);
+    box-shadow: var(--shadcn-shadow-md);
+}
+
+.mud-list,
+.mud-menu-list {
+    padding: 0.25rem;
+    background: transparent;
+}
+
+.mud-list-item,
+.mud-menu-item {
+    min-height: 2.25rem;
+    border-radius: calc(var(--shadcn-radius) - 2px);
+    color: var(--shadcn-foreground);
+    font-size: var(--maliev-font-base);
+}
+
+.mud-list-item:hover,
+.mud-list-item:focus-visible,
+.mud-menu-item:hover,
+.mud-menu-item:focus-visible {
+    background: var(--shadcn-accent);
+    color: var(--shadcn-accent-foreground);
+}
+
+.mud-dialog {
+    border: 1px solid var(--shadcn-border);
+    border-radius: calc(var(--shadcn-radius) + 2px);
+    background: var(--shadcn-card);
+    box-shadow: var(--shadcn-shadow-md);
+}
+
+.mud-dialog .mud-dialog-title {
+    border-bottom: 1px solid var(--shadcn-border);
+    color: var(--shadcn-card-foreground);
+    font-weight: var(--maliev-font-weight-heading);
+}
+
+.mud-dialog .mud-dialog-actions {
+    border-top: 1px solid var(--shadcn-border);
+}
+
+.mud-drawer {
+    border-color: var(--shadcn-border) !important;
+    background: var(--shadcn-card);
+}
+
+/* ── Cards, papers, tables, data grids ────────────────────────── */
+
+.mud-card,
+.mud-paper,
+.mud-table-container,
+.mud-data-grid,
+.mud-table-root {
+    border: 1px solid var(--shadcn-border) !important;
+    border-radius: var(--shadcn-radius) !important;
+    background: var(--shadcn-card) !important;
+    color: var(--shadcn-card-foreground);
+    box-shadow: none !important;
+}
+
+.mud-card-header,
+.mud-card-content,
+.mud-card-actions {
+    border-color: var(--shadcn-border);
+}
+
+.mud-table-container {
+    overflow-x: auto;
+}
+
+.mud-table-head .mud-table-cell,
+.mud-table-header .mud-table-cell,
+.mud-data-grid .mud-table-cell {
+    border-bottom: 1px solid var(--shadcn-border);
+    background: var(--shadcn-muted);
+    color: var(--shadcn-muted-foreground);
+    font-size: var(--maliev-font-small);
+    font-weight: var(--maliev-font-weight-heading);
+}
+
+.mud-table-body .mud-table-cell {
+    border-bottom: 1px solid color-mix(in srgb, var(--shadcn-border) 72%, transparent);
+    color: var(--shadcn-card-foreground);
+    font-size: var(--maliev-font-base);
+    font-weight: var(--maliev-font-weight-body);
+}
+
+.mud-table-body .mud-table-row:hover .mud-table-cell,
+.mud-table-body .mud-table-row:focus-within .mud-table-cell {
+    background: var(--shadcn-accent);
+}
+
+.mud-table-pagination,
+.mud-data-grid-footer {
+    border-top: 1px solid var(--shadcn-border);
+    color: var(--shadcn-muted-foreground);
+}
+
+.mud-table-pagination .mud-icon-button-root {
+    min-width: 2.25rem;
+    min-height: 2.25rem;
+}
+
+.mud-sort-button,
+.mud-data-grid-header-cell button {
+    color: inherit;
+    font-weight: var(--maliev-font-weight-heading);
+}
+
+.mud-divider {
+    border-color: var(--shadcn-border) !important;
+}
+
+/* ── Feedback and status components ───────────────────────────── */
+
+.mud-alert {
+    border: 1px solid var(--shadcn-border);
+    border-radius: var(--shadcn-radius);
+    background: var(--shadcn-muted);
+    color: var(--shadcn-foreground);
+    box-shadow: none !important;
+}
+
+.mud-alert-filled-error,
+.mud-alert-outlined-error {
+    border-color: color-mix(in srgb, var(--shadcn-destructive) 42%, var(--shadcn-border));
+    background: color-mix(in srgb, var(--shadcn-destructive) 8%, var(--shadcn-background));
+    color: var(--shadcn-destructive);
+}
+
+.mud-alert-filled-warning,
+.mud-alert-outlined-warning {
+    border-color: var(--legacy-warn-border);
+    background: var(--legacy-warn-bg);
+    color: var(--legacy-warn-fg);
+}
+
+.mud-alert-filled-info,
+.mud-alert-outlined-info {
+    border-color: color-mix(in srgb, var(--maliev-info) 36%, var(--shadcn-border));
+    background: var(--maliev-info-bg);
+    color: var(--maliev-info-fg);
+}
+
+.mud-chip,
+.mud-badge-content {
+    border: 1px solid var(--shadcn-border);
+    border-radius: 999px;
+    background: var(--shadcn-muted);
+    color: var(--shadcn-muted-foreground);
+    box-shadow: none !important;
+    font-size: var(--maliev-font-small);
+    font-weight: var(--maliev-font-weight-body);
+}
+
+.mud-snackbar {
+    border: 1px solid var(--shadcn-border);
+    border-radius: var(--shadcn-radius);
+    background: var(--shadcn-popover);
+    color: var(--shadcn-popover-foreground);
+    box-shadow: var(--shadcn-shadow-md);
+}
+
+.mud-progress-linear {
+    overflow: hidden;
+    border-radius: 999px;
+    background: var(--shadcn-muted);
+}
+
+.mud-progress-linear-bar {
+    background: var(--shadcn-primary);
+}
+
+.mud-skeleton {
+    border-radius: calc(var(--shadcn-radius) - 2px);
+    background: var(--shadcn-muted);
+}
+
+.mud-tooltip {
+    border: 1px solid var(--shadcn-border);
+    border-radius: calc(var(--shadcn-radius) - 2px);
+    background: var(--shadcn-foreground);
+    color: var(--shadcn-background);
+    box-shadow: var(--shadcn-shadow-xs);
+}
+
+/* ── Navigation and shell ────────────────────────────────────── */
+
+.legacy-workspace-shell .legacy-topbar {
+    border-bottom: 1px solid var(--shadcn-border);
+    background: color-mix(in srgb, var(--shadcn-background) 94%, transparent);
+    box-shadow: none;
+    backdrop-filter: blur(10px);
+}
+
+.legacy-navigation-rail,
+.legacy-navigation-rail.drawer {
+    border-color: var(--shadcn-border);
+    background: var(--shadcn-card);
+    box-shadow: none;
+}
+
+.legacy-navigation-rail .legacy-rail-group h2 {
+    color: var(--shadcn-muted-foreground);
+    font-size: var(--maliev-font-micro);
+    font-weight: var(--maliev-font-weight-heading);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+
+.legacy-navigation-rail .legacy-rail-link {
+    border: 1px solid transparent;
+    border-radius: var(--shadcn-radius);
+    color: var(--shadcn-muted-foreground);
+    font-weight: var(--maliev-font-weight-body);
+    transition: background-color 120ms ease, border-color 120ms ease, color 120ms ease;
+}
+
+.legacy-navigation-rail .legacy-rail-link:hover,
+.legacy-navigation-rail .legacy-rail-link:focus-visible {
+    border-color: var(--shadcn-border);
+    background: var(--shadcn-accent);
+    color: var(--shadcn-foreground);
+}
+
+.legacy-navigation-rail .legacy-rail-link.active {
+    border-color: color-mix(in srgb, var(--shadcn-primary) 28%, var(--shadcn-border));
+    background: color-mix(in srgb, var(--shadcn-primary) 10%, var(--shadcn-background));
+    color: var(--shadcn-primary);
+    box-shadow: none;
+    font-weight: var(--maliev-font-weight-heading);
+}
+
+.legacy-workspace-shell .legacy-profile,
+.legacy-workspace-shell .legacy-quick-action,
+.legacy-workspace-shell .legacy-global-search {
+    border-color: var(--shadcn-border);
+    border-radius: var(--shadcn-radius);
+    background: var(--shadcn-background);
+    box-shadow: none;
+}
+
+.legacy-workspace-shell .legacy-profile:hover,
+.legacy-workspace-shell .legacy-quick-action:hover,
+.legacy-workspace-shell .legacy-global-search:focus-within {
+    border-color: var(--shadcn-ring);
+    background: var(--shadcn-accent);
+}
+
+.legacy-workspace-shell .legacy-session-avatar {
+    border: 1px solid var(--shadcn-border);
+    background: var(--shadcn-muted);
+    color: var(--shadcn-foreground);
+}
+
+.legacy-workspace-shell .legacy-profile-popover,
+.legacy-workspace-shell .legacy-search-results {
+    border: 1px solid var(--shadcn-border);
+    border-radius: var(--shadcn-radius);
+    background: var(--shadcn-popover);
+    box-shadow: var(--shadcn-shadow-md);
+}
+
+.legacy-workspace-shell .legacy-profile-action,
+.legacy-workspace-shell .legacy-search-result {
+    border-radius: calc(var(--shadcn-radius) - 2px);
+}
+
+.legacy-workspace-shell .legacy-profile-action:hover,
+.legacy-workspace-shell .legacy-profile-action:focus-visible,
+.legacy-workspace-shell .legacy-search-result:hover,
+.legacy-workspace-shell .legacy-search-result.active {
+    background: var(--shadcn-accent);
+}
+
+/* ── Shared module primitives ─────────────────────────────────── */
+
+.mlv-toolbar,
+.legacy-page-container .operations-page-header,
+.legacy-page-container .mud-paper,
+.legacy-page-container .dashboard-panel,
+.legacy-page-container .dashboard-metric-card,
+.mlv-empty,
+.mlv-segmented,
+.mlv-table {
+    border-color: var(--shadcn-border) !important;
+    border-radius: var(--shadcn-radius) !important;
+    box-shadow: none !important;
+}
+
+.mlv-table th,
+.legacy-page-container .mud-table-head .mud-table-cell {
+    background: var(--shadcn-muted);
+    color: var(--shadcn-muted-foreground);
+    font-weight: var(--maliev-font-weight-heading);
+}
+
+.mlv-table td,
+.legacy-page-container .mud-table-body .mud-table-cell {
+    border-bottom-color: var(--shadcn-border);
+}
+
+.mlv-table tbody tr:hover,
+.mlv-segmented button:hover,
+.mlv-segmented button.active {
+    background: var(--shadcn-accent);
+    color: var(--shadcn-accent-foreground);
+}
+
+.legacy-page-container .mud-tabs-toolbar {
+    border: 1px solid var(--shadcn-border);
+    border-radius: var(--shadcn-radius);
+    background: var(--shadcn-muted);
+    box-shadow: none;
+}
+
+.legacy-page-container .mud-tab {
+    border-radius: calc(var(--shadcn-radius) - 2px);
+    color: var(--shadcn-muted-foreground);
+    font-weight: var(--maliev-font-weight-body);
+}
+
+.legacy-page-container .mud-tab.mud-tab-active {
+    background: var(--shadcn-background);
+    color: var(--shadcn-foreground);
+    box-shadow: var(--shadcn-shadow-xs);
+    font-weight: var(--maliev-font-weight-heading);
+}
+
+/* ── Responsive and motion contracts ─────────────────────────── */
+
+@media (max-width: 900px) {
+    .legacy-workspace-shell .legacy-topbar {
+        gap: 0.5rem;
+    }
+
+    .legacy-page-container .mud-paper,
+    .legacy-page-container .mud-card,
+    .legacy-page-container .dashboard-panel,
+    .legacy-page-container .dashboard-metric-card {
+        border-radius: calc(var(--shadcn-radius) - 2px) !important;
+    }
+
+    .legacy-page-container .mud-button-root {
+        min-height: 2.75rem;
+    }
+}
+
+@media (max-width: 600px) {
+    .legacy-page-container {
+        padding-inline: 0.75rem;
+    }
+
+    .legacy-page-container .mud-paper,
+    .legacy-page-container .mud-card {
+        padding-inline: 0.75rem;
+    }
+
+    .legacy-page-container .mud-form,
+    .legacy-page-container .mud-grid,
+    .legacy-page-container .mlv-toolbar {
+        gap: 0.625rem;
+    }
+
+    .legacy-page-container .mud-button-root {
+        width: 100%;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        scroll-behavior: auto !important;
+        transition-duration: 0.01ms !important;
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+    }
+}
+
+@media (forced-colors: active) {
+    .mud-button-root,
+    .mud-input.mud-input-outlined .mud-input-outlined-border,
+    .mud-paper,
+    .mud-card,
+    .mud-table-container,
+    .legacy-navigation-rail,
+    .legacy-workspace-shell .legacy-topbar {
+        border: 1px solid CanvasText !important;
+        box-shadow: none !important;
+    }
+
+    .legacy-navigation-rail .legacy-rail-link.active {
+        outline: 2px solid Highlight;
+    }
+}

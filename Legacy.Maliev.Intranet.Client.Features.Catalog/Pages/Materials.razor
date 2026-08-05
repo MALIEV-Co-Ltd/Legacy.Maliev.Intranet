@@ -1,6 +1,7 @@
 @page "/Materials/Index"
 @page "/mfg/materials"
 @attribute [Authorize]
+@implements IDisposable
 @inject HttpClient Http
 @inject NavigationManager Navigation
 @inject IStringLocalizer<Materials> Text
@@ -18,24 +19,14 @@
         </MudButton>
     </header>
 
-    <MudPaper Class="pa-4 mb-4">
-        <div class="d-flex flex-wrap gap-3 align-end">
-            <MudTextField T="string" @bind-Value="searchInput" Label="@Text["Search"]"
-                          Variant="Variant.Outlined" Immediate="true" />
-            <MudSelect T="CatalogMaterialSort" @bind-Value="sortInput" Label="@Text["Sort"]"
-                       Variant="Variant.Outlined">
-                @foreach (var option in Enum.GetValues<CatalogMaterialSort>())
-                {
-                    <MudSelectItem Value="option">@Text[option.ToString()]</MudSelectItem>
-                }
-            </MudSelect>
-            <MudNumericField T="int" @bind-Value="sizeInput" Label="@Text["PerPage"]"
-                             Min="1" Max="250" Variant="Variant.Outlined" />
-            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="ApplyFiltersAsync">
-                @Text["Apply"]
-            </MudButton>
-        </div>
-    </MudPaper>
+    <ListToolbar TSort="CatalogMaterialSort"
+                 Value="@ToolbarState"
+                 Defaults="@DefaultToolbarState"
+                 SortOptions="@SortOptions"
+                 PageSizeOptions="@PageSizeOptions"
+                 SearchLabel="@Text["Search"]"
+                 IsBusy="@loading"
+                 OnRequest="HandleToolbarRequestAsync" />
 
     @if (loading)
     {
@@ -84,10 +75,16 @@
     private CatalogMaterialPage? page;
     private string? error;
     private bool loading;
-    private string? searchInput;
-    private CatalogMaterialSort sortInput;
     private CatalogMaterialSort currentSort = CatalogMaterialSort.MaterialId_Descending;
-    private int sizeInput;
+    private readonly LatestRequestGate requestGate = new();
+    private static readonly ListToolbarState<CatalogMaterialSort> DefaultToolbarState =
+        new(null, CatalogMaterialSort.MaterialId_Descending, 10);
+    private static readonly int[] PageSizeOptions = [10, 25, 50, 100, 250];
+    private ListToolbarState<CatalogMaterialSort> ToolbarState => new(Search, currentSort, Size);
+    private IReadOnlyList<ListToolbarOption<CatalogMaterialSort>> SortOptions =>
+        Enum.GetValues<CatalogMaterialSort>()
+            .Select(option => new ListToolbarOption<CatalogMaterialSort>(option, Text[option.ToString()]))
+            .ToArray();
 
     protected override async Task OnParametersSetAsync()
     {
@@ -96,20 +93,26 @@
         currentSort = Enum.TryParse<CatalogMaterialSort>(SortQuery, ignoreCase: true, out var parsedSort)
             ? parsedSort
             : CatalogMaterialSort.MaterialId_Descending;
-        searchInput = Search;
-        sortInput = currentSort;
-        sizeInput = Size;
         await LoadAsync();
     }
 
-    private async Task LoadAsync()
+    private async Task LoadAsync(
+        ListToolbarState<CatalogMaterialSort>? requestedState = null,
+        CancellationToken cancellationToken = default)
     {
+        using var lease = requestGate.Begin(cancellationToken);
+        var state = (requestedState ?? ToolbarState).Normalize();
         loading = true;
         error = null;
         try
         {
-            var uri = $"/bff/catalog/materials?sort={currentSort}&search={Uri.EscapeDataString(Search ?? string.Empty)}&index={Index}&size={Size}";
-            using var response = await Http.GetForPresentationAsync(uri);
+            var uri = $"/bff/catalog/materials?sort={state.Sort}&search={Uri.EscapeDataString(state.Search ?? string.Empty)}&index={Index}&size={state.PageSize}";
+            using var response = await Http.GetForPresentationAsync(uri, lease.CancellationToken);
+            if (!lease.IsCurrent)
+            {
+                return;
+            }
+
             if (response.StatusCode == HttpStatusCode.Unauthorized)
             {
                 Navigation.NavigateTo($"/Login?returnUrl={Uri.EscapeDataString(Navigation.ToBaseRelativePath(Navigation.Uri))}");
@@ -134,30 +137,58 @@
                 return;
             }
 
-            page = await response.Content.ReadFromJsonAsync<CatalogMaterialPage>();
-            if (page is null)
+            var loadedPage = await response.Content.ReadFromJsonAsync<CatalogMaterialPage>(cancellationToken: lease.CancellationToken);
+            if (!lease.IsCurrent)
+            {
+                return;
+            }
+
+            page = loadedPage;
+            if (loadedPage is null)
             {
                 error = Text["InvalidResponse"];
             }
         }
+        catch (OperationCanceledException) when (!lease.IsCurrent || lease.CancellationToken.IsCancellationRequested)
+        {
+            // A newer toolbar request owns the visible state.
+        }
         catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException)
         {
-            error = Text["Unavailable"];
+            if (lease.IsCurrent)
+            {
+                error = Text["Unavailable"];
+            }
         }
         finally
         {
-            loading = false;
+            if (lease.IsCurrent)
+            {
+                loading = false;
+            }
         }
     }
 
-    private Task ApplyFiltersAsync() => NavigateAsync(1, searchInput, sortInput, sizeInput);
     private Task PreviousPageAsync() => NavigateAsync(Math.Max(1, Index - 1), Search, currentSort, Size);
     private Task NextPageAsync() => NavigateAsync(Index + 1, Search, currentSort, Size);
 
-    private Task NavigateAsync(int index, string? search, CatalogMaterialSort sort, int size)
+    private Task HandleToolbarRequestAsync(ListToolbarRequest<CatalogMaterialSort> request)
+    {
+        var state = request.State.Normalize();
+        if (request.Reason == ListToolbarChangeReason.Refreshed && state == ToolbarState.Normalize())
+        {
+            return LoadAsync();
+        }
+
+        return NavigateAsync(1, state.Search, state.Sort, state.PageSize, replace: true);
+    }
+
+    private Task NavigateAsync(int index, string? search, CatalogMaterialSort sort, int size, bool replace = false)
     {
         var uri = $"/Materials/Index?search={Uri.EscapeDataString(search ?? string.Empty)}&sort={sort}&index={index}&size={Math.Clamp(size, 1, 250)}";
-        Navigation.NavigateTo(uri);
+        Navigation.NavigateTo(uri, replace: replace);
         return Task.CompletedTask;
     }
+
+    public void Dispose() => requestGate.Dispose();
 }

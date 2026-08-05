@@ -1,5 +1,6 @@
 @page "/Finances/Index"
 @attribute [Authorize]
+@implements IDisposable
 @inject HttpClient Http
 @inject NavigationManager Navigation
 @inject IStringLocalizer<Finances> Text
@@ -75,19 +76,14 @@
             </MudPaper>
         }
 
-        <MudPaper Class="pa-4 mb-4">
-            <div class="d-flex flex-wrap gap-3 align-end">
-                <MudTextField T="string" @bind-Value="searchInput" Label="@Text["Search"]" Variant="Variant.Outlined" Immediate="true" />
-                <MudSelect T="FinancePaymentSort" @bind-Value="sortInput" Label="@Text["Sort"]" Variant="Variant.Outlined">
-                    @foreach (var option in Enum.GetValues<FinancePaymentSort>())
-                    {
-                        <MudSelectItem Value="option">@Text[option.ToString()]</MudSelectItem>
-                    }
-                </MudSelect>
-                <MudNumericField T="int" @bind-Value="sizeInput" Label="@Text["PerPage"]" Min="1" Max="100" Variant="Variant.Outlined" />
-                <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="ApplyFiltersAsync">@Text["Apply"]</MudButton>
-            </div>
-        </MudPaper>
+        <ListToolbar TSort="FinancePaymentSort"
+                     Value="@ToolbarValue"
+                     Defaults="@ToolbarDefaults"
+                     SortOptions="@ToolbarSortOptions"
+                     PageSizeOptions="@FinancePageSizes"
+                     SearchLabel="@Text["Search"]"
+                     IsBusy="@loading"
+                     OnRequest="HandleToolbarRequestAsync" />
 
         @if (Page is null || Page.Items.Count == 0)
         {
@@ -139,6 +135,8 @@
     [SupplyParameterFromQuery(Name = "size")] public int Size { get; set; } = 25;
 
     private FinancePaymentPage? Page { get; set; }
+    private static readonly int[] FinancePageSizes = [10, 25, 50, 100];
+    private readonly LatestRequestGate requestGate = new();
     private FinanceSummary Weekly { get; set; } = new([]);
     private FinanceSummary Monthly { get; set; } = new([]);
     private FinanceSummary MonthlyJobIncome { get; set; } = new([]);
@@ -149,11 +147,13 @@
     private int? thbCurrencyId;
     private string? error;
     private bool loading;
-    private string? searchInput;
-    private FinancePaymentSort sortInput;
     private FinancePaymentSort currentSort = FinancePaymentSort.PaymentCreatedDate_Descending;
-    private int sizeInput;
     private static int BangkokYear => TimeZoneInfo.ConvertTimeBySystemTimeZoneId(DateTimeOffset.UtcNow, "Asia/Bangkok").Year;
+    private ListToolbarState<FinancePaymentSort> ToolbarValue => new(Search, currentSort, Size);
+    private static ListToolbarState<FinancePaymentSort> ToolbarDefaults =>
+        new(null, FinancePaymentSort.PaymentCreatedDate_Descending, 25);
+    private IReadOnlyList<ListToolbarOption<FinancePaymentSort>> ToolbarSortOptions =>
+        Enum.GetValues<FinancePaymentSort>().Select(option => new ListToolbarOption<FinancePaymentSort>(option, Text[option.ToString()])).ToArray();
 
     private IReadOnlyList<(string Title, FinanceSummary Value)> SummaryCards =>
     [
@@ -181,57 +181,84 @@
         currentSort = Enum.TryParse<FinancePaymentSort>(SortQuery, true, out var parsed)
             ? parsed
             : FinancePaymentSort.PaymentCreatedDate_Descending;
-        searchInput = Search;
-        sortInput = currentSort;
-        sizeInput = Size;
         await LoadAsync();
     }
 
     private async Task LoadAsync()
     {
+        using var lease = requestGate.Begin();
         loading = true;
         error = null;
         HttpResponseMessage[]? responses = null;
         try
         {
             responses = await Task.WhenAll(
-                Http.GetForPresentationAsync($"/bff/finances?sort={currentSort}&search={Uri.EscapeDataString(Search ?? string.Empty)}&index={Index}&size={Size}"),
-                Http.GetForPresentationAsync("/bff/finances/summaries/weekly"),
-                Http.GetForPresentationAsync("/bff/finances/summaries/monthly"),
-                Http.GetForPresentationAsync("/bff/finances/summaries/monthly-job-income"),
-                Http.GetForPresentationAsync("/bff/finances/summaries/yearly"),
-                Http.GetForPresentationAsync("/bff/catalog/currencies"));
+                Http.GetForPresentationAsync($"/bff/finances?sort={currentSort}&search={Uri.EscapeDataString(Search ?? string.Empty)}&index={Index}&size={Size}", lease.CancellationToken),
+                Http.GetForPresentationAsync("/bff/finances/summaries/weekly", lease.CancellationToken),
+                Http.GetForPresentationAsync("/bff/finances/summaries/monthly", lease.CancellationToken),
+                Http.GetForPresentationAsync("/bff/finances/summaries/monthly-job-income", lease.CancellationToken),
+                Http.GetForPresentationAsync("/bff/finances/summaries/yearly", lease.CancellationToken),
+                Http.GetForPresentationAsync("/bff/catalog/currencies", lease.CancellationToken));
+            if (!lease.IsCurrent)
+            {
+                return;
+            }
             if (HandleFailure(responses))
             {
                 return;
             }
 
-            Page = await responses[0].Content.ReadFromJsonAsync<FinancePaymentPage>();
-            Weekly = await responses[1].Content.ReadFromJsonAsync<FinanceSummary>() ?? new([]);
-            Monthly = await responses[2].Content.ReadFromJsonAsync<FinanceSummary>() ?? new([]);
-            MonthlyJobIncome = await responses[3].Content.ReadFromJsonAsync<FinanceSummary>() ?? new([]);
-            Yearly = await responses[4].Content.ReadFromJsonAsync<FinanceSummary>() ?? new([]);
-            var currencyItems = await responses[5].Content.ReadFromJsonAsync<List<CatalogCurrency>>();
-            if (Page?.Items is null || currencyItems is null)
+            var loadedPage = await responses[0].Content.ReadFromJsonAsync<FinancePaymentPage>(lease.CancellationToken);
+            var loadedWeekly = await responses[1].Content.ReadFromJsonAsync<FinanceSummary>(lease.CancellationToken) ?? new([]);
+            var loadedMonthly = await responses[2].Content.ReadFromJsonAsync<FinanceSummary>(lease.CancellationToken) ?? new([]);
+            var loadedMonthlyJobIncome = await responses[3].Content.ReadFromJsonAsync<FinanceSummary>(lease.CancellationToken) ?? new([]);
+            var loadedYearly = await responses[4].Content.ReadFromJsonAsync<FinanceSummary>(lease.CancellationToken) ?? new([]);
+            var currencyItems = await responses[5].Content.ReadFromJsonAsync<List<CatalogCurrency>>(lease.CancellationToken);
+            if (!lease.IsCurrent)
+            {
+                return;
+            }
+            if (loadedPage?.Items is null || currencyItems is null)
             {
                 error = Text["InvalidResponse"];
                 return;
             }
 
-            currencies = currencyItems.ToDictionary(item => item.Id, item => item.ShortName);
-            thbCurrencyId = currencyItems.FirstOrDefault(item => string.Equals(item.ShortName, "THB", StringComparison.OrdinalIgnoreCase))?.Id;
-            var currencyQuery = thbCurrencyId is int currencyId
+            var loadedCurrencies = currencyItems.ToDictionary(item => item.Id, item => item.ShortName);
+            var loadedThbCurrencyId = currencyItems.FirstOrDefault(item => string.Equals(item.ShortName, "THB", StringComparison.OrdinalIgnoreCase))?.Id;
+            var currencyQuery = loadedThbCurrencyId is int currencyId
                 ? $"&currencyId={currencyId.ToString(CultureInfo.InvariantCulture)}"
                 : string.Empty;
-            using var incomeResponse = await Http.GetForPresentationAsync($"/bff/finances/trends/yearly-income?year={BangkokYear}{currencyQuery}");
-            using var expenseResponse = await Http.GetForPresentationAsync($"/bff/finances/trends/yearly-expense?{currencyQuery.TrimStart('&')}");
+            using var incomeResponse = await Http.GetForPresentationAsync($"/bff/finances/trends/yearly-income?year={BangkokYear}{currencyQuery}", lease.CancellationToken);
+            using var expenseResponse = await Http.GetForPresentationAsync($"/bff/finances/trends/yearly-expense?{currencyQuery.TrimStart('&')}", lease.CancellationToken);
+            if (!lease.IsCurrent)
+            {
+                return;
+            }
             if (HandleFailure([incomeResponse, expenseResponse]))
             {
                 return;
             }
 
-            yearlyIncome = await incomeResponse.Content.ReadFromJsonAsync<Dictionary<DateTime, decimal>>() ?? new();
-            yearlyExpense = await expenseResponse.Content.ReadFromJsonAsync<Dictionary<DateTime, decimal>>() ?? new();
+            var loadedYearlyIncome = await incomeResponse.Content.ReadFromJsonAsync<Dictionary<DateTime, decimal>>(lease.CancellationToken) ?? new();
+            var loadedYearlyExpense = await expenseResponse.Content.ReadFromJsonAsync<Dictionary<DateTime, decimal>>(lease.CancellationToken) ?? new();
+            if (!lease.IsCurrent)
+            {
+                return;
+            }
+
+            Page = loadedPage;
+            Weekly = loadedWeekly;
+            Monthly = loadedMonthly;
+            MonthlyJobIncome = loadedMonthlyJobIncome;
+            Yearly = loadedYearly;
+            currencies = loadedCurrencies;
+            thbCurrencyId = loadedThbCurrencyId;
+            yearlyIncome = loadedYearlyIncome;
+            yearlyExpense = loadedYearlyExpense;
+        }
+        catch (OperationCanceledException) when (!lease.IsCurrent)
+        {
         }
         catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException)
         {
@@ -247,7 +274,10 @@
                 }
             }
 
-            loading = false;
+            if (lease.IsCurrent)
+            {
+                loading = false;
+            }
         }
     }
 
@@ -277,15 +307,21 @@
         return true;
     }
 
-    private Task ApplyFiltersAsync() => NavigateAsync(1, searchInput, sortInput, sizeInput);
     private Task PreviousPageAsync() => NavigateAsync(Math.Max(1, Index - 1), Search, currentSort, Size);
     private Task NextPageAsync() => NavigateAsync(Index + 1, Search, currentSort, Size);
 
-    private Task NavigateAsync(int index, string? search, FinancePaymentSort sort, int size)
+    private Task HandleToolbarRequestAsync(ListToolbarRequest<FinancePaymentSort> request) =>
+        request.Reason == ListToolbarChangeReason.Refreshed && request.State.Normalize() == ToolbarValue.Normalize()
+            ? LoadAsync()
+            : NavigateAsync(1, request.State.Search, request.State.Sort, request.State.PageSize, replace: true);
+
+    private Task NavigateAsync(int index, string? search, FinancePaymentSort sort, int size, bool replace = false)
     {
-        Navigation.NavigateTo($"/Finances/Index?search={Uri.EscapeDataString(search ?? string.Empty)}&sort={sort}&index={index}&size={Math.Clamp(size, 1, 100)}");
+        Navigation.NavigateTo($"/Finances/Index?search={Uri.EscapeDataString(search ?? string.Empty)}&sort={sort}&index={index}&size={Math.Clamp(size, 1, 100)}", replace: replace);
         return Task.CompletedTask;
     }
+
+    public void Dispose() => requestGate.Dispose();
 
     private string CurrencyName(string? id) => int.TryParse(id, CultureInfo.InvariantCulture, out var value) && currencies.TryGetValue(value, out var name) ? name : "-";
     private string FormatAmount(decimal amount, string? currencyId) => $"{amount:N2} {CurrencyName(currencyId)}";

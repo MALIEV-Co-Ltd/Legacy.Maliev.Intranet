@@ -7,7 +7,7 @@
   <data name="PageTitle" xml:space="preserve"><value>Materials - MALIEV Intranet</value></data>
   <data name="Catalog" xml:space="preserve"><value>Catalog</value></data><data name="Materials" xml:space="preserve"><value>Materials</value></data>
   <data name="CreateMaterial" xml:space="preserve"><value>Create material</value></data><data name="Search" xml:space="preserve"><value>Search</value></data>
-  <data name="Sort" xml:space="preserve"><value>Sort</value></data><data name="PerPage" xml:space="preserve"><value>Per page</value></data><data name="Apply" xml:space="preserve"><value>Apply</value></data>
+  <data name="Sort" xml:space="preserve"><value>Sort</value></data><data name="PerPage" xml:space="preserve"><value>Per page</value></data>
   <data name="Loading" xml:space="preserve"><value>Loading materials</value></data><data name="Empty" xml:space="preserve"><value>No materials matched this query.</value></data>
   <data name="Id" xml:space="preserve"><value>ID</value></data><data name="Group" xml:space="preserve"><value>Group</value></data><data name="Name" xml:space="preserve"><value>Name</value></data>
   <data name="Number" xml:space="preserve"><value>Number</value></data><data name="Density" xml:space="preserve"><value>Density</value></data><data name="Machinable" xml:space="preserve"><value>Machinable</value></data><data name="Printable" xml:space="preserve"><value>Printable</value></data>
