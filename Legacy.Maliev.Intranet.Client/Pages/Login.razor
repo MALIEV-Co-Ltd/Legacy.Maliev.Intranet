@@ -156,8 +156,8 @@
         baseUri.Host is "localhost" or "127.0.0.1" or "::1";
 
     private string EmailPattern => IsLocalAspireHost
-        ? "^[^@@\\s]+@@(maliev\\.com|maliev\\.test)$"
-        : "^[^@@\\s]+@@maliev\\.com$";
+        ? "^[^@\\s]+@(maliev\\.com|maliev\\.test)$"
+        : "^[^@\\s]+@maliev\\.com$";
 
     private string ThemeToggleLabel => _isDarkMode ? Text["Switch to light mode"].Value : Text["Switch to dark mode"].Value;
 
