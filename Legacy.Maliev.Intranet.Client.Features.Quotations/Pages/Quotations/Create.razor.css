@@ -144,8 +144,8 @@
         gap: 0.65rem;
     }
 
-    .quotation-line-order,
-    .quotation-line-description,
+    .quotation-line-editor ::deep .quotation-line-order,
+    .quotation-line-editor ::deep .quotation-line-description,
     .quotation-line-numbers {
         grid-column: 1 / -1;
     }

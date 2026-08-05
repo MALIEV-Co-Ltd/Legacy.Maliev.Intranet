@@ -33,7 +33,7 @@
             <MudPaper Class="pa-4" Elevation="1">
                 <MudText id="yearly-activity-heading" Typo="Typo.h5" HtmlTag="h2">@Text["ChartHeading", BangkokYear]</MudText>
                 <div aria-hidden="true">
-                    <MudChart T="double" ChartType="ChartType.Bar" ChartSeries="@series" ChartLabels="@chartData.Labels" Width="100%" Height="520px" />
+                    <MudChart T="double" ChartType="ChartType.Bar" ChartSeries="@series" ChartLabels="@chartLabels" Width="100%" Height="520px" />
                 </div>
                 <MudTable Items="ActivityRows" Breakpoint="Breakpoint.Sm" Elevation="0" aria-label="@Text["TableLabel", BangkokYear]">
                     <HeaderContent>
@@ -66,6 +66,16 @@
             chartData.Income[index],
             Math.Abs(chartData.Expense[index]))).ToArray();
 
+    // Keep the full dd/MM values in the table while using compact d/M labels
+    // for the chart.  MudChart does not rotate labels consistently at every
+    // responsive width, so shortening the axis labels avoids collisions while
+    // preserving the same date index for every bar and tooltip.
+    private string[] chartLabels => chartData is null
+        ? []
+        : chartData.Labels.Select(ShortChartLabel).ToArray();
+
+    private static string ShortChartLabel(string label) => label.TrimStart('0').Replace("/0", "/", StringComparison.Ordinal);
+
     private static string FormatThb(double value) => $"{value:N2} THB";
 
     protected override async Task OnInitializedAsync()
@@ -73,7 +83,11 @@
         loading = true;
         try
         {
-            var trend = await FinanceChartDataClient.LoadAsync(Http, null, includeExpense: true);
+            // The activity report is scoped to the current Bangkok calendar
+            // year. Passing an empty year query makes the migrated Accounting
+            // endpoint reject the request, leaving the MudChart family in a
+            // permanent "temporarily unavailable" state.
+            var trend = await FinanceChartDataClient.LoadAsync(Http, BangkokYear, includeExpense: true);
             chartData = FinanceChartSeries.BuildActivity(trend.Income, trend.Expense);
             series =
             [

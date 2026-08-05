@@ -157,6 +157,32 @@ body,
     color: var(--shadcn-foreground);
 }
 
+/* MudCheckBox renders its glyph as a nested MudIconButton. The responsive
+   page rule below intentionally makes textual buttons full width, but that
+   must never stretch the checkbox's icon and collapse its label column. */
+.legacy-page-container .mud-checkbox {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+    min-width: 0;
+    max-width: 100%;
+}
+
+.legacy-page-container .mud-checkbox > :where(.mud-icon-button-root, .mud-button-root.mud-icon-button) {
+    flex: 0 0 2.75rem;
+    width: 2.75rem;
+    min-width: 2.75rem;
+    height: 2.75rem;
+    min-height: 2.75rem;
+    padding: 0;
+}
+
+.legacy-page-container .mud-checkbox > .mud-typography {
+    min-width: 0;
+    flex: 1 1 auto;
+    overflow-wrap: anywhere;
+}
+
 .mud-button-root:disabled,
 .mud-icon-button-root:disabled {
     cursor: not-allowed;
@@ -180,6 +206,38 @@ body,
     border: 1px solid var(--shadcn-input) !important;
     border-radius: var(--shadcn-radius) !important;
     box-shadow: none !important;
+}
+
+/* MudTextField defaults to the underline variant when a feature page does
+   not specify Variant.Outlined. Keep that existing component contract, but
+   render the control with the same quiet border and focus treatment as the
+   shadcn input primitive. */
+.mud-input.mud-input-underline {
+    min-height: 2.5rem;
+    padding-inline: 0.75rem;
+    border: 1px solid var(--shadcn-input) !important;
+    border-radius: var(--shadcn-radius);
+    background: var(--shadcn-background);
+    box-shadow: none;
+}
+
+.mud-input.mud-input-underline::before,
+.mud-input.mud-input-underline::after {
+    display: none;
+}
+
+.mud-input.mud-input-underline:hover {
+    border-color: color-mix(in srgb, var(--shadcn-foreground) 45%, var(--shadcn-input)) !important;
+}
+
+.mud-input-control:focus-within .mud-input.mud-input-underline {
+    border-color: var(--shadcn-ring) !important;
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--shadcn-ring) 18%, transparent) !important;
+}
+
+.mud-input.mud-input-underline .mud-input-slot {
+    min-height: 2.5rem;
+    padding-block: 0.65rem;
 }
 
 .mud-input.mud-input-outlined:hover .mud-input-outlined-border {

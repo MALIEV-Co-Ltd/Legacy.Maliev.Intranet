@@ -92,6 +92,7 @@ public sealed class QuotationCreateWasmMigrationContractTests
         Assert.Contains("grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr)", styles, StringComparison.Ordinal);
         Assert.Contains("@media (max-width: 920px)", styles, StringComparison.Ordinal);
         Assert.Contains("@media (max-width: 620px)", styles, StringComparison.Ordinal);
+        Assert.Contains(".quotation-line-editor ::deep .quotation-line-description", styles, StringComparison.Ordinal);
     }
 
     [Fact]

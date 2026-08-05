@@ -24,6 +24,9 @@ public sealed class FinanceChartsWasmMigrationContractTests
         Assert.Contains("@page \"/Finances/NetProfitChart\"", profit, StringComparison.Ordinal);
         Assert.Contains("FinanceChartDataClient.LoadAsync", activity, StringComparison.Ordinal);
         Assert.Contains("FinanceChartDataClient.LoadAsync", profit, StringComparison.Ordinal);
+        Assert.Contains("FinanceChartDataClient.LoadAsync(Http, BangkokYear, includeExpense: true)", activity, StringComparison.Ordinal);
+        Assert.Contains("ChartLabels=\"@chartLabels\"", activity, StringComparison.Ordinal);
+        Assert.Contains("private static string ShortChartLabel", activity, StringComparison.Ordinal);
         Assert.Contains("/bff/finances/trends/yearly-income", dataClient, StringComparison.Ordinal);
         Assert.Contains("/bff/finances/trends/yearly-expense", dataClient, StringComparison.Ordinal);
         Assert.Contains("SupplyParameterFromQuery(Name = \"year\")", profit, StringComparison.Ordinal);

@@ -54,6 +54,8 @@ public sealed class ShadcnStyleSystemContractTests
             ".mud-button-root.mud-button-outlined",
             ".mud-button-root.mud-button-text",
             ".mud-input.mud-input-outlined",
+            ".mud-input.mud-input-underline",
+            ".legacy-page-container .mud-checkbox > :where(.mud-icon-button-root, .mud-button-root.mud-icon-button)",
             ".mud-popover",
             ".mud-dialog",
             ".mud-table-root",
