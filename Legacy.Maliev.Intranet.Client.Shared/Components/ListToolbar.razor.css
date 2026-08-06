@@ -1,4 +1,5 @@
 .list-toolbar {
+    box-sizing: border-box;
     margin-bottom: 1rem;
     padding: 1rem;
     border: 1px solid var(--legacy-border);
@@ -8,18 +9,28 @@
 
 .list-toolbar__grid {
     display: grid;
-    grid-template-columns: minmax(18rem, 1.6fr) minmax(14rem, 1fr) minmax(8rem, 0.45fr) auto;
+    grid-template-columns: minmax(15rem, 1.7fr) minmax(12rem, 1.1fr) minmax(8rem, 0.6fr) auto;
     align-items: end;
     gap: 0.75rem;
 }
 
+.list-toolbar__grid > .mud-input-control {
+    min-width: 0;
+    width: 100%;
+}
+
 .list-toolbar__actions {
     display: flex;
+    align-items: stretch;
+    align-self: end;
     justify-content: flex-end;
     gap: 0.5rem;
+    min-height: 2.75rem;
 }
 
 .list-toolbar__actions ::deep .mud-button-root {
+    box-sizing: border-box;
+    height: 2.75rem;
     min-height: 2.75rem;
     white-space: nowrap;
 }

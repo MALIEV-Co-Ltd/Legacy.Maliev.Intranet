@@ -1,4 +1,5 @@
 .legacy-topbar {
+    box-sizing: border-box;
     position: sticky;
     top: 0;
     z-index: 20;
@@ -7,7 +8,7 @@
     min-height: var(--legacy-utility-height);
     margin-left: calc(-1 * var(--legacy-rail-width));
     align-items: center;
-    gap: 10px;
+    gap: 8px;
     padding: 10px 18px 10px 0;
     border-bottom: 1px solid var(--legacy-border);
     background: color-mix(in srgb, var(--legacy-surface) 94%, transparent);
@@ -23,6 +24,7 @@
     flex: 0 0 var(--legacy-rail-width);
     align-self: stretch;
     align-items: center;
+    justify-content: flex-start;
     margin-block: -10px;
     padding-inline: 20px;
     border-right: 1px solid var(--legacy-border);
@@ -56,12 +58,12 @@
 .legacy-theme-toggle:focus-visible { outline: none; box-shadow: var(--legacy-focus-ring); }
 
 .legacy-session-avatar { display: grid; width: 34px; height: 34px; flex: 0 0 auto; place-items: center; border-radius: 50%; background: var(--legacy-primary-soft); color: var(--legacy-primary); font-size: .7rem; font-weight: 400; }
-.legacy-topbar-utilities { display: flex; min-width: 0; flex: 0 0 auto; align-items: center; gap: 8px; margin-left: auto; }
+.legacy-topbar-utilities { display: flex; min-width: 0; flex: 0 1 auto; align-items: center; justify-content: flex-end; gap: 6px; margin-left: auto; }
 .legacy-session-copy { display: flex; min-width: 0; flex-direction: column; gap: 2px; line-height: 1.1; }
 .legacy-session-copy strong { max-width: 155px; overflow: hidden; color: var(--legacy-ink); font-size: .76rem; text-overflow: ellipsis; white-space: nowrap; }
 .legacy-session-copy small { color: var(--legacy-muted); font-size: .66rem; }
 .legacy-profile-menu { position: relative; flex: 0 0 auto; min-width: 0; }
-.legacy-profile { display: flex; min-height: 44px; align-items: center; gap: 8px; padding: 4px 7px 4px 4px; border: 1px solid var(--legacy-border); border-radius: 999px; background: var(--legacy-surface); color: inherit; font: inherit; box-shadow: 0 1px 2px rgba(15,23,42,.06); cursor: pointer; }
+.legacy-profile { display: flex; min-height: 44px; max-width: min(19rem, 28vw); align-items: center; gap: 8px; padding: 4px 7px 4px 4px; border: 1px solid var(--legacy-border); border-radius: 999px; background: var(--legacy-surface); color: inherit; font: inherit; box-shadow: 0 1px 2px rgba(15,23,42,.06); cursor: pointer; }
 .legacy-profile ::deep .mud-button-label { display: flex; min-width: 0; align-items: center; gap: 8px; }
 .legacy-profile:hover { border-color: color-mix(in srgb, var(--legacy-primary) 40%, var(--legacy-border)); background: var(--legacy-surface-muted); }
 .legacy-profile:focus-visible { outline: none; box-shadow: var(--legacy-focus-ring); }
@@ -80,6 +82,7 @@
     .legacy-topbar { width: 100%; margin-left: 0; padding-inline: 12px; }
     .legacy-topbar-logo { min-height: 44px; flex-basis: auto; align-self: center; margin-block: 0; padding-inline: 0; border-right: 0; }
     .legacy-topbar-logo img { width: 112px; }
+    .legacy-topbar-utilities { gap: 4px; }
     .legacy-session-copy strong { max-width: 120px; }
 }
 
@@ -87,6 +90,7 @@
     .legacy-session-copy,
     .legacy-profile-chevron { display: none; }
     .legacy-profile { padding: 4px; }
+    .legacy-profile { max-width: 2.75rem; }
     .legacy-quick-actions .legacy-quick-action {
         width: 44px;
         min-width: 44px;
@@ -107,7 +111,7 @@
     .legacy-session-copy,
     .legacy-profile-chevron { display: none; }
     .legacy-profile { padding: 4px; }
-    .legacy-topbar-utilities { margin-left: auto; }
+    .legacy-topbar-utilities { width: auto; margin-left: auto; }
 }
 
 @media (max-width: 420px) {

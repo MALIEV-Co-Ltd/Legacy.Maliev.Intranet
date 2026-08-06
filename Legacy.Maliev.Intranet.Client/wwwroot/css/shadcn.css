@@ -510,6 +510,7 @@ textarea.mud-input-slot {
 /* ── Navigation and shell ────────────────────────────────────── */
 
 .legacy-workspace-shell .legacy-topbar {
+    box-sizing: border-box;
     min-height: 3.5rem;
     padding: 0.5rem 1rem 0.5rem 0;
     border-bottom: 1px solid var(--shadcn-border);
@@ -522,11 +523,19 @@ textarea.mud-input-slot {
     margin-block: -0.5rem;
 }
 
+.legacy-workspace-shell .legacy-topbar-logo .legacy-logo-image {
+    flex: 0 0 auto;
+}
+
 .legacy-workspace-shell .legacy-global-search,
 .legacy-workspace-shell .legacy-global-search .mud-input-control,
 .legacy-workspace-shell .legacy-language-selector,
 .legacy-workspace-shell .legacy-language-selector .mud-input-control {
     margin: 0 !important;
+}
+
+.legacy-workspace-shell .legacy-global-search {
+    flex-basis: min(34rem, 100%);
 }
 
 .legacy-workspace-shell .legacy-global-search .mud-input-control,
@@ -653,7 +662,6 @@ textarea.mud-input-slot {
 /* ── Shared module primitives ─────────────────────────────────── */
 
 .mlv-toolbar,
-.legacy-page-container .operations-page-header,
 .legacy-page-container .mud-paper,
 .legacy-page-container .dashboard-panel,
 .legacy-page-container .dashboard-metric-card,
@@ -663,6 +671,28 @@ textarea.mud-input-slot {
     border-color: var(--shadcn-border) !important;
     border-radius: var(--shadcn-radius-lg) !important;
     box-shadow: none !important;
+}
+
+.legacy-page-container .operations-page-header {
+    border: 0 !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+}
+
+.legacy-page-container .list-toolbar {
+    border-color: var(--shadcn-border);
+    border-radius: var(--shadcn-radius-lg);
+    background: var(--shadcn-muted);
+    box-shadow: none;
+}
+
+.legacy-page-container .list-toolbar__grid > .mud-input-control {
+    min-width: 0;
+}
+
+.legacy-page-container .list-toolbar__actions {
+    align-items: stretch;
 }
 
 .mlv-table th,

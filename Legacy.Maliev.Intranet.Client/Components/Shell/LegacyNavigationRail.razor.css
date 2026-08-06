@@ -22,6 +22,7 @@
 
 .legacy-rail-logo,
 .legacy-logo-link { display: inline-flex; align-items: center; min-height: 44px; }
+.legacy-logo-link { min-width: 0; }
 .legacy-rail-logo img,
 .legacy-logo-link img { display: block; width: 128px; height: auto; }
 .legacy-rail-close {

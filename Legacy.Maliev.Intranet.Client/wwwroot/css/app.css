@@ -56,6 +56,13 @@ body { background: var(--legacy-background); color: var(--legacy-ink); }
     display: block;
 }
 
+/* The shell ships both official SVG wordmarks and switches them from the
+   theme attribute set before Blazor starts. This keeps the artwork faithful
+   in both themes instead of recolouring a logo with a CSS filter. */
+.legacy-logo-image--dark { display: none !important; }
+:root[data-maliev-theme="dark"] .legacy-logo-image--light { display: none !important; }
+:root[data-maliev-theme="dark"] .legacy-logo-image--dark { display: block !important; }
+
 .login-card-header {
     background-color: #f6f8fa;
     border-bottom: 1px solid #e0e0e0;
@@ -125,11 +132,6 @@ body { background: var(--legacy-background); color: var(--legacy-ink); }
     display: block;
     width: auto;
     max-height: 1.375rem;
-}
-
-.legacy-login-page.dark-theme .legacy-login-brand-image,
-.legacy-login-page.dark-theme .legacy-login-title-logo {
-    filter: invert(1) brightness(1.8);
 }
 
 .legacy-login-theme-toggle {

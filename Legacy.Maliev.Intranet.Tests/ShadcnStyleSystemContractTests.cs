@@ -122,6 +122,40 @@ public sealed class ShadcnStyleSystemContractTests
         Assert.Contains("Background = \"#252525\"", layout, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void SharedOperationsLayout_AlignsPageHeadersAndListToolbarControls()
+    {
+        var root = FindRoot();
+        var operations = Read(root, "Legacy.Maliev.Intranet.Client", "wwwroot", "css", "operations-pages.css");
+        var toolbar = Read(root, "Legacy.Maliev.Intranet.Client.Shared", "Components", "ListToolbar.razor.css");
+        var semantic = Read(root, "Legacy.Maliev.Intranet.Client", "wwwroot", "css", "shadcn.css");
+
+        Assert.Contains(".legacy-page-container .operations-page-header", operations, StringComparison.Ordinal);
+        Assert.Contains("justify-content: space-between", operations, StringComparison.Ordinal);
+        Assert.Contains(".operations-page-header > .mud-button-root", operations, StringComparison.Ordinal);
+        Assert.Contains("grid-template-columns: minmax(15rem, 1.7fr) minmax(12rem, 1.1fr) minmax(8rem, 0.6fr) auto", toolbar, StringComparison.Ordinal);
+        Assert.Contains("height: 2.75rem", toolbar, StringComparison.Ordinal);
+        Assert.Contains(".legacy-page-container .list-toolbar", semantic, StringComparison.Ordinal);
+        Assert.Contains(".legacy-page-container .operations-page-header", semantic, StringComparison.Ordinal);
+        Assert.Contains("background: transparent !important", semantic, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ShellLogosUseOfficialLightAndDarkSvgAssetsWithoutFilters()
+    {
+        var root = FindRoot();
+        var topBar = Read(root, "Legacy.Maliev.Intranet.Client", "Layout", "LegacyTopBar.razor");
+        var rail = Read(root, "Legacy.Maliev.Intranet.Client", "Components", "Shell", "LegacyNavigationRail.razor");
+        var appCss = Read(root, "Legacy.Maliev.Intranet.Client", "wwwroot", "css", "app.css");
+
+        Assert.Contains("images/MALIEV_BLACK.svg", topBar, StringComparison.Ordinal);
+        Assert.Contains("images/MALIEV_WHITE.svg", topBar, StringComparison.Ordinal);
+        Assert.Contains("images/MALIEV_BLACK.svg", rail, StringComparison.Ordinal);
+        Assert.Contains("images/MALIEV_WHITE.svg", rail, StringComparison.Ordinal);
+        Assert.Contains(":root[data-maliev-theme=\"dark\"] .legacy-logo-image--dark", appCss, StringComparison.Ordinal);
+        Assert.DoesNotContain("filter: invert", appCss, StringComparison.OrdinalIgnoreCase);
+    }
+
     private static string Read(string root, params string[] segments) =>
         File.ReadAllText(Path.Combine([root, .. segments]));
 

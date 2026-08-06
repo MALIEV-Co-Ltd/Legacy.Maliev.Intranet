@@ -12,12 +12,19 @@ public sealed class IntranetParityContractTests
         var rail = File.ReadAllText(Path.Combine(root, "Legacy.Maliev.Intranet.Client", "Components", "Shell", "LegacyNavigationRail.razor"));
         var railCss = File.ReadAllText(Path.Combine(root, "Legacy.Maliev.Intranet.Client", "Components", "Shell", "LegacyNavigationRail.razor.css"));
         var navigation = File.ReadAllText(Path.Combine(root, "Legacy.Maliev.Intranet.Client", "Layout", "LegacyAppNavigation.cs"));
+        var blackLogo = Path.Combine(root, "Legacy.Maliev.Intranet.Client", "wwwroot", "images", "MALIEV_BLACK.svg");
+        var whiteLogo = Path.Combine(root, "Legacy.Maliev.Intranet.Client", "wwwroot", "images", "MALIEV_WHITE.svg");
 
         Assert.Contains("<LegacyTopBar", layout, StringComparison.Ordinal);
         Assert.Contains("<LegacyNavigationRail Session=\"session\" />", layout, StringComparison.Ordinal);
         Assert.Contains("IsDrawer=\"true\"", layout, StringComparison.Ordinal);
         Assert.Contains("OnSignOut=\"SignOutAsync\"", layout, StringComparison.Ordinal);
-        Assert.Contains("MALIEV_BLACK.svg", rail, StringComparison.Ordinal);
+        Assert.True(File.Exists(blackLogo));
+        Assert.True(File.Exists(whiteLogo));
+        Assert.Contains("legacy-logo-image--light", topbar, StringComparison.Ordinal);
+        Assert.Contains("legacy-logo-image--dark", topbar, StringComparison.Ordinal);
+        Assert.Contains("legacy-logo-image--light", rail, StringComparison.Ordinal);
+        Assert.Contains("legacy-logo-image--dark", rail, StringComparison.Ordinal);
         Assert.DoesNotContain("legacy-workspace-label", topbar, StringComparison.Ordinal);
         Assert.Contains("aria-label", topbar, StringComparison.Ordinal);
         Assert.Contains("aria-controls=\"legacy-navigation-rail-drawer\"", topbar, StringComparison.Ordinal);
