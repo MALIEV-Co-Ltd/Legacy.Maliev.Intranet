@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Hosting;
 using StackExchange.Redis;
 using Testcontainers.Redis;
@@ -76,6 +77,17 @@ public sealed class RedisDataProtectionIntegrationTests : IAsyncLifetime
         Assert.NotNull(restoredServerTicket);
         AssertTicket(restoredCookieTicket);
         AssertTicket(restoredServerTicket);
+    }
+
+    [Fact]
+    public async Task ProductionRegistration_ReportsRedisReadyWhenSharedConnectionIsHealthy()
+    {
+        using var provider = CreateProvider(CreateCertificatePfxBase64());
+
+        var report = await provider.GetRequiredService<HealthCheckService>().CheckHealthAsync();
+
+        Assert.True(report.Entries.TryGetValue("redis", out var redisReport));
+        Assert.Equal(HealthStatus.Healthy, redisReport.Status);
     }
 
     private ServiceProvider CreateProvider(string certificatePfxBase64)
