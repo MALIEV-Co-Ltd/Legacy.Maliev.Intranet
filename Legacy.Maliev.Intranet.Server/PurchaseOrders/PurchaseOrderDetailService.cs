@@ -91,8 +91,8 @@ public sealed class PurchaseOrderDetailService(IPurchaseOrderDetailGateway gatew
             var itemsTask = gateway.GetItemsAsync(id, cancellationToken);
             var filesTask = gateway.GetFilesAsync(id, cancellationToken);
             await Task.WhenAll(supplierTask, employeeTask, itemsTask, filesTask);
-            var items = itemsTask.Result;
-            var files = filesTask.Result;
+            var items = await itemsTask;
+            var files = await filesTask;
             if (items.Any(value => value.Id <= 0 || value.PurchaseOrderId != id) || files.Any(value => value.Id <= 0 || value.PurchaseOrderId != id))
                 return new(PurchaseOrderDetailStatus.BadGateway);
             var downloads = new List<PurchaseOrderDownloadLink>();
