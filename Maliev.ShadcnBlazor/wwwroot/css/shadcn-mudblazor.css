@@ -405,7 +405,7 @@
 
 :where(.shadcn-scope, .shadcn-overlay-scope) .mud-expand-panel .mud-expand-panel-header {
     min-height: var(--shadcn-control-height);
-    padding-block: 0.625rem;
+    padding-block: 0.5rem;
     color: inherit;
     font-size: 0.875rem;
     font-weight: 500;
@@ -560,7 +560,10 @@
 }
 
 /* Portal surfaces are scoped by their providers without changing provider behavior. */
-:where(.shadcn-scope, .shadcn-overlay-scope) :where(.mud-popover, .mud-menu, .mud-picker, .mud-dialog) {
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-popover,
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-menu,
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-picker,
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-dialog {
     z-index: 50;
     border: 1px solid var(--shadcn-border);
     background: var(--shadcn-popover);
@@ -580,9 +583,24 @@
     background: color-mix(in oklab, var(--shadcn-foreground) 35%, transparent);
 }
 
-:where(.shadcn-scope, .shadcn-overlay-scope) .mud-popover.mud-popover-open,
-:where(.shadcn-scope, .shadcn-overlay-scope) .mud-picker.mud-popover-open {
-    animation: shadcn-popover-in 100ms ease-out both;
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-popover.mud-popover-open.mud-popover-top-left,
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-popover.mud-popover-open.mud-popover-top-center,
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-popover.mud-popover-open.mud-popover-top-right {
+    animation: shadcn-popover-from-top 100ms ease-out both;
+}
+
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-popover.mud-popover-open.mud-popover-bottom-left,
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-popover.mud-popover-open.mud-popover-bottom-center,
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-popover.mud-popover-open.mud-popover-bottom-right {
+    animation: shadcn-popover-from-bottom 100ms ease-out both;
+}
+
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-popover.mud-popover-open.mud-popover-center-left {
+    animation: shadcn-popover-from-left 100ms ease-out both;
+}
+
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-popover.mud-popover-open.mud-popover-center-right {
+    animation: shadcn-popover-from-right 100ms ease-out both;
 }
 
 :where(.shadcn-scope, .shadcn-overlay-scope) :where(.mud-menu-list, .mud-picker) {
@@ -607,17 +625,23 @@
     color: inherit;
 }
 
-:where(.shadcn-scope, .shadcn-overlay-scope) .mud-snackbar.mud-snackbar-success {
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-snackbar.mud-alert-filled-success,
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-snackbar.mud-alert-outlined-success,
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-snackbar.mud-alert-text-success {
     background: var(--shadcn-secondary);
     color: var(--shadcn-secondary-foreground);
 }
 
-:where(.shadcn-scope, .shadcn-overlay-scope) .mud-snackbar.mud-snackbar-warning {
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-snackbar.mud-alert-filled-warning,
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-snackbar.mud-alert-outlined-warning,
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-snackbar.mud-alert-text-warning {
     background: var(--shadcn-accent);
     color: var(--shadcn-accent-foreground);
 }
 
-:where(.shadcn-scope, .shadcn-overlay-scope) .mud-snackbar.mud-snackbar-error {
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-snackbar.mud-alert-filled-error,
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-snackbar.mud-alert-outlined-error,
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-snackbar.mud-alert-text-error {
     background: var(--shadcn-destructive);
     color: var(--shadcn-destructive-foreground);
 }
@@ -627,9 +651,24 @@
     to { opacity: 1; transform: scale(1); }
 }
 
-@keyframes shadcn-popover-in {
+@keyframes shadcn-popover-from-top {
+    from { opacity: 0; transform: translateY(-0.5rem); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes shadcn-popover-from-bottom {
     from { opacity: 0; transform: translateY(0.5rem); }
     to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes shadcn-popover-from-left {
+    from { opacity: 0; transform: translateX(-0.5rem); }
+    to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes shadcn-popover-from-right {
+    from { opacity: 0; transform: translateX(0.5rem); }
+    to { opacity: 1; transform: translateX(0); }
 }
 
 @media (max-width: 599.98px) {

@@ -1,3 +1,5 @@
+using System.Text.RegularExpressions;
+
 namespace Maliev.ShadcnBlazor.Tests.Contracts;
 
 public sealed class MudAdapterContractTests
@@ -108,11 +110,77 @@ public sealed class MudAdapterContractTests
     {
         var css = ReadAdapter();
 
-        Assert.Contains(
-            ":where(.shadcn-scope, .shadcn-overlay-scope) :where(.mud-popover, .mud-menu, .mud-picker, .mud-dialog)",
+        const string scope = ":where(.shadcn-scope, .shadcn-overlay-scope)";
+        Assert.DoesNotContain(
+            $"{scope} :where(.mud-popover, .mud-menu, .mud-picker, .mud-dialog)",
             css,
             StringComparison.Ordinal);
+        Assert.Contains($"{scope} .mud-popover,", css, StringComparison.Ordinal);
+        Assert.Contains($"{scope} .mud-menu,", css, StringComparison.Ordinal);
+        Assert.Contains($"{scope} .mud-picker,", css, StringComparison.Ordinal);
+        Assert.Contains($"{scope} .mud-dialog {{", css, StringComparison.Ordinal);
         Assert.Contains("z-index: 50", css, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData(".mud-alert-filled-success")]
+    [InlineData(".mud-alert-outlined-success")]
+    [InlineData(".mud-alert-text-success")]
+    [InlineData(".mud-alert-filled-warning")]
+    [InlineData(".mud-alert-outlined-warning")]
+    [InlineData(".mud-alert-text-warning")]
+    [InlineData(".mud-alert-filled-error")]
+    [InlineData(".mud-alert-outlined-error")]
+    [InlineData(".mud-alert-text-error")]
+    public void SnackbarsTargetMudBlazorNineAlertSeverityClasses(string selector)
+    {
+        Assert.Contains(selector, ReadAdapter(), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void SnackbarsDoNotTargetNonexistentSeverityClasses()
+    {
+        var css = ReadAdapter();
+
+        Assert.DoesNotContain(".mud-snackbar.mud-snackbar-success", css, StringComparison.Ordinal);
+        Assert.DoesNotContain(".mud-snackbar.mud-snackbar-warning", css, StringComparison.Ordinal);
+        Assert.DoesNotContain(".mud-snackbar.mud-snackbar-error", css, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData(".mud-popover-top-left", "shadcn-popover-from-top")]
+    [InlineData(".mud-popover-top-center", "shadcn-popover-from-top")]
+    [InlineData(".mud-popover-top-right", "shadcn-popover-from-top")]
+    [InlineData(".mud-popover-bottom-left", "shadcn-popover-from-bottom")]
+    [InlineData(".mud-popover-bottom-center", "shadcn-popover-from-bottom")]
+    [InlineData(".mud-popover-bottom-right", "shadcn-popover-from-bottom")]
+    [InlineData(".mud-popover-center-left", "shadcn-popover-from-left")]
+    [InlineData(".mud-popover-center-right", "shadcn-popover-from-right")]
+    public void OpenPopoversUseMudBlazorSideAwarePlacementAnimations(string selector, string animation)
+    {
+        var css = ReadAdapter();
+
+        Assert.Matches($"{Regex.Escape(selector)}[\\s\\S]*?animation: {animation} 100ms", css);
+    }
+
+    [Theory]
+    [InlineData("shadcn-popover-from-top", "translateY(-0.5rem)")]
+    [InlineData("shadcn-popover-from-bottom", "translateY(0.5rem)")]
+    [InlineData("shadcn-popover-from-left", "translateX(-0.5rem)")]
+    [InlineData("shadcn-popover-from-right", "translateX(0.5rem)")]
+    public void PopoverPlacementAnimationsMoveTowardTheirOrigins(string animation, string transform)
+    {
+        var css = ReadAdapter();
+
+        Assert.Matches($"@keyframes {animation} \\{{[\\s\\S]*?transform: {Regex.Escape(transform)}", css);
+    }
+
+    [Fact]
+    public void ExpansionHeaderContentBoxRemainsWithinTheThirtySixPixelDesktopControlHeight()
+    {
+        Assert.Matches(
+            @"\.mud-expand-panel \.mud-expand-panel-header\s*\{[\s\S]*?min-height:\s*var\(--shadcn-control-height\);[\s\S]*?padding-block:\s*0\.5rem;[\s\S]*?line-height:\s*1\.25rem;",
+            ReadAdapter());
     }
 
     [Theory]
