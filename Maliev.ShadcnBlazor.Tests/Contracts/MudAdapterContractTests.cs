@@ -24,6 +24,41 @@ public sealed class MudAdapterContractTests
     }
 
     [Fact]
+    public void CompletionLedgerRecordsExactEvidenceForEveryFrozenProductionType()
+    {
+        var ledgerPath = Path.Combine(FindRoot(), "docs", "intranet-shadcn-mudblazor-completion-ledger.md");
+        Assert.True(File.Exists(ledgerPath), "The completion ledger must exist before the migration can be certified.");
+
+        var lines = File.ReadAllLines(ledgerPath);
+        const string header = "| Mud type | Package selector evidence | State evidence | Showcase fixture | Browser evidence | Intranet usage evidence | Deviations |";
+        var headerIndex = Array.IndexOf(lines, header);
+        Assert.True(headerIndex >= 0, "The completion ledger must expose its required seven-column evidence table.");
+
+        var rows = lines[(headerIndex + 2)..]
+            .TakeWhile(line => line.StartsWith("| ", StringComparison.Ordinal))
+            .Select(line => line.Split('|', StringSplitOptions.TrimEntries))
+            .ToArray();
+
+        Assert.Equal(41, rows.Length);
+        Assert.All(rows, row => Assert.Equal(9, row.Length));
+
+        var recordedTypes = rows.Select(row => row[1]).ToArray();
+        Assert.Equal(41, recordedTypes.Distinct(StringComparer.Ordinal).Count());
+        Assert.Equal(
+            ProductionTypes.Order(StringComparer.Ordinal),
+            recordedTypes.Order(StringComparer.Ordinal));
+
+        Assert.All(rows, row =>
+        {
+            Assert.All(row[1..8], cell => Assert.False(string.IsNullOrWhiteSpace(cell)));
+            Assert.True(
+                string.Equals("None", row[7], StringComparison.Ordinal) ||
+                Regex.IsMatch(row[7], @"^\[[^\]]+\]\([^\)]+\)$"),
+                $"{row[1]} deviations must be None or a linked approved exception.");
+        });
+    }
+
+    [Fact]
     public void BaseOwnsPrimitivesAndAdapterConsumesThem()
     {
         var foundation = ReadFoundation();

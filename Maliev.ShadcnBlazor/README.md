@@ -19,10 +19,11 @@ builder.Services.AddMalievShadcn(options =>
 The configured font family is applied to both MudBlazor typography and the scoped
 `--shadcn-font-sans` semantic token. Provider parameters override the configured defaults.
 
-## Load assets
+## Load assets in this order
 
 ```html
 <link href="_content/MudBlazor/MudBlazor.min.css" rel="stylesheet" />
+<link href="css/ibm-plex-sans-thai.css" rel="stylesheet" />
 <link href="_content/Maliev.ShadcnBlazor/css/shadcn-base.css" rel="stylesheet" />
 <link href="_content/Maliev.ShadcnBlazor/css/shadcn-mudblazor.css" rel="stylesheet" />
 <script src="_content/MudBlazor/MudBlazor.min.js"></script>
@@ -49,3 +50,7 @@ Set `IsDarkMode` or `Direction` on the provider when an application needs to ove
 configured default dynamically.
 
 Do not also render `MudThemeProvider`, `MudPopoverProvider`, `MudDialogProvider`, or `MudSnackbarProvider` in the same application root.
+
+## MudBlazor version boundary
+
+`Maliev.ShadcnBlazor` is built against MudBlazor **9.7.0** and its adapter selectors, state classes, and portal markup are supported only within the MudBlazor 9.7 line. Keep the consuming application on MudBlazor 9.7.x (the package pins 9.7.0); upgrading MudBlazor requires revalidating the adapter contracts and browser inventory before adoption.
