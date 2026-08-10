@@ -50,19 +50,37 @@ public sealed class ReferenceVerifierScriptTests
     {
         using var fixture = IsolatedRoot.CreateWithShortCommit();
 
-        var result = await RunVerifierAsync(fixture.Path);
+        var result = await RunVerifierWithTransportSentinelAsync(fixture.Path);
 
         Assert.NotEqual(0, result.ExitCode);
         Assert.Contains(
             "The Shadcn reference commit must be a full lowercase Git commit SHA: 6261bd89f72d794aea491482cc2acfd8dc3d63e",
             result.Output,
             StringComparison.Ordinal);
-        Assert.DoesNotContain("Invoke-RestMethod", result.Output, StringComparison.Ordinal);
+        Assert.DoesNotContain("TRANSPORT_SENTINEL", result.Output, StringComparison.Ordinal);
+    }
+
+    private static Task<ProcessResult> RunVerifierWithTransportSentinelAsync(string root)
+    {
+        var wrapper = Path.Combine(root, "verify-with-transport-sentinel.ps1");
+        File.WriteAllText(wrapper, """
+            function global:Invoke-RestMethod { throw 'TRANSPORT_SENTINEL' }
+            & (Join-Path $PSScriptRoot 'scripts\verify-shadcn-reference.ps1')
+            """);
+        return RunPowerShellFileAsync(root, wrapper);
     }
 
     private static async Task<ProcessResult> RunVerifierAsync(string root, params string[] arguments)
     {
         var script = Path.Combine(root, "scripts", "verify-shadcn-reference.ps1");
+        return await RunPowerShellFileAsync(root, script, arguments);
+    }
+
+    private static async Task<ProcessResult> RunPowerShellFileAsync(
+        string root,
+        string script,
+        params string[] arguments)
+    {
         var startInfo = new ProcessStartInfo("pwsh")
         {
             WorkingDirectory = root,
