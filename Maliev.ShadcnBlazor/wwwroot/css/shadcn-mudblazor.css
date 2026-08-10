@@ -353,3 +353,300 @@
         min-height: 2.75rem;
     }
 }
+
+/* Layout helpers retain Mud's responsive calculations and only normalize chrome. */
+:where(.shadcn-scope, .shadcn-overlay-scope) :where(.mud-container, .mud-main-content) {
+    color: var(--shadcn-foreground);
+}
+
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-grid {
+    color: var(--shadcn-foreground);
+}
+
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-stack {
+    color: inherit;
+}
+
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-paper {
+    border: 1px solid var(--shadcn-border);
+    border-radius: var(--shadcn-radius-lg);
+    background: var(--shadcn-card);
+    color: var(--shadcn-card-foreground);
+    box-shadow: var(--shadcn-shadow-xs);
+}
+
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-divider {
+    border-color: var(--shadcn-border);
+}
+
+/* Navigation and disclosure surfaces. */
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-expand-panels {
+    overflow: hidden;
+    border: 1px solid var(--shadcn-border);
+    border-radius: var(--shadcn-radius-lg);
+    background: var(--shadcn-card);
+}
+
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-expand-panel {
+    border: 1px solid var(--shadcn-border);
+    border-inline: 0;
+    background: var(--shadcn-card);
+    color: var(--shadcn-card-foreground);
+    transition: background-color 100ms, border-color 100ms;
+}
+
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-expand-panel:first-child {
+    border-top: 0;
+}
+
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-expand-panel:last-child {
+    border-bottom: 0;
+}
+
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-expand-panel .mud-expand-panel-header {
+    min-height: var(--shadcn-control-height);
+    padding-block: 0.625rem;
+    color: inherit;
+    font-size: 0.875rem;
+    font-weight: 500;
+    line-height: 1.25rem;
+    transition: background-color 100ms, box-shadow 100ms;
+}
+
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-expand-panel-header:hover:not(.mud-disabled) {
+    background: var(--shadcn-accent);
+    color: var(--shadcn-accent-foreground);
+}
+
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-expand-panel-header:focus-visible {
+    background: var(--shadcn-accent);
+    box-shadow: inset 0 0 0 3px color-mix(in oklab, var(--shadcn-ring) 50%, transparent);
+}
+
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-expand-panel-header.mud-disabled,
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-disabled > .mud-expand-panel-header {
+    cursor: not-allowed;
+    opacity: 0.5;
+}
+
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-expand-panel.mud-panel-expanded {
+    background: var(--shadcn-background);
+}
+
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-expand-panel .mud-expand-panel-content {
+    padding-bottom: 1rem;
+    color: var(--shadcn-foreground);
+}
+
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-expand-panel .mud-expand-panel-icon {
+    transition: transform 100ms;
+}
+
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-expand-panel .mud-expand-panel-icon.mud-transform {
+    transform: rotate(-180deg);
+}
+
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-tabs {
+    border-bottom: 1px solid var(--shadcn-border);
+}
+
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-tabs-toolbar {
+    overflow-x: auto;
+    scrollbar-width: thin;
+}
+
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-tab {
+    min-height: var(--shadcn-control-height);
+    padding-inline: 0.75rem;
+    border-radius: var(--shadcn-radius-sm) var(--shadcn-radius-sm) 0 0;
+    color: var(--shadcn-muted-foreground);
+    font-size: 0.875rem;
+    font-weight: 500;
+    letter-spacing: 0;
+    text-transform: none;
+    transition: color 100ms, background-color 100ms, box-shadow 100ms;
+}
+
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-tab:hover:not(.mud-disabled) {
+    background: var(--shadcn-accent);
+    color: var(--shadcn-accent-foreground);
+}
+
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-tab:focus-visible {
+    box-shadow: inset 0 0 0 3px color-mix(in oklab, var(--shadcn-ring) 50%, transparent);
+}
+
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-tab.mud-disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+}
+
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-tab.mud-tab-active {
+    background: var(--shadcn-background);
+    color: var(--shadcn-foreground);
+}
+
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-tab-slider {
+    height: 2px;
+    background: var(--shadcn-primary);
+}
+
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-tabs-panels {
+    padding-top: 1rem;
+}
+
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-breadcrumbs {
+    padding: 0.5rem 0;
+    color: var(--shadcn-muted-foreground);
+    font-size: 0.875rem;
+}
+
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-breadcrumb-item:last-child {
+    color: var(--shadcn-foreground);
+}
+
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-list {
+    border: 1px solid var(--shadcn-border);
+    border-radius: var(--shadcn-radius-md);
+    background: var(--shadcn-card);
+    color: var(--shadcn-card-foreground);
+}
+
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-list-item {
+    min-height: var(--shadcn-control-height);
+    border-radius: var(--shadcn-radius-sm);
+    color: inherit;
+    font-size: 0.875rem;
+}
+
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-list-item:hover:not(.mud-disabled),
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-list-item.mud-active,
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-list-item-selected {
+    background: var(--shadcn-accent);
+    color: var(--shadcn-accent-foreground);
+}
+
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-chip {
+    min-height: var(--shadcn-control-height-sm);
+    border: 1px solid var(--shadcn-border);
+    border-radius: var(--shadcn-radius-md);
+    background: var(--shadcn-secondary);
+    color: var(--shadcn-secondary-foreground);
+    font-size: 0.75rem;
+    font-weight: 500;
+    transition: color 100ms, background-color 100ms, border-color 100ms;
+}
+
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-chip.mud-clickable:hover:not(.mud-disabled),
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-chip.mud-selected {
+    background: var(--shadcn-accent);
+    color: var(--shadcn-accent-foreground);
+}
+
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-chip-color-success {
+    background: var(--shadcn-secondary);
+    color: var(--shadcn-secondary-foreground);
+}
+
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-chip-color-warning {
+    background: var(--shadcn-accent);
+    color: var(--shadcn-accent-foreground);
+}
+
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-chip-color-error {
+    border-color: var(--shadcn-destructive);
+    background: var(--shadcn-destructive);
+    color: var(--shadcn-destructive-foreground);
+}
+
+/* Portal surfaces are scoped by their providers without changing provider behavior. */
+:where(.shadcn-scope, .shadcn-overlay-scope) :where(.mud-popover, .mud-menu, .mud-picker, .mud-dialog) {
+    z-index: 50;
+    border: 1px solid var(--shadcn-border);
+    background: var(--shadcn-popover);
+    color: var(--shadcn-popover-foreground);
+    border-radius: var(--shadcn-radius-md);
+    box-shadow: var(--shadcn-shadow-md);
+}
+
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-dialog {
+    background: var(--shadcn-background);
+    color: var(--shadcn-foreground);
+    border-radius: var(--shadcn-radius-lg);
+    animation: shadcn-dialog-in 100ms ease-out both;
+}
+
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-overlay {
+    background: color-mix(in oklab, var(--shadcn-foreground) 35%, transparent);
+}
+
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-popover.mud-popover-open,
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-picker.mud-popover-open {
+    animation: shadcn-popover-in 100ms ease-out both;
+}
+
+:where(.shadcn-scope, .shadcn-overlay-scope) :where(.mud-menu-list, .mud-picker) {
+    font-size: 0.875rem;
+}
+
+:where(.shadcn-scope, .shadcn-overlay-scope) #mud-snackbar-container {
+    z-index: 50;
+}
+
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-snackbar {
+    border: 1px solid var(--shadcn-border);
+    border-radius: var(--shadcn-radius-md);
+    background: var(--shadcn-foreground);
+    color: var(--shadcn-background);
+    box-shadow: var(--shadcn-shadow-md);
+    font-size: 0.875rem;
+}
+
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-snackbar .mud-snackbar-content-action,
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-snackbar .mud-button-root {
+    color: inherit;
+}
+
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-snackbar.mud-snackbar-success {
+    background: var(--shadcn-secondary);
+    color: var(--shadcn-secondary-foreground);
+}
+
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-snackbar.mud-snackbar-warning {
+    background: var(--shadcn-accent);
+    color: var(--shadcn-accent-foreground);
+}
+
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-snackbar.mud-snackbar-error {
+    background: var(--shadcn-destructive);
+    color: var(--shadcn-destructive-foreground);
+}
+
+@keyframes shadcn-dialog-in {
+    from { opacity: 0; transform: scale(0.98); }
+    to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes shadcn-popover-in {
+    from { opacity: 0; transform: translateY(0.5rem); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+@media (max-width: 599.98px) {
+    :where(.shadcn-scope, .shadcn-overlay-scope) #mud-snackbar-container {
+        inset-inline: 1rem;
+        bottom: 1rem;
+    }
+
+    :where(.shadcn-scope, .shadcn-overlay-scope) .mud-snackbar {
+        width: 100%;
+        min-width: 0;
+        margin-top: 0.5rem;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    :where(.shadcn-scope, .shadcn-overlay-scope) :where(.mud-dialog, .mud-popover.mud-popover-open, .mud-picker.mud-popover-open) {
+        animation: none;
+    }
+}

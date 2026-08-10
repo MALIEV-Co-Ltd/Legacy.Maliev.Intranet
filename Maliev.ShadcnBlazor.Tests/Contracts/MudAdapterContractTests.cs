@@ -59,6 +59,63 @@ public sealed class MudAdapterContractTests
     }
 
     [Theory]
+    [MemberData(nameof(SurfaceAndOverlayContracts))]
+    public void SurfacesAndOverlaysExposeCanonicalContracts(string selector, string declaration)
+    {
+        var css = ReadAdapter();
+
+        Assert.Contains(selector, css, StringComparison.Ordinal);
+        Assert.Contains(declaration, css, StringComparison.Ordinal);
+    }
+
+    public static TheoryData<string, string> SurfaceAndOverlayContracts => new()
+    {
+        { ".mud-paper", "background: var(--shadcn-card)" },
+        { ".mud-divider", "border-color: var(--shadcn-border)" },
+        { ".mud-expand-panel", "border: 1px solid var(--shadcn-border)" },
+        { ".mud-expand-panel-header", "min-height: var(--shadcn-control-height)" },
+        { ".mud-tab.mud-tab-active", "background: var(--shadcn-background)" },
+        { ".mud-list-item-selected", "color: var(--shadcn-accent-foreground)" },
+        { ".mud-chip", "border-radius: var(--shadcn-radius-md)" },
+        { ".mud-popover", "background: var(--shadcn-popover)" },
+        { ".mud-dialog", "background: var(--shadcn-background)" },
+        { ".mud-snackbar", "background: var(--shadcn-foreground)" }
+    };
+
+    [Theory]
+    [InlineData(".mud-expand-panel-header:hover")]
+    [InlineData(".mud-expand-panel-header:focus-visible")]
+    [InlineData(".mud-expand-panel-header.mud-disabled")]
+    [InlineData(".mud-expand-panel.mud-panel-expanded")]
+    [InlineData(".mud-tab:hover")]
+    [InlineData(".mud-tab:focus-visible")]
+    [InlineData(".mud-tab.mud-disabled")]
+    [InlineData(".mud-tab.mud-tab-active")]
+    [InlineData(".mud-tab-slider")]
+    [InlineData(".mud-list-item:hover")]
+    [InlineData(".mud-list-item.mud-active")]
+    [InlineData(".mud-chip-color-success")]
+    [InlineData(".mud-popover-open")]
+    [InlineData(".mud-dialog")]
+    [InlineData(".mud-snackbar")]
+    public void SurfacesAndOverlaysExposeRequiredStateSelectors(string selector)
+    {
+        Assert.Contains(selector, ReadAdapter(), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void PortalSurfacesShareTheTokenizedZIndexLayer()
+    {
+        var css = ReadAdapter();
+
+        Assert.Contains(
+            ":where(.shadcn-scope, .shadcn-overlay-scope) :where(.mud-popover, .mud-menu, .mud-picker, .mud-dialog)",
+            css,
+            StringComparison.Ordinal);
+        Assert.Contains("z-index: 50", css, StringComparison.Ordinal);
+    }
+
+    [Theory]
     [InlineData(".mud-button-root:hover")]
     [InlineData(".mud-button-root:active")]
     [InlineData(".mud-button-root:focus-visible")]

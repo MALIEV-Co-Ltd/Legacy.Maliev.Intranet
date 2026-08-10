@@ -3,6 +3,7 @@ using Maliev.ShadcnBlazor.Components;
 using Maliev.ShadcnBlazor.Theming;
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using MudBlazor;
 
 #pragma warning disable MUD0012 // Assertions observe the rendered providers' current parameter state.
@@ -37,6 +38,30 @@ public sealed class ShadcnThemeProviderTests : BunitContext
             cut.FindComponent<MudDialogProvider>().Instance.BackgroundClass);
         cut.FindComponent<MudPopoverProvider>();
         Assert.True(cut.FindComponent<MudSnackbarProvider>().Instance.RightToLeft);
+    }
+
+    [Fact]
+    public void PortalProvidersCarryOverlayScopeAndSnackbarInheritsCurrentThemeAndDirection()
+    {
+        var cut = Render<ShadcnThemeProvider>(parameters => parameters
+            .Add(x => x.IsDarkMode, true)
+            .Add(x => x.Direction, ShadcnDirection.RightToLeft));
+
+        Assert.Equal(ShadcnCss.OverlayScopeClass,
+            cut.FindComponent<MudDialogProvider>().Instance.BackgroundClass);
+        Assert.Equal(ShadcnCss.OverlayScopeClass,
+            Services.GetRequiredService<IOptions<PopoverOptions>>().Value.ContainerClass);
+
+        Services.GetRequiredService<ISnackbar>().Add("Portal snackbar", Severity.Success);
+
+        cut.WaitForAssertion(() =>
+        {
+            var snackbar = cut.Find(".mud-snackbar");
+            var scope = snackbar.Closest("[data-shadcn-scope]");
+            Assert.NotNull(scope);
+            Assert.Equal("dark", scope!.GetAttribute("data-shadcn-theme"));
+            Assert.Equal("rtl", scope.GetAttribute("dir"));
+        });
     }
 
     [Fact]
