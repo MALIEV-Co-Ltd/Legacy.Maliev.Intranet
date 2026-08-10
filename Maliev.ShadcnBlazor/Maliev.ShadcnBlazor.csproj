@@ -5,6 +5,7 @@
     <PackageId>Maliev.ShadcnBlazor</PackageId>
     <Description>Reusable Shadcn Base UI components for Blazor backed by MudBlazor.</Description>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
     <RepositoryUrl>https://github.com/MALIEV-Co-Ltd/Legacy.Maliev.Intranet.git</RepositoryUrl>
   </PropertyGroup>
   <ItemGroup>
@@ -12,6 +13,9 @@
     <PackageReference Include="MudBlazor" Version="9.7.0" />
   </ItemGroup>
   <ItemGroup>
-    <None Update="Reference\shadcn-reference.json" Pack="true" PackagePath="reference\" />
+    <None Update="README.md" Pack="true" PackagePath="\" />
+    <None Update="licenses\shadcn-ui-LICENSE.md" Pack="true" PackagePath="licenses\shadcn-ui-LICENSE.md" />
+    <None Update="licenses\MudBlazor-LICENSE" Pack="true" PackagePath="\" />
+    <None Include="Reference\shadcn-reference.json" Pack="true" PackagePath="reference\shadcn-reference.json" />
   </ItemGroup>
 </Project>
