@@ -1,0 +1,37 @@
+@using Microsoft.Extensions.Options
+@inject IOptions<ShadcnOptions> ConfiguredOptions
+
+<MudThemeProvider Theme="@_theme" IsDarkMode="@IsDarkMode" />
+<div class="@RootClass"
+     data-shadcn-scope
+     data-shadcn-theme="@(IsDarkMode ? "dark" : "light")"
+     dir="@(Direction == ShadcnDirection.RightToLeft ? "rtl" : "ltr")"
+     @attributes="AdditionalAttributes">
+    <MudRTLProvider RightToLeft="@(Direction == ShadcnDirection.RightToLeft)">
+        <MudPopoverProvider />
+        <MudDialogProvider BackgroundClass="@ShadcnCss.OverlayScopeClass" />
+        <MudSnackbarProvider />
+        <CascadingValue Value="@Context">
+            @ChildContent
+        </CascadingValue>
+    </MudRTLProvider>
+</div>
+
+@code {
+    private MudTheme _theme = null!;
+
+    [Parameter] public bool IsDarkMode { get; set; }
+    [Parameter] public ShadcnDirection Direction { get; set; } = ShadcnDirection.LeftToRight;
+    [Parameter] public string? Class { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)]
+    public IReadOnlyDictionary<string, object>? AdditionalAttributes { get; set; }
+
+    private ShadcnContext Context => new(IsDarkMode, Direction);
+    private string RootClass => string.IsNullOrWhiteSpace(Class)
+        ? ShadcnCss.ScopeClass
+        : $"{ShadcnCss.ScopeClass} {Class}";
+
+    protected override void OnInitialized() =>
+        _theme = ShadcnThemeFactory.Create(ConfiguredOptions.Value);
+}
