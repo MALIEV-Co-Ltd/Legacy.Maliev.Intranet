@@ -5,9 +5,9 @@
 
 <PageTitle>Mud adapter inventory</PageTitle>
 
-<section class="mud-inventory" data-testid="mud-inventory-fixture" data-mud-type="MudThemeProvider">
-    <span class="mud-inventory__structural-fixture" data-mud-type="MudLayout" aria-hidden="true"></span>
-    <span class="mud-inventory__structural-fixture" data-mud-type="MudMainContent" aria-hidden="true"></span>
+<MudLayout data-mud-type="MudLayout" Class="mud-inventory-layout">
+<MudMainContent data-mud-type="MudMainContent">
+<section class="mud-inventory" data-testid="mud-inventory-fixture">
     <header class="mud-inventory__header">
         <span class="foundation-eyebrow">Adapter inventory</span>
         <MudText data-mud-type="MudText" Typo="Typo.h1" HtmlTag="h1">MudBlazor action and form states</MudText>
@@ -18,8 +18,8 @@
         <MudText Typo="Typo.h2" HtmlTag="h2" id="mud-actions-heading">Actions</MudText>
         <div class="mud-inventory__actions">
             <MudButton data-mud-type="MudButton" data-testid="button-default" Variant="Variant.Filled">Primary</MudButton>
-            <MudButton data-testid="button-small" Variant="Variant.Outlined" Size="Size.Small" Style="height: 2rem; min-height: 2rem">Compact</MudButton>
-            <MudButton Variant="Variant.Outlined">Outline</MudButton>
+            <MudButton data-testid="button-small" Variant="Variant.Outlined" Size="Size.Small">Compact</MudButton>
+            <MudButton data-testid="button-hover" Variant="Variant.Outlined">Outline</MudButton>
             <MudButton Variant="Variant.Text">Ghost</MudButton>
             <MudButton data-testid="button-disabled" Disabled="true" OnClick="IncrementDisabledCallback">Disabled</MudButton>
             <MudIconButton data-mud-type="MudIconButton" Icon="@Icons.Material.Outlined.Settings" aria-label="Settings" />
@@ -45,19 +45,19 @@
         <MudText Typo="Typo.h2" HtmlTag="h2" id="mud-forms-heading">Forms</MudText>
         <MudForm data-mud-type="MudForm" Class="mud-inventory__form">
             <MudTextField data-mud-type="MudTextField" T="string" Label="Email" Value="@Email" Variant="Variant.Outlined" />
-            <MudTextField T="string" Label="Invalid" Error="true" ErrorText="Required" Variant="Variant.Outlined" />
+            <MudTextField data-testid="invalid-input" T="string" Label="Invalid" Error="true" ErrorText="Required" Variant="Variant.Outlined" />
             <MudNumericField data-mud-type="MudNumericField" T="decimal" Label="Quantity" Value="@Quantity" />
-            <MudSelect data-mud-type="MudSelect" T="string" Label="Material" Value="@SelectedMaterial">
-                <MudSelectItem data-mud-type="MudSelectItem" T="string" Value="@SelectedMaterial">Steel</MudSelectItem>
+            <MudSelect data-mud-type="MudSelect" T="string" Label="Material" @bind-Value="InteractiveMaterial">
+                <MudSelectItem data-mud-type="MudSelectItem" T="string" Value="@Steel">Steel</MudSelectItem>
                 <MudSelectItem T="string" Value="@Aluminium">Aluminium</MudSelectItem>
             </MudSelect>
             <MudDatePicker data-mud-type="MudDatePicker" Label="Delivery date" Date="@DeliveryDate" />
-            <MudCheckBox data-mud-type="MudCheckBox" T="bool" Value="@Approved" Label="Approved" />
+            <MudCheckBox data-mud-type="MudCheckBox" T="bool" @bind-Value="InteractiveApproved" Label="Approved" />
             <MudTextField T="string" Label="Disabled" Value="@Unavailable" Disabled="true" Variant="Variant.Outlined" />
             <MudTextField T="string" Label="Read-only" Value="@ReadOnlyValue" ReadOnly="true" Variant="Variant.Outlined" />
             <MudTextField T="string" Label="Clearable" Value="@ClearableValue" Clearable="true" Variant="Variant.Outlined" />
             <MudTextField T="string" Label="Notes" Value="@Notes" Lines="3" Variant="Variant.Outlined" />
-            <MudTextField T="string" Label="Search" Value="@SelectedMaterial" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Outlined.Search" Variant="Variant.Outlined" />
+            <MudTextField T="string" Label="Search" Value="@InteractiveMaterial" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Outlined.Search" Variant="Variant.Outlined" />
             <MudTextField T="string" Label="ชื่อผู้ติดต่อ" Value="@ThaiContact" Variant="Variant.Outlined" />
             <MudCheckBox T="bool?" Value="@((bool?)null)" Label="Partially approved" />
         </MudForm>
@@ -74,7 +74,7 @@
                             <MudText Typo="Typo.h6" HtmlTag="h3">Production surface</MudText>
                             <MudDivider data-mud-type="MudDivider" />
                             <MudExpansionPanels data-mud-type="MudExpansionPanels">
-                                <MudExpansionPanel data-mud-type="MudExpansionPanel" Text="Material readiness" Expanded="true">Inspection data is retained in the expanded content.</MudExpansionPanel>
+                            <MudExpansionPanel data-mud-type="MudExpansionPanel" data-testid="material-readiness" Text="Material readiness" Expanded="true">Inspection data is retained in the expanded content.</MudExpansionPanel>
                                 <MudExpansionPanel Text="Disabled review" Disabled="true">This panel remains unavailable.</MudExpansionPanel>
                             </MudExpansionPanels>
                             <MudTabs data-mud-type="MudTabs">
@@ -100,16 +100,16 @@
             </MudGrid>
         </MudContainer>
         <MudStack Row="true" Wrap="Wrap.Wrap" Spacing="1" Class="mt-4">
-            <MudButton data-mud-type="MudDialogProvider" data-testid="open-dialog" OnClick="OpenDialogAsync">Open dialog</MudButton>
-            <MudMenu data-mud-type="MudPopoverProvider" Label="Open menu" data-testid="open-popover">
+            <MudButton data-testid="open-dialog" OnClick="OpenDialogAsync">Open dialog</MudButton>
+            <MudMenu Label="Open menu" data-testid="open-popover">
                 <MudMenuItem>Portal menu item</MudMenuItem>
             </MudMenu>
-            <MudSelect T="string" Label="Portal select" Value="@SelectedMaterial" data-testid="open-select">
-                <MudSelectItem T="string" Value="@SelectedMaterial">Steel</MudSelectItem>
+            <MudSelect T="string" Label="Portal select" @bind-Value="InteractiveMaterial" data-testid="open-select">
+                <MudSelectItem T="string" Value="@Steel">Steel</MudSelectItem>
                 <MudSelectItem T="string" Value="@Aluminium">Aluminium</MudSelectItem>
             </MudSelect>
             <MudDatePicker Label="Open date picker" Date="@DeliveryDate" data-testid="open-date-picker" />
-            <MudButton data-mud-type="MudSnackbarProvider" Variant="Variant.Outlined" data-testid="open-snackbar" OnClick="ShowSnackbar">Show snackbar</MudButton>
+            <MudButton Variant="Variant.Outlined" data-testid="open-snackbar" OnClick="ShowSnackbar">Show snackbar</MudButton>
         </MudStack>
     </section>
 
@@ -171,10 +171,12 @@
         </MudStack>
     </section>
 </section>
+</MudMainContent>
+</MudLayout>
 
 @code {
     private const string Email = "ada@maliev.com";
-    private const string SelectedMaterial = "Steel";
+    private const string Steel = "Steel";
     private const string Aluminium = "Aluminium";
     private const string Unavailable = "Unavailable";
     private const string ReadOnlyValue = "Quoted by MALIEV";
@@ -183,7 +185,8 @@
     private const string ThaiContact = "อดา";
     private static readonly decimal Quantity = 12.5m;
     private static readonly DateTime DeliveryDate = new(2026, 8, 10);
-    private const bool Approved = true;
+    private bool InteractiveApproved { get; set; } = true;
+    private string InteractiveMaterial { get; set; } = Steel;
     private bool ShowFixtureCloseAlert { get; set; } = true;
     private int DisabledCallbackCount { get; set; }
     private const string SelectedListItem = "SelectedListItem";
@@ -212,7 +215,8 @@
     private async Task OpenDialogAsync() => await Dialogs.ShowMessageBoxAsync(
         "Portal dialog",
         "Dialog focus behavior remains owned by MudBlazor.",
-        yesText: "Close");
+        yesText: "Close",
+        options: new DialogOptions { CloseOnEscapeKey = true });
 
     private void ShowSnackbar() => Snackbar.Add("Portal snackbar", Severity.Success);
 

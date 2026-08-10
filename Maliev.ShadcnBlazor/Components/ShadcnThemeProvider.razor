@@ -10,7 +10,7 @@
      dir="@(EffectiveDirection == ShadcnDirection.RightToLeft ? "rtl" : "ltr")">
     <MudRTLProvider RightToLeft="@(EffectiveDirection == ShadcnDirection.RightToLeft)">
         <MudPopoverProvider />
-        <MudDialogProvider BackgroundClass="@ShadcnCss.OverlayScopeClass" />
+        <MudDialogProvider BackgroundClass="@ShadcnCss.OverlayScopeClass" CloseOnEscapeKey="true" />
         <MudSnackbarProvider />
         <CascadingValue Value="@Context">
             @ChildContent

@@ -10,23 +10,35 @@ public sealed class ShowcaseStateTests
     [Fact]
     public void MudInventoryDeclaresEveryProductionAdapterFixtureExactlyOnce()
     {
-        var source = File.ReadAllText(Path.Combine(FindRoot(), "Maliev.ShadcnBlazor.Showcase", "Pages", "MudInventory.razor"));
-        var fixtures = Regex.Matches(source, "data-mud-type=\\\"(?<type>Mud[A-Za-z]+)\\\"")
+        var inventory = ReadSource("Pages", "MudInventory.razor");
+        var provider = ReadSource("..", "Maliev.ShadcnBlazor", "Components", "ShadcnThemeProvider.razor");
+        var fixtures = Regex.Matches(inventory, "data-mud-type=\\\"(?<type>Mud[A-Za-z]+)\\\"")
             .Select(match => match.Groups["type"].Value)
+            .Concat(Regex.Matches(provider, "<(?<type>Mud(?:ThemeProvider|DialogProvider|PopoverProvider|SnackbarProvider))\\b")
+                .Select(match => match.Groups["type"].Value))
             .ToArray();
 
         Assert.Equal(MudAdapterContractTests.ProductionTypes.Order(), fixtures.Distinct().Order());
         Assert.Equal(fixtures.Length, fixtures.Distinct(StringComparer.Ordinal).Count());
 
-        var testIds = Regex.Matches(source, "data-testid=\\\"(?<id>[A-Za-z0-9-]+)\\\"")
+        var testIds = Regex.Matches(inventory, "data-testid=\\\"(?<id>[A-Za-z0-9-]+)\\\"")
             .Select(match => match.Groups["id"].Value)
             .ToArray();
         Assert.Equal(testIds.Length, testIds.Distinct(StringComparer.Ordinal).Count());
         Assert.Equal(
             ["mud-actions", "mud-typography", "mud-forms", "mud-surfaces-overlays", "mud-data-feedback"],
-            Regex.Matches(source, "<section id=\\\"(?<id>mud-[a-z-]+)\\\"")
+            Regex.Matches(inventory, "<section id=\\\"(?<id>mud-[a-z-]+)\\\"")
                 .Select(match => match.Groups["id"].Value)
                 .ToArray());
+
+        Assert.Matches("<MudLayout[^>]*data-mud-type=\"MudLayout\"", inventory);
+        Assert.Matches("<MudMainContent[^>]*data-mud-type=\"MudMainContent\"", inventory);
+        Assert.DoesNotContain("mud-inventory__structural-fixture", inventory, StringComparison.Ordinal);
+        Assert.Contains("<MudThemeProvider", provider, StringComparison.Ordinal);
+        Assert.Contains("<MudDialogProvider", provider, StringComparison.Ordinal);
+        Assert.Contains("CloseOnEscapeKey=\"true\"", provider, StringComparison.Ordinal);
+        Assert.Contains("<MudPopoverProvider", provider, StringComparison.Ordinal);
+        Assert.Contains("<MudSnackbarProvider", provider, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -76,4 +88,6 @@ public sealed class ShowcaseStateTests
             directory = directory.Parent;
         return directory?.FullName ?? throw new DirectoryNotFoundException("Could not find repository root.");
     }
+
+    private static string ReadSource(params string[] segments) => File.ReadAllText(Path.Combine([FindRoot(), "Maliev.ShadcnBlazor.Showcase", .. segments]));
 }

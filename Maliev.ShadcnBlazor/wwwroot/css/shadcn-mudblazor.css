@@ -75,6 +75,13 @@
     transition: color 100ms, background-color 100ms, border-color 100ms, box-shadow 100ms;
 }
 
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-button-filled-size-small,
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-button-outlined-size-small,
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-button-text-size-small {
+    height: var(--shadcn-control-height-sm);
+    min-height: var(--shadcn-control-height-sm);
+}
+
 :where(.shadcn-scope, .shadcn-overlay-scope) .mud-icon-button-root {
     width: var(--shadcn-control-height);
     min-width: var(--shadcn-control-height);
@@ -340,6 +347,10 @@
 }
 
 @media (pointer: coarse) {
+    :where(.shadcn-scope, .shadcn-overlay-scope) .mud-input-control {
+        min-height: 2.75rem;
+    }
+
     :where(.shadcn-scope, .shadcn-overlay-scope) .mud-input-adornment .mud-icon-button-root,
     :where(.shadcn-scope, .shadcn-overlay-scope) .mud-input-clear-button {
         min-width: 2.75rem;
@@ -350,6 +361,17 @@
         width: 2.75rem;
         height: 2.75rem;
         min-width: 2.75rem;
+        min-height: 2.75rem;
+    }
+}
+
+@media (max-width: 40rem) {
+    :where(.shadcn-scope, .shadcn-overlay-scope) .mud-button-root {
+        height: 2.75rem;
+        min-height: 2.75rem;
+    }
+
+    :where(.shadcn-scope, .shadcn-overlay-scope) .mud-input-control {
         min-height: 2.75rem;
     }
 }
