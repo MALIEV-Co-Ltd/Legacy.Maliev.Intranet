@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk.Razor">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <IsPackable>true</IsPackable>
+    <PackageId>Maliev.ShadcnBlazor</PackageId>
+    <Description>Reusable Shadcn Base UI components for Blazor backed by MudBlazor.</Description>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <RepositoryUrl>https://github.com/MALIEV-Co-Ltd/Legacy.Maliev.Intranet.git</RepositoryUrl>
+  </PropertyGroup>
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <PackageReference Include="MudBlazor" Version="9.7.0" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Update="Reference\shadcn-reference.json" Pack="true" PackagePath="reference\" />
+  </ItemGroup>
+</Project>

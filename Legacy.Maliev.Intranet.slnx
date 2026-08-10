@@ -14,4 +14,6 @@
   <Project Path="Legacy.Maliev.Intranet.Server/Legacy.Maliev.Intranet.Server.csproj" />
   <Project Path="Legacy.Maliev.Intranet/Legacy.Maliev.Intranet.csproj" />
   <Project Path="Legacy.Maliev.Intranet.Tests/Legacy.Maliev.Intranet.Tests.csproj" />
+  <Project Path="Maliev.ShadcnBlazor.Tests/Maliev.ShadcnBlazor.Tests.csproj" />
+  <Project Path="Maliev.ShadcnBlazor/Maliev.ShadcnBlazor.csproj" />
 </Solution>
