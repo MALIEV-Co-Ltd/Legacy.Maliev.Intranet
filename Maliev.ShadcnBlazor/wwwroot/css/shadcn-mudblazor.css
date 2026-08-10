@@ -657,14 +657,19 @@
     color: var(--shadcn-card-foreground);
 }
 
-:where(.shadcn-scope, .shadcn-overlay-scope) .mud-table-head,
-:where(.shadcn-scope, .shadcn-overlay-scope) .mud-table-head .mud-table-cell {
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-table-root .mud-table-head .mud-table-cell {
     color: var(--shadcn-muted-foreground);
 }
 
-:where(.shadcn-scope, .shadcn-overlay-scope) .mud-table-cell {
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-table-root .mud-table-body .mud-table-cell {
     border-color: var(--shadcn-border);
     color: var(--shadcn-foreground);
+}
+
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-table-root .mud-table-foot .mud-table-cell {
+    border-color: var(--shadcn-border);
+    background: var(--shadcn-card);
+    color: var(--shadcn-card-foreground);
 }
 
 :where(.shadcn-scope, .shadcn-overlay-scope) .mud-simple-table td,
@@ -673,7 +678,7 @@
     color: var(--shadcn-foreground);
 }
 
-:where(.shadcn-scope, .shadcn-overlay-scope) .mud-table-head .mud-table-cell,
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-table-root .mud-table-head .mud-table-cell,
 :where(.shadcn-scope, .shadcn-overlay-scope) .mud-simple-table th {
     font-size: 0.75rem;
     font-weight: 500;
@@ -681,7 +686,7 @@
     text-transform: uppercase;
 }
 
-:where(.shadcn-scope, .shadcn-overlay-scope) .mud-table-hover .mud-table-root .mud-table-row:hover {
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-table-hover .mud-table-container .mud-table-root .mud-table-body .mud-table-row:hover {
     background: var(--shadcn-muted);
 }
 
@@ -715,7 +720,7 @@
     color: var(--shadcn-muted-foreground);
 }
 
-:where(.shadcn-scope, .shadcn-overlay-scope) .mud-table-sticky-footer .mud-table-foot .mud-table-cell {
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-table-sticky-footer .mud-table-container .mud-table-root .mud-table-foot .mud-table-cell {
     border-color: var(--shadcn-border);
     background: var(--shadcn-card);
     color: var(--shadcn-card-foreground);
@@ -844,32 +849,28 @@
     color: var(--shadcn-primary);
 }
 
-:where(.shadcn-scope, .shadcn-overlay-scope) .mud-progress-linear.mud-progress-linear-background::before {
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-progress-linear.mud-progress-linear-color-default.mud-progress-linear-background::before {
     background: var(--shadcn-secondary);
 }
 
-:where(.shadcn-scope, .shadcn-overlay-scope) .mud-progress-linear.mud-primary.mud-progress-linear-background::before {
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-progress-linear.mud-progress-linear-color-primary.mud-progress-linear-background::before {
     background: var(--shadcn-secondary);
 }
 
-:where(.shadcn-scope, .shadcn-overlay-scope) .mud-progress-linear.mud-primary .mud-progress-linear-bar {
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-progress-linear.mud-progress-linear-color-default:not(.mud-progress-linear-buffer) .mud-progress-linear-bar {
     background: var(--shadcn-primary);
 }
 
-:where(.shadcn-scope, .shadcn-overlay-scope) .mud-progress-linear.mud-primary .mud-progress-linear-bar.mud-progress-linear-1-indeterminate {
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-progress-linear.mud-progress-linear-color-primary:not(.mud-progress-linear-buffer) .mud-progress-linear-bar {
     background: var(--shadcn-primary);
 }
 
-:where(.shadcn-scope, .shadcn-overlay-scope) .mud-progress-linear.mud-primary .mud-progress-linear-bar.mud-progress-linear-2-indeterminate {
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-progress-linear.mud-progress-linear-color-primary:not(.mud-progress-linear-buffer) .mud-progress-linear-bar.mud-progress-linear-1-indeterminate.horizontal {
     background: var(--shadcn-primary);
 }
 
-:where(.shadcn-scope, .shadcn-overlay-scope) .mud-progress-linear.mud-secondary .mud-progress-linear-bar {
-    background: var(--shadcn-secondary);
-}
-
-:where(.shadcn-scope, .shadcn-overlay-scope) .mud-progress-linear.mud-error .mud-progress-linear-bar {
-    background: var(--shadcn-destructive);
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-progress-linear.mud-progress-linear-color-primary:not(.mud-progress-linear-buffer) .mud-progress-linear-bar.mud-progress-linear-2-indeterminate.horizontal {
+    background: var(--shadcn-primary);
 }
 
 :where(.shadcn-scope, .shadcn-overlay-scope) .mud-progress-circular {

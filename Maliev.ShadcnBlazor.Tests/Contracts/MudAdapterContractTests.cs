@@ -292,10 +292,11 @@ public sealed class MudAdapterContractTests
     {
         var css = ReadAdapter();
 
-        Assert.Matches(@":where\(\.shadcn-scope, \.shadcn-overlay-scope\) \.mud-table-cell\s*\{[\s\S]*?border-color: var\(--shadcn-border\);", css);
+        Assert.Matches(@":where\(\.shadcn-scope, \.shadcn-overlay-scope\) \.mud-table-root \.mud-table-body \.mud-table-cell\s*\{[\s\S]*?color: var\(--shadcn-foreground\);", css);
+        Assert.Matches(@":where\(\.shadcn-scope, \.shadcn-overlay-scope\) \.mud-table-root \.mud-table-head \.mud-table-cell\s*\{[\s\S]*?color: var\(--shadcn-muted-foreground\);", css);
         Assert.Matches(@":where\(\.shadcn-scope, \.shadcn-overlay-scope\) \.mud-charts-xaxis\s*\{[\s\S]*?fill: var\(--shadcn-muted-foreground\);", css);
         Assert.Matches(@":where\(\.shadcn-scope, \.shadcn-overlay-scope\) \.mud-alert-text-info\s*\{[\s\S]*?background: var\(--shadcn-accent\);", css);
-        Assert.Matches(@":where\(\.shadcn-scope, \.shadcn-overlay-scope\) \.mud-progress-linear\.mud-progress-linear-background::before\s*\{[\s\S]*?background: var\(--shadcn-secondary\);", css);
+        Assert.Matches(@":where\(\.shadcn-scope, \.shadcn-overlay-scope\) \.mud-progress-linear\.mud-progress-linear-color-primary\.mud-progress-linear-background::before\s*\{[\s\S]*?background: var\(--shadcn-secondary\);", css);
     }
 
     [Fact]
@@ -303,9 +304,9 @@ public sealed class MudAdapterContractTests
     {
         var css = ReadAdapter();
 
-        Assert.Matches(@"\.mud-table-hover \.mud-table-root \.mud-table-row:hover\s*\{[\s\S]*?background: var\(--shadcn-muted\);", css);
-        Assert.DoesNotMatch(@"(?<!mud-table-hover )\.mud-table-root \.mud-table-row:hover", css);
-        Assert.Matches(@"\.mud-table-sticky-footer[^\{]*\.mud-table-foot \.mud-table-cell\s*\{[\s\S]*?background: var\(--shadcn-card\);", css);
+        Assert.Matches(@"\.mud-table-hover \.mud-table-container \.mud-table-root \.mud-table-body \.mud-table-row:hover\s*\{[\s\S]*?background: var\(--shadcn-muted\);", css);
+        Assert.DoesNotContain(":where(.shadcn-scope, .shadcn-overlay-scope) .mud-table-root .mud-table-body .mud-table-row:hover", css, StringComparison.Ordinal);
+        Assert.Matches(@"\.mud-table-sticky-footer \.mud-table-container \.mud-table-root \.mud-table-foot \.mud-table-cell\s*\{[\s\S]*?background: var\(--shadcn-card\);", css);
     }
 
     [Fact]
@@ -314,9 +315,13 @@ public sealed class MudAdapterContractTests
         var css = ReadAdapter();
 
         Assert.DoesNotContain(".mud-progress-linear-value", css, StringComparison.Ordinal);
-        Assert.Matches(@"\.mud-progress-linear\.mud-primary\.mud-progress-linear-background::before\s*\{[\s\S]*?background: var\(--shadcn-secondary\);", css);
-        Assert.Matches(@"\.mud-progress-linear\.mud-primary \.mud-progress-linear-bar\s*\{[\s\S]*?background: var\(--shadcn-primary\);", css);
-        Assert.Matches(@"\.mud-progress-linear\.mud-primary \.mud-progress-linear-bar\.mud-progress-linear-1-indeterminate\s*\{[\s\S]*?background: var\(--shadcn-primary\);", css);
+        Assert.DoesNotContain(".mud-progress-linear.mud-primary", css, StringComparison.Ordinal);
+        Assert.DoesNotContain(".mud-progress-linear.mud-secondary", css, StringComparison.Ordinal);
+        Assert.DoesNotContain(".mud-progress-linear.mud-error", css, StringComparison.Ordinal);
+        Assert.Matches(@"\.mud-progress-linear\.mud-progress-linear-color-default\.mud-progress-linear-background::before\s*\{[\s\S]*?background: var\(--shadcn-secondary\);", css);
+        Assert.Matches(@"\.mud-progress-linear\.mud-progress-linear-color-primary\.mud-progress-linear-background::before\s*\{[\s\S]*?background: var\(--shadcn-secondary\);", css);
+        Assert.Matches(@"\.mud-progress-linear\.mud-progress-linear-color-primary:not\(\.mud-progress-linear-buffer\) \.mud-progress-linear-bar\s*\{[\s\S]*?background: var\(--shadcn-primary\);", css);
+        Assert.Matches(@"\.mud-progress-linear\.mud-progress-linear-color-primary:not\(\.mud-progress-linear-buffer\) \.mud-progress-linear-bar\.mud-progress-linear-1-indeterminate\.horizontal\s*\{[\s\S]*?background: var\(--shadcn-primary\);", css);
     }
 
     internal static string ReadAdapter() => File.ReadAllText(Path.Combine(
