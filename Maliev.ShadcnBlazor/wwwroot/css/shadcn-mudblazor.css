@@ -662,7 +662,13 @@
     color: var(--shadcn-muted-foreground);
 }
 
-:where(.shadcn-scope, .shadcn-overlay-scope) :where(.mud-table-cell, .mud-simple-table td, .mud-simple-table th) {
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-table-cell {
+    border-color: var(--shadcn-border);
+    color: var(--shadcn-foreground);
+}
+
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-simple-table td,
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-simple-table th {
     border-color: var(--shadcn-border);
     color: var(--shadcn-foreground);
 }
@@ -675,8 +681,11 @@
     text-transform: uppercase;
 }
 
-:where(.shadcn-scope, .shadcn-overlay-scope) .mud-table-row:hover,
-:where(.shadcn-scope, .shadcn-overlay-scope) .mud-simple-table tbody tr:hover {
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-table-hover .mud-table-root .mud-table-row:hover {
+    background: var(--shadcn-muted);
+}
+
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-simple-table.mud-table-hover .mud-table-container table tbody tr:hover {
     background: var(--shadcn-muted);
 }
 
@@ -695,46 +704,58 @@
     padding: 0.5rem 0.75rem;
 }
 
-:where(.shadcn-scope, .shadcn-overlay-scope) :where(.mud-table-pagination, .mud-table-toolbar) {
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-table-pagination,
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-table-toolbar {
     border-color: var(--shadcn-border);
     color: var(--shadcn-muted-foreground);
 }
 
-:where(.shadcn-scope, .shadcn-overlay-scope) :where(.mud-table-loading, .mud-table-empty-row) {
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-table-loading,
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-table-empty-row {
     color: var(--shadcn-muted-foreground);
 }
 
-/* MudChart 9.7 exposes these palette variables and SVG classes at runtime. */
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-table-sticky-footer .mud-table-foot .mud-table-cell {
+    border-color: var(--shadcn-border);
+    background: var(--shadcn-card);
+    color: var(--shadcn-card-foreground);
+}
+
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-simple-table.mud-table-sticky-footer .mud-table-container table tfoot td {
+    border-color: var(--shadcn-border);
+    background: var(--shadcn-card);
+    color: var(--shadcn-card-foreground);
+}
+
+/* MudChart 9.7 receives series colors through ChartOptions.ChartPalette. */
 :where(.shadcn-scope, .shadcn-overlay-scope) .mud-chart {
-    --mud-palette-lines-default: var(--shadcn-border);
-    --mud-chart-1: var(--shadcn-chart-1);
-    --mud-chart-2: var(--shadcn-chart-2);
-    --mud-chart-3: var(--shadcn-chart-3);
-    --mud-chart-4: var(--shadcn-chart-4);
-    --mud-chart-5: var(--shadcn-chart-5);
     color: var(--shadcn-foreground);
 }
 
-:where(.shadcn-scope, .shadcn-overlay-scope) :where(.mud-charts-xaxis, .mud-charts-yaxis, .mud-chart-axis-label, .mud-chart-donut .mud-donut-text) {
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-charts-xaxis {
     fill: var(--shadcn-muted-foreground);
 }
 
-:where(.shadcn-scope, .shadcn-overlay-scope) :where(.mud-chart-bar, .mud-chart-line, .mud-chart-donut) :where(line, path) {
-    stroke: var(--mud-palette-lines-default);
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-charts-yaxis,
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-chart-axis-label,
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-chart-donut .mud-donut-text {
+    fill: var(--shadcn-muted-foreground);
 }
 
-:where(.shadcn-scope, .shadcn-overlay-scope) :where(.mud-chart-legend, .mud-chart-legend-text) {
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-chart .mud-chart-grid {
+    stroke: var(--shadcn-border);
+}
+
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-chart-legend,
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-chart-legend-text {
     color: var(--shadcn-muted-foreground);
 }
 
-:where(.shadcn-scope, .shadcn-overlay-scope) :where(.mud-chart-marker-color-0, .mud-chart-marker-color-1, .mud-chart-marker-color-2, .mud-chart-marker-color-3, .mud-chart-marker-color-4) {
-    background-color: var(--mud-chart-1);
-}
-
-:where(.shadcn-scope, .shadcn-overlay-scope) .mud-chart-marker-color-1 { background-color: var(--mud-chart-2); }
-:where(.shadcn-scope, .shadcn-overlay-scope) .mud-chart-marker-color-2 { background-color: var(--mud-chart-3); }
-:where(.shadcn-scope, .shadcn-overlay-scope) .mud-chart-marker-color-3 { background-color: var(--mud-chart-4); }
-:where(.shadcn-scope, .shadcn-overlay-scope) .mud-chart-marker-color-4 { background-color: var(--mud-chart-5); }
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-chart-marker-color-0 { background-color: var(--shadcn-chart-1); }
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-chart-marker-color-1 { background-color: var(--shadcn-chart-2); }
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-chart-marker-color-2 { background-color: var(--shadcn-chart-3); }
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-chart-marker-color-3 { background-color: var(--shadcn-chart-4); }
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-chart-marker-color-4 { background-color: var(--shadcn-chart-5); }
 
 /* Alerts retain caller-managed live regions and close actions. */
 :where(.shadcn-scope, .shadcn-overlay-scope) .mud-alert {
@@ -744,25 +765,49 @@
     color: var(--shadcn-secondary-foreground);
 }
 
-:where(.shadcn-scope, .shadcn-overlay-scope) :where(.mud-alert-text-info, .mud-alert-outlined-info) {
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-alert-text-info {
     border-color: var(--shadcn-primary);
     background: var(--shadcn-accent);
     color: var(--shadcn-accent-foreground);
 }
 
-:where(.shadcn-scope, .shadcn-overlay-scope) :where(.mud-alert-text-success, .mud-alert-outlined-success) {
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-alert-outlined-info {
+    border-color: var(--shadcn-primary);
+    background: var(--shadcn-accent);
+    color: var(--shadcn-accent-foreground);
+}
+
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-alert-text-success {
     border-color: var(--shadcn-border);
     background: var(--shadcn-secondary);
     color: var(--shadcn-secondary-foreground);
 }
 
-:where(.shadcn-scope, .shadcn-overlay-scope) :where(.mud-alert-text-warning, .mud-alert-outlined-warning) {
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-alert-outlined-success {
+    border-color: var(--shadcn-border);
+    background: var(--shadcn-secondary);
+    color: var(--shadcn-secondary-foreground);
+}
+
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-alert-text-warning {
     border-color: var(--shadcn-border);
     background: var(--shadcn-accent);
     color: var(--shadcn-accent-foreground);
 }
 
-:where(.shadcn-scope, .shadcn-overlay-scope) :where(.mud-alert-text-error, .mud-alert-outlined-error) {
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-alert-outlined-warning {
+    border-color: var(--shadcn-border);
+    background: var(--shadcn-accent);
+    color: var(--shadcn-accent-foreground);
+}
+
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-alert-text-error {
+    border-color: var(--shadcn-destructive);
+    background: color-mix(in oklab, var(--shadcn-destructive) 12%, var(--shadcn-background));
+    color: var(--shadcn-destructive);
+}
+
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-alert-outlined-error {
     border-color: var(--shadcn-destructive);
     background: color-mix(in oklab, var(--shadcn-destructive) 12%, var(--shadcn-background));
     color: var(--shadcn-destructive);
@@ -795,17 +840,36 @@
 
 /* Progress and skeleton animation classes are verified against MudBlazor 9.7. */
 :where(.shadcn-scope, .shadcn-overlay-scope) .mud-progress-linear {
-    background: var(--shadcn-secondary);
     border-radius: var(--shadcn-radius-sm);
     color: var(--shadcn-primary);
 }
 
-:where(.shadcn-scope, .shadcn-overlay-scope) :where(.mud-progress-linear-bar, .mud-progress-linear-value) {
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-progress-linear.mud-progress-linear-background::before {
+    background: var(--shadcn-secondary);
+}
+
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-progress-linear.mud-primary.mud-progress-linear-background::before {
+    background: var(--shadcn-secondary);
+}
+
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-progress-linear.mud-primary .mud-progress-linear-bar {
     background: var(--shadcn-primary);
 }
 
-:where(.shadcn-scope, .shadcn-overlay-scope) .mud-progress-linear.mud-progress-indeterminate {
-    overflow: hidden;
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-progress-linear.mud-primary .mud-progress-linear-bar.mud-progress-linear-1-indeterminate {
+    background: var(--shadcn-primary);
+}
+
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-progress-linear.mud-primary .mud-progress-linear-bar.mud-progress-linear-2-indeterminate {
+    background: var(--shadcn-primary);
+}
+
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-progress-linear.mud-secondary .mud-progress-linear-bar {
+    background: var(--shadcn-secondary);
+}
+
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-progress-linear.mud-error .mud-progress-linear-bar {
+    background: var(--shadcn-destructive);
 }
 
 :where(.shadcn-scope, .shadcn-overlay-scope) .mud-progress-circular {

@@ -1,4 +1,5 @@
 @page "/Finances/YearlyActivityChart"
+@using global::Maliev.ShadcnBlazor.Adapters.MudBlazor
 @attribute [Authorize]
 @inject HttpClient Http
 @inject NavigationManager Navigation
@@ -33,7 +34,7 @@
             <MudPaper Class="pa-4" Elevation="1">
                 <MudText id="yearly-activity-heading" Typo="Typo.h5" HtmlTag="h2">@Text["ChartHeading", BangkokYear]</MudText>
                 <div aria-hidden="true">
-                    <MudChart T="double" ChartType="ChartType.Bar" ChartSeries="@series" ChartLabels="@chartLabels" Width="100%" Height="520px" />
+                    <MudChart T="double" ChartType="ChartType.Bar" ChartSeries="@series" ChartLabels="@chartLabels" ChartOptions="@ShadcnMudChartOptions.Create()" Width="100%" Height="520px" />
                 </div>
                 <MudTable Items="ActivityRows" Breakpoint="Breakpoint.Sm" Elevation="0" aria-label="@Text["TableLabel", BangkokYear]">
                     <HeaderContent>

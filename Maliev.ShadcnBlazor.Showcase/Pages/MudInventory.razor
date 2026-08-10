@@ -1,4 +1,5 @@
 @page "/components/mud-inventory"
+@using Maliev.ShadcnBlazor.Adapters.MudBlazor
 @inject IDialogService Dialogs
 @inject ISnackbar Snackbar
 
@@ -134,9 +135,9 @@
         </MudSimpleTable>
 
         <MudGrid Spacing="2">
-            <MudItem xs="12" md="4"><MudChart T="double" ChartType="ChartType.Bar" ChartSeries="@FixtureChartSeries" ChartLabels="@FixtureChartLabels" Width="100%" Height="220px" /></MudItem>
-            <MudItem xs="12" md="4"><MudChart T="double" ChartType="ChartType.Donut" ChartSeries="@FixtureChartSeries" ChartLabels="@FixtureChartLabels" Width="100%" Height="220px" /></MudItem>
-            <MudItem xs="12" md="4"><MudChart T="double" ChartType="ChartType.Line" ChartSeries="@FixtureChartSeries" ChartLabels="@FixtureChartLabels" Width="100%" Height="220px" /></MudItem>
+            <MudItem xs="12" md="4"><MudChart T="double" ChartType="ChartType.Bar" ChartSeries="@FixtureChartSeries" ChartLabels="@FixtureChartLabels" ChartOptions="@ShadcnMudChartOptions.Create()" Width="100%" Height="220px" /></MudItem>
+            <MudItem xs="12" md="4"><MudChart T="double" ChartType="ChartType.Donut" ChartSeries="@FixtureChartSeries" ChartLabels="@FixtureChartLabels" ChartOptions="@ShadcnMudChartOptions.Create()" Width="100%" Height="220px" /></MudItem>
+            <MudItem xs="12" md="4"><MudChart T="double" ChartType="ChartType.Line" ChartSeries="@FixtureChartSeries" ChartLabels="@FixtureChartLabels" ChartOptions="@ShadcnMudChartOptions.Create()" Width="100%" Height="220px" /></MudItem>
         </MudGrid>
 
         @if (ShowFixtureCloseAlert)

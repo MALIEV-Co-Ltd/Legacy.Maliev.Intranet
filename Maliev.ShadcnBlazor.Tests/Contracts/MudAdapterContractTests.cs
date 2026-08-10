@@ -238,7 +238,7 @@ public sealed class MudAdapterContractTests
     [InlineData(".mud-table-head", "color: var(--shadcn-muted-foreground)")]
     [InlineData(".mud-table-row:hover", "background: var(--shadcn-muted)")]
     [InlineData(".mud-table-row-selected", "background: var(--shadcn-accent)")]
-    [InlineData(".mud-chart", "--mud-palette-lines-default: var(--shadcn-border)")]
+    [InlineData(".mud-chart", "color: var(--shadcn-foreground)")]
     [InlineData(".mud-alert", "border-radius: var(--shadcn-radius-lg)")]
     [InlineData(".mud-progress-linear", "background: var(--shadcn-secondary)")]
     [InlineData(".mud-progress-circular", "color: var(--shadcn-primary)")]
@@ -255,16 +255,11 @@ public sealed class MudAdapterContractTests
     [InlineData(".mud-table-dense .mud-table-cell")]
     [InlineData(".mud-table-row-selected")]
     [InlineData(".mud-table-row:focus-within")]
-    [InlineData("--mud-chart-1: var(--shadcn-chart-1)")]
-    [InlineData("--mud-chart-2: var(--shadcn-chart-2)")]
-    [InlineData("--mud-chart-3: var(--shadcn-chart-3)")]
-    [InlineData("--mud-chart-4: var(--shadcn-chart-4)")]
-    [InlineData("--mud-chart-5: var(--shadcn-chart-5)")]
     [InlineData(".mud-alert-text-info")]
     [InlineData(".mud-alert-text-success")]
     [InlineData(".mud-alert-text-warning")]
     [InlineData(".mud-alert-text-error")]
-    [InlineData(".mud-progress-linear.mud-progress-indeterminate")]
+    [InlineData(".mud-progress-linear-bar.mud-progress-linear-1-indeterminate")]
     [InlineData(".mud-progress-circular.mud-progress-indeterminate")]
     [InlineData(".mud-skeleton-wave")]
     public void DataAndFeedbackExposeRequiredStateSelectors(string selector)
@@ -290,6 +285,38 @@ public sealed class MudAdapterContractTests
         Assert.Matches(
             $":where\\(\\.shadcn-scope, \\.shadcn-overlay-scope\\) {Regex.Escape(selector)} \\{{[\\s\\S]*?{Regex.Escape(declaration)}",
             ReadAdapter());
+    }
+
+    [Fact]
+    public void DataAndFeedbackRuntimeTargetsKeepProviderScopeWithoutLosingComponentSpecificity()
+    {
+        var css = ReadAdapter();
+
+        Assert.Matches(@":where\(\.shadcn-scope, \.shadcn-overlay-scope\) \.mud-table-cell\s*\{[\s\S]*?border-color: var\(--shadcn-border\);", css);
+        Assert.Matches(@":where\(\.shadcn-scope, \.shadcn-overlay-scope\) \.mud-charts-xaxis\s*\{[\s\S]*?fill: var\(--shadcn-muted-foreground\);", css);
+        Assert.Matches(@":where\(\.shadcn-scope, \.shadcn-overlay-scope\) \.mud-alert-text-info\s*\{[\s\S]*?background: var\(--shadcn-accent\);", css);
+        Assert.Matches(@":where\(\.shadcn-scope, \.shadcn-overlay-scope\) \.mud-progress-linear\.mud-progress-linear-background::before\s*\{[\s\S]*?background: var\(--shadcn-secondary\);", css);
+    }
+
+    [Fact]
+    public void TableHoverAndStickyFooterTargetMudBlazorNineRuntimeClasses()
+    {
+        var css = ReadAdapter();
+
+        Assert.Matches(@"\.mud-table-hover \.mud-table-root \.mud-table-row:hover\s*\{[\s\S]*?background: var\(--shadcn-muted\);", css);
+        Assert.DoesNotMatch(@"(?<!mud-table-hover )\.mud-table-root \.mud-table-row:hover", css);
+        Assert.Matches(@"\.mud-table-sticky-footer[^\{]*\.mud-table-foot \.mud-table-cell\s*\{[\s\S]*?background: var\(--shadcn-card\);", css);
+    }
+
+    [Fact]
+    public void ProgressTargetsMudBlazorNineBackgroundAndBarDescendants()
+    {
+        var css = ReadAdapter();
+
+        Assert.DoesNotContain(".mud-progress-linear-value", css, StringComparison.Ordinal);
+        Assert.Matches(@"\.mud-progress-linear\.mud-primary\.mud-progress-linear-background::before\s*\{[\s\S]*?background: var\(--shadcn-secondary\);", css);
+        Assert.Matches(@"\.mud-progress-linear\.mud-primary \.mud-progress-linear-bar\s*\{[\s\S]*?background: var\(--shadcn-primary\);", css);
+        Assert.Matches(@"\.mud-progress-linear\.mud-primary \.mud-progress-linear-bar\.mud-progress-linear-1-indeterminate\s*\{[\s\S]*?background: var\(--shadcn-primary\);", css);
     }
 
     internal static string ReadAdapter() => File.ReadAllText(Path.Combine(

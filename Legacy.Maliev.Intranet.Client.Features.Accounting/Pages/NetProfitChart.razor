@@ -1,4 +1,5 @@
 @page "/Finances/NetProfitChart"
+@using global::Maliev.ShadcnBlazor.Adapters.MudBlazor
 @attribute [Authorize]
 @inject HttpClient Http
 @inject NavigationManager Navigation
@@ -35,7 +36,7 @@
                     <MudPaper Class="pa-4" Elevation="1">
                         <MudText id="cumulative-income-heading" Typo="Typo.h6" HtmlTag="h2" Class="mb-3">@Text["Cumulative"]</MudText>
                         <div aria-hidden="true">
-                            <MudChart T="double" ChartType="ChartType.Line" ChartSeries="@cumulativeSeries" ChartLabels="@chartData.Labels" Width="100%" Height="360px" />
+                            <MudChart T="double" ChartType="ChartType.Line" ChartSeries="@cumulativeSeries" ChartLabels="@chartData.Labels" ChartOptions="@ShadcnMudChartOptions.Create()" Width="100%" Height="360px" />
                         </div>
                     </MudPaper>
                 </section>
@@ -45,7 +46,7 @@
                     <MudPaper Class="pa-4" Elevation="1">
                         <MudText id="daily-income-heading" Typo="Typo.h6" HtmlTag="h2" Class="mb-3">@Text["Daily"]</MudText>
                         <div aria-hidden="true">
-                            <MudChart T="double" ChartType="ChartType.Bar" ChartSeries="@dailySeries" ChartLabels="@chartData.Labels" Width="100%" Height="360px" />
+                            <MudChart T="double" ChartType="ChartType.Bar" ChartSeries="@dailySeries" ChartLabels="@chartData.Labels" ChartOptions="@ShadcnMudChartOptions.Create()" Width="100%" Height="360px" />
                         </div>
                     </MudPaper>
                 </section>
