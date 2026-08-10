@@ -5,6 +5,8 @@ Reusable Shadcn Base/Vega/Neutral components for .NET 10 Blazor, backed by MudBl
 ## Register
 
 ```csharp
+using Maliev.ShadcnBlazor;
+
 builder.Services.AddMalievShadcn(options =>
     options.FontFamily = "IBM Plex Sans Thai, sans-serif");
 ```
@@ -18,6 +20,15 @@ builder.Services.AddMalievShadcn(options =>
 ```
 
 ## Provide theme and portals
+
+Add the component and theme namespaces to the consuming application's `_Imports.razor`:
+
+```razor
+@using Maliev.ShadcnBlazor.Components
+@using Maliev.ShadcnBlazor.Theming
+```
+
+Then wrap the application content at its root:
 
 ```razor
 <ShadcnThemeProvider IsDarkMode="@isDarkMode" Direction="ShadcnDirection.LeftToRight">
