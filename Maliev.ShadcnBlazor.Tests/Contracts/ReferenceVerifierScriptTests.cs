@@ -1,5 +1,4 @@
 using System.Diagnostics;
-using System.Text.Json;
 using System.Text.Json.Nodes;
 
 namespace Maliev.ShadcnBlazor.Tests.Contracts;
@@ -7,35 +6,47 @@ namespace Maliev.ShadcnBlazor.Tests.Contracts;
 public sealed class ReferenceVerifierScriptTests
 {
     [Fact]
-    public async Task MatchingFixtureExitsZeroAndReportsEveryPinnedSource()
+    public async Task CheckedInManifestMatchesEveryPinnedUpstreamSource()
     {
-        using var fixture = ReferenceFixture.Create();
+        var root = FindRoot();
 
-        var result = await RunVerifierAsync(fixture);
+        var result = await RunVerifierAsync(root);
 
         Assert.Equal(0, result.ExitCode);
         Assert.Contains(
-            $"Verified 61 Base registry files and Vega style at {fixture.Commit}.",
+            "Verified 61 Base registry files and Vega style at 6261bd89f72d794aea491482cc2acfd8dc3d63e2.",
             result.Output,
             StringComparison.Ordinal);
     }
 
     [Fact]
-    public async Task ShaMismatchExitsNonzeroWithExpectedAndActualDiagnostic()
+    public async Task ChangedManifestShaFailsAgainstPinnedUpstreamWithDiagnostic()
     {
-        using var fixture = ReferenceFixture.Create(mismatchFirstRegistrySha: true);
+        using var fixture = IsolatedRoot.CreateWithChangedAccordionSha();
 
-        var result = await RunVerifierAsync(fixture);
+        var result = await RunVerifierAsync(fixture.Path);
 
         Assert.NotEqual(0, result.ExitCode);
         Assert.Contains("Pinned Shadcn reference mismatch", result.Output, StringComparison.Ordinal);
-        Assert.Contains("Accordion: expected", result.Output, StringComparison.Ordinal);
-        Assert.Contains("received 0000000000000000000000000000000000000000", result.Output, StringComparison.Ordinal);
+        Assert.Contains("Accordion: expected 0000000000000000000000000000000000000000", result.Output, StringComparison.Ordinal);
+        Assert.Contains("received d0080d19c888c68cf1bb933b5a9dda0476ed19e3", result.Output, StringComparison.Ordinal);
     }
 
-    private static async Task<ProcessResult> RunVerifierAsync(ReferenceFixture fixture)
+    [Fact]
+    public async Task OfflineManifestOverrideIsNotAccepted()
     {
         var root = FindRoot();
+        var manifest = Path.Combine(root, "Maliev.ShadcnBlazor", "Reference", "shadcn-reference.json");
+
+        var result = await RunVerifierAsync(root, "-ManifestPath", manifest);
+
+        Assert.NotEqual(0, result.ExitCode);
+        Assert.Contains("parameter", result.Output, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("ManifestPath", result.Output, StringComparison.Ordinal);
+    }
+
+    private static async Task<ProcessResult> RunVerifierAsync(string root, params string[] arguments)
+    {
         var script = Path.Combine(root, "scripts", "verify-shadcn-reference.ps1");
         var startInfo = new ProcessStartInfo("pwsh")
         {
@@ -48,12 +59,8 @@ public sealed class ReferenceVerifierScriptTests
         startInfo.ArgumentList.Add("-NoProfile");
         startInfo.ArgumentList.Add("-File");
         startInfo.ArgumentList.Add(script);
-        startInfo.ArgumentList.Add("-ManifestPath");
-        startInfo.ArgumentList.Add(fixture.ManifestPath);
-        startInfo.ArgumentList.Add("-RegistryResponsePath");
-        startInfo.ArgumentList.Add(fixture.RegistryResponsePath);
-        startInfo.ArgumentList.Add("-StyleResponsePath");
-        startInfo.ArgumentList.Add(fixture.StyleResponsePath);
+        foreach (var argument in arguments)
+            startInfo.ArgumentList.Add(argument);
 
         using var process = Process.Start(startInfo)
             ?? throw new InvalidOperationException("Could not start PowerShell.");
@@ -72,60 +79,44 @@ public sealed class ReferenceVerifierScriptTests
         return directory?.FullName ?? throw new DirectoryNotFoundException();
     }
 
-    private sealed class ReferenceFixture : IDisposable
+    private sealed class IsolatedRoot : IDisposable
     {
-        private readonly string _directory;
+        private IsolatedRoot(string path) => Path = path;
 
-        private ReferenceFixture(string directory, string commit)
+        public string Path { get; }
+
+        public static IsolatedRoot CreateWithChangedAccordionSha()
         {
-            _directory = directory;
-            Commit = commit;
-            ManifestPath = Path.Combine(directory, "manifest.json");
-            RegistryResponsePath = Path.Combine(directory, "registry.json");
-            StyleResponsePath = Path.Combine(directory, "style.json");
+            var sourceRoot = FindRoot();
+            var isolatedRoot = System.IO.Path.Combine(
+                System.IO.Path.GetTempPath(),
+                $"shadcn-reference-{Guid.NewGuid():N}");
+            var scriptDirectory = System.IO.Path.Combine(isolatedRoot, "scripts");
+            var manifestDirectory = System.IO.Path.Combine(isolatedRoot, "Maliev.ShadcnBlazor", "Reference");
+            Directory.CreateDirectory(scriptDirectory);
+            Directory.CreateDirectory(manifestDirectory);
+
+            File.Copy(
+                System.IO.Path.Combine(sourceRoot, "scripts", "verify-shadcn-reference.ps1"),
+                System.IO.Path.Combine(scriptDirectory, "verify-shadcn-reference.ps1"));
+
+            var sourceManifest = System.IO.Path.Combine(
+                sourceRoot,
+                "Maliev.ShadcnBlazor",
+                "Reference",
+                "shadcn-reference.json");
+            var manifest = JsonNode.Parse(File.ReadAllText(sourceManifest))!.AsObject();
+            var accordion = manifest["components"]!.AsArray()
+                .Select(component => component!.AsObject())
+                .Single(component => component["name"]!.GetValue<string>() == "Accordion");
+            accordion["blobSha"] = new string('0', 40);
+            File.WriteAllText(
+                System.IO.Path.Combine(manifestDirectory, "shadcn-reference.json"),
+                manifest.ToJsonString());
+            return new IsolatedRoot(isolatedRoot);
         }
 
-        public string Commit { get; }
-        public string ManifestPath { get; }
-        public string RegistryResponsePath { get; }
-        public string StyleResponsePath { get; }
-
-        public static ReferenceFixture Create(bool mismatchFirstRegistrySha = false)
-        {
-            var directory = Path.Combine(Path.GetTempPath(), $"shadcn-reference-{Guid.NewGuid():N}");
-            Directory.CreateDirectory(directory);
-            var sourceManifestPath = Path.Combine(FindRoot(), "Maliev.ShadcnBlazor", "Reference", "shadcn-reference.json");
-            var manifest = JsonNode.Parse(File.ReadAllText(sourceManifestPath))!.AsObject();
-            var fixture = new ReferenceFixture(directory, manifest["commit"]!.GetValue<string>());
-            File.Copy(sourceManifestPath, fixture.ManifestPath);
-
-            var registry = new JsonArray();
-            var registryIndex = 0;
-            foreach (var componentNode in manifest["components"]!.AsArray())
-            {
-                var component = componentNode!.AsObject();
-                if (component["sourceKind"]!.GetValue<string>() != "registry-file")
-                    continue;
-                var sha = component["blobSha"]!.GetValue<string>();
-                if (mismatchFirstRegistrySha && registryIndex == 0)
-                    sha = new string('0', 40);
-                registry.Add(new JsonObject
-                {
-                    ["name"] = $"{component["slug"]!.GetValue<string>()}.tsx",
-                    ["sha"] = sha
-                });
-                registryIndex++;
-            }
-
-            File.WriteAllText(fixture.RegistryResponsePath, registry.ToJsonString());
-            File.WriteAllText(fixture.StyleResponsePath, new JsonObject
-            {
-                ["sha"] = manifest["styleSource"]!["blobSha"]!.GetValue<string>()
-            }.ToJsonString());
-            return fixture;
-        }
-
-        public void Dispose() => Directory.Delete(_directory, recursive: true);
+        public void Dispose() => Directory.Delete(Path, recursive: true);
     }
 
     private sealed record ProcessResult(int ExitCode, string Output);

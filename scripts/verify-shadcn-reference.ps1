@@ -1,18 +1,12 @@
-param(
-    [string] $ManifestPath,
-    [string] $RegistryResponsePath,
-    [string] $StyleResponsePath
-)
-
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
-
-$root = Split-Path -Parent $PSScriptRoot
-if ([string]::IsNullOrWhiteSpace($ManifestPath)) {
-    $ManifestPath = Join-Path $root 'Maliev.ShadcnBlazor\Reference\shadcn-reference.json'
+if ($args.Count -gt 0) {
+    throw "The verifier accepts no parameters; received: $($args -join ' ')"
 }
 
-$manifest = Get-Content -Raw -LiteralPath $ManifestPath | ConvertFrom-Json
+$root = Split-Path -Parent $PSScriptRoot
+$manifestFile = Join-Path $root 'Maliev.ShadcnBlazor\Reference\shadcn-reference.json'
+$manifest = Get-Content -Raw -LiteralPath $manifestFile | ConvertFrom-Json
 if ($manifest.schema -ne 'shadcn-reference/v1') {
     throw "Unsupported Shadcn reference manifest schema: $($manifest.schema)"
 }
@@ -25,22 +19,20 @@ if ($registryComponents.Count -ne 61) {
     throw "Expected 61 registry-file components, received $($registryComponents.Count)."
 }
 
-$usesFixtureResponses = -not [string]::IsNullOrWhiteSpace($RegistryResponsePath) -or
-    -not [string]::IsNullOrWhiteSpace($StyleResponsePath)
-if ($usesFixtureResponses -and
-    ([string]::IsNullOrWhiteSpace($RegistryResponsePath) -or [string]::IsNullOrWhiteSpace($StyleResponsePath))) {
-    throw 'RegistryResponsePath and StyleResponsePath must be supplied together.'
-}
-
 $headers = @{ 'User-Agent' = 'Maliev-Shadcn-reference-verifier' }
+$token = if (-not [string]::IsNullOrWhiteSpace($env:GH_TOKEN)) {
+    $env:GH_TOKEN
+} elseif (-not [string]::IsNullOrWhiteSpace($env:GITHUB_TOKEN)) {
+    $env:GITHUB_TOKEN
+} elseif ($null -ne (Get-Command gh -ErrorAction SilentlyContinue)) {
+    (& gh auth token 2>$null)
+}
+if (-not [string]::IsNullOrWhiteSpace($token)) {
+    $headers.Authorization = "Bearer $token"
+}
 $apiRoot = 'https://api.github.com/repos/shadcn-ui/ui/contents'
 $encodedRegistryRoot = ($manifest.registryRoot -split '/' | ForEach-Object { [uri]::EscapeDataString($_) }) -join '/'
-
-if ($usesFixtureResponses) {
-    $registryResponse = Get-Content -Raw -LiteralPath $RegistryResponsePath | ConvertFrom-Json
-} else {
-    $registryResponse = Invoke-RestMethod -Headers $headers -Uri "$apiRoot/$encodedRegistryRoot`?ref=$($manifest.commit)"
-}
+$registryResponse = Invoke-RestMethod -Headers $headers -Uri "$apiRoot/$encodedRegistryRoot`?ref=$($manifest.commit)"
 $registry = @($registryResponse.GetEnumerator())
 
 $registryByName = @{}
@@ -61,12 +53,8 @@ foreach ($component in $registryComponents) {
     }
 }
 
-if ($usesFixtureResponses) {
-    $actualStyle = Get-Content -Raw -LiteralPath $StyleResponsePath | ConvertFrom-Json
-} else {
-    $encodedStylePath = ($manifest.styleSource.path -split '/' | ForEach-Object { [uri]::EscapeDataString($_) }) -join '/'
-    $actualStyle = Invoke-RestMethod -Headers $headers -Uri "$apiRoot/$encodedStylePath`?ref=$($manifest.commit)"
-}
+$encodedStylePath = ($manifest.styleSource.path -split '/' | ForEach-Object { [uri]::EscapeDataString($_) }) -join '/'
+$actualStyle = Invoke-RestMethod -Headers $headers -Uri "$apiRoot/$encodedStylePath`?ref=$($manifest.commit)"
 if ($actualStyle.sha -ne $manifest.styleSource.blobSha) {
     $failures.Add("Vega style: expected $($manifest.styleSource.blobSha), received $($actualStyle.sha)")
 }
