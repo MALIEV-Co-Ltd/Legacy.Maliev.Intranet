@@ -44,8 +44,23 @@ public sealed class MudInventoryBrowserTests(ShowcaseServerFixture server, Playw
 
         await page.GetByLabel("Invalid", new() { Exact = true }).FocusAsync();
         var invalidInput = page.GetByLabel("Invalid", new() { Exact = true });
-        Assert.NotEqual("none", await invalidInput.EvaluateAsync<string>("element => getComputedStyle(element.closest('.mud-input-control')).boxShadow"));
-        Assert.NotEqual("rgba(0, 0, 0, 0)", await invalidInput.EvaluateAsync<string>("element => getComputedStyle(element.closest('.mud-input-control')).borderColor"));
+        var invalidControl = page.Locator(".mud-input-control.mud-input-error");
+        var destructive = await NormalizeCssColorAsync(page, "var(--shadcn-destructive)");
+        var destructiveFocusRing = await NormalizeCssColorAsync(page, "color-mix(in oklab, var(--shadcn-destructive) 20%, transparent)");
+        Assert.Equal(destructive, await invalidInput.EvaluateAsync<string>("""
+            element => {
+                const control = element.closest('.mud-input-control');
+                const border = control.querySelector('.mud-input-outlined-border');
+                return window.__normalizeShadcnColor(getComputedStyle(border).borderColor);
+            }
+            """));
+        Assert.Equal(destructiveFocusRing, await invalidInput.EvaluateAsync<string>("""
+            element => {
+                const shadow = getComputedStyle(element.closest('.mud-input')).boxShadow;
+                const color = shadow.match(/(?:rgba?|oklab|color)\([^)]*\)/g).at(-1);
+                return window.__normalizeShadcnColor(color);
+            }
+            """));
 
         var disabled = page.GetByTestId("button-disabled");
         Assert.False(await disabled.IsEnabledAsync());
@@ -64,8 +79,21 @@ public sealed class MudInventoryBrowserTests(ShowcaseServerFixture server, Playw
         Assert.Equal("Aluminium", await material.InnerTextAsync());
 
         Assert.True(await page.Locator(".mud-input-error").CountAsync() >= 1);
-        Assert.Equal(1, await page.Locator(".mud-tab.mud-tab-active").CountAsync());
-        Assert.Equal(1, await page.Locator(".mud-table-row-selected").CountAsync());
+        var overviewTab = page.GetByRole(AriaRole.Tab, new() { Name = "Overview", Exact = true });
+        var historyTab = page.GetByRole(AriaRole.Tab, new() { Name = "History", Exact = true });
+        var historyBefore = await historyTab.EvaluateAsync<string>("element => `${getComputedStyle(element).backgroundColor}|${getComputedStyle(element).color}`");
+        await historyTab.ClickAsync();
+        await Assertions.Expect(historyTab).ToHaveAttributeAsync("aria-selected", "true");
+        Assert.Equal("false", await overviewTab.GetAttributeAsync("aria-selected"));
+        var historyAfter = await historyTab.EvaluateAsync<string>("element => `${getComputedStyle(element).backgroundColor}|${getComputedStyle(element).color}`");
+        Assert.NotEqual(historyBefore, historyAfter);
+
+        var clampRow = page.GetByText("Clamp plate", new() { Exact = true }).Locator("xpath=ancestor::tr");
+        var rowBefore = await clampRow.EvaluateAsync<string>("element => `${getComputedStyle(element).backgroundColor}|${getComputedStyle(element).color}`");
+        await clampRow.ClickAsync();
+        Assert.Contains("mud-table-row-selected", await clampRow.GetAttributeAsync("class") ?? string.Empty, StringComparison.Ordinal);
+        var rowAfter = await clampRow.EvaluateAsync<string>("element => `${getComputedStyle(element).backgroundColor}|${getComputedStyle(element).color}`");
+        Assert.NotEqual(rowBefore, rowAfter);
         var expansion = page.GetByTestId("material-readiness");
         var expansionContent = page.GetByText("Inspection data is retained in the expanded content.", new() { Exact = true });
         Assert.True(await expansionContent.IsVisibleAsync());
@@ -249,6 +277,11 @@ public sealed class MudInventoryBrowserTests(ShowcaseServerFixture server, Playw
             "element => getComputedStyle(element).color"));
         Assert.NotEqual("0px", await dialog.EvaluateAsync<string>("element => getComputedStyle(element).borderRadius"));
         await AssertOverlayUsesDarkRtlContextAsync(dialog);
+        Assert.True(await dialog.EvaluateAsync<bool>("element => element.contains(document.activeElement)"));
+        await page.Keyboard.PressAsync("Tab");
+        Assert.True(await dialog.EvaluateAsync<bool>("element => element.contains(document.activeElement)"));
+        await page.Keyboard.PressAsync("Shift+Tab");
+        Assert.True(await dialog.EvaluateAsync<bool>("element => element.contains(document.activeElement)"));
         await page.Keyboard.PressAsync("Escape");
         await Assertions.Expect(dialog).ToBeHiddenAsync();
         Assert.True(await trigger.EvaluateAsync<bool>("element => document.activeElement === element"));
@@ -271,6 +304,7 @@ public sealed class MudInventoryBrowserTests(ShowcaseServerFixture server, Playw
         Assert.NotEqual("rgba(0, 0, 0, 0)", await selectPopover.EvaluateAsync<string>(
             "element => getComputedStyle(element).backgroundColor"));
         Assert.NotEqual("0px", await selectPopover.EvaluateAsync<string>("element => getComputedStyle(element).borderRadius"));
+        Assert.Equal(await ResolveCssColorAsync(page, "var(--shadcn-popover-foreground)"), await selectPopover.EvaluateAsync<string>("element => getComputedStyle(element).color"));
         await AssertOverlayUsesDarkRtlContextAsync(selectPopover);
         await page.Keyboard.PressAsync("Escape");
         Assert.True(await selectTrigger.EvaluateAsync<bool>("element => document.activeElement === element"));
@@ -282,6 +316,7 @@ public sealed class MudInventoryBrowserTests(ShowcaseServerFixture server, Playw
         Assert.NotEqual("rgba(0, 0, 0, 0)", await datePopover.EvaluateAsync<string>(
             "element => getComputedStyle(element).backgroundColor"));
         Assert.NotEqual("0px", await datePopover.EvaluateAsync<string>("element => getComputedStyle(element).borderRadius"));
+        Assert.Equal(await ResolveCssColorAsync(page, "var(--shadcn-popover-foreground)"), await datePopover.EvaluateAsync<string>("element => getComputedStyle(element).color"));
         await AssertOverlayUsesDarkRtlContextAsync(datePopover);
         await page.Keyboard.PressAsync("Escape");
         Assert.True(await dateTrigger.EvaluateAsync<bool>("element => document.activeElement === element"));
@@ -307,5 +342,35 @@ public sealed class MudInventoryBrowserTests(ShowcaseServerFixture server, Playw
                     && scope.getAttribute('dir') === 'rtl';
             }
             """));
+    }
+
+    private static Task<string> ResolveCssColorAsync(IPage page, string cssValue) => page.EvaluateAsync<string>("""
+        cssValue => {
+            const probe = document.createElement('span');
+            probe.style.color = cssValue;
+            document.querySelector('[data-shadcn-scope]').append(probe);
+            const color = getComputedStyle(probe).color;
+            probe.remove();
+            return color;
+        }
+        """, cssValue);
+
+    private static async Task<string> NormalizeCssColorAsync(IPage page, string cssValue)
+    {
+        await page.EvaluateAsync("""
+            () => {
+                window.__normalizeShadcnColor ??= value => {
+                    const canvas = document.createElement('canvas');
+                    canvas.width = canvas.height = 1;
+                    const context = canvas.getContext('2d');
+                    context.clearRect(0, 0, 1, 1);
+                    context.fillStyle = value;
+                    context.fillRect(0, 0, 1, 1);
+                    return Array.from(context.getImageData(0, 0, 1, 1).data).join(',');
+                };
+            }
+            """);
+        var resolved = await ResolveCssColorAsync(page, cssValue);
+        return await page.EvaluateAsync<string>("value => window.__normalizeShadcnColor(value)", resolved);
     }
 }

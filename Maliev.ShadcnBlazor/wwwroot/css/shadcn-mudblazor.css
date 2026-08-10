@@ -241,7 +241,8 @@
     box-shadow: 0 0 0 3px color-mix(in oklab, var(--shadcn-destructive) 40%, transparent);
 }
 
-:where(.shadcn-scope, .shadcn-overlay-scope) :where(.mud-input-error .mud-input-outlined-border, .mud-input-error.mud-input-underline::after) {
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-input-error .mud-input-outlined-border,
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-input-error.mud-input-underline::after {
     border-color: var(--shadcn-destructive) !important;
 }
 

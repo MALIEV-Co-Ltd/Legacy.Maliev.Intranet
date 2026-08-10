@@ -117,7 +117,7 @@
         <MudText Typo="Typo.h2" HtmlTag="h2" id="mud-data-feedback-heading">Data and feedback</MudText>
         <MudText Typo="Typo.body2">Fixed fixtures cover the responsive table and feedback states without changing production data flows.</MudText>
 
-        <MudTable data-mud-type="MudTable" Items="@FixtureRows" Dense="true" Hover="true" RowClassFunc="FixtureRowClass" Breakpoint="Breakpoint.Sm" aria-label="Responsive selected inventory table">
+        <MudTable data-mud-type="MudTable" T="FixtureRow" Items="@FixtureRows" Dense="true" Hover="true" RowClassFunc="FixtureRowClass" OnRowClick="SelectFixtureRow" Breakpoint="Breakpoint.Sm" aria-label="Responsive selected inventory table">
             <HeaderContent>
                 <MudTh data-mud-type="MudTh">Part</MudTh>
                 <MudTh>Material</MudTh>
@@ -202,6 +202,7 @@
         new("Clamp plate", "Aluminium", "Ready"),
         new("Fixture plate", "Steel", "Selected")
     ];
+    private FixtureRow SelectedFixtureRow { get; set; } = FixtureRows[1];
     private static readonly string[] FixtureChartLabels = ["Mon", "Tue", "Wed"];
     private static readonly List<ChartSeries<double>> FixtureChartSeries =
     [
@@ -220,7 +221,13 @@
 
     private void ShowSnackbar() => Snackbar.Add("Portal snackbar", Severity.Success);
 
-    private static string FixtureRowClass(FixtureRow row, int _) => row.Readiness == "Selected" ? "mud-table-row-selected" : string.Empty;
+    private void SelectFixtureRow(TableRowClickEventArgs<FixtureRow> args)
+    {
+        if (args.Item is not null)
+            SelectedFixtureRow = args.Item;
+    }
+
+    private string FixtureRowClass(FixtureRow row, int _) => row == SelectedFixtureRow ? "mud-table-row-selected" : string.Empty;
 
     private void DismissFixtureAlert() => ShowFixtureCloseAlert = false;
 
