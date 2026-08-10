@@ -13,7 +13,8 @@ public sealed class FoundationSmokeTests(ShowcaseServerFixture server, Playwrigh
         await using var context = await playwright.Browser.NewContextAsync(new()
         {
             ViewportSize = new() { Width = 1440, Height = 900 },
-            DeviceScaleFactor = 1
+            DeviceScaleFactor = 1,
+            ReducedMotion = ReducedMotion.NoPreference
         });
         var page = await context.NewPageAsync();
         page.Console += (_, message) => { if (message.Type == "error") errors.Add(message.Text); };

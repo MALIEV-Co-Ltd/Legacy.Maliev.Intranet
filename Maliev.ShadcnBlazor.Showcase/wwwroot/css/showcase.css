@@ -16,6 +16,7 @@ a {
 }
 
 .showcase-shell {
+    overflow-x: clip;
     min-height: 100vh;
     background:
         radial-gradient(circle at 18% 0%, color-mix(in oklch, var(--shadcn-primary) 5%, transparent) 0, transparent 28rem),
@@ -298,6 +299,10 @@ a {
     gap: 2rem;
 }
 
+.mud-inventory__structural-fixture {
+    display: none;
+}
+
 .mud-inventory__header,
 .mud-inventory__section,
 .mud-inventory__type,
@@ -313,11 +318,16 @@ a {
 }
 
 .mud-inventory__section {
+    min-width: 0;
     padding: 1.25rem;
     border: 1px solid var(--shadcn-border);
     border-radius: var(--shadcn-radius-lg);
     background: var(--shadcn-card);
     box-shadow: var(--shadcn-shadow-xs);
+}
+
+.mud-inventory :where(.mud-table-container, .mud-chart) {
+    max-width: 100%;
 }
 
 .mud-inventory__actions {
@@ -421,5 +431,10 @@ a {
 
     .mud-inventory__form {
         grid-template-columns: 1fr;
+    }
+
+    .mud-inventory__actions .mud-button-root {
+        min-width: 2.75rem;
+        min-height: 2.75rem;
     }
 }
