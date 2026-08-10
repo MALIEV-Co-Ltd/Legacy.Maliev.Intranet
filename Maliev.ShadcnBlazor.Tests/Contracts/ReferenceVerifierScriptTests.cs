@@ -45,6 +45,21 @@ public sealed class ReferenceVerifierScriptTests
         Assert.Contains("ManifestPath", result.Output, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public async Task ShortCommitPinFailsBeforeContactingUpstream()
+    {
+        using var fixture = IsolatedRoot.CreateWithShortCommit();
+
+        var result = await RunVerifierAsync(fixture.Path);
+
+        Assert.NotEqual(0, result.ExitCode);
+        Assert.Contains(
+            "The Shadcn reference commit must be a full lowercase Git commit SHA: 6261bd89f72d794aea491482cc2acfd8dc3d63e",
+            result.Output,
+            StringComparison.Ordinal);
+        Assert.DoesNotContain("Invoke-RestMethod", result.Output, StringComparison.Ordinal);
+    }
+
     private static async Task<ProcessResult> RunVerifierAsync(string root, params string[] arguments)
     {
         var script = Path.Combine(root, "scripts", "verify-shadcn-reference.ps1");
@@ -87,6 +102,23 @@ public sealed class ReferenceVerifierScriptTests
 
         public static IsolatedRoot CreateWithChangedAccordionSha()
         {
+            return Create(manifest =>
+            {
+                var accordion = manifest["components"]!.AsArray()
+                    .Select(component => component!.AsObject())
+                    .Single(component => component["name"]!.GetValue<string>() == "Accordion");
+                accordion["blobSha"] = new string('0', 40);
+            });
+        }
+
+        public static IsolatedRoot CreateWithShortCommit()
+        {
+            return Create(manifest =>
+                manifest["commit"] = "6261bd89f72d794aea491482cc2acfd8dc3d63e");
+        }
+
+        private static IsolatedRoot Create(Action<JsonObject> mutateManifest)
+        {
             var sourceRoot = FindRoot();
             var isolatedRoot = System.IO.Path.Combine(
                 System.IO.Path.GetTempPath(),
@@ -106,10 +138,7 @@ public sealed class ReferenceVerifierScriptTests
                 "Reference",
                 "shadcn-reference.json");
             var manifest = JsonNode.Parse(File.ReadAllText(sourceManifest))!.AsObject();
-            var accordion = manifest["components"]!.AsArray()
-                .Select(component => component!.AsObject())
-                .Single(component => component["name"]!.GetValue<string>() == "Accordion");
-            accordion["blobSha"] = new string('0', 40);
+            mutateManifest(manifest);
             File.WriteAllText(
                 System.IO.Path.Combine(manifestDirectory, "shadcn-reference.json"),
                 manifest.ToJsonString());
