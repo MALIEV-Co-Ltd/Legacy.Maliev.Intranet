@@ -31,9 +31,9 @@
     display: grid;
     gap: 10px;
     padding: 12px;
-    border-radius: var(--maliev-radius-md);
-    background: var(--maliev-panel);
-    border: 1px solid var(--legacy-border);
+    border-radius: var(--shadcn-radius-md);
+    background: var(--shadcn-card);
+    border: 1px solid var(--shadcn-border);
     box-shadow: none;
 }
 
@@ -42,7 +42,7 @@
     display: grid;
     grid-template-columns: repeat(var(--mlv-skeleton-columns, 5), minmax(0, 1fr));
     padding: 6px 0;
-    border-bottom: 1px solid var(--maliev-border-subtle);
+    border-bottom: 1px solid var(--shadcn-border);
 }
 
 .mlv-progressive-skeleton-table-row:last-child {
@@ -52,7 +52,7 @@
 .mlv-progressive-skeleton-row {
     justify-content: space-between;
     padding: 8px 0;
-    border-bottom: 1px solid var(--maliev-border-subtle);
+    border-bottom: 1px solid var(--shadcn-border);
 }
 
 .mlv-progressive-skeleton-row:last-child {
@@ -80,9 +80,9 @@
     display: grid;
     gap: 6px;
     padding: 12px;
-    border-radius: var(--maliev-radius-md);
-    background: var(--maliev-panel);
-    border: 1px solid var(--legacy-border);
+    border-radius: var(--shadcn-radius-md);
+    background: var(--shadcn-card);
+    border: 1px solid var(--shadcn-border);
     box-shadow: none;
 }
 

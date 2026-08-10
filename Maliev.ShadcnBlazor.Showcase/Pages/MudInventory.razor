@@ -107,6 +107,64 @@
             <MudButton Variant="Variant.Outlined" data-testid="open-snackbar" OnClick="ShowSnackbar">Show snackbar</MudButton>
         </MudStack>
     </section>
+
+    <section class="mud-inventory__section" data-testid="mud-data-feedback" aria-labelledby="mud-data-feedback-heading">
+        <MudText Typo="Typo.h2" HtmlTag="h2" id="mud-data-feedback-heading">Data and feedback</MudText>
+        <MudText Typo="Typo.body2">Fixed fixtures cover the responsive table and feedback states without changing production data flows.</MudText>
+
+        <MudTable Items="@FixtureRows" Dense="true" Hover="true" RowClassFunc="FixtureRowClass" Breakpoint="Breakpoint.Sm" aria-label="Responsive selected inventory table">
+            <HeaderContent>
+                <MudTh>Part</MudTh>
+                <MudTh>Material</MudTh>
+                <MudTh>Readiness</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd DataLabel="Part">@context.Part</MudTd>
+                <MudTd DataLabel="Material">@context.Material</MudTd>
+                <MudTd DataLabel="Readiness">@context.Readiness</MudTd>
+            </RowTemplate>
+        </MudTable>
+
+        <MudSimpleTable Dense="true" Hover="true" aria-label="Simple inventory table">
+            <thead><tr><th scope="col">Station</th><th scope="col">Status</th></tr></thead>
+            <tbody>
+                <tr><td data-label="Station">Laser cell</td><td data-label="Status">Ready</td></tr>
+                <tr><td data-label="Station">Inspection</td><td data-label="Status">Review</td></tr>
+            </tbody>
+        </MudSimpleTable>
+
+        <MudGrid Spacing="2">
+            <MudItem xs="12" md="4"><MudChart T="double" ChartType="ChartType.Bar" ChartSeries="@FixtureChartSeries" ChartLabels="@FixtureChartLabels" Width="100%" Height="220px" /></MudItem>
+            <MudItem xs="12" md="4"><MudChart T="double" ChartType="ChartType.Donut" ChartSeries="@FixtureChartSeries" ChartLabels="@FixtureChartLabels" Width="100%" Height="220px" /></MudItem>
+            <MudItem xs="12" md="4"><MudChart T="double" ChartType="ChartType.Line" ChartSeries="@FixtureChartSeries" ChartLabels="@FixtureChartLabels" Width="100%" Height="220px" /></MudItem>
+        </MudGrid>
+
+        @if (ShowFixtureCloseAlert)
+        {
+            <MudAlert Severity="Severity.Normal" aria-live="polite">
+                <MudIcon Icon="@Icons.Material.Outlined.Info" aria-hidden="true" /> Default status
+                <MudIconButton Icon="@Icons.Material.Outlined.Close" aria-label="Dismiss default status" OnClick="DismissFixtureAlert" />
+            </MudAlert>
+        }
+        <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" aria-live="polite"><MudIcon Icon="@Icons.Material.Outlined.Info" aria-hidden="true" /> Information status</MudAlert>
+        <MudAlert Severity="Severity.Success" aria-live="polite"><MudIcon Icon="@Icons.Material.Outlined.CheckCircle" aria-hidden="true" /> Success status</MudAlert>
+        <MudAlert Severity="Severity.Warning" aria-live="polite"><MudIcon Icon="@Icons.Material.Outlined.WarningAmber" aria-hidden="true" /> Warning status</MudAlert>
+        <MudAlert Severity="Severity.Error" Variant="Variant.Outlined" aria-live="assertive"><MudIcon Icon="@Icons.Material.Outlined.ErrorOutline" aria-hidden="true" /> Destructive status</MudAlert>
+
+        <MudStack Row="true" Wrap="Wrap.Wrap" AlignItems="AlignItems.Center" Spacing="2">
+            <MudProgressLinear Value="60" aria-label="Sixty percent complete" Style="width: 12rem" />
+            <MudProgressLinear Indeterminate="true" aria-label="Loading progress" Style="width: 12rem" />
+            <MudProgressCircular Value="60" aria-label="Sixty percent complete" />
+            <MudProgressCircular Indeterminate="true" aria-label="Loading progress" />
+        </MudStack>
+
+        <MudStack Row="true" Wrap="Wrap.Wrap" AlignItems="AlignItems.Center" Spacing="2">
+            <MudSkeleton SkeletonType="SkeletonType.Text" Width="9rem" Animation="Animation.False" />
+            <MudSkeleton SkeletonType="SkeletonType.Rectangle" Width="9rem" Height="3rem" Animation="Animation.Pulse" />
+            <MudSkeleton SkeletonType="SkeletonType.Circle" Width="3rem" Height="3rem" Animation="Animation.Wave" />
+            <div class="shadcn-scope" data-shadcn-theme="dark"><MudSkeleton SkeletonType="SkeletonType.Rectangle" Width="9rem" Height="3rem" Animation="Animation.Wave" /></div>
+        </MudStack>
+    </section>
 </section>
 
 @code {
@@ -121,6 +179,7 @@
     private static readonly decimal Quantity = 12.5m;
     private static readonly DateTime DeliveryDate = new(2026, 8, 10);
     private const bool Approved = true;
+    private bool ShowFixtureCloseAlert { get; set; } = true;
     private const string SelectedListItem = "SelectedListItem";
     private const string Ready = "Ready";
     private static readonly List<BreadcrumbItem> Breadcrumbs =
@@ -129,6 +188,17 @@
         new("Inventory", href: "#inventory"),
         new("Surface fixture", href: null, disabled: true)
     ];
+    private static readonly IReadOnlyList<FixtureRow> FixtureRows =
+    [
+        new("Clamp plate", "Aluminium", "Ready"),
+        new("Fixture plate", "Steel", "Selected")
+    ];
+    private static readonly string[] FixtureChartLabels = ["Mon", "Tue", "Wed"];
+    private static readonly List<ChartSeries<double>> FixtureChartSeries =
+    [
+        new() { Name = "Output", Data = new ChartData<double>([24d, 38d, 31d]) },
+        new() { Name = "Inspected", Data = new ChartData<double>([18d, 26d, 29d]) }
+    ];
 
     private async Task OpenDialogAsync() => await Dialogs.ShowMessageBoxAsync(
         "Portal dialog",
@@ -136,4 +206,10 @@
         yesText: "Close");
 
     private void ShowSnackbar() => Snackbar.Add("Portal snackbar", Severity.Success);
+
+    private static string FixtureRowClass(FixtureRow row, int _) => row.Readiness == "Selected" ? "mud-table-row-selected" : string.Empty;
+
+    private void DismissFixtureAlert() => ShowFixtureCloseAlert = false;
+
+    private sealed record FixtureRow(string Part, string Material, string Readiness);
 }

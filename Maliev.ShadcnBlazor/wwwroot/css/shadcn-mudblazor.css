@@ -646,6 +646,185 @@
     color: var(--shadcn-destructive-foreground);
 }
 
+/* Tables preserve Mud's data, sorting, and paging behavior while consuming semantic surfaces. */
+:where(.shadcn-scope, .shadcn-overlay-scope) :where(.mud-table, .mud-simple-table) {
+    color: var(--shadcn-foreground);
+}
+
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-table-root {
+    border: 1px solid var(--shadcn-border);
+    background: var(--shadcn-card);
+    color: var(--shadcn-card-foreground);
+}
+
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-table-head,
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-table-head .mud-table-cell {
+    color: var(--shadcn-muted-foreground);
+}
+
+:where(.shadcn-scope, .shadcn-overlay-scope) :where(.mud-table-cell, .mud-simple-table td, .mud-simple-table th) {
+    border-color: var(--shadcn-border);
+    color: var(--shadcn-foreground);
+}
+
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-table-head .mud-table-cell,
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-simple-table th {
+    font-size: 0.75rem;
+    font-weight: 500;
+    letter-spacing: 0.025em;
+    text-transform: uppercase;
+}
+
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-table-row:hover,
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-simple-table tbody tr:hover {
+    background: var(--shadcn-muted);
+}
+
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-table-row-selected {
+    background: var(--shadcn-accent);
+    color: var(--shadcn-accent-foreground);
+}
+
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-table-row:focus-within {
+    background: var(--shadcn-muted);
+    box-shadow: inset 3px 0 0 var(--shadcn-ring);
+}
+
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-table-dense .mud-table-cell,
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-table-dense :where(td, th) {
+    padding: 0.5rem 0.75rem;
+}
+
+:where(.shadcn-scope, .shadcn-overlay-scope) :where(.mud-table-pagination, .mud-table-toolbar) {
+    border-color: var(--shadcn-border);
+    color: var(--shadcn-muted-foreground);
+}
+
+:where(.shadcn-scope, .shadcn-overlay-scope) :where(.mud-table-loading, .mud-table-empty-row) {
+    color: var(--shadcn-muted-foreground);
+}
+
+/* MudChart 9.7 exposes these palette variables and SVG classes at runtime. */
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-chart {
+    --mud-palette-lines-default: var(--shadcn-border);
+    --mud-chart-1: var(--shadcn-chart-1);
+    --mud-chart-2: var(--shadcn-chart-2);
+    --mud-chart-3: var(--shadcn-chart-3);
+    --mud-chart-4: var(--shadcn-chart-4);
+    --mud-chart-5: var(--shadcn-chart-5);
+    color: var(--shadcn-foreground);
+}
+
+:where(.shadcn-scope, .shadcn-overlay-scope) :where(.mud-charts-xaxis, .mud-charts-yaxis, .mud-chart-axis-label, .mud-chart-donut .mud-donut-text) {
+    fill: var(--shadcn-muted-foreground);
+}
+
+:where(.shadcn-scope, .shadcn-overlay-scope) :where(.mud-chart-bar, .mud-chart-line, .mud-chart-donut) :where(line, path) {
+    stroke: var(--mud-palette-lines-default);
+}
+
+:where(.shadcn-scope, .shadcn-overlay-scope) :where(.mud-chart-legend, .mud-chart-legend-text) {
+    color: var(--shadcn-muted-foreground);
+}
+
+:where(.shadcn-scope, .shadcn-overlay-scope) :where(.mud-chart-marker-color-0, .mud-chart-marker-color-1, .mud-chart-marker-color-2, .mud-chart-marker-color-3, .mud-chart-marker-color-4) {
+    background-color: var(--mud-chart-1);
+}
+
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-chart-marker-color-1 { background-color: var(--mud-chart-2); }
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-chart-marker-color-2 { background-color: var(--mud-chart-3); }
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-chart-marker-color-3 { background-color: var(--mud-chart-4); }
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-chart-marker-color-4 { background-color: var(--mud-chart-5); }
+
+/* Alerts retain caller-managed live regions and close actions. */
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-alert {
+    border: 1px solid var(--shadcn-border);
+    border-radius: var(--shadcn-radius-lg);
+    background: var(--shadcn-secondary);
+    color: var(--shadcn-secondary-foreground);
+}
+
+:where(.shadcn-scope, .shadcn-overlay-scope) :where(.mud-alert-text-info, .mud-alert-outlined-info) {
+    border-color: var(--shadcn-primary);
+    background: var(--shadcn-accent);
+    color: var(--shadcn-accent-foreground);
+}
+
+:where(.shadcn-scope, .shadcn-overlay-scope) :where(.mud-alert-text-success, .mud-alert-outlined-success) {
+    border-color: var(--shadcn-border);
+    background: var(--shadcn-secondary);
+    color: var(--shadcn-secondary-foreground);
+}
+
+:where(.shadcn-scope, .shadcn-overlay-scope) :where(.mud-alert-text-warning, .mud-alert-outlined-warning) {
+    border-color: var(--shadcn-border);
+    background: var(--shadcn-accent);
+    color: var(--shadcn-accent-foreground);
+}
+
+:where(.shadcn-scope, .shadcn-overlay-scope) :where(.mud-alert-text-error, .mud-alert-outlined-error) {
+    border-color: var(--shadcn-destructive);
+    background: color-mix(in oklab, var(--shadcn-destructive) 12%, var(--shadcn-background));
+    color: var(--shadcn-destructive);
+}
+
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-alert-filled-info {
+    background: var(--shadcn-accent);
+    color: var(--shadcn-accent-foreground);
+}
+
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-alert-filled-success {
+    background: var(--shadcn-secondary);
+    color: var(--shadcn-secondary-foreground);
+}
+
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-alert-filled-warning {
+    background: var(--shadcn-accent);
+    color: var(--shadcn-accent-foreground);
+}
+
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-alert-filled-error {
+    background: var(--shadcn-destructive);
+    color: var(--shadcn-destructive-foreground);
+}
+
+:where(.shadcn-scope, .shadcn-overlay-scope) :where(.mud-alert-filled-info, .mud-alert-filled-success, .mud-alert-filled-warning, .mud-alert-filled-error) .mud-button-root,
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-alert-close .mud-button-root {
+    color: currentColor;
+}
+
+/* Progress and skeleton animation classes are verified against MudBlazor 9.7. */
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-progress-linear {
+    background: var(--shadcn-secondary);
+    border-radius: var(--shadcn-radius-sm);
+    color: var(--shadcn-primary);
+}
+
+:where(.shadcn-scope, .shadcn-overlay-scope) :where(.mud-progress-linear-bar, .mud-progress-linear-value) {
+    background: var(--shadcn-primary);
+}
+
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-progress-linear.mud-progress-indeterminate {
+    overflow: hidden;
+}
+
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-progress-circular {
+    color: var(--shadcn-primary);
+}
+
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-progress-circular.mud-progress-indeterminate {
+    animation-duration: 1.4s;
+}
+
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-skeleton {
+    background: var(--shadcn-muted);
+    border-radius: var(--shadcn-radius-sm);
+}
+
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-skeleton-wave::after {
+    background: linear-gradient(90deg, transparent, color-mix(in oklab, var(--shadcn-foreground) 8%, transparent), transparent);
+}
+
 @keyframes shadcn-dialog-in {
     from { opacity: 0; transform: scale(0.98); }
     to { opacity: 1; transform: scale(1); }
@@ -672,6 +851,24 @@
 }
 
 @media (max-width: 599.98px) {
+    :where(.shadcn-scope, .shadcn-overlay-scope) .mud-table-root {
+        border: 0;
+        background: transparent;
+    }
+
+    :where(.shadcn-scope, .shadcn-overlay-scope) .mud-table-cell[data-label]::before {
+        color: var(--shadcn-muted-foreground);
+        content: attr(data-label);
+        font-size: 0.75rem;
+        font-weight: 500;
+    }
+
+    :where(.shadcn-scope, .shadcn-overlay-scope) .mud-table-root .mud-table-row {
+        border: 1px solid var(--shadcn-border);
+        border-radius: var(--shadcn-radius-md);
+        background: var(--shadcn-card);
+    }
+
     :where(.shadcn-scope, .shadcn-overlay-scope) #mud-snackbar-container {
         inset-inline: 1rem;
         bottom: 1rem;
@@ -687,5 +884,10 @@
 @media (prefers-reduced-motion: reduce) {
     :where(.shadcn-scope, .shadcn-overlay-scope) :where(.mud-dialog, .mud-popover.mud-popover-open, .mud-picker.mud-popover-open) {
         animation: none;
+    }
+
+    :where(.shadcn-scope, .shadcn-overlay-scope) :where(.mud-progress-linear, .mud-progress-linear *, .mud-progress-circular, .mud-progress-circular *, .mud-skeleton, .mud-skeleton *) {
+        animation: none;
+        transition: none;
     }
 }
