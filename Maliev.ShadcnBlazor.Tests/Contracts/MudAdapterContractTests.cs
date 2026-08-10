@@ -86,6 +86,28 @@ public sealed class MudAdapterContractTests
             css);
     }
 
+    [Fact]
+    public void DarkThemeStateRulesRemainInsideTheApprovedProviderScope()
+    {
+        var css = ReadAdapter();
+        const string darkScope = ":where(.shadcn-scope, .shadcn-overlay-scope)[data-shadcn-theme=\"dark\"]";
+
+        Assert.Equal(2, css.Split(darkScope, StringSplitOptions.None).Length - 1);
+        Assert.DoesNotContain("\n[data-shadcn-theme=\"dark\"] :where(.mud-", css, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void CoarsePointerRulesReassertFortyFourPixelMinimumsForCompactActionControls()
+    {
+        var css = ReadAdapter();
+        const string coarsePointerMarker = "@media (pointer: coarse)";
+        Assert.Contains(coarsePointerMarker, css, StringComparison.Ordinal);
+        var coarsePointer = css[css.IndexOf(coarsePointerMarker, StringComparison.Ordinal)..];
+
+        Assert.Matches(@"\.mud-input-adornment \.mud-icon-button-root,[\s\S]*?\.mud-input-clear-button\s*\{[\s\S]*?min-width:\s*2\.75rem;[\s\S]*?min-height:\s*2\.75rem;", coarsePointer);
+        Assert.Matches(@"\.mud-checkbox \.mud-icon-button-root\s*\{[\s\S]*?width:\s*2\.75rem;[\s\S]*?height:\s*2\.75rem;[\s\S]*?min-width:\s*2\.75rem;[\s\S]*?min-height:\s*2\.75rem;", coarsePointer);
+    }
+
     internal static string ReadAdapter() => File.ReadAllText(Path.Combine(
         FindRoot(), "Maliev.ShadcnBlazor", "wwwroot", "css", "shadcn-mudblazor.css"));
 

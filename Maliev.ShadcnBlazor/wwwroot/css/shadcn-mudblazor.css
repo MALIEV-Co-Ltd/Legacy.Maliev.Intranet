@@ -230,7 +230,7 @@
     box-shadow: 0 0 0 3px color-mix(in oklab, var(--shadcn-destructive) 20%, transparent);
 }
 
-[data-shadcn-theme="dark"] :where(.mud-input-error:focus-within) {
+:where(.shadcn-scope, .shadcn-overlay-scope)[data-shadcn-theme="dark"] :where(.mud-input-error:focus-within) {
     box-shadow: 0 0 0 3px color-mix(in oklab, var(--shadcn-destructive) 40%, transparent);
 }
 
@@ -335,6 +335,21 @@
     opacity: 0.5;
 }
 
-[data-shadcn-theme="dark"] :where(.mud-button-root:focus-visible, .mud-input-control:focus-within) {
+:where(.shadcn-scope, .shadcn-overlay-scope)[data-shadcn-theme="dark"] :where(.mud-button-root:focus-visible, .mud-input-control:focus-within) {
     box-shadow: 0 0 0 3px color-mix(in oklab, var(--shadcn-ring) 65%, transparent);
+}
+
+@media (pointer: coarse) {
+    :where(.shadcn-scope, .shadcn-overlay-scope) .mud-input-adornment .mud-icon-button-root,
+    :where(.shadcn-scope, .shadcn-overlay-scope) .mud-input-clear-button {
+        min-width: 2.75rem;
+        min-height: 2.75rem;
+    }
+
+    :where(.shadcn-scope, .shadcn-overlay-scope) .mud-checkbox .mud-icon-button-root {
+        width: 2.75rem;
+        height: 2.75rem;
+        min-width: 2.75rem;
+        min-height: 2.75rem;
+    }
 }

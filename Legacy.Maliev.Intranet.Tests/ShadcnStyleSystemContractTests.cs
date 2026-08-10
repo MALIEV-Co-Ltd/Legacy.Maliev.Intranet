@@ -135,12 +135,16 @@ public sealed class ShadcnStyleSystemContractTests
         var toolbar = Read(root, "Legacy.Maliev.Intranet.Client.Shared", "Components", "ListToolbar.razor.css");
         var semantic = Read(root, "Legacy.Maliev.Intranet.Client", "wwwroot", "css", "shadcn.css");
         var adapter = Read(root, "Maliev.ShadcnBlazor", "wwwroot", "css", "shadcn-mudblazor.css");
+        var primaryButton = Read(root, "Legacy.Maliev.Intranet.Client.Features.Orders", "Components", "Shared", "PrimaryButton.razor.css");
+        var secondaryButton = Read(root, "Legacy.Maliev.Intranet.Client.Features.Orders", "Components", "Shared", "SecondaryButton.razor.css");
 
         Assert.Contains(".legacy-page-container .operations-page-header", operations, StringComparison.Ordinal);
         Assert.Contains("justify-content: space-between", operations, StringComparison.Ordinal);
         Assert.Contains(".operations-page-header > .mud-button-root", operations, StringComparison.Ordinal);
         Assert.Contains("grid-template-columns: minmax(15rem, 1.7fr) minmax(12rem, 1.1fr) minmax(8rem, 0.6fr) auto", toolbar, StringComparison.Ordinal);
         Assert.DoesNotContain("height: 2.75rem", toolbar, StringComparison.Ordinal);
+        Assert.DoesNotContain("min-height: 44px", primaryButton, StringComparison.Ordinal);
+        Assert.DoesNotContain("min-height: 44px", secondaryButton, StringComparison.Ordinal);
         Assert.Contains("height: var(--shadcn-control-height)", adapter, StringComparison.Ordinal);
         Assert.Contains(".legacy-page-container .list-toolbar", semantic, StringComparison.Ordinal);
         Assert.Contains(".legacy-page-container .operations-page-header", semantic, StringComparison.Ordinal);
