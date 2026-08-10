@@ -34,7 +34,7 @@ public sealed class LegacyThemeContractTests
         Assert.Contains("<MudIconButton Class=\"legacy-theme-toggle\"", topbar, StringComparison.Ordinal);
         Assert.Contains("OnClick=\"ToggleThemeAsync\"", topbar, StringComparison.Ordinal);
         Assert.Contains(":root[data-maliev-theme=\"dark\"]", css, StringComparison.Ordinal);
-        Assert.Contains("--legacy-background: #0d1117", css, StringComparison.Ordinal);
+        Assert.Contains("--legacy-background: var(--shadcn-background)", css, StringComparison.Ordinal);
     }
 
     private static string FindRoot()

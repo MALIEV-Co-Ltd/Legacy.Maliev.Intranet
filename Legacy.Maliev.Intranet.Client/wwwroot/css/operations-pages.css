@@ -152,9 +152,11 @@
 }
 
 @media (max-width: 720px) {
-    .orders-module-shell .orders-toolbar :where(.mud-input-control, .mlv-search-box, .mud-button-root),
-    .orders-module-shell .orders-toolbar :where(input, button),
-    .orders-module-shell .orders-toolbar .mud-input-slot {
+    .legacy-page-container .orders-module-shell .orders-toolbar .mud-input-control,
+    .legacy-page-container .orders-module-shell .orders-toolbar .mud-button-root,
+    .legacy-page-container .orders-module-shell .orders-toolbar .mud-input-slot,
+    .orders-module-shell .orders-toolbar .mlv-search-box,
+    .orders-module-shell .orders-toolbar :where(input, button) {
         min-height: 44px;
     }
 }

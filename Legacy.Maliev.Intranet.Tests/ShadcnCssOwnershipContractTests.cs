@@ -33,18 +33,30 @@ public sealed class ShadcnCssOwnershipContractTests
     {
         foreach (var rule in ReadAllProductMudRules())
         {
-            if (!rule.Selector.Contains(".mud-", StringComparison.Ordinal))
+            foreach (var branch in ExpandSelectorBranches(rule.Selector)
+                         .Where(branch => branch.Contains(".mud-", StringComparison.Ordinal)))
             {
-                continue;
+                Assert.True(ApprovedMudSelectorHooks.Any(
+                        prefix => branch.Contains(prefix, StringComparison.Ordinal)),
+                    $"Mud selector branch lacks an approved semantic hook: {branch}");
+                Assert.False(AppearanceProperties.Any(
+                        property => Regex.IsMatch(rule.Declarations, $@"(^|;)\s*{Regex.Escape(property)}\s*:", RegexOptions.IgnoreCase)),
+                    $"Mud selector redefines appearance: {branch}");
             }
-
-            Assert.True(ApprovedMudSelectorHooks.Any(
-                    prefix => rule.Selector.Contains(prefix, StringComparison.Ordinal)),
-                $"Mud selector lacks an approved semantic hook: {rule.Selector}");
-            Assert.False(AppearanceProperties.Any(
-                    property => Regex.IsMatch(rule.Declarations, $@"(^|;)\s*{Regex.Escape(property)}\s*:", RegexOptions.IgnoreCase)),
-                $"Mud selector redefines appearance: {rule.Selector}");
         }
+    }
+
+    [Fact]
+    public void MixedAllowedAndUnapprovedFunctionalSelectorBranchesAreRejected()
+    {
+        var branches = ExpandSelectorBranches(".legacy-shell :where(.mud-input-control, .mud-button-root), :is(.legacy-shell, .mud-table-root)");
+
+        Assert.Contains(".legacy-shell .mud-input-control", branches);
+        Assert.Contains(".legacy-shell .mud-button-root", branches);
+        Assert.Contains(".mud-table-root", branches);
+        Assert.Contains(branches,
+            branch => branch.Contains(".mud-", StringComparison.Ordinal) &&
+                      !ApprovedMudSelectorHooks.Any(prefix => branch.Contains(prefix, StringComparison.Ordinal)));
     }
 
     [Fact]
@@ -63,6 +75,17 @@ public sealed class ShadcnCssOwnershipContractTests
         Assert.Contains("--legacy-background: var(--shadcn-background)", tokens, StringComparison.Ordinal);
         Assert.Contains("--legacy-surface: var(--shadcn-card)", tokens, StringComparison.Ordinal);
         Assert.Contains("--legacy-primary: var(--shadcn-primary)", tokens, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void DarkThemeCompatibilityAliasesContinueToResolvePackageVariables()
+    {
+        var tokens = Read("Legacy.Maliev.Intranet.Client", "wwwroot", "css", "design-tokens.css");
+        var darkRule = ScanRules(StripComments(tokens))
+            .Single(rule => rule.Selector.Contains(":root[data-maliev-theme=\"dark\"]", StringComparison.Ordinal));
+
+        Assert.Contains("--legacy-background: var(--shadcn-background)", darkRule.Declarations, StringComparison.Ordinal);
+        Assert.DoesNotMatch(new Regex(@"--(?:maliev|legacy)-[\w-]+\s*:\s*#[0-9a-f]{3,8}", RegexOptions.IgnoreCase), darkRule.Declarations);
     }
 
     private sealed record CssRule(string Selector, string Declarations);
@@ -137,6 +160,54 @@ public sealed class ShadcnCssOwnershipContractTests
 
             cursor = close;
         }
+    }
+
+    private static IEnumerable<string> ExpandSelectorBranches(string selector)
+    {
+        foreach (var branch in SplitTopLevel(selector, ','))
+        {
+            foreach (var expanded in ExpandFunctionalBranches(branch.Trim()))
+            {
+                yield return expanded.Trim();
+            }
+        }
+    }
+
+    private static IEnumerable<string> ExpandFunctionalBranches(string selector)
+    {
+        var match = Regex.Match(selector, @":(?:is|where)\(([^()]*)\)");
+        if (!match.Success)
+        {
+            yield return selector;
+            yield break;
+        }
+
+        foreach (var option in SplitTopLevel(match.Groups[1].Value, ','))
+        {
+            foreach (var expanded in ExpandFunctionalBranches(
+                         string.Concat(selector.AsSpan(0, match.Index), option.Trim(), selector.AsSpan(match.Index + match.Length))))
+            {
+                yield return expanded;
+            }
+        }
+    }
+
+    private static IEnumerable<string> SplitTopLevel(string value, char delimiter)
+    {
+        var depth = 0;
+        var start = 0;
+        for (var index = 0; index < value.Length; index++)
+        {
+            if (value[index] == '(') depth++;
+            else if (value[index] == ')') depth--;
+            else if (value[index] == delimiter && depth == 0)
+            {
+                yield return value[start..index];
+                start = index + 1;
+            }
+        }
+
+        yield return value[start..];
     }
 
     private static string StripComments(string css) => Regex.Replace(css, @"/\*.*?\*/", string.Empty, RegexOptions.Singleline);

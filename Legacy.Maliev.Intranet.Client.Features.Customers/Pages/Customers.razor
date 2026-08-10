@@ -10,6 +10,7 @@
 <PageTitle>@Text["PageTitle"]</PageTitle>
 
 <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="customers-page">
+<div class="customer-shell">
     <header class="operations-page-header customers-page-header">
         <div><MudText Typo="Typo.h4" HtmlTag="h1">@Text["Customers"]</MudText><MudText Typo="Typo.body2">@Text["Profiles"]</MudText></div>
         <MudButton Href="/Customers/Create" Variant="Variant.Filled" Color="Color.Primary">
@@ -66,6 +67,7 @@
             <MudButton Disabled="@(!page.HasNextPage)" OnClick="NextPageAsync">@Text["Next"]</MudButton>
         </nav>
     }
+</div>
 </MudContainer>
 
 @code {

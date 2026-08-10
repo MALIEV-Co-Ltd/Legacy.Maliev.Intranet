@@ -1,8 +1,7 @@
-:is(.customer-shell, .customers-page) { font-family: var(--maliev-font-sans); }
-:is(.customer-shell, .customers-page-header) { align-items: end; margin-bottom: 1rem; }
-:is(.customer-shell, .customers-table-shell) { overflow: hidden; border-radius: var(--legacy-radius-lg); }
-:is(.customer-shell, .customers-table-shell) ::deep .customers-table,
-:is(.customer-shell, .customers-table-shell) ::deep .mud-table-container,
-:is(.customer-shell, .customers-table-shell) ::deep .mud-table-root { min-width: 0; }
-:is(.customer-shell, .customers-table-shell) ::deep .mud-table-cell { font-variant-numeric: tabular-nums; }
-@media (max-width: 720px) { :is(.customer-shell, .customers-page-header) { align-items: stretch; } }
+.customer-shell .customers-page-header { align-items: end; margin-bottom: 1rem; }
+.customer-shell .customers-table-shell { overflow: hidden; }
+.customer-shell .customers-table-shell ::deep .customers-table,
+.customer-shell .customers-table-shell ::deep .mud-table-container,
+.customer-shell .customers-table-shell ::deep .mud-table-root { min-width: 0; }
+.customer-shell .customers-table-shell ::deep .mud-table-cell { font-variant-numeric: tabular-nums; }
+@media (max-width: 720px) { .customer-shell .customers-page-header { align-items: stretch; } }

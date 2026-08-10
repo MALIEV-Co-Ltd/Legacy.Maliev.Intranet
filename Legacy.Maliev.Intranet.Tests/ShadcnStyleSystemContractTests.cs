@@ -45,6 +45,21 @@ public sealed class ShadcnStyleSystemContractTests
     }
 
     [Fact]
+    public void NamedShellCompositionsUsePackageVariablesForInteractiveAppearance()
+    {
+        var semantic = Read("Legacy.Maliev.Intranet.Client", "wwwroot", "css", "shadcn.css");
+        var search = Read("Legacy.Maliev.Intranet.Client", "Components", "Shell", "LegacyGlobalSearch.razor.css");
+        var topBar = Read("Legacy.Maliev.Intranet.Client", "Layout", "LegacyTopBar.razor.css");
+
+        Assert.Contains(".legacy-workspace-shell .legacy-topbar", semantic, StringComparison.Ordinal);
+        Assert.Contains(".legacy-navigation-rail .legacy-rail-link.active", semantic, StringComparison.Ordinal);
+        Assert.Contains("background: var(--shadcn-primary)", semantic, StringComparison.Ordinal);
+        Assert.Contains("color: var(--shadcn-primary-foreground)", semantic, StringComparison.Ordinal);
+        Assert.Contains("background: var(--shadcn-popover)", search, StringComparison.Ordinal);
+        Assert.Contains("background: var(--shadcn-popover)", topBar, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void ShellLogosUseOfficialLightAndDarkSvgAssetsWithoutFilters()
     {
         var topBar = Read("Legacy.Maliev.Intranet.Client", "Layout", "LegacyTopBar.razor");

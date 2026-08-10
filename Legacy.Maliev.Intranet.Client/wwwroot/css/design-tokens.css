@@ -105,5 +105,5 @@
 }
 
 :root[data-maliev-theme="dark"] {
-    --legacy-background: #0d1117;
+    --legacy-background: var(--shadcn-background);
 }

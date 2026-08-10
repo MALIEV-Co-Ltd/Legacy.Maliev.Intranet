@@ -36,12 +36,13 @@ public sealed class CustomersWasmMigrationContractTests
         Assert.Contains("IsBusy=\"@loading\"", page, StringComparison.Ordinal);
         Assert.Contains("ListToolbarChangeReason.Refreshed", page, StringComparison.Ordinal);
         Assert.Contains("Class=\"customers-page\"", page, StringComparison.Ordinal);
+        Assert.Contains("class=\"customer-shell\"", page, StringComparison.Ordinal);
         Assert.DoesNotContain("customers-filter-grid", page, StringComparison.Ordinal);
         Assert.Contains("Class=\"customers-table\"", page, StringComparison.Ordinal);
         Assert.Contains("PageSizeOptions = [25, 50, 100, 250]", page, StringComparison.Ordinal);
         var styles = File.ReadAllText(Path.ChangeExtension(featurePage, ".razor.css"));
-        Assert.Contains("font-family: var(--maliev-font-sans)", styles, StringComparison.Ordinal);
-        Assert.Contains("border-radius: var(--legacy-radius-lg)", styles, StringComparison.Ordinal);
+        Assert.DoesNotContain("font-family:", styles, StringComparison.Ordinal);
+        Assert.DoesNotContain("border-radius:", styles, StringComparison.Ordinal);
         Assert.Contains("@media (max-width: 720px)", styles, StringComparison.Ordinal);
 
         Assert.Contains("LegacyEmployeePermissions.CustomersList", bffProgram, StringComparison.Ordinal);
