@@ -1,6 +1,4 @@
-:where(.shadcn-scope, .shadcn-overlay-scope) .mud-button-root {
-    height: var(--shadcn-control-height);
-}
+/* Scoped MudBlazor presentation adapter. Tokens remain owned by shadcn-base.css. */
 
 :where(.shadcn-scope, .shadcn-overlay-scope) :where(button, input, textarea, select, [tabindex]):focus-visible {
     outline: none;
@@ -14,4 +12,329 @@
 :where(.shadcn-scope, .shadcn-overlay-scope) :where([disabled], .mud-disabled) {
     cursor: not-allowed;
     opacity: 0.5;
+}
+
+/* Typography, icons, and links preserve Mud semantic output while using the package scale. */
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-typography {
+    color: var(--shadcn-foreground);
+    font-family: inherit;
+}
+
+:where(.shadcn-scope, .shadcn-overlay-scope) :where(.mud-typography-h1, .mud-typography-h2, .mud-typography-h3, .mud-typography-h4, .mud-typography-h5, .mud-typography-h6) {
+    color: var(--shadcn-foreground);
+    font-weight: 600;
+    letter-spacing: -0.025em;
+}
+
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-typography-h1 { font-size: 2.25rem; line-height: 2.5rem; }
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-typography-h2 { font-size: 1.875rem; line-height: 2.25rem; }
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-typography-h3 { font-size: 1.5rem; line-height: 2rem; }
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-typography-h4 { font-size: 1.25rem; line-height: 1.75rem; }
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-typography-h5 { font-size: 1.125rem; line-height: 1.75rem; }
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-typography-h6 { font-size: 1rem; line-height: 1.5rem; }
+:where(.shadcn-scope, .shadcn-overlay-scope) :where(.mud-typography-subtitle1, .mud-typography-subtitle2) { font-size: 0.875rem; font-weight: 500; line-height: 1.25rem; }
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-typography-body1 { font-size: 0.875rem; line-height: 1.5rem; }
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-typography-body2 { color: var(--shadcn-muted-foreground); font-size: 0.8125rem; line-height: 1.25rem; }
+:where(.shadcn-scope, .shadcn-overlay-scope) :where(.mud-typography-caption, .mud-typography-overline) { color: var(--shadcn-muted-foreground); font-size: 0.75rem; line-height: 1rem; }
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-typography-button { font-size: 0.875rem; font-weight: 500; line-height: 1.25rem; letter-spacing: 0; text-transform: none; }
+
+:where(.shadcn-scope, .shadcn-overlay-scope) :where(.mud-icon-root, .mud-icon) {
+    color: currentColor;
+}
+
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-link {
+    color: var(--shadcn-primary);
+    font-weight: 500;
+    text-underline-offset: 0.2em;
+}
+
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-link:hover {
+    color: var(--shadcn-primary);
+    text-decoration-thickness: 2px;
+}
+
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-link:focus-visible {
+    border-radius: var(--shadcn-radius-sm);
+    box-shadow: 0 0 0 3px color-mix(in oklab, var(--shadcn-ring) 50%, transparent);
+}
+
+/* Actions */
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-button-root {
+    min-width: 0;
+    height: var(--shadcn-control-height);
+    min-height: var(--shadcn-control-height);
+    padding-inline: 0.625rem;
+    gap: 0.375rem;
+    border-radius: var(--shadcn-radius-md);
+    font-size: 0.875rem;
+    font-weight: 500;
+    line-height: 1.25rem;
+    letter-spacing: 0;
+    text-transform: none;
+    box-shadow: none;
+    transition: color 100ms, background-color 100ms, border-color 100ms, box-shadow 100ms;
+}
+
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-icon-button-root {
+    width: var(--shadcn-control-height);
+    min-width: var(--shadcn-control-height);
+    height: var(--shadcn-control-height);
+    min-height: var(--shadcn-control-height);
+    padding: 0;
+    border-radius: var(--shadcn-radius-md);
+}
+
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-button-filled {
+    background: var(--shadcn-primary);
+    color: var(--shadcn-primary-foreground);
+}
+
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-button-outlined {
+    border: 1px solid var(--shadcn-border);
+    background: var(--shadcn-background);
+    color: var(--shadcn-foreground);
+}
+
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-button-text {
+    border: 1px solid transparent;
+    background: transparent;
+    color: var(--shadcn-foreground);
+}
+
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-button-root:hover:not(:disabled):not(.mud-disabled) {
+    background: var(--shadcn-accent);
+    border-color: var(--shadcn-border);
+    color: var(--shadcn-accent-foreground);
+}
+
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-button-filled:hover:not(:disabled):not(.mud-disabled) {
+    background: var(--shadcn-primary);
+    color: var(--shadcn-primary-foreground);
+    filter: brightness(0.92);
+}
+
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-button-root:active:not(:disabled):not(.mud-disabled) {
+    box-shadow: inset 0 1px 2px color-mix(in oklab, var(--shadcn-foreground) 15%, transparent);
+    transform: translateY(1px);
+}
+
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-button-root:focus-visible {
+    box-shadow: 0 0 0 3px color-mix(in oklab, var(--shadcn-ring) 50%, transparent);
+}
+
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-button-root:disabled,
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-button-root.mud-disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+    transform: none;
+}
+
+/* Mud colors resolve to semantic package pairs, never product-specific literals. */
+:where(.shadcn-scope, .shadcn-overlay-scope) :where(.mud-button-filled-primary, .mud-button-filled-inherit) { background: var(--shadcn-primary); color: var(--shadcn-primary-foreground); }
+:where(.shadcn-scope, .shadcn-overlay-scope) :where(.mud-button-filled-secondary, .mud-button-filled-default, .mud-button-filled-success) { background: var(--shadcn-secondary); color: var(--shadcn-secondary-foreground); }
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-button-filled-warning { background: var(--shadcn-accent); color: var(--shadcn-accent-foreground); }
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-button-filled-error { background: var(--shadcn-destructive); color: var(--shadcn-destructive-foreground); }
+:where(.shadcn-scope, .shadcn-overlay-scope) :where(.mud-button-outlined-primary, .mud-button-text-primary) { color: var(--shadcn-primary); }
+:where(.shadcn-scope, .shadcn-overlay-scope) :where(.mud-button-outlined-secondary, .mud-button-text-secondary, .mud-button-outlined-default, .mud-button-text-default, .mud-button-outlined-success, .mud-button-text-success) { color: var(--shadcn-secondary-foreground); }
+:where(.shadcn-scope, .shadcn-overlay-scope) :where(.mud-button-outlined-warning, .mud-button-text-warning) { color: var(--shadcn-accent-foreground); }
+:where(.shadcn-scope, .shadcn-overlay-scope) :where(.mud-button-outlined-error, .mud-button-text-error) { color: var(--shadcn-destructive); }
+
+/* Inputs, selects, and helper affordances. */
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-input-control {
+    min-height: var(--shadcn-control-height);
+    color: var(--shadcn-foreground);
+}
+
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-form {
+    color: var(--shadcn-foreground);
+}
+
+:where(.shadcn-scope, .shadcn-overlay-scope) :where(.mud-input, .mud-select-input) {
+    border-radius: var(--shadcn-radius-md);
+    background: var(--shadcn-background);
+    color: var(--shadcn-foreground);
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+}
+
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-input.mud-input-outlined .mud-input-outlined-border {
+    border-color: var(--shadcn-input);
+    border-radius: var(--shadcn-radius-md);
+}
+
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-input.mud-input-filled {
+    border-bottom: 1px solid var(--shadcn-input);
+    border-radius: var(--shadcn-radius-md) var(--shadcn-radius-md) 0 0;
+    background: var(--shadcn-muted);
+}
+
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-input.mud-input-underline::before {
+    border-bottom-color: var(--shadcn-input);
+}
+
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-input.mud-input-underline::after {
+    border-bottom-color: var(--shadcn-primary);
+}
+
+:where(.shadcn-scope, .shadcn-overlay-scope) :where(.mud-input-label, .mud-input-label-inputcontrol, .mud-input-adornment, .mud-input-helper-text, .mud-form-helper-text) {
+    color: var(--shadcn-muted-foreground);
+    font-size: 0.75rem;
+}
+
+:where(.shadcn-scope, .shadcn-overlay-scope) :where(.mud-input-root, .mud-input-slot, .mud-input-root input, .mud-input-root textarea, .mud-select-input) {
+    color: var(--shadcn-foreground);
+}
+
+:where(.shadcn-scope, .shadcn-overlay-scope) :where(.mud-input-root, .mud-input-slot) ::placeholder {
+    color: var(--shadcn-muted-foreground);
+    opacity: 1;
+}
+
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-input-adornment .mud-icon-button-root,
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-input-clear-button {
+    width: 2rem;
+    min-width: 2rem;
+    height: 2rem;
+    min-height: 2rem;
+    color: var(--shadcn-muted-foreground);
+}
+
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-input-number-control :where(.mud-input-adornment, .mud-icon-button-root) {
+    color: var(--shadcn-muted-foreground);
+}
+
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-input-control.mud-disabled,
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-input-control .mud-disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+}
+
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-input-control.mud-input-readonly,
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-input-control .mud-readonly {
+    background: var(--shadcn-muted);
+    color: var(--shadcn-muted-foreground);
+}
+
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-input-control.mud-input-readonly:focus-within,
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-input-control .mud-readonly:focus-within {
+    cursor: text;
+}
+
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-input-error {
+    border-color: var(--shadcn-destructive);
+    color: var(--shadcn-destructive);
+}
+
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-input-error:focus-within {
+    border-color: var(--shadcn-destructive);
+    box-shadow: 0 0 0 3px color-mix(in oklab, var(--shadcn-destructive) 20%, transparent);
+}
+
+[data-shadcn-theme="dark"] :where(.mud-input-error:focus-within) {
+    box-shadow: 0 0 0 3px color-mix(in oklab, var(--shadcn-destructive) 40%, transparent);
+}
+
+:where(.shadcn-scope, .shadcn-overlay-scope) :where(.mud-input-error .mud-input-outlined-border, .mud-input-error.mud-input-underline::after) {
+    border-color: var(--shadcn-destructive) !important;
+}
+
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-select-input {
+    color: var(--shadcn-foreground);
+}
+
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-popover-open .mud-select-input,
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-select:focus-within .mud-select-input {
+    color: var(--shadcn-foreground);
+}
+
+:where(.shadcn-scope, .shadcn-overlay-scope) :where(.mud-list, .mud-popover) {
+    border-color: var(--shadcn-border);
+    background: var(--shadcn-popover);
+    color: var(--shadcn-popover-foreground);
+}
+
+:where(.shadcn-scope, .shadcn-overlay-scope) :where(.mud-list-item, .mud-list-item-clickable) {
+    border-radius: var(--shadcn-radius-sm);
+    color: var(--shadcn-popover-foreground);
+}
+
+:where(.shadcn-scope, .shadcn-overlay-scope) :where(.mud-list-item:hover, .mud-list-item-clickable:hover) {
+    background: var(--shadcn-accent);
+    color: var(--shadcn-accent-foreground);
+}
+
+:where(.shadcn-scope, .shadcn-overlay-scope) :where(.mud-list-item-selected, .mud-selected-item) {
+    background: var(--shadcn-accent);
+    color: var(--shadcn-accent-foreground);
+}
+
+/* Pickers and calendars inherit popover surfaces. */
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-picker {
+    border: 1px solid var(--shadcn-border);
+    border-radius: var(--shadcn-radius-lg);
+    background: var(--shadcn-popover);
+    color: var(--shadcn-popover-foreground);
+    box-shadow: var(--shadcn-shadow-sm);
+}
+
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-picker-toolbar {
+    background: var(--shadcn-primary);
+    color: var(--shadcn-primary-foreground);
+}
+
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-picker-calendar .mud-day:hover:not(.mud-disabled) {
+    border-radius: var(--shadcn-radius-sm);
+    background: var(--shadcn-accent);
+    color: var(--shadcn-accent-foreground);
+}
+
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-picker-calendar .mud-day.mud-day-today {
+    border: 1px solid var(--shadcn-primary);
+    border-radius: var(--shadcn-radius-sm);
+}
+
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-picker-calendar .mud-day.mud-selected {
+    border-radius: var(--shadcn-radius-sm);
+    background: var(--shadcn-primary);
+    color: var(--shadcn-primary-foreground);
+}
+
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-picker-calendar .mud-day.mud-day-in-range {
+    border-radius: 0;
+    background: var(--shadcn-accent);
+    color: var(--shadcn-accent-foreground);
+}
+
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-picker-calendar .mud-day.mud-day-outside {
+    color: var(--shadcn-muted-foreground);
+}
+
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-picker-calendar .mud-day.mud-disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+}
+
+/* Boolean controls keep a compact hit target; base handles coarse-pointer sizing. */
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-checkbox {
+    color: var(--shadcn-primary);
+}
+
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-checkbox .mud-icon-button-root {
+    width: var(--shadcn-control-height);
+    min-width: var(--shadcn-control-height);
+    height: var(--shadcn-control-height);
+    min-height: var(--shadcn-control-height);
+}
+
+:where(.shadcn-scope, .shadcn-overlay-scope) :where(.mud-checkbox.mud-checked, .mud-checkbox.mud-indeterminate) {
+    color: var(--shadcn-primary);
+}
+
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-checkbox.mud-disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+}
+
+[data-shadcn-theme="dark"] :where(.mud-button-root:focus-visible, .mud-input-control:focus-within) {
+    box-shadow: 0 0 0 3px color-mix(in oklab, var(--shadcn-ring) 65%, transparent);
 }

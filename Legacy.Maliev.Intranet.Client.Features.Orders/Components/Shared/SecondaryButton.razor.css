@@ -1,43 +1,5 @@
 .mlv-button {
     min-height: 44px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 6px;
-    padding: 0 12px;
-    border: 0;
-    border-radius: var(--maliev-radius-sm);
-    font-size: var(--maliev-font-small);
-    font-weight: 400;
-    text-decoration: none;
     white-space: normal;
     text-align: center;
-    cursor: pointer;
-    transition: background 0.15s ease, box-shadow 0.15s ease;
-}
-
-.mlv-button.secondary {
-    background: var(--maliev-panel);
-    color: var(--maliev-ink-2);
-    box-shadow: var(--maliev-shadow-ring);
-}
-
-.mlv-button.secondary:hover {
-    background: var(--maliev-panel-3);
-}
-
-.mlv-button.secondary:focus-visible {
-    outline: none;
-    box-shadow: var(--maliev-focus-ring);
-}
-
-.mlv-button:disabled {
-    opacity: 0.55;
-    cursor: not-allowed;
-}
-
-@media (prefers-reduced-motion: reduce) {
-    .mlv-button {
-        transition: none;
-    }
 }

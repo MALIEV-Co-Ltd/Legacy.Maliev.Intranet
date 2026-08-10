@@ -2,9 +2,6 @@
     box-sizing: border-box;
     margin-bottom: 1rem;
     padding: 1rem;
-    border: 1px solid var(--legacy-border);
-    border-radius: var(--legacy-radius-lg);
-    background: var(--legacy-surface-muted);
 }
 
 .list-toolbar__grid {
@@ -25,14 +22,6 @@
     align-self: end;
     justify-content: flex-end;
     gap: 0.5rem;
-    min-height: 2.75rem;
-}
-
-.list-toolbar__actions ::deep .mud-button-root {
-    box-sizing: border-box;
-    height: 2.75rem;
-    min-height: 2.75rem;
-    white-space: nowrap;
 }
 
 @media (max-width: 1200px) {
@@ -58,18 +47,11 @@
 
     .list-toolbar__actions ::deep .mud-button-root {
         width: 100%;
-        min-height: 44px;
     }
 }
 
 @media (max-width: 420px) {
     .list-toolbar__actions {
         grid-template-columns: minmax(0, 1fr);
-    }
-}
-
-@media (pointer: coarse) {
-    .list-toolbar ::deep :where(.mud-input-root, .mud-button-root) {
-        min-height: 44px;
     }
 }

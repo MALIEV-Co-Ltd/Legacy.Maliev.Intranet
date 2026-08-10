@@ -38,6 +38,54 @@ public sealed class MudAdapterContractTests
         Assert.Contains("@media (forced-colors: active)", foundation, StringComparison.Ordinal);
     }
 
+    [Theory]
+    [InlineData(".mud-button-root", "height: var(--shadcn-control-height)")]
+    [InlineData(".mud-button-filled", "background: var(--shadcn-primary)")]
+    [InlineData(".mud-button-outlined", "border: 1px solid var(--shadcn-border)")]
+    [InlineData(".mud-button-text", "background: transparent")]
+    [InlineData(".mud-icon-button-root", "width: var(--shadcn-control-height)")]
+    [InlineData(".mud-input-control", "min-height: var(--shadcn-control-height)")]
+    [InlineData(".mud-input-error", "var(--shadcn-destructive)")]
+    [InlineData(".mud-select-input", "var(--shadcn-foreground)")]
+    [InlineData(".mud-list-item-selected", "background: var(--shadcn-accent)")]
+    [InlineData(".mud-picker", "background: var(--shadcn-popover)")]
+    [InlineData(".mud-checkbox", "var(--shadcn-primary)")]
+    public void ActionsTypographyAndFormsExposeCanonicalContracts(string selector, string declaration)
+    {
+        var css = ReadAdapter();
+
+        Assert.Contains(selector, css, StringComparison.Ordinal);
+        Assert.Contains(declaration, css, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData(".mud-button-root:hover")]
+    [InlineData(".mud-button-root:active")]
+    [InlineData(".mud-button-root:focus-visible")]
+    [InlineData(".mud-button-root:disabled")]
+    [InlineData(".mud-input-control.mud-disabled")]
+    [InlineData(".mud-input-control.mud-input-readonly")]
+    [InlineData(".mud-input-error:focus-within")]
+    [InlineData(".mud-checkbox.mud-checked")]
+    [InlineData(".mud-checkbox.mud-indeterminate")]
+    [InlineData(".mud-list-item-selected")]
+    [InlineData(".mud-popover-open")]
+    [InlineData("[data-shadcn-theme=\"dark\"]")]
+    public void ActionsTypographyAndFormsExposeRequiredStateSelectors(string selector)
+    {
+        Assert.Contains(selector, ReadAdapter(), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void CoarsePointerRulesDoNotMakeCheckboxButtonsFullWidth()
+    {
+        var css = ReadAdapter();
+
+        Assert.DoesNotMatch(
+            @"\.mud-checkbox\s+\.mud-button-root\s*\{[^}]*\bwidth\s*:\s*(?:100%|100vw)",
+            css);
+    }
+
     internal static string ReadAdapter() => File.ReadAllText(Path.Combine(
         FindRoot(), "Maliev.ShadcnBlazor", "wwwroot", "css", "shadcn-mudblazor.css"));
 

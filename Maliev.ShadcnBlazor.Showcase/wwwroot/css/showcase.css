@@ -102,31 +102,6 @@ a {
     gap: 0.5rem;
 }
 
-.showcase-root .showcase-action.mud-button-root {
-    height: var(--shadcn-control-height);
-    min-height: var(--shadcn-control-height);
-    border-color: var(--shadcn-border);
-    border-radius: var(--shadcn-radius-md);
-    color: var(--shadcn-foreground);
-    padding-inline: 0.75rem;
-    font-size: 0.875rem;
-    font-weight: 500;
-    line-height: 1;
-    text-transform: none;
-    transition: background-color 100ms ease, border-color 100ms ease, color 100ms ease;
-}
-
-.showcase-root .showcase-action.mud-button-root:hover {
-    border-color: var(--shadcn-border);
-    background: var(--shadcn-accent);
-    color: var(--shadcn-accent-foreground);
-}
-
-.showcase-root .showcase-action.mud-button-root:focus-visible {
-    outline: 3px solid color-mix(in oklch, var(--shadcn-ring) 50%, transparent);
-    outline-offset: 1px;
-}
-
 .showcase-main {
     width: min(100% - 2rem, 70rem);
     margin-inline: auto;
@@ -318,6 +293,45 @@ a {
     background: var(--shadcn-muted);
 }
 
+.mud-inventory {
+    display: grid;
+    gap: 2rem;
+}
+
+.mud-inventory__header,
+.mud-inventory__section,
+.mud-inventory__type,
+.mud-inventory__form {
+    display: grid;
+    gap: 0.875rem;
+}
+
+.mud-inventory__inline {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.mud-inventory__section {
+    padding: 1.25rem;
+    border: 1px solid var(--shadcn-border);
+    border-radius: var(--shadcn-radius-lg);
+    background: var(--shadcn-card);
+    box-shadow: var(--shadcn-shadow-xs);
+}
+
+.mud-inventory__actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.mud-inventory__form {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: 1rem;
+}
+
 .radius-sample {
     border-radius: var(--shadcn-radius-md);
 }
@@ -384,10 +398,6 @@ a {
         width: 100%;
     }
 
-    .showcase-root .showcase-action.mud-button-root {
-        flex: 1;
-    }
-
     .showcase-main {
         padding-block: 1.5rem 3rem;
     }
@@ -406,6 +416,10 @@ a {
 
     .token-grid,
     .primitive-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .mud-inventory__form {
         grid-template-columns: 1fr;
     }
 }

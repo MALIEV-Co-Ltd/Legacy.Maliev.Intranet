@@ -1,0 +1,72 @@
+@page "/components/mud-inventory"
+
+<PageTitle>Mud adapter inventory</PageTitle>
+
+<section class="mud-inventory" data-testid="mud-inventory-fixture">
+    <header class="mud-inventory__header">
+        <span class="foundation-eyebrow">Adapter inventory</span>
+        <MudText Typo="Typo.h1" HtmlTag="h1">MudBlazor action and form states</MudText>
+        <MudText Typo="Typo.body2">Deterministic fixtures for the reusable scoped adapter.</MudText>
+    </header>
+
+    <section class="mud-inventory__section" data-testid="mud-actions" aria-labelledby="mud-actions-heading">
+        <MudText Typo="Typo.h2" HtmlTag="h2" id="mud-actions-heading">Actions</MudText>
+        <div class="mud-inventory__actions">
+            <MudButton Variant="Variant.Filled">Primary</MudButton>
+            <MudButton Variant="Variant.Outlined">Outline</MudButton>
+            <MudButton Variant="Variant.Text">Ghost</MudButton>
+            <MudButton Disabled="true">Disabled</MudButton>
+            <MudIconButton Icon="@Icons.Material.Outlined.Settings" aria-label="Settings" />
+        </div>
+    </section>
+
+    <section class="mud-inventory__section" data-testid="mud-typography" aria-labelledby="mud-typography-heading">
+        <MudText Typo="Typo.h2" HtmlTag="h2" id="mud-typography-heading">Typography</MudText>
+        <div class="mud-inventory__type">
+            <MudText Typo="Typo.h3" HtmlTag="h3">Manufacturing clarity</MudText>
+            <MudText Typo="Typo.subtitle1">Subtitle uses the same Thai-capable inherited font stack.</MudText>
+            <MudText Typo="Typo.body1">ฐานการผลิตที่ชัดเจนสำหรับทุกทีม</MudText>
+            <MudText Typo="Typo.caption">Caption · updated 10 August 2026</MudText>
+            <div class="mud-inventory__inline">
+                <MudIcon Icon="@Icons.Material.Outlined.PrecisionManufacturing" aria-label="Manufacturing" />
+                <MudLink Href="#mud-forms">Review form controls</MudLink>
+            </div>
+        </div>
+    </section>
+
+    <section class="mud-inventory__section" data-testid="mud-forms" aria-labelledby="mud-forms-heading">
+        <MudText Typo="Typo.h2" HtmlTag="h2" id="mud-forms-heading">Forms</MudText>
+        <MudForm Class="mud-inventory__form">
+            <MudTextField T="string" Label="Email" Value="@Email" Variant="Variant.Outlined" />
+            <MudTextField T="string" Label="Invalid" Error="true" ErrorText="Required" Variant="Variant.Outlined" />
+            <MudNumericField T="decimal" Label="Quantity" Value="@Quantity" />
+            <MudSelect T="string" Label="Material" Value="@SelectedMaterial">
+                <MudSelectItem T="string" Value="@SelectedMaterial">Steel</MudSelectItem>
+                <MudSelectItem T="string" Value="@Aluminium">Aluminium</MudSelectItem>
+            </MudSelect>
+            <MudDatePicker Label="Delivery date" Date="@DeliveryDate" />
+            <MudCheckBox T="bool" Value="@Approved" Label="Approved" />
+            <MudTextField T="string" Label="Disabled" Value="@Unavailable" Disabled="true" Variant="Variant.Outlined" />
+            <MudTextField T="string" Label="Read-only" Value="@ReadOnlyValue" ReadOnly="true" Variant="Variant.Outlined" />
+            <MudTextField T="string" Label="Clearable" Value="@ClearableValue" Clearable="true" Variant="Variant.Outlined" />
+            <MudTextField T="string" Label="Notes" Value="@Notes" Lines="3" Variant="Variant.Outlined" />
+            <MudTextField T="string" Label="Search" Value="@SelectedMaterial" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Outlined.Search" Variant="Variant.Outlined" />
+            <MudTextField T="string" Label="ชื่อผู้ติดต่อ" Value="@ThaiContact" Variant="Variant.Outlined" />
+            <MudCheckBox T="bool?" Value="@((bool?)null)" Label="Partially approved" />
+        </MudForm>
+    </section>
+</section>
+
+@code {
+    private const string Email = "ada@maliev.com";
+    private const string SelectedMaterial = "Steel";
+    private const string Aluminium = "Aluminium";
+    private const string Unavailable = "Unavailable";
+    private const string ReadOnlyValue = "Quoted by MALIEV";
+    private const string ClearableValue = "Remove me";
+    private const string Notes = "Stable production notes";
+    private const string ThaiContact = "อดา";
+    private static readonly decimal Quantity = 12.5m;
+    private static readonly DateTime DeliveryDate = new(2026, 8, 10);
+    private const bool Approved = true;
+}
