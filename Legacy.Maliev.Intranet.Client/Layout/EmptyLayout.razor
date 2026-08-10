@@ -1,24 +1,26 @@
 @inherits LayoutComponentBase
+@inject LegacyThemeService ThemeService
+@implements IDisposable
 
-<MudThemeProvider Theme="_theme" />
-<MudPopoverProvider />
-<MudDialogProvider />
-<MudSnackbarProvider />
-
+<ShadcnThemeProvider IsDarkMode="@ThemeService.IsDarkMode" Direction="ShadcnDirection.LeftToRight" Class="legacy-provider-root">
 <main class="legacy-empty-layout" id="main-content">
     @Body
 </main>
+</ShadcnThemeProvider>
 
 @code {
-    private static readonly MudTheme _theme = new()
+    protected override void OnInitialized() => ThemeService.Changed += OnThemeChanged;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        PaletteLight = new PaletteLight
+        if (firstRender)
         {
-            Primary = "#2f6fed",
-            Background = "#f4f5f7",
-            Surface = "#ffffff",
-            TextPrimary = "#172033",
-            TextSecondary = "#68758b",
-        },
-    };
+            await ThemeService.InitializeAsync();
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private void OnThemeChanged(object? sender, EventArgs args) => _ = InvokeAsync(StateHasChanged);
+
+    public void Dispose() => ThemeService.Changed -= OnThemeChanged;
 }

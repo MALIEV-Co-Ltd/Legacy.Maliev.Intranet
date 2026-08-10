@@ -12,6 +12,7 @@
     <PackageReference Include="MudBlazor" Version="9.7.0" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\Maliev.ShadcnBlazor\Maliev.ShadcnBlazor.csproj" />
     <ProjectReference Include="..\Legacy.Maliev.Intranet.Contracts\Legacy.Maliev.Intranet.Contracts.csproj" />
     <ProjectReference Include="..\Legacy.Maliev.Intranet.Client.Shared\Legacy.Maliev.Intranet.Client.Shared.csproj" />
     <ProjectReference Include="..\Legacy.Maliev.Intranet.Client.Features.Accounting\Legacy.Maliev.Intranet.Client.Features.Accounting.csproj" />

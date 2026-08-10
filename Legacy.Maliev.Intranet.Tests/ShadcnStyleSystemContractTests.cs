@@ -3,16 +3,22 @@ namespace Legacy.Maliev.Intranet.Tests;
 public sealed class ShadcnStyleSystemContractTests
 {
     [Fact]
-    public void ClientShell_LoadsTheSemanticLayerAfterGeneratedFeatureStyles()
+    public void ClientShell_LoadsThePackageAdapterBeforeProductAndGeneratedStyles()
     {
         var root = FindRoot();
         var index = Read(root, "Legacy.Maliev.Intranet.Client", "wwwroot", "index.html");
 
+        var packageBase = index.IndexOf("_content/Maliev.ShadcnBlazor/css/shadcn-base.css", StringComparison.Ordinal);
+        var packageAdapter = index.IndexOf("_content/Maliev.ShadcnBlazor/css/shadcn-mudblazor.css", StringComparison.Ordinal);
+        var productSemanticLayer = index.IndexOf("css/shadcn.css", StringComparison.Ordinal);
         var generatedStyles = index.IndexOf("Legacy.Maliev.Intranet.Client.styles.css", StringComparison.Ordinal);
-        var shadcnStyles = index.IndexOf("css/shadcn.css", StringComparison.Ordinal);
+        var loadingShell = index.IndexOf("css/loading-shell.css", StringComparison.Ordinal);
 
-        Assert.True(generatedStyles >= 0, "Generated component styles must be loaded.");
-        Assert.True(shadcnStyles > generatedStyles, "The semantic layer must be last so it can normalize every feature component.");
+        Assert.True(packageBase >= 0, "The package base stylesheet must be loaded.");
+        Assert.True(packageAdapter > packageBase, "The package adapter must follow the package base stylesheet.");
+        Assert.True(productSemanticLayer > packageAdapter, "The product semantic layer must follow the reusable package adapter.");
+        Assert.True(generatedStyles > productSemanticLayer, "Generated component styles must follow product styles.");
+        Assert.True(loadingShell > generatedStyles, "The loading shell must be the final shell stylesheet.");
     }
 
     [Fact]
@@ -111,15 +117,14 @@ public sealed class ShadcnStyleSystemContractTests
     }
 
     [Fact]
-    public void MainLayout_MapsMudBlazorPaletteToTheSameNeutralSemanticTheme()
+    public void MainLayout_UsesTheReusableProviderInsteadOfAHandwrittenMudPalette()
     {
         var root = FindRoot();
         var layout = Read(root, "Legacy.Maliev.Intranet.Client", "Layout", "MainLayout.razor");
 
-        Assert.Contains("Primary = \"#171717\"", layout, StringComparison.Ordinal);
-        Assert.Contains("Background = \"#ffffff\"", layout, StringComparison.Ordinal);
-        Assert.Contains("Primary = \"#e4e4e7\"", layout, StringComparison.Ordinal);
-        Assert.Contains("Background = \"#252525\"", layout, StringComparison.Ordinal);
+        Assert.Contains("<ShadcnThemeProvider", layout, StringComparison.Ordinal);
+        Assert.Contains("IsDarkMode=\"@ThemeService.IsDarkMode\"", layout, StringComparison.Ordinal);
+        Assert.DoesNotContain("new MudTheme", layout, StringComparison.Ordinal);
     }
 
     [Fact]

@@ -18,6 +18,9 @@ h1, h2, h3, h4, h5, h6,
     font-weight: var(--maliev-font-weight-heading);
 }
 body { background: var(--legacy-background); color: var(--legacy-ink); }
+.legacy-provider-root {
+    min-height: 100dvh;
+}
 .legacy-layout { max-width: 100%; min-height: 100dvh; background: var(--legacy-background); }
 .legacy-workspace-shell { width: calc(100% - var(--legacy-rail-width)); max-width: 100%; min-width: 0; margin-left: var(--legacy-rail-width); }
 .legacy-main-content { max-width: 100%; min-height: calc(100dvh - var(--legacy-utility-height)); min-width: 0; padding: 0 !important; }

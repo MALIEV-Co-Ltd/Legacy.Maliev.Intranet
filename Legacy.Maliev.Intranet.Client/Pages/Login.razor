@@ -8,11 +8,12 @@
 @inject IStringLocalizer<Login> Text
 @inject IJSRuntime JSRuntime
 @inject ILogger<Login> Logger
+@inject LegacyThemeService ThemeService
 @implements IAsyncDisposable
 
 <PageTitle>@Text["PageTitle"]</PageTitle>
 
-<div class="legacy-login-page @(_isDarkMode ? "dark-theme" : string.Empty)">
+<div class="legacy-login-page @(ThemeService.IsDarkMode ? "dark-theme" : string.Empty)">
     <header class="legacy-login-header">
         <div class="legacy-login-header-content">
             <a class="legacy-login-brand" href="/" aria-label="@Text["HomeLabel"]">
@@ -22,7 +23,7 @@
             <div class="legacy-login-header-actions">
                 <LegacyLanguageSelector />
                 <MudIconButton ButtonType="ButtonType.Button" Class="legacy-login-theme-toggle"
-                               Icon="@(_isDarkMode ? Icons.Material.Outlined.LightMode : Icons.Material.Outlined.DarkMode)"
+                               Icon="@(ThemeService.IsDarkMode ? Icons.Material.Outlined.LightMode : Icons.Material.Outlined.DarkMode)"
                                Size="Size.Small" OnClick="ToggleThemeAsync"
                                aria-label="@ThemeToggleLabel" title="@ThemeToggleLabel" />
             </div>
@@ -133,7 +134,6 @@
     public string? Error { get; set; }
 
     private bool _isCheckingAuth = true;
-    private bool _isDarkMode;
     private bool _isProcessing;
     private bool _rememberMe;
     private string _emailInput = string.Empty;
@@ -161,11 +161,13 @@
         ? "^[^@\\s]+@(maliev\\.com|maliev\\.test)$"
         : "^[^@\\s]+@maliev\\.com$";
 
-    private string ThemeToggleLabel => _isDarkMode ? Text["Switch to light mode"].Value : Text["Switch to dark mode"].Value;
+    private string ThemeToggleLabel => ThemeService.IsDarkMode
+        ? Text["Switch to light mode"].Value
+        : Text["Switch to dark mode"].Value;
 
     protected override async Task OnInitializedAsync()
     {
-        _isDarkMode = await ReadThemeAsync();
+        ThemeService.Changed += OnThemeChanged;
         _errorMessage = string.IsNullOrWhiteSpace(Error) ? null : Error;
 
         try
@@ -187,6 +189,12 @@
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
+        if (firstRender)
+        {
+            await ThemeService.InitializeAsync();
+            await InvokeAsync(StateHasChanged);
+        }
+
         if (_isCheckingAuth || _googleIdentityInitialized)
         {
             return;
@@ -204,30 +212,9 @@
         }
     }
 
-    private async Task<bool> ReadThemeAsync()
-    {
-        try
-        {
-            return await JSRuntime.InvokeAsync<bool>("malievTheme.isDark");
-        }
-        catch (Exception exception) when (exception is InvalidOperationException or JSException or JSDisconnectedException)
-        {
-            Logger.LogDebug(exception, "Legacy login theme preference is unavailable; using light mode.");
-            return false;
-        }
-    }
+    private Task ToggleThemeAsync() => ThemeService.ToggleAsync();
 
-    private async Task ToggleThemeAsync()
-    {
-        try
-        {
-            _isDarkMode = await JSRuntime.InvokeAsync<bool>("malievTheme.toggle");
-        }
-        catch (Exception exception) when (exception is InvalidOperationException or JSException or JSDisconnectedException)
-        {
-            Logger.LogDebug(exception, "Legacy login theme toggle is unavailable.");
-        }
-    }
+    private void OnThemeChanged(object? sender, EventArgs args) => _ = InvokeAsync(StateHasChanged);
 
     private void ContinueWithEmail()
     {
@@ -305,6 +292,7 @@
 
     public ValueTask DisposeAsync()
     {
+        ThemeService.Changed -= OnThemeChanged;
         _password = string.Empty;
         return ValueTask.CompletedTask;
     }
