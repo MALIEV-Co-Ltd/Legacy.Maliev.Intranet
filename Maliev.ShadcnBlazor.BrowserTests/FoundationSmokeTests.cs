@@ -36,9 +36,11 @@ public sealed class FoundationSmokeTests(ShowcaseServerFixture server, Playwrigh
         await page.GetByTestId("direction-toggle").ClickAsync();
         await Assertions.Expect(root).ToHaveAttributeAsync("dir", "rtl");
 
-        var evidence = Path.Combine(Path.GetTempPath(), "maliev-shadcn-foundation.png");
+        var evidence = Path.Combine(Path.GetTempPath(), $"maliev-shadcn-foundation-{Guid.NewGuid():N}.png");
         await page.ScreenshotAsync(new() { Path = evidence, FullPage = false });
-        Assert.True(File.Exists(evidence));
+        var evidenceInfo = new FileInfo(evidence);
+        Assert.True(evidenceInfo.Exists);
+        Assert.NotEqual(0, evidenceInfo.Length);
         Assert.Empty(errors);
     }
 }
