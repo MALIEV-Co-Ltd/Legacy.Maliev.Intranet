@@ -8,7 +8,7 @@
     <RepositoryUrl>https://github.com/MALIEV-Co-Ltd/Legacy.Maliev.Intranet.git</RepositoryUrl>
   </PropertyGroup>
   <ItemGroup>
-    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <PackageReference Include="Microsoft.AspNetCore.Components.Web" Version="10.0.3" />
     <PackageReference Include="MudBlazor" Version="9.7.0" />
   </ItemGroup>
   <ItemGroup>
