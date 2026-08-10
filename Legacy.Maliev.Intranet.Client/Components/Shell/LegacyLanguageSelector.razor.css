@@ -1,24 +1,4 @@
-.legacy-language-selector {
-    display: inline-flex;
-    width: 5.5rem;
-    min-height: 44px;
-    align-items: center;
-    color: var(--legacy-muted);
-}
-
+.legacy-language-selector { display: inline-flex; width: 5.5rem; align-items: center; }
 .legacy-language-selector ::deep .mud-input-control,
-.legacy-language-selector ::deep .mud-input {
-    width: 100%;
-    margin: 0;
-}
-
-.legacy-language-selector ::deep .mud-input {
-    min-height: 44px;
-    color: var(--legacy-ink);
-    font-size: .78rem;
-    font-weight: 400;
-}
-
-.legacy-language-selector ::deep .mud-input-slot {
-    padding-inline-start: 8px;
-}
+.legacy-language-selector ::deep .mud-input { width: 100%; margin: 0; }
+.legacy-language-selector ::deep .mud-input-slot { padding-inline-start: 0.5rem; }

@@ -1,112 +1,42 @@
-/*
- * Shared operations-page layer.
- *
- * This file intentionally styles the existing migrated MudBlazor page markup.
- * It is loaded after the base tokens and MudBlazor overrides so list, detail,
- * form, report, loading, empty, and error views present as one workspace while
- * each legacy route is retired feature by feature.
- */
-
+/* Operations pages provide layout, wrapping, and responsive rearrangement only. */
 .legacy-page-container {
     min-width: 0;
-    color: var(--legacy-ink);
-    font-family: var(--maliev-font-sans);
 }
 
-.legacy-page-container > :not(.dashboard-page),
-.legacy-page-container > .mud-container {
+.legacy-page-container > .mud-container,
+.legacy-page-container .mud-input-control,
+.legacy-page-container .mud-input,
+.legacy-page-container .mud-input-control-input-container,
+.legacy-page-container .mud-form,
+.legacy-page-container .mud-grid,
+.legacy-page-container .mud-stack-row,
+.legacy-page-container .mud-list,
+.legacy-page-container .mud-table-pagination {
     min-width: 0;
 }
 
-.legacy-page-container > .mud-container {
-    width: 100%;
-    padding: 0 !important;
-}
-
-/* All operations routes share one predictable header rhythm: title and
-   context on the left, the route's primary action on the right. */
 .legacy-page-container .operations-page-header {
     display: flex;
-    min-width: 0;
     align-items: flex-start;
     justify-content: space-between;
     gap: 1rem;
-    margin: 0 0 1rem;
-    padding: 0;
-    border: 0;
-    background: transparent;
-}
-
-.legacy-page-container .operations-page-header > :first-child {
-    min-width: 0;
-    flex: 1 1 auto;
+    margin-bottom: 1rem;
 }
 
 .legacy-page-container .operations-page-header > .mud-button-root,
 .legacy-page-container .operations-page-header > a.mud-button-root {
     flex: 0 0 auto;
-    align-self: flex-start;
     width: auto;
     max-width: 100%;
 }
 
-.legacy-page-container :where(h1, .mud-typography-h4) {
-    max-width: 28ch;
-    margin: 0 0 0.35rem;
-    color: var(--legacy-ink);
-    font-size: clamp(1.55rem, 1.2rem + 0.8vw, 2.15rem);
-    font-weight: 600;
-    line-height: 1.15;
-    letter-spacing: -0.025em;
-    overflow-wrap: anywhere;
-    text-wrap: balance;
-}
-
-.legacy-page-container :where(h2, .mud-typography-h5) {
-    margin: 0 0 0.75rem;
-    color: var(--legacy-ink);
-    font-size: clamp(1.05rem, 0.98rem + 0.25vw, 1.3rem);
-    font-weight: 600;
-    line-height: 1.25;
-    letter-spacing: -0.015em;
-    overflow-wrap: anywhere;
-}
-
-.legacy-page-container :where(p, .mud-typography-body1, .mud-typography-body2) {
-    overflow-wrap: anywhere;
-}
-
-/* Utility rows already used by migrated pages become predictable page headers,
-   filters, action rows, and pagers without changing their semantic markup. */
-.legacy-page-container .d-flex {
-    min-width: 0;
-}
-
-.legacy-page-container .justify-space-between:has(> :where(h1, h2, .mud-typography-h4, .mud-typography-h5)) {
-    align-items: flex-start !important;
-    gap: 1rem !important;
-    margin-bottom: 1.25rem !important;
-}
-
-.legacy-page-container .mud-paper {
-    border: 1px solid var(--legacy-border);
-    border-radius: var(--legacy-radius-lg);
-    background: var(--legacy-surface);
-    box-shadow: none !important;
-}
-
-.legacy-page-container .mud-paper.pa-4,
-.legacy-page-container .mud-paper.pa-6 {
-    padding: clamp(1rem, 0.8rem + 0.55vw, 1.5rem) !important;
-}
-
-/* Filter and action panels stay dense at a workstation, while controls keep
-   enough room for long English and Thai labels. */
 .legacy-page-container .mud-paper > .d-flex.flex-wrap,
 .legacy-page-container .mud-paper > .d-flex.align-center,
 .legacy-page-container .mud-form > .d-flex.flex-wrap {
-    align-items: flex-end !important;
-    gap: 0.75rem !important;
+    display: flex;
+    align-items: flex-end;
+    flex-wrap: wrap;
+    gap: 0.75rem;
 }
 
 .legacy-page-container .mud-paper > .d-flex.flex-wrap > .mud-input-control,
@@ -116,227 +46,29 @@
     max-width: 25rem;
 }
 
-.legacy-page-container .mud-input-control {
-    min-width: 0;
-}
-
-.legacy-page-container .mud-input,
-.legacy-page-container .mud-input-control-input-container {
-    min-width: 0;
-}
-
-.legacy-page-container .mud-input.mud-input-text .mud-input-slot {
-    min-height: 2.75rem;
-    padding-block: 0.65rem;
-    font-family: var(--maliev-font-sans);
-    font-size: 0.875rem;
-    line-height: 1.35;
-}
-
-.legacy-page-container .mud-input-label,
-.legacy-page-container .mud-input-helper-text {
-    white-space: normal;
-    overflow-wrap: anywhere;
-}
-
-.legacy-page-container textarea.mud-input-slot {
-    min-height: 7rem !important;
-    resize: vertical;
-}
-
-.legacy-page-container .mud-button-root {
-    min-height: 2.75rem;
-    max-width: 100%;
-    padding: 0.55rem 0.9rem;
-    border-radius: var(--legacy-radius-md);
-    font-family: var(--maliev-font-sans);
-    line-height: 1.25;
-    white-space: normal;
-    text-align: center;
-}
-
-.legacy-page-container .mud-icon-button-root,
-.legacy-page-container .mud-table-cell a,
-.legacy-page-container nav a {
-    touch-action: manipulation;
-}
-
-.legacy-page-container :where(a, button, input, select, textarea, [tabindex]):focus-visible {
-    outline: 2px solid var(--legacy-primary);
-    outline-offset: 3px;
-}
-
-.legacy-page-container .mud-button-root:focus-visible,
-.legacy-page-container .mud-icon-button-root:focus-visible,
-.legacy-page-container .mud-input-control:focus-within {
-    outline: none;
-    box-shadow: var(--legacy-focus-ring) !important;
-}
-
-.legacy-page-container .mud-button-root:disabled,
-.legacy-page-container .mud-icon-button-root:disabled {
-    cursor: not-allowed;
-    opacity: 0.58;
-}
-
-/* Forms use one readable flow by default. MudGrid supplies the explicit
-   two-column desktop relationships already present in the migrated markup. */
-.legacy-page-container .mud-form {
-    min-width: 0;
-}
-
-.legacy-page-container .mud-form > .mud-input-control + .mud-input-control {
-    margin-top: 0.75rem;
-}
-
-.legacy-page-container .mud-grid {
-    min-width: 0;
-    margin: -0.5rem;
-}
-
 .legacy-page-container .mud-grid > .mud-grid-item {
     min-width: 0;
-    padding: 0.5rem;
 }
 
-.legacy-page-container .mud-stack-row {
-    min-width: 0;
-    flex-wrap: wrap;
-}
-
-/* Tables are flat operational surfaces, not floating cards. Wide screens keep
-   dense rows; narrow screens use MudBlazor's DataLabel contract as records. */
 .legacy-page-container .mud-table-container {
     max-width: 100%;
     overflow-x: auto;
-    border: 1px solid var(--legacy-border);
-    border-radius: var(--legacy-radius-lg);
-    background: var(--legacy-surface);
-    box-shadow: none !important;
     scrollbar-gutter: stable;
-    scrollbar-width: thin;
 }
 
 .legacy-page-container .mud-table-root {
     min-width: 46rem;
-    overflow: hidden;
-    border: 0;
-    border-radius: inherit;
-    background: transparent;
-    box-shadow: none !important;
 }
 
-.legacy-page-container .mud-table-head {
-    background: var(--legacy-surface-muted);
-}
-
-.legacy-page-container .mud-table-head .mud-table-cell {
-    padding: 0.7rem 0.8rem;
-    border-bottom: 1px solid var(--legacy-border);
-    color: var(--legacy-muted);
-    font-size: 0.72rem;
-    font-weight: 600;
-    line-height: 1.25;
-    letter-spacing: 0.015em;
-    text-transform: none;
-    white-space: normal;
-}
-
-.legacy-page-container .mud-table-body .mud-table-cell {
-    padding: 0.65rem 0.8rem;
-    border-bottom: 1px solid var(--legacy-border);
-    color: var(--legacy-ink-secondary);
-    font-size: 0.82rem;
-    line-height: 1.4;
+.legacy-page-container .mud-table-cell,
+.legacy-page-container .mud-table-cell::before,
+.legacy-page-container .mud-input-label,
+.legacy-page-container .mud-input-helper-text {
     overflow-wrap: anywhere;
-}
-
-.legacy-page-container .mud-table-body .mud-table-row:last-child .mud-table-cell {
-    border-bottom: 0;
-}
-
-.legacy-page-container .mud-table-body .mud-table-row:hover {
-    background: color-mix(in srgb, var(--legacy-primary) 5%, var(--legacy-surface));
-}
-
-.legacy-page-container .mud-table-cell a {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    min-width: 2.75rem;
-    min-height: 2.75rem;
-    color: var(--legacy-primary);
-    font-weight: 400;
-    text-underline-offset: 0.18em;
-}
-
-.legacy-page-container .mud-table-pagination,
-.legacy-page-container nav[aria-label] {
-    min-width: 0;
-}
-
-.legacy-page-container nav[aria-label] {
-    align-items: center !important;
-    gap: 0.75rem !important;
-}
-
-.legacy-page-container nav[aria-label] > .mud-typography {
-    color: var(--legacy-muted);
-    text-align: center;
-    overflow-wrap: anywhere;
-}
-
-/* State surfaces stay in the document flow and communicate status without
-   relying on colour alone. */
-.legacy-page-container .mud-alert {
-    min-height: 2.75rem;
-    margin-block: 0.75rem;
-    border: 1px solid currentColor;
-    border-radius: var(--legacy-radius-md);
-    box-shadow: none;
-}
-
-.legacy-page-container .mud-alert-message {
-    font-size: 0.875rem;
-    line-height: 1.5;
-    overflow-wrap: anywhere;
-}
-
-.legacy-page-container .mud-progress-linear {
-    min-height: 0.25rem;
-    margin-block: 0.75rem;
-    border-radius: 99px;
-    overflow: hidden;
-}
-
-.legacy-page-container .mud-skeleton {
-    background-color: var(--legacy-surface-muted);
-}
-
-.legacy-page-container .mud-list {
-    min-width: 0;
-}
-
-.legacy-page-container .mud-list-item {
-    min-height: 2.75rem;
-    border-bottom: 1px solid var(--legacy-border);
-}
-
-.legacy-page-container .mud-list-item:last-child {
-    border-bottom: 0;
 }
 
 .legacy-page-container .mud-tabs-toolbar {
-    min-height: 2.75rem;
     overflow-x: auto;
-    border: 1px solid var(--legacy-border);
-    box-shadow: none;
-    scrollbar-width: thin;
-}
-
-.legacy-page-container .mud-tab {
-    min-height: 2.75rem;
-    white-space: normal;
 }
 
 .legacy-page-container .mud-picker .mud-icon-button-root,
@@ -344,106 +76,46 @@
     min-width: 2.75rem;
 }
 
-.legacy-page-container svg,
-.legacy-page-container canvas {
-    max-width: 100%;
-}
-
 @media (max-width: 900px) {
+    .legacy-page-container .operations-page-header,
     .legacy-page-container .justify-space-between:has(> :where(h1, h2, .mud-typography-h4, .mud-typography-h5)) {
-        align-items: stretch !important;
-        flex-direction: column;
-    }
-
-    .legacy-page-container .justify-space-between:has(> :where(h1, h2, .mud-typography-h4, .mud-typography-h5)) > .mud-button-root {
-        align-self: flex-start;
-    }
-
-    .legacy-page-container .operations-page-header {
-        align-items: stretch;
         flex-wrap: wrap;
-    }
-
-    .legacy-page-container .mud-paper > .d-flex.flex-wrap > .mud-input-control,
-    .legacy-page-container .mud-form > .d-flex.flex-wrap > .mud-input-control {
-        max-width: none;
     }
 }
 
 @media (max-width: 720px) {
-    .legacy-page-container .operations-page-header {
-        flex-direction: column;
-        gap: 0.75rem;
-    }
-
-    .legacy-page-container .operations-page-header > .mud-button-root,
-    .legacy-page-container .operations-page-header > a.mud-button-root {
-        align-self: flex-start;
-    }
-
-    .legacy-page-container .finance-summary-grid.mud-grid-spacing-xs-6 {
-        width: 100% !important;
-        margin-inline: 0 !important;
-    }
-
-    .orders-module-shell .orders-toolbar :where(.mud-input-control, .mlv-search-box, .mud-button-root),
-    .orders-module-shell .orders-toolbar :where(input, button) {
-        min-height: 44px;
-    }
-
-    .orders-module-shell .orders-toolbar .mud-input-slot {
-        min-height: 44px;
-        padding-block: 0.65rem;
-    }
-
-    .legacy-page-container :where(h1, .mud-typography-h4) {
-        max-width: none;
-        font-size: clamp(1.45rem, 7vw, 1.85rem);
-    }
-
-    .legacy-page-container .mud-paper.pa-4,
-    .legacy-page-container .mud-paper.pa-6 {
-        padding: 1rem !important;
-    }
-
+    .legacy-page-container .operations-page-header,
     .legacy-page-container .mud-paper > .d-flex.flex-wrap,
     .legacy-page-container .mud-paper > .d-flex.align-center,
     .legacy-page-container .mud-form > .d-flex.flex-wrap,
-    .legacy-page-container nav[aria-label] {
-        align-items: stretch !important;
+    .legacy-page-container .mud-stack-row {
+        align-items: stretch;
         flex-direction: column;
     }
 
     .legacy-page-container .mud-paper > .d-flex.flex-wrap > *,
     .legacy-page-container .mud-form > .d-flex.flex-wrap > *,
-    .legacy-page-container nav[aria-label] > * {
+    .legacy-page-container .mud-stack-row > .mud-button-root {
         width: 100%;
         max-width: none;
     }
 
     .legacy-page-container .mud-table-container {
         overflow: visible;
-        border: 0;
-        background: transparent;
     }
 
     .legacy-page-container .mud-table-root,
     .legacy-page-container .mud-table-body {
         display: block;
         min-width: 0;
-        background: transparent;
     }
 
     .legacy-page-container .mud-table-head {
         position: absolute;
         width: 1px;
         height: 1px;
-        padding: 0;
-        margin: -1px;
         overflow: hidden;
         clip: rect(0, 0, 0, 0);
-        white-space: nowrap;
-        border: 0;
     }
 
     .legacy-page-container .mud-table-body .mud-table-row {
@@ -451,77 +123,49 @@
         width: 100%;
         margin-bottom: 0.75rem;
         padding: 0.75rem 1rem;
-        border: 1px solid var(--legacy-border);
-        border-radius: var(--legacy-radius-lg);
-        background: var(--legacy-surface);
     }
 
     .legacy-page-container .mud-table-body .mud-table-cell {
         display: grid;
         grid-template-columns: minmax(7.5rem, 38%) minmax(0, 1fr);
         gap: 0.75rem;
+        padding-block: 0.45rem;
         min-height: 2.5rem;
-        padding: 0.45rem 0;
-        border-bottom: 1px solid var(--legacy-border);
-        text-align: start;
-        white-space: normal;
-    }
-
-    .legacy-page-container .mud-table-body .mud-table-cell:last-child {
-        border-bottom: 0;
-    }
-
-    .legacy-page-container .mud-table-body .mud-table-cell::before {
-        position: static;
-        width: auto;
-        color: var(--legacy-muted);
-        font-size: 0.75rem;
-        font-weight: 400;
-        line-height: 1.4;
-        text-align: start;
-        white-space: normal;
-        overflow-wrap: anywhere;
     }
 
     .legacy-page-container .mud-table-cell a {
         min-height: 2.75rem;
     }
-
-    .legacy-page-container .mud-stack-row {
-        align-items: stretch !important;
-        flex-direction: column !important;
-    }
-
-    .legacy-page-container .mud-stack-row > .mud-button-root {
-        width: 100%;
-    }
 }
 
 @media (max-width: 600px) {
-    .purchase-order-addresses.mud-grid-spacing-xs-6 {
+    .purchase-order-addresses.mud-grid-spacing-xs-6,
+    .purchase-order-addresses.mud-grid-spacing-xs-6 > .mud-grid-item,
+    .legacy-page-container .finance-summary-grid.mud-grid-spacing-xs-6 {
         width: 100% !important;
-        margin: 0 !important;
+        margin-inline: 0 !important;
     }
 
-    .purchase-order-addresses.mud-grid-spacing-xs-6 > .mud-grid-item {
-        width: 100% !important;
-        padding-inline: 0 !important;
+    .purchase-order-addresses.mud-grid-spacing-xs-6 {
+        margin: 0 !important;
+    }
+}
+
+@media (max-width: 720px) {
+    .orders-module-shell .orders-toolbar :where(.mud-input-control, .mlv-search-box, .mud-button-root),
+    .orders-module-shell .orders-toolbar :where(input, button),
+    .orders-module-shell .orders-toolbar .mud-input-slot {
+        min-height: 44px;
     }
 }
 
 @media (max-width: 420px) {
     .legacy-page-container .mud-table-body .mud-table-cell {
         grid-template-columns: 1fr;
-        gap: 0.2rem;
-    }
-
-    .legacy-page-container .mud-button-root {
-        width: 100%;
     }
 }
 
 @media (pointer: coarse) {
-    .legacy-page-container :where(button, [role="button"], input, select),
     .legacy-page-container .mud-button-root,
     .legacy-page-container .mud-icon-button-root,
     .legacy-page-container .mud-tab,
@@ -532,30 +176,5 @@
 
     .legacy-page-container .mud-icon-button-root {
         min-width: 44px;
-    }
-}
-
-@media (prefers-reduced-motion: reduce) {
-    .legacy-page-container *,
-    .legacy-page-container *::before,
-    .legacy-page-container *::after {
-        scroll-behavior: auto !important;
-        transition-duration: 0.01ms !important;
-        animation-duration: 0.01ms !important;
-        animation-iteration-count: 1 !important;
-    }
-}
-
-@media (forced-colors: active) {
-    .legacy-page-container .mud-paper,
-    .legacy-page-container .mud-table-container,
-    .legacy-page-container .mud-table-body .mud-table-row,
-    .legacy-page-container .mud-alert,
-    .legacy-page-container .mud-tabs-toolbar {
-        border: 1px solid CanvasText;
-    }
-
-    .legacy-page-container :where(a, button, input, select, textarea, [tabindex]):focus-visible {
-        outline: 2px solid Highlight;
     }
 }

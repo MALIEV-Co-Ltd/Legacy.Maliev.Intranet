@@ -76,7 +76,6 @@
 .dashboard-activity-list li { align-items: center; border-bottom: 1px solid var(--shadcn-border); display: grid; gap: 0.7rem; grid-template-columns: 2rem minmax(0, 1fr) auto; padding: 0.7rem 0; }
 .dashboard-activity-list li:last-child { border-bottom: 0; }
 .dashboard-activity-icon { align-items: center; background: var(--shadcn-accent); border-radius: 50%; color: var(--shadcn-accent-foreground); display: flex; height: 2rem; justify-content: center; width: 2rem; }
-.dashboard-activity-icon ::deep .mud-icon-root { font-size: 1rem; }
 .dashboard-activity-list div { display: grid; min-width: 0; }
 .dashboard-activity-list div span { color: var(--shadcn-muted-foreground); font-size: 0.7rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .dashboard-activity-list time { color: var(--shadcn-muted-foreground); font-size: 0.68rem; white-space: nowrap; }
