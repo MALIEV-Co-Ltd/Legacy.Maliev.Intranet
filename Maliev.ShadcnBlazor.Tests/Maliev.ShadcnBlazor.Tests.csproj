@@ -13,5 +13,6 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Maliev.ShadcnBlazor\Maliev.ShadcnBlazor.csproj" />
+    <Compile Include="..\Maliev.ShadcnBlazor.Showcase\ShowcaseState.cs" Link="Showcase\ShowcaseState.cs" />
   </ItemGroup>
 </Project>

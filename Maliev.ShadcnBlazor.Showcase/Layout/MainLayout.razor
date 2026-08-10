@@ -1,0 +1,21 @@
+@inherits LayoutComponentBase
+@inject ShowcaseState State
+@implements IDisposable
+
+<ShadcnThemeProvider IsDarkMode="@State.IsDarkMode" Direction="@State.Direction" Class="showcase-root">
+    <header>
+        <strong data-testid="showcase-title">Maliev Shadcn Blazor</strong>
+        <MudButton data-testid="theme-toggle" Variant="Variant.Outlined" OnClick="State.ToggleTheme">Toggle theme</MudButton>
+        <MudButton data-testid="direction-toggle" Variant="Variant.Outlined" OnClick="State.ToggleDirection">Toggle direction</MudButton>
+        <MudLink Href="/components/foundation">Foundation</MudLink>
+    </header>
+    <main>@Body</main>
+</ShadcnThemeProvider>
+
+@code {
+    protected override void OnInitialized() => State.Changed += OnChanged;
+
+    private void OnChanged(object? sender, EventArgs args) => _ = InvokeAsync(StateHasChanged);
+
+    public void Dispose() => State.Changed -= OnChanged;
+}
