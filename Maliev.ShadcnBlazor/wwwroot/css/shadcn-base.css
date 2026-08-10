@@ -105,8 +105,14 @@
 }
 
 @media (pointer: coarse) {
-    .shadcn-scope :where(button, [role="button"], input, select, textarea),
-    .shadcn-overlay-scope :where(button, [role="button"], input, select, textarea) {
+    .shadcn-scope :where(button, [role="button"]),
+    .shadcn-overlay-scope :where(button, [role="button"]) {
+        min-width: 2.75rem;
+        min-height: 2.75rem;
+    }
+
+    .shadcn-scope :where(input, select, textarea),
+    .shadcn-overlay-scope :where(input, select, textarea) {
         min-height: 2.75rem;
     }
 }

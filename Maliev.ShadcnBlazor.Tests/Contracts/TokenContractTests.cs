@@ -30,9 +30,20 @@ public sealed class TokenContractTests
     {
         var stylesheet = CssStylesheet.Load(FindCss());
 
-        var coarsePointer = stylesheet.GetRequiredMedia("pointer: coarse")
-            .GetRequiredRule(".shadcn-scope :where(button, [role=\"button\"], input, select, textarea)");
-        Assert.Equal("2.75rem", coarsePointer.GetRequiredDeclaration("min-height"));
+        var coarsePointer = stylesheet.GetRequiredMedia("pointer: coarse");
+        var scopeButton = coarsePointer.GetRequiredRule(".shadcn-scope :where(button, [role=\"button\"])");
+        var overlayButton = coarsePointer.GetRequiredRule(".shadcn-overlay-scope :where(button, [role=\"button\"])");
+        var scopeTextControl = coarsePointer.GetRequiredRule(".shadcn-scope :where(input, select, textarea)");
+        var overlayTextControl = coarsePointer.GetRequiredRule(".shadcn-overlay-scope :where(input, select, textarea)");
+
+        Assert.Equal("2.75rem", scopeButton.GetRequiredDeclaration("min-width"));
+        Assert.Equal("2.75rem", scopeButton.GetRequiredDeclaration("min-height"));
+        Assert.Equal("2.75rem", overlayButton.GetRequiredDeclaration("min-width"));
+        Assert.Equal("2.75rem", overlayButton.GetRequiredDeclaration("min-height"));
+        Assert.DoesNotContain("min-width", scopeTextControl.Declarations.Keys, StringComparer.Ordinal);
+        Assert.Equal("2.75rem", scopeTextControl.GetRequiredDeclaration("min-height"));
+        Assert.DoesNotContain("min-width", overlayTextControl.Declarations.Keys, StringComparer.Ordinal);
+        Assert.Equal("2.75rem", overlayTextControl.GetRequiredDeclaration("min-height"));
 
         var reducedMotion = stylesheet.GetRequiredMedia("prefers-reduced-motion: reduce")
             .GetRequiredRule(".shadcn-scope *");

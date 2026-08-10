@@ -24,6 +24,7 @@ The configured font family is applied to both MudBlazor typography and the scope
 ```html
 <link href="_content/MudBlazor/MudBlazor.min.css" rel="stylesheet" />
 <link href="_content/Maliev.ShadcnBlazor/css/shadcn-base.css" rel="stylesheet" />
+<link href="_content/Maliev.ShadcnBlazor/css/shadcn-mudblazor.css" rel="stylesheet" />
 <script src="_content/MudBlazor/MudBlazor.min.js"></script>
 ```
 

@@ -1,0 +1,17 @@
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-button-root {
+    height: var(--shadcn-control-height);
+}
+
+:where(.shadcn-scope, .shadcn-overlay-scope) :where(button, input, textarea, select, [tabindex]):focus-visible {
+    outline: none;
+}
+
+:where(.shadcn-scope, .shadcn-overlay-scope) :where(.mud-button-root, .mud-icon-button-root, .mud-input-control):focus-visible,
+:where(.shadcn-scope, .shadcn-overlay-scope) :where(.mud-input-control):focus-within {
+    box-shadow: 0 0 0 3px color-mix(in oklab, var(--shadcn-ring) 50%, transparent);
+}
+
+:where(.shadcn-scope, .shadcn-overlay-scope) :where([disabled], .mud-disabled) {
+    cursor: not-allowed;
+    opacity: 0.5;
+}
