@@ -36,8 +36,7 @@ public sealed class ShadcnCssOwnershipContractTests
             foreach (var branch in ExpandSelectorBranches(rule.Selector)
                          .Where(branch => branch.Contains(".mud-", StringComparison.Ordinal)))
             {
-                Assert.True(ApprovedMudSelectorHooks.Any(
-                        prefix => branch.Contains(prefix, StringComparison.Ordinal)),
+                Assert.True(HasApprovedMudSelectorHook(branch),
                     $"Mud selector branch lacks an approved semantic hook: {branch}");
                 Assert.False(AppearanceProperties.Any(
                         property => Regex.IsMatch(rule.Declarations, $@"(^|;)\s*{Regex.Escape(property)}\s*:", RegexOptions.IgnoreCase)),
@@ -56,7 +55,7 @@ public sealed class ShadcnCssOwnershipContractTests
         Assert.Contains(".mud-table-root", branches);
         Assert.Contains(branches,
             branch => branch.Contains(".mud-", StringComparison.Ordinal) &&
-                      !ApprovedMudSelectorHooks.Any(prefix => branch.Contains(prefix, StringComparison.Ordinal)));
+                      !HasApprovedMudSelectorHook(branch));
     }
 
     [Fact]
@@ -68,7 +67,7 @@ public sealed class ShadcnCssOwnershipContractTests
         Assert.Contains(":not(.mud-menu-root) .mud-button-root", branches);
         Assert.Contains(branches,
             branch => branch.Contains(".mud-", StringComparison.Ordinal) &&
-                      !ApprovedMudSelectorHooks.Any(prefix => branch.Contains(prefix, StringComparison.Ordinal)));
+                      !HasApprovedMudSelectorHook(branch));
     }
 
     [Fact]
@@ -79,7 +78,36 @@ public sealed class ShadcnCssOwnershipContractTests
         Assert.Contains(".legacy-shell .mud-button-root", branches);
         Assert.Contains(".operations-shell :not(.is-collapsed) .mud-button-root", branches);
         Assert.All(branches.Where(branch => branch.Contains(".mud-", StringComparison.Ordinal)),
-            branch => Assert.Contains(ApprovedMudSelectorHooks, prefix => branch.Contains(prefix, StringComparison.Ordinal)));
+            branch => Assert.True(HasApprovedMudSelectorHook(branch)));
+    }
+
+    [Fact]
+    public void NegatedApprovedHookCannotApproveAnExpandedMudBranch()
+    {
+        var branches = ExpandSelectorBranches(":where(.legacy-shell, :not(.legacy-shell)) .mud-button-root");
+
+        Assert.Contains(branches, branch =>
+            branch == ".legacy-shell .mud-button-root" &&
+            HasApprovedMudSelectorHook(branch));
+        Assert.Contains(branches, branch =>
+            branch == ":not(.legacy-shell) .mud-button-root" &&
+            !HasApprovedMudSelectorHook(branch));
+    }
+
+    [Theory]
+    [InlineData(":not(:where(.legacy-shell, .operations-shell)) .mud-button-root")]
+    [InlineData(":not(:is(.legacy-shell, :where(.operations-shell, .mlv-shell))) .mud-button-root")]
+    public void NestedNegatedSelectorFunctionsCannotApproveMudBranches(string branch)
+    {
+        Assert.False(HasApprovedMudSelectorHook(branch));
+    }
+
+    [Theory]
+    [InlineData(".legacy-shell :not(.is-collapsed) .mud-button-root")]
+    [InlineData(".operations-shell :not(:where(.legacy-shell, .mlv-shell)) .mud-button-root")]
+    public void PositiveApprovedAncestorsRemainValidOutsideNegations(string branch)
+    {
+        Assert.True(HasApprovedMudSelectorHook(branch));
     }
 
     [Fact]
@@ -214,6 +242,22 @@ public sealed class ShadcnCssOwnershipContractTests
         }
     }
 
+    private static bool HasApprovedMudSelectorHook(string selector)
+    {
+        var positiveScope = StripNegatedSelectorFunctions(selector);
+        return ApprovedMudSelectorHooks.Any(prefix => positiveScope.Contains(prefix, StringComparison.Ordinal));
+    }
+
+    private static string StripNegatedSelectorFunctions(string selector)
+    {
+        while (TryFindNegatedSelectorFunction(selector, out var functionStart, out var functionEnd))
+        {
+            selector = string.Concat(selector.AsSpan(0, functionStart), selector.AsSpan(functionEnd + 1));
+        }
+
+        return selector;
+    }
+
     private static bool TryFindExpandableFunction(string selector, out int functionStart, out int argumentsStart, out int functionEnd)
     {
         for (var index = 0; index < selector.Length - 3; index++)
@@ -241,6 +285,34 @@ public sealed class ShadcnCssOwnershipContractTests
         }
 
         functionStart = argumentsStart = functionEnd = -1;
+        return false;
+    }
+
+    private static bool TryFindNegatedSelectorFunction(string selector, out int functionStart, out int functionEnd)
+    {
+        for (var index = 0; index < selector.Length - 4; index++)
+        {
+            if (selector[index] != ':' || !selector.AsSpan(index).StartsWith(":not(", StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            var argumentsStart = selector.IndexOf('(', index);
+            var depth = 1;
+            for (functionEnd = argumentsStart + 1; functionEnd < selector.Length; functionEnd++)
+            {
+                if (selector[functionEnd] == '(') depth++;
+                else if (selector[functionEnd] == ')' && --depth == 0)
+                {
+                    functionStart = index;
+                    return true;
+                }
+            }
+
+            throw new InvalidDataException($"Unbalanced negative selector function: {selector}");
+        }
+
+        functionStart = functionEnd = -1;
         return false;
     }
 
