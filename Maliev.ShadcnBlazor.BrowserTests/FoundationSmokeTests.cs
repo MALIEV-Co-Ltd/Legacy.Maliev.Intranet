@@ -27,6 +27,25 @@ public sealed class FoundationSmokeTests(ShowcaseServerFixture server, Playwrigh
         var root = page.Locator("[data-shadcn-scope]");
         Assert.Equal("light", await root.GetAttributeAsync("data-shadcn-theme"));
         Assert.Equal("ltr", await root.GetAttributeAsync("dir"));
+
+        var shell = page.GetByTestId("showcase-shell");
+        await shell.WaitForAsync();
+        Assert.Equal("900px", await shell.EvaluateAsync<string>("element => getComputedStyle(element).minHeight"));
+        Assert.NotEqual(
+            "rgba(0, 0, 0, 0)",
+            await shell.EvaluateAsync<string>("element => getComputedStyle(element).backgroundColor"));
+
+        var hero = page.GetByTestId("foundation-hero");
+        Assert.Equal("14px", await hero.EvaluateAsync<string>("element => getComputedStyle(element).borderRadius"));
+        Assert.Equal("32px", await hero.EvaluateAsync<string>("element => getComputedStyle(element).padding"));
+
+        var tokenGrid = page.GetByTestId("token-grid");
+        Assert.Equal("grid", await tokenGrid.EvaluateAsync<string>("element => getComputedStyle(element).display"));
+
+        var themeToggle = page.GetByTestId("theme-toggle");
+        Assert.Equal("36px", await themeToggle.EvaluateAsync<string>("element => getComputedStyle(element).height"));
+        Assert.Equal("none", await themeToggle.EvaluateAsync<string>("element => getComputedStyle(element).textTransform"));
+
         var background = await page.GetByTestId("token-background").EvaluateAsync<string>(
             "element => getComputedStyle(element).backgroundColor");
         Assert.NotEqual("rgba(0, 0, 0, 0)", background);
