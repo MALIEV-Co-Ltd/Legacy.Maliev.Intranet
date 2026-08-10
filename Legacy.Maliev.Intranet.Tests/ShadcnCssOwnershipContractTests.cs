@@ -60,6 +60,29 @@ public sealed class ShadcnCssOwnershipContractTests
     }
 
     [Fact]
+    public void NestedFunctionalSelectorBranchesExposeUnapprovedMudSelectors()
+    {
+        var branches = ExpandSelectorBranches(":where(.legacy-shell, :not(.mud-menu-root)) .mud-button-root");
+
+        Assert.Contains(".legacy-shell .mud-button-root", branches);
+        Assert.Contains(":not(.mud-menu-root) .mud-button-root", branches);
+        Assert.Contains(branches,
+            branch => branch.Contains(".mud-", StringComparison.Ordinal) &&
+                      !ApprovedMudSelectorHooks.Any(prefix => branch.Contains(prefix, StringComparison.Ordinal)));
+    }
+
+    [Fact]
+    public void NestedFunctionalSelectorBranchesRetainAllowedMudScopes()
+    {
+        var branches = ExpandSelectorBranches(":where(.legacy-shell, .operations-shell :not(.is-collapsed)) .mud-button-root");
+
+        Assert.Contains(".legacy-shell .mud-button-root", branches);
+        Assert.Contains(".operations-shell :not(.is-collapsed) .mud-button-root", branches);
+        Assert.All(branches.Where(branch => branch.Contains(".mud-", StringComparison.Ordinal)),
+            branch => Assert.Contains(ApprovedMudSelectorHooks, prefix => branch.Contains(prefix, StringComparison.Ordinal)));
+    }
+
+    [Fact]
     public void DesignTokensAliasesPackageVariablesWithoutRedefiningShadcnValues()
     {
         var tokens = Read("Legacy.Maliev.Intranet.Client", "wwwroot", "css", "design-tokens.css");
@@ -175,21 +198,50 @@ public sealed class ShadcnCssOwnershipContractTests
 
     private static IEnumerable<string> ExpandFunctionalBranches(string selector)
     {
-        var match = Regex.Match(selector, @":(?:is|where)\(([^()]*)\)");
-        if (!match.Success)
+        if (!TryFindExpandableFunction(selector, out var functionStart, out var argumentsStart, out var functionEnd))
         {
             yield return selector;
             yield break;
         }
 
-        foreach (var option in SplitTopLevel(match.Groups[1].Value, ','))
+        foreach (var option in SplitTopLevel(selector[(argumentsStart + 1)..functionEnd], ','))
         {
             foreach (var expanded in ExpandFunctionalBranches(
-                         string.Concat(selector.AsSpan(0, match.Index), option.Trim(), selector.AsSpan(match.Index + match.Length))))
+                         string.Concat(selector.AsSpan(0, functionStart), option.Trim(), selector.AsSpan(functionEnd + 1))))
             {
                 yield return expanded;
             }
         }
+    }
+
+    private static bool TryFindExpandableFunction(string selector, out int functionStart, out int argumentsStart, out int functionEnd)
+    {
+        for (var index = 0; index < selector.Length - 3; index++)
+        {
+            if (selector[index] != ':' ||
+                (!selector.AsSpan(index).StartsWith(":is(", StringComparison.OrdinalIgnoreCase) &&
+                 !selector.AsSpan(index).StartsWith(":where(", StringComparison.OrdinalIgnoreCase)))
+            {
+                continue;
+            }
+
+            argumentsStart = selector.IndexOf('(', index);
+            var depth = 1;
+            for (functionEnd = argumentsStart + 1; functionEnd < selector.Length; functionEnd++)
+            {
+                if (selector[functionEnd] == '(') depth++;
+                else if (selector[functionEnd] == ')' && --depth == 0)
+                {
+                    functionStart = index;
+                    return true;
+                }
+            }
+
+            throw new InvalidDataException($"Unbalanced selector function: {selector}");
+        }
+
+        functionStart = argumentsStart = functionEnd = -1;
+        return false;
     }
 
     private static IEnumerable<string> SplitTopLevel(string value, char delimiter)
