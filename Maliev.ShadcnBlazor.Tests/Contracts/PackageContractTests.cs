@@ -22,7 +22,7 @@ public sealed class PackageContractTests
                 UseShellExecute = false,
                 CreateNoWindow = true
             };
-            foreach (var argument in new[] { "pack", project, "-c", "Release", "--no-build", "--no-restore", "-o", output })
+            foreach (var argument in new[] { "pack", project, "-c", "Release", "--no-restore", "-o", output })
                 startInfo.ArgumentList.Add(argument);
 
             using var process = Process.Start(startInfo)
