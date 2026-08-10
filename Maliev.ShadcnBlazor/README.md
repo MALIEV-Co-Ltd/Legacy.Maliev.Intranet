@@ -6,10 +6,18 @@ Reusable Shadcn Base/Vega/Neutral components for .NET 10 Blazor, backed by MudBl
 
 ```csharp
 using Maliev.ShadcnBlazor;
+using Maliev.ShadcnBlazor.Theming;
 
 builder.Services.AddMalievShadcn(options =>
-    options.FontFamily = "IBM Plex Sans Thai, sans-serif");
+{
+    options.FontFamily = "IBM Plex Sans Thai, sans-serif";
+    options.DefaultDarkMode = false;
+    options.DefaultDirection = ShadcnDirection.LeftToRight;
+});
 ```
+
+The configured font family is applied to both MudBlazor typography and the scoped
+`--shadcn-font-sans` semantic token. Provider parameters override the configured defaults.
 
 ## Load assets
 
@@ -31,9 +39,12 @@ Add the component and theme namespaces to the consuming application's `_Imports.
 Then wrap the application content at its root:
 
 ```razor
-<ShadcnThemeProvider IsDarkMode="@isDarkMode" Direction="ShadcnDirection.LeftToRight">
+<ShadcnThemeProvider>
     @Body
 </ShadcnThemeProvider>
 ```
+
+Set `IsDarkMode` or `Direction` on the provider when an application needs to override either
+configured default dynamically.
 
 Do not also render `MudThemeProvider`, `MudPopoverProvider`, `MudDialogProvider`, or `MudSnackbarProvider` in the same application root.

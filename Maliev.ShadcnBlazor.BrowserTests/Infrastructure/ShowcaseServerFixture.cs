@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.ComponentModel;
 using System.Net;
 using System.Net.Sockets;
 
@@ -95,21 +96,59 @@ public sealed class ShowcaseServerFixture : IAsyncLifetime
 
     private async Task<string> StopHostAsync()
     {
-        if (_process is { HasExited: false })
+        var process = _process;
+        try
         {
-            _process.Kill(entireProcessTree: true);
-            await _process.WaitForExitAsync();
-        }
+            if (process is not null)
+            {
+                try
+                {
+                    if (!process.HasExited)
+                        process.Kill(entireProcessTree: true);
+                }
+                catch (InvalidOperationException)
+                {
+                    // The process exited between the HasExited check and Kill.
+                }
+                catch (Win32Exception) when (HasExited(process))
+                {
+                    // Windows can report an already-exited process as a Kill failure.
+                }
 
-        await ReadDiagnosticsAsync();
-        var diagnostics = FormatDiagnostics();
-        _process?.Dispose();
-        _process = null;
-        _standardOutput = null;
-        _standardError = null;
-        _standardOutputDrain = null;
-        _standardErrorDrain = null;
-        return diagnostics;
+                try
+                {
+                    await process.WaitForExitAsync();
+                }
+                catch (InvalidOperationException)
+                {
+                    // The process has already detached or exited; drain tasks still capture output.
+                }
+            }
+
+            await ReadDiagnosticsAsync();
+            return FormatDiagnostics();
+        }
+        finally
+        {
+            process?.Dispose();
+            _process = null;
+            _standardOutput = null;
+            _standardError = null;
+            _standardOutputDrain = null;
+            _standardErrorDrain = null;
+        }
+    }
+
+    private static bool HasExited(Process process)
+    {
+        try
+        {
+            return process.HasExited;
+        }
+        catch (InvalidOperationException)
+        {
+            return true;
+        }
     }
 
     private async Task<string> ReadDiagnosticsAsync()

@@ -13,6 +13,8 @@
     <PackageReference Include="MudBlazor" Version="9.7.0" />
   </ItemGroup>
   <ItemGroup>
+    <Content Remove="Reference\shadcn-reference.json" />
+    <None Remove="Reference\shadcn-reference.json" />
     <None Update="README.md" Pack="true" PackagePath="\" />
     <None Update="licenses\shadcn-ui-LICENSE.md" Pack="true" PackagePath="licenses\shadcn-ui-LICENSE.md" />
     <None Update="licenses\MudBlazor-LICENSE" Pack="true" PackagePath="\" />
