@@ -1,3 +1,4 @@
+using System.Text;
 using System.Text.RegularExpressions;
 
 namespace Legacy.Maliev.Intranet.Tests;
@@ -16,6 +17,9 @@ public sealed class ShadcnCssOwnershipContractTests
         ".legacy-", ".mlv-", ".operations-", ".list-toolbar", ".dashboard-",
         ".customer-", ".order-", ".purchase-", ".supplier-", ".quotation-"
     ];
+
+    private static readonly string[] ExpandableSelectorFunctionNames = ["is", "where"];
+    private static readonly string[] NegatedSelectorFunctionNames = ["not"];
 
     [Fact]
     public void ProductSemanticLayerContainsNoGenericMudAppearance()
@@ -108,6 +112,71 @@ public sealed class ShadcnCssOwnershipContractTests
     public void PositiveApprovedAncestorsRemainValidOutsideNegations(string branch)
     {
         Assert.True(HasApprovedMudSelectorHook(branch));
+    }
+
+    [Theory]
+    [InlineData(@":n\6ft(.legacy-shell) .mud-button-root")]
+    [InlineData(@":\6e ot(.legacy-shell) .mud-button-root")]
+    [InlineData(@":n\00006f t(.legacy-shell) .mud-button-root")]
+    [InlineData(@":no\t(.legacy-shell) .mud-button-root")]
+    [InlineData(@":N\4FT(.legacy-shell) .mud-button-root")]
+    public void EscapedNegatedFunctionNamesCannotApproveMudBranches(string branch)
+    {
+        Assert.False(HasApprovedMudSelectorHook(branch));
+    }
+
+    [Theory]
+    [InlineData(@".legacy-shell :n\6ft(.is-collapsed) .mud-button-root")]
+    [InlineData(@".operations-shell :\6e ot(:w\68 ere(.legacy-shell, .mlv-shell)) .mud-button-root")]
+    public void PositiveApprovedAncestorsRemainValidOutsideEscapedNegations(string branch)
+    {
+        Assert.True(HasApprovedMudSelectorHook(branch));
+    }
+
+    [Fact]
+    public void EscapedIsFunctionNamesExpandEveryEffectiveBranch()
+    {
+        var branches = ExpandSelectorBranches(@":i\73(.legacy-shell, .mud-table-root)").ToList();
+
+        Assert.Contains(".legacy-shell", branches);
+        Assert.Contains(".mud-table-root", branches);
+        Assert.Contains(branches,
+            branch => branch.Contains(".mud-", StringComparison.Ordinal) &&
+                      !HasApprovedMudSelectorHook(branch));
+    }
+
+    [Fact]
+    public void EscapedWhereFunctionsCannotHideEscapedNegatedHooks()
+    {
+        var branches = ExpandSelectorBranches(@":w\68 ere(.legacy-shell, :n\6ft(.operations-shell)) .mud-button-root").ToList();
+
+        Assert.Contains(".legacy-shell .mud-button-root", branches);
+        Assert.Contains(branches,
+            branch => branch == @":n\6ft(.operations-shell) .mud-button-root" &&
+                      !HasApprovedMudSelectorHook(branch));
+    }
+
+    [Fact]
+    public void EscapedParenthesesDoNotChangeFunctionalSelectorBalance()
+    {
+        var branches = ExpandSelectorBranches(@":is(.legacy-shell, [data-label=\(] .operations-shell) .mud-button-root").ToList();
+
+        Assert.Contains(".legacy-shell .mud-button-root", branches);
+        Assert.Contains(@"[data-label=\(] .operations-shell .mud-button-root", branches);
+    }
+
+    [Fact]
+    public void UnbalancedEscapedExpandableFunctionIsRejected()
+    {
+        Assert.Throws<InvalidDataException>(() =>
+            ExpandSelectorBranches(@":i\73(.legacy-shell, .mud-table-root").ToList());
+    }
+
+    [Fact]
+    public void MalformedPseudoFunctionEscapeIsRejectedWithoutUnboundedScanning()
+    {
+        Assert.Throws<InvalidDataException>(() =>
+            HasApprovedMudSelectorHook(":n\\\not(.legacy-shell) .mud-button-root"));
     }
 
     [Fact]
@@ -260,61 +329,197 @@ public sealed class ShadcnCssOwnershipContractTests
 
     private static bool TryFindExpandableFunction(string selector, out int functionStart, out int argumentsStart, out int functionEnd)
     {
-        for (var index = 0; index < selector.Length - 3; index++)
+        return TryFindSelectorFunction(selector, ExpandableSelectorFunctionNames,
+            out functionStart, out argumentsStart, out functionEnd);
+    }
+
+    private static bool TryFindNegatedSelectorFunction(string selector, out int functionStart, out int functionEnd)
+    {
+        return TryFindSelectorFunction(selector, NegatedSelectorFunctionNames,
+            out functionStart, out _, out functionEnd);
+    }
+
+    private static bool TryFindSelectorFunction(
+        string selector,
+        IReadOnlyCollection<string> acceptedNames,
+        out int functionStart,
+        out int argumentsStart,
+        out int functionEnd)
+    {
+        for (var index = 0; index < selector.Length; index++)
         {
+            if (selector[index] == '\\')
+            {
+                index = SkipCssEscape(selector, index) - 1;
+                continue;
+            }
+
+            if (selector[index] is '\'' or '"')
+            {
+                index = SkipQuotedValue(selector, index) - 1;
+                continue;
+            }
+
             if (selector[index] != ':' ||
-                (!selector.AsSpan(index).StartsWith(":is(", StringComparison.OrdinalIgnoreCase) &&
-                 !selector.AsSpan(index).StartsWith(":where(", StringComparison.OrdinalIgnoreCase)))
+                !TryReadPseudoFunctionName(selector, index + 1, out var decodedName, out argumentsStart) ||
+                !acceptedNames.Contains(decodedName, StringComparer.OrdinalIgnoreCase))
             {
                 continue;
             }
 
-            argumentsStart = selector.IndexOf('(', index);
-            var depth = 1;
-            for (functionEnd = argumentsStart + 1; functionEnd < selector.Length; functionEnd++)
-            {
-                if (selector[functionEnd] == '(') depth++;
-                else if (selector[functionEnd] == ')' && --depth == 0)
-                {
-                    functionStart = index;
-                    return true;
-                }
-            }
-
-            throw new InvalidDataException($"Unbalanced selector function: {selector}");
+            functionStart = index;
+            functionEnd = FindMatchingParenthesis(selector, argumentsStart);
+            return true;
         }
 
         functionStart = argumentsStart = functionEnd = -1;
         return false;
     }
 
-    private static bool TryFindNegatedSelectorFunction(string selector, out int functionStart, out int functionEnd)
+    private static bool TryReadPseudoFunctionName(
+        string selector,
+        int start,
+        out string decodedName,
+        out int argumentsStart)
     {
-        for (var index = 0; index < selector.Length - 4; index++)
+        var decoded = new StringBuilder();
+        var cursor = start;
+
+        while (cursor < selector.Length)
         {
-            if (selector[index] != ':' || !selector.AsSpan(index).StartsWith(":not(", StringComparison.OrdinalIgnoreCase))
+            var character = selector[cursor];
+            if (IsCssIdentifierCharacter(character))
             {
+                decoded.Append(character);
+                cursor++;
                 continue;
             }
 
-            var argumentsStart = selector.IndexOf('(', index);
-            var depth = 1;
-            for (functionEnd = argumentsStart + 1; functionEnd < selector.Length; functionEnd++)
+            if (character != '\\')
             {
-                if (selector[functionEnd] == '(') depth++;
-                else if (selector[functionEnd] == ')' && --depth == 0)
-                {
-                    functionStart = index;
-                    return true;
-                }
+                break;
             }
 
-            throw new InvalidDataException($"Unbalanced negative selector function: {selector}");
+            cursor = DecodeCssEscape(selector, cursor, decoded);
         }
 
-        functionStart = functionEnd = -1;
-        return false;
+        if (decoded.Length == 0 || cursor >= selector.Length || selector[cursor] != '(')
+        {
+            decodedName = string.Empty;
+            argumentsStart = -1;
+            return false;
+        }
+
+        decodedName = decoded.ToString();
+        argumentsStart = cursor;
+        return true;
     }
+
+    private static bool IsCssIdentifierCharacter(char character) =>
+        character is '-' or '_' || char.IsLetterOrDigit(character) || character >= '\u0080';
+
+    private static int DecodeCssEscape(string value, int escapeStart, StringBuilder? decoded)
+    {
+        var cursor = escapeStart + 1;
+        if (cursor >= value.Length || IsCssNewLine(value[cursor]))
+        {
+            throw new InvalidDataException($"Malformed CSS escape in selector: {value}");
+        }
+
+        if (!IsHexDigit(value[cursor]))
+        {
+            decoded?.Append(value[cursor]);
+            return cursor + 1;
+        }
+
+        var codePoint = 0;
+        var digits = 0;
+        while (cursor < value.Length && digits < 6 && IsHexDigit(value[cursor]))
+        {
+            codePoint = (codePoint * 16) + HexValue(value[cursor]);
+            cursor++;
+            digits++;
+        }
+
+        if (cursor < value.Length && IsCssWhitespace(value[cursor]))
+        {
+            if (value[cursor] == '\r' && cursor + 1 < value.Length && value[cursor + 1] == '\n')
+            {
+                cursor++;
+            }
+
+            cursor++;
+        }
+
+        if (codePoint == 0 || codePoint > 0x10FFFF || codePoint is >= 0xD800 and <= 0xDFFF)
+        {
+            codePoint = 0xFFFD;
+        }
+
+        decoded?.Append(char.ConvertFromUtf32(codePoint));
+        return cursor;
+    }
+
+    private static int SkipCssEscape(string value, int escapeStart) =>
+        DecodeCssEscape(value, escapeStart, decoded: null);
+
+    private static int SkipQuotedValue(string value, int quoteStart)
+    {
+        var quote = value[quoteStart];
+        for (var cursor = quoteStart + 1; cursor < value.Length; cursor++)
+        {
+            if (value[cursor] == '\\')
+            {
+                cursor = SkipCssEscape(value, cursor) - 1;
+            }
+            else if (value[cursor] == quote)
+            {
+                return cursor + 1;
+            }
+        }
+
+        throw new InvalidDataException($"Unbalanced quoted selector value: {value}");
+    }
+
+    private static int FindMatchingParenthesis(string selector, int argumentsStart)
+    {
+        var depth = 1;
+        for (var cursor = argumentsStart + 1; cursor < selector.Length; cursor++)
+        {
+            if (selector[cursor] == '\\')
+            {
+                cursor = SkipCssEscape(selector, cursor) - 1;
+            }
+            else if (selector[cursor] is '\'' or '"')
+            {
+                cursor = SkipQuotedValue(selector, cursor) - 1;
+            }
+            else if (selector[cursor] == '(')
+            {
+                depth++;
+            }
+            else if (selector[cursor] == ')' && --depth == 0)
+            {
+                return cursor;
+            }
+        }
+
+        throw new InvalidDataException($"Unbalanced selector function: {selector}");
+    }
+
+    private static bool IsHexDigit(char character) =>
+        character is >= '0' and <= '9' or >= 'a' and <= 'f' or >= 'A' and <= 'F';
+
+    private static int HexValue(char character) => character switch
+    {
+        >= '0' and <= '9' => character - '0',
+        >= 'a' and <= 'f' => character - 'a' + 10,
+        _ => character - 'A' + 10
+    };
+
+    private static bool IsCssWhitespace(char character) => character is ' ' or '\t' or '\r' or '\n' or '\f';
+
+    private static bool IsCssNewLine(char character) => character is '\r' or '\n' or '\f';
 
     private static IEnumerable<string> SplitTopLevel(string value, char delimiter)
     {
@@ -322,13 +527,29 @@ public sealed class ShadcnCssOwnershipContractTests
         var start = 0;
         for (var index = 0; index < value.Length; index++)
         {
-            if (value[index] == '(') depth++;
-            else if (value[index] == ')') depth--;
+            if (value[index] == '\\')
+            {
+                index = SkipCssEscape(value, index) - 1;
+            }
+            else if (value[index] is '\'' or '"')
+            {
+                index = SkipQuotedValue(value, index) - 1;
+            }
+            else if (value[index] == '(') depth++;
+            else if (value[index] == ')' && --depth < 0)
+            {
+                throw new InvalidDataException($"Unbalanced selector: {value}");
+            }
             else if (value[index] == delimiter && depth == 0)
             {
                 yield return value[start..index];
                 start = index + 1;
             }
+        }
+
+        if (depth != 0)
+        {
+            throw new InvalidDataException($"Unbalanced selector: {value}");
         }
 
         yield return value[start..];
