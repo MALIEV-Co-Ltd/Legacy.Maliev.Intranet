@@ -80,7 +80,7 @@
 .customer-detail__details dt {
     color: var(--shadcn-muted-foreground);
     font-size: 0.75rem;
-    font-weight: 500;
+    font-weight: var(--maliev-font-weight-heading);
     line-height: 1rem;
 }
 

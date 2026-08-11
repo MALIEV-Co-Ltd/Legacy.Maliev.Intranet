@@ -425,8 +425,8 @@
     }
 
     :where(.shadcn-scope, .shadcn-overlay-scope) .mud-input:not(:has(textarea)) {
-        height: 2.75rem;
-        min-height: 2.75rem;
+        height: 2.75rem !important;
+        min-height: 2.75rem !important;
     }
 
     :where(.shadcn-scope, .shadcn-overlay-scope) input.mud-input-root {
@@ -458,8 +458,8 @@
     }
 
     :where(.shadcn-scope, .shadcn-overlay-scope) .mud-input:not(:has(textarea)) {
-        height: 2.75rem;
-        min-height: 2.75rem;
+        height: 2.75rem !important;
+        min-height: 2.75rem !important;
     }
 
     :where(.shadcn-scope, .shadcn-overlay-scope) input.mud-input-root {

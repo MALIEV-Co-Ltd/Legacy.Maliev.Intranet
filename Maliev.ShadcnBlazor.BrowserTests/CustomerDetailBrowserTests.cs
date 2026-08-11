@@ -121,7 +121,28 @@ public sealed class CustomerDetailBrowserTests(
 
         await page.SetViewportSizeAsync(390, 844);
         Assert.DoesNotContain(' ', await formGrid.EvaluateAsync<string>("element => getComputedStyle(element).gridTemplateColumns"));
-        Assert.True(await dateInput.EvaluateAsync<double>("element => element.closest('.mud-input').getBoundingClientRect().height") >= 44d);
+        var dateInputHandle = await dateInput.ElementHandleAsync();
+        Assert.NotNull(dateInputHandle);
+        await page.WaitForFunctionAsync(
+            "element => element.closest('.mud-input').getBoundingClientRect().height >= 44",
+            dateInputHandle,
+            new() { Timeout = 10_000 });
+        var narrowDateGeometry = await dateInput.EvaluateAsync<JsonElement>("""
+            element => {
+                const input = element.closest('.mud-input');
+                return {
+                    height: input.getBoundingClientRect().height,
+                    controlHeight: getComputedStyle(input).getPropertyValue('--shadcn-control-height').trim(),
+                    className: input.className,
+                    hasTextarea: input.querySelector('textarea') !== null,
+                    viewportWidth: window.innerWidth
+                };
+            }
+            """);
+        var narrowDateHeight = narrowDateGeometry.GetProperty("height").GetDouble();
+        Assert.True(
+            narrowDateHeight >= 44d,
+            $"Expected the narrow date input to be at least 44px high, but it measured {narrowDateHeight:F2}px at {narrowDateGeometry.GetProperty("viewportWidth").GetDouble():F0}px with --shadcn-control-height={narrowDateGeometry.GetProperty("controlHeight").GetString()}, class={narrowDateGeometry.GetProperty("className").GetString()}, hasTextarea={narrowDateGeometry.GetProperty("hasTextarea").GetBoolean()}.");
         Assert.Equal(
             await page.EvaluateAsync<double>("() => document.documentElement.clientWidth"),
             await page.EvaluateAsync<double>("() => document.documentElement.scrollWidth"));
