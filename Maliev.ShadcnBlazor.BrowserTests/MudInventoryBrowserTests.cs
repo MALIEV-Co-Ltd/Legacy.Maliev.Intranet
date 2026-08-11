@@ -48,6 +48,8 @@ public sealed class MudInventoryBrowserTests(ShowcaseServerFixture server, Playw
             "element => getComputedStyle(element.closest('.mud-input-control')).boxShadow"));
         Assert.NotEqual("none", await emailInput.EvaluateAsync<string>(
             "element => getComputedStyle(element.closest('.mud-input')).boxShadow"));
+        Assert.Equal("1px", await emailInput.EvaluateAsync<string>(
+            "element => getComputedStyle(element.closest('.mud-input-control').querySelector('.mud-input-outlined-border')).borderWidth"));
 
         await page.GetByLabel("Invalid", new() { Exact = true }).FocusAsync();
         var invalidInput = page.GetByLabel("Invalid", new() { Exact = true });

@@ -164,7 +164,9 @@
     line-height: 1.25rem;
 }
 
-:where(.shadcn-scope, .shadcn-overlay-scope) .mud-input.mud-input-outlined .mud-input-outlined-border {
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-input.mud-input-outlined .mud-input-outlined-border,
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-input.mud-input-outlined:focus-within .mud-input-outlined-border {
+    border-width: 1px;
     border-color: var(--shadcn-input);
     border-radius: var(--shadcn-radius-md);
 }
