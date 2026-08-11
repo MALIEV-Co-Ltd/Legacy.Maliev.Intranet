@@ -28,6 +28,19 @@
     .list-toolbar__grid {
         grid-template-columns: minmax(0, 1fr) minmax(10rem, 0.65fr);
     }
+
+    .list-toolbar__grid ::deep .mud-input-control {
+        --shadcn-control-height: 2.75rem;
+    }
+
+    .list-toolbar__grid ::deep .mud-input-control .mud-input {
+        height: var(--shadcn-control-height) !important;
+        min-height: var(--shadcn-control-height) !important;
+    }
+
+    .list-toolbar__actions ::deep .mud-button-root {
+        min-height: 2.75rem;
+    }
 }
 
 @media (max-width: 600px) {
@@ -49,14 +62,21 @@
         width: 100%;
     }
 
-    .list-toolbar__grid ::deep .mud-input.mud-input-outlined {
+    .list-toolbar__grid ::deep .mud-input-control {
         --shadcn-control-height: 2.75rem;
+    }
+
+    .list-toolbar__grid ::deep .mud-input-control .mud-input {
         height: var(--shadcn-control-height) !important;
         min-height: var(--shadcn-control-height) !important;
     }
 }
 
 @media (max-width: 420px) {
+    .list-toolbar__grid {
+        grid-template-columns: minmax(9.5rem, 1fr) minmax(4.25rem, 0.45fr);
+    }
+
     .list-toolbar__actions {
         grid-template-columns: minmax(0, 1fr);
     }

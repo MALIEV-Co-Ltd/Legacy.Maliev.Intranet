@@ -151,7 +151,7 @@ public sealed class MudAdapterContractTests
             css,
             StringComparison.Ordinal);
         Assert.Contains($"{scope} .mud-popover,", css, StringComparison.Ordinal);
-        Assert.Contains($"{scope} .mud-menu,", css, StringComparison.Ordinal);
+        Assert.DoesNotContain($"{scope} .mud-menu,", css, StringComparison.Ordinal);
         Assert.Contains($"{scope} .mud-picker,", css, StringComparison.Ordinal);
         Assert.Contains($"{scope} .mud-dialog {{", css, StringComparison.Ordinal);
         Assert.Contains("z-index: 50", css, StringComparison.Ordinal);

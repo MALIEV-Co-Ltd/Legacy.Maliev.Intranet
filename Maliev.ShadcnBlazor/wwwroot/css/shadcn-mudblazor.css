@@ -633,7 +633,6 @@
 
 /* Portal surfaces are scoped by their providers without changing provider behavior. */
 :where(.shadcn-scope, .shadcn-overlay-scope) .mud-popover,
-:where(.shadcn-scope, .shadcn-overlay-scope) .mud-menu,
 :where(.shadcn-scope, .shadcn-overlay-scope) .mud-picker,
 :where(.shadcn-scope, .shadcn-overlay-scope) .mud-dialog {
     z-index: 50;

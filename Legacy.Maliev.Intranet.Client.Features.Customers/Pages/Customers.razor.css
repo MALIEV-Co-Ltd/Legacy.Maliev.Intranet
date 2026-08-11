@@ -88,6 +88,9 @@
 }
 
 .customer-shell .customers-table-shell ::deep .customer-value-disclosure {
+    display: block;
+    width: 100%;
+    max-width: 100%;
     min-width: 0;
 }
 

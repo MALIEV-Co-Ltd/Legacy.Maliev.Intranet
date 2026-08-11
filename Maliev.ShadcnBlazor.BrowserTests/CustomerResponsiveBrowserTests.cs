@@ -23,6 +23,9 @@ public sealed class CustomerResponsiveBrowserTests(
             ReducedMotion = ReducedMotion.Reduce
         });
         var page = await context.NewPageAsync();
+        var errors = new List<string>();
+        page.Console += (_, message) => { if (message.Type == "error") errors.Add(message.Text); };
+        page.PageError += (_, error) => errors.Add(error);
         await StubProductionBoundariesAsync(page);
 
         await page.GotoAsync(new Uri(server.BaseUri, "customers").AbsoluteUri);
@@ -32,11 +35,13 @@ public sealed class CustomerResponsiveBrowserTests(
         await AssertNoDocumentOverflowAsync(page);
         await AssertAtomicAsync(page, ".customer-id-cell", "2000000001");
         await AssertAtomicAsync(page, ".customer-action-cell", "View");
+        await AssertDisclosuresContainedAsync(page);
         await AssertFullValueDisclosureAsync(page, ".customer-email-disclosure", LongEmail);
 
         await page.SetViewportSizeAsync(768, 900);
         Assert.True(await page.Locator(".mud-table-container").EvaluateAsync<bool>(
             "element => element.scrollWidth > element.clientWidth"));
+        await AssertDisclosuresContainedAsync(page);
         await AssertNoDocumentOverflowAsync(page);
 
         foreach (var width in new[] { 390, 320 })
@@ -72,10 +77,13 @@ public sealed class CustomerResponsiveBrowserTests(
                 "element => getComputedStyle(element).display"));
             Assert.True(await populatedRow.Locator(".customer-action-cell a").EvaluateAsync<bool>(
                 "element => element.getBoundingClientRect().height >= 44 && element.getBoundingClientRect().width >= 44"));
+            await AssertDisclosuresContainedAsync(page);
             await AssertFullValueDisclosureAsync(page, ".customer-name-disclosure", LongName);
             await AssertFullValueDisclosureAsync(page, ".customer-company-disclosure", LongCompany);
             await AssertNoDocumentOverflowAsync(page);
         }
+
+        Assert.Empty(errors);
     }
 
     [Fact]
@@ -96,10 +104,11 @@ public sealed class CustomerResponsiveBrowserTests(
         foreach (var width in new[] { 1280, 768, 390, 320 })
         {
             await page.SetViewportSizeAsync(width, 844);
-            if (width <= 600)
+            if (width <= 900)
             {
                 await page.WaitForFunctionAsync("""
-                    () => document.querySelector('.list-toolbar .mud-input')?.getBoundingClientRect().height >= 44
+                    () => Array.from(document.querySelectorAll('.list-toolbar .mud-input'))
+                        .every(input => input.getBoundingClientRect().height >= 44)
                     """);
             }
             var metrics = await page.Locator(".list-toolbar").EvaluateAsync<JsonElement>("""
@@ -116,7 +125,16 @@ public sealed class CustomerResponsiveBrowserTests(
                         sort: bounds(controls[1]),
                         pageSize: bounds(controls[2]),
                         actions: bounds(element.querySelector('.list-toolbar__actions')),
-                        inputs: controls.map(control => bounds(control.querySelector('.mud-input-control-input-container > .mud-input'))),
+                        inputs: controls.map(control => {
+                            const input = control.querySelector('.mud-input-control-input-container > .mud-input');
+                            return {
+                                ...bounds(input),
+                                classes: input.className,
+                                controlClasses: control.className,
+                                controlHeightToken: getComputedStyle(control).getPropertyValue('--shadcn-control-height').trim(),
+                                inputHeightToken: getComputedStyle(input).getPropertyValue('--shadcn-control-height').trim()
+                            };
+                        }),
                         buttons: buttons.map(bounds)
                     };
                 }
@@ -130,16 +148,27 @@ public sealed class CustomerResponsiveBrowserTests(
             var sortWidth = metrics.GetProperty("sort").GetProperty("width").GetDouble();
             Assert.True(searchWidth >= sortWidth, metrics.ToString());
 
-            if (width <= 600)
+            if (width <= 900)
             {
                 foreach (var input in metrics.GetProperty("inputs").EnumerateArray())
                     Assert.True(input.GetProperty("height").GetDouble() >= 44, metrics.ToString());
                 foreach (var button in metrics.GetProperty("buttons").EnumerateArray())
                     Assert.True(button.GetProperty("height").GetDouble() >= 44, metrics.ToString());
+            }
 
+            if (width <= 600)
+            {
                 var sortY = metrics.GetProperty("sort").GetProperty("y").GetDouble();
                 var pageSizeY = metrics.GetProperty("pageSize").GetProperty("y").GetDouble();
                 Assert.InRange(Math.Abs(sortY - pageSizeY), 0, 1);
+            }
+
+            if (width == 320)
+            {
+                Assert.True(sortWidth >= 152, metrics.ToString());
+                var selectedSort = page.Locator(".list-toolbar .mud-select-input").First;
+                Assert.Equal("Newest customers", (await selectedSort.InnerTextAsync()).Trim());
+                Assert.True(await selectedSort.EvaluateAsync<bool>("element => element.scrollWidth <= element.clientWidth"));
             }
 
             await AssertNoDocumentOverflowAsync(page);
@@ -226,6 +255,11 @@ public sealed class CustomerResponsiveBrowserTests(
             Assert.True(button.GetProperty("scrollWidth").GetDouble() <= button.GetProperty("clientWidth").GetDouble(), geometry.ToString());
         }
 
+        var selectedSort = page.Locator(".list-toolbar .mud-select-input").First;
+        Assert.Equal("ลูกค้าใหม่ล่าสุด", (await selectedSort.InnerTextAsync()).Trim());
+        Assert.True(await selectedSort.EvaluateAsync<bool>("element => element.getBoundingClientRect().width >= 152"));
+        Assert.True(await selectedSort.EvaluateAsync<bool>("element => element.scrollWidth <= element.clientWidth"));
+
         await page.Locator(".list-toolbar .mud-select").First.ClickAsync();
         var sortOptions = page.Locator(".mud-popover-open .mud-list-item");
         await sortOptions.First.WaitForAsync();
@@ -242,6 +276,15 @@ public sealed class CustomerResponsiveBrowserTests(
             "ID มากไปน้อย",
             "ID น้อยไปมาก"
         }, await sortOptions.AllInnerTextsAsync());
+        var sortMenuGeometry = await page.Locator(".mud-popover-open").Last.EvaluateAsync<JsonElement>("""
+            element => {
+                const rect = element.getBoundingClientRect();
+                return { left: rect.left, right: rect.right, width: rect.width, viewport: innerWidth };
+            }
+            """);
+        Assert.True(sortMenuGeometry.GetProperty("left").GetDouble() >= 8, sortMenuGeometry.ToString());
+        Assert.True(sortMenuGeometry.GetProperty("right").GetDouble() <= sortMenuGeometry.GetProperty("viewport").GetDouble() - 8, sortMenuGeometry.ToString());
+        Assert.True(sortMenuGeometry.GetProperty("width").GetDouble() <= 304, sortMenuGeometry.ToString());
         await page.Keyboard.PressAsync("Escape");
 
         await page.GotoAsync(new Uri(server.BaseUri, "customers?index=2&size=25").AbsoluteUri);
@@ -483,6 +526,50 @@ public sealed class CustomerResponsiveBrowserTests(
         Assert.Equal(expectedText, (await menu.Locator(".customer-full-value").InnerTextAsync()).Trim());
         await page.Keyboard.PressAsync("Escape");
         await menu.WaitForAsync(new() { State = WaitForSelectorState.Hidden });
+    }
+
+    private static async Task AssertDisclosuresContainedAsync(IPage page)
+    {
+        var geometry = await page.Locator(".customers-table .mud-table-body .mud-table-row:first-child .customer-value-disclosure")
+            .EvaluateAllAsync<JsonElement>("""
+                elements => elements.map(root => {
+                    const cell = root.closest('.mud-table-cell');
+                    const trigger = root.querySelector('button');
+                    const label = trigger?.querySelector('.mud-button-label');
+                    const rootRect = root.getBoundingClientRect();
+                    const cellRect = cell.getBoundingClientRect();
+                    const triggerRect = trigger.getBoundingClientRect();
+                    const style = getComputedStyle(root);
+                    return {
+                        rootLeft: rootRect.left,
+                        rootRight: rootRect.right,
+                        rootWidth: rootRect.width,
+                        cellLeft: cellRect.left,
+                        cellRight: cellRect.right,
+                        cellWidth: cellRect.width,
+                        triggerLeft: triggerRect.left,
+                        triggerRight: triggerRect.right,
+                        triggerWidth: triggerRect.width,
+                        labelScrollWidth: label.scrollWidth,
+                        labelClientWidth: label.clientWidth,
+                        borderTopWidth: style.borderTopWidth,
+                        boxShadow: style.boxShadow
+                    };
+                })
+                """);
+
+        Assert.NotEmpty(geometry.EnumerateArray());
+        foreach (var disclosure in geometry.EnumerateArray())
+        {
+            Assert.True(disclosure.GetProperty("rootLeft").GetDouble() >= disclosure.GetProperty("cellLeft").GetDouble() - 0.5, geometry.ToString());
+            Assert.True(disclosure.GetProperty("rootRight").GetDouble() <= disclosure.GetProperty("cellRight").GetDouble() + 0.5, geometry.ToString());
+            Assert.True(disclosure.GetProperty("triggerLeft").GetDouble() >= disclosure.GetProperty("cellLeft").GetDouble() - 0.5, geometry.ToString());
+            Assert.True(disclosure.GetProperty("triggerRight").GetDouble() <= disclosure.GetProperty("cellRight").GetDouble() + 0.5, geometry.ToString());
+            Assert.True(disclosure.GetProperty("rootWidth").GetDouble() <= disclosure.GetProperty("cellWidth").GetDouble() + 0.5, geometry.ToString());
+            Assert.True(disclosure.GetProperty("triggerWidth").GetDouble() <= disclosure.GetProperty("cellWidth").GetDouble() + 0.5, geometry.ToString());
+            Assert.Equal("0px", disclosure.GetProperty("borderTopWidth").GetString());
+            Assert.Equal("none", disclosure.GetProperty("boxShadow").GetString());
+        }
     }
 
     private static async Task AssertNoDocumentOverflowAsync(IPage page)
