@@ -1,7 +1,180 @@
-.customer-shell .customers-page-header { align-items: end; margin-bottom: 1rem; }
-.customer-shell .customers-table-shell { overflow: hidden; }
+.customer-shell .customers-page-header {
+    align-items: end;
+    margin-bottom: 1rem;
+}
+
+.customer-shell .customers-table-shell {
+    max-width: 100%;
+    overflow-x: auto;
+    scrollbar-gutter: stable;
+}
+
+.customer-shell .customers-table-shell ::deep .mud-table-container {
+    overflow-x: auto;
+}
+
 .customer-shell .customers-table-shell ::deep .customers-table,
-.customer-shell .customers-table-shell ::deep .mud-table-container,
-.customer-shell .customers-table-shell ::deep .mud-table-root { min-width: 0; }
-.customer-shell .customers-table-shell ::deep .mud-table-cell { font-variant-numeric: tabular-nums; }
-@media (max-width: 720px) { .customer-shell .customers-page-header { align-items: stretch; } }
+.customer-shell .customers-table-shell ::deep .mud-table-root {
+    width: 100%;
+    min-width: 48rem;
+    table-layout: fixed;
+}
+
+.customer-shell .customers-table-shell ::deep .mud-table-cell {
+    font-variant-numeric: tabular-nums;
+}
+
+.customer-shell .customers-table-shell ::deep :is(.customer-id-cell, .customer-email-cell, .customer-action-cell) {
+    overflow-wrap: normal;
+    white-space: nowrap;
+}
+
+.customer-shell .customers-table-shell ::deep .customer-id-cell {
+    width: 6rem;
+}
+
+.customer-shell .customers-table-shell ::deep .customer-email-cell {
+    width: 16rem;
+}
+
+.customer-shell .customers-table-shell ::deep .customer-action-cell {
+    width: 5rem;
+    text-align: end;
+}
+
+.customer-shell .customers-table-shell ::deep .customer-email-value {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.customer-shell .customers-table-shell ::deep :is(.customer-name-cell, .customer-company-cell) {
+    overflow-wrap: break-word;
+}
+
+@media (min-width: 601px) and (max-width: 720px) {
+    .customer-shell .customers-table-shell ::deep .mud-table-root {
+        display: table;
+    }
+
+    .customer-shell .customers-table-shell ::deep .mud-table-head {
+        position: static;
+        display: table-header-group;
+        width: auto;
+        height: auto;
+        overflow: visible;
+        clip: auto;
+    }
+
+    .customer-shell .customers-table-shell ::deep .mud-table-body {
+        display: table-row-group;
+    }
+
+    .customer-shell .customers-table-shell ::deep .mud-table-body .mud-table-row {
+        display: table-row;
+        width: auto;
+        margin: 0;
+        padding: 0;
+    }
+
+    .customer-shell .customers-table-shell ::deep .mud-table-body .mud-table-cell {
+        display: table-cell;
+        min-height: 0;
+    }
+}
+
+@media (max-width: 600px) {
+    .customer-shell .customers-page-header {
+        align-items: stretch;
+    }
+
+    .customer-shell .customers-table-shell,
+    .customer-shell .customers-table-shell ::deep .mud-table-container {
+        overflow: visible;
+    }
+
+    .customer-shell .customers-table-shell ::deep :is(.customers-table, .mud-table-container, .mud-table-root, .mud-table-body) {
+        display: block;
+        width: 100%;
+        max-width: 100%;
+        min-width: 0;
+    }
+
+    .customer-shell .customers-table-shell ::deep .mud-table-head {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+    }
+
+    .customer-shell .customers-table-shell ::deep .mud-table-body .mud-table-row {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        grid-template-areas:
+            "name id"
+            "email action";
+        column-gap: 0.75rem;
+        row-gap: 0.25rem;
+        width: 100%;
+        min-height: 6rem;
+        margin-bottom: 0.625rem;
+        padding: 0.625rem 0.75rem;
+    }
+
+    .customer-shell .customers-table-shell ::deep .mud-table-body .mud-table-cell {
+        display: block;
+        min-width: 0;
+        min-height: 0;
+        padding: 0;
+    }
+
+    .customer-shell .customers-table-shell ::deep .mud-table-cell::before {
+        display: none;
+    }
+
+    .customer-shell .customers-table-shell ::deep .customer-name-cell {
+        grid-area: name;
+        align-self: center;
+        font-weight: 600;
+    }
+
+    .customer-shell .customers-table-shell ::deep .customer-id-cell {
+        grid-area: id;
+        width: auto;
+        align-self: center;
+        color: var(--mud-palette-text-secondary);
+    }
+
+    .customer-shell .customers-table-shell ::deep .customer-email-cell {
+        grid-area: email;
+        width: auto;
+        align-self: center;
+    }
+
+    .customer-shell .customers-table-shell ::deep .customer-company-cell {
+        grid-column: 1 / -1;
+        grid-row: 3;
+        color: var(--mud-palette-text-secondary);
+    }
+
+    .customer-shell .customers-table-shell ::deep .customer-company-cell:empty {
+        display: none;
+    }
+
+    .customer-shell .customers-table-shell ::deep .customer-action-cell {
+        grid-area: action;
+        width: auto;
+        align-self: center;
+        text-align: end;
+    }
+
+    .customer-shell .customers-table-shell ::deep .customer-action-cell a {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 2.75rem;
+        min-height: 2.75rem;
+    }
+}

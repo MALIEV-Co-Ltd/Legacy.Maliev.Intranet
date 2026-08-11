@@ -42,20 +42,20 @@
     else
     {
         <div class="customers-table-shell">
-        <MudTable Items="page.Items" Hover="true" Breakpoint="Breakpoint.Sm" Elevation="0" Class="customers-table" aria-label="@Text["CustomersTable"]">
+        <MudTable Items="page.Items" Hover="true" Breakpoint="Breakpoint.None" Elevation="0" Class="customers-table" aria-label="@Text["CustomersTable"]">
             <HeaderContent>
-                <MudTh>@Text["Id"]</MudTh>
-                <MudTh>@Text["Name"]</MudTh>
-                <MudTh>@Text["Email"]</MudTh>
-                <MudTh>@Text["Company"]</MudTh>
-                <MudTh><span class="visually-hidden">@Text["Actions"]</span></MudTh>
+                <MudTh Class="customer-id-cell">@Text["Id"]</MudTh>
+                <MudTh Class="customer-name-cell">@Text["Name"]</MudTh>
+                <MudTh Class="customer-email-cell">@Text["Email"]</MudTh>
+                <MudTh Class="customer-company-cell">@Text["Company"]</MudTh>
+                <MudTh Class="customer-action-cell"><span class="visually-hidden">@Text["Actions"]</span></MudTh>
             </HeaderContent>
             <RowTemplate>
-                <MudTd DataLabel="@Text["Id"]">@context.Id</MudTd>
-                <MudTd DataLabel="@Text["Name"]">@context.FullName</MudTd>
-                <MudTd DataLabel="@Text["Email"]">@context.Email</MudTd>
-                <MudTd DataLabel="@Text["Company"]">@context.Company?.Name</MudTd>
-                <MudTd DataLabel="@Text["Actions"]">
+                <MudTd DataLabel="@Text["Id"]" Class="customer-id-cell">@context.Id</MudTd>
+                <MudTd DataLabel="@Text["Name"]" Class="customer-name-cell">@context.FullName</MudTd>
+                <MudTd DataLabel="@Text["Email"]" Class="customer-email-cell"><span class="customer-email-value" title="@context.Email">@context.Email</span></MudTd>
+                <MudTd DataLabel="@Text["Company"]" Class="customer-company-cell">@context.Company?.Name</MudTd>
+                <MudTd DataLabel="@Text["Actions"]" Class="customer-action-cell">
                     <MudLink Href="@($"/Customers/View?id={context.Id}")">@Text["View"]</MudLink>
                 </MudTd>
             </RowTemplate>
