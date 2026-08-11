@@ -21,13 +21,21 @@ public sealed class LegacyLoginExperienceContractTests
     }
 
     [Fact]
+    public void LoginClient_PreflightReservesTheLoadedCardFootprintResponsively()
+    {
+        var root = FindRepositoryRoot();
+        var css = File.ReadAllText(Path.Combine(root, "Legacy.Maliev.Intranet.Client", "wwwroot", "css", "app.css"));
+
+        Assert.Contains(".legacy-login-loading { display: flex; min-block-size: min(26.25rem, calc(100dvh - 10rem));", css, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void LoginClient_LocalizesPreflightAndRecoveryGuidanceInEnglishAndThai()
     {
         var root = FindRepositoryRoot();
         var expectedKeys = new[]
         {
             "Employee gateway",
-            "MALIEV employee workspace",
             "Secure access to your work",
             "Sign in with your MALIEV work account to continue.",
             "Checking your employee session...",
@@ -94,6 +102,38 @@ public sealed class LegacyLoginExperienceContractTests
         Assert.Contains("@media (max-width: 959px)", css, StringComparison.Ordinal);
         Assert.Contains("@media (max-width: 640px)", css, StringComparison.Ordinal);
         Assert.Contains(".legacy-login-main { padding: 1rem; }", css, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void LoginClient_IntermediateSplitHasNoConflictingFixedMinimum()
+    {
+        var root = FindRepositoryRoot();
+        var css = File.ReadAllText(Path.Combine(root, "Legacy.Maliev.Intranet.Client", "wwwroot", "css", "app.css"));
+
+        Assert.Contains(".legacy-login-shell { grid-template-columns: minmax(0, 36%) minmax(0, 64%); }", css, StringComparison.Ordinal);
+        Assert.DoesNotContain("minmax(15rem, 36%)", css, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void LoginClient_UsesTheLayoutMainAndKeepsTheMobileH1Accessible()
+    {
+        var root = FindRepositoryRoot();
+        var login = File.ReadAllText(Path.Combine(root, "Legacy.Maliev.Intranet.Client", "Pages", "Login.razor"));
+        var css = File.ReadAllText(Path.Combine(root, "Legacy.Maliev.Intranet.Client", "wwwroot", "css", "app.css"));
+
+        Assert.Contains("<div class=\"legacy-login-main\" id=\"legacy-login-content\">", login, StringComparison.Ordinal);
+        Assert.DoesNotContain("<main class=\"legacy-login-main\"", login, StringComparison.Ordinal);
+        Assert.Contains(".legacy-login-brand-copy { position: absolute; width: 1px; height: 1px;", css, StringComparison.Ordinal);
+        Assert.DoesNotContain(".legacy-login-brand-copy { display: none; }", css, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void LoginClient_BrandLinkKeepsItsTouchTargetAtEveryViewport()
+    {
+        var root = FindRepositoryRoot();
+        var css = File.ReadAllText(Path.Combine(root, "Legacy.Maliev.Intranet.Client", "wwwroot", "css", "app.css"));
+
+        Assert.Contains(".legacy-login-brand { display: inline-flex; width: fit-content; min-height: 2.75rem; align-items: center; }", css, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -181,7 +221,6 @@ public sealed class LegacyLoginExperienceContractTests
         var css = File.ReadAllText(Path.Combine(root, "Legacy.Maliev.Intranet.Client", "wwwroot", "css", "app.css"));
 
         Assert.Contains(".legacy-login-form { display: grid; gap: 1rem; }", css, StringComparison.Ordinal);
-        Assert.Contains(".legacy-login-footer-note { margin: 1rem 0 0;", css, StringComparison.Ordinal);
         Assert.Contains("background: var(--shadcn-border)", css, StringComparison.Ordinal);
         Assert.Contains("min-height: 2.75rem", css, StringComparison.Ordinal);
         Assert.Contains("text-decoration: underline", css, StringComparison.Ordinal);
