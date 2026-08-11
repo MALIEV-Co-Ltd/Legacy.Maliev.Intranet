@@ -72,7 +72,12 @@ public sealed class CustomersWasmMigrationContractTests
         Assert.Contains("Class=\"customer-email-cell\"", page, StringComparison.Ordinal);
         Assert.Contains("Class=\"customer-company-cell\"", page, StringComparison.Ordinal);
         Assert.Contains("Class=\"customer-action-cell\"", page, StringComparison.Ordinal);
-        Assert.Contains("title=\"@context.Email\"", page, StringComparison.Ordinal);
+        Assert.Contains("customer-email-disclosure", page, StringComparison.Ordinal);
+        Assert.Contains("customer-name-disclosure", page, StringComparison.Ordinal);
+        Assert.Contains("customer-company-disclosure", page, StringComparison.Ordinal);
+        Assert.Contains("Class=\"customer-value-disclosure customer-email-disclosure\"", page, StringComparison.Ordinal);
+        Assert.Contains("<MudMenuItem Class=\"customer-full-value\"", page, StringComparison.Ordinal);
+        Assert.DoesNotContain("title=\"@context.Email\"", page, StringComparison.Ordinal);
 
         Assert.Contains("overflow-x: auto", styles, StringComparison.Ordinal);
         Assert.DoesNotContain(".customers-table-shell { overflow: hidden; }", styles, StringComparison.Ordinal);

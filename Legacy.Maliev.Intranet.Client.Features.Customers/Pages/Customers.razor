@@ -52,9 +52,39 @@
             </HeaderContent>
             <RowTemplate>
                 <MudTd DataLabel="@Text["Id"]" Class="customer-id-cell">@context.Id</MudTd>
-                <MudTd DataLabel="@Text["Name"]" Class="customer-name-cell">@context.FullName</MudTd>
-                <MudTd DataLabel="@Text["Email"]" Class="customer-email-cell"><span class="customer-email-value" title="@context.Email">@context.Email</span></MudTd>
-                <MudTd DataLabel="@Text["Company"]" Class="customer-company-cell">@context.Company?.Name</MudTd>
+                <MudTd DataLabel="@Text["Name"]" Class="customer-name-cell">
+                    <MudMenu Label="@context.FullName"
+                             AriaLabel="@context.FullName"
+                             Variant="Variant.Text"
+                             Dense="true"
+                             FullWidth="true"
+                             Class="customer-value-disclosure customer-name-disclosure">
+                        <MudMenuItem Class="customer-full-value" Style="max-width: min(24rem, calc(100vw - 2rem)); white-space: normal; overflow-wrap: anywhere;">@context.FullName</MudMenuItem>
+                    </MudMenu>
+                </MudTd>
+                <MudTd DataLabel="@Text["Email"]" Class="customer-email-cell">
+                    <MudMenu Label="@context.Email"
+                             AriaLabel="@context.Email"
+                             Variant="Variant.Text"
+                             Dense="true"
+                             FullWidth="true"
+                             Class="customer-value-disclosure customer-email-disclosure">
+                        <MudMenuItem Class="customer-full-value" Style="max-width: min(24rem, calc(100vw - 2rem)); white-space: normal; overflow-wrap: anywhere;">@context.Email</MudMenuItem>
+                    </MudMenu>
+                </MudTd>
+                <MudTd DataLabel="@Text["Company"]" Class="customer-company-cell">
+                    @if (!string.IsNullOrWhiteSpace(context.Company?.Name))
+                    {
+                        <MudMenu Label="@context.Company.Name"
+                                 AriaLabel="@context.Company.Name"
+                                 Variant="Variant.Text"
+                                 Dense="true"
+                                 FullWidth="true"
+                                 Class="customer-value-disclosure customer-company-disclosure">
+                            <MudMenuItem Class="customer-full-value" Style="max-width: min(24rem, calc(100vw - 2rem)); white-space: normal; overflow-wrap: anywhere;">@context.Company.Name</MudMenuItem>
+                        </MudMenu>
+                    }
+                </MudTd>
                 <MudTd DataLabel="@Text["Actions"]" Class="customer-action-cell">
                     <MudLink Href="@($"/Customers/View?id={context.Id}")">@Text["View"]</MudLink>
                 </MudTd>
