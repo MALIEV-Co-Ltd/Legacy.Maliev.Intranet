@@ -96,6 +96,12 @@ public sealed class CustomerResponsiveBrowserTests(
         foreach (var width in new[] { 1280, 768, 390, 320 })
         {
             await page.SetViewportSizeAsync(width, 844);
+            if (width <= 600)
+            {
+                await page.WaitForFunctionAsync("""
+                    () => document.querySelector('.list-toolbar .mud-input')?.getBoundingClientRect().height >= 44
+                    """);
+            }
             var metrics = await page.Locator(".list-toolbar").EvaluateAsync<JsonElement>("""
                 element => {
                     const bounds = node => {
@@ -110,7 +116,7 @@ public sealed class CustomerResponsiveBrowserTests(
                         sort: bounds(controls[1]),
                         pageSize: bounds(controls[2]),
                         actions: bounds(element.querySelector('.list-toolbar__actions')),
-                        inputs: controls.map(bounds),
+                        inputs: controls.map(control => bounds(control.querySelector('.mud-input-control-input-container > .mud-input'))),
                         buttons: buttons.map(bounds)
                     };
                 }
@@ -141,7 +147,7 @@ public sealed class CustomerResponsiveBrowserTests(
     }
 
     [Fact]
-    public async Task ClearingCustomerSearchRestoresTheUnfilteredUrlAndResultsAfterDebounce()
+    public async Task CustomerSearchClearControlsRestoreTheUnfilteredUrlAndResultsAfterDebounce()
     {
         await using var context = await playwright.Browser.NewContextAsync(new()
         {
@@ -161,9 +167,65 @@ public sealed class CustomerResponsiveBrowserTests(
         await search.FillAsync("Natthapol");
         await page.WaitForURLAsync(url => url.Contains("search=Natthapol", StringComparison.Ordinal));
 
-        await search.FillAsync(string.Empty);
+        await page.Locator(".list-toolbar .mud-input-clear-button").ClickAsync();
         await page.WaitForURLAsync(url => url.Contains("search=&", StringComparison.Ordinal));
         await page.WaitForFunctionAsync("() => document.querySelectorAll('.customers-table .mud-table-body .mud-table-row').length === 2");
+
+        await search.FillAsync("Natthapol");
+        await page.WaitForURLAsync(url => url.Contains("search=Natthapol", StringComparison.Ordinal));
+        await page.Locator(".list-toolbar__actions .mud-button-root").First.ClickAsync();
+        await page.WaitForURLAsync(url => url.Contains("search=&", StringComparison.Ordinal));
+        await page.WaitForFunctionAsync("() => document.querySelectorAll('.customers-table .mud-table-body .mud-table-row').length === 2");
+    }
+
+    [Fact]
+    public async Task ThaiCustomerToolbarStacksBothActionsWithoutClippingAtNarrowWidth()
+    {
+        await using var context = await playwright.Browser.NewContextAsync(new()
+        {
+            ViewportSize = new() { Width = 320, Height = 844 },
+            DeviceScaleFactor = 1,
+            ReducedMotion = ReducedMotion.Reduce
+        });
+        await context.AddInitScriptAsync("localStorage.setItem('maliev_culture', 'th-TH')");
+        var page = await context.NewPageAsync();
+        await StubProductionBoundariesAsync(page);
+
+        await page.GotoAsync(new Uri(server.BaseUri, "customers").AbsoluteUri);
+        var search = page.Locator(".list-toolbar input").First;
+        await search.FillAsync("Natthapol");
+        await page.WaitForURLAsync(url => url.Contains("search=Natthapol", StringComparison.Ordinal));
+
+        var actions = page.Locator(".list-toolbar__actions .mud-button-root");
+        await actions.Nth(1).WaitForAsync();
+        Assert.Equal(2, await actions.CountAsync());
+        Assert.Equal("ล้างตัวกรอง", (await actions.Nth(0).InnerTextAsync()).Trim());
+        Assert.Equal("รีเฟรชข้อมูล", (await actions.Nth(1).InnerTextAsync()).Trim());
+
+        var geometry = await actions.EvaluateAllAsync<JsonElement>("""
+            elements => elements.map(element => {
+                const rect = element.getBoundingClientRect();
+                return {
+                    x: rect.x,
+                    y: rect.y,
+                    width: rect.width,
+                    height: rect.height,
+                    scrollWidth: element.scrollWidth,
+                    clientWidth: element.clientWidth,
+                    whiteSpace: getComputedStyle(element).whiteSpace
+                };
+            })
+            """);
+        var clear = geometry[0];
+        var refresh = geometry[1];
+        Assert.InRange(Math.Abs(clear.GetProperty("x").GetDouble() - refresh.GetProperty("x").GetDouble()), 0, 1);
+        Assert.True(refresh.GetProperty("y").GetDouble() > clear.GetProperty("y").GetDouble(), geometry.ToString());
+        foreach (var button in geometry.EnumerateArray())
+        {
+            Assert.True(button.GetProperty("height").GetDouble() >= 44, geometry.ToString());
+            Assert.True(button.GetProperty("scrollWidth").GetDouble() <= button.GetProperty("clientWidth").GetDouble(), geometry.ToString());
+        }
+        await AssertNoDocumentOverflowAsync(page);
     }
 
     private static async Task StubProductionBoundariesAsync(IPage page)

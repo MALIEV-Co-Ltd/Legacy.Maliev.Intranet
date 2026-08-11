@@ -48,4 +48,16 @@
     .list-toolbar__actions ::deep .mud-button-root {
         width: 100%;
     }
+
+    .list-toolbar__grid ::deep .mud-input.mud-input-outlined {
+        --shadcn-control-height: 2.75rem;
+        height: var(--shadcn-control-height) !important;
+        min-height: var(--shadcn-control-height) !important;
+    }
+}
+
+@media (max-width: 420px) {
+    .list-toolbar__actions {
+        grid-template-columns: minmax(0, 1fr);
+    }
 }

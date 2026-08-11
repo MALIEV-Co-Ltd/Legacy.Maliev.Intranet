@@ -30,7 +30,7 @@ public sealed class OrdersProcurementResponsiveContractTests
         Assert.Contains(".orders-module-shell .orders-toolbar .mud-input-slot", globalStyles, StringComparison.Ordinal);
         Assert.Contains("role=\"search\"", toolbar, StringComparison.Ordinal);
         Assert.Contains("@media (max-width: 600px)", toolbarStyles, StringComparison.Ordinal);
-        Assert.DoesNotContain("min-height:", toolbarStyles, StringComparison.Ordinal);
+        Assert.Contains("min-height: var(--shadcn-control-height) !important", toolbarStyles, StringComparison.Ordinal);
         Assert.Contains("min-height: var(--shadcn-control-height)", adapterStyles, StringComparison.Ordinal);
         Assert.DoesNotContain("min-height:", primaryButtonStyles, StringComparison.Ordinal);
         Assert.DoesNotContain("min-height:", secondaryButtonStyles, StringComparison.Ordinal);
@@ -78,7 +78,8 @@ public sealed class OrdersProcurementResponsiveContractTests
         Assert.Contains("fallback: 25", suppliers, StringComparison.Ordinal);
         Assert.Contains("@media (max-width: 600px)", toolbarStyles, StringComparison.Ordinal);
         Assert.Contains("grid-template-columns: repeat(2, minmax(0, 1fr))", toolbarStyles, StringComparison.Ordinal);
-        Assert.DoesNotContain("min-height:", toolbarStyles, StringComparison.Ordinal);
+        Assert.Contains("@media (max-width: 420px)", toolbarStyles, StringComparison.Ordinal);
+        Assert.Contains("min-height: var(--shadcn-control-height) !important", toolbarStyles, StringComparison.Ordinal);
         Assert.Contains("min-height: var(--shadcn-control-height)", adapterStyles, StringComparison.Ordinal);
         Assert.Contains("LegacyPresentation.FormatUtcDateTime", purchaseOrders, StringComparison.Ordinal);
     }
