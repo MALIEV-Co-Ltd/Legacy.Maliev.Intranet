@@ -40,7 +40,9 @@ public sealed class ShadcnStyleSystemContractTests
 
         Assert.Contains(".legacy-page-container .operations-page-header", semantic, StringComparison.Ordinal);
         Assert.Contains(".legacy-page-container .list-toolbar__grid > .mud-input-control", semantic, StringComparison.Ordinal);
-        Assert.Contains("grid-template-columns: minmax(12rem, 1.7fr) minmax(10rem, 1fr) minmax(7rem, 0.55fr) auto", toolbar, StringComparison.Ordinal);
+        Assert.Contains("grid-template-columns: minmax(14rem, 1.8fr) minmax(10rem, 1fr) minmax(7rem, 0.5fr) auto", toolbar, StringComparison.Ordinal);
+        Assert.Contains("background: var(--shadcn-muted)", toolbar, StringComparison.Ordinal);
+        Assert.Contains("border-inline-start: 1px solid var(--shadcn-border)", toolbar, StringComparison.Ordinal);
         Assert.Contains("--shadcn-control-height: 2.75rem", toolbar, StringComparison.Ordinal);
     }
 

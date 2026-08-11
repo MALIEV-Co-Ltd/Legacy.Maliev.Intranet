@@ -101,6 +101,32 @@ public sealed class CustomerResponsiveBrowserTests(
         await page.GotoAsync(new Uri(server.BaseUri, "customers").AbsoluteUri);
         await page.Locator(".customers-table .mud-table-body .mud-table-row").First.WaitForAsync();
 
+        var expectedMutedSurface = await page.EvaluateAsync<string>("""
+            () => {
+                const probe = document.createElement('span');
+                probe.style.background = 'var(--shadcn-muted)';
+                document.querySelector('[data-shadcn-scope]').append(probe);
+                const color = getComputedStyle(probe).backgroundColor;
+                probe.remove();
+                return color;
+            }
+            """);
+        var surface = await page.Locator(".list-toolbar").EvaluateAsync<JsonElement>("""
+            element => {
+                const style = getComputedStyle(element);
+                return {
+                    background: style.backgroundColor,
+                    borderWidth: style.borderTopWidth,
+                    boxShadow: style.boxShadow,
+                    borderRadius: style.borderRadius
+                };
+            }
+            """);
+        Assert.Equal(expectedMutedSurface, surface.GetProperty("background").GetString());
+        Assert.Equal("0px", surface.GetProperty("borderWidth").GetString());
+        Assert.Equal("none", surface.GetProperty("boxShadow").GetString());
+        Assert.NotEqual("0px", surface.GetProperty("borderRadius").GetString());
+
         foreach (var width in new[] { 1280, 768, 390, 320 })
         {
             await page.SetViewportSizeAsync(width, 844);
@@ -162,6 +188,10 @@ public sealed class CustomerResponsiveBrowserTests(
                 var pageSizeY = metrics.GetProperty("pageSize").GetProperty("y").GetDouble();
                 Assert.InRange(Math.Abs(sortY - pageSizeY), 0, 1);
             }
+
+            var actionDivider = await page.Locator(".list-toolbar__actions").EvaluateAsync<string>(
+                "element => getComputedStyle(element).borderInlineStartWidth");
+            Assert.Equal(width > 900 ? "1px" : "0px", actionDivider);
 
             if (width == 320)
             {

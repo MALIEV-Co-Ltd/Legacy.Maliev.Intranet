@@ -2,7 +2,7 @@
 @implements IAsyncDisposable
 @inject IStringLocalizer<ListToolbarResources> Text
 
-<MudPaper Class="list-toolbar" Elevation="0" role="search" aria-label="@Text["FilterLabel"]" aria-busy="@IsBusy.ToString().ToLowerInvariant()">
+<section class="list-toolbar" role="search" aria-label="@Text["FilterLabel"]" aria-busy="@IsBusy.ToString().ToLowerInvariant()">
     <div class="list-toolbar__grid">
         <MudTextField T="string"
                       Value="@controller!.Current.Search"
@@ -51,7 +51,7 @@
     <span class="visually-hidden" role="status" aria-live="polite">
         @(IsBusy ? Text["Filtering"] : ResultsStatus)
     </span>
-</MudPaper>
+</section>
 
 @code {
     [Parameter, EditorRequired] public ListToolbarState<TSort> Value { get; set; }
