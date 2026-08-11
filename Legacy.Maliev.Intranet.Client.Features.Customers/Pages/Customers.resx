@@ -20,7 +20,8 @@
   <data name="Company" xml:space="preserve"><value>Company</value></data>
   <data name="Actions" xml:space="preserve"><value>Actions</value></data>
   <data name="View" xml:space="preserve"><value>View</value></data>
-  <data name="CustomerPages" xml:space="preserve"><value>Customer pages</value></data>
+  <data name="CustomerPagesTop" xml:space="preserve"><value>Customer pages before results</value></data>
+  <data name="CustomerPagesBottom" xml:space="preserve"><value>Customer pages after results</value></data>
   <data name="Previous" xml:space="preserve"><value>Previous</value></data>
   <data name="Next" xml:space="preserve"><value>Next</value></data>
   <data name="PageSummary" xml:space="preserve"><value>Page {0} of {1} · {2} records</value></data>

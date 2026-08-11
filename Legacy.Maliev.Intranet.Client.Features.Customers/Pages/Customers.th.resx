@@ -20,7 +20,8 @@
   <data name="Company" xml:space="preserve"><value>บริษัท</value></data>
   <data name="Actions" xml:space="preserve"><value>การดำเนินการ</value></data>
   <data name="View" xml:space="preserve"><value>ดู</value></data>
-  <data name="CustomerPages" xml:space="preserve"><value>หน้ารายการลูกค้า</value></data>
+  <data name="CustomerPagesTop" xml:space="preserve"><value>หน้าลูกค้าก่อนรายการ</value></data>
+  <data name="CustomerPagesBottom" xml:space="preserve"><value>หน้าลูกค้าหลังรายการ</value></data>
   <data name="Previous" xml:space="preserve"><value>ก่อนหน้า</value></data>
   <data name="Next" xml:space="preserve"><value>ถัดไป</value></data>
   <data name="PageSummary" xml:space="preserve"><value>หน้า {0} จาก {1} · {2} บันทึก</value></data>

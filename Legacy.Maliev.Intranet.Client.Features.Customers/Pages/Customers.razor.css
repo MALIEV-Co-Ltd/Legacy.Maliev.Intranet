@@ -177,11 +177,7 @@
     }
 
     .customer-shell .customers-table-shell ::deep .mud-table-head {
-        position: absolute;
-        width: 1px;
-        height: 1px;
-        overflow: hidden;
-        clip: rect(0, 0, 0, 0);
+        display: none;
     }
 
     .customer-shell .customers-table-shell ::deep .mud-table-body .mud-table-row {

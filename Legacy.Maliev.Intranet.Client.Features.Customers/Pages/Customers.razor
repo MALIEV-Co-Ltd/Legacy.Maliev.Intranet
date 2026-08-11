@@ -47,7 +47,7 @@
             </MudText>
             @if (page.TotalPages > 1)
             {
-                <nav class="customers-pagination customers-pagination--top" aria-label="@Text["CustomerPages"]">
+                <nav class="customers-pagination customers-pagination--top" aria-label="@Text["CustomerPagesTop"]">
                     <MudButton Variant="Variant.Text" Disabled="@(!page.HasPreviousPage)" OnClick="PreviousPageAsync">@Text["Previous"]</MudButton>
                     <MudButton Variant="Variant.Text" Disabled="@(!page.HasNextPage)" OnClick="NextPageAsync">@Text["Next"]</MudButton>
                 </nav>
@@ -111,7 +111,7 @@
         </div>
         @if (page.TotalPages > 1)
         {
-            <nav class="customers-pagination customers-pagination--bottom" aria-label="@Text["CustomerPages"]">
+            <nav class="customers-pagination customers-pagination--bottom" aria-label="@Text["CustomerPagesBottom"]">
                 <MudButton Variant="Variant.Text" Disabled="@(!page.HasPreviousPage)" OnClick="PreviousPageAsync">@Text["Previous"]</MudButton>
                 <MudButton Variant="Variant.Text" Disabled="@(!page.HasNextPage)" OnClick="NextPageAsync">@Text["Next"]</MudButton>
             </nav>

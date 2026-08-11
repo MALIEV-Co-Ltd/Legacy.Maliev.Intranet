@@ -243,6 +243,11 @@ public sealed class CustomerResponsiveBrowserTests(
             "ID น้อยไปมาก"
         }, await sortOptions.AllInnerTextsAsync());
         await page.Keyboard.PressAsync("Escape");
+
+        await page.GotoAsync(new Uri(server.BaseUri, "customers?index=2&size=25").AbsoluteUri);
+        await page.Locator(".customers-pagination--top").WaitForAsync();
+        Assert.Equal(1, await page.GetByRole(AriaRole.Navigation, new() { Name = "หน้าลูกค้าก่อนรายการ" }).CountAsync());
+        Assert.Equal(1, await page.GetByRole(AriaRole.Navigation, new() { Name = "หน้าลูกค้าหลังรายการ" }).CountAsync());
         await AssertNoDocumentOverflowAsync(page);
     }
 
@@ -269,6 +274,8 @@ public sealed class CustomerResponsiveBrowserTests(
         var bottomPager = page.Locator(".customers-pagination--bottom");
         await topPager.WaitForAsync();
         await bottomPager.WaitForAsync();
+        Assert.Equal(1, await page.GetByRole(AriaRole.Navigation, new() { Name = "Customer pages before results" }).CountAsync());
+        Assert.Equal(1, await page.GetByRole(AriaRole.Navigation, new() { Name = "Customer pages after results" }).CountAsync());
         Assert.Equal("Page 2 of 4 · 76 records", (await page.Locator(".customers-results-summary").InnerTextAsync()).Trim());
         Assert.True(await topPager.EvaluateAsync<bool>("element => element.getBoundingClientRect().top < document.querySelector('.customers-table .mud-table-body .mud-table-row').getBoundingClientRect().top"));
         Assert.True(await bottomPager.EvaluateAsync<bool>("element => element.getBoundingClientRect().top > document.querySelector('.customers-table .mud-table-body .mud-table-row:last-child').getBoundingClientRect().bottom"));
@@ -277,6 +284,20 @@ public sealed class CustomerResponsiveBrowserTests(
         Assert.Equal(2, await topButtons.CountAsync());
         Assert.True(await topButtons.Nth(0).IsEnabledAsync());
         Assert.True(await topButtons.Nth(1).IsEnabledAsync());
+        if (width <= 390)
+        {
+            var targets = await page.Locator(".customers-pagination .mud-button-root").EvaluateAllAsync<JsonElement>("""
+                elements => elements.map(element => {
+                    const rect = element.getBoundingClientRect();
+                    return { width: rect.width, height: rect.height };
+                })
+                """);
+            foreach (var target in targets.EnumerateArray())
+            {
+                Assert.True(target.GetProperty("width").GetDouble() >= 44, targets.ToString());
+                Assert.True(target.GetProperty("height").GetDouble() >= 44, targets.ToString());
+            }
+        }
         await topButtons.Nth(1).ClickAsync();
         await page.WaitForURLAsync(url => url.Contains("index=3", StringComparison.Ordinal));
         Assert.Equal("Page 3 of 4 · 76 records", (await page.Locator(".customers-results-summary").InnerTextAsync()).Trim());
@@ -298,33 +319,83 @@ public sealed class CustomerResponsiveBrowserTests(
         var page = await context.NewPageAsync();
         await StubProductionBoundariesAsync(page);
 
+        var expectedSorts = new (string Value, string Label)[]
+        {
+            ("CustomerCreatedDate_Descending", "Newest customers"),
+            ("CustomerCreatedDate_Ascending", "Oldest customers"),
+            ("CustomerModifiedDate_Descending", "Recently updated"),
+            ("CustomerModifiedDate_Ascending", "Updated longest ago"),
+            ("CustomerCompany_Ascending", "Company A–Z"),
+            ("CustomerCompany_Descending", "Company Z–A"),
+            ("CustomerEmail_Ascending", "Email A–Z"),
+            ("CustomerEmail_Descending", "Email Z–A"),
+            ("CustomerId_Descending", "Highest ID first"),
+            ("CustomerId_Ascending", "Lowest ID first")
+        };
+
+        foreach (var expected in expectedSorts)
+        {
+            await page.GotoAsync(new Uri(server.BaseUri, $"customers?sort={expected.Value}&index=2&size=25").AbsoluteUri);
+            await page.Locator(".customers-table .mud-table-body .mud-table-row").First.WaitForAsync();
+            Assert.Contains($"sort={expected.Value}", page.Url, StringComparison.Ordinal);
+            Assert.Equal(expected.Label, (await page.GetByRole(AriaRole.Combobox, new() { Name = "Sort by" }).InnerTextAsync()).Trim());
+        }
+
+        await page.GotoAsync(new Uri(server.BaseUri, "customers?sort=CustomerCreatedDate_Descending&index=3&size=25").AbsoluteUri);
+        await page.Locator(".customers-table .mud-table-body .mud-table-row").First.WaitForAsync();
+        Assert.Equal(0, await page.GetByRole(AriaRole.Button, new() { Name = "Sort by name" }).CountAsync());
+        Assert.Equal(3, await page.Locator(".customer-sort-button").CountAsync());
+
+        var headerSorts = new (string Name, string Cell, string Ascending, string Descending)[]
+        {
+            ("Sort by ID", ".customer-id-cell", "CustomerId_Ascending", "CustomerId_Descending"),
+            ("Sort by email", ".customer-email-cell", "CustomerEmail_Ascending", "CustomerEmail_Descending"),
+            ("Sort by company", ".customer-company-cell", "CustomerCompany_Ascending", "CustomerCompany_Descending")
+        };
+        foreach (var header in headerSorts)
+        {
+            await page.GotoAsync(new Uri(server.BaseUri, "customers?sort=CustomerCreatedDate_Descending&index=3&size=25").AbsoluteUri);
+            await page.Locator(".customers-table .mud-table-body .mud-table-row").First.WaitForAsync();
+            var button = page.GetByRole(AriaRole.Button, new() { Name = header.Name });
+            await button.FocusAsync();
+            await button.PressAsync("Enter");
+            await page.WaitForURLAsync(url => url.Contains($"sort={header.Ascending}", StringComparison.Ordinal) && url.Contains("index=1", StringComparison.Ordinal));
+            Assert.Equal("ascending", await page.Locator($".mud-table-head {header.Cell}").GetAttributeAsync("aria-sort"));
+
+            await button.FocusAsync();
+            await button.PressAsync("Space");
+            await page.WaitForURLAsync(url => url.Contains($"sort={header.Descending}", StringComparison.Ordinal) && url.Contains("index=1", StringComparison.Ordinal));
+            Assert.Equal("descending", await page.Locator($".mud-table-head {header.Cell}").GetAttributeAsync("aria-sort"));
+        }
+    }
+
+    [Theory]
+    [InlineData(390)]
+    [InlineData(320)]
+    public async Task NarrowCustomerCardsExcludeHiddenSortableHeadersFromFocusAndAccessibility(int width)
+    {
+        await using var context = await playwright.Browser.NewContextAsync(new()
+        {
+            ViewportSize = new() { Width = width, Height = 844 },
+            DeviceScaleFactor = 1,
+            ReducedMotion = ReducedMotion.Reduce
+        });
+        var page = await context.NewPageAsync();
+        await StubProductionBoundariesAsync(page);
+
         await page.GotoAsync(new Uri(server.BaseUri, "customers").AbsoluteUri);
         await page.Locator(".customers-table .mud-table-body .mud-table-row").First.WaitForAsync();
 
-        var sort = page.Locator(".list-toolbar .mud-select").First;
-        await sort.ClickAsync();
-        var options = page.Locator(".mud-popover-open .mud-list-item");
-        await options.First.WaitForAsync();
-        Assert.Equal(new[]
-        {
-            "Newest customers",
-            "Oldest customers",
-            "Recently updated",
-            "Updated longest ago",
-            "Company A–Z",
-            "Company Z–A",
-            "Email A–Z",
-            "Email Z–A",
-            "Highest ID first",
-            "Lowest ID first"
-        }, await options.AllInnerTextsAsync());
-        await page.Keyboard.PressAsync("Escape");
+        Assert.False(await page.Locator(".customers-table .mud-table-head").IsVisibleAsync());
+        foreach (var name in new[] { "Sort by ID", "Sort by email", "Sort by company" })
+            Assert.Equal(0, await page.GetByRole(AriaRole.Button, new() { Name = name }).CountAsync());
 
-        var emailHeader = page.GetByRole(AriaRole.Button, new() { Name = "Sort by email" });
-        await emailHeader.ClickAsync();
-        await page.WaitForURLAsync(url => url.Contains("sort=CustomerEmail_Ascending", StringComparison.Ordinal));
-        await emailHeader.ClickAsync();
-        await page.WaitForURLAsync(url => url.Contains("sort=CustomerEmail_Descending", StringComparison.Ordinal));
+        await page.EvaluateAsync("() => document.activeElement?.blur()");
+        for (var index = 0; index < 20; index++)
+        {
+            await page.Keyboard.PressAsync("Tab");
+            Assert.False(await page.EvaluateAsync<bool>("() => document.activeElement?.classList.contains('customer-sort-button') === true"));
+        }
     }
 
     private static async Task StubProductionBoundariesAsync(IPage page)
