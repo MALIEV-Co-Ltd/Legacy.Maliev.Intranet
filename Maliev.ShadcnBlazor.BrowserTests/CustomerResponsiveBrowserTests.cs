@@ -1,21 +1,21 @@
-using System.Net;
+using System.Text.Json;
 using Maliev.ShadcnBlazor.BrowserTests.Infrastructure;
 using Microsoft.Playwright;
 
 namespace Maliev.ShadcnBlazor.BrowserTests;
 
-[Collection(BrowserCollection.Name)]
-public sealed class CustomerResponsiveBrowserTests(PlaywrightFixture playwright)
+[Collection(CustomerBrowserCollection.Name)]
+public sealed class CustomerResponsiveBrowserTests(
+    IntranetClientServerFixture server,
+    PlaywrightFixture playwright)
 {
     private const string LongName = "Natthapol Vanasrivilai With An Intentionally Long Customer Display Name";
     private const string LongEmail = "natthapol.vanasrivilai+responsive-customer-fixture@international-maliev.example.com";
     private const string LongCompany = "MALIEV Precision Manufacturing and International Engineering Services Company Limited";
 
     [Fact]
-    public async Task CustomerRecordsRemainOperableAndContainedAcrossSupportedWidths()
+    public async Task ProductionCustomerPageRemainsOperableAndContainedAcrossSupportedWidths()
     {
-        var fixture = BuildFixture();
-
         await using var context = await playwright.Browser.NewContextAsync(new()
         {
             ViewportSize = new() { Width = 1280, Height = 900 },
@@ -23,10 +23,14 @@ public sealed class CustomerResponsiveBrowserTests(PlaywrightFixture playwright)
             ReducedMotion = ReducedMotion.Reduce
         });
         var page = await context.NewPageAsync();
-        await page.SetContentAsync(fixture);
+        await StubProductionBoundariesAsync(page);
 
+        await page.GotoAsync(new Uri(server.BaseUri, "customers").AbsoluteUri);
+        await page.Locator(".customers-table .mud-table-body .mud-table-row").First.WaitForAsync();
+
+        Assert.Equal("/customers", new Uri(page.Url).AbsolutePath);
         await AssertNoDocumentOverflowAsync(page);
-        await AssertAtomicAsync(page, ".customer-id-cell", "9000000001");
+        await AssertAtomicAsync(page, ".customer-id-cell", "2000000001");
         await AssertAtomicAsync(page, ".customer-action-cell", "View");
         await AssertFullValueDisclosureAsync(page, ".customer-email-disclosure", LongEmail);
 
@@ -39,9 +43,28 @@ public sealed class CustomerResponsiveBrowserTests(PlaywrightFixture playwright)
         {
             await page.SetViewportSizeAsync(width, 844);
 
-            var populatedRow = page.Locator(".mud-table-row").Nth(0);
-            var emptyCompanyRow = page.Locator(".mud-table-row").Nth(1);
-            Assert.InRange(await populatedRow.EvaluateAsync<float>("element => element.getBoundingClientRect().height"), 96, 144);
+            var populatedRow = page.Locator(".customers-table .mud-table-body .mud-table-row").Nth(0);
+            var emptyCompanyRow = page.Locator(".customers-table .mud-table-body .mud-table-row").Nth(1);
+            var rowMetrics = await populatedRow.EvaluateAsync<JsonElement>("""
+                element => {
+                    const style = getComputedStyle(element);
+                    return {
+                        height: element.getBoundingClientRect().height,
+                        display: style.display,
+                        rows: style.gridTemplateRows,
+                        rowGap: style.rowGap,
+                        padding: style.padding,
+                        cells: Array.from(element.children).map(cell => ({
+                            classes: cell.className,
+                            height: cell.getBoundingClientRect().height,
+                            display: getComputedStyle(cell).display,
+                            padding: getComputedStyle(cell).padding
+                        }))
+                    };
+                }
+                """);
+            var rowHeight = rowMetrics.GetProperty("height").GetDouble();
+            Assert.True(rowHeight is >= 144 and <= 176, rowMetrics.ToString());
             Assert.Equal("none", await emptyCompanyRow.Locator(".customer-company-cell").EvaluateAsync<string>(
                 "element => getComputedStyle(element).display"));
             Assert.True(await populatedRow.Locator(".customer-action-cell a").EvaluateAsync<bool>(
@@ -52,9 +75,65 @@ public sealed class CustomerResponsiveBrowserTests(PlaywrightFixture playwright)
         }
     }
 
+    private static async Task StubProductionBoundariesAsync(IPage page)
+    {
+        var session = JsonSerializer.Serialize(new
+        {
+            isAuthenticated = true,
+            employeeId = "browser-test-employee",
+            displayName = "Browser Test Employee",
+            roles = new[] { "Employee" },
+            csrfToken = "browser-test-csrf",
+            legacyDatabaseId = 1,
+            permissions = new[] { "customers.read", "customers.create" }
+        });
+        var customers = JsonSerializer.Serialize(new
+        {
+            items = new object[]
+            {
+                new
+                {
+                    id = 2000000001,
+                    firstName = "Natthapol",
+                    lastName = "Vanasrivilai",
+                    fullName = LongName,
+                    email = LongEmail,
+                    company = new { id = 77, name = LongCompany }
+                },
+                new
+                {
+                    id = 42,
+                    firstName = "Short",
+                    lastName = "Name",
+                    fullName = "Short Name",
+                    email = "short@maliev.com",
+                    company = (object?)null
+                }
+            },
+            pageIndex = 1,
+            totalPages = 1,
+            totalRecords = 2,
+            hasNextPage = false,
+            hasPreviousPage = false
+        });
+
+        await page.RouteAsync("**/bff/session", route => route.FulfillAsync(new()
+        {
+            Status = 200,
+            ContentType = "application/json",
+            Body = session
+        }));
+        await page.RouteAsync("**/bff/customers?*", route => route.FulfillAsync(new()
+        {
+            Status = 200,
+            ContentType = "application/json",
+            Body = customers
+        }));
+    }
+
     private static async Task AssertAtomicAsync(IPage page, string selector, string expectedText)
     {
-        var element = page.Locator($".mud-table-row:first-child {selector}");
+        var element = page.Locator($".customers-table .mud-table-body .mud-table-row:first-child {selector}");
         Assert.Equal(expectedText, (await element.InnerTextAsync()).Trim());
         Assert.Equal("nowrap", await element.EvaluateAsync<string>("node => getComputedStyle(node).whiteSpace"));
         Assert.InRange(await element.EvaluateAsync<float>("node => node.getBoundingClientRect().height"), 1, 72);
@@ -62,98 +141,60 @@ public sealed class CustomerResponsiveBrowserTests(PlaywrightFixture playwright)
 
     private static async Task AssertFullValueDisclosureAsync(IPage page, string selector, string expectedText)
     {
-        var disclosure = page.Locator($".mud-table-row:first-child {selector}");
-        var trigger = disclosure.Locator(".customer-value-trigger");
+        var trigger = page.Locator($".customers-table .mud-table-body .mud-table-row:first-child {selector} button");
         await trigger.FocusAsync();
         Assert.True(await trigger.EvaluateAsync<bool>("element => element === document.activeElement"));
         await trigger.PressAsync("Enter");
-        Assert.Equal("true", await trigger.GetAttributeAsync("aria-expanded"));
-        Assert.False(await disclosure.Locator("[role=menu]").IsHiddenAsync());
-        Assert.Equal(expectedText, (await disclosure.Locator(".customer-full-value").InnerTextAsync()).Trim());
-        await trigger.PressAsync("Enter");
+
+        var menu = page.Locator(".mud-popover-open").Last;
+        await menu.WaitForAsync();
+        Assert.Equal(expectedText, (await menu.Locator(".customer-full-value").InnerTextAsync()).Trim());
+        await page.Keyboard.PressAsync("Escape");
+        await menu.WaitForAsync(new() { State = WaitForSelectorState.Hidden });
     }
 
-    private static async Task AssertNoDocumentOverflowAsync(IPage page) =>
-        Assert.True(await page.EvaluateAsync<bool>("document.documentElement.scrollWidth <= document.documentElement.clientWidth"));
-
-    private static string BuildFixture()
+    private static async Task AssertNoDocumentOverflowAsync(IPage page)
     {
-        var root = FindRoot();
-        var pagePath = Path.Combine(root, "Legacy.Maliev.Intranet.Client.Features.Customers", "Pages", "Customers.razor");
-        var pageSource = File.ReadAllText(pagePath);
-        var componentCss = File.ReadAllText(Path.ChangeExtension(pagePath, ".razor.css"))
-            .Replace(" ::deep ", " ", StringComparison.Ordinal);
-
-        var supportsDisclosures = pageSource.Contains("<MudMenu", StringComparison.Ordinal);
-        var firstRow = BuildRow(supportsDisclosures, "9000000001", LongName, LongEmail, LongCompany);
-        var secondRow = BuildRow(supportsDisclosures, "42", "Short Name", "short@maliev.com", null);
-
-        return $$"""
-            <!doctype html>
-            <html><head><meta name="viewport" content="width=device-width,initial-scale=1">
-            <style>
-            * { box-sizing: border-box; }
-            html, body { margin: 0; width: 100%; max-width: 100%; }
-            body { font: 14px/1.4 sans-serif; }
-            .customer-shell { width: 100%; padding: 16px; }
-            .mud-table-container { width: 100%; }
-            .mud-table-root { border-collapse: collapse; }
-            .mud-table-cell { padding: 12px 16px; }
-            .mud-table-row { border: 1px solid #ddd; }
-            {{componentCss}}
-            </style></head><body>
-            <main class="customer-shell">
-              <div class="customers-table-shell">
-                <div class="mud-table-container">
-                  <table class="customers-table mud-table-root">
-                    <thead class="mud-table-head"><tr><th class="mud-table-cell customer-id-cell">ID</th><th class="mud-table-cell customer-name-cell">Name</th><th class="mud-table-cell customer-email-cell">Email</th><th class="mud-table-cell customer-company-cell">Company</th><th class="mud-table-cell customer-action-cell">Actions</th></tr></thead>
-                    <tbody class="mud-table-body">{{firstRow}}{{secondRow}}</tbody>
-                  </table>
-                </div>
-              </div>
-            </main>
-            <script>
-            document.querySelectorAll('.customer-value-trigger').forEach(trigger => trigger.addEventListener('click', () => {
-              const menu = trigger.nextElementSibling;
-              const open = trigger.getAttribute('aria-expanded') === 'true';
-              trigger.setAttribute('aria-expanded', open ? 'false' : 'true');
-              menu.hidden = open;
-            }));
-            </script></body></html>
-            """;
-    }
-
-    private static string BuildRow(bool supportsDisclosures, string id, string name, string email, string? company)
-    {
-        var encodedName = WebUtility.HtmlEncode(name);
-        var encodedEmail = WebUtility.HtmlEncode(email);
-        var encodedCompany = WebUtility.HtmlEncode(company);
-        var nameContent = supportsDisclosures ? Disclosure("customer-name-disclosure", "customer-name-value", encodedName) : encodedName;
-        var emailContent = supportsDisclosures ? Disclosure("customer-email-disclosure", "customer-email-value", encodedEmail) : $"<span class=\"customer-email-value\">{encodedEmail}</span>";
-        var companyContent = company is null
-            ? string.Empty
-            : supportsDisclosures ? Disclosure("customer-company-disclosure", "customer-company-value", encodedCompany!) : encodedCompany;
-
-        return $$"""
-            <tr class="mud-table-row">
-              <td class="mud-table-cell customer-id-cell">{{WebUtility.HtmlEncode(id)}}</td>
-              <td class="mud-table-cell customer-name-cell">{{nameContent}}</td>
-              <td class="mud-table-cell customer-email-cell">{{emailContent}}</td>
-              <td class="mud-table-cell customer-company-cell">{{companyContent}}</td>
-              <td class="mud-table-cell customer-action-cell"><a href="#view">View</a></td>
-            </tr>
-            """;
-    }
-
-    private static string Disclosure(string disclosureClass, string valueClass, string value) =>
-        $"<div class=\"customer-value-disclosure {disclosureClass}\"><button type=\"button\" class=\"mud-button-root customer-value-trigger {valueClass}\" aria-expanded=\"false\"><span class=\"mud-button-label\">{value}</span></button><div role=\"menu\" hidden><span class=\"customer-full-value\">{value}</span></div></div>";
-
-    private static string FindRoot()
-    {
-        var directory = new DirectoryInfo(AppContext.BaseDirectory);
-        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "Legacy.Maliev.Intranet.slnx")))
-            directory = directory.Parent;
-
-        return directory?.FullName ?? throw new DirectoryNotFoundException("Could not locate Legacy.Maliev.Intranet root.");
+        var geometry = await page.EvaluateAsync<JsonElement>("""
+            () => {
+                const root = document.documentElement;
+                const offenders = Array.from(document.querySelectorAll('body *'))
+                    .map(element => ({
+                        tag: element.tagName,
+                        classes: element.className?.toString() ?? '',
+                        left: element.getBoundingClientRect().left,
+                        right: element.getBoundingClientRect().right,
+                        scrollWidth: element.scrollWidth,
+                        clientWidth: element.clientWidth
+                    }))
+                    .filter(item => item.right > root.clientWidth + 0.5)
+                    .slice(0, 5);
+                const containers = Array.from(document.querySelectorAll('.customers-table-shell, .customers-table, .mud-table-container'))
+                    .map(element => {
+                        const rect = element.getBoundingClientRect();
+                        const style = getComputedStyle(element);
+                        return {
+                            classes: element.className?.toString() ?? '',
+                            left: rect.left,
+                            right: rect.right,
+                            scrollWidth: element.scrollWidth,
+                            clientWidth: element.clientWidth,
+                            overflowX: style.overflowX,
+                            minWidth: style.minWidth,
+                            width: style.width
+                        };
+                    });
+                return { scrollWidth: root.scrollWidth, clientWidth: root.clientWidth, offenders, containers };
+            }
+            """);
+        var horizontalTravel = await page.EvaluateAsync<double>("""
+            () => {
+                window.scrollTo({ left: 100000, behavior: 'instant' });
+                const travel = window.scrollX;
+                window.scrollTo({ left: 0, behavior: 'instant' });
+                return travel;
+            }
+            """);
+        Assert.True(horizontalTravel == 0, geometry.ToString());
     }
 }

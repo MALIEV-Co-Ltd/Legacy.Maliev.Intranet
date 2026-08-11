@@ -4,8 +4,9 @@
 }
 
 .customer-shell .customers-table-shell {
+    contain: paint;
     max-width: 100%;
-    overflow-x: auto;
+    overflow-x: clip;
     scrollbar-gutter: stable;
 }
 
@@ -13,11 +14,15 @@
     overflow-x: auto;
 }
 
-.customer-shell .customers-table-shell ::deep .customers-table,
 .customer-shell .customers-table-shell ::deep .mud-table-root {
     width: 100%;
     min-width: 48rem;
     table-layout: fixed;
+}
+
+.customer-shell .customers-table-shell ::deep .customers-table {
+    width: 100%;
+    min-width: 0;
 }
 
 .customer-shell .customers-table-shell ::deep .mud-table-cell {
@@ -101,6 +106,17 @@
     }
 }
 
+@media (min-width: 601px) and (max-width: 1023px) {
+    .customer-shell ::deep .list-toolbar__grid {
+        grid-template-columns: minmax(0, 1fr) minmax(8rem, 0.55fr);
+    }
+
+    .customer-shell ::deep .list-toolbar__grid > .mud-input-control:first-child,
+    .customer-shell ::deep .list-toolbar__actions {
+        grid-column: 1 / -1;
+    }
+}
+
 @media (max-width: 600px) {
     .customer-shell .customers-page-header {
         align-items: stretch;
@@ -144,7 +160,7 @@
         display: block;
         min-width: 0;
         min-height: 0;
-        padding: 0;
+        padding: 0 !important;
     }
 
     .customer-shell .customers-table-shell ::deep .mud-table-cell::before {
