@@ -164,14 +164,14 @@
     line-height: 1.25rem;
 }
 
-/* Shadcn fields keep labels outside the control instead of cutting a Mud notch through the border. */
-:where(.shadcn-scope, .shadcn-overlay-scope) .mud-input-control.mud-input-outlined-with-label > .mud-input-control-input-container {
+/* Shadcn fields keep labels outside the control instead of floating across the control surface. */
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-input-control > .mud-input-control-input-container {
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
 }
 
-:where(.shadcn-scope, .shadcn-overlay-scope) .mud-input-control.mud-input-outlined-with-label > .mud-input-control-input-container > .mud-input-label {
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-input-control > .mud-input-control-input-container > .mud-input-label {
     position: static;
     order: -1;
     max-width: 100% !important;
@@ -183,7 +183,7 @@
     transform: none !important;
 }
 
-:where(.shadcn-scope, .shadcn-overlay-scope) .mud-input-control.mud-input-outlined-with-label > .mud-input-control-input-container > .mud-input-label.mud-input-error {
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-input-control > .mud-input-control-input-container > .mud-input-label.mud-input-error {
     color: var(--shadcn-destructive);
 }
 
@@ -196,6 +196,27 @@
     box-sizing: border-box !important;
     height: var(--shadcn-control-height) !important;
     padding: 0.5rem 0.625rem !important;
+}
+
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-input.mud-input-underline:not(:has(textarea)) {
+    box-sizing: border-box;
+    height: var(--shadcn-control-height);
+    min-height: var(--shadcn-control-height);
+    border: 1px solid var(--shadcn-input);
+    border-radius: var(--shadcn-radius-md);
+    background: var(--shadcn-background);
+}
+
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-input.mud-input-underline:has(textarea) {
+    box-sizing: border-box;
+    border: 1px solid var(--shadcn-input);
+    border-radius: var(--shadcn-radius-md);
+    background: var(--shadcn-background);
+}
+
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-input.mud-input-underline > :where(input.mud-input-root, textarea.mud-input-root) {
+    box-sizing: border-box;
+    padding: 0.5rem 0.625rem;
 }
 
 :where(.shadcn-scope, .shadcn-overlay-scope) .mud-input.mud-input-outlined .mud-input-outlined-border,
@@ -220,11 +241,13 @@
 }
 
 :where(.shadcn-scope, .shadcn-overlay-scope) .mud-input.mud-input-underline::before {
-    border-bottom-color: var(--shadcn-input);
+    content: none;
+    border: 0;
 }
 
 :where(.shadcn-scope, .shadcn-overlay-scope) .mud-input.mud-input-underline::after {
-    border-bottom-color: var(--shadcn-primary);
+    content: none;
+    border: 0;
 }
 
 :where(.shadcn-scope, .shadcn-overlay-scope) :where(.mud-input-label, .mud-input-label-inputcontrol, .mud-input-adornment, .mud-input-helper-text, .mud-form-helper-text) {

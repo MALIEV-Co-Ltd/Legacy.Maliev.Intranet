@@ -1,5 +1,6 @@
 using Maliev.ShadcnBlazor.BrowserTests.Infrastructure;
 using Microsoft.Playwright;
+using System.Text.Json;
 
 namespace Maliev.ShadcnBlazor.BrowserTests;
 
@@ -188,6 +189,74 @@ public sealed class MudInventoryBrowserTests(ShowcaseServerFixture server, Playw
 
         Assert.Equal("32px", await page.GetByTestId("button-small")
             .EvaluateAsync<string>("element => getComputedStyle(element).height"));
+    }
+
+    [Fact]
+    public async Task InventoryNormalizesEveryFormVariantToShadcnFieldGeometry()
+    {
+        await using var context = await playwright.Browser.NewContextAsync(new()
+        {
+            ViewportSize = new() { Width = 1440, Height = 1000 },
+            DeviceScaleFactor = 1
+        });
+        var page = await context.NewPageAsync();
+        await page.GotoAsync(new Uri(server.BaseUri, "/components/mud-inventory").ToString());
+        await page.GetByTestId("mud-inventory-fixture").WaitForAsync();
+
+        foreach (var label in new[] { "Email", "Quantity", "Material", "Delivery date" })
+        {
+            var control = page.Locator(".mud-input-control").Filter(new() { HasText = label }).First;
+            var geometry = await control.EvaluateAsync<JsonElement>("""
+                element => {
+                    const label = element.querySelector('.mud-input-label');
+                    const input = element.querySelector('.mud-input');
+                    const labelRect = label.getBoundingClientRect();
+                    const inputRect = input.getBoundingClientRect();
+                    const style = getComputedStyle(input);
+                    const visibleBorder = input.querySelector('.mud-input-outlined-border') ?? input;
+                    const borderStyle = getComputedStyle(visibleBorder);
+                    const before = getComputedStyle(input, '::before');
+                    const after = getComputedStyle(input, '::after');
+                    return {
+                        labelPosition: getComputedStyle(label).position,
+                        labelTransform: getComputedStyle(label).transform,
+                        labelBottom: labelRect.bottom,
+                        inputTop: inputRect.top,
+                        inputHeight: inputRect.height,
+                        borderTopWidth: borderStyle.borderTopWidth,
+                        borderBottomWidth: borderStyle.borderBottomWidth,
+                        borderRadius: style.borderRadius,
+                        beforeBorderBottomWidth: before.borderBottomWidth,
+                        afterBorderBottomWidth: after.borderBottomWidth
+                    };
+                }
+                """);
+
+            Assert.Equal("static", geometry.GetProperty("labelPosition").GetString());
+            Assert.Equal("none", geometry.GetProperty("labelTransform").GetString());
+            Assert.True(
+                geometry.GetProperty("labelBottom").GetDouble() <= geometry.GetProperty("inputTop").GetDouble() - 6d,
+                $"Expected the {label} label to sit above its control without overlap.");
+            Assert.Equal(36d, geometry.GetProperty("inputHeight").GetDouble(), precision: 1);
+            Assert.Equal("1px", geometry.GetProperty("borderTopWidth").GetString());
+            Assert.Equal("1px", geometry.GetProperty("borderBottomWidth").GetString());
+            Assert.NotEqual("0px", geometry.GetProperty("borderRadius").GetString());
+            Assert.Equal("0px", geometry.GetProperty("beforeBorderBottomWidth").GetString());
+            Assert.Equal("0px", geometry.GetProperty("afterBorderBottomWidth").GetString());
+        }
+
+        var dateInput = page.GetByLabel("Delivery date", new() { Exact = true });
+        var dateAdornment = dateInput.Locator("xpath=ancestor::*[contains(@class,'mud-input')][1]")
+            .Locator(".mud-input-adornment");
+        Assert.True(await dateAdornment.EvaluateAsync<bool>("""
+            element => {
+                const input = element.closest('.mud-input').getBoundingClientRect();
+                const adornment = element.getBoundingClientRect();
+                return adornment.left >= input.left
+                    && adornment.right <= input.right
+                    && Math.abs((adornment.top + adornment.height / 2) - (input.top + input.height / 2)) <= 1;
+            }
+            """));
     }
 
     [Fact]
@@ -413,4 +482,5 @@ public sealed class MudInventoryBrowserTests(ShowcaseServerFixture server, Playw
         var resolved = await ResolveCssColorAsync(page, cssValue);
         return await page.EvaluateAsync<string>("value => window.__normalizeShadcnColor(value)", resolved);
     }
+
 }
