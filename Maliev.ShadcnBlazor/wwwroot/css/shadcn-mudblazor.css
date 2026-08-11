@@ -424,6 +424,15 @@
         min-height: 2.75rem;
     }
 
+    :where(.shadcn-scope, .shadcn-overlay-scope) .mud-input:not(:has(textarea)) {
+        height: 2.75rem;
+        min-height: 2.75rem;
+    }
+
+    :where(.shadcn-scope, .shadcn-overlay-scope) input.mud-input-root {
+        height: 2.75rem !important;
+    }
+
     :where(.shadcn-scope, .shadcn-overlay-scope) .mud-input-adornment .mud-icon-button-root,
     :where(.shadcn-scope, .shadcn-overlay-scope) .mud-input-clear-button {
         min-width: 2.75rem;
@@ -446,6 +455,15 @@
 
     :where(.shadcn-scope, .shadcn-overlay-scope) .mud-input-control {
         min-height: 2.75rem;
+    }
+
+    :where(.shadcn-scope, .shadcn-overlay-scope) .mud-input:not(:has(textarea)) {
+        height: 2.75rem;
+        min-height: 2.75rem;
+    }
+
+    :where(.shadcn-scope, .shadcn-overlay-scope) input.mud-input-root {
+        height: 2.75rem !important;
     }
 }
 
