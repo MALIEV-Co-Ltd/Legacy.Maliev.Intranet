@@ -50,6 +50,35 @@ public sealed class MudInventoryBrowserTests(ShowcaseServerFixture server, Playw
             "element => getComputedStyle(element.closest('.mud-input')).boxShadow"));
         Assert.Equal("1px", await emailInput.EvaluateAsync<string>(
             "element => getComputedStyle(element.closest('.mud-input-control').querySelector('.mud-input-outlined-border')).borderWidth"));
+        Assert.Equal("36px", await emailInput.EvaluateAsync<string>(
+            "element => getComputedStyle(element.closest('.mud-input')).height"));
+        Assert.Equal("36px", await emailInput.EvaluateAsync<string>(
+            "element => getComputedStyle(element).height"));
+        Assert.Equal(36, await emailInput.EvaluateAsync<double>(
+            "element => element.getBoundingClientRect().height"));
+        Assert.Equal("none", await emailInput.EvaluateAsync<string>("""
+            element => getComputedStyle(
+                element.closest('.mud-input-control').querySelector('.mud-input-label'))
+                .transform
+            """));
+        Assert.Equal("0px", await emailInput.EvaluateAsync<string>("""
+            element => getComputedStyle(
+                element.closest('.mud-input-control').querySelector('.mud-input-label'))
+                .paddingInlineStart
+            """));
+        Assert.True(await emailInput.EvaluateAsync<bool>("""
+            element => {
+                const control = element.closest('.mud-input-control');
+                const input = element.closest('.mud-input').getBoundingClientRect();
+                const label = control.querySelector('.mud-input-label').getBoundingClientRect();
+                return label.bottom <= input.top - 6;
+            }
+            """));
+        Assert.Equal(0, await emailInput.EvaluateAsync<double>("""
+            element => element.closest('.mud-input-control')
+                .querySelector('.mud-input-outlined-border > legend')
+                .getBoundingClientRect().width
+            """));
 
         await page.GetByLabel("Invalid", new() { Exact = true }).FocusAsync();
         var invalidInput = page.GetByLabel("Invalid", new() { Exact = true });

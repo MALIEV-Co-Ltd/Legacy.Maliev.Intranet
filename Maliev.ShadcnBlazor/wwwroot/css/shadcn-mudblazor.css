@@ -164,11 +164,53 @@
     line-height: 1.25rem;
 }
 
+/* Shadcn fields keep labels outside the control instead of cutting a Mud notch through the border. */
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-input-control.mud-input-outlined-with-label > .mud-input-control-input-container {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-input-control.mud-input-outlined-with-label > .mud-input-control-input-container > .mud-input-label {
+    position: static;
+    order: -1;
+    max-width: 100% !important;
+    padding: 0 !important;
+    color: var(--shadcn-foreground);
+    font-size: 0.875rem;
+    font-weight: 500;
+    line-height: 1.25rem;
+    transform: none !important;
+}
+
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-input-control.mud-input-outlined-with-label > .mud-input-control-input-container > .mud-input-label.mud-input-error {
+    color: var(--shadcn-destructive);
+}
+
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-input.mud-input-outlined:has(> input.mud-input-root-outlined) {
+    height: var(--shadcn-control-height);
+    min-height: var(--shadcn-control-height);
+}
+
+:where(.shadcn-scope, .shadcn-overlay-scope) input.mud-input-root-outlined {
+    box-sizing: border-box !important;
+    height: var(--shadcn-control-height) !important;
+    padding: 0.5rem 0.625rem !important;
+}
+
 :where(.shadcn-scope, .shadcn-overlay-scope) .mud-input.mud-input-outlined .mud-input-outlined-border,
 :where(.shadcn-scope, .shadcn-overlay-scope) .mud-input.mud-input-outlined:focus-within .mud-input-outlined-border {
     border-width: 1px;
     border-color: var(--shadcn-input);
     border-radius: var(--shadcn-radius-md);
+}
+
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-input.mud-input-outlined .mud-input-outlined-border > legend {
+    display: none;
+    width: 0;
+    min-width: 0;
+    max-width: 0;
+    padding: 0;
 }
 
 :where(.shadcn-scope, .shadcn-overlay-scope) .mud-input.mud-input-filled {
@@ -188,6 +230,11 @@
 :where(.shadcn-scope, .shadcn-overlay-scope) :where(.mud-input-label, .mud-input-label-inputcontrol, .mud-input-adornment, .mud-input-helper-text, .mud-form-helper-text) {
     color: var(--shadcn-muted-foreground);
     font-size: 0.75rem;
+}
+
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-input-control-helper-container {
+    margin-top: 0.25rem;
+    padding-inline: 0;
 }
 
 :where(.shadcn-scope, .shadcn-overlay-scope) :where(.mud-input-root, .mud-input-slot, .mud-input-root input, .mud-input-root textarea, .mud-select-input) {
