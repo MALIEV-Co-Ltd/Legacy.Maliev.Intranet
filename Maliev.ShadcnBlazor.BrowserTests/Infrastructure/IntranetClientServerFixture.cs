@@ -14,6 +14,12 @@ public sealed class IntranetClientServerFixture : IAsyncLifetime
     private Task? _standardOutputDrain;
     private Task? _standardErrorDrain;
 
+#if DEBUG
+    internal const string BuildConfiguration = "Debug";
+#else
+    internal const string BuildConfiguration = "Release";
+#endif
+
     public Uri BaseUri { get; private set; } = null!;
 
     public async Task InitializeAsync()
@@ -21,28 +27,74 @@ public sealed class IntranetClientServerFixture : IAsyncLifetime
         var root = FindRoot();
         var project = Path.Combine(root, "Legacy.Maliev.Intranet.Client", "Legacy.Maliev.Intranet.Client.csproj");
         BaseUri = SelectBaseUri();
-        StartHost(root, project);
-        await WaitForReadinessAsync();
+        try
+        {
+            await StartAndWaitForReadinessAsync(
+                () => StartHost(root, project),
+                _ => WaitForReadinessAsync(),
+                StopHostAsync);
+        }
+        catch
+        {
+            // StartHost can fail after Process.Start succeeds (for example while attaching
+            // redirected diagnostics). Always tear down that exact process before rethrowing.
+            if (_process is not null)
+                await StopHostAsync(_process);
+            throw;
+        }
     }
 
-    public Task DisposeAsync() => StopHostAsync();
+    public Task DisposeAsync() => StopHostAsync(_process);
 
-    private void StartHost(string root, string project)
+    internal static async Task<TProcess> StartAndWaitForReadinessAsync<TProcess>(
+        Func<TProcess> start,
+        Func<TProcess, Task> waitForReadiness,
+        Func<TProcess, Task> stop)
     {
-        _process = Process.Start(new ProcessStartInfo("dotnet")
+        var process = start();
+        try
+        {
+            await waitForReadiness(process);
+            return process;
+        }
+        catch
+        {
+            await stop(process);
+            throw;
+        }
+    }
+
+    internal static ProcessStartInfo CreateStartInfo(string root, string project, Uri baseUri, string configuration)
+    {
+        var startInfo = new ProcessStartInfo("dotnet")
         {
             WorkingDirectory = root,
-            Arguments = $"run --project \"{project}\" -c Release --no-build --urls {BaseUri}",
             RedirectStandardOutput = true,
             RedirectStandardError = true,
             UseShellExecute = false,
             CreateNoWindow = true
-        }) ?? throw new InvalidOperationException("Could not start the production Intranet client.");
+        };
+        startInfo.ArgumentList.Add("run");
+        startInfo.ArgumentList.Add("--project");
+        startInfo.ArgumentList.Add(project);
+        startInfo.ArgumentList.Add("-c");
+        startInfo.ArgumentList.Add(configuration);
+        startInfo.ArgumentList.Add("--no-build");
+        startInfo.ArgumentList.Add("--urls");
+        startInfo.ArgumentList.Add(baseUri.AbsoluteUri);
+        return startInfo;
+    }
+
+    private Process StartHost(string root, string project)
+    {
+        _process = Process.Start(CreateStartInfo(root, project, BaseUri, BuildConfiguration))
+            ?? throw new InvalidOperationException("Could not start the production Intranet client.");
 
         _standardOutput = new BoundedDiagnostics(MaximumDiagnosticCharacters);
         _standardError = new BoundedDiagnostics(MaximumDiagnosticCharacters);
         _standardOutputDrain = DrainAsync(_process.StandardOutput, _standardOutput);
         _standardErrorDrain = DrainAsync(_process.StandardError, _standardError);
+        return _process;
     }
 
     private async Task WaitForReadinessAsync()
@@ -73,9 +125,8 @@ public sealed class IntranetClientServerFixture : IAsyncLifetime
         throw new TimeoutException($"Production Intranet client did not become ready at {BaseUri}. {FormatDiagnostics()}");
     }
 
-    private async Task StopHostAsync()
+    private async Task StopHostAsync(Process? process)
     {
-        var process = _process;
         try
         {
             if (process is not null)
