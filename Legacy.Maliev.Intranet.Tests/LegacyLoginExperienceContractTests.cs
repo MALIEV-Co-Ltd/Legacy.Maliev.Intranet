@@ -60,7 +60,7 @@ public sealed class LegacyLoginExperienceContractTests
 
         Assert.Contains(".legacy-login-card { width: min(100%, 26.25rem); min-width: 0; padding: 2rem;", css, StringComparison.Ordinal);
         Assert.Contains(".legacy-login-error { margin-bottom: 1rem; padding: .75rem 1rem;", css, StringComparison.Ordinal);
-        Assert.Contains(".legacy-login-divider { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: .75rem; margin: 1rem 0;", css, StringComparison.Ordinal);
+        Assert.Contains(".legacy-login-divider { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: .75rem; margin: 1.5rem 0;", css, StringComparison.Ordinal);
         Assert.Contains(".legacy-login-email-summary { display: flex; min-height: 2.5rem;", css, StringComparison.Ordinal);
         Assert.Contains(".legacy-login-title { display: flex; align-items: center; flex-wrap: wrap; gap: .5rem;", css, StringComparison.Ordinal);
         Assert.Contains(".legacy-login-email-summary { display: flex; min-height: 2.5rem; align-items: center; justify-content: space-between; gap: .75rem; padding-inline: .75rem;", css, StringComparison.Ordinal);
@@ -172,6 +172,35 @@ public sealed class LegacyLoginExperienceContractTests
             "Legacy.Maliev.Intranet.Client",
             "Pages",
             "Login.razor")), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void LoginClient_UsesAccessibleContrastSpacingAndTouchContracts()
+    {
+        var root = FindRepositoryRoot();
+        var css = File.ReadAllText(Path.Combine(root, "Legacy.Maliev.Intranet.Client", "wwwroot", "css", "app.css"));
+
+        Assert.Contains(".legacy-login-form { display: grid; gap: 1rem; }", css, StringComparison.Ordinal);
+        Assert.Contains(".legacy-login-footer-note { margin: 1rem 0 0;", css, StringComparison.Ordinal);
+        Assert.Contains("background: var(--shadcn-border)", css, StringComparison.Ordinal);
+        Assert.Contains("min-height: 2.75rem", css, StringComparison.Ordinal);
+        Assert.Contains("text-decoration: underline", css, StringComparison.Ordinal);
+        Assert.Contains("color: var(--shadcn-muted-foreground)", css, StringComparison.Ordinal);
+        Assert.DoesNotContain("opacity: .5", ExtractLoginCss(css), StringComparison.Ordinal);
+    }
+
+    private static string ExtractLoginCss(string css)
+    {
+        const string startMarker = ".legacy-login-page";
+        const string endMarker = "@media (forced-colors: active) { .legacy-login-card { border: 1px solid CanvasText; } }";
+
+        var start = css.IndexOf(startMarker, StringComparison.Ordinal);
+        var end = css.IndexOf(endMarker, start, StringComparison.Ordinal);
+
+        Assert.True(start >= 0, "The login CSS start marker was not found.");
+        Assert.True(end >= start, "The login CSS forced-colors marker was not found.");
+
+        return css[start..(end + endMarker.Length)];
     }
 
     private static string FindRepositoryRoot()
