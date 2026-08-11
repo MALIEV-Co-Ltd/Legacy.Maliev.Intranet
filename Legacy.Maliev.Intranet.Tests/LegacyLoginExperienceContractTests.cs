@@ -3,6 +3,28 @@ namespace Legacy.Maliev.Intranet.Tests;
 public sealed class LegacyLoginExperienceContractTests
 {
     [Fact]
+    public void LoginClient_OwnsTheViewportWithResponsiveBrandAndAuthenticationRegions()
+    {
+        var root = FindRepositoryRoot();
+        var login = File.ReadAllText(Path.Combine(root, "Legacy.Maliev.Intranet.Client", "Pages", "Login.razor"));
+        var css = File.ReadAllText(Path.Combine(root, "Legacy.Maliev.Intranet.Client", "wwwroot", "css", "app.css"));
+
+        Assert.Contains("legacy-login-shell", login, StringComparison.Ordinal);
+        Assert.Contains("legacy-login-brand-panel", login, StringComparison.Ordinal);
+        Assert.Contains("legacy-login-auth-panel", login, StringComparison.Ordinal);
+        Assert.Contains("<h1>@Text[\"Secure access to your work\"]</h1>", login, StringComparison.Ordinal);
+        Assert.DoesNotContain("legacy-login-eyebrow", login, StringComparison.Ordinal);
+        Assert.True(login.IndexOf("legacy-login-brand-panel", StringComparison.Ordinal) < login.IndexOf("legacy-login-auth-panel", StringComparison.Ordinal));
+        Assert.Equal(1, login.Split("href=\"https://www.maliev.com\"", StringSplitOptions.None).Length - 1);
+        Assert.Contains("place-items: stretch", css, StringComparison.Ordinal);
+        Assert.Contains(".legacy-login-page { width: 100%;", css, StringComparison.Ordinal);
+        Assert.Contains("grid-template-columns: minmax(0, 44%) minmax(0, 56%)", css, StringComparison.Ordinal);
+        Assert.Contains("@media (max-width: 959px)", css, StringComparison.Ordinal);
+        Assert.Contains("@media (max-width: 640px)", css, StringComparison.Ordinal);
+        Assert.Contains(".legacy-login-main { padding: 1.125rem 1rem; }", css, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void LoginClient_PreservesCurrentGatewayFlowAndSameOriginAuthBoundary()
     {
         var root = FindRepositoryRoot();

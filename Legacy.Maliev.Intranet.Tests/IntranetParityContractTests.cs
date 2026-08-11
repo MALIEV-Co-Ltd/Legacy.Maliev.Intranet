@@ -1,7 +1,29 @@
+using System.Xml.Linq;
+
 namespace Legacy.Maliev.Intranet.Tests;
 
 public sealed class IntranetParityContractTests
 {
+    [Fact]
+    public void Shell_LogosShareCanonicalVisibleGeometry()
+    {
+        var root = FindRoot();
+        var black = XDocument.Load(Path.Combine(root, "Legacy.Maliev.Intranet.Client", "wwwroot", "images", "MALIEV_BLACK.svg"));
+        var white = XDocument.Load(Path.Combine(root, "Legacy.Maliev.Intranet.Client", "wwwroot", "images", "MALIEV_WHITE.svg"));
+        XNamespace svg = "http://www.w3.org/2000/svg";
+        var blackTransform = black.Descendants(svg + "g").Select(group => group.Attribute("transform")?.Value).FirstOrDefault(transform => transform is not null);
+        var whiteTransform = white.Descendants(svg + "g").Select(group => group.Attribute("transform")?.Value).FirstOrDefault(transform => transform is not null);
+        var blackPath = black.Descendants(svg + "path").Single();
+        var whitePath = white.Descendants(svg + "path").Single();
+
+        Assert.Equal(black.Root!.Attribute("viewBox")!.Value, white.Root!.Attribute("viewBox")!.Value);
+        Assert.NotNull(blackTransform);
+        Assert.NotNull(whiteTransform);
+        Assert.Equal(blackTransform, whiteTransform);
+        Assert.Equal(blackPath.Attribute("d")!.Value, whitePath.Attribute("d")!.Value);
+        Assert.Equal("#ffffff", whitePath.Attribute("fill")!.Value);
+    }
+
     [Fact]
     public void Shell_UsesTheWorkspaceNavigationAndResponsiveMobileSurface()
     {

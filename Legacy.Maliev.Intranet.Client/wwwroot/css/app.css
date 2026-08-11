@@ -6,7 +6,7 @@ html, body { margin: 0; min-height: 100%; font-family: var(--maliev-font-sans); 
 .legacy-page-container { width: min(92.5rem, 100%); max-width: 100%; min-width: 0; margin: 0 auto; padding: clamp(1rem, 2vw, 2rem); }
 .legacy-navigation-backdrop { position: fixed; inset: 0; z-index: 29; }
 .visually-hidden { position: absolute !important; width: 1px !important; height: 1px !important; padding: 0 !important; margin: -1px !important; overflow: hidden !important; clip: rect(0,0,0,0) !important; white-space: nowrap !important; }
-.legacy-empty-layout { display: grid; min-height: 100dvh; place-items: center; padding: 1rem; }
+.legacy-empty-layout { display: grid; min-height: 100dvh; place-items: stretch; padding: 0; }
 .legacy-skip-link { position: fixed; top: .5rem; left: .5rem; z-index: 100; padding: .5rem .75rem; transform: translateY(-180%); transition: transform .15s ease; }
 .legacy-skip-link:focus { transform: translateY(0); }
 .dashboard-card { height: 100%; }
@@ -24,15 +24,21 @@ html, body { margin: 0; min-height: 100%; font-family: var(--maliev-font-sans); 
 .legacy-logo-image--dark { display: none !important; }
 :root[data-maliev-theme="dark"] .legacy-logo-image--light { display: none !important; }
 :root[data-maliev-theme="dark"] .legacy-logo-image--dark { display: block !important; }
-.legacy-login-page { display: flex; min-height: 100dvh; flex-direction: column; overflow: auto; background: var(--shadcn-background); color: var(--shadcn-foreground); }
-.legacy-login-header, .legacy-login-footer { padding: .875rem 1.25rem; }
-.legacy-login-header-content, .legacy-login-footer { width: min(100%, 67.5rem); margin: 0 auto; }
-.legacy-login-header-content { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
-.legacy-login-header-actions { display: flex; align-items: center; gap: .5rem; }
-.legacy-login-brand-image { display: block; width: auto; max-height: 1.375rem; }
+.legacy-login-page { width: 100%; min-height: 100dvh; background: var(--shadcn-background); color: var(--shadcn-foreground); }
+.legacy-login-shell { display: grid; min-height: 100dvh; grid-template-columns: minmax(0, 44%) minmax(0, 56%); }
+:root { --legacy-login-brand-background: var(--shadcn-foreground); --legacy-login-brand-foreground: var(--shadcn-background); }
+:root[data-maliev-theme="dark"] { --legacy-login-brand-background: var(--shadcn-card); --legacy-login-brand-foreground: var(--shadcn-card-foreground); }
+.legacy-login-brand-panel { display: flex; min-width: 0; flex-direction: column; justify-content: space-between; padding: clamp(2rem, 5vw, 5rem); background: var(--legacy-login-brand-background); color: var(--legacy-login-brand-foreground); }
+.legacy-login-brand { display: inline-flex; width: fit-content; }
+.legacy-login-brand-image { display: block; width: auto; max-width: min(100%, 17.5rem); height: auto; max-height: 2rem; }
+.legacy-login-brand-copy { max-width: 30rem; }
+.legacy-login-brand-copy h1 { margin: 0; font-size: clamp(2rem, 4vw, 4.5rem); line-height: 1; letter-spacing: -.03em; }
+.legacy-login-brand-copy p { max-width: 38ch; margin: 1rem 0 0; color: currentColor; opacity: .78; }
+.legacy-login-auth-panel { display: grid; min-width: 0; grid-template-rows: auto 1fr auto; }
+.legacy-login-utilities { display: flex; align-items: center; justify-content: flex-end; gap: .5rem; padding: 1rem clamp(1rem, 3vw, 2rem); }
 .legacy-login-theme-toggle { display: inline-grid; width: 2.75rem; height: 2.75rem; place-items: center; padding: 0; }
-.legacy-login-main { display: grid; min-height: 0; flex: 1 1 auto; place-items: center; padding: 2rem 1rem; }
-.legacy-login-card { width: min(100%, 26.25rem); padding: 1.875rem; border: 1px solid var(--shadcn-border); border-radius: var(--shadcn-radius-lg); background: var(--shadcn-card); color: var(--shadcn-card-foreground); box-shadow: var(--shadcn-shadow-md); }
+.legacy-login-main { display: grid; min-width: 0; min-height: 0; place-items: center; padding: clamp(1rem, 4vw, 3rem); }
+.legacy-login-card { width: min(100%, 26.25rem); min-width: 0; padding: 1.875rem; border: 1px solid var(--shadcn-border); border-radius: var(--shadcn-radius-lg); background: var(--shadcn-card); color: var(--shadcn-card-foreground); box-shadow: var(--shadcn-shadow-md); }
 .legacy-login-heading { margin-bottom: 1.5rem; }
 .legacy-login-title { display: flex; align-items: center; flex-wrap: wrap; gap: .35em; margin: 0; line-height: 1.15; }
 .legacy-login-title-logo { display: inline-block; width: auto; height: .76em; }
@@ -48,8 +54,9 @@ html, body { margin: 0; min-height: 100%; font-family: var(--maliev-font-sans); 
 .legacy-login-email-summary { display: flex; min-height: 2.375rem; align-items: center; justify-content: space-between; gap: .75rem; padding-inline: .625rem; }
 .legacy-login-email-summary span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .legacy-login-change { flex: 0 0 auto; padding: .25rem; }
-.legacy-login-footer { display: flex; align-items: center; justify-content: space-between; gap: .75rem; }
+.legacy-login-footer { display: flex; align-items: center; justify-content: space-between; gap: .75rem; padding: 1rem clamp(1rem, 3vw, 2rem) calc(1rem + env(safe-area-inset-bottom)); color: var(--shadcn-muted-foreground); }
 @media (max-width: 1180px) { .legacy-workspace-shell { width: 100%; margin-left: 0; } .legacy-page-container { padding-bottom: calc(1rem + env(safe-area-inset-bottom)); } }
-@media (max-width: 640px) { .legacy-page-container { padding: 1rem .75rem calc(1rem + env(safe-area-inset-bottom)); } .legacy-login-header, .legacy-login-footer { padding-inline: .75rem; } .legacy-login-main { padding: 1.125rem .75rem; } .legacy-login-card { padding: 1.375rem; } .legacy-login-footer { flex-direction: column; text-align: center; } }
+@media (max-width: 959px) { .legacy-login-shell { grid-template-columns: minmax(15rem, 36%) minmax(0, 64%); } }
+@media (max-width: 640px) { .legacy-page-container { padding: 1rem .75rem calc(1rem + env(safe-area-inset-bottom)); } .legacy-login-shell { display: flex; min-height: 100dvh; flex-direction: column; } .legacy-login-brand-panel { min-height: auto; padding: 1rem; } .legacy-login-brand-copy { display: none; } .legacy-login-auth-panel { flex: 1 1 auto; } .legacy-login-main { padding: 1.125rem 1rem; } .legacy-login-card { padding: 1.375rem; } .legacy-login-footer { flex-direction: column; text-align: center; } }
 @media (prefers-reduced-motion: reduce) { .legacy-login-page { transition: none; } }
 @media (forced-colors: active) { .legacy-login-card { border: 1px solid CanvasText; } }

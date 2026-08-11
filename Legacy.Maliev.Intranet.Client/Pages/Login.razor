@@ -14,33 +14,36 @@
 <PageTitle>@Text["PageTitle"]</PageTitle>
 
 <div class="legacy-login-page @(ThemeService.IsDarkMode ? "dark-theme" : string.Empty)">
-    <header class="legacy-login-header">
-        <div class="legacy-login-header-content">
+    <div class="legacy-login-shell">
+        <aside class="legacy-login-brand-panel" aria-label="@Text["Employee gateway"]">
             <a class="legacy-login-brand" href="/" aria-label="@Text["HomeLabel"]">
-                <img src="images/MALIEV_BLACK.svg" alt="MALIEV" class="legacy-login-brand-image legacy-logo-image--light" />
-                <img src="images/MALIEV_WHITE.svg" alt="" aria-hidden="true" class="legacy-login-brand-image legacy-logo-image--dark" />
+                <img src="images/MALIEV_WHITE.svg" alt="MALIEV" class="legacy-login-brand-image" />
             </a>
-            <div class="legacy-login-header-actions">
+            <div class="legacy-login-brand-copy">
+                <h1>@Text["Secure access to your work"]</h1>
+                <p>@Text["Sign in with your MALIEV work account to continue."]</p>
+            </div>
+        </aside>
+        <section class="legacy-login-auth-panel">
+            <header class="legacy-login-utilities">
                 <LegacyLanguageSelector />
                 <MudIconButton ButtonType="ButtonType.Button" Class="legacy-login-theme-toggle"
                                Icon="@(ThemeService.IsDarkMode ? Icons.Material.Outlined.LightMode : Icons.Material.Outlined.DarkMode)"
                                Size="Size.Small" OnClick="ToggleThemeAsync"
                                aria-label="@ThemeToggleLabel" title="@ThemeToggleLabel" />
-            </div>
-        </div>
-    </header>
+            </header>
 
-    <main class="legacy-login-main">
-        @if (!_isCheckingAuth)
-        {
-            <section class="legacy-login-card" aria-labelledby="legacy-login-title">
-                <div class="legacy-login-heading">
-                    <h1 id="legacy-login-title" class="legacy-login-title">
-                        <span>@Text["Sign in to"]</span>
-                        <img src="images/MALIEV_BLACK.svg" alt="" aria-hidden="true" class="legacy-login-title-logo legacy-logo-image--light" />
-                        <img src="images/MALIEV_WHITE.svg" alt="" aria-hidden="true" class="legacy-login-title-logo legacy-logo-image--dark" />
-                    </h1>
-                </div>
+            <main class="legacy-login-main" id="legacy-login-content">
+                @if (!_isCheckingAuth)
+                {
+                    <section class="legacy-login-card" aria-labelledby="legacy-login-title">
+                        <div class="legacy-login-heading">
+                            <h2 id="legacy-login-title" class="legacy-login-title">
+                                <span>@Text["Sign in to"]</span>
+                                <img src="images/MALIEV_BLACK.svg" alt="" aria-hidden="true" class="legacy-login-title-logo legacy-logo-image--light" />
+                                <img src="images/MALIEV_WHITE.svg" alt="" aria-hidden="true" class="legacy-login-title-logo legacy-logo-image--dark" />
+                            </h2>
+                        </div>
 
                 @if (!string.IsNullOrWhiteSpace(_errorMessage))
                 {
@@ -112,18 +115,15 @@
                     </MudForm>
                 }
 
-                <p class="legacy-login-footer-note">
-                    @Text["Not an employee? Visit our main page at"]
-                    <a href="https://www.maliev.com" target="_blank" rel="noreferrer">www.maliev.com</a>
-                </p>
-            </section>
-        }
-    </main>
-
-    <footer class="legacy-login-footer">
-        <span>MALIEV CO., LTD.</span>
-        <a href="https://www.maliev.com" target="_blank" rel="noreferrer">www.maliev.com</a>
-    </footer>
+                    </section>
+                }
+            </main>
+            <footer class="legacy-login-footer">
+                <span>MALIEV CO., LTD.</span>
+                <a href="https://www.maliev.com" target="_blank" rel="noreferrer">www.maliev.com</a>
+            </footer>
+        </section>
+    </div>
 </div>
 
 @code {
