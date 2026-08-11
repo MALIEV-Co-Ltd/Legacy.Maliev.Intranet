@@ -221,6 +221,8 @@ public sealed class LegacyLoginExperienceContractTests
         var css = File.ReadAllText(Path.Combine(root, "Legacy.Maliev.Intranet.Client", "wwwroot", "css", "app.css"));
 
         Assert.Contains(".legacy-login-form { display: grid; gap: 1rem; }", css, StringComparison.Ordinal);
+        Assert.Contains(".legacy-login-recovery { margin-top: 1rem;", css, StringComparison.Ordinal);
+        Assert.Contains(".legacy-login-recovery p { margin: 0; }", css, StringComparison.Ordinal);
         Assert.Contains("background: var(--shadcn-border)", css, StringComparison.Ordinal);
         Assert.Contains("min-height: 2.75rem", css, StringComparison.Ordinal);
         Assert.Contains("text-decoration: underline", css, StringComparison.Ordinal);
