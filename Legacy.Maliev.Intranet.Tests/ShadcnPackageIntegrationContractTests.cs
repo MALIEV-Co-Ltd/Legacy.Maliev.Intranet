@@ -15,6 +15,19 @@ public sealed class ShadcnPackageIntegrationContractTests
     }
 
     [Theory]
+    [InlineData("Legacy.Maliev.Intranet.Client", "Legacy.Maliev.Intranet.Client.csproj")]
+    [InlineData("Legacy.Maliev.Intranet.Contracts", "Legacy.Maliev.Intranet.Contracts.csproj")]
+    [InlineData("Maliev.ShadcnBlazor", "Maliev.ShadcnBlazor.csproj")]
+    public void ReleaseWasmProjectsDoNotPublishDebugSymbols(string directory, string projectFile)
+    {
+        var project = Read(directory, projectFile);
+
+        Assert.Contains("Condition=\"'$(Configuration)' == 'Release'\"", project, StringComparison.Ordinal);
+        Assert.Contains("<DebugSymbols>false</DebugSymbols>", project, StringComparison.Ordinal);
+        Assert.Contains("<DebugType>None</DebugType>", project, StringComparison.Ordinal);
+    }
+
+    [Theory]
     [InlineData("MainLayout.razor")]
     [InlineData("EmptyLayout.razor")]
     public void LayoutUsesOneShadcnProviderAndNoLocalMudTheme(string file)
