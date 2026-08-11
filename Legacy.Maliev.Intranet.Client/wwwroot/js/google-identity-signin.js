@@ -11,6 +11,13 @@
         }
     }
 
+    function setAvailability(host, state) {
+        const section = host.closest("[data-google-signin-section]");
+        if (!section) return;
+        section.dataset.googleSigninState = state;
+        host.hidden = state === "unavailable";
+    }
+
     function localizedStatus(host, name, fallback) {
         return host.dataset[name] || fallback;
     }
@@ -66,6 +73,7 @@
 
         host.dataset.googleSigninInitialized = "true";
         try {
+            setAvailability(host, "loading");
             setStatus(host, localizedStatus(host, "statusLoading", "Loading Google sign-in..."));
             const [configuration] = await Promise.all([
                 requestNonce(host.dataset.returnUrl || "/Dashboard"),
@@ -98,9 +106,11 @@
                 logo_alignment: "left",
                 width: Math.max(240, Math.min(360, Math.floor(host.clientWidth || 360)))
             });
+            setAvailability(host, "ready");
             setStatus(host, "");
         } catch {
             host.dataset.googleSigninInitialized = "false";
+            setAvailability(host, "unavailable");
             setStatus(host, localizedStatus(host, "statusUnavailable", "Google sign-in is temporarily unavailable. You can still use your work email."));
         }
     }

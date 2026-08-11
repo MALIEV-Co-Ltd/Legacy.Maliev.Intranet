@@ -1,7 +1,57 @@
+using System.Xml.Linq;
+
 namespace Legacy.Maliev.Intranet.Tests;
 
 public sealed class LegacyLoginExperienceContractTests
 {
+    [Fact]
+    public void LoginClient_ExposesStablePreflightAndHonestGoogleAvailabilityStates()
+    {
+        var root = FindRepositoryRoot();
+        var login = File.ReadAllText(Path.Combine(root, "Legacy.Maliev.Intranet.Client", "Pages", "Login.razor"));
+        var google = File.ReadAllText(Path.Combine(root, "Legacy.Maliev.Intranet.Client", "wwwroot", "js", "google-identity-signin.js"));
+
+        Assert.Contains("legacy-login-loading", login, StringComparison.Ordinal);
+        Assert.Contains("role=\"status\" aria-live=\"polite\"", login, StringComparison.Ordinal);
+        Assert.Contains("data-google-signin-state", login, StringComparison.Ordinal);
+        Assert.Contains("host.hidden = state === \"unavailable\"", google, StringComparison.Ordinal);
+        Assert.Contains("section.dataset.googleSigninState = state", google, StringComparison.Ordinal);
+        Assert.Contains("setAvailability(host, \"ready\")", google, StringComparison.Ordinal);
+        Assert.Contains("setAvailability(host, \"unavailable\")", google, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void LoginClient_LocalizesPreflightAndRecoveryGuidanceInEnglishAndThai()
+    {
+        var root = FindRepositoryRoot();
+        var expectedKeys = new[]
+        {
+            "Employee gateway",
+            "MALIEV employee workspace",
+            "Secure access to your work",
+            "Sign in with your MALIEV work account to continue.",
+            "Checking your employee session...",
+            "Need help accessing your employee account?",
+            "Contact your MALIEV administrator if you cannot access your employee account.",
+        };
+
+        foreach (var resourcePath in new[]
+                 {
+                     Path.Combine(root, "Legacy.Maliev.Intranet.Client", "Pages", "Login.resx"),
+                     Path.Combine(root, "Legacy.Maliev.Intranet.Client", "Pages", "Login.th.resx"),
+                 })
+        {
+            var keys = XDocument.Load(resourcePath).Root!.Elements("data")
+                .Select(data => data.Attribute("name")!.Value)
+                .ToHashSet(StringComparer.Ordinal);
+
+            foreach (var expectedKey in expectedKeys)
+            {
+                Assert.Contains(expectedKey, keys);
+            }
+        }
+    }
+
     [Fact]
     public void LoginClient_UsesFourPixelSpacingCadenceAtAuthenticationBoundaries()
     {

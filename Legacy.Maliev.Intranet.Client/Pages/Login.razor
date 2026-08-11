@@ -34,7 +34,14 @@
             </header>
 
             <main class="legacy-login-main" id="legacy-login-content">
-                @if (!_isCheckingAuth)
+                @if (_isCheckingAuth)
+                {
+                    <section class="legacy-login-card legacy-login-loading" role="status" aria-live="polite" aria-busy="true">
+                        <MudProgressCircular Size="Size.Small" Color="Color.Primary" Indeterminate="true" />
+                        <span>@Text["Checking your employee session..."]</span>
+                    </section>
+                }
+                else
                 {
                     <section class="legacy-login-card" aria-labelledby="legacy-login-title">
                         <div class="legacy-login-heading">
@@ -51,7 +58,7 @@
                               role="alert" aria-live="assertive">@_errorMessage</MudAlert>
                 }
 
-                <div class="legacy-google-signin-section">
+                <div class="legacy-google-signin-section" data-google-signin-section data-google-signin-state="loading">
                     <div @ref="_googleIdentityHost"
                          class="legacy-google-signin-host"
                          data-google-signin-host
@@ -114,6 +121,11 @@
                         </MudButton>
                     </MudForm>
                 }
+
+                <div class="legacy-login-recovery">
+                    <p>@Text["Need help accessing your employee account?"]</p>
+                    <p>@Text["Contact your MALIEV administrator if you cannot access your employee account."]</p>
+                </div>
 
                     </section>
                 }
