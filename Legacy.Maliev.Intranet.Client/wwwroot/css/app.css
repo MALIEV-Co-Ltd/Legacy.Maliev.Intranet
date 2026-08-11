@@ -48,9 +48,9 @@ html, body { margin: 0; min-height: 100%; font-family: var(--maliev-font-sans); 
 .legacy-login-divider { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: .75rem; margin: 1.5rem 0; color: var(--shadcn-muted-foreground); }
 .legacy-login-divider span { height: 1px; background: var(--shadcn-border); }
 .legacy-login-form { display: grid; gap: 1rem; }
+.legacy-login-input { --shadcn-input: var(--shadcn-muted-foreground); --shadcn-ring: var(--shadcn-foreground); --mud-palette-lines-inputs: var(--shadcn-muted-foreground); --mud-palette-primary: var(--shadcn-muted-foreground); }
 .legacy-login-input .mud-input-control, .legacy-login-input .mud-input { width: 100%; }
 .legacy-login-page .legacy-login-input input::placeholder { color: var(--shadcn-muted-foreground); opacity: 1; }
-.legacy-login-page .legacy-login-input .mud-input-outlined-border { border-color: var(--shadcn-input); }
 .legacy-login-primary { display: inline-flex; min-height: 2.75rem; align-items: center; justify-content: center; gap: .5rem; margin-top: .25rem; padding: .75rem 1rem; border: 1px solid transparent; border-radius: var(--shadcn-radius-md); background: var(--shadcn-primary); color: var(--shadcn-primary-foreground); }
 .legacy-login-primary:hover:not(:disabled) { background: var(--shadcn-primary); filter: brightness(0.92); }
 .legacy-login-page .legacy-login-primary:disabled { background: var(--shadcn-muted); color: var(--shadcn-muted-foreground); opacity: 1; }
@@ -60,6 +60,7 @@ html, body { margin: 0; min-height: 100%; font-family: var(--maliev-font-sans); 
 .legacy-login-footer { display: flex; align-items: center; justify-content: space-between; gap: .75rem; padding: 1rem clamp(1rem, 3vw, 2rem) calc(1rem + env(safe-area-inset-bottom)); color: var(--shadcn-muted-foreground); }
 .legacy-login-footer-note { margin: 1rem 0 0; color: var(--shadcn-muted-foreground); }
 .legacy-login-footer a, .legacy-login-footer-note a { text-decoration: underline; text-underline-offset: .2em; }
+.legacy-login-page .legacy-login-brand:focus-visible, .legacy-login-page .legacy-language-selector:focus-within, .legacy-login-page .legacy-login-theme-toggle:focus-visible, .legacy-login-page .legacy-login-primary:focus-visible, .legacy-login-page .legacy-login-change:focus-visible, .legacy-login-page .legacy-login-remember:focus-within, .legacy-login-page .legacy-login-footer a:focus-visible { outline: 3px solid var(--shadcn-muted-foreground); outline-offset: 2px; }
 @media (max-width: 1180px) { .legacy-workspace-shell { width: 100%; margin-left: 0; } .legacy-page-container { padding-bottom: calc(1rem + env(safe-area-inset-bottom)); } }
 @media (max-width: 959px) { .legacy-login-shell { grid-template-columns: minmax(15rem, 36%) minmax(0, 64%); } }
 @media (max-width: 640px) { .legacy-page-container { padding: 1rem .75rem calc(1rem + env(safe-area-inset-bottom)); } .legacy-login-shell { display: flex; min-height: 100dvh; flex-direction: column; } .legacy-login-brand-panel { min-height: auto; padding: 1rem; } .legacy-login-brand { min-height: 2.75rem; align-items: center; } .legacy-login-brand-copy { display: none; } .legacy-login-auth-panel { flex: 1 1 auto; } .legacy-login-utilities .legacy-language-selector, .legacy-login-utilities .legacy-language-select .mud-input-slot, .legacy-login-theme-toggle, .legacy-login-input .mud-input-slot, .legacy-login-primary, .legacy-login-change, .legacy-login-recovery a, .legacy-login-footer a { min-height: 2.75rem; } .legacy-login-main { padding: 1rem; } .legacy-login-card { padding: 1.5rem; } .legacy-login-footer { flex-direction: column; text-align: center; } .legacy-login-footer a { display: inline-flex; align-items: center; } }

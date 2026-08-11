@@ -186,6 +186,9 @@ public sealed class LegacyLoginExperienceContractTests
         Assert.Contains("min-height: 2.75rem", css, StringComparison.Ordinal);
         Assert.Contains("text-decoration: underline", css, StringComparison.Ordinal);
         Assert.Contains("color: var(--shadcn-muted-foreground)", css, StringComparison.Ordinal);
+        Assert.Contains(".legacy-login-input { --shadcn-input: var(--shadcn-muted-foreground); --shadcn-ring: var(--shadcn-foreground); --mud-palette-lines-inputs: var(--shadcn-muted-foreground); --mud-palette-primary: var(--shadcn-muted-foreground); }", css, StringComparison.Ordinal);
+        Assert.Contains(".legacy-login-page .legacy-login-brand:focus-visible,", css, StringComparison.Ordinal);
+        Assert.Contains("outline: 3px solid var(--shadcn-muted-foreground);", css, StringComparison.Ordinal);
         Assert.Contains(".legacy-login-primary, .legacy-login-change, .legacy-login-recovery a, .legacy-login-footer a { min-height: 2.75rem; }", css, StringComparison.Ordinal);
         Assert.DoesNotContain("opacity: .5", ExtractLoginCss(css), StringComparison.Ordinal);
     }
