@@ -106,17 +106,6 @@
     }
 }
 
-@media (min-width: 601px) and (max-width: 1023px) {
-    .customer-shell ::deep .list-toolbar__grid {
-        grid-template-columns: minmax(0, 1fr) minmax(8rem, 0.55fr);
-    }
-
-    .customer-shell ::deep .list-toolbar__grid > .mud-input-control:first-child,
-    .customer-shell ::deep .list-toolbar__actions {
-        grid-column: 1 / -1;
-    }
-}
-
 @media (max-width: 600px) {
     .customer-shell .customers-page-header {
         align-items: stretch;

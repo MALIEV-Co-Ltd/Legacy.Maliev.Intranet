@@ -42,6 +42,9 @@ public sealed class CustomerResponsiveBrowserTests(
         foreach (var width in new[] { 390, 320 })
         {
             await page.SetViewportSizeAsync(width, 844);
+            await page.WaitForFunctionAsync("""
+                () => getComputedStyle(document.querySelector('.customers-table .mud-table-body .mud-table-row .mud-table-cell')).padding === '0px'
+                """);
 
             var populatedRow = page.Locator(".customers-table .mud-table-body .mud-table-row").Nth(0);
             var emptyCompanyRow = page.Locator(".customers-table .mud-table-body .mud-table-row").Nth(1);
@@ -73,6 +76,94 @@ public sealed class CustomerResponsiveBrowserTests(
             await AssertFullValueDisclosureAsync(page, ".customer-company-disclosure", LongCompany);
             await AssertNoDocumentOverflowAsync(page);
         }
+    }
+
+    [Fact]
+    public async Task ProductionCustomerToolbarKeepsSearchPrimaryAndActionsCompactAcrossSupportedWidths()
+    {
+        await using var context = await playwright.Browser.NewContextAsync(new()
+        {
+            ViewportSize = new() { Width = 1280, Height = 900 },
+            DeviceScaleFactor = 1,
+            ReducedMotion = ReducedMotion.Reduce
+        });
+        var page = await context.NewPageAsync();
+        await StubProductionBoundariesAsync(page);
+
+        await page.GotoAsync(new Uri(server.BaseUri, "customers").AbsoluteUri);
+        await page.Locator(".customers-table .mud-table-body .mud-table-row").First.WaitForAsync();
+
+        foreach (var width in new[] { 1280, 768, 390, 320 })
+        {
+            await page.SetViewportSizeAsync(width, 844);
+            var metrics = await page.Locator(".list-toolbar").EvaluateAsync<JsonElement>("""
+                element => {
+                    const bounds = node => {
+                        const rect = node.getBoundingClientRect();
+                        return { x: rect.x, y: rect.y, width: rect.width, height: rect.height };
+                    };
+                    const controls = Array.from(element.querySelectorAll('.mud-input-control'));
+                    const buttons = Array.from(element.querySelectorAll('.list-toolbar__actions .mud-button-root'));
+                    return {
+                        toolbar: bounds(element),
+                        search: bounds(controls[0]),
+                        sort: bounds(controls[1]),
+                        pageSize: bounds(controls[2]),
+                        actions: bounds(element.querySelector('.list-toolbar__actions')),
+                        inputs: controls.map(bounds),
+                        buttons: buttons.map(bounds)
+                    };
+                }
+                """);
+
+            var toolbarHeight = metrics.GetProperty("toolbar").GetProperty("height").GetDouble();
+            var maximumHeight = width >= 1024 ? 100 : width > 600 ? 200 : 250;
+            Assert.True(toolbarHeight <= maximumHeight, metrics.ToString());
+
+            var searchWidth = metrics.GetProperty("search").GetProperty("width").GetDouble();
+            var sortWidth = metrics.GetProperty("sort").GetProperty("width").GetDouble();
+            Assert.True(searchWidth >= sortWidth, metrics.ToString());
+
+            if (width <= 600)
+            {
+                foreach (var input in metrics.GetProperty("inputs").EnumerateArray())
+                    Assert.True(input.GetProperty("height").GetDouble() >= 44, metrics.ToString());
+                foreach (var button in metrics.GetProperty("buttons").EnumerateArray())
+                    Assert.True(button.GetProperty("height").GetDouble() >= 44, metrics.ToString());
+
+                var sortY = metrics.GetProperty("sort").GetProperty("y").GetDouble();
+                var pageSizeY = metrics.GetProperty("pageSize").GetProperty("y").GetDouble();
+                Assert.InRange(Math.Abs(sortY - pageSizeY), 0, 1);
+            }
+
+            await AssertNoDocumentOverflowAsync(page);
+        }
+    }
+
+    [Fact]
+    public async Task ClearingCustomerSearchRestoresTheUnfilteredUrlAndResultsAfterDebounce()
+    {
+        await using var context = await playwright.Browser.NewContextAsync(new()
+        {
+            ViewportSize = new() { Width = 1280, Height = 900 },
+            DeviceScaleFactor = 1,
+            ReducedMotion = ReducedMotion.Reduce
+        });
+        var page = await context.NewPageAsync();
+        await StubProductionBoundariesAsync(page);
+
+        await page.GotoAsync(new Uri(server.BaseUri, "customers").AbsoluteUri);
+        var rows = page.Locator(".customers-table .mud-table-body .mud-table-row");
+        await rows.First.WaitForAsync();
+        Assert.Equal(2, await rows.CountAsync());
+
+        var search = page.Locator(".list-toolbar input").First;
+        await search.FillAsync("Natthapol");
+        await page.WaitForURLAsync(url => url.Contains("search=Natthapol", StringComparison.Ordinal));
+
+        await search.FillAsync(string.Empty);
+        await page.WaitForURLAsync(url => url.Contains("search=&", StringComparison.Ordinal));
+        await page.WaitForFunctionAsync("() => document.querySelectorAll('.customers-table .mud-table-body .mud-table-row').length === 2");
     }
 
     private static async Task StubProductionBoundariesAsync(IPage page)
@@ -123,12 +214,27 @@ public sealed class CustomerResponsiveBrowserTests(
             ContentType = "application/json",
             Body = session
         }));
-        await page.RouteAsync("**/bff/customers?*", route => route.FulfillAsync(new()
+        await page.RouteAsync("**/bff/customers?*", async route =>
         {
-            Status = 200,
-            ContentType = "application/json",
-            Body = customers
-        }));
+            var query = new Uri(route.Request.Url).Query;
+            var body = query.Contains("search=Natthapol", StringComparison.OrdinalIgnoreCase)
+                ? JsonSerializer.Serialize(new
+                {
+                    items = JsonSerializer.Deserialize<JsonElement>(customers).GetProperty("items").EnumerateArray().Take(1).ToArray(),
+                    pageIndex = 1,
+                    totalPages = 1,
+                    totalRecords = 1,
+                    hasNextPage = false,
+                    hasPreviousPage = false
+                })
+                : customers;
+            await route.FulfillAsync(new()
+            {
+                Status = 200,
+                ContentType = "application/json",
+                Body = body
+            });
+        });
     }
 
     private static async Task AssertAtomicAsync(IPage page, string selector, string expectedText)

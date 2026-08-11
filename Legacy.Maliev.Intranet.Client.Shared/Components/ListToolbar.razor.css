@@ -1,17 +1,17 @@
 .list-toolbar {
     box-sizing: border-box;
     margin-bottom: 1rem;
-    padding: 1rem;
+    padding: 0.75rem;
 }
 
 .list-toolbar__grid {
     display: grid;
-    grid-template-columns: minmax(15rem, 1.7fr) minmax(12rem, 1.1fr) minmax(8rem, 0.6fr) auto;
+    grid-template-columns: minmax(12rem, 1.7fr) minmax(10rem, 1fr) minmax(7rem, 0.55fr) auto;
     align-items: end;
     gap: 0.75rem;
 }
 
-.list-toolbar__grid > .mud-input-control {
+.list-toolbar__grid ::deep > .mud-input-control {
     min-width: 0;
     width: 100%;
 }
@@ -24,34 +24,28 @@
     gap: 0.5rem;
 }
 
-@media (max-width: 1200px) {
+@media (min-width: 601px) and (max-width: 900px) {
     .list-toolbar__grid {
-        grid-template-columns: minmax(14rem, 1.5fr) minmax(13rem, 1fr) minmax(8rem, 0.5fr);
-    }
-
-    .list-toolbar__actions {
-        grid-column: 1 / -1;
+        grid-template-columns: minmax(0, 1fr) minmax(10rem, 0.65fr);
     }
 }
 
 @media (max-width: 600px) {
     .list-toolbar__grid {
-        grid-template-columns: minmax(0, 1fr);
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .list-toolbar__grid ::deep > .mud-input-control:first-child {
+        grid-column: 1 / -1;
     }
 
     .list-toolbar__actions {
         display: grid;
-        grid-column: auto;
+        grid-column: 1 / -1;
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
     .list-toolbar__actions ::deep .mud-button-root {
         width: 100%;
-    }
-}
-
-@media (max-width: 420px) {
-    .list-toolbar__actions {
-        grid-template-columns: minmax(0, 1fr);
     }
 }

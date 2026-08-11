@@ -77,7 +77,7 @@ public sealed class OrdersProcurementResponsiveContractTests
         Assert.Contains("public int Size { get; set; } = 25", suppliers, StringComparison.Ordinal);
         Assert.Contains("fallback: 25", suppliers, StringComparison.Ordinal);
         Assert.Contains("@media (max-width: 600px)", toolbarStyles, StringComparison.Ordinal);
-        Assert.Contains("grid-template-columns: minmax(0, 1fr)", toolbarStyles, StringComparison.Ordinal);
+        Assert.Contains("grid-template-columns: repeat(2, minmax(0, 1fr))", toolbarStyles, StringComparison.Ordinal);
         Assert.DoesNotContain("min-height:", toolbarStyles, StringComparison.Ordinal);
         Assert.Contains("min-height: var(--shadcn-control-height)", adapterStyles, StringComparison.Ordinal);
         Assert.Contains("LegacyPresentation.FormatUtcDateTime", purchaseOrders, StringComparison.Ordinal);
