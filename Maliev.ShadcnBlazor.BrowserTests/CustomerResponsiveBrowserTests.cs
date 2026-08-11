@@ -225,7 +225,106 @@ public sealed class CustomerResponsiveBrowserTests(
             Assert.True(button.GetProperty("height").GetDouble() >= 44, geometry.ToString());
             Assert.True(button.GetProperty("scrollWidth").GetDouble() <= button.GetProperty("clientWidth").GetDouble(), geometry.ToString());
         }
+
+        await page.Locator(".list-toolbar .mud-select").First.ClickAsync();
+        var sortOptions = page.Locator(".mud-popover-open .mud-list-item");
+        await sortOptions.First.WaitForAsync();
+        Assert.Equal(new[]
+        {
+            "ลูกค้าใหม่ล่าสุด",
+            "ลูกค้าเก่าสุด",
+            "อัปเดตล่าสุด",
+            "อัปเดตนานที่สุด",
+            "บริษัท ก–ฮ",
+            "บริษัท ฮ–ก",
+            "อีเมล A–Z",
+            "อีเมล Z–A",
+            "ID มากไปน้อย",
+            "ID น้อยไปมาก"
+        }, await sortOptions.AllInnerTextsAsync());
+        await page.Keyboard.PressAsync("Escape");
         await AssertNoDocumentOverflowAsync(page);
+    }
+
+    [Theory]
+    [InlineData(1280)]
+    [InlineData(768)]
+    [InlineData(390)]
+    [InlineData(320)]
+    public async Task CustomerResultsExposeCompactPaginationBeforeAndAfterRecords(int width)
+    {
+        await using var context = await playwright.Browser.NewContextAsync(new()
+        {
+            ViewportSize = new() { Width = width, Height = 844 },
+            DeviceScaleFactor = 1,
+            ReducedMotion = ReducedMotion.Reduce
+        });
+        var page = await context.NewPageAsync();
+        await StubProductionBoundariesAsync(page);
+
+        await page.GotoAsync(new Uri(server.BaseUri, "customers?index=2&size=25").AbsoluteUri);
+        await page.Locator(".customers-table .mud-table-body .mud-table-row").First.WaitForAsync();
+
+        var topPager = page.Locator(".customers-pagination--top");
+        var bottomPager = page.Locator(".customers-pagination--bottom");
+        await topPager.WaitForAsync();
+        await bottomPager.WaitForAsync();
+        Assert.Equal("Page 2 of 4 · 76 records", (await page.Locator(".customers-results-summary").InnerTextAsync()).Trim());
+        Assert.True(await topPager.EvaluateAsync<bool>("element => element.getBoundingClientRect().top < document.querySelector('.customers-table .mud-table-body .mud-table-row').getBoundingClientRect().top"));
+        Assert.True(await bottomPager.EvaluateAsync<bool>("element => element.getBoundingClientRect().top > document.querySelector('.customers-table .mud-table-body .mud-table-row:last-child').getBoundingClientRect().bottom"));
+
+        var topButtons = topPager.GetByRole(AriaRole.Button);
+        Assert.Equal(2, await topButtons.CountAsync());
+        Assert.True(await topButtons.Nth(0).IsEnabledAsync());
+        Assert.True(await topButtons.Nth(1).IsEnabledAsync());
+        await topButtons.Nth(1).ClickAsync();
+        await page.WaitForURLAsync(url => url.Contains("index=3", StringComparison.Ordinal));
+        Assert.Equal("Page 3 of 4 · 76 records", (await page.Locator(".customers-results-summary").InnerTextAsync()).Trim());
+        await topButtons.Nth(1).ClickAsync();
+        await page.WaitForURLAsync(url => url.Contains("index=4", StringComparison.Ordinal));
+        Assert.False(await topButtons.Nth(1).IsEnabledAsync());
+        await AssertNoDocumentOverflowAsync(page);
+    }
+
+    [Fact]
+    public async Task CustomerSortUsesOutcomeLabelsAndSortableHeadersWithoutChangingContractValues()
+    {
+        await using var context = await playwright.Browser.NewContextAsync(new()
+        {
+            ViewportSize = new() { Width = 1280, Height = 900 },
+            DeviceScaleFactor = 1,
+            ReducedMotion = ReducedMotion.Reduce
+        });
+        var page = await context.NewPageAsync();
+        await StubProductionBoundariesAsync(page);
+
+        await page.GotoAsync(new Uri(server.BaseUri, "customers").AbsoluteUri);
+        await page.Locator(".customers-table .mud-table-body .mud-table-row").First.WaitForAsync();
+
+        var sort = page.Locator(".list-toolbar .mud-select").First;
+        await sort.ClickAsync();
+        var options = page.Locator(".mud-popover-open .mud-list-item");
+        await options.First.WaitForAsync();
+        Assert.Equal(new[]
+        {
+            "Newest customers",
+            "Oldest customers",
+            "Recently updated",
+            "Updated longest ago",
+            "Company A–Z",
+            "Company Z–A",
+            "Email A–Z",
+            "Email Z–A",
+            "Highest ID first",
+            "Lowest ID first"
+        }, await options.AllInnerTextsAsync());
+        await page.Keyboard.PressAsync("Escape");
+
+        var emailHeader = page.GetByRole(AriaRole.Button, new() { Name = "Sort by email" });
+        await emailHeader.ClickAsync();
+        await page.WaitForURLAsync(url => url.Contains("sort=CustomerEmail_Ascending", StringComparison.Ordinal));
+        await emailHeader.ClickAsync();
+        await page.WaitForURLAsync(url => url.Contains("sort=CustomerEmail_Descending", StringComparison.Ordinal));
     }
 
     private static async Task StubProductionBoundariesAsync(IPage page)
@@ -240,35 +339,27 @@ public sealed class CustomerResponsiveBrowserTests(
             legacyDatabaseId = 1,
             permissions = new[] { "customers.read", "customers.create" }
         });
-        var customers = JsonSerializer.Serialize(new
+        var customerItems = new object[]
         {
-            items = new object[]
+            new
             {
-                new
-                {
-                    id = 2000000001,
-                    firstName = "Natthapol",
-                    lastName = "Vanasrivilai",
-                    fullName = LongName,
-                    email = LongEmail,
-                    company = new { id = 77, name = LongCompany }
-                },
-                new
-                {
-                    id = 42,
-                    firstName = "Short",
-                    lastName = "Name",
-                    fullName = "Short Name",
-                    email = "short@maliev.com",
-                    company = (object?)null
-                }
+                id = 2000000001,
+                firstName = "Natthapol",
+                lastName = "Vanasrivilai",
+                fullName = LongName,
+                email = LongEmail,
+                company = new { id = 77, name = LongCompany }
             },
-            pageIndex = 1,
-            totalPages = 1,
-            totalRecords = 2,
-            hasNextPage = false,
-            hasPreviousPage = false
-        });
+            new
+            {
+                id = 42,
+                firstName = "Short",
+                lastName = "Name",
+                fullName = "Short Name",
+                email = "short@maliev.com",
+                company = (object?)null
+            }
+        };
 
         await page.RouteAsync("**/bff/session", route => route.FulfillAsync(new()
         {
@@ -278,18 +369,20 @@ public sealed class CustomerResponsiveBrowserTests(
         }));
         await page.RouteAsync("**/bff/customers?*", async route =>
         {
-            var query = new Uri(route.Request.Url).Query;
-            var body = query.Contains("search=Natthapol", StringComparison.OrdinalIgnoreCase)
-                ? JsonSerializer.Serialize(new
-                {
-                    items = JsonSerializer.Deserialize<JsonElement>(customers).GetProperty("items").EnumerateArray().Take(1).ToArray(),
-                    pageIndex = 1,
-                    totalPages = 1,
-                    totalRecords = 1,
-                    hasNextPage = false,
-                    hasPreviousPage = false
-                })
-                : customers;
+            var uri = new Uri(route.Request.Url);
+            var query = System.Web.HttpUtility.ParseQueryString(uri.Query);
+            var isSearch = string.Equals(query["search"], "Natthapol", StringComparison.OrdinalIgnoreCase);
+            var pageIndex = int.TryParse(query["index"], out var parsedIndex) ? parsedIndex : 1;
+            var isPagedJourney = pageIndex > 1;
+            var body = JsonSerializer.Serialize(new
+            {
+                items = isSearch ? customerItems.Take(1).ToArray() : customerItems,
+                pageIndex,
+                totalPages = isPagedJourney ? 4 : 1,
+                totalRecords = isSearch ? 1 : isPagedJourney ? 76 : 2,
+                hasNextPage = isPagedJourney && pageIndex < 4,
+                hasPreviousPage = isPagedJourney
+            });
             await route.FulfillAsync(new()
             {
                 Status = 200,

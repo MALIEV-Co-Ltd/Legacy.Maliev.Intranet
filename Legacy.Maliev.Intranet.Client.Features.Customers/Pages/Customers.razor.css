@@ -3,6 +3,36 @@
     margin-bottom: 1rem;
 }
 
+.customer-shell .customers-results-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    min-height: 2.75rem;
+    margin: 0.75rem 0 0.5rem;
+}
+
+.customer-shell .customers-results-summary {
+    color: var(--mud-palette-text-secondary);
+    font-variant-numeric: tabular-nums;
+}
+
+.customer-shell .customers-pagination {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.25rem;
+}
+
+.customer-shell .customers-pagination--bottom {
+    margin-top: 1rem;
+}
+
+.customer-shell .customers-pagination ::deep .mud-button-root {
+    min-width: 2.75rem;
+    min-height: 2.75rem;
+}
+
 .customer-shell .customers-table-shell {
     contain: paint;
     max-width: 100%;
@@ -27,6 +57,16 @@
 
 .customer-shell .customers-table-shell ::deep .mud-table-cell {
     font-variant-numeric: tabular-nums;
+}
+
+.customer-shell .customers-table-shell ::deep .customer-sort-button {
+    min-width: 0;
+    min-height: 2.75rem;
+    margin: -0.5rem;
+    padding: 0.5rem;
+    color: inherit;
+    font: inherit;
+    font-weight: 600;
 }
 
 .customer-shell .customers-table-shell ::deep :is(.customer-id-cell, .customer-email-cell, .customer-action-cell) {
@@ -109,6 +149,19 @@
 @media (max-width: 600px) {
     .customer-shell .customers-page-header {
         align-items: stretch;
+    }
+
+    .customer-shell .customers-results-bar {
+        align-items: flex-start;
+        margin-top: 0.5rem;
+    }
+
+    .customer-shell .customers-results-summary {
+        padding-top: 0.6875rem;
+    }
+
+    .customer-shell .customers-pagination {
+        flex: 0 0 auto;
     }
 
     .customer-shell .customers-table-shell,
