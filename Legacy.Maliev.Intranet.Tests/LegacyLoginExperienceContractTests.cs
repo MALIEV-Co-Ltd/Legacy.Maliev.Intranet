@@ -3,6 +3,28 @@ namespace Legacy.Maliev.Intranet.Tests;
 public sealed class LegacyLoginExperienceContractTests
 {
     [Fact]
+    public void LoginClient_UsesFourPixelSpacingCadenceAtAuthenticationBoundaries()
+    {
+        var root = FindRepositoryRoot();
+        var css = File.ReadAllText(Path.Combine(root, "Legacy.Maliev.Intranet.Client", "wwwroot", "css", "app.css"));
+
+        Assert.Contains(".legacy-login-card { width: min(100%, 26.25rem); min-width: 0; padding: 2rem;", css, StringComparison.Ordinal);
+        Assert.Contains(".legacy-login-error { margin-bottom: 1rem; padding: .75rem 1rem;", css, StringComparison.Ordinal);
+        Assert.Contains(".legacy-login-divider { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: .75rem; margin: 1rem 0;", css, StringComparison.Ordinal);
+        Assert.Contains(".legacy-login-email-summary { display: flex; min-height: 2.5rem;", css, StringComparison.Ordinal);
+        Assert.Contains(".legacy-login-title { display: flex; align-items: center; flex-wrap: wrap; gap: .5rem;", css, StringComparison.Ordinal);
+        Assert.Contains(".legacy-login-email-summary { display: flex; min-height: 2.5rem; align-items: center; justify-content: space-between; gap: .75rem; padding-inline: .75rem;", css, StringComparison.Ordinal);
+        Assert.Contains(".legacy-login-main { padding: 1rem; }", css, StringComparison.Ordinal);
+        Assert.Contains(".legacy-login-card { padding: 1.5rem; }", css, StringComparison.Ordinal);
+        Assert.DoesNotContain("padding: 1.875rem", css, StringComparison.Ordinal);
+        Assert.DoesNotContain("padding: .625rem", css, StringComparison.Ordinal);
+        Assert.DoesNotContain("margin: 1.125rem 0", css, StringComparison.Ordinal);
+        Assert.DoesNotContain("min-height: 2.375rem", css, StringComparison.Ordinal);
+        Assert.DoesNotContain("padding: 1.125rem 1rem", css, StringComparison.Ordinal);
+        Assert.DoesNotContain("padding: 1.375rem", css, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void LoginClient_OwnsTheViewportWithResponsiveBrandAndAuthenticationRegions()
     {
         var root = FindRepositoryRoot();
@@ -21,7 +43,7 @@ public sealed class LegacyLoginExperienceContractTests
         Assert.Contains("grid-template-columns: minmax(0, 44%) minmax(0, 56%)", css, StringComparison.Ordinal);
         Assert.Contains("@media (max-width: 959px)", css, StringComparison.Ordinal);
         Assert.Contains("@media (max-width: 640px)", css, StringComparison.Ordinal);
-        Assert.Contains(".legacy-login-main { padding: 1.125rem 1rem; }", css, StringComparison.Ordinal);
+        Assert.Contains(".legacy-login-main { padding: 1rem; }", css, StringComparison.Ordinal);
     }
 
     [Fact]
