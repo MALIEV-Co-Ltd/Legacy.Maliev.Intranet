@@ -42,6 +42,13 @@ public sealed class MudInventoryBrowserTests(ShowcaseServerFixture server, Playw
         Assert.NotEqual("none", await page.GetByTestId("button-small").EvaluateAsync<string>(
             "element => getComputedStyle(element).boxShadow"));
 
+        var emailInput = page.GetByLabel("Email", new() { Exact = true });
+        await emailInput.FocusAsync();
+        Assert.Equal("none", await emailInput.EvaluateAsync<string>(
+            "element => getComputedStyle(element.closest('.mud-input-control')).boxShadow"));
+        Assert.NotEqual("none", await emailInput.EvaluateAsync<string>(
+            "element => getComputedStyle(element.closest('.mud-input')).boxShadow"));
+
         await page.GetByLabel("Invalid", new() { Exact = true }).FocusAsync();
         var invalidInput = page.GetByLabel("Invalid", new() { Exact = true });
         var invalidControl = page.Locator(".mud-input-control.mud-input-error");
@@ -54,6 +61,8 @@ public sealed class MudInventoryBrowserTests(ShowcaseServerFixture server, Playw
                 return window.__normalizeShadcnColor(getComputedStyle(border).borderColor);
             }
             """));
+        Assert.Equal("none", await invalidInput.EvaluateAsync<string>(
+            "element => getComputedStyle(element.closest('.mud-input-control')).boxShadow"));
         Assert.Equal(destructiveFocusRing, await invalidInput.EvaluateAsync<string>("""
             element => {
                 const shadow = getComputedStyle(element.closest('.mud-input')).boxShadow;

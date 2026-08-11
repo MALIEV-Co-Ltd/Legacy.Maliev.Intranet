@@ -4,8 +4,8 @@
     outline: none;
 }
 
-:where(.shadcn-scope, .shadcn-overlay-scope) :where(.mud-button-root, .mud-icon-button-root, .mud-input-control):focus-visible,
-:where(.shadcn-scope, .shadcn-overlay-scope) :where(.mud-input-control):focus-within {
+:where(.shadcn-scope, .shadcn-overlay-scope) :where(.mud-button-root, .mud-icon-button-root):focus-visible,
+:where(.shadcn-scope, .shadcn-overlay-scope) :where(.mud-input):focus-within {
     box-shadow: 0 0 0 3px color-mix(in oklab, var(--shadcn-ring) 50%, transparent);
 }
 
@@ -232,12 +232,12 @@
     color: var(--shadcn-destructive);
 }
 
-:where(.shadcn-scope, .shadcn-overlay-scope) .mud-input-error:focus-within {
+:where(.shadcn-scope, .shadcn-overlay-scope) .mud-input.mud-input-error:focus-within {
     border-color: var(--shadcn-destructive);
     box-shadow: 0 0 0 3px color-mix(in oklab, var(--shadcn-destructive) 20%, transparent);
 }
 
-:where(.shadcn-scope, .shadcn-overlay-scope)[data-shadcn-theme="dark"] :where(.mud-input-error:focus-within) {
+:where(.shadcn-scope, .shadcn-overlay-scope)[data-shadcn-theme="dark"] :where(.mud-input.mud-input-error:focus-within) {
     box-shadow: 0 0 0 3px color-mix(in oklab, var(--shadcn-destructive) 40%, transparent);
 }
 
@@ -343,7 +343,7 @@
     opacity: 0.5;
 }
 
-:where(.shadcn-scope, .shadcn-overlay-scope)[data-shadcn-theme="dark"] :where(.mud-button-root:focus-visible, .mud-input-control:focus-within) {
+:where(.shadcn-scope, .shadcn-overlay-scope)[data-shadcn-theme="dark"] :where(.mud-button-root:focus-visible, .mud-input:focus-within) {
     box-shadow: 0 0 0 3px color-mix(in oklab, var(--shadcn-ring) 65%, transparent);
 }
 
