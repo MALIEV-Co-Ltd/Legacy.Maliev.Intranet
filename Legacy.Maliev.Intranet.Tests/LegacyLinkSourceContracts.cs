@@ -82,9 +82,11 @@ internal static class LegacyLinkSourceContracts
         {
             var href = AttributeSection(markup, "Href", "Role");
             var ariaLabel = AttributeSection(markup, "AriaLabel", null);
-            if (href is null || ariaLabel is null || !HasSharedRecordReference(href, ariaLabel))
+            if (href is null || ariaLabel is null ||
+                !HasSharedRecordReference(href, ariaLabel) ||
+                !HasLocalizedOrDisplayName(ariaLabel))
             {
-                violations.Add($"{relativePath}: record Href and AriaLabel must share the record ID or context: {SingleLine(markup)}");
+                violations.Add($"{relativePath}: record Href and AriaLabel must share the record context and use localized or record-display text: {SingleLine(markup)}");
             }
         }
 
@@ -101,7 +103,9 @@ internal static class LegacyLinkSourceContracts
 
             var href = BuilderAttribute(body, "Href");
             var ariaLabel = BuilderAttribute(body, "AriaLabel");
-            if (href is null || ariaLabel is null || !HasSharedRecordReference(href, ariaLabel))
+            if (href is null || ariaLabel is null ||
+                !HasSharedRecordReference(href, ariaLabel) ||
+                !HasLocalizedOrDisplayName(ariaLabel))
             {
                 violations.Add($"{relativePath}: builder-created record link needs a call-local AriaLabel associated with its Href");
             }
@@ -242,6 +246,11 @@ internal static class LegacyLinkSourceContracts
         var ariaKeys = ReferenceKeys(ariaLabel);
         return hrefKeys.Overlaps(ariaKeys);
     }
+
+    private static bool HasLocalizedOrDisplayName(string ariaLabel) =>
+        ariaLabel.Contains("Text[", StringComparison.Ordinal) ||
+        ariaLabel.Contains("FullName", StringComparison.Ordinal) ||
+        ariaLabel.Contains("ActivityTitle", StringComparison.Ordinal);
 
     private static HashSet<string> ReferenceKeys(string value)
     {

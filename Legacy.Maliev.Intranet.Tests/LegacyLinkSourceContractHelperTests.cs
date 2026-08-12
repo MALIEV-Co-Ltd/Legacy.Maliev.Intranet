@@ -25,12 +25,17 @@ public sealed class LegacyLinkSourceContractHelperTests
         const string associatedRecord = """
             <LegacyLink Href="@($"/Customers/View?id={context.Id}")"
                         Role="LegacyLinkRole.Record"
-                        AriaLabel="@($"Customer {context.Id}")">@Text["View"]</LegacyLink>
+                        AriaLabel="@($"{Text["Customer"]} {context.Id}")">@Text["View"]</LegacyLink>
             """;
         const string genericRecord = """
             <LegacyLink Href="@($"/Customers/View?id={context.Id}")"
                         Role="LegacyLinkRole.Record"
                         AriaLabel="@Text["Id"]">@Text["View"]</LegacyLink>
+            """;
+        const string hardCodedIdBearingRecord = """
+            <LegacyLink Href="@($"/Customers/View?id={context.Id}")"
+                        Role="LegacyLinkRole.Record"
+                        AriaLabel="@($"Customer {context.Id}")">@context.Id</LegacyLink>
             """;
         const string detachedBuilderLabel = """
             builder.OpenComponent<LegacyLink>(1);
@@ -42,6 +47,7 @@ public sealed class LegacyLinkSourceContractHelperTests
 
         Assert.Empty(LegacyLinkSourceContracts.FindRecordAccessibleNameViolations("Customers.razor", associatedRecord));
         Assert.NotEmpty(LegacyLinkSourceContracts.FindRecordAccessibleNameViolations("Customers.razor", genericRecord));
+        Assert.NotEmpty(LegacyLinkSourceContracts.FindRecordAccessibleNameViolations("Customers.razor", hardCodedIdBearingRecord));
         Assert.NotEmpty(LegacyLinkSourceContracts.FindRecordAccessibleNameViolations("Quotations.razor", detachedBuilderLabel));
     }
 
@@ -62,5 +68,33 @@ public sealed class LegacyLinkSourceContractHelperTests
             "Href=\"/Customers/Index\"",
             "Role=\"LegacyLinkRole.Navigation\"",
             "Disabled=\"submitting\""));
+    }
+
+    [Fact]
+    public void StructuredLinkMatching_RejectsAnIdBearingLocalizationMutation()
+    {
+        const string localized = """
+            <LegacyLink Href="@quotation.NavigateTo"
+                        Role="LegacyLinkRole.Record"
+                        AriaLabel="@($"{Text["Quote"]} #{quotation.Id}")">#@quotation.Id</LegacyLink>
+            """;
+        var hardCoded = localized.Replace(
+            "@($\"{Text[\"Quote\"]} #{quotation.Id}\")",
+            "@($\"Quotation #{quotation.Id}\")",
+            StringComparison.Ordinal);
+        string[] frozenLocalization =
+        [
+            "AriaLabel=\"@($\"{Text[\"Quote\"]} #{quotation.Id}\")\"",
+            "#@quotation.Id</LegacyLink>",
+        ];
+
+        Assert.True(LegacyLinkSourceContracts.MatchesExpectedLink(
+            localized,
+            "Href=\"@quotation.NavigateTo\"",
+            frozenLocalization));
+        Assert.False(LegacyLinkSourceContracts.MatchesExpectedLink(
+            hardCoded,
+            "Href=\"@quotation.NavigateTo\"",
+            frozenLocalization));
     }
 }
