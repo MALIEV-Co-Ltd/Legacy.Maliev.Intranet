@@ -3,6 +3,88 @@ namespace Legacy.Maliev.Intranet.Tests;
 public sealed class CustomersViewWasmMigrationContractTests
 {
     [Fact]
+    public void CustomerOverview_ExposesTypedEditContractWithoutOwningCustomerRequests()
+    {
+        var source = ReadCustomerComponent("CustomerOverview.razor");
+
+        Assert.Contains("<section", source, StringComparison.Ordinal);
+        Assert.Contains("HtmlTag=\"h2\"", source, StringComparison.Ordinal);
+        Assert.Contains("[Parameter, EditorRequired] public CustomerDetail Customer", source, StringComparison.Ordinal);
+        Assert.Contains("[Parameter, EditorRequired] public CustomerUpdateRequest EditModel", source, StringComparison.Ordinal);
+        Assert.Contains("[Parameter] public bool CanEdit", source, StringComparison.Ordinal);
+        Assert.Contains("[Parameter] public bool Editing", source, StringComparison.Ordinal);
+        Assert.Contains("[Parameter] public bool Submitting", source, StringComparison.Ordinal);
+        Assert.Contains("[Parameter] public EventCallback BeginEdit", source, StringComparison.Ordinal);
+        Assert.Contains("[Parameter] public EventCallback<MudForm> Save", source, StringComparison.Ordinal);
+        Assert.Contains("[Parameter] public EventCallback CancelEdit", source, StringComparison.Ordinal);
+        Assert.Contains("[Parameter, EditorRequired] public Func<string, string> Localize", source, StringComparison.Ordinal);
+        Assert.Contains("[Parameter, EditorRequired] public Func<DateTime?, string> DisplayDate", source, StringComparison.Ordinal);
+        Assert.Contains("[Parameter, EditorRequired] public Func<DateTime?, string> DisplayDateTime", source, StringComparison.Ordinal);
+        Assert.Contains("[Parameter, EditorRequired] public Func<CustomerAddressDetail?, string> DisplayAddress", source, StringComparison.Ordinal);
+        Assert.Contains("<MudForm", source, StringComparison.Ordinal);
+        Assert.Contains("@bind-Value=\"EditModel.FirstName\"", source, StringComparison.Ordinal);
+        AssertPresentationalOnly(source);
+    }
+
+    [Fact]
+    public void CustomerActivity_RepresentsIndependentSourceStatesAndRecordDestinations()
+    {
+        var source = ReadCustomerComponent("CustomerActivity.razor");
+
+        Assert.Contains("<section", source, StringComparison.Ordinal);
+        Assert.Contains("HtmlTag=\"h2\"", source, StringComparison.Ordinal);
+        Assert.Contains("[Parameter] public CustomerActivityPage? Page", source, StringComparison.Ordinal);
+        Assert.Contains("[Parameter] public bool Loading", source, StringComparison.Ordinal);
+        Assert.Contains("[Parameter] public string? Error", source, StringComparison.Ordinal);
+        Assert.Contains("[Parameter] public EventCallback Retry", source, StringComparison.Ordinal);
+        Assert.Contains("<MudProgressLinear", source, StringComparison.Ordinal);
+        Assert.Contains("<MudAlert", source, StringComparison.Ordinal);
+        Assert.Contains("Page.Items.Count == 0", source, StringComparison.Ordinal);
+        Assert.Contains("Page.Orders", source, StringComparison.Ordinal);
+        Assert.Contains("Page.Quotations", source, StringComparison.Ordinal);
+        Assert.Contains("Page.Invoices", source, StringComparison.Ordinal);
+        Assert.Contains("CustomerHistorySourceState.Available", source, StringComparison.Ordinal);
+        Assert.Contains("Href=\"@RecordHref(item)\"", source, StringComparison.Ordinal);
+        Assert.Contains("AriaLabel=\"@ActivityTitle(item)\"", source, StringComparison.Ordinal);
+        Assert.Contains("\"/Orders/View?id=", source, StringComparison.Ordinal);
+        Assert.Contains("\"/Quotations/View?id=", source, StringComparison.Ordinal);
+        Assert.Contains("\"/Invoices/View?id=", source, StringComparison.Ordinal);
+        Assert.Contains("!string.IsNullOrWhiteSpace(item.Currency)", source, StringComparison.Ordinal);
+        AssertPresentationalOnly(source);
+    }
+
+    [Fact]
+    public void CustomerHistoryTable_ValidatesOneMatchingPageAndBoundsPageChanges()
+    {
+        var source = ReadCustomerComponent("CustomerHistoryTable.razor");
+
+        Assert.Contains("<section", source, StringComparison.Ordinal);
+        Assert.Contains("HtmlTag=\"h2\"", source, StringComparison.Ordinal);
+        Assert.Contains("[Parameter, EditorRequired] public CustomerHistoryKind Kind", source, StringComparison.Ordinal);
+        Assert.Contains("[Parameter] public OrderListPage? Orders", source, StringComparison.Ordinal);
+        Assert.Contains("[Parameter] public QuotationListPage? Quotations", source, StringComparison.Ordinal);
+        Assert.Contains("[Parameter] public InvoiceListPage? Invoices", source, StringComparison.Ordinal);
+        Assert.Contains("[Parameter] public bool Loading", source, StringComparison.Ordinal);
+        Assert.Contains("[Parameter] public string? Error", source, StringComparison.Ordinal);
+        Assert.Contains("[Parameter] public EventCallback Retry", source, StringComparison.Ordinal);
+        Assert.Contains("[Parameter] public EventCallback<int> PageChanged", source, StringComparison.Ordinal);
+        Assert.Contains("protected override void OnParametersSet()", source, StringComparison.Ordinal);
+        Assert.Contains("ValidatePageContract", source, StringComparison.Ordinal);
+        Assert.Contains("Math.Clamp", source, StringComparison.Ordinal);
+        Assert.Contains("<MudProgressLinear", source, StringComparison.Ordinal);
+        Assert.Contains("<MudAlert", source, StringComparison.Ordinal);
+        Assert.Contains("Items.Count == 0", source, StringComparison.Ordinal);
+        Assert.Contains("Href=\"@($\"/Orders/View?id={order.Id}\")\"", source, StringComparison.Ordinal);
+        Assert.Contains("Href=\"@($\"/Quotations/View?id={quotation.Id}\")\"", source, StringComparison.Ordinal);
+        Assert.Contains("Href=\"@($\"/Invoices/View?id={invoice.Id}\")\"", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("order.Subtotal", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("quotation.Subtotal", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("quotation.Total", source, StringComparison.Ordinal);
+        Assert.Contains("invoice.Currency", source, StringComparison.Ordinal);
+        AssertPresentationalOnly(source);
+    }
+
+    [Fact]
     public void CustomerViewSlice_PreservesRouteAuthorizationDtoAndRollbackContracts()
     {
         var root = FindRoot();
@@ -72,5 +154,25 @@ public sealed class CustomersViewWasmMigrationContractTests
         }
 
         return directory?.FullName ?? throw new DirectoryNotFoundException("Could not find repository root.");
+    }
+
+    private static string ReadCustomerComponent(string fileName)
+    {
+        var path = Path.Combine(
+            FindRoot(),
+            "Legacy.Maliev.Intranet.Client.Features.Customers",
+            "Components",
+            fileName);
+
+        Assert.True(File.Exists(path), $"The Task 5 customer component '{fileName}' is missing.");
+        return File.ReadAllText(path);
+    }
+
+    private static void AssertPresentationalOnly(string source)
+    {
+        Assert.DoesNotContain("@inject HttpClient", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("Http.Get", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("<a ", source, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("<MudLink", source, StringComparison.Ordinal);
     }
 }

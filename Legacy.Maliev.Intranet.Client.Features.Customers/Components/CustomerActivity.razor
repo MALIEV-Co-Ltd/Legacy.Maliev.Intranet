@@ -1,0 +1,124 @@
+@namespace Legacy.Maliev.Intranet.Client.Features.Customers.Components
+
+<section class="customer-activity" aria-labelledby="customer-activity-heading">
+    <MudText Typo="Typo.h6" HtmlTag="h2" id="customer-activity-heading" Class="customer-activity__heading">
+        @Localize("Activity")
+    </MudText>
+
+    @if (Loading)
+    {
+        <MudProgressLinear Indeterminate="true" Color="Color.Primary" aria-live="polite" aria-label="@Localize("ActivityLoading")" />
+    }
+    else if (!string.IsNullOrWhiteSpace(Error))
+    {
+        <MudAlert Severity="Severity.Error" aria-live="assertive">@Error</MudAlert>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="Retry">@Localize("Retry")</MudButton>
+    }
+    else if (Page is not null)
+    {
+        <div class="customer-activity__warnings" aria-label="@Localize("ActivitySourceWarnings")">
+            @if (Page.Orders.State != CustomerHistorySourceState.Available)
+            {
+                <MudAlert Severity="Severity.Warning">@SourceWarning("Orders", Page.Orders)</MudAlert>
+            }
+            @if (Page.Quotations.State != CustomerHistorySourceState.Available)
+            {
+                <MudAlert Severity="Severity.Warning">@SourceWarning("Quotations", Page.Quotations)</MudAlert>
+            }
+            @if (Page.Invoices.State != CustomerHistorySourceState.Available)
+            {
+                <MudAlert Severity="Severity.Warning">@SourceWarning("Invoices", Page.Invoices)</MudAlert>
+            }
+        </div>
+
+        @if (Page.Items.Count == 0)
+        {
+            <MudText Class="customer-activity__empty">@Localize("ActivityEmpty")</MudText>
+        }
+        else
+        {
+            <ol class="customer-activity__timeline">
+                @foreach (var item in Page.Items)
+                {
+                    <li class="customer-activity__item">
+                        <div class="customer-activity__record">
+                            <LegacyLink Href="@RecordHref(item)"
+                                        Role="LegacyLinkRole.Record"
+                                        AriaLabel="@ActivityTitle(item)">
+                                @RecordLabel(item)
+                            </LegacyLink>
+                            <span class="customer-activity__status">@StatusText(item)</span>
+                        </div>
+                        @if (item.Kind == CustomerHistoryKind.Order && item.CompletedUnits is not null && item.TotalUnits is not null)
+                        {
+                            <span class="customer-activity__detail">@LocalizeFormat("OrderProgress", new object?[] { item.CompletedUnits, item.TotalUnits })</span>
+                        }
+                        @if (item.Amount is decimal amount && !string.IsNullOrWhiteSpace(item.Currency))
+                        {
+                            <span class="customer-activity__amount">@FormatMoney(amount, item.Currency)</span>
+                        }
+                        <time datetime="@item.Timestamp.ToString("O", System.Globalization.CultureInfo.InvariantCulture)" class="customer-activity__time">
+                            @FormatTimestamp(item.Timestamp)
+                        </time>
+                    </li>
+                }
+            </ol>
+        }
+    }
+    else
+    {
+        <MudText Class="customer-activity__empty">@Localize("ActivityEmpty")</MudText>
+    }
+</section>
+
+@code {
+    [Parameter] public CustomerActivityPage? Page { get; set; }
+    [Parameter] public bool Loading { get; set; }
+    [Parameter] public string? Error { get; set; }
+    [Parameter] public EventCallback Retry { get; set; }
+    [Parameter, EditorRequired] public Func<string, string> Localize { get; set; } = null!;
+    [Parameter, EditorRequired] public Func<string, object?[], string> LocalizeFormat { get; set; } = null!;
+    [Parameter, EditorRequired] public Func<DateTime, string> FormatTimestamp { get; set; } = null!;
+    [Parameter, EditorRequired] public Func<decimal, string, string> FormatMoney { get; set; } = null!;
+
+    private string RecordHref(CustomerActivityItem item) => item.Kind switch
+    {
+        CustomerHistoryKind.Order => $"/Orders/View?id={item.Id}",
+        CustomerHistoryKind.Quotation => $"/Quotations/View?id={item.Id}",
+        CustomerHistoryKind.Invoice => $"/Invoices/View?id={item.Id}",
+        _ => throw new InvalidOperationException($"Unsupported customer history kind '{item.Kind}'."),
+    };
+
+    private string ActivityTitle(CustomerActivityItem item) => item.Kind switch
+    {
+        CustomerHistoryKind.Order => LocalizeFormat("ViewOrderAccessible", new object?[] { item.Id }),
+        CustomerHistoryKind.Quotation => LocalizeFormat("ViewQuotationAccessible", new object?[] { item.Id }),
+        CustomerHistoryKind.Invoice => LocalizeFormat("ViewInvoiceAccessible", new object?[] { item.Label ?? item.Id.ToString(System.Globalization.CultureInfo.InvariantCulture) }),
+        _ => throw new InvalidOperationException($"Unsupported customer history kind '{item.Kind}'."),
+    };
+
+    private string RecordLabel(CustomerActivityItem item) => item.Kind switch
+    {
+        CustomerHistoryKind.Order => LocalizeFormat("OrderNumber", new object?[] { item.Id }),
+        CustomerHistoryKind.Quotation => LocalizeFormat("QuotationNumber", new object?[] { item.Id }),
+        CustomerHistoryKind.Invoice => item.Label ?? LocalizeFormat("InvoiceNumber", new object?[] { item.Id }),
+        _ => throw new InvalidOperationException($"Unsupported customer history kind '{item.Kind}'."),
+    };
+
+    private string StatusText(CustomerActivityItem item) => Localize(item.Status switch
+    {
+        CustomerActivityStatus.InProgress => "StatusInProgress",
+        CustomerActivityStatus.Complete => "StatusComplete",
+        CustomerActivityStatus.Open => "StatusOpen",
+        CustomerActivityStatus.Accepted => "StatusAccepted",
+        CustomerActivityStatus.Declined => "StatusDeclined",
+        CustomerActivityStatus.Paid => "StatusPaid",
+        CustomerActivityStatus.Outstanding => "StatusOutstanding",
+        _ => throw new InvalidOperationException($"Unsupported customer activity status '{item.Status}'."),
+    });
+
+    private string SourceWarning(string sourceKey, CustomerHistorySourceSummary source) =>
+        LocalizeFormat(
+            "ActivitySourceWarning",
+            new object?[] { Localize(sourceKey), Localize($"SourceState{source.State}") });
+}

@@ -1,0 +1,73 @@
+.customer-history {
+    display: grid;
+    gap: 0.875rem;
+    min-width: 0;
+    padding: 1rem;
+    border: 1px solid var(--shadcn-border);
+    border-radius: var(--shadcn-radius-lg);
+    background: var(--shadcn-card);
+    color: var(--shadcn-card-foreground);
+}
+
+.customer-history__header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.75rem;
+}
+
+.customer-history__heading {
+    margin: 0;
+    font-size: 0.875rem;
+    font-weight: 600;
+    line-height: 1.25rem;
+}
+
+.customer-history__count,
+.customer-history__empty {
+    color: var(--shadcn-muted-foreground);
+}
+
+.customer-history__table {
+    min-width: 0;
+}
+
+.customer-history__table ::deep .mud-table-container {
+    max-width: 100%;
+    overflow-x: auto;
+}
+
+.customer-history__table ::deep th,
+.customer-history__table ::deep td {
+    vertical-align: middle;
+}
+
+.customer-history__pager {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.75rem;
+    min-width: 0;
+    padding-top: 0.25rem;
+}
+
+@media (pointer: coarse), (max-width: 760px) {
+    .customer-history {
+        padding: 0.875rem;
+    }
+
+    .customer-history__header,
+    .customer-history__pager {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .customer-history__table ::deep .legacy-link--record,
+    .customer-history__pager ::deep .mud-button-root {
+        min-height: 44px;
+    }
+
+    .customer-history__pager ::deep .mud-button-root {
+        width: 100%;
+    }
+}
