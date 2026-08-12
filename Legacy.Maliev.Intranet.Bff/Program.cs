@@ -39,6 +39,7 @@ builder.Services.AddProblemDetails();
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddSingleton<DiagnosticEventStore>();
 builder.Services.AddScoped<LegacyDashboardAggregator>();
+builder.Services.AddScoped<CustomerActivityAggregator>();
 builder.Services.AddLegacyAccessTokenValidation(
     builder.Configuration,
     validateOnStart: !builder.Environment.IsEnvironment("Testing"));
@@ -993,6 +994,21 @@ app.MapGet("/bff/customers/{customerId:int}/quotations", CustomerHistoryEndpoint
     .RequireAuthorization(LegacyEmployeePermissions.QuotationsRead);
 app.MapGet("/bff/customers/{customerId:int}/invoices", CustomerHistoryEndpointMapper.InvoicesAsync)
     .RequireAuthorization(LegacyEmployeePermissions.AccountingRead);
+app.MapGet("/bff/customers/{customerId:int}/activity", async (
+    int customerId,
+    int? size,
+    HttpContext context,
+    CustomerActivityAggregator aggregator,
+    CancellationToken cancellationToken) =>
+{
+    if (customerId <= 0)
+    {
+        return Results.BadRequest();
+    }
+
+    var page = await aggregator.GetAsync(customerId, size ?? 20, context.User, cancellationToken);
+    return Results.Ok(page);
+}).RequireAuthorization(LegacyEmployeePermissions.CustomersRead);
 
 app.MapGet("/bff/quotations/create", QuotationCreateEndpointMapper.GetAsync)
     .RequireAuthorization(policy => policy
