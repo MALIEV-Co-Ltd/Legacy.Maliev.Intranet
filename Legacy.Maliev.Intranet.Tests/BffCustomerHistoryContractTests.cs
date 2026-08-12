@@ -14,6 +14,7 @@ using BffProgram = Bff::Program;
 using InvoicesProxy = Bff::Legacy.Maliev.Intranet.Bff.Accounting.InvoicesProxy;
 using OrdersProxy = Bff::Legacy.Maliev.Intranet.Bff.Orders.OrdersProxy;
 using QuotationsProxy = Bff::Legacy.Maliev.Intranet.Bff.Quotations.QuotationsProxy;
+using CustomerActivityAggregator = Bff::Legacy.Maliev.Intranet.Bff.Customers.CustomerActivityAggregator;
 
 namespace Legacy.Maliev.Intranet.Tests;
 
@@ -96,7 +97,12 @@ public sealed class BffCustomerHistoryContractTests
         Assert.Null(page.Quotations.TotalRecords);
         Assert.Equal(CustomerHistorySourceState.Forbidden, page.Invoices.State);
         Assert.Null(page.Invoices.TotalRecords);
-        Assert.Equal("/Orders/customers/42?sort=OrderCreatedDate_Descending&search=&index=1&size=7", orders.PathAndQuery);
+        Assert.Equal(
+            [
+                "/Orders/customers/42?sort=OrderCreatedDate_Descending&search=&index=1&size=7",
+                "/Orders/customers/42?sort=OrderModifiedDate_Descending&search=&index=1&size=7",
+            ],
+            orders.Paths.Order(StringComparer.Ordinal).ToArray());
         Assert.Equal(0, quotations.RequestCount);
         Assert.Equal(0, invoices.RequestCount);
     }
@@ -173,6 +179,155 @@ public sealed class BffCustomerHistoryContractTests
         Assert.DoesNotContain(page.Items, item => item.Id is 85 or 7 or 10);
     }
 
+    [Fact]
+    public async Task Activity_UnionsCreationAndEventSorts_SoOlderCreatedRecentActivityIsIncluded()
+    {
+        var orders = new RecordingHandler("unused")
+        {
+            ResponseBody = request => request.RequestUri!.Query.Contains("OrderModifiedDate_Descending", StringComparison.Ordinal)
+                ? OrderPageJson(42, 41, "old-order-recently-modified", "2029-01-01T00:00:00Z", "2031-01-03T00:00:00Z")
+                : OrderPageJson(42, 99, "new-order-not-recent", "2030-01-01T00:00:00Z", null),
+        };
+        var quotations = new RecordingHandler("unused")
+        {
+            ResponseBody = request => request.RequestUri!.Query.Contains("QuotationModifiedDate_Descending", StringComparison.Ordinal)
+                ? QuotationPageJson(42, 42, "2029-01-01T00:00:00Z", "2031-01-02T00:00:00Z")
+                : QuotationPageJson(42, 98, "2030-01-01T00:00:00Z", null),
+        };
+        var invoices = new RecordingHandler("unused")
+        {
+            ResponseBody = request => request.RequestUri!.Query.Contains("InvoicePaymentDate_Descending", StringComparison.Ordinal)
+                ? InvoicePageJson(42, 43, "INV-43", "2029-01-01T00:00:00Z", "2031-01-01T00:00:00Z", true)
+                : InvoicePageJson(42, 97, "INV-97", "2030-01-01T00:00:00Z", null, false),
+        };
+        await using var factory = new CustomerActivityBffFactory(orders, quotations, invoices, AllActivityPermissions);
+        using var client = CreateClient(factory);
+        await SignInAsync(client);
+
+        using var response = await client.GetAsync("/bff/customers/42/activity?size=3");
+        var page = await response.Content.ReadFromJsonAsync<CustomerActivityPage>();
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.NotNull(page);
+        Assert.Equal(
+            [
+                (CustomerHistoryKind.Order, 41),
+                (CustomerHistoryKind.Quotation, 42),
+                (CustomerHistoryKind.Invoice, 43),
+            ],
+            page.Items.Select(item => (item.Kind, item.Id)).ToArray());
+        Assert.Equal(2, orders.RequestCount);
+        Assert.Equal(2, quotations.RequestCount);
+        Assert.Equal(2, invoices.RequestCount);
+    }
+
+    [Theory]
+    [InlineData("orders")]
+    [InlineData("quotations")]
+    [InlineData("invoices")]
+    public async Task Activity_NullItem_IsInvalidResponseWithoutPageWideFailure(string family)
+    {
+        var orders = new RecordingHandler(family == "orders" ? NullItemPageJson() : PageJson("orders", 42));
+        var quotations = new RecordingHandler(family == "quotations" ? NullItemPageJson() : PageJson("quotations", 42));
+        var invoices = new RecordingHandler(family == "invoices" ? NullItemPageJson() : PageJson("invoices", 42));
+        await using var factory = new CustomerActivityBffFactory(orders, quotations, invoices, AllActivityPermissions);
+        using var client = CreateClient(factory);
+        await SignInAsync(client);
+
+        using var response = await client.GetAsync("/bff/customers/42/activity");
+        var page = await response.Content.ReadFromJsonAsync<CustomerActivityPage>();
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.NotNull(page);
+        Assert.Equal(CustomerHistorySourceState.InvalidResponse, SummaryFor(page, family).State);
+        Assert.Contains(page.Items, item => item.Kind != KindFor(family));
+        Assert.DoesNotContain(page.Items, item => item.Kind == KindFor(family));
+    }
+
+    [Theory]
+    [InlineData("rate-limited", CustomerHistorySourceState.RateLimited)]
+    [InlineData("invalid", CustomerHistorySourceState.InvalidResponse)]
+    [InlineData("unavailable", CustomerHistorySourceState.Unavailable)]
+    public async Task Activity_OneValidPairedPage_RetainsItemsButDoesNotClaimAvailable(
+        string secondaryFailure,
+        CustomerHistorySourceState expectedState)
+    {
+        var orders = new RecordingHandler("unused")
+        {
+            Response = request => request.RequestUri!.Query.Contains("OrderCreatedDate_Descending", StringComparison.Ordinal)
+                ? JsonResponse(PageJson("orders", 42))
+                : FailureResponse(secondaryFailure),
+        };
+        var quotations = new RecordingHandler(PageJson("quotations", 42));
+        var invoices = new RecordingHandler(PageJson("invoices", 42));
+        await using var factory = new CustomerActivityBffFactory(orders, quotations, invoices, AllActivityPermissions);
+        using var client = CreateClient(factory);
+        await SignInAsync(client);
+
+        using var response = await client.GetAsync("/bff/customers/42/activity");
+        var page = await response.Content.ReadFromJsonAsync<CustomerActivityPage>();
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.NotNull(page);
+        Assert.Equal(expectedState, page.Orders.State);
+        Assert.Null(page.Orders.TotalRecords);
+        Assert.Contains(page.Items, item => item.Kind == CustomerHistoryKind.Order && item.Id == 84);
+    }
+
+    [Fact]
+    public async Task Activity_OneForbiddenPairedPage_DiscardsFamilyItemsFromTheOtherLeg()
+    {
+        var orders = new RecordingHandler("unused")
+        {
+            Response = request => request.RequestUri!.Query.Contains("OrderCreatedDate_Descending", StringComparison.Ordinal)
+                ? JsonResponse(PageJson("orders", 42))
+                : FailureResponse("forbidden"),
+        };
+        var quotations = new RecordingHandler(PageJson("quotations", 42));
+        var invoices = new RecordingHandler(PageJson("invoices", 42));
+        await using var factory = new CustomerActivityBffFactory(orders, quotations, invoices, AllActivityPermissions);
+        using var client = CreateClient(factory);
+        await SignInAsync(client);
+
+        using var response = await client.GetAsync("/bff/customers/42/activity");
+        var page = await response.Content.ReadFromJsonAsync<CustomerActivityPage>();
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.NotNull(page);
+        Assert.Equal(CustomerHistorySourceState.Forbidden, page.Orders.State);
+        Assert.DoesNotContain(page.Items, item => item.Kind == CustomerHistoryKind.Order);
+    }
+
+    [Theory]
+    [InlineData("unavailable", "invalid", CustomerHistorySourceState.InvalidResponse)]
+    [InlineData("invalid", "rate-limited", CustomerHistorySourceState.RateLimited)]
+    [InlineData("rate-limited", "forbidden", CustomerHistorySourceState.Forbidden)]
+    public async Task Activity_PairedFailuresUseDeterministicPrecedence(
+        string creationFailure,
+        string alternateFailure,
+        CustomerHistorySourceState expectedState)
+    {
+        var orders = new RecordingHandler("unused")
+        {
+            Response = request => request.RequestUri!.Query.Contains("OrderCreatedDate_Descending", StringComparison.Ordinal)
+                ? FailureResponse(creationFailure)
+                : FailureResponse(alternateFailure),
+        };
+        var quotations = new RecordingHandler(PageJson("quotations", 42));
+        var invoices = new RecordingHandler(PageJson("invoices", 42));
+        await using var factory = new CustomerActivityBffFactory(orders, quotations, invoices, AllActivityPermissions);
+        using var client = CreateClient(factory);
+        await SignInAsync(client);
+
+        using var response = await client.GetAsync("/bff/customers/42/activity");
+        var page = await response.Content.ReadFromJsonAsync<CustomerActivityPage>();
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.NotNull(page);
+        Assert.Equal(expectedState, page.Orders.State);
+        Assert.DoesNotContain(page.Items, item => item.Kind == CustomerHistoryKind.Order);
+    }
+
     [Theory]
     [InlineData(0, 1)]
     [InlineData(999, 50)]
@@ -195,9 +350,12 @@ public sealed class BffCustomerHistoryContractTests
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.NotNull(page);
         Assert.True(page.Items.Count <= expected);
-        Assert.EndsWith($"&size={expected}", orders.PathAndQuery, StringComparison.Ordinal);
-        Assert.EndsWith($"&size={expected}", quotations.PathAndQuery, StringComparison.Ordinal);
-        Assert.EndsWith($"&size={expected}", invoices.PathAndQuery, StringComparison.Ordinal);
+        Assert.Equal(2, orders.RequestCount);
+        Assert.Equal(2, quotations.RequestCount);
+        Assert.Equal(2, invoices.RequestCount);
+        Assert.All(orders.Paths, path => Assert.EndsWith($"&size={expected}", path, StringComparison.Ordinal));
+        Assert.All(quotations.Paths, path => Assert.EndsWith($"&size={expected}", path, StringComparison.Ordinal));
+        Assert.All(invoices.Paths, path => Assert.EndsWith($"&size={expected}", path, StringComparison.Ordinal));
     }
 
     [Fact]
@@ -243,14 +401,14 @@ public sealed class BffCustomerHistoryContractTests
     {
         var allStarted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var started = 0;
-        async Task WaitForOtherSourcesAsync()
+        async Task WaitForOtherSourcesAsync(CancellationToken cancellationToken)
         {
-            if (Interlocked.Increment(ref started) == 3)
+            if (Interlocked.Increment(ref started) == 6)
             {
                 allStarted.TrySetResult();
             }
 
-            await allStarted.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            await allStarted.Task.WaitAsync(TimeSpan.FromSeconds(5), cancellationToken);
         }
 
         var orders = new RecordingHandler(PageJson("orders", 42)) { BeforeResponseAsync = WaitForOtherSourcesAsync };
@@ -267,7 +425,77 @@ public sealed class BffCustomerHistoryContractTests
         using var response = await client.GetAsync("/bff/customers/42/activity");
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        Assert.Equal(3, started);
+        Assert.Equal(6, started);
+    }
+
+    [Theory]
+    [InlineData(HttpStatusCode.NotFound, CustomerHistorySourceState.Available, 0)]
+    [InlineData(HttpStatusCode.InternalServerError, CustomerHistorySourceState.Unavailable, null)]
+    public async Task Activity_HttpBoundaryStatus_IsEncodedPerSource(
+        HttpStatusCode statusCode,
+        CustomerHistorySourceState expectedState,
+        int? expectedTotal)
+    {
+        var orders = new RecordingHandler("unused") { StatusCode = statusCode };
+        var quotations = new RecordingHandler(PageJson("quotations", 42));
+        var invoices = new RecordingHandler(PageJson("invoices", 42));
+        await using var factory = new CustomerActivityBffFactory(orders, quotations, invoices, AllActivityPermissions);
+        using var client = CreateClient(factory);
+        await SignInAsync(client);
+
+        using var response = await client.GetAsync("/bff/customers/42/activity");
+        var page = await response.Content.ReadFromJsonAsync<CustomerActivityPage>();
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.NotNull(page);
+        Assert.Equal(expectedState, page.Orders.State);
+        Assert.Equal(expectedTotal, page.Orders.TotalRecords);
+    }
+
+    [Theory]
+    [InlineData("cancellation")]
+    [InlineData("timeout")]
+    public async Task Activity_InternalCancellationAndTimeout_AreUnavailable(string failure)
+    {
+        var orders = new RecordingHandler("unused")
+        {
+            Exception = failure == "cancellation"
+                ? new TaskCanceledException("internal-cancellation")
+                : new Polly.Timeout.TimeoutRejectedException("internal-timeout"),
+        };
+        var quotations = new RecordingHandler(PageJson("quotations", 42));
+        var invoices = new RecordingHandler(PageJson("invoices", 42));
+        await using var factory = new CustomerActivityBffFactory(orders, quotations, invoices, AllActivityPermissions);
+        using var client = CreateClient(factory);
+        await SignInAsync(client);
+
+        using var response = await client.GetAsync("/bff/customers/42/activity");
+        var page = await response.Content.ReadFromJsonAsync<CustomerActivityPage>();
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.NotNull(page);
+        Assert.Equal(CustomerHistorySourceState.Unavailable, page.Orders.State);
+    }
+
+    [Fact]
+    public async Task Activity_CallerCancellation_IsPropagated()
+    {
+        var never = new RecordingHandler("unused")
+        {
+            BeforeResponseAsync = token => Task.Delay(Timeout.InfiniteTimeSpan, token),
+        };
+        var tokenProvider = new HistoryServiceTokenProvider();
+        var aggregator = new CustomerActivityAggregator(
+            new OrdersProxy(CreateDownstreamClient(never, tokenProvider, "http://order/")),
+            new QuotationsProxy(CreateDownstreamClient(never, tokenProvider, "http://quotation/")),
+            new InvoicesProxy(CreateDownstreamClient(never, tokenProvider, "http://accounting/")));
+        using var cancellation = new CancellationTokenSource(TimeSpan.FromMilliseconds(100));
+        var user = new System.Security.Claims.ClaimsPrincipal(new System.Security.Claims.ClaimsIdentity(
+            AllActivityPermissions.Select(permission => new System.Security.Claims.Claim("permissions", permission)),
+            "test"));
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(
+            () => aggregator.GetAsync(42, 20, user, cancellation.Token));
     }
 
     [Fact]
@@ -621,6 +849,63 @@ public sealed class BffCustomerHistoryContractTests
         LegacyEmployeePermissions.AccountingRead,
     ];
 
+    private static CustomerHistoryKind KindFor(string family) => family switch
+    {
+        "orders" => CustomerHistoryKind.Order,
+        "quotations" => CustomerHistoryKind.Quotation,
+        "invoices" => CustomerHistoryKind.Invoice,
+        _ => throw new ArgumentOutOfRangeException(nameof(family)),
+    };
+
+    private static CustomerHistorySourceSummary SummaryFor(CustomerActivityPage page, string family) => family switch
+    {
+        "orders" => page.Orders,
+        "quotations" => page.Quotations,
+        "invoices" => page.Invoices,
+        _ => throw new ArgumentOutOfRangeException(nameof(family)),
+    };
+
+    private static string NullItemPageJson() =>
+        """{"Items":[null],"PageIndex":1,"TotalPages":1,"TotalRecords":1,"HasNextPage":false,"HasPreviousPage":false}""";
+
+    private static string OrderPageJson(
+        int customerId,
+        int id,
+        string name,
+        string? createdDate,
+        string? modifiedDate) =>
+        $$"""{"Items":[{"Id":{{id}},"CustomerId":{{customerId}},"EmployeeId":7,"Name":"{{name}}","ProcessId":3,"Quantity":2,"Manufactured":1,"Remaining":1,"Subtotal":225,"PromisedDate":null,"AllowSocialMedia":false,"CreatedDate":{{JsonDate(createdDate)}},"ModifiedDate":{{JsonDate(modifiedDate)}}}],"PageIndex":1,"TotalPages":1,"TotalRecords":2,"HasNextPage":false,"HasPreviousPage":false}""";
+
+    private static string QuotationPageJson(
+        int customerId,
+        int id,
+        string? createdDate,
+        string? modifiedDate) =>
+        $$"""{"Items":[{"Id":{{id}},"CustomerId":{{customerId}},"EmployeeId":2,"InvoiceId":null,"Period":14,"ExpirationDate":"2031-08-01T00:00:00Z","Subtotal":1000,"Vat":70,"Total":1070,"WithholdingTax":null,"QuotedAmount":1070,"CurrencyId":1,"Comment":null,"Fob":null,"ShippedVia":null,"Terms":null,"Accepted":null,"CreatedDate":{{JsonDate(createdDate)}},"ModifiedDate":{{JsonDate(modifiedDate)}}}],"PageIndex":1,"TotalPages":1,"TotalRecords":2,"HasNextPage":false,"HasPreviousPage":false}""";
+
+    private static string InvoicePageJson(
+        int customerId,
+        int id,
+        string number,
+        string? createdDate,
+        string? paymentDate,
+        bool paid) =>
+        $$"""{"Items":[{"Id":{{id}},"CustomerId":{{customerId}},"Number":"{{number}}","Currency":"THB","PurchaseOrderNumber":null,"Subtotal":1000,"Vat":70,"Total":1070,"WithholdingTax":null,"Outstanding":{{(paid ? 0 : 1070)}},"IsPaid":{{paid.ToString().ToLowerInvariant()}},"ReceiptId":null,"PaymentDate":{{JsonDate(paymentDate)}},"CreatedDate":{{JsonDate(createdDate)}}}],"PageIndex":1,"TotalPages":1,"TotalRecords":2,"HasNextPage":false,"HasPreviousPage":false}""";
+
+    private static string JsonDate(string? value) => value is null ? "null" : $"\"{value}\"";
+
+    private static HttpResponseMessage JsonResponse(string body, HttpStatusCode statusCode = HttpStatusCode.OK) =>
+        new(statusCode) { Content = new StringContent(body, Encoding.UTF8, "application/json") };
+
+    private static HttpResponseMessage FailureResponse(string failure) => failure switch
+    {
+        "rate-limited" => JsonResponse("rate-limited-secret", HttpStatusCode.TooManyRequests),
+        "invalid" => JsonResponse("invalid-secret"),
+        "unavailable" => JsonResponse("unavailable-secret", HttpStatusCode.ServiceUnavailable),
+        "forbidden" => JsonResponse("forbidden-secret", HttpStatusCode.Forbidden),
+        _ => throw new ArgumentOutOfRangeException(nameof(failure)),
+    };
+
     private static string ActivityOrdersJson() =>
         """
         {"Items":[
@@ -664,6 +949,19 @@ public sealed class BffCustomerHistoryContractTests
             BaseAddress = new Uri("https://localhost"),
             HandleCookies = true,
         });
+
+    private static HttpClient CreateDownstreamClient(
+        HttpMessageHandler downstream,
+        IServiceAccessTokenProvider tokenProvider,
+        string baseAddress)
+    {
+        var authHandler = new LegacyServiceAuthenticationHandler(tokenProvider) { InnerHandler = downstream };
+        return new HttpClient(authHandler)
+        {
+            BaseAddress = new Uri(baseAddress),
+            Timeout = TimeSpan.FromSeconds(10),
+        };
+    }
 
     private static async Task SignInAsync(HttpClient client)
     {
@@ -822,21 +1120,28 @@ public sealed class BffCustomerHistoryContractTests
         public int? RetryAfterSeconds { get; set; }
         public Exception? Exception { get; set; }
         public Exception? BodyReadException { get; set; }
-        public Func<Task>? BeforeResponseAsync { get; set; }
+        public Func<CancellationToken, Task>? BeforeResponseAsync { get; set; }
+        public Func<HttpRequestMessage, string>? ResponseBody { get; set; }
+        public Func<HttpRequestMessage, HttpResponseMessage>? Response { get; set; }
         public string? PathAndQuery { get; private set; }
+        public IReadOnlyList<string> Paths => paths.ToArray();
         public string? Authorization { get; private set; }
-        public int RequestCount { get; private set; }
+        public int RequestCount => requestCount;
+
+        private readonly System.Collections.Concurrent.ConcurrentQueue<string> paths = new();
+        private int requestCount;
 
         protected override async Task<HttpResponseMessage> SendAsync(
             HttpRequestMessage request,
             CancellationToken cancellationToken)
         {
-            RequestCount++;
+            Interlocked.Increment(ref requestCount);
             PathAndQuery = request.RequestUri?.PathAndQuery;
+            paths.Enqueue(PathAndQuery ?? string.Empty);
             Authorization = request.Headers.Authorization?.ToString();
             if (BeforeResponseAsync is not null)
             {
-                await BeforeResponseAsync();
+                await BeforeResponseAsync(cancellationToken);
             }
 
             if (Exception is not null)
@@ -844,10 +1149,15 @@ public sealed class BffCustomerHistoryContractTests
                 throw Exception;
             }
 
+            if (Response is not null)
+            {
+                return Response(request);
+            }
+
             var response = new HttpResponseMessage(StatusCode)
             {
                 Content = BodyReadException is null
-                    ? new StringContent(body, Encoding.UTF8, "application/json")
+                    ? new StringContent(ResponseBody?.Invoke(request) ?? body, Encoding.UTF8, "application/json")
                     : new FaultingHttpContent(BodyReadException),
             };
             if (RetryAfterSeconds is not null)

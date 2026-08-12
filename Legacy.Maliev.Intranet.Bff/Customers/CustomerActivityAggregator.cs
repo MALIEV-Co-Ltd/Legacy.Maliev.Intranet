@@ -63,8 +63,9 @@ public sealed class CustomerActivityAggregator(
     private async Task<SourceResult> LoadOrdersAsync(
         int customerId,
         int size,
-        CancellationToken cancellationToken) =>
-        await LoadAsync(
+        CancellationToken cancellationToken)
+    {
+        var createdTask = LoadQueryAsync(
             token => orders.GetCustomerAsync(
                 customerId,
                 OrderListSort.OrderCreatedDate_Descending,
@@ -74,15 +75,39 @@ public sealed class CustomerActivityAggregator(
                 token),
             response => response.Content.ReadFromJsonAsync<OrderListPage>(cancellationToken),
             page => IsValid(page, customerId),
-            page => page.Items.Take(size).Select(MapOrder).OfType<CustomerActivityItem>().ToArray(),
+            page => page.Items,
             page => page.TotalRecords,
             cancellationToken);
+        var modifiedTask = LoadQueryAsync(
+            token => orders.GetCustomerAsync(
+                customerId,
+                OrderListSort.OrderModifiedDate_Descending,
+                null,
+                1,
+                size,
+                token),
+            response => response.Content.ReadFromJsonAsync<OrderListPage>(cancellationToken),
+            page => IsValid(page, customerId),
+            page => page.Items,
+            page => page.TotalRecords,
+            cancellationToken);
+
+        await Task.WhenAll(createdTask, modifiedTask);
+        return Combine(
+            await createdTask,
+            await modifiedTask,
+            static item => item.Id,
+            static item => item.ModifiedDate ?? item.CreatedDate,
+            MapOrder,
+            size);
+    }
 
     private async Task<SourceResult> LoadQuotationsAsync(
         int customerId,
         int size,
-        CancellationToken cancellationToken) =>
-        await LoadAsync(
+        CancellationToken cancellationToken)
+    {
+        var createdTask = LoadQueryAsync(
             token => quotations.GetCustomerPageAsync(
                 customerId,
                 QuotationListSort.QuotationCreatedDate_Descending,
@@ -92,15 +117,39 @@ public sealed class CustomerActivityAggregator(
                 token),
             response => response.Content.ReadFromJsonAsync<QuotationListPage>(cancellationToken),
             page => IsValid(page, customerId),
-            page => page.Items.Take(size).Select(MapQuotation).OfType<CustomerActivityItem>().ToArray(),
+            page => page.Items,
             page => page.TotalRecords,
             cancellationToken);
+        var modifiedTask = LoadQueryAsync(
+            token => quotations.GetCustomerPageAsync(
+                customerId,
+                QuotationListSort.QuotationModifiedDate_Descending,
+                null,
+                1,
+                size,
+                token),
+            response => response.Content.ReadFromJsonAsync<QuotationListPage>(cancellationToken),
+            page => IsValid(page, customerId),
+            page => page.Items,
+            page => page.TotalRecords,
+            cancellationToken);
+
+        await Task.WhenAll(createdTask, modifiedTask);
+        return Combine(
+            await createdTask,
+            await modifiedTask,
+            static item => item.Id,
+            static item => item.ModifiedDate ?? item.CreatedDate,
+            MapQuotation,
+            size);
+    }
 
     private async Task<SourceResult> LoadInvoicesAsync(
         int customerId,
         int size,
-        CancellationToken cancellationToken) =>
-        await LoadAsync(
+        CancellationToken cancellationToken)
+    {
+        var createdTask = LoadQueryAsync(
             token => invoices.GetCustomerPageAsync(
                 customerId,
                 InvoiceListSort.InvoiceCreatedDate_Descending,
@@ -110,18 +159,42 @@ public sealed class CustomerActivityAggregator(
                 token),
             response => response.Content.ReadFromJsonAsync<InvoiceListPage>(cancellationToken),
             page => IsValid(page, customerId),
-            page => page.Items.Take(size).Select(MapInvoice).OfType<CustomerActivityItem>().ToArray(),
+            page => page.Items,
+            page => page.TotalRecords,
+            cancellationToken);
+        var paidTask = LoadQueryAsync(
+            token => invoices.GetCustomerPageAsync(
+                customerId,
+                InvoiceListSort.InvoicePaymentDate_Descending,
+                null,
+                1,
+                size,
+                token),
+            response => response.Content.ReadFromJsonAsync<InvoiceListPage>(cancellationToken),
+            page => IsValid(page, customerId),
+            page => page.Items,
             page => page.TotalRecords,
             cancellationToken);
 
-    private static async Task<SourceResult> LoadAsync<TPage>(
+        await Task.WhenAll(createdTask, paidTask);
+        return Combine(
+            await createdTask,
+            await paidTask,
+            static item => item.Id,
+            static item => item.PaymentDate ?? item.CreatedDate,
+            MapInvoice,
+            size);
+    }
+
+    private static async Task<QueryResult<TItem>> LoadQueryAsync<TPage, TItem>(
         Func<CancellationToken, Task<HttpResponseMessage>> send,
         Func<HttpResponseMessage, Task<TPage?>> read,
         Func<TPage, bool> isValid,
-        Func<TPage, IReadOnlyList<CustomerActivityItem>> project,
+        Func<TPage, IReadOnlyList<TItem>> items,
         Func<TPage, int> totalRecords,
         CancellationToken cancellationToken)
         where TPage : class
+        where TItem : class
     {
         HttpResponseMessage response;
         try
@@ -130,68 +203,121 @@ public sealed class CustomerActivityAggregator(
         }
         catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
         {
-            return SourceResult.Failed(CustomerHistorySourceState.Unavailable);
+            return QueryResult<TItem>.Failed(CustomerHistorySourceState.Unavailable);
         }
         catch (HttpRequestException)
         {
-            return SourceResult.Failed(CustomerHistorySourceState.Unavailable);
+            return QueryResult<TItem>.Failed(CustomerHistorySourceState.Unavailable);
         }
         catch (Polly.Timeout.TimeoutRejectedException)
         {
-            return SourceResult.Failed(CustomerHistorySourceState.Unavailable);
+            return QueryResult<TItem>.Failed(CustomerHistorySourceState.Unavailable);
         }
 
         using (response)
         {
             if (response.StatusCode == HttpStatusCode.NotFound)
             {
-                return SourceResult.Available([], 0);
+                return QueryResult<TItem>.Available([], 0);
             }
 
             if (response.StatusCode is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden)
             {
-                return SourceResult.Failed(CustomerHistorySourceState.Forbidden);
+                return QueryResult<TItem>.Failed(CustomerHistorySourceState.Forbidden);
             }
 
             if (response.StatusCode == HttpStatusCode.TooManyRequests)
             {
-                return SourceResult.Failed(CustomerHistorySourceState.RateLimited);
+                return QueryResult<TItem>.Failed(CustomerHistorySourceState.RateLimited);
             }
 
             if (!response.IsSuccessStatusCode)
             {
-                return SourceResult.Failed(CustomerHistorySourceState.Unavailable);
+                return QueryResult<TItem>.Failed(CustomerHistorySourceState.Unavailable);
             }
 
             try
             {
                 var page = await read(response);
                 return page is not null && isValid(page)
-                    ? SourceResult.Available(project(page), totalRecords(page))
-                    : SourceResult.Failed(CustomerHistorySourceState.InvalidResponse);
+                    ? QueryResult<TItem>.Available(items(page), totalRecords(page))
+                    : QueryResult<TItem>.Failed(CustomerHistorySourceState.InvalidResponse);
             }
             catch (System.Text.Json.JsonException)
             {
-                return SourceResult.Failed(CustomerHistorySourceState.InvalidResponse);
+                return QueryResult<TItem>.Failed(CustomerHistorySourceState.InvalidResponse);
             }
             catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
             {
-                return SourceResult.Failed(CustomerHistorySourceState.Unavailable);
+                return QueryResult<TItem>.Failed(CustomerHistorySourceState.Unavailable);
             }
             catch (HttpRequestException)
             {
-                return SourceResult.Failed(CustomerHistorySourceState.Unavailable);
+                return QueryResult<TItem>.Failed(CustomerHistorySourceState.Unavailable);
             }
             catch (Polly.Timeout.TimeoutRejectedException)
             {
-                return SourceResult.Failed(CustomerHistorySourceState.Unavailable);
+                return QueryResult<TItem>.Failed(CustomerHistorySourceState.Unavailable);
             }
         }
     }
 
+    private static SourceResult Combine<TItem>(
+        QueryResult<TItem> first,
+        QueryResult<TItem> second,
+        Func<TItem, int> id,
+        Func<TItem, DateTime?> timestamp,
+        Func<TItem, CustomerActivityItem?> project,
+        int size)
+        where TItem : class
+    {
+        var combinedState = MoreSevere(first.State, second.State);
+        if (combinedState == CustomerHistorySourceState.Forbidden)
+        {
+            return SourceResult.Failed([], combinedState);
+        }
+
+        var items = new[] { first, second }
+            .Where(static result => result.State == CustomerHistorySourceState.Available)
+            .SelectMany(static result => result.Items)
+            .GroupBy(id)
+            .Select(group => group
+                .OrderByDescending(timestamp)
+                .First())
+            .Select(project)
+            .OfType<CustomerActivityItem>()
+            .OrderByDescending(static item => item.Timestamp)
+            .ThenByDescending(static item => item.Id)
+            .Take(size)
+            .ToArray();
+
+        if (first.State == CustomerHistorySourceState.Available &&
+            second.State == CustomerHistorySourceState.Available)
+        {
+            return SourceResult.Available(items, Math.Max(first.TotalRecords!.Value, second.TotalRecords!.Value));
+        }
+
+        return SourceResult.Failed(items, combinedState);
+    }
+
+    private static CustomerHistorySourceState MoreSevere(
+        CustomerHistorySourceState first,
+        CustomerHistorySourceState second) =>
+        Severity(first) >= Severity(second) ? first : second;
+
+    private static int Severity(CustomerHistorySourceState state) => state switch
+    {
+        CustomerHistorySourceState.Forbidden => 4,
+        CustomerHistorySourceState.RateLimited => 3,
+        CustomerHistorySourceState.InvalidResponse => 2,
+        CustomerHistorySourceState.Unavailable => 1,
+        CustomerHistorySourceState.Available => 0,
+        _ => throw new ArgumentOutOfRangeException(nameof(state)),
+    };
+
     private static bool IsValid(OrderListPage page, int customerId) =>
         IsValidPage(page.Items, page.PageIndex, page.TotalPages, page.TotalRecords) &&
-        page.Items.All(item =>
+        page.Items.All(item => item is not null &&
             item.Id >= 1 &&
             item.CustomerId == customerId &&
             item.ProcessId >= 1 &&
@@ -200,7 +326,7 @@ public sealed class CustomerActivityAggregator(
 
     private static bool IsValid(QuotationListPage page, int customerId) =>
         IsValidPage(page.Items, page.PageIndex, page.TotalPages, page.TotalRecords) &&
-        page.Items.All(item =>
+        page.Items.All(item => item is not null &&
             item.Id >= 1 &&
             item.CustomerId == customerId &&
             item.Period >= 0 &&
@@ -208,7 +334,7 @@ public sealed class CustomerActivityAggregator(
 
     private static bool IsValid(InvoiceListPage page, int customerId) =>
         IsValidPage(page.Items, page.PageIndex, page.TotalPages, page.TotalRecords) &&
-        page.Items.All(item =>
+        page.Items.All(item => item is not null &&
             item.Id >= 1 &&
             item.CustomerId == customerId &&
             !string.IsNullOrWhiteSpace(item.Number) &&
@@ -279,6 +405,19 @@ public sealed class CustomerActivityAggregator(
                 timestamp.Value);
     }
 
+    private sealed record QueryResult<TItem>(
+        IReadOnlyList<TItem> Items,
+        CustomerHistorySourceState State,
+        int? TotalRecords)
+        where TItem : class
+    {
+        public static QueryResult<TItem> Available(IReadOnlyList<TItem> items, int totalRecords) =>
+            new(items, CustomerHistorySourceState.Available, totalRecords);
+
+        public static QueryResult<TItem> Failed(CustomerHistorySourceState state) =>
+            new([], state, null);
+    }
+
     private sealed record SourceResult(
         IReadOnlyList<CustomerActivityItem> Items,
         CustomerHistorySourceSummary Summary)
@@ -288,7 +427,9 @@ public sealed class CustomerActivityAggregator(
 
         public static SourceResult Forbidden() => new([], CustomerActivityAggregator.Forbidden);
 
-        public static SourceResult Failed(CustomerHistorySourceState state) =>
-            new([], new CustomerHistorySourceSummary(state, null));
+        public static SourceResult Failed(
+            IReadOnlyList<CustomerActivityItem> items,
+            CustomerHistorySourceState state) =>
+            new(items, new CustomerHistorySourceSummary(state, null));
     }
 }
