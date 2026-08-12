@@ -365,6 +365,7 @@
     private async Task LoadOrdersPageAsync(int pageIndex)
     {
         if (!canReadOrders) return;
+        ordersPageIndex = pageIndex;
         ordersLoadCts?.Cancel();
         ordersLoadCts?.Dispose();
         ordersLoadCts = new();
@@ -398,6 +399,7 @@
     private async Task LoadQuotationsPageAsync(int pageIndex)
     {
         if (!canReadQuotations) return;
+        quotationsPageIndex = pageIndex;
         quotationsLoadCts?.Cancel();
         quotationsLoadCts?.Dispose();
         quotationsLoadCts = new();
@@ -431,6 +433,7 @@
     private async Task LoadInvoicesPageAsync(int pageIndex)
     {
         if (!canReadInvoices) return;
+        invoicesPageIndex = pageIndex;
         invoicesLoadCts?.Cancel();
         invoicesLoadCts?.Dispose();
         invoicesLoadCts = new();

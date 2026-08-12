@@ -202,7 +202,113 @@ public sealed class CustomerDetailBrowserTests(
         await page.GoBackAsync();
         await page.WaitForURLAsync(url => url.Contains("tab=quotations", StringComparison.OrdinalIgnoreCase));
         await Assertions.Expect(page.GetByRole(AriaRole.Tab, new() { Name = "Quotations", Exact = true })).ToHaveAttributeAsync("aria-selected", "true");
+        await page.GoForwardAsync();
+        await page.WaitForURLAsync(url => url.Contains("tab=invoices", StringComparison.OrdinalIgnoreCase));
+        await Assertions.Expect(page.GetByRole(AriaRole.Tab, new() { Name = "Invoices", Exact = true })).ToHaveAttributeAsync("aria-selected", "true");
         Assert.Equal(1, state.CustomerLoads);
+    }
+
+    [Theory]
+    [InlineData("orders", "Order history is temporarily unavailable.", "View order 902", "/Orders/View?id=902")]
+    [InlineData("quotations", "Quotation history is temporarily unavailable.", "View quotation 802", "/Quotations/View?id=802")]
+    [InlineData("invoices", "Invoice history is temporarily unavailable.", "View invoice INV-702", "/Invoices/View?id=702")]
+    public async Task FailedSecondHistoryPageRetriesTheRequestedPage(string tab, string failureText, string accessibleName, string expectedHref)
+    {
+        await using var context = await playwright.Browser.NewContextAsync(new()
+        {
+            ViewportSize = new() { Width = 1280, Height = 900 },
+            ReducedMotion = ReducedMotion.Reduce
+        });
+        var page = await context.NewPageAsync();
+        var state = new CustomerBoundaryState { FailPageTwoFamily = tab };
+        await StubCustomerDetailBoundariesAsync(page,
+            ["legacy-customer.customers.read", "legacy.orders.read", "legacy.quotations.read", "legacy.accounting.read"], state);
+
+        await page.GotoAsync(new Uri(server.BaseUri, $"Customers/View?id=69738&tab={tab}").AbsoluteUri);
+        await page.GetByRole(AriaRole.Button, new() { Name = "Next page", Exact = true }).ClickAsync();
+        await page.GetByText(failureText, new() { Exact = true }).WaitForAsync();
+        await page.GetByRole(AriaRole.Button, new() { Name = "Try again", Exact = true }).ClickAsync();
+
+        var record = page.GetByRole(AriaRole.Link, new() { Name = accessibleName, Exact = true });
+        await record.WaitForAsync();
+        Assert.Equal(expectedHref, await record.GetAttributeAsync("href"));
+        Assert.Equal([1, 2, 2], state.PageRequests[tab]);
+        Assert.Equal(1, state.CustomerLoads);
+    }
+
+    [Fact]
+    public async Task ActivityRecordLinksUseCoarsePointerTargetsAtWideWidths()
+    {
+        await using var context = await playwright.Browser.NewContextAsync(new()
+        {
+            ViewportSize = new() { Width = 1024, Height = 900 },
+            HasTouch = true,
+            ReducedMotion = ReducedMotion.Reduce
+        });
+        var page = await context.NewPageAsync();
+        await StubCustomerDetailBoundariesAsync(page, ["legacy-customer.customers.read", "legacy.orders.read"]);
+
+        await page.GotoAsync(new Uri(server.BaseUri, "Customers/View?id=69738&tab=activity").AbsoluteUri);
+        var record = page.GetByRole(AriaRole.Link, new() { Name = "View order 901", Exact = true });
+        await record.WaitForAsync();
+        Assert.Equal("/Orders/View?id=901", await record.GetAttributeAsync("href"));
+        Assert.True(await record.EvaluateAsync<double>("element => element.getBoundingClientRect().height") >= 44);
+    }
+
+    [Theory]
+    [InlineData(401, null)]
+    [InlineData(403, null)]
+    [InlineData(429, "Order history is receiving too many requests. Wait a moment and try again.")]
+    [InlineData(502, "Order history returned invalid data. Try again.")]
+    public async Task OrderHistoryStatusOutcomesStayAtTheCorrectBoundary(int statusCode, string? expectedMessage)
+    {
+        await using var context = await playwright.Browser.NewContextAsync(new() { ViewportSize = new() { Width = 1280, Height = 900 } });
+        var page = await context.NewPageAsync();
+        var state = new CustomerBoundaryState { OrderStatusCode = statusCode };
+        await StubCustomerDetailBoundariesAsync(page, ["legacy-customer.customers.read", "legacy.orders.read"], state);
+
+        await page.GotoAsync(new Uri(server.BaseUri, "Customers/View?id=69738&tab=orders").AbsoluteUri);
+        if (statusCode == 401)
+        {
+            await page.WaitForURLAsync(url => url.Contains("/Login?returnUrl=", StringComparison.OrdinalIgnoreCase));
+            return;
+        }
+
+        if (statusCode == 403)
+        {
+            await page.WaitForURLAsync(url => url.Contains("tab=overview", StringComparison.OrdinalIgnoreCase));
+            Assert.Equal(0, await page.GetByRole(AriaRole.Tab, new() { Name = "Orders", Exact = true }).CountAsync());
+            return;
+        }
+
+        await page.GetByText(expectedMessage!, new() { Exact = true }).WaitForAsync();
+        Assert.Equal(1, await page.GetByRole(AriaRole.Tab, new() { Name = "Orders", Exact = true }).CountAsync());
+    }
+
+    [Fact]
+    public async Task MismatchedCustomerHistoryIsRejectedAndZoomedDarkMotionModesRemainUsable()
+    {
+        await using var context = await playwright.Browser.NewContextAsync(new()
+        {
+            ViewportSize = new() { Width = 640, Height = 900 },
+            ColorScheme = ColorScheme.Dark,
+            ReducedMotion = ReducedMotion.Reduce,
+            ForcedColors = ForcedColors.Active
+        });
+        var page = await context.NewPageAsync();
+        var state = new CustomerBoundaryState { MismatchedOrders = true };
+        await StubCustomerDetailBoundariesAsync(page, ["legacy-customer.customers.read", "legacy.orders.read"], state);
+
+        await page.GotoAsync(new Uri(server.BaseUri, "Customers/View?id=69738&tab=orders").AbsoluteUri);
+        await page.GetByText("Orders history returned invalid data. Try again.", new() { Exact = true }).WaitForAsync();
+        await page.EvaluateAsync("document.documentElement.style.zoom = '2'");
+
+        var activeTab = page.GetByRole(AriaRole.Tab, new() { Name = "Orders", Exact = true });
+        await activeTab.FocusAsync();
+        Assert.Equal("solid", await activeTab.EvaluateAsync<string>("element => getComputedStyle(element).outlineStyle"));
+        Assert.True(await activeTab.EvaluateAsync<bool>("element => parseFloat(getComputedStyle(element).transitionDuration) <= 0.01"));
+        Assert.NotEqual("rgba(0, 0, 0, 0)", await page.Locator(".customer-detail__tabs").EvaluateAsync<string>("element => getComputedStyle(element).backgroundColor"));
+        Assert.True(await page.EvaluateAsync<bool>("() => document.documentElement.scrollWidth <= document.documentElement.clientWidth"));
     }
 
     [Fact]
@@ -331,16 +437,26 @@ public sealed class CustomerDetailBrowserTests(
                 return route.FulfillAsync(new() { Status = 503, ContentType = "application/problem+json", Body = "{}" });
 
             var secondPage = new Uri(route.Request.Url).Query.Contains("index=2", StringComparison.Ordinal);
+            state.PageRequests["orders"].Add(secondPage ? 2 : 1);
+            if (state.OrderStatusCode is int orderStatus)
+                return route.FulfillAsync(new() { Status = orderStatus, ContentType = "application/problem+json", Body = "{}" });
+            if (secondPage && state.FailPageTwoFamily == "orders" && state.PageRequests["orders"].Count(value => value == 2) == 1)
+                return route.FulfillAsync(new() { Status = 503, ContentType = "application/problem+json", Body = "{}" });
             return route.FulfillAsync(new()
             {
                 Status = 200,
                 ContentType = "application/json",
-                Body = JsonSerializer.Serialize(CreateOrderPage(secondPage ? 2 : 1))
+                Body = JsonSerializer.Serialize(CreateOrderPage(secondPage ? 2 : 1, state.MismatchedOrders ? 123 : 69738))
             });
         });
         await page.RouteAsync("**/bff/customers/69738/quotations*", route =>
         {
             Interlocked.Increment(ref state.QuotationLoads);
+            var secondPage = new Uri(route.Request.Url).Query.Contains("index=2", StringComparison.Ordinal);
+            state.PageRequests["quotations"].Add(secondPage ? 2 : 1);
+            if (secondPage && state.FailPageTwoFamily == "quotations" && state.PageRequests["quotations"].Count(value => value == 2) == 1)
+                return route.FulfillAsync(new() { Status = 503, ContentType = "application/problem+json", Body = "{}" });
+            var id = secondPage ? 802 : 801;
             return route.FulfillAsync(new()
             {
                 Status = 200,
@@ -349,19 +465,24 @@ public sealed class CustomerDetailBrowserTests(
                 {
                     items = new[]
                     {
-                        new { id = 801, customerId = 69738, employeeId = 1, invoiceId = (int?)null, period = 30, expirationDate = "2026-09-11T00:00:00Z", subtotal = 100m, vat = 7m, total = 107m, withholdingTax = (decimal?)null, quotedAmount = 107m, currencyId = 1, comment = (string?)null, fob = (string?)null, shippedVia = (string?)null, terms = (string?)null, accepted = (bool?)null, createdDate = "2026-08-11T00:00:00Z", modifiedDate = (string?)null }
+                        new { id, customerId = 69738, employeeId = 1, invoiceId = (int?)null, period = 30, expirationDate = "2026-09-11T00:00:00Z", subtotal = 100m, vat = 7m, total = 107m, withholdingTax = (decimal?)null, quotedAmount = 107m, currencyId = 1, comment = (string?)null, fob = (string?)null, shippedVia = (string?)null, terms = (string?)null, accepted = (bool?)null, createdDate = "2026-08-11T00:00:00Z", modifiedDate = (string?)null }
                     },
-                    pageIndex = 1,
-                    totalPages = 1,
-                    totalRecords = 1,
-                    hasNextPage = false,
-                    hasPreviousPage = false
+                    pageIndex = secondPage ? 2 : 1,
+                    totalPages = 2,
+                    totalRecords = 2,
+                    hasNextPage = !secondPage,
+                    hasPreviousPage = secondPage
                 })
             });
         });
         await page.RouteAsync("**/bff/customers/69738/invoices*", route =>
         {
             Interlocked.Increment(ref state.InvoiceLoads);
+            var secondPage = new Uri(route.Request.Url).Query.Contains("index=2", StringComparison.Ordinal);
+            state.PageRequests["invoices"].Add(secondPage ? 2 : 1);
+            if (secondPage && state.FailPageTwoFamily == "invoices" && state.PageRequests["invoices"].Count(value => value == 2) == 1)
+                return route.FulfillAsync(new() { Status = 503, ContentType = "application/problem+json", Body = "{}" });
+            var id = secondPage ? 702 : 701;
             return route.FulfillAsync(new()
             {
                 Status = 200,
@@ -370,13 +491,13 @@ public sealed class CustomerDetailBrowserTests(
                 {
                     items = new[]
                     {
-                        new { id = 701, customerId = 69738, number = "INV-701", currency = "THB", purchaseOrderNumber = (string?)null, subtotal = 100m, vat = 7m, total = 107m, withholdingTax = (decimal?)null, outstanding = 107m, isPaid = false, receiptId = (int?)null, paymentDate = (string?)null, createdDate = "2026-08-11T00:00:00Z" }
+                        new { id, customerId = 69738, number = $"INV-{id}", currency = "THB", purchaseOrderNumber = (string?)null, subtotal = 100m, vat = 7m, total = 107m, withholdingTax = (decimal?)null, outstanding = 107m, isPaid = false, receiptId = (int?)null, paymentDate = (string?)null, createdDate = "2026-08-11T00:00:00Z" }
                     },
-                    pageIndex = 1,
-                    totalPages = 1,
-                    totalRecords = 1,
-                    hasNextPage = false,
-                    hasPreviousPage = false
+                    pageIndex = secondPage ? 2 : 1,
+                    totalPages = 2,
+                    totalRecords = 2,
+                    hasNextPage = !secondPage,
+                    hasPreviousPage = secondPage
                 })
             });
         });
@@ -414,14 +535,14 @@ public sealed class CustomerDetailBrowserTests(
         shippingAddress = new { id = 102, building = "128/41", addressLine1 = "หมู่ที่ 1 ตำบลบ่อผุด", addressLine2 = (string?)null, city = "อำเภอเกาะสมุย", state = "สุราษฎร์ธานี", postalCode = "84320", countryId = 764, createdDate = "2026-07-13T02:43:00Z", modifiedDate = "2026-07-13T02:44:00Z" }
     };
 
-    private static object CreateOrderPage(int pageIndex)
+    private static object CreateOrderPage(int pageIndex, int customerId = 69738)
     {
         var id = pageIndex == 2 ? 902 : 901;
         return new
         {
             items = new[]
             {
-                new { id, customerId = 69738, employeeId = 1, name = $"Order {id}", processId = 1, quantity = 4, manufactured = 1, remaining = 3, subtotal = (decimal?)null, promisedDate = "2026-08-20T00:00:00Z", allowSocialMedia = false, createdDate = "2026-08-11T00:00:00Z", modifiedDate = (string?)null }
+                new { id, customerId, employeeId = 1, name = $"Order {id}", processId = 1, quantity = 4, manufactured = 1, remaining = 3, subtotal = (decimal?)null, promisedDate = "2026-08-20T00:00:00Z", allowSocialMedia = false, createdDate = "2026-08-11T00:00:00Z", modifiedDate = (string?)null }
             },
             pageIndex,
             totalPages = 2,
@@ -439,5 +560,14 @@ public sealed class CustomerDetailBrowserTests(
         public int QuotationLoads;
         public int InvoiceLoads;
         public bool FailFirstOrders;
+        public string? FailPageTwoFamily;
+        public int? OrderStatusCode;
+        public bool MismatchedOrders;
+        public Dictionary<string, List<int>> PageRequests { get; } = new(StringComparer.Ordinal)
+        {
+            ["orders"] = [],
+            ["quotations"] = [],
+            ["invoices"] = []
+        };
     }
 }

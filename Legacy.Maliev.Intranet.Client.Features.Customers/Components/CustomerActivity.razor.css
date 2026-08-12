@@ -86,8 +86,12 @@
         flex-direction: column;
         gap: 0.25rem;
     }
+}
 
+@media (pointer: coarse), (max-width: 760px) {
     .customer-activity__record ::deep .legacy-link--record {
+        display: inline-flex;
+        align-items: center;
         min-height: 44px;
     }
 }
