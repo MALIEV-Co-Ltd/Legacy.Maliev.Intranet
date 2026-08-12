@@ -234,6 +234,39 @@ public sealed class BffCustomerHistoryContractTests
         Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
     }
 
+    [Theory]
+    [InlineData("orders", "transport")]
+    [InlineData("orders", "cancellation")]
+    [InlineData("orders", "timeout")]
+    [InlineData("quotations", "transport")]
+    [InlineData("quotations", "cancellation")]
+    [InlineData("quotations", "timeout")]
+    [InlineData("invoices", "transport")]
+    [InlineData("invoices", "cancellation")]
+    [InlineData("invoices", "timeout")]
+    public async Task BodyReadFailure_IsServiceUnavailableWithoutPayloadLeak(
+        string family,
+        string failure)
+    {
+        Exception exception = failure switch
+        {
+            "transport" => new HttpRequestException("body-read-transport-secret"),
+            "cancellation" => new TaskCanceledException("body-read-cancellation-secret"),
+            "timeout" => new Polly.Timeout.TimeoutRejectedException("body-read-timeout-secret"),
+            _ => throw new ArgumentOutOfRangeException(nameof(failure)),
+        };
+        var downstream = new RecordingHandler("unused") { BodyReadException = exception };
+        await using var factory = new CustomerHistoryBffFactory(family, downstream, [PermissionFor(family)]);
+        using var client = CreateClient(factory);
+        await SignInAsync(client);
+
+        using var response = await client.GetAsync($"/bff/customers/42/{family}");
+        var body = await response.Content.ReadAsStringAsync();
+
+        Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
+        Assert.DoesNotContain("body-read-", body, StringComparison.Ordinal);
+    }
+
     private static string PermissionFor(string family) => family switch
     {
         "orders" => LegacyEmployeePermissions.OrdersRead,
@@ -373,6 +406,7 @@ public sealed class BffCustomerHistoryContractTests
         public HttpStatusCode StatusCode { get; set; } = HttpStatusCode.OK;
         public int? RetryAfterSeconds { get; set; }
         public Exception? Exception { get; set; }
+        public Exception? BodyReadException { get; set; }
         public string? PathAndQuery { get; private set; }
         public string? Authorization { get; private set; }
         public int RequestCount { get; private set; }
@@ -391,7 +425,9 @@ public sealed class BffCustomerHistoryContractTests
 
             var response = new HttpResponseMessage(StatusCode)
             {
-                Content = new StringContent(body, Encoding.UTF8, "application/json"),
+                Content = BodyReadException is null
+                    ? new StringContent(body, Encoding.UTF8, "application/json")
+                    : new FaultingHttpContent(BodyReadException),
             };
             if (RetryAfterSeconds is not null)
             {
@@ -399,6 +435,18 @@ public sealed class BffCustomerHistoryContractTests
             }
 
             return Task.FromResult(response);
+        }
+    }
+
+    private sealed class FaultingHttpContent(Exception exception) : HttpContent
+    {
+        protected override Task SerializeToStreamAsync(Stream stream, TransportContext? context) =>
+            Task.FromException(exception);
+
+        protected override bool TryComputeLength(out long length)
+        {
+            length = 0;
+            return false;
         }
     }
 }

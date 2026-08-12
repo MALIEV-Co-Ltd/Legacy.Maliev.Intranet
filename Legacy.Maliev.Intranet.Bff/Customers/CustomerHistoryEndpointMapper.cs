@@ -190,6 +190,18 @@ internal static class CustomerHistoryEndpointMapper
             {
                 return InvalidResponse(serviceName);
             }
+            catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+            {
+                return Unavailable(serviceName);
+            }
+            catch (HttpRequestException)
+            {
+                return Unavailable(serviceName);
+            }
+            catch (Polly.Timeout.TimeoutRejectedException)
+            {
+                return Unavailable(serviceName);
+            }
         }
     }
 
