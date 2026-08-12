@@ -12,19 +12,37 @@ public static class ShadcnThemeFactory
         {
             PaletteLight = new PaletteLight
             {
-                Primary = "#171717", PrimaryDarken = "#0a0a0a", PrimaryLighten = "#404040",
-                Secondary = "#f5f5f5", SecondaryDarken = "#e5e5e5", SecondaryLighten = "#fafafa",
-                Background = "#ffffff", Surface = "#ffffff", TextPrimary = "#171717",
-                TextSecondary = "#737373", AppbarBackground = "#ffffff", AppbarText = "#171717",
-                DrawerBackground = "#ffffff", DrawerText = "#171717"
+                Primary = "#171717",
+                PrimaryDarken = "#0a0a0a",
+                PrimaryLighten = "#404040",
+                Secondary = "#f5f5f5",
+                SecondaryDarken = "#e5e5e5",
+                SecondaryLighten = "#fafafa",
+                Background = "#ffffff",
+                Surface = "#ffffff",
+                TextPrimary = "#171717",
+                TextSecondary = "#737373",
+                AppbarBackground = "#ffffff",
+                AppbarText = "#171717",
+                DrawerBackground = "#ffffff",
+                DrawerText = "#171717"
             },
             PaletteDark = new PaletteDark
             {
-                Primary = "#e4e4e7", PrimaryDarken = "#d4d4d8", PrimaryLighten = "#fafafa",
-                Secondary = "#3f3f46", SecondaryDarken = "#27272a", SecondaryLighten = "#52525b",
-                Background = "#252525", Surface = "#333333", TextPrimary = "#fafafa",
-                TextSecondary = "#a3a3a3", AppbarBackground = "#333333", AppbarText = "#fafafa",
-                DrawerBackground = "#333333", DrawerText = "#fafafa"
+                Primary = "#e4e4e7",
+                PrimaryDarken = "#d4d4d8",
+                PrimaryLighten = "#fafafa",
+                Secondary = "#3f3f46",
+                SecondaryDarken = "#27272a",
+                SecondaryLighten = "#52525b",
+                Background = "#252525",
+                Surface = "#333333",
+                TextPrimary = "#fafafa",
+                TextSecondary = "#a3a3a3",
+                AppbarBackground = "#333333",
+                AppbarText = "#fafafa",
+                DrawerBackground = "#333333",
+                DrawerText = "#fafafa"
             },
             Typography = new Typography
             {
