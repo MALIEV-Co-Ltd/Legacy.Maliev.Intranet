@@ -21,7 +21,7 @@
                 {
                     <MudButton OnClick="LoadAsync" Variant="Variant.Filled" Color="Color.Primary">@Text["Retry"]</MudButton>
                 }
-                <MudButton Href="/Customers/Index" Variant="Variant.Text">@Text["BackToCustomers"]</MudButton>
+                <LegacyLink Href="/Customers/Index" Role="LegacyLinkRole.Navigation" StartIcon="@Icons.Material.Filled.ArrowBack" AriaLabel="@Text["BackToCustomers"]">@Text["BackToCustomers"]</LegacyLink>
             </div>
         }
         else if (customer is not null)
@@ -67,7 +67,7 @@
                     else
                     {
                         <dl class="customer-detail__details details">
-                            <div><dt>@Text["Email"]</dt><dd><a href="mailto:@customer.Email">@customer.Email</a></dd></div>
+                            <div><dt>@Text["Email"]</dt><dd><LegacyLink Href="@($"mailto:{customer.Email}")" Role="LegacyLinkRole.Inline">@customer.Email</LegacyLink></dd></div>
                             <div><dt>@Text["Telephone"]</dt><dd>@Display(customer.Telephone)</dd></div>
                             <div><dt>@Text["Mobile"]</dt><dd>@Display(customer.Mobile)</dd></div>
                             <div><dt>@Text["Fax"]</dt><dd>@Display(customer.Fax)</dd></div>
@@ -114,7 +114,7 @@
             </div>
 
             <nav class="customer-detail__footer" aria-label="@Text["BackToCustomers"]">
-                <MudButton Href="/Customers/Index" Variant="Variant.Text">@Text["BackToCustomers"]</MudButton>
+                <LegacyLink Href="/Customers/Index" Role="LegacyLinkRole.Navigation" StartIcon="@Icons.Material.Filled.ArrowBack" AriaLabel="@Text["BackToCustomers"]">@Text["BackToCustomers"]</LegacyLink>
             </nav>
         }
     </div>

@@ -1,3 +1,5 @@
+@using Legacy.Maliev.Intranet.Client.Shared.Components
+
 <section class="dashboard-panel @Class">
     <header class="dashboard-panel-header">
         <div>
@@ -9,7 +11,7 @@
         </div>
         @if (!string.IsNullOrWhiteSpace(NavigateTo))
         {
-            <a href="@NavigateTo">@LinkText <span aria-hidden="true">→</span></a>
+            <LegacyLink Href="@NavigateTo" Role="LegacyLinkRole.Navigation" AriaLabel="@LinkText">@LinkText <span aria-hidden="true">→</span></LegacyLink>
         }
     </header>
     <div class="dashboard-panel-body">

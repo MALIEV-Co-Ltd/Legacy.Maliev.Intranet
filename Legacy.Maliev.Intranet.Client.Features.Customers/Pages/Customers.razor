@@ -104,7 +104,7 @@
                     }
                 </MudTd>
                 <MudTd DataLabel="@Text["Actions"]" Class="customer-action-cell">
-                    <MudLink Href="@($"/Customers/View?id={context.Id}")">@Text["View"]</MudLink>
+                    <LegacyLink Href="@($"/Customers/View?id={context.Id}")" Role="LegacyLinkRole.Record" AriaLabel="@($"{Text["View"]} {context.Id}")">@Text["View"]</LegacyLink>
                 </MudTd>
             </RowTemplate>
         </MudTable>

@@ -14,7 +14,7 @@ else
 {
     <header class="operations-page-header">
         <div><MudText Typo="Typo.h4" HtmlTag="h1">@Text["Heading"]</MudText><MudText Typo="Typo.body2">@Text["OrderDetails"]</MudText></div>
-        <MudButton Href="/Orders/Index" Variant="Variant.Outlined">@Text["BackToOrders"]</MudButton>
+        <LegacyLink Href="/Orders/Index" Role="LegacyLinkRole.Navigation" StartIcon="@Icons.Material.Filled.ArrowBack" AriaLabel="@Text["BackToOrders"]">@Text["BackToOrders"]</LegacyLink>
     </header>
 
     @if (!string.IsNullOrWhiteSpace(error))
@@ -27,7 +27,7 @@ else
             @notice
             @if (createdOrderId is int orderId)
             {
-                <MudLink Href="@($"/Orders/View?id={orderId}")" Class="ms-2">@Text["ViewOrder"]</MudLink>
+                <LegacyLink Href="@($"/Orders/View?id={orderId}")" Role="LegacyLinkRole.Record" AriaLabel="@($"{Text["ViewOrder"]} {orderId}")" Class="ms-2">@Text["ViewOrder"]</LegacyLink>
             }
         </MudAlert>
     }

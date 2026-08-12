@@ -19,7 +19,7 @@
         <MudAlert Severity="Severity.Error" aria-live="assertive">@error</MudAlert>
         <div class="d-flex flex-wrap gap-2 mt-4">
             <MudButton OnClick="LoadAsync" Variant="Variant.Filled" Color="Color.Primary">@Text["Retry"]</MudButton>
-            <MudButton Href="/QuotationRequests/Index" Variant="Variant.Text">@Text["Back"]</MudButton>
+            <LegacyLink Href="/QuotationRequests/Index" Role="LegacyLinkRole.Navigation" StartIcon="@Icons.Material.Filled.ArrowBack" AriaLabel="@Text["Back"]">@Text["Back"]</LegacyLink>
         </div>
     }
     else if (detail is not null)
@@ -29,7 +29,7 @@
                 <MudText Typo="Typo.h4" HtmlTag="h1">@Text["Heading", detail.Request.Id]</MudText>
                 <MudText Typo="Typo.body1">@Text["Description"]</MudText>
             </div>
-            <MudButton Href="/QuotationRequests/Index" Variant="Variant.Outlined">@Text["Back"]</MudButton>
+            <LegacyLink Href="/QuotationRequests/Index" Role="LegacyLinkRole.Navigation" StartIcon="@Icons.Material.Filled.ArrowBack" AriaLabel="@Text["Back"]">@Text["Back"]</LegacyLink>
         </header>
 
         @if (notice is not null)
@@ -100,7 +100,7 @@
                                 }
                                 else
                                 {
-                                    <MudLink Href="@file.Uri.ToString()" Target="_blank" rel="noopener">@file.ObjectName</MudLink>
+                                    <LegacyLink Href="@file.Uri.ToString()" Role="LegacyLinkRole.External" Target="_blank" Rel="noopener">@file.ObjectName</LegacyLink>
                                 }
                             </MudListItem>
                         }

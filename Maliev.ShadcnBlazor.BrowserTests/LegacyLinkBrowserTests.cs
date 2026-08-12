@@ -21,11 +21,12 @@ public sealed class LegacyLinkBrowserTests(ShowcaseServerFixture server, Playwri
 
         foreach (var role in new[] { "inline", "record", "navigation", "external" })
         {
-            Assert.True(await page.Locator($"[data-link-role={role}]").CountAsync() > 0, $"The {role} link fixture is missing.");
+            var roleLink = page.Locator($"[data-link-role={role}]").First;
+            Assert.True(await roleLink.CountAsync() > 0, $"The {role} link fixture is missing.");
+            Assert.Equal("0px", await roleLink.EvaluateAsync<string>("element => getComputedStyle(element).borderTopWidth"));
         }
 
         var link = page.Locator("[data-link-role=navigation]").First;
-        Assert.Equal("0px", await link.EvaluateAsync<string>("e => getComputedStyle(e).borderTopWidth"));
         await link.FocusAsync();
         Assert.True(await link.EvaluateAsync<double>("e => e.getBoundingClientRect().height") >= minimumHeight);
         Assert.NotEqual("none", await link.EvaluateAsync<string>("e => getComputedStyle(e).boxShadow"));
@@ -42,6 +43,7 @@ public sealed class LegacyLinkBrowserTests(ShowcaseServerFixture server, Playwri
 
         Assert.Equal("Semantic link fixture | ตัวอย่างลิงก์เชิงความหมาย", await page.TitleAsync());
         await page.GetByRole(AriaRole.Region, new() { Name = "Semantic link roles | บทบาทลิงก์เชิงความหมาย" }).WaitForAsync();
+        await page.GetByRole(AriaRole.Link, new() { Name = "Customer record 123456789 | ระเบียนลูกค้า 123456789", Exact = true }).WaitForAsync();
         await page.GetByRole(AriaRole.Link, new() { Name = "Customer navigation | การนำทางลูกค้า" }).WaitForAsync();
 
         var external = page.GetByTestId("mixed-case-external-link");

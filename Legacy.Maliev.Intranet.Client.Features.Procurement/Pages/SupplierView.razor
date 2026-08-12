@@ -39,7 +39,7 @@
             </MudPaper>
             <MudStack Row="true" Spacing="2" Class="mt-4 supplier-editor-actions">
                 <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="@submitting" OnClick="SaveAsync">@Text["Save"]</MudButton>
-                <MudButton Href="/Suppliers/Index" Variant="Variant.Text">@Text["Back"]</MudButton>
+                <LegacyLink Href="/Suppliers/Index" Role="LegacyLinkRole.Navigation" StartIcon="@Icons.Material.Filled.ArrowBack" AriaLabel="@Text["Back"]">@Text["Back"]</LegacyLink>
             </MudStack>
         </MudForm>
 

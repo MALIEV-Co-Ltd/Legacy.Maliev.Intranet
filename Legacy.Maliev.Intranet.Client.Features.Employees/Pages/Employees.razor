@@ -52,7 +52,7 @@
                 <MudTd DataLabel="@Text["Email"]">@context.Email</MudTd>
                 <MudTd DataLabel="@Text["Role"]">@context.Role?.Name</MudTd>
                 <MudTd DataLabel="@Text["Actions"]">
-                    <MudLink Href="@($"/Employees/View?id={context.Id}")">@Text["View"]</MudLink>
+                    <LegacyLink Href="@($"/Employees/View?id={context.Id}")" Role="LegacyLinkRole.Record" AriaLabel="@($"{Text["View"]} {context.Id}")">@Text["View"]</LegacyLink>
                 </MudTd>
             </RowTemplate>
         </MudTable>

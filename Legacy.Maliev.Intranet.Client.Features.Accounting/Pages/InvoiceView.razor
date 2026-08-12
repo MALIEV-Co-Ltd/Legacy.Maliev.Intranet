@@ -19,21 +19,21 @@
         <MudAlert Severity="Severity.Error" aria-live="assertive">@error</MudAlert>
         <div class="d-flex flex-wrap gap-2 mt-4">
             <MudButton OnClick="LoadAsync" Variant="Variant.Filled" Color="Color.Primary">@Text["Retry"]</MudButton>
-            <MudButton Href="/Invoices/Index" Variant="Variant.Text">@Text["Back"]</MudButton>
+            <LegacyLink Href="/Invoices/Index" Role="LegacyLinkRole.Navigation" StartIcon="@Icons.Material.Filled.ArrowBack" AriaLabel="@Text["Back"]">@Text["Back"]</LegacyLink>
         </div>
     }
     else if (detailPage is not null)
     {
         <div class="operations-page-header d-flex flex-wrap align-center justify-space-between gap-3 mb-4">
             <MudText Typo="Typo.h4" HtmlTag="h1">@Text["Heading", detailPage.Invoice.Number]</MudText>
-            <MudButton Href="/Invoices/Index" Variant="Variant.Outlined">@Text["Back"]</MudButton>
+            <LegacyLink Href="/Invoices/Index" Role="LegacyLinkRole.Navigation" StartIcon="@Icons.Material.Filled.ArrowBack" AriaLabel="@Text["Back"]">@Text["Back"]</LegacyLink>
         </div>
         @if (!string.IsNullOrWhiteSpace(notice)) { <MudAlert Severity="Severity.Success" Class="mb-4" aria-live="polite">@notice</MudAlert> }
 
         <MudPaper Class="pa-4 mb-4">
             <MudGrid>
                 <MudItem xs="12" md="4"><MudText Typo="Typo.caption">@Text["InvoiceId"]</MudText><MudText>@detailPage.Invoice.Id</MudText></MudItem>
-                <MudItem xs="12" md="4"><MudText Typo="Typo.caption">@Text["CustomerId"]</MudText><MudLink Href="@($"/Customers/View?id={detailPage.Invoice.CustomerId}")">@detailPage.Invoice.CustomerId</MudLink></MudItem>
+                <MudItem xs="12" md="4"><MudText Typo="Typo.caption">@Text["CustomerId"]</MudText><LegacyLink Href="@($"/Customers/View?id={detailPage.Invoice.CustomerId}")" Role="LegacyLinkRole.Record" AriaLabel="@($"{Text["CustomerId"]} {detailPage.Invoice.CustomerId}")">@detailPage.Invoice.CustomerId</LegacyLink></MudItem>
                 <MudItem xs="12" md="4"><MudText Typo="Typo.caption">@Text["CreatedDate"]</MudText><MudText>@FormatDate(detailPage.Invoice.CreatedDate)</MudText></MudItem>
                 <MudItem xs="12" md="4"><MudText Typo="Typo.caption">@Text["SalesPerson"]</MudText><MudText>@Value(detailPage.Invoice.SalesPerson)</MudText></MudItem>
                 <MudItem xs="12" md="4"><MudText Typo="Typo.caption">@Text["PurchaseOrder"]</MudText><MudText>@Value(detailPage.Invoice.PurchaseOrderNumber)</MudText></MudItem>
@@ -103,7 +103,7 @@
             <MudList T="InvoiceDownload">
                 @foreach (var file in detailPage.InvoiceFiles.Concat(detailPage.ReceiptFiles))
                 {
-                    <MudListItem T="InvoiceDownload" Value="file"><a href="@file.Uri?.ToString()" target="_blank" rel="noopener">@file.ObjectName</a></MudListItem>
+                    <MudListItem T="InvoiceDownload" Value="file"><LegacyLink Href="@file.Uri?.ToString()" Role="LegacyLinkRole.External" Target="_blank" Rel="noopener">@file.ObjectName</LegacyLink></MudListItem>
                 }
             </MudList>
             @if (detailPage.InvoiceFiles.Count + detailPage.ReceiptFiles.Count == 0) { <MudText>@Text["NoDocuments"]</MudText> }

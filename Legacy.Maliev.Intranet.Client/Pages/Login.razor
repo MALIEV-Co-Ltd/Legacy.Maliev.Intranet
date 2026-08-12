@@ -2,6 +2,7 @@
 @attribute [AllowAnonymous]
 @layout Layout.EmptyLayout
 @using Legacy.Maliev.Intranet.Client.Components.Shell
+@using Legacy.Maliev.Intranet.Client.Shared.Components
 @inject EmployeeAuthenticationClient AuthenticationClient
 @inject NavigationManager Navigation
 @inject AuthenticationStateProvider AuthenticationStateProvider
@@ -132,7 +133,7 @@
             </div>
             <footer class="legacy-login-footer">
                 <span>MALIEV CO., LTD.</span>
-                <a href="https://www.maliev.com" target="_blank" rel="noreferrer">www.maliev.com</a>
+                <LegacyLink Href="https://www.maliev.com" Role="LegacyLinkRole.External" Target="_blank" Rel="noreferrer">www.maliev.com</LegacyLink>
             </footer>
         </section>
     </div>

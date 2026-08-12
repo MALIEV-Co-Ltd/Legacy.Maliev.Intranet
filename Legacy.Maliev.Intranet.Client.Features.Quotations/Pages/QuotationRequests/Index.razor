@@ -53,7 +53,7 @@
                 <MudTh>@Text["Created"]</MudTh>
             </HeaderContent>
             <RowTemplate>
-                <MudTd DataLabel="@Text["Id"]"><MudLink Href="@($"/QuotationRequests/View?id={context.Id}")">@context.Id</MudLink></MudTd>
+                <MudTd DataLabel="@Text["Id"]"><LegacyLink Href="@($"/QuotationRequests/View?id={context.Id}")" Role="LegacyLinkRole.Record" AriaLabel="@($"{Text["Id"]} {context.Id}")">@context.Id</LegacyLink></MudTd>
                 <MudTd DataLabel="@Text["Customer"]">@Name(context)</MudTd>
                 <MudTd DataLabel="@Text["Company"]">@Fallback(context.CompanyName)</MudTd>
                 <MudTd DataLabel="@Text["Status"]"><span class="@StatusClass(context.Done)">@(context.Done == true ? Text["Done"] : Text["Open"])</span></MudTd>

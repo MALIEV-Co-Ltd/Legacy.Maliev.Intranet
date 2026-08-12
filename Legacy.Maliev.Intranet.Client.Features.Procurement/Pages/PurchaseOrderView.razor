@@ -20,13 +20,13 @@
             {
                 <MudButton OnClick="LoadAsync" Variant="Variant.Filled" Color="Color.Primary">@Text["Retry"]</MudButton>
             }
-            <MudButton Href="/PurchaseOrders/Index" Variant="Variant.Text">@Text["Back"]</MudButton>
+            <LegacyLink Href="/PurchaseOrders/Index" Role="LegacyLinkRole.Navigation" StartIcon="@Icons.Material.Filled.ArrowBack" AriaLabel="@Text["Back"]">@Text["Back"]</LegacyLink>
         </div>
     }
     else if (notFound)
     {
         <MudAlert Severity="Severity.Warning">@Text["NotFound"]</MudAlert>
-        <MudButton Href="/PurchaseOrders/Index" Class="mt-3">@Text["Back"]</MudButton>
+        <LegacyLink Href="/PurchaseOrders/Index" Role="LegacyLinkRole.Navigation" StartIcon="@Icons.Material.Filled.ArrowBack" AriaLabel="@Text["Back"]" Class="mt-3">@Text["Back"]</LegacyLink>
     }
     else if (detail is not null)
     {

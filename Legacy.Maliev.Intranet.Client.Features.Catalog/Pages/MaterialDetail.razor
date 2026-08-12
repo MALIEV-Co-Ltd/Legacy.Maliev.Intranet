@@ -17,14 +17,14 @@
     else if (notFound)
     {
         <MudAlert Severity="Severity.Info" aria-live="polite">@error</MudAlert>
-        <MudButton Href="/Materials/Index" Variant="Variant.Text" Class="mt-4">@Text["Back"]</MudButton>
+        <LegacyLink Href="/Materials/Index" Role="LegacyLinkRole.Navigation" StartIcon="@Icons.Material.Filled.ArrowBack" AriaLabel="@Text["Back"]" Class="mt-4">@Text["Back"]</LegacyLink>
     }
     else if (!string.IsNullOrWhiteSpace(error))
     {
         <MudAlert Severity="Severity.Error" aria-live="assertive">@error</MudAlert>
         <div class="d-flex flex-wrap gap-2 mt-4">
             <MudButton OnClick="LoadAsync" Variant="Variant.Filled" Color="Color.Primary">@Text["Retry"]</MudButton>
-            <MudButton Href="/Materials/Index" Variant="Variant.Text">@Text["Back"]</MudButton>
+            <LegacyLink Href="/Materials/Index" Role="LegacyLinkRole.Navigation" StartIcon="@Icons.Material.Filled.ArrowBack" AriaLabel="@Text["Back"]">@Text["Back"]</LegacyLink>
         </div>
     }
     else if (material is not null)
@@ -169,7 +169,7 @@
                 <MudButton ButtonType="ButtonType.Button" Variant="Variant.Filled" Color="Color.Primary" Disabled="@submitting" OnClick="SubmitAsync">
                     @(submitting ? Text["Saving"] : Text["SaveMaterial"])
                 </MudButton>
-                <MudButton Href="/Materials/Index" Variant="Variant.Text" Disabled="@submitting">@Text["BackToMaterials"]</MudButton>
+                <LegacyLink Href="/Materials/Index" Role="LegacyLinkRole.Navigation" StartIcon="@Icons.Material.Filled.ArrowBack" Disabled="@submitting" AriaLabel="@Text["BackToMaterials"]">@Text["BackToMaterials"]</LegacyLink>
             </MudStack>
         </MudForm>
     }
