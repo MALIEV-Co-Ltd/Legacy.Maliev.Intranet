@@ -104,7 +104,7 @@
                     <MudTh>@Text["PaymentDate"]</MudTh>
                 </HeaderContent>
                 <RowTemplate>
-                    <MudTd DataLabel="@Text["Id"]"><MudLink Href="@($"/Finances/View?id={context.Id}")">@context.Id</MudLink></MudTd>
+                    <MudTd DataLabel="@Text["Id"]"><LegacyLink Href="@($"/Finances/View?id={context.Id}")" Role="LegacyLinkRole.Record" AriaLabel="@($"{Text["Id"]} {context.Id}")">@context.Id</LegacyLink></MudTd>
                     <MudTd DataLabel="@Text["Direction"]">@context.PaymentDirectionId</MudTd>
                     <MudTd DataLabel="@Text["Type"]">@context.PaymentTypeId</MudTd>
                     <MudTd DataLabel="@Text["Description"]">@ValueOrFallback(context.Description)</MudTd>

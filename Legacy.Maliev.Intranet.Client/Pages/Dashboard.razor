@@ -1,6 +1,7 @@
 @page "/Dashboard"
 @attribute [Authorize]
 @using Legacy.Maliev.Intranet.Client.Components.Dashboard
+@using Legacy.Maliev.Intranet.Client.Shared.Components
 @inject HttpClient Http
 @inject NavigationManager Navigation
 @inject IStringLocalizer<Dashboard> Text
@@ -79,7 +80,7 @@
                                 @foreach (var order in _snapshot.RecentOrders)
                                 {
                                     <tr>
-                                        <td data-label="@Text["Order"]"><a href="@order.NavigateTo">#@order.Id</a></td>
+                                        <td data-label="@Text["Order"]"><LegacyLink Href="@order.NavigateTo" Role="LegacyLinkRole.Record" AriaLabel="@Text["OrderNumber", order.Id]">#@order.Id</LegacyLink></td>
                                         <td data-label="@Text["Part"]" class="dashboard-table-primary">@(string.IsNullOrWhiteSpace(order.Name) ? Text["OrderNumber", order.Id] : order.Name)</td>
                                         <td data-label="@Text["Quantity"]">@order.Quantity.ToString("N0")</td>
                                         <td data-label="@Text["Remaining"]">@Remaining(order).ToString("N0")</td>
@@ -108,7 +109,7 @@
                                 @foreach (var quotation in _snapshot.RecentQuotations)
                                 {
                                     <tr>
-                                        <td data-label="@Text["Quote"]"><a href="@quotation.NavigateTo">#@quotation.Id</a></td>
+                                        <td data-label="@Text["Quote"]"><LegacyLink Href="@quotation.NavigateTo" Role="LegacyLinkRole.Record" AriaLabel="@($"{Text["Quote"]} #{quotation.Id}")">#@quotation.Id</LegacyLink></td>
                                         <td data-label="@Text["Total"]" class="dashboard-money">@FormatMoney(quotation.QuotedAmount ?? quotation.Total, quotation.CurrencyId)</td>
                                         <td data-label="@Text["Expires"]">@FormatDate(quotation.ExpirationDate)</td>
                                         <td data-label="@Text["Decision"]"><span class="dashboard-status @DecisionClass(quotation.Accepted)">@Decision(quotation.Accepted)</span></td>
@@ -136,7 +137,7 @@
                                 @foreach (var payment in _snapshot.RecentPayments)
                                 {
                                     <tr>
-                                        <td data-label="@Text["Payment"]"><a href="@payment.NavigateTo">#@payment.Id</a></td>
+                                        <td data-label="@Text["Payment"]"><LegacyLink Href="@payment.NavigateTo" Role="LegacyLinkRole.Record" AriaLabel="@($"{Text["Payment"]} #{payment.Id}")">#@payment.Id</LegacyLink></td>
                                         <td data-label="@Text["Recipient"]" class="dashboard-table-primary">@(string.IsNullOrWhiteSpace(payment.Recipient) ? "—" : payment.Recipient)</td>
                                         <td data-label="@Text["Amount"]" class="dashboard-money">@FormatMoney(payment.Amount, payment.CurrencyId)</td>
                                         <td data-label="@Text["Date"]">@FormatDate(payment.PaymentDate ?? payment.CreatedDate)</td>
@@ -162,7 +163,7 @@
                                 @foreach (var customer in _snapshot.RecentCustomers)
                                 {
                                     <tr>
-                                        <td data-label="@Text["Customer"]"><a href="@customer.NavigateTo">@customer.FullName</a></td>
+                                        <td data-label="@Text["Customer"]"><LegacyLink Href="@customer.NavigateTo" Role="LegacyLinkRole.Record" AriaLabel="@customer.FullName">@customer.FullName</LegacyLink></td>
                                         <td data-label="@Text["Company"]" class="dashboard-table-primary">@(string.IsNullOrWhiteSpace(customer.Company) ? "—" : customer.Company)</td>
                                         <td data-label="@Text["Email"]">@customer.Email</td>
                                     </tr>
@@ -184,7 +185,7 @@
                             <li>
                                 <span class="dashboard-activity-icon" aria-hidden="true"><MudIcon Icon="@ActivityIcon(activity.Kind)" /></span>
                                 <div>
-                                    <a href="@activity.NavigateTo">@ActivityTitle(activity)</a>
+                                    <LegacyLink Href="@activity.NavigateTo" Role="LegacyLinkRole.Record" AriaLabel="@ActivityTitle(activity)">@ActivityTitle(activity)</LegacyLink>
                                     <span>@ActivityDetail(activity)</span>
                                 </div>
                                 <time datetime="@DateTimeAttribute(activity.OccurredAt)">@FormatRelativeDate(activity.OccurredAt)</time>

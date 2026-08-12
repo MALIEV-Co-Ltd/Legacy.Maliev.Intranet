@@ -19,7 +19,7 @@
             {
                 <MudButton OnClick="LoadAsync" Variant="Variant.Filled" Color="Color.Primary">@Text["Retry"]</MudButton>
             }
-            <MudButton Href="/Employees/Index" Variant="Variant.Text">@Text["BackToEmployees"]</MudButton>
+            <LegacyLink Href="/Employees/Index" Role="LegacyLinkRole.Navigation" StartIcon="@Icons.Material.Filled.ArrowBack" AriaLabel="@Text["BackToEmployees"]">@Text["BackToEmployees"]</LegacyLink>
         </div>
     }
     else if (detail is not null)
@@ -39,7 +39,7 @@
                 <dd>@ValueOrFallback(detail.HomeAddress?.AddressLine1)</dd>
             </dl>
         </MudPaper>
-        <MudButton Href="/Employees/Index" Variant="Variant.Text" Class="mt-4">@Text["BackToEmployees"]</MudButton>
+        <LegacyLink Href="/Employees/Index" Role="LegacyLinkRole.Navigation" StartIcon="@Icons.Material.Filled.ArrowBack" AriaLabel="@Text["BackToEmployees"]" Class="mt-4">@Text["BackToEmployees"]</LegacyLink>
     }
 </MudContainer>
 

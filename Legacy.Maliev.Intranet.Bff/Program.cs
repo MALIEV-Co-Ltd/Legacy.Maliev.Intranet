@@ -39,6 +39,7 @@ builder.Services.AddProblemDetails();
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddSingleton<DiagnosticEventStore>();
 builder.Services.AddScoped<LegacyDashboardAggregator>();
+builder.Services.AddScoped<CustomerActivityAggregator>();
 builder.Services.AddLegacyAccessTokenValidation(
     builder.Configuration,
     validateOnStart: !builder.Environment.IsEnvironment("Testing"));
@@ -596,7 +597,9 @@ builder.Services.AddAuthorizationBuilder()
             context.User.FindAll(ClaimTypes.Role).Select(static claim => claim.Value))))
     .AddPolicy(LegacyEmployeePermissions.AccountingRead, policy => policy
         .RequireAuthenticatedUser()
-        .RequireClaim("permissions", LegacyEmployeePermissions.AccountingRead))
+        .RequireAssertion(context => LegacyNavigationAuthorization.IsEnabled(
+            context.User,
+            LegacyEmployeePermissions.AccountingRead)))
     .AddPolicy(LegacyEmployeePermissions.AccountingCreate, policy => policy
         .RequireAuthenticatedUser()
         .RequireClaim("permissions", LegacyEmployeePermissions.AccountingCreate))
@@ -630,7 +633,9 @@ builder.Services.AddAuthorizationBuilder()
         .RequireClaim("permissions", LegacyEmployeePermissions.QuotationRequestsUpdate))
     .AddPolicy(LegacyEmployeePermissions.CustomersRead, policy => policy
         .RequireAuthenticatedUser()
-        .RequireClaim("permissions", LegacyEmployeePermissions.CustomersRead))
+        .RequireAssertion(context => LegacyNavigationAuthorization.IsEnabled(
+            context.User,
+            LegacyEmployeePermissions.CustomersRead)))
     .AddPolicy(LegacyEmployeePermissions.CustomersCreate, policy => policy
         .RequireAuthenticatedUser()
         .RequireClaim("permissions", LegacyEmployeePermissions.CustomersCreate))
@@ -651,7 +656,9 @@ builder.Services.AddAuthorizationBuilder()
         .RequireClaim("permissions", LegacyEmployeePermissions.EmployeesRead))
     .AddPolicy(LegacyEmployeePermissions.OrdersRead, policy => policy
         .RequireAuthenticatedUser()
-        .RequireClaim("permissions", LegacyEmployeePermissions.OrdersRead))
+        .RequireAssertion(context => LegacyNavigationAuthorization.IsEnabled(
+            context.User,
+            LegacyEmployeePermissions.OrdersRead)))
     .AddPolicy(LegacyEmployeePermissions.OrdersCreate, policy => policy
         .RequireAuthenticatedUser()
         .RequireClaim("permissions", LegacyEmployeePermissions.OrdersCreate))
@@ -705,10 +712,8 @@ builder.Services.AddAuthorizationBuilder()
     .AddPolicy(LegacyEmployeePermissions.QuotationsRead, policy => policy
         .RequireAuthenticatedUser()
         .RequireAssertion(context => LegacyNavigationAuthorization.IsEnabled(
-            true,
-            LegacyEmployeePermissions.QuotationsRead,
-            context.User.FindAll("permissions").Select(static claim => claim.Value),
-            context.User.FindAll(ClaimTypes.Role).Select(static claim => claim.Value))))
+            context.User,
+            LegacyEmployeePermissions.QuotationsRead)))
     .AddPolicy(LegacyEmployeePermissions.QuotationsCreate, policy => policy
         .RequireAuthenticatedUser()
         .RequireClaim("permissions", LegacyEmployeePermissions.QuotationsCreate)
@@ -986,6 +991,28 @@ app.MapGet("/bff/quotations/stats", (
     CancellationToken cancellationToken) =>
     QuotationsEndpointMapper.MapStatsAsync(quotations.GetStatsAsync, context, cancellationToken))
     .RequireAuthorization(LegacyEmployeePermissions.QuotationsRead);
+
+app.MapGet("/bff/customers/{customerId:int}/orders", CustomerHistoryEndpointMapper.OrdersAsync)
+    .RequireAuthorization(LegacyEmployeePermissions.OrdersRead);
+app.MapGet("/bff/customers/{customerId:int}/quotations", CustomerHistoryEndpointMapper.QuotationsAsync)
+    .RequireAuthorization(LegacyEmployeePermissions.QuotationsRead);
+app.MapGet("/bff/customers/{customerId:int}/invoices", CustomerHistoryEndpointMapper.InvoicesAsync)
+    .RequireAuthorization(LegacyEmployeePermissions.AccountingRead);
+app.MapGet("/bff/customers/{customerId:int}/activity", async (
+    int customerId,
+    int? size,
+    HttpContext context,
+    CustomerActivityAggregator aggregator,
+    CancellationToken cancellationToken) =>
+{
+    if (customerId <= 0)
+    {
+        return Results.BadRequest();
+    }
+
+    var page = await aggregator.GetAsync(customerId, size ?? 20, context.User, cancellationToken);
+    return Results.Ok(page);
+}).RequireAuthorization(LegacyEmployeePermissions.CustomersRead);
 
 app.MapGet("/bff/quotations/create", QuotationCreateEndpointMapper.GetAsync)
     .RequireAuthorization(policy => policy

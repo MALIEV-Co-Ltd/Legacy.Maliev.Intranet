@@ -43,7 +43,7 @@ public sealed class QuotationOperationsUiContractTests
         Assert.Contains("HttpMethod.Put", requestView, StringComparison.Ordinal);
         Assert.Contains("CustomerDetails", requestView, StringComparison.Ordinal);
         Assert.Contains("RequestDetails", requestView, StringComparison.Ordinal);
-        Assert.Contains("rel=\"noopener\"", requestView, StringComparison.Ordinal);
+        Assert.Contains("Rel=\"noopener\"", requestView, StringComparison.Ordinal);
         Assert.Contains("aria-busy", requestView, StringComparison.Ordinal);
     }
 

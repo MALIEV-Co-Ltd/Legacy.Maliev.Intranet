@@ -78,7 +78,7 @@
                                             @foreach (var order in section.Items)
                                             {
                                                 <tr>
-                                                    <td data-label="@Text["Id"]" class="mlv-mono"><a href="@($"/Orders/View?id={order.Id}")">@order.Id</a></td>
+                                                    <td data-label="@Text["Id"]" class="mlv-mono"><LegacyLink Href="@($"/Orders/View?id={order.Id}")" Role="LegacyLinkRole.Record" AriaLabel="@Text["OrderNumber", order.Id]">@order.Id</LegacyLink></td>
                                                     <td data-label="@Text["Customer"]">@ValueOrFallback(order.CustomerId)</td>
                                                     <td data-label="@Text["Process"]">@ProcessName(order.ProcessId)</td>
                                                     <td data-label="@Text["Name"]">

@@ -49,9 +49,11 @@
             </HeaderContent>
             <RowTemplate>
                 <MudTd DataLabel="@Text["Id"]">
-                    <a href="@($"/Suppliers/View?id={context.Id}")"
-                       @onclick="@(() => OpenSupplier(context.Id))"
-                       @onclick:preventDefault="true">@context.Id</a>
+                    <span @onclick="@(() => OpenSupplier(context.Id))" @onclick:preventDefault="true">
+                        <LegacyLink Href="@($"/Suppliers/View?id={context.Id}")"
+                                    Role="LegacyLinkRole.Record"
+                                    AriaLabel="@($"{Text["Id"]} {context.Id}")">@context.Id</LegacyLink>
+                    </span>
                 </MudTd>
                 <MudTd DataLabel="@Text["Name"]">@ValueOrFallback(context.Name)</MudTd>
                 <MudTd DataLabel="@Text["Email"]">@ValueOrFallback(context.Email)</MudTd>

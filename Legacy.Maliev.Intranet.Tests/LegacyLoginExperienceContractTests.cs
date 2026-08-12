@@ -95,7 +95,8 @@ public sealed class LegacyLoginExperienceContractTests
         Assert.Contains("<h1>@Text[\"Secure access to your work\"]</h1>", login, StringComparison.Ordinal);
         Assert.DoesNotContain("legacy-login-eyebrow", login, StringComparison.Ordinal);
         Assert.True(login.IndexOf("legacy-login-brand-panel", StringComparison.Ordinal) < login.IndexOf("legacy-login-auth-panel", StringComparison.Ordinal));
-        Assert.Equal(1, login.Split("href=\"https://www.maliev.com\"", StringSplitOptions.None).Length - 1);
+        Assert.Equal(1, login.Split("Href=\"https://www.maliev.com\"", StringSplitOptions.None).Length - 1);
+        Assert.Contains("Role=\"LegacyLinkRole.External\"", login, StringComparison.Ordinal);
         Assert.Contains("place-items: stretch", css, StringComparison.Ordinal);
         Assert.Contains(".legacy-login-page { width: 100%;", css, StringComparison.Ordinal);
         Assert.Contains("grid-template-columns: minmax(0, 44%) minmax(0, 56%)", css, StringComparison.Ordinal);

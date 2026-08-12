@@ -71,8 +71,8 @@
                             <MudTh>@Text["CreatedDate"]</MudTh>
                         </HeaderContent>
                         <RowTemplate Context="invoice">
-                            <MudTd DataLabel="@Text["Id"]"><MudLink Href="@($"/Invoices/View?id={invoice.Id}")">@invoice.Id</MudLink></MudTd>
-                            <MudTd DataLabel="@Text["CustomerId"]"><MudLink Href="@($"/Customers/View?id={invoice.CustomerId}")">@invoice.CustomerId</MudLink></MudTd>
+                            <MudTd DataLabel="@Text["Id"]"><LegacyLink Href="@($"/Invoices/View?id={invoice.Id}")" Role="LegacyLinkRole.Record" AriaLabel="@($"{Text["Id"]} {invoice.Id}")">@invoice.Id</LegacyLink></MudTd>
+                            <MudTd DataLabel="@Text["CustomerId"]"><LegacyLink Href="@($"/Customers/View?id={invoice.CustomerId}")" Role="LegacyLinkRole.Record" AriaLabel="@($"{Text["CustomerId"]} {invoice.CustomerId}")">@invoice.CustomerId</LegacyLink></MudTd>
                             <MudTd DataLabel="@Text["Number"]">@invoice.Number</MudTd>
                             <MudTd DataLabel="@Text["Paid"]">
                                 <MudChip T="string" Size="MudBlazor.Size.Small" Color="@(invoice.IsPaid ? Color.Success : Color.Warning)" Variant="Variant.Outlined">

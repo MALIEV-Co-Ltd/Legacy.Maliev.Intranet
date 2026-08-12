@@ -26,6 +26,16 @@ public sealed class QuotationsProxy(HttpClient httpClient)
         CancellationToken cancellationToken) =>
         SendAsync($"/quotations?sort={sort}&search={Uri.EscapeDataString(search ?? string.Empty)}&index={index}&size={size}", cancellationToken);
 
+    /// <summary>Gets a bounded quotation page owned by one customer.</summary>
+    public Task<HttpResponseMessage> GetCustomerPageAsync(
+        int customerId,
+        QuotationListSort sort,
+        string? search,
+        int index,
+        int size,
+        CancellationToken cancellationToken) =>
+        SendAsync($"/quotations/customers/{customerId}?sort={sort}&search={Uri.EscapeDataString(search ?? string.Empty)}&index={index}&size={size}", cancellationToken);
+
     /// <summary>Gets the service-owned quotation decision statistics.</summary>
     public Task<HttpResponseMessage> GetStatsAsync(CancellationToken cancellationToken) =>
         SendAsync("/quotations/stats", cancellationToken);

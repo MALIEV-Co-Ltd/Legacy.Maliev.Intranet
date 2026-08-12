@@ -10,7 +10,7 @@
 <MudContainer MaxWidth="MaxWidth.ExtraLarge">
     <div class="operations-page-header d-flex flex-wrap align-center justify-space-between gap-3 mb-4">
         <MudText Typo="Typo.h4" HtmlTag="h1">@Text["Title", Year]</MudText>
-        <MudButton Href="/Finances/Index" Variant="Variant.Outlined">@Text["Back"]</MudButton>
+        <LegacyLink Href="/Finances/Index" Role="LegacyLinkRole.Navigation" StartIcon="@Icons.Material.Filled.ArrowBack" AriaLabel="@Text["Back"]">@Text["Back"]</LegacyLink>
     </div>
 
     @if (loading)

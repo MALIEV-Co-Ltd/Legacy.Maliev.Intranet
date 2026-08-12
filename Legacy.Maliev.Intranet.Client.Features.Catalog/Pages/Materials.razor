@@ -49,7 +49,7 @@
                 <MudTh>@Text["Machinable"]</MudTh><MudTh>@Text["Printable"]</MudTh>
             </HeaderContent>
             <RowTemplate>
-                <MudTd DataLabel="@Text["Id"]"><MudLink Href="@($"/Materials/View?id={context.Id}")">@context.Id</MudLink></MudTd>
+                <MudTd DataLabel="@Text["Id"]"><LegacyLink Href="@($"/Materials/View?id={context.Id}")" Role="LegacyLinkRole.Record" AriaLabel="@($"{Text["Id"]} {context.Id}")">@context.Id</LegacyLink></MudTd>
                 <MudTd DataLabel="@Text["Group"]">@context.MaterialGroup?.Name</MudTd>
                 <MudTd DataLabel="@Text["Name"]">@context.Name</MudTd>
                 <MudTd DataLabel="@Text["Number"]">@context.MaterialNumber</MudTd>

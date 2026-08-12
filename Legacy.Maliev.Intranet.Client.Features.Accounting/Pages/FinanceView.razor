@@ -19,14 +19,14 @@
         <MudAlert Severity="Severity.Error" aria-live="assertive">@error</MudAlert>
         <div class="d-flex flex-wrap gap-2 mt-4">
             <MudButton OnClick="LoadAsync" Variant="Variant.Filled" Color="Color.Primary">@Text["Retry"]</MudButton>
-            <MudButton Href="/Finances/Index" Variant="Variant.Text">@Text["Back"]</MudButton>
+            <LegacyLink Href="/Finances/Index" Role="LegacyLinkRole.Navigation" StartIcon="@Icons.Material.Filled.ArrowBack" AriaLabel="@Text["Back"]">@Text["Back"]</LegacyLink>
         </div>
     }
     else if (page is not null)
     {
         <div class="operations-page-header d-flex flex-wrap align-center justify-space-between gap-3 mb-4">
             <MudText Typo="Typo.h4" HtmlTag="h1">@Text["Heading", page.Payment.Id]</MudText>
-            <MudButton Href="/Finances/Index" Variant="Variant.Outlined">@Text["Back"]</MudButton>
+            <LegacyLink Href="/Finances/Index" Role="LegacyLinkRole.Navigation" StartIcon="@Icons.Material.Filled.ArrowBack" AriaLabel="@Text["Back"]">@Text["Back"]</LegacyLink>
         </div>
         @if (!string.IsNullOrWhiteSpace(notice))
         {
@@ -77,7 +77,7 @@
                     @foreach (var file in page.Files)
                     {
                         <MudListItem T="FinanceFileItem" Value="file">
-                            <a href="@file.Uri?.ToString()" target="_blank" rel="noopener">@file.ObjectName</a>
+                            <LegacyLink Href="@file.Uri?.ToString()" Role="LegacyLinkRole.External" Target="_blank" Rel="noopener">@file.ObjectName</LegacyLink>
                             <div class="d-flex flex-wrap gap-2" role="group" aria-label="@Text["FileActions", file.ObjectName]">
                                 <MudIconButton Icon="@Icons.Material.Filled.Delete" OnClick="() => ArmFileRemove(file.Id)" Disabled="@submitting" aria-label="@Text["RemoveFile", file.ObjectName]" aria-expanded="@(fileRemoveArmedId == file.Id)" />
                                 @if (fileRemoveArmedId == file.Id)
