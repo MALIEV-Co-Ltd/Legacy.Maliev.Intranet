@@ -389,6 +389,169 @@ public sealed class CustomerDetailBrowserTests(
         Assert.Equal(1, retryState.CustomerLoads);
     }
 
+    [Fact]
+    public async Task FinalGateCapturesEveryCustomerWorkspaceTabAcrossRequiredModes()
+    {
+        var captureRoot = Path.Combine(
+            FindRepositoryRoot(),
+            ".superpowers",
+            "sdd",
+            "2026-08-12-customer-history-site-links-plan",
+            "task7-captures");
+        Directory.CreateDirectory(captureRoot);
+        var tabExpectations = new Dictionary<string, (string Role, string Name)>(StringComparer.Ordinal)
+        {
+            ["overview"] = ("heading", "Contact"),
+            ["activity"] = ("link", "View order 901"),
+            ["orders"] = ("link", "View order 901"),
+            ["quotations"] = ("link", "View quotation 801"),
+            ["invoices"] = ("link", "View invoice INV-701")
+        };
+
+        foreach (var width in new[] { 1280, 768, 390, 320 })
+        {
+            await using var context = await playwright.Browser.NewContextAsync(new()
+            {
+                ViewportSize = new() { Width = width, Height = 900 },
+                ReducedMotion = ReducedMotion.NoPreference
+            });
+            var page = await context.NewPageAsync();
+            var errors = new List<string>();
+            page.Console += (_, message) => { if (message.Type == "error") errors.Add(message.Text); };
+            page.PageError += (_, error) => errors.Add(error);
+            await StubCustomerDetailBoundariesAsync(page,
+                ["legacy-customer.customers.read", "legacy.orders.read", "legacy.quotations.read", "legacy.accounting.read"]);
+
+            foreach (var (tab, expectation) in tabExpectations)
+            {
+                await page.GotoAsync(new Uri(server.BaseUri, $"Customers/View?id=69738&tab={tab}").AbsoluteUri);
+                var expected = expectation.Role == "heading"
+                    ? page.GetByRole(AriaRole.Heading, new() { Name = expectation.Name, Exact = true })
+                    : page.GetByRole(AriaRole.Link, new() { Name = expectation.Name, Exact = true });
+                await expected.WaitForAsync();
+                await page.WaitForTimeoutAsync(300);
+                Assert.Equal(width, await page.EvaluateAsync<int>("() => document.documentElement.scrollWidth"));
+                var activeTab = page.Locator("[role='tab'][aria-selected='true']");
+                Assert.Equal(1, await activeTab.CountAsync());
+                var activeTabIsFullyVisible = await activeTab.EvaluateAsync<bool>("""
+                    element => {
+                        const viewport = element.closest('.mud-tabs-tabbar-content');
+                        const tab = element.getBoundingClientRect();
+                        const bounds = viewport.getBoundingClientRect();
+                        return tab.left >= bounds.left - 0.5 && tab.right <= bounds.right + 0.5;
+                    }
+                    """);
+                var tabGeometry = await activeTab.EvaluateAsync<string>("""
+                    element => {
+                        const ancestors = [];
+                        let current = element.parentElement;
+                        while (current && ancestors.length < 5) {
+                            const rect = current.getBoundingClientRect();
+                            const style = getComputedStyle(current);
+                            ancestors.push(`${current.className}|left=${rect.left}|right=${rect.right}|client=${current.clientWidth}|scroll=${current.scrollWidth}|scrollLeft=${current.scrollLeft}|overflow=${style.overflowX}`);
+                            current = current.parentElement;
+                        }
+                        const rect = element.getBoundingClientRect();
+                        return `tab=${rect.left},${rect.right};${ancestors.join(';')}`;
+                    }
+                    """);
+                Assert.True(activeTabIsFullyVisible, $"Expected active {tab} tab to be fully visible at {width}px. {tabGeometry}");
+                if (width <= 390)
+                {
+                    Assert.All(
+                        await page.GetByRole(AriaRole.Tab).EvaluateAllAsync<double[]>("elements => elements.map(element => element.getBoundingClientRect().height)"),
+                        height => Assert.True(height >= 44, $"Expected a 44px tab target, found {height:F2}px."));
+                }
+                await page.ScreenshotAsync(new() { Path = Path.Combine(captureRoot, $"en-{width}-{tab}.png"), FullPage = true });
+            }
+
+            Assert.Empty(errors);
+        }
+
+        await CaptureModeAsync("dark", new() { ViewportSize = new() { Width = 1280, Height = 900 }, ColorScheme = ColorScheme.Dark });
+        await CaptureModeAsync("forced-colors", new() { ViewportSize = new() { Width = 390, Height = 844 }, ForcedColors = ForcedColors.Active });
+        await CaptureModeAsync("reduced-motion", new() { ViewportSize = new() { Width = 390, Height = 844 }, ReducedMotion = ReducedMotion.Reduce });
+
+        await using (var zoomContext = await playwright.Browser.NewContextAsync(new() { ViewportSize = new() { Width = 640, Height = 900 } }))
+        {
+            var zoomPage = await zoomContext.NewPageAsync();
+            await StubCustomerDetailBoundariesAsync(zoomPage, ["legacy-customer.customers.read", "legacy.orders.read"]);
+            await zoomPage.GotoAsync(new Uri(server.BaseUri, "Customers/View?id=69738&tab=orders").AbsoluteUri);
+            await zoomPage.GetByRole(AriaRole.Link, new() { Name = "View order 901", Exact = true }).WaitForAsync();
+            await zoomPage.EvaluateAsync("document.documentElement.style.zoom = '2'");
+            Assert.True(await zoomPage.EvaluateAsync<bool>("() => document.documentElement.scrollWidth <= document.documentElement.clientWidth"));
+            await zoomPage.ScreenshotAsync(new() { Path = Path.Combine(captureRoot, "zoom-200-orders.png"), FullPage = true });
+        }
+
+        await using (var thaiContext = await playwright.Browser.NewContextAsync(new()
+        {
+            ViewportSize = new() { Width = 320, Height = 844 },
+            HasTouch = true
+        }))
+        {
+            await thaiContext.AddInitScriptAsync("localStorage.setItem('maliev_culture', 'th-TH')");
+            var thaiPage = await thaiContext.NewPageAsync();
+            await StubCustomerDetailBoundariesAsync(thaiPage,
+                ["legacy-customer.customers.read", "legacy.orders.read", "legacy.quotations.read", "legacy.accounting.read"]);
+            foreach (var tab in tabExpectations.Keys)
+            {
+                await thaiPage.GotoAsync(new Uri(server.BaseUri, $"Customers/View?id=69738&tab={tab}").AbsoluteUri);
+                await thaiPage.GetByRole(AriaRole.Tab, new()
+                {
+                    Name = tab switch
+                    {
+                        "overview" => "ภาพรวม",
+                        "activity" => "กิจกรรม",
+                        "orders" => "คำสั่งซื้อ",
+                        "quotations" => "ใบเสนอราคา",
+                        _ => "ใบแจ้งหนี้"
+                    },
+                    Exact = true
+                }).WaitForAsync();
+                Assert.Equal(320, await thaiPage.EvaluateAsync<int>("() => document.documentElement.scrollWidth"));
+                await thaiPage.ScreenshotAsync(new() { Path = Path.Combine(captureRoot, $"th-320-{tab}.png"), FullPage = true });
+            }
+        }
+
+        await using (var keyboardContext = await playwright.Browser.NewContextAsync(new() { ViewportSize = new() { Width = 1280, Height = 900 } }))
+        {
+            var keyboardPage = await keyboardContext.NewPageAsync();
+            await StubCustomerDetailBoundariesAsync(keyboardPage,
+                ["legacy-customer.customers.read", "legacy.orders.read", "legacy.quotations.read", "legacy.accounting.read"]);
+            await keyboardPage.GotoAsync(new Uri(server.BaseUri, "Customers/View?id=69738&tab=overview").AbsoluteUri);
+            var activity = keyboardPage.GetByRole(AriaRole.Tab, new() { Name = "Activity", Exact = true });
+            await activity.FocusAsync();
+            await activity.PressAsync("Enter");
+            await keyboardPage.WaitForURLAsync(url => url.Contains("tab=activity", StringComparison.OrdinalIgnoreCase));
+            var orders = keyboardPage.GetByRole(AriaRole.Tab, new() { Name = "Orders", Exact = true });
+            await orders.FocusAsync();
+            var focusTreatment = await orders.EvaluateAsync<string>(
+                "element => `${getComputedStyle(element).outlineStyle}|${getComputedStyle(element).boxShadow}`");
+            Assert.NotEqual("none|none", focusTreatment);
+            await orders.PressAsync("Space");
+            await keyboardPage.WaitForURLAsync(url => url.Contains("tab=orders", StringComparison.OrdinalIgnoreCase));
+        }
+
+        async Task CaptureModeAsync(string name, BrowserNewContextOptions options)
+        {
+            await using var context = await playwright.Browser.NewContextAsync(options);
+            var page = await context.NewPageAsync();
+            await StubCustomerDetailBoundariesAsync(page, ["legacy-customer.customers.read", "legacy.orders.read"]);
+            await page.GotoAsync(new Uri(server.BaseUri, "Customers/View?id=69738&tab=orders").AbsoluteUri);
+            await page.GetByRole(AriaRole.Link, new() { Name = "View order 901", Exact = true }).WaitForAsync();
+            Assert.True(await page.EvaluateAsync<bool>("() => document.documentElement.scrollWidth <= document.documentElement.clientWidth"));
+            await page.ScreenshotAsync(new() { Path = Path.Combine(captureRoot, $"{name}-orders.png"), FullPage = true });
+        }
+    }
+
+    private static string FindRepositoryRoot()
+    {
+        var directory = new DirectoryInfo(AppContext.BaseDirectory);
+        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "Legacy.Maliev.Intranet.slnx")))
+            directory = directory.Parent;
+        return directory?.FullName ?? throw new DirectoryNotFoundException("Could not locate repository root.");
+    }
+
     private static async Task StubCustomerDetailBoundariesAsync(
         IPage page,
         IReadOnlyList<string>? permissions = null,

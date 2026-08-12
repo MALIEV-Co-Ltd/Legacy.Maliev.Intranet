@@ -2,11 +2,13 @@
 @attribute [Authorize]
 @implements IDisposable
 @using System.Security.Claims
+@using Microsoft.JSInterop
 @using Legacy.Maliev.Intranet.Client.Features.Customers.Components
 @inject HttpClient Http
 @inject NavigationManager Navigation
 @inject AuthenticationStateProvider AuthenticationStateProvider
 @inject IStringLocalizer<CustomerView> Text
+@inject IJSRuntime JS
 
 <PageTitle>@(customer is null ? Text["PageTitle"] : Text["CustomerPageTitle", customer.FullName])</PageTitle>
 
@@ -182,6 +184,7 @@
     private bool invoicesLoading;
     private string? invoicesError;
     private CancellationTokenSource? invoicesLoadCts;
+    private bool activeTabNeedsVisibilitySync;
 
     private int ActiveTabIndex => VisibleTabs().IndexOf(selectedTab);
 
@@ -204,7 +207,11 @@
             normalized = "overview";
         }
 
-        selectedTab = normalized;
+        if (!string.Equals(selectedTab, normalized, StringComparison.Ordinal))
+        {
+            selectedTab = normalized;
+            activeTabNeedsVisibilitySync = true;
+        }
         if (!string.Equals(Tab, normalized, StringComparison.OrdinalIgnoreCase))
         {
             Navigation.NavigateTo(Navigation.GetUriWithQueryParameter("tab", normalized), replace: true);
@@ -212,6 +219,17 @@
         }
 
         await LoadSelectedTabAsync(normalized);
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!activeTabNeedsVisibilitySync)
+        {
+            return;
+        }
+
+        activeTabNeedsVisibilitySync = false;
+        await JS.InvokeVoidAsync("malievCustomerWorkspace.ensureActiveTabVisible");
     }
 
     private async Task LoadAsync()
