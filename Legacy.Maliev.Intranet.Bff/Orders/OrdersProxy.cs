@@ -31,9 +31,25 @@ public sealed class OrdersProxy(HttpClient httpClient)
         string? search,
         int index,
         int size,
+        CancellationToken cancellationToken) =>
+        await GetCustomerAsync(
+            customerId,
+            OrderListSort.OrderCreatedDate_Descending,
+            search,
+            index,
+            size,
+            cancellationToken);
+
+    /// <summary>Gets a sorted, bounded order page owned by one customer.</summary>
+    public async Task<HttpResponseMessage> GetCustomerAsync(
+        int customerId,
+        OrderListSort sort,
+        string? search,
+        int index,
+        int size,
         CancellationToken cancellationToken)
     {
-        var path = $"/Orders/customers/{customerId}?sort={OrderListSort.OrderCreatedDate_Descending}&search={Uri.EscapeDataString(search ?? string.Empty)}&index={index}&size={size}";
+        var path = $"/Orders/customers/{customerId}?sort={sort}&search={Uri.EscapeDataString(search ?? string.Empty)}&index={index}&size={size}";
         using var request = new HttpRequestMessage(HttpMethod.Get, path);
         return await httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
     }

@@ -987,6 +987,13 @@ app.MapGet("/bff/quotations/stats", (
     QuotationsEndpointMapper.MapStatsAsync(quotations.GetStatsAsync, context, cancellationToken))
     .RequireAuthorization(LegacyEmployeePermissions.QuotationsRead);
 
+app.MapGet("/bff/customers/{customerId:int}/orders", CustomerHistoryEndpointMapper.OrdersAsync)
+    .RequireAuthorization(LegacyEmployeePermissions.OrdersRead);
+app.MapGet("/bff/customers/{customerId:int}/quotations", CustomerHistoryEndpointMapper.QuotationsAsync)
+    .RequireAuthorization(LegacyEmployeePermissions.QuotationsRead);
+app.MapGet("/bff/customers/{customerId:int}/invoices", CustomerHistoryEndpointMapper.InvoicesAsync)
+    .RequireAuthorization(LegacyEmployeePermissions.AccountingRead);
+
 app.MapGet("/bff/quotations/create", QuotationCreateEndpointMapper.GetAsync)
     .RequireAuthorization(policy => policy
         .RequireAuthenticatedUser()

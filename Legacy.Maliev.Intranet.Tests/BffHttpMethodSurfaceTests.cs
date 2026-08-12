@@ -60,8 +60,8 @@ public sealed class BffHttpMethodSurfaceTests
             .ToArray();
 
         Assert.Equal(ExpectedEndpointSurface, actual);
-        Assert.Equal(88, actual.Length);
-        Assert.Equal(48, actual.Count(value => value.StartsWith("GET ", StringComparison.Ordinal)));
+        Assert.Equal(91, actual.Length);
+        Assert.Equal(51, actual.Count(value => value.StartsWith("GET ", StringComparison.Ordinal)));
         Assert.Equal(23, actual.Count(value => value.StartsWith("POST ", StringComparison.Ordinal)));
         Assert.Equal(8, actual.Count(value => value.StartsWith("PUT ", StringComparison.Ordinal)));
         Assert.Equal(9, actual.Count(value => value.StartsWith("DELETE ", StringComparison.Ordinal)));
@@ -258,6 +258,9 @@ public sealed class BffHttpMethodSurfaceTests
         GET /bff/catalog/materials/{id:int}/surface-finishes
         GET /bff/catalog/surface-finishes
         GET /bff/customers
+        GET /bff/customers/{customerId:int}/invoices
+        GET /bff/customers/{customerId:int}/orders
+        GET /bff/customers/{customerId:int}/quotations
         GET /bff/customers/{id:int}
         GET /bff/dashboard
         GET /bff/diagnostics/events

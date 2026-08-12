@@ -82,8 +82,8 @@ public sealed class OrdersIndexWasmMigrationContractTests
         Assert.NotNull(processType);
         Assert.Equal(
             [
-                "AllowSocialMedia", "CustomerId", "EmployeeId", "Id", "Manufactured", "Name", "ProcessId",
-                "PromisedDate", "Quantity", "Remaining", "Subtotal",
+                "AllowSocialMedia", "CreatedDate", "CustomerId", "EmployeeId", "Id", "Manufactured", "ModifiedDate",
+                "Name", "ProcessId", "PromisedDate", "Quantity", "Remaining", "Subtotal",
             ],
             orderType.GetProperties().Select(property => property.Name).Order(StringComparer.Ordinal).ToArray());
         Assert.Equal(
@@ -100,6 +100,10 @@ public sealed class OrdersIndexWasmMigrationContractTests
         Assert.Equal(84, wire.GetProperty("items")[0].GetProperty("id").GetInt32());
         Assert.Equal("Thai fixture", wire.GetProperty("items")[0].GetProperty("name").GetString());
         Assert.False(wire.GetProperty("items")[0].GetProperty("allowSocialMedia").GetBoolean());
+        Assert.Equal(
+            new DateTime(2030, 7, 15),
+            wire.GetProperty("items")[0].GetProperty("createdDate").GetDateTime());
+        Assert.Equal(JsonValueKind.Null, wire.GetProperty("items")[0].GetProperty("modifiedDate").ValueKind);
         Assert.Equal(1, wire.GetProperty("totalRecords").GetInt32());
         Assert.False(wire.GetProperty("items")[0].TryGetProperty("description", out _));
         Assert.False(wire.GetProperty("items")[0].TryGetProperty("comment", out _));
