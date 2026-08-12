@@ -177,6 +177,8 @@ public sealed class CustomersViewWasmMigrationContractTests
         Assert.Contains("item.CustomerId != Id", page, StringComparison.Ordinal);
         Assert.Contains("HttpStatusCode.ServiceUnavailable", page, StringComparison.Ordinal);
         Assert.Contains("CancellationTokenSource", page, StringComparison.Ordinal);
+        Assert.Contains("customerLoadGate.Begin", page, StringComparison.Ordinal);
+        Assert.Contains("customerLoadGate.IsCurrent", page, StringComparison.Ordinal);
         Assert.Contains("<MudForm", page, StringComparison.Ordinal);
 
         Assert.Contains("overflow-x: auto", styles, StringComparison.Ordinal);

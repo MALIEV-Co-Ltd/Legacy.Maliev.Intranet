@@ -40,6 +40,7 @@ internal static class CustomerHistoryEndpointMapper
                 page.TotalPages >= 0 &&
                 page.TotalRecords >= 0 &&
                 page.Items.All(item =>
+                    item is not null &&
                     item.Id >= 1 &&
                     item.CustomerId == customerId &&
                     item.ProcessId >= 1 &&
@@ -80,6 +81,7 @@ internal static class CustomerHistoryEndpointMapper
                 page.TotalPages >= 0 &&
                 page.TotalRecords >= 0 &&
                 page.Items.All(item =>
+                    item is not null &&
                     item.Id >= 1 &&
                     item.CustomerId == customerId &&
                     item.Period >= 0 &&
@@ -119,6 +121,7 @@ internal static class CustomerHistoryEndpointMapper
                 page.TotalPages >= 0 &&
                 page.TotalRecords >= 0 &&
                 page.Items.All(item =>
+                    item is not null &&
                     item.Id >= 1 &&
                     item.CustomerId == customerId &&
                     !string.IsNullOrWhiteSpace(item.Number)),

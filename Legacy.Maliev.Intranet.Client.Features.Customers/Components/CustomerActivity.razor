@@ -17,15 +17,15 @@
     else if (Page is not null)
     {
         <div class="customer-activity__warnings" aria-label="@Localize("ActivitySourceWarnings")">
-            @if (Page.Orders.State != CustomerHistorySourceState.Available)
+            @if (ShouldWarn(Page.Orders))
             {
                 <MudAlert Severity="Severity.Warning">@SourceWarning("Orders", Page.Orders)</MudAlert>
             }
-            @if (Page.Quotations.State != CustomerHistorySourceState.Available)
+            @if (ShouldWarn(Page.Quotations))
             {
                 <MudAlert Severity="Severity.Warning">@SourceWarning("Quotations", Page.Quotations)</MudAlert>
             }
-            @if (Page.Invoices.State != CustomerHistorySourceState.Available)
+            @if (ShouldWarn(Page.Invoices))
             {
                 <MudAlert Severity="Severity.Warning">@SourceWarning("Invoices", Page.Invoices)</MudAlert>
             }
@@ -121,4 +121,7 @@
         LocalizeFormat(
             "ActivitySourceWarning",
             new object?[] { Localize(sourceKey), Localize($"SourceState{source.State}") });
+
+    private static bool ShouldWarn(CustomerHistorySourceSummary source) =>
+        source.State is not CustomerHistorySourceState.Available and not CustomerHistorySourceState.Forbidden;
 }

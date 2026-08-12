@@ -1,7 +1,6 @@
 @page "/Customers/View"
 @attribute [Authorize]
 @implements IDisposable
-@using System.Security.Claims
 @using Microsoft.JSInterop
 @using Legacy.Maliev.Intranet.Client.Features.Customers.Components
 @inject HttpClient Http
@@ -160,6 +159,7 @@
     private bool loading;
     private bool notFound;
     private int loadedCustomerId;
+    private readonly CustomerLoadGate customerLoadGate = new();
     private string selectedTab = "overview";
 
     private CustomerActivityPage? activityPage;
@@ -234,6 +234,7 @@
 
     private async Task LoadAsync()
     {
+        var request = customerLoadGate.Begin(Id);
         customer = null;
         loadError = null;
         operationError = null;
@@ -241,18 +242,17 @@
         notFound = false;
         editing = false;
         submitting = false;
-        loadedCustomerId = Id;
+        loadedCustomerId = request.CustomerId;
 
         var authenticationState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        if (!customerLoadGate.IsCurrent(request)) return;
         var user = authenticationState.User;
-        var permissions = user.Claims.Where(claim => claim.Type == "permissions").Select(claim => claim.Value).ToArray();
-        var roles = user.Claims.Where(claim => claim.Type is ClaimTypes.Role or "role").Select(claim => claim.Value).ToArray();
-        canEdit = LegacyNavigationAuthorization.IsEnabled(user.Identity?.IsAuthenticated == true, "legacy-customer.customers.update", permissions, roles);
-        canReadOrders = LegacyNavigationAuthorization.IsEnabled(user.Identity?.IsAuthenticated == true, "legacy.orders.read", permissions, roles);
-        canReadQuotations = LegacyNavigationAuthorization.IsEnabled(user.Identity?.IsAuthenticated == true, "legacy.quotations.read", permissions, roles);
-        canReadInvoices = LegacyNavigationAuthorization.IsEnabled(user.Identity?.IsAuthenticated == true, "legacy.accounting.read", permissions, roles);
+        canEdit = LegacyNavigationAuthorization.IsEnabled(user, "legacy-customer.customers.update");
+        canReadOrders = LegacyNavigationAuthorization.IsEnabled(user, "legacy.orders.read");
+        canReadQuotations = LegacyNavigationAuthorization.IsEnabled(user, "legacy.quotations.read");
+        canReadInvoices = LegacyNavigationAuthorization.IsEnabled(user, "legacy.accounting.read");
 
-        if (Id <= 0)
+        if (request.CustomerId <= 0)
         {
             loadError = Text["NotFound"];
             errorSeverity = Severity.Warning;
@@ -263,7 +263,10 @@
         loading = true;
         try
         {
-            using var response = await Http.GetForPresentationAsync($"/bff/customers/{Id}");
+            using var response = await Http.GetForPresentationAsync(
+                $"/bff/customers/{request.CustomerId}",
+                request.CancellationToken);
+            if (!customerLoadGate.IsCurrent(request)) return;
             if (response.StatusCode == HttpStatusCode.Unauthorized)
             {
                 NavigateToLogin();
@@ -302,8 +305,11 @@
                 return;
             }
 
-            customer = await response.Content.ReadFromJsonAsync<CustomerDetail>();
-            if (customer is null || customer.Id != Id)
+            var loadedCustomer = await response.Content.ReadFromJsonAsync<CustomerDetail>(
+                cancellationToken: request.CancellationToken);
+            if (!customerLoadGate.IsCurrent(request)) return;
+            customer = loadedCustomer;
+            if (customer is null || customer.Id != request.CustomerId)
             {
                 customer = null;
                 loadError = Text["InvalidResponse"];
@@ -313,13 +319,16 @@
                 CopyToEditModel(customer);
             }
         }
+        catch (OperationCanceledException) when (request.CancellationToken.IsCancellationRequested)
+        {
+        }
         catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException)
         {
-            loadError = Text["Unavailable"];
+            if (customerLoadGate.IsCurrent(request)) loadError = Text["Unavailable"];
         }
         finally
         {
-            loading = false;
+            if (customerLoadGate.IsCurrent(request)) loading = false;
         }
     }
 
@@ -693,5 +702,9 @@
 
     private void NavigateToLogin() => Navigation.NavigateTo($"/Login?returnUrl={Uri.EscapeDataString(Navigation.ToBaseRelativePath(Navigation.Uri))}");
 
-    public void Dispose() => CancelHistoryLoads();
+    public void Dispose()
+    {
+        customerLoadGate.Dispose();
+        CancelHistoryLoads();
+    }
 }

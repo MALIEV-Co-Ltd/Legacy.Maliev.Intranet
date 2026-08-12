@@ -603,6 +603,70 @@ public sealed class BffCustomerHistoryContractTests
         Assert.Equal("Bearer signed-service-token", downstream.Authorization);
     }
 
+    [Theory]
+    [InlineData("orders", LegacyEmployeePermissions.OrdersRead)]
+    [InlineData("quotations", LegacyEmployeePermissions.QuotationsRead)]
+    [InlineData("invoices", LegacyEmployeePermissions.AccountingRead)]
+    public async Task CustomerFamily_NullCollectionElement_IsNormalizedAsBadGateway(
+        string family,
+        string permission)
+    {
+        var downstream = new RecordingHandler(NullItemPageJson());
+        await using var factory = new CustomerHistoryBffFactory(family, downstream, [permission]);
+        using var client = CreateClient(factory);
+        await SignInAsync(client);
+
+        using var response = await client.GetAsync($"/bff/customers/42/{family}");
+
+        Assert.Equal(HttpStatusCode.BadGateway, response.StatusCode);
+    }
+
+    [Theory]
+    [InlineData("orders", "LEGACY.ORDERS.READ")]
+    [InlineData("quotations", "legacy.quotations.*")]
+    [InlineData("invoices", "platform.owner")]
+    public async Task CustomerFamily_UsesSharedCaseWildcardAndOwnerPermissionSemantics(
+        string family,
+        string grant)
+    {
+        var downstream = new RecordingHandler(PageJson(family, 42));
+        await using var factory = new CustomerHistoryBffFactory(family, downstream, [grant]);
+        using var client = CreateClient(factory);
+        await SignInAsync(client);
+
+        using var response = await client.GetAsync($"/bff/customers/42/{family}");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal(1, downstream.RequestCount);
+    }
+
+    [Fact]
+    public async Task Activity_UsesSharedWildcardPermissionSemanticsForEverySource()
+    {
+        var orders = new RecordingHandler(PageJson("orders", 42));
+        var quotations = new RecordingHandler(PageJson("quotations", 42));
+        var invoices = new RecordingHandler(PageJson("invoices", 42));
+        await using var factory = new CustomerActivityBffFactory(
+            orders,
+            quotations,
+            invoices,
+            ["LEGACY-CUSTOMER.CUSTOMERS.READ", "legacy.*"]);
+        using var client = CreateClient(factory);
+        await SignInAsync(client);
+
+        using var response = await client.GetAsync("/bff/customers/42/activity");
+        var page = await response.Content.ReadFromJsonAsync<CustomerActivityPage>();
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.NotNull(page);
+        Assert.Equal(CustomerHistorySourceState.Available, page.Orders.State);
+        Assert.Equal(CustomerHistorySourceState.Available, page.Quotations.State);
+        Assert.Equal(CustomerHistorySourceState.Available, page.Invoices.State);
+        Assert.Equal(2, orders.RequestCount);
+        Assert.Equal(2, quotations.RequestCount);
+        Assert.Equal(2, invoices.RequestCount);
+    }
+
     [Fact]
     public async Task CustomerOrders_PreserveServiceTimestampsInBrowserSafeProjection()
     {

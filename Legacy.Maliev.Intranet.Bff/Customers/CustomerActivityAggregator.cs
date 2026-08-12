@@ -26,17 +26,13 @@ public sealed class CustomerActivityAggregator(
         CancellationToken cancellationToken)
     {
         var pageSize = Math.Clamp(size, 1, 50);
-        var permissions = user.FindAll("permissions")
-            .Select(static claim => claim.Value)
-            .ToHashSet(StringComparer.Ordinal);
-
-        var orderTask = permissions.Contains(LegacyEmployeePermissions.OrdersRead)
+        var orderTask = LegacyNavigationAuthorization.IsEnabled(user, LegacyEmployeePermissions.OrdersRead)
             ? LoadOrdersAsync(customerId, pageSize, cancellationToken)
             : Task.FromResult(SourceResult.Forbidden());
-        var quotationTask = permissions.Contains(LegacyEmployeePermissions.QuotationsRead)
+        var quotationTask = LegacyNavigationAuthorization.IsEnabled(user, LegacyEmployeePermissions.QuotationsRead)
             ? LoadQuotationsAsync(customerId, pageSize, cancellationToken)
             : Task.FromResult(SourceResult.Forbidden());
-        var invoiceTask = permissions.Contains(LegacyEmployeePermissions.AccountingRead)
+        var invoiceTask = LegacyNavigationAuthorization.IsEnabled(user, LegacyEmployeePermissions.AccountingRead)
             ? LoadInvoicesAsync(customerId, pageSize, cancellationToken)
             : Task.FromResult(SourceResult.Forbidden());
 

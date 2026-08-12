@@ -1,5 +1,8 @@
 using System.Reflection;
+using System.Security.Claims;
+using System.Net.Http.Json;
 using Legacy.Maliev.Intranet.Client.Features.Customers.Components;
+using Legacy.Maliev.Intranet.Client.Features.Customers.Pages;
 using Legacy.Maliev.Intranet.Contracts;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.RenderTree;
@@ -147,6 +150,75 @@ public sealed class CustomerComponentsBehaviorTests
         Assert.DoesNotContain(typeof(Legacy.Maliev.Intranet.Client.Shared.Components.LegacyLink), errorComponents);
     }
 
+    [Fact]
+    public void Activity_OmitsForbiddenSourcesAndOnlyWarnsAboutVisibleAuthorizedFailures()
+    {
+        var activity = CreateActivity();
+        SetComponentParameters(activity, new Dictionary<string, object?>
+        {
+            [nameof(CustomerActivity.Page)] = new CustomerActivityPage(
+                [],
+                new CustomerHistorySourceSummary(CustomerHistorySourceState.Forbidden, null),
+                new CustomerHistorySourceSummary(CustomerHistorySourceState.Unavailable, null),
+                new CustomerHistorySourceSummary(CustomerHistorySourceState.Available, 0)),
+        });
+
+        var rendered = RenderedComponentTypes(activity);
+
+        Assert.Single(rendered, type => type == typeof(MudAlert));
+    }
+
+    [Fact]
+    public void CustomerLoadGate_CancelsAndRejectsAStaleCustomerResponse()
+    {
+        using var gate = new CustomerLoadGate();
+        var customerA = gate.Begin(41);
+        var customerB = gate.Begin(42);
+
+        Assert.True(customerA.CancellationToken.IsCancellationRequested);
+        Assert.False(gate.IsCurrent(customerA));
+        Assert.True(gate.IsCurrent(customerB));
+        Assert.Equal(42, customerB.CustomerId);
+    }
+
+    [Fact]
+    public async Task CustomerView_SlowPreviousRouteCannotOverwriteTheCurrentCustomer()
+    {
+        var handler = new CustomerRaceHandler();
+        var view = new CustomerView { Id = 41 };
+        SetNonPublicProperty(view, "Http", new HttpClient(handler) { BaseAddress = new Uri("https://localhost") });
+        SetNonPublicProperty(view, "AuthenticationStateProvider", new AuthenticatedStateProvider());
+
+        var customerA = InvokeTaskAsync(view, "LoadAsync");
+        await handler.CustomerAStarted.Task.WaitAsync(TimeSpan.FromSeconds(5));
+
+        view.Id = 42;
+        var customerB = InvokeTaskAsync(view, "LoadAsync");
+        await customerB;
+        handler.ReleaseCustomerA.TrySetResult();
+        await customerA;
+
+        var loaded = Assert.IsType<CustomerDetail>(GetNonPublicField(view, "customer"));
+        Assert.Equal(42, loaded.Id);
+        view.Dispose();
+    }
+
+    [Fact]
+    public async Task CustomerView_UsesSharedPermissionsWithoutExposingUnauthorizedTabs()
+    {
+        var owner = await LoadCustomerViewAsync(["platform.owner"]);
+        var ownerTabs = Assert.IsType<List<string>>(InvokeNonPublic(owner, "VisibleTabs"));
+        Assert.Equal(["overview", "activity", "orders", "quotations", "invoices"], ownerTabs);
+
+        var scoped = await LoadCustomerViewAsync(
+            ["legacy-customer.customers.read", "LEGACY.ORDERS.*"]);
+        var scopedTabs = Assert.IsType<List<string>>(InvokeNonPublic(scoped, "VisibleTabs"));
+        Assert.Equal(["overview", "activity", "orders"], scopedTabs);
+
+        owner.Dispose();
+        scoped.Dispose();
+    }
+
     public static TheoryData<CustomerHistoryKind, bool, string?, OrderListPage?, QuotationListPage?, InvoiceListPage?> InvalidPageContracts =>
         new()
         {
@@ -221,6 +293,23 @@ public sealed class CustomerComponentsBehaviorTests
         }
     }
 
+    private static void SetNonPublicProperty(object target, string name, object value) =>
+        (target.GetType().GetProperty(name, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
+            ?? throw new MissingMemberException(target.GetType().FullName, name)).SetValue(target, value);
+
+    private static object? GetNonPublicField(object target, string name) =>
+        (target.GetType().GetField(name, BindingFlags.Instance | BindingFlags.NonPublic)
+            ?? throw new MissingFieldException(target.GetType().FullName, name)).GetValue(target);
+
+    private static async Task<CustomerView> LoadCustomerViewAsync(string[] grants)
+    {
+        var view = new CustomerView { Id = 42 };
+        SetNonPublicProperty(view, "Http", new HttpClient(new CustomerRaceHandler()) { BaseAddress = new Uri("https://localhost") });
+        SetNonPublicProperty(view, "AuthenticationStateProvider", new AuthenticatedStateProvider(grants));
+        await InvokeTaskAsync(view, "LoadAsync");
+        return view;
+    }
+
     private static IReadOnlyList<Type> RenderedComponentTypes(ComponentBase component)
     {
         var builder = new RenderTreeBuilder();
@@ -232,5 +321,62 @@ public sealed class CustomerComponentsBehaviorTests
             .Select(frame => frame.ComponentType)
             .OfType<Type>()
             .ToArray();
+    }
+
+    private sealed class AuthenticatedStateProvider : Microsoft.AspNetCore.Components.Authorization.AuthenticationStateProvider
+    {
+        private readonly Microsoft.AspNetCore.Components.Authorization.AuthenticationState state;
+
+        public AuthenticatedStateProvider(params string[] grants)
+        {
+            grants = grants.Length == 0 ? ["legacy-customer.customers.read"] : grants;
+            state = new Microsoft.AspNetCore.Components.Authorization.AuthenticationState(
+                new ClaimsPrincipal(new ClaimsIdentity(
+                    grants.Select(grant => new Claim("permissions", grant)),
+                    "test")));
+        }
+
+        public override Task<Microsoft.AspNetCore.Components.Authorization.AuthenticationState> GetAuthenticationStateAsync() =>
+            Task.FromResult(state);
+    }
+
+    private sealed class CustomerRaceHandler : HttpMessageHandler
+    {
+        public TaskCompletionSource CustomerAStarted { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public TaskCompletionSource ReleaseCustomerA { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        protected override async Task<HttpResponseMessage> SendAsync(
+            HttpRequestMessage request,
+            CancellationToken cancellationToken)
+        {
+            var id = request.RequestUri!.AbsolutePath.EndsWith("/41", StringComparison.Ordinal) ? 41 : 42;
+            if (id == 41)
+            {
+                CustomerAStarted.TrySetResult();
+                await ReleaseCustomerA.Task;
+            }
+
+            return new HttpResponseMessage(System.Net.HttpStatusCode.OK)
+            {
+                Content = JsonContent.Create(new CustomerDetail(
+                    id,
+                    $"Customer{id}",
+                    "Test",
+                    $"Customer{id} Test",
+                    null,
+                    null,
+                    null,
+                    $"customer{id}@example.com",
+                    null,
+                    null,
+                    null,
+                    null,
+                    DateTime.UtcNow,
+                    null,
+                    null,
+                    null,
+                    null)),
+            };
+        }
     }
 }

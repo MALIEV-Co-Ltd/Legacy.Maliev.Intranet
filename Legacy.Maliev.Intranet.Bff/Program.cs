@@ -597,7 +597,9 @@ builder.Services.AddAuthorizationBuilder()
             context.User.FindAll(ClaimTypes.Role).Select(static claim => claim.Value))))
     .AddPolicy(LegacyEmployeePermissions.AccountingRead, policy => policy
         .RequireAuthenticatedUser()
-        .RequireClaim("permissions", LegacyEmployeePermissions.AccountingRead))
+        .RequireAssertion(context => LegacyNavigationAuthorization.IsEnabled(
+            context.User,
+            LegacyEmployeePermissions.AccountingRead)))
     .AddPolicy(LegacyEmployeePermissions.AccountingCreate, policy => policy
         .RequireAuthenticatedUser()
         .RequireClaim("permissions", LegacyEmployeePermissions.AccountingCreate))
@@ -631,7 +633,9 @@ builder.Services.AddAuthorizationBuilder()
         .RequireClaim("permissions", LegacyEmployeePermissions.QuotationRequestsUpdate))
     .AddPolicy(LegacyEmployeePermissions.CustomersRead, policy => policy
         .RequireAuthenticatedUser()
-        .RequireClaim("permissions", LegacyEmployeePermissions.CustomersRead))
+        .RequireAssertion(context => LegacyNavigationAuthorization.IsEnabled(
+            context.User,
+            LegacyEmployeePermissions.CustomersRead)))
     .AddPolicy(LegacyEmployeePermissions.CustomersCreate, policy => policy
         .RequireAuthenticatedUser()
         .RequireClaim("permissions", LegacyEmployeePermissions.CustomersCreate))
@@ -652,7 +656,9 @@ builder.Services.AddAuthorizationBuilder()
         .RequireClaim("permissions", LegacyEmployeePermissions.EmployeesRead))
     .AddPolicy(LegacyEmployeePermissions.OrdersRead, policy => policy
         .RequireAuthenticatedUser()
-        .RequireClaim("permissions", LegacyEmployeePermissions.OrdersRead))
+        .RequireAssertion(context => LegacyNavigationAuthorization.IsEnabled(
+            context.User,
+            LegacyEmployeePermissions.OrdersRead)))
     .AddPolicy(LegacyEmployeePermissions.OrdersCreate, policy => policy
         .RequireAuthenticatedUser()
         .RequireClaim("permissions", LegacyEmployeePermissions.OrdersCreate))
@@ -706,10 +712,8 @@ builder.Services.AddAuthorizationBuilder()
     .AddPolicy(LegacyEmployeePermissions.QuotationsRead, policy => policy
         .RequireAuthenticatedUser()
         .RequireAssertion(context => LegacyNavigationAuthorization.IsEnabled(
-            true,
-            LegacyEmployeePermissions.QuotationsRead,
-            context.User.FindAll("permissions").Select(static claim => claim.Value),
-            context.User.FindAll(ClaimTypes.Role).Select(static claim => claim.Value))))
+            context.User,
+            LegacyEmployeePermissions.QuotationsRead)))
     .AddPolicy(LegacyEmployeePermissions.QuotationsCreate, policy => policy
         .RequireAuthenticatedUser()
         .RequireClaim("permissions", LegacyEmployeePermissions.QuotationsCreate)

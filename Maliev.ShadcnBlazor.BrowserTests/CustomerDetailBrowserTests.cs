@@ -179,7 +179,7 @@ public sealed class CustomerDetailBrowserTests(
         await page.WaitForURLAsync(url => url.Contains("tab=activity", StringComparison.OrdinalIgnoreCase));
         await page.GetByRole(AriaRole.Link, new() { Name = "View order 901", Exact = true }).WaitForAsync();
         await page.GetByText("Quotations: Temporarily unavailable", new() { Exact = true }).WaitForAsync();
-        await page.GetByText("Invoices: Not permitted", new() { Exact = true }).WaitForAsync();
+        Assert.Equal(0, await page.GetByText("Invoices: Not permitted", new() { Exact = true }).CountAsync());
         Assert.Equal(1, state.ActivityLoads);
 
         await page.GetByRole(AriaRole.Tab, new() { Name = "Orders", Exact = true }).ClickAsync();
@@ -334,7 +334,7 @@ public sealed class CustomerDetailBrowserTests(
         await page.GotoAsync(new Uri(server.BaseUri, "Customers/View?id=69738&tab=activity").AbsoluteUri);
         await page.GetByRole(AriaRole.Tab, new() { Name = "กิจกรรม", Exact = true }).WaitForAsync();
         await page.GetByText("ใบเสนอราคา: ไม่พร้อมใช้งานชั่วคราว", new() { Exact = true }).WaitForAsync();
-        await page.GetByText("ใบแจ้งหนี้: ไม่มีสิทธิ์เข้าถึง", new() { Exact = true }).WaitForAsync();
+        Assert.Equal(0, await page.GetByText("ใบแจ้งหนี้: ไม่มีสิทธิ์เข้าถึง", new() { Exact = true }).CountAsync());
 
         Assert.Equal(5, await page.GetByRole(AriaRole.Tab).CountAsync());
         Assert.Equal(
