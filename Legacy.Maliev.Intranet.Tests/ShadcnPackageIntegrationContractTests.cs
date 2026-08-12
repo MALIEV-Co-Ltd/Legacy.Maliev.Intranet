@@ -22,7 +22,10 @@ public sealed class ShadcnPackageIntegrationContractTests
     {
         var project = Read(directory, projectFile);
 
-        Assert.Contains("Condition=\"'$(Configuration)' == 'Release'\"", project, StringComparison.Ordinal);
+        var expectedCondition = directory == "Legacy.Maliev.Intranet.Contracts"
+            ? "Condition=\"'$(Configuration)' == 'Release' And '$(EnableCoverageSymbols)' != 'true'\""
+            : "Condition=\"'$(Configuration)' == 'Release'\"";
+        Assert.Contains(expectedCondition, project, StringComparison.Ordinal);
         Assert.Contains("<DebugSymbols>false</DebugSymbols>", project, StringComparison.Ordinal);
         Assert.Contains("<DebugType>None</DebugType>", project, StringComparison.Ordinal);
     }

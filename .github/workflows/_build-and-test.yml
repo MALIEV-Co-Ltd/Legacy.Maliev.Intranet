@@ -53,8 +53,8 @@ jobs:
           export GITHUB_ACTIONS=false
           dotnet test Legacy.Maliev.Intranet.Tests/Legacy.Maliev.Intranet.Tests.csproj \
             --configuration Release \
-            --no-build \
             --no-restore \
+            -p:EnableCoverageSymbols=true \
             --collect:"XPlat Code Coverage" \
             --settings coverage.runsettings \
             --results-directory TestResults
