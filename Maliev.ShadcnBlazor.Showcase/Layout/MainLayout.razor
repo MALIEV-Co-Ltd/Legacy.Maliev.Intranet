@@ -1,0 +1,46 @@
+@inherits LayoutComponentBase
+@inject ShowcaseState State
+@implements IDisposable
+
+<ShadcnThemeProvider IsDarkMode="@State.IsDarkMode" Direction="@State.Direction" Class="showcase-root">
+    <div class="showcase-shell" data-testid="showcase-shell">
+        <header class="showcase-header">
+            <div class="showcase-header__inner">
+                <MudLink Href="/components/foundation" Class="showcase-brand" Underline="Underline.None">
+                    <span class="showcase-brand__mark" aria-hidden="true">M</span>
+                    <span class="showcase-brand__copy">
+                        <strong data-testid="showcase-title">Maliev Shadcn Blazor</strong>
+                        <small>Base · Vega · Neutral</small>
+                    </span>
+                </MudLink>
+
+                <nav class="showcase-nav" aria-label="Component showcase">
+                    <MudLink Href="/components/foundation" Class="showcase-nav__link" Underline="Underline.None">Foundation</MudLink>
+                </nav>
+
+                <div class="showcase-actions">
+                    <MudButton data-testid="theme-toggle" Class="showcase-action" Variant="Variant.Outlined" OnClick="State.ToggleTheme">
+                        Toggle theme
+                    </MudButton>
+                    <MudButton data-testid="direction-toggle" Class="showcase-action" Variant="Variant.Outlined" OnClick="State.ToggleDirection">
+                        Toggle direction
+                    </MudButton>
+                </div>
+            </div>
+        </header>
+
+        <main class="showcase-main">@Body</main>
+
+        <footer class="showcase-footer">
+            Foundation preview for the reusable Maliev.ShadcnBlazor package.
+        </footer>
+    </div>
+</ShadcnThemeProvider>
+
+@code {
+    protected override void OnInitialized() => State.Changed += OnChanged;
+
+    private void OnChanged(object? sender, EventArgs args) => _ = InvokeAsync(StateHasChanged);
+
+    public void Dispose() => State.Changed -= OnChanged;
+}

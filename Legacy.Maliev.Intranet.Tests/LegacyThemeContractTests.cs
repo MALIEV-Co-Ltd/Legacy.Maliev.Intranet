@@ -3,7 +3,7 @@ namespace Legacy.Maliev.Intranet.Tests;
 public sealed class LegacyThemeContractTests
 {
     [Fact]
-    public void ThemeService_IsRegisteredAndUsesTheExistingBlockingBootstrap()
+    public void ThemeService_IsRegisteredAndUsesTheSharedBlockingBootstrap()
     {
         var root = FindRoot();
         var program = File.ReadAllText(Path.Combine(root, "Legacy.Maliev.Intranet.Client", "Program.cs"));
@@ -15,10 +15,11 @@ public sealed class LegacyThemeContractTests
         Assert.Contains("malievTheme.toggle", service, StringComparison.Ordinal);
         Assert.Contains("localStorage", index, StringComparison.Ordinal);
         Assert.Contains("dataset.malievTheme", index, StringComparison.Ordinal);
+        Assert.Contains("dataset.shadcnTheme", index, StringComparison.Ordinal);
     }
 
     [Fact]
-    public void WorkspaceShell_BindsMudThemeAndExposesAccessibleToggle()
+    public void WorkspaceShell_BindsTheSharedProviderAndExposesAccessibleToggle()
     {
         var root = FindRoot();
         var layout = File.ReadAllText(Path.Combine(root, "Legacy.Maliev.Intranet.Client", "Layout", "MainLayout.razor"));
@@ -26,12 +27,14 @@ public sealed class LegacyThemeContractTests
         var css = File.ReadAllText(Path.Combine(root, "Legacy.Maliev.Intranet.Client", "wwwroot", "css", "design-tokens.css"));
 
         Assert.Contains("IsDarkMode=\"@ThemeService.IsDarkMode\"", layout, StringComparison.Ordinal);
-        Assert.Contains("PaletteDark", layout, StringComparison.Ordinal);
+        Assert.Contains("<ShadcnThemeProvider", layout, StringComparison.Ordinal);
+        Assert.Contains("Direction=\"ShadcnDirection.LeftToRight\"", layout, StringComparison.Ordinal);
+        Assert.DoesNotContain("new MudTheme", layout, StringComparison.Ordinal);
         Assert.Contains("ThemeLabel", topbar, StringComparison.Ordinal);
         Assert.Contains("<MudIconButton Class=\"legacy-theme-toggle\"", topbar, StringComparison.Ordinal);
         Assert.Contains("OnClick=\"ToggleThemeAsync\"", topbar, StringComparison.Ordinal);
         Assert.Contains(":root[data-maliev-theme=\"dark\"]", css, StringComparison.Ordinal);
-        Assert.Contains("--legacy-background: #0d1117", css, StringComparison.Ordinal);
+        Assert.Contains("--legacy-background: var(--shadcn-background)", css, StringComparison.Ordinal);
     }
 
     private static string FindRoot()

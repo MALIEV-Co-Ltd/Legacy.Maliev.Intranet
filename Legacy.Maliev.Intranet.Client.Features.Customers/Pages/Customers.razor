@@ -10,6 +10,7 @@
 <PageTitle>@Text["PageTitle"]</PageTitle>
 
 <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="customers-page">
+<div class="customer-shell">
     <header class="operations-page-header customers-page-header">
         <div><MudText Typo="Typo.h4" HtmlTag="h1">@Text["Customers"]</MudText><MudText Typo="Typo.body2">@Text["Profiles"]</MudText></div>
         <MudButton Href="/Customers/Create" Variant="Variant.Filled" Color="Color.Primary">
@@ -40,32 +41,83 @@
     }
     else
     {
+        <div class="customers-results-bar">
+            <MudText Class="customers-results-summary" aria-live="polite">
+                @Text["PageSummary", page.PageIndex, page.TotalPages, page.TotalRecords]
+            </MudText>
+            @if (page.TotalPages > 1)
+            {
+                <nav class="customers-pagination customers-pagination--top" aria-label="@Text["CustomerPagesTop"]">
+                    <MudButton Variant="Variant.Text" Disabled="@(!page.HasPreviousPage)" OnClick="PreviousPageAsync">@Text["Previous"]</MudButton>
+                    <MudButton Variant="Variant.Text" Disabled="@(!page.HasNextPage)" OnClick="NextPageAsync">@Text["Next"]</MudButton>
+                </nav>
+            }
+        </div>
         <div class="customers-table-shell">
-        <MudTable Items="page.Items" Hover="true" Breakpoint="Breakpoint.Sm" Elevation="0" Class="customers-table" aria-label="@Text["CustomersTable"]">
+        <MudTable Items="page.Items" Hover="true" Breakpoint="Breakpoint.None" Elevation="0" Class="customers-table" aria-label="@Text["CustomersTable"]">
             <HeaderContent>
-                <MudTh>@Text["Id"]</MudTh>
-                <MudTh>@Text["Name"]</MudTh>
-                <MudTh>@Text["Email"]</MudTh>
-                <MudTh>@Text["Company"]</MudTh>
-                <MudTh><span class="visually-hidden">@Text["Actions"]</span></MudTh>
+                <MudTh Class="customer-id-cell" aria-sort="@GetAriaSort(CustomerListSort.CustomerId_Ascending, CustomerListSort.CustomerId_Descending)">
+                    <MudButton Class="customer-sort-button" Variant="Variant.Text" OnClick="@(() => SortFromHeaderAsync(CustomerListSort.CustomerId_Ascending, CustomerListSort.CustomerId_Descending))" aria-label="@Text["SortByField", Text["Id"]]">@Text["Id"]</MudButton>
+                </MudTh>
+                <MudTh Class="customer-name-cell">@Text["Name"]</MudTh>
+                <MudTh Class="customer-email-cell" aria-sort="@GetAriaSort(CustomerListSort.CustomerEmail_Ascending, CustomerListSort.CustomerEmail_Descending)">
+                    <MudButton Class="customer-sort-button" Variant="Variant.Text" OnClick="@(() => SortFromHeaderAsync(CustomerListSort.CustomerEmail_Ascending, CustomerListSort.CustomerEmail_Descending))" aria-label="@Text["SortByField", Text["Email"]]">@Text["Email"]</MudButton>
+                </MudTh>
+                <MudTh Class="customer-company-cell" aria-sort="@GetAriaSort(CustomerListSort.CustomerCompany_Ascending, CustomerListSort.CustomerCompany_Descending)">
+                    <MudButton Class="customer-sort-button" Variant="Variant.Text" OnClick="@(() => SortFromHeaderAsync(CustomerListSort.CustomerCompany_Ascending, CustomerListSort.CustomerCompany_Descending))" aria-label="@Text["SortByField", Text["Company"]]">@Text["Company"]</MudButton>
+                </MudTh>
+                <MudTh Class="customer-action-cell"><span class="visually-hidden">@Text["Actions"]</span></MudTh>
             </HeaderContent>
             <RowTemplate>
-                <MudTd DataLabel="@Text["Id"]">@context.Id</MudTd>
-                <MudTd DataLabel="@Text["Name"]">@context.FullName</MudTd>
-                <MudTd DataLabel="@Text["Email"]">@context.Email</MudTd>
-                <MudTd DataLabel="@Text["Company"]">@context.Company?.Name</MudTd>
-                <MudTd DataLabel="@Text["Actions"]">
+                <MudTd DataLabel="@Text["Id"]" Class="customer-id-cell">@context.Id</MudTd>
+                <MudTd DataLabel="@Text["Name"]" Class="customer-name-cell">
+                    <MudMenu Label="@context.FullName"
+                             AriaLabel="@context.FullName"
+                             Variant="Variant.Text"
+                             Dense="true"
+                             FullWidth="true"
+                             Class="customer-value-disclosure customer-name-disclosure">
+                        <MudMenuItem Class="customer-full-value" Style="max-width: min(24rem, calc(100vw - 2rem)); white-space: normal; overflow-wrap: anywhere;">@context.FullName</MudMenuItem>
+                    </MudMenu>
+                </MudTd>
+                <MudTd DataLabel="@Text["Email"]" Class="customer-email-cell">
+                    <MudMenu Label="@context.Email"
+                             AriaLabel="@context.Email"
+                             Variant="Variant.Text"
+                             Dense="true"
+                             FullWidth="true"
+                             Class="customer-value-disclosure customer-email-disclosure">
+                        <MudMenuItem Class="customer-full-value" Style="max-width: min(24rem, calc(100vw - 2rem)); white-space: normal; overflow-wrap: anywhere;">@context.Email</MudMenuItem>
+                    </MudMenu>
+                </MudTd>
+                <MudTd DataLabel="@Text["Company"]" Class="customer-company-cell">
+                    @if (!string.IsNullOrWhiteSpace(context.Company?.Name))
+                    {
+                        <MudMenu Label="@context.Company.Name"
+                                 AriaLabel="@context.Company.Name"
+                                 Variant="Variant.Text"
+                                 Dense="true"
+                                 FullWidth="true"
+                                 Class="customer-value-disclosure customer-company-disclosure">
+                            <MudMenuItem Class="customer-full-value" Style="max-width: min(24rem, calc(100vw - 2rem)); white-space: normal; overflow-wrap: anywhere;">@context.Company.Name</MudMenuItem>
+                        </MudMenu>
+                    }
+                </MudTd>
+                <MudTd DataLabel="@Text["Actions"]" Class="customer-action-cell">
                     <MudLink Href="@($"/Customers/View?id={context.Id}")">@Text["View"]</MudLink>
                 </MudTd>
             </RowTemplate>
         </MudTable>
         </div>
-        <nav class="d-flex flex-wrap align-center justify-space-between gap-3 mt-4" aria-label="@Text["CustomerPages"]">
-            <MudButton Disabled="@(!page.HasPreviousPage)" OnClick="PreviousPageAsync">@Text["Previous"]</MudButton>
-            <MudText aria-live="polite">@Text["PageSummary", page.PageIndex, page.TotalPages, page.TotalRecords]</MudText>
-            <MudButton Disabled="@(!page.HasNextPage)" OnClick="NextPageAsync">@Text["Next"]</MudButton>
-        </nav>
+        @if (page.TotalPages > 1)
+        {
+            <nav class="customers-pagination customers-pagination--bottom" aria-label="@Text["CustomerPagesBottom"]">
+                <MudButton Variant="Variant.Text" Disabled="@(!page.HasPreviousPage)" OnClick="PreviousPageAsync">@Text["Previous"]</MudButton>
+                <MudButton Variant="Variant.Text" Disabled="@(!page.HasNextPage)" OnClick="NextPageAsync">@Text["Next"]</MudButton>
+            </nav>
+        }
     }
+</div>
 </MudContainer>
 
 @code {
@@ -84,9 +136,18 @@
     private static readonly int[] PageSizeOptions = [25, 50, 100, 250];
     private ListToolbarState<CustomerListSort> ToolbarState => new(Search, currentSort, Size);
     private IReadOnlyList<ListToolbarOption<CustomerListSort>> SortOptions =>
-        Enum.GetValues<CustomerListSort>()
-            .Select(option => new ListToolbarOption<CustomerListSort>(option, Text[option.ToString()]))
-            .ToArray();
+    [
+        new(CustomerListSort.CustomerCreatedDate_Descending, Text[nameof(CustomerListSort.CustomerCreatedDate_Descending)]),
+        new(CustomerListSort.CustomerCreatedDate_Ascending, Text[nameof(CustomerListSort.CustomerCreatedDate_Ascending)]),
+        new(CustomerListSort.CustomerModifiedDate_Descending, Text[nameof(CustomerListSort.CustomerModifiedDate_Descending)]),
+        new(CustomerListSort.CustomerModifiedDate_Ascending, Text[nameof(CustomerListSort.CustomerModifiedDate_Ascending)]),
+        new(CustomerListSort.CustomerCompany_Ascending, Text[nameof(CustomerListSort.CustomerCompany_Ascending)]),
+        new(CustomerListSort.CustomerCompany_Descending, Text[nameof(CustomerListSort.CustomerCompany_Descending)]),
+        new(CustomerListSort.CustomerEmail_Ascending, Text[nameof(CustomerListSort.CustomerEmail_Ascending)]),
+        new(CustomerListSort.CustomerEmail_Descending, Text[nameof(CustomerListSort.CustomerEmail_Descending)]),
+        new(CustomerListSort.CustomerId_Descending, Text[nameof(CustomerListSort.CustomerId_Descending)]),
+        new(CustomerListSort.CustomerId_Ascending, Text[nameof(CustomerListSort.CustomerId_Ascending)])
+    ];
 
     protected override async Task OnParametersSetAsync()
     {
@@ -173,6 +234,12 @@
 
     private Task PreviousPageAsync() => NavigateAsync(Math.Max(1, Index - 1), Search, currentSort, Size);
     private Task NextPageAsync() => NavigateAsync(Index + 1, Search, currentSort, Size);
+
+    private Task SortFromHeaderAsync(CustomerListSort ascending, CustomerListSort descending) =>
+        NavigateAsync(1, Search, currentSort == ascending ? descending : ascending, Size, replace: true);
+
+    private string GetAriaSort(CustomerListSort ascending, CustomerListSort descending) =>
+        currentSort == ascending ? "ascending" : currentSort == descending ? "descending" : "none";
 
     private Task HandleToolbarRequestAsync(ListToolbarRequest<CustomerListSort> request)
     {

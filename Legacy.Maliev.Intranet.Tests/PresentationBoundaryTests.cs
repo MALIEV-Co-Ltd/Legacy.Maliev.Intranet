@@ -149,6 +149,27 @@ public sealed class PresentationBoundaryTests
     }
 
     [Fact]
+    public void ServerOrchestration_DoesNotBlockOnCompletedTasks()
+    {
+        var root = FindRepositoryRoot();
+        var files = new[]
+        {
+            Path.Combine(root, "Legacy.Maliev.Intranet.Server", "PurchaseOrders", "PurchaseOrderDetailService.cs"),
+            Path.Combine(root, "Legacy.Maliev.Intranet.Bff", "Dashboard", "LegacyDashboardAggregator.cs"),
+            Path.Combine(root, "Legacy.Maliev.Intranet.Bff", "Orders", "OrderDetailAggregator.cs"),
+            Path.Combine(root, "Legacy.Maliev.Intranet.Bff", "Procurement", "PurchaseOrderCreationGateway.cs"),
+            Path.Combine(root, "Legacy.Maliev.Intranet.Bff", "Quotations", "QuotationCreationGateway.cs"),
+        };
+
+        foreach (var file in files)
+        {
+            var source = File.ReadAllText(file);
+            Assert.DoesNotContain(".Result", source, StringComparison.Ordinal);
+            Assert.DoesNotContain("GetAwaiter().GetResult", source, StringComparison.Ordinal);
+        }
+    }
+
+    [Fact]
     public void MaterialSortResources_CoverEveryExposedEnumValueInBothLanguages()
     {
         var root = FindRepositoryRoot();

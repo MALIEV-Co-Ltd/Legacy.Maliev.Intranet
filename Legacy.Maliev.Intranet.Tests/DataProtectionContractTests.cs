@@ -79,6 +79,9 @@ public sealed class DataProtectionContractTests
         Assert.Contains("RedisXmlRepository", registration, StringComparison.Ordinal);
         Assert.Contains("ProtectKeysWithCertificate", registration, StringComparison.Ordinal);
         Assert.Contains("AddSingleton(_ => resources)", registration, StringComparison.Ordinal);
+        Assert.Contains("LegacyIntranetRedisHealthCheck", registration, StringComparison.Ordinal);
+        Assert.Contains("AddHealthChecks()", registration, StringComparison.Ordinal);
+        Assert.Contains("AddCheck<LegacyIntranetRedisHealthCheck>(\"redis\", tags: [\"ready\"])", registration, StringComparison.Ordinal);
         Assert.Contains("ConnectionMultiplexerFactory", registration, StringComparison.Ordinal);
         Assert.DoesNotContain("AddSingleton<IConnectionMultiplexer>(redis)", registration, StringComparison.Ordinal);
 

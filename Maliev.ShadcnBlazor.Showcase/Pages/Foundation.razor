@@ -1,0 +1,102 @@
+@page "/components/foundation"
+<PageTitle>Foundation Fixture</PageTitle>
+<section class="foundation-page" data-testid="foundation-fixture">
+    <header class="foundation-hero" data-testid="foundation-hero">
+        <div>
+            <span class="foundation-eyebrow">Design foundation</span>
+            <h1>Shadcn foundations for Blazor</h1>
+            <p>
+                Semantic color, radius, sizing, typography, shadow, direction, and motion contracts
+                shared by every component in the reusable library.
+            </p>
+        </div>
+        <div class="foundation-meta" aria-label="Foundation configuration">
+            <span>Base UI</span>
+            <span>Vega</span>
+            <span>Neutral</span>
+            <span>MudBlazor 9.7</span>
+        </div>
+    </header>
+
+    <section class="foundation-section" aria-labelledby="semantic-colors-title">
+        <div class="foundation-section__heading">
+            <div>
+                <h2 id="semantic-colors-title">Semantic colors</h2>
+                <p>Theme-aware roles stay stable while their values adapt to light and dark mode.</p>
+            </div>
+            <code>OKLCH</code>
+        </div>
+
+        <div class="token-grid" data-testid="token-grid">
+            <article class="token-card">
+                <div class="token-swatch token-swatch--background" data-testid="token-background">
+                    <span>Aa</span>
+                </div>
+                <div class="token-card__meta">
+                    <strong>Background</strong>
+                    <code>--shadcn-background</code>
+                </div>
+            </article>
+            <article class="token-card">
+                <div class="token-swatch token-swatch--primary" data-testid="token-primary">
+                    <span>Aa</span>
+                </div>
+                <div class="token-card__meta">
+                    <strong>Primary</strong>
+                    <code>--shadcn-primary</code>
+                </div>
+            </article>
+            <article class="token-card">
+                <div class="token-swatch token-swatch--muted" data-testid="token-muted">
+                    <span>Aa</span>
+                </div>
+                <div class="token-card__meta">
+                    <strong>Muted</strong>
+                    <code>--shadcn-muted</code>
+                </div>
+            </article>
+            <article class="token-card">
+                <div class="token-swatch token-swatch--destructive" data-testid="token-destructive">
+                    <span>Aa</span>
+                </div>
+                <div class="token-card__meta">
+                    <strong>Destructive</strong>
+                    <code>--shadcn-destructive</code>
+                </div>
+            </article>
+        </div>
+    </section>
+
+    <section class="foundation-section foundation-primitives" aria-labelledby="primitives-title">
+        <div class="foundation-section__heading">
+            <div>
+                <h2 id="primitives-title">Shape and elevation</h2>
+                <p>One radius scale and restrained shadows keep every surface visually related.</p>
+            </div>
+        </div>
+
+        <div class="primitive-grid">
+            <article class="primitive-card">
+                <div class="radius-sample" data-testid="radius-md"></div>
+                <div>
+                    <strong>Medium radius</strong>
+                    <code>--shadcn-radius-md</code>
+                </div>
+            </article>
+            <article class="primitive-card primitive-card--shadow">
+                <div class="shadow-sample"></div>
+                <div>
+                    <strong>Surface shadow</strong>
+                    <code>--shadcn-shadow-sm</code>
+                </div>
+            </article>
+            <article class="primitive-card">
+                <div class="control-sample">36 px</div>
+                <div>
+                    <strong>Control height</strong>
+                    <code>--shadcn-control-height</code>
+                </div>
+            </article>
+        </div>
+    </section>
+</section>

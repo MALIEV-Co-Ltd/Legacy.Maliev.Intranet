@@ -12,15 +12,15 @@ Operate. Scanability, task completion, permission clarity, and truthful system s
 
 ## Typography
 
-Use `Inter, "Noto Sans Thai", sans-serif` everywhere except actual code or machine identifiers. Maintain an obvious hierarchy without eyebrow labels: page titles, section titles, body, metadata, and tabular data. Keep body copy readable and controls large enough for touch.
+Use the self-hosted `IBM Plex Sans Thai, sans-serif` family everywhere except actual code or machine identifiers. Maintain an obvious hierarchy without eyebrow labels: page titles, section titles, body, metadata, and tabular data. Keep body copy readable and controls large enough for touch. The shared semantic layer follows the shadcn neutral token contract for surfaces, foregrounds, borders, focus rings, radius, and density; MALIEV identity remains in the wordmark and content, not one-off control styling.
 
 ## Color
 
 - Canvas: warm white to pale neutral.
 - Navigation and panels: white.
-- Primary interaction: MALIEV blue.
-- Primary text: deep navy/ink.
-- Secondary text: blue-tinted slate with WCAG AA contrast.
+- Primary interaction: shadcn neutral primary/foreground pairs.
+- Primary text: neutral ink/foreground.
+- Secondary text: neutral muted-foreground with WCAG AA contrast.
 - Status colors: green success, amber warning, red failure, blue informational; always pair color with text or icon meaning.
 
 ## Layout

@@ -32,10 +32,13 @@ public sealed class PurchaseOrderCreationGateway(IHttpClientFactory clients) : I
         var employeesTask = GetAsync<EmployeePage>(employee, "/employees?sort=EmployeeId_Ascending&search=&index=1&size=250", cancellationToken);
         var addressesTask = GetAsync<IReadOnlyList<AddressData>>(procurement, "/purchaseorders/addresses", cancellationToken);
         await Task.WhenAll(suppliersTask, employeesTask, addressesTask);
+        var suppliers = await suppliersTask;
+        var employees = await employeesTask;
+        var addresses = await addressesTask;
         return new(
-            suppliersTask.Result.Items.Where(value => value.Id > 0 && !string.IsNullOrWhiteSpace(value.Name)).Select(value => new PurchaseOrderSupplierOption(value.Id, value.Name!)).ToArray(),
-            employeesTask.Result.Items.Where(value => value.Id > 0 && !string.IsNullOrWhiteSpace(value.FullName)).Select(value => new PurchaseOrderEmployeeOption(value.Id, value.FullName)).ToArray(),
-            addressesTask.Result.Where(value => value.Id > 0 && !string.IsNullOrWhiteSpace(value.AddressLine1)).Select(value => new PurchaseOrderAddressOption(value.Id, value.AddressLine1, value.City)).ToArray());
+            suppliers.Items.Where(value => value.Id > 0 && !string.IsNullOrWhiteSpace(value.Name)).Select(value => new PurchaseOrderSupplierOption(value.Id, value.Name!)).ToArray(),
+            employees.Items.Where(value => value.Id > 0 && !string.IsNullOrWhiteSpace(value.FullName)).Select(value => new PurchaseOrderEmployeeOption(value.Id, value.FullName)).ToArray(),
+            addresses.Where(value => value.Id > 0 && !string.IsNullOrWhiteSpace(value.AddressLine1)).Select(value => new PurchaseOrderAddressOption(value.Id, value.AddressLine1, value.City)).ToArray());
     }
 
     /// <inheritdoc />
@@ -72,12 +75,16 @@ public sealed class PurchaseOrderCreationGateway(IHttpClientFactory clients) : I
         var employeeTask = GetAsync<EmployeeData>(clients.CreateClient(EmployeeClient), $"/employees/{request.EmployeeId}", cancellationToken);
         var countriesTask = GetAsync<IReadOnlyList<CountryData>>(clients.CreateClient(CatalogClient), "/Countries", cancellationToken);
         await Task.WhenAll(supplierTask, supplierAddressTask, shippingTask, billingTask, employeeTask, countriesTask);
-        var supplier = supplierTask.Result;
-        var supplierAddress = supplierAddressTask.Result;
+        var supplier = await supplierTask;
+        var supplierAddress = await supplierAddressTask;
+        var shipping = await shippingTask;
+        var billing = await billingTask;
+        var employee = await employeeTask;
+        var countries = await countriesTask;
         return new(
             new(supplier.Name ?? string.Empty, request.SupplierContactPerson, supplier.Telephone, supplier.Mobile, supplier.Fax, Address(supplierAddress)),
-            Address(shippingTask.Result), Address(billingTask.Result), employeeTask.Result.FullName,
-            countriesTask.Result.Where(value => value.Id > 0).ToDictionary(value => value.Id, value => value.Name));
+            Address(shipping), Address(billing), employee.FullName,
+            countries.Where(value => value.Id > 0).ToDictionary(value => value.Id, value => value.Name));
     }
 
     /// <inheritdoc />

@@ -142,7 +142,7 @@ public sealed class OrderDetailAggregator(
         {
             foreach (var responseTask in responseTasks.Where(task => task.IsCompletedSuccessfully))
             {
-                responseTask.Result.Dispose();
+                (await responseTask).Dispose();
             }
 
             throw;

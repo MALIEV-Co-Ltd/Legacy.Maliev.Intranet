@@ -1,4 +1,5 @@
 @page "/Quotations/Index"
+@using global::Maliev.ShadcnBlazor.Adapters.MudBlazor
 @attribute [Authorize]
 @implements IDisposable
 @inject HttpClient Http
@@ -36,7 +37,7 @@
                     <MudText id="quotation-decision-heading" Typo="Typo.h6" HtmlTag="h2" Class="mb-3">@Text["DecisionSummary"]</MudText>
                     <div class="quotation-decision-layout">
                         <div aria-hidden="true">
-                            <MudChart T="double" ChartType="ChartType.Donut" ChartSeries="decisionSeries" ChartLabels="decisionLabels" Width="100%" Height="260px" />
+                            <MudChart T="double" ChartType="ChartType.Donut" ChartSeries="decisionSeries" ChartLabels="decisionLabels" ChartOptions="@ShadcnMudChartOptions.Create()" Width="100%" Height="260px" />
                         </div>
                         <dl class="quotation-decision-data" aria-label="@Text["DecisionData"]">
                             <div><dt><span class="quotation-status quotation-status--accepted">@Text["Accepted"]</span></dt><dd>@stats.Accepted</dd></div>

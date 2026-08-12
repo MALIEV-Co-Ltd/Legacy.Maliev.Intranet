@@ -49,17 +49,17 @@ public sealed class TypographySystemContractTests
     }
 
     [Fact]
-    public void TypographyTokens_UseOneBilingualFamilyAndTwoWeightRoles()
+    public void TypographyTokens_ExposeCompatibilityAliasesWhilePackageOwnsComponentTypography()
     {
         var root = FindRoot();
         var tokens = Read(root, "Legacy.Maliev.Intranet.Client", "wwwroot", "css", "design-tokens.css");
-        var rail = Read(root, "Legacy.Maliev.Intranet.Client", "Components", "Shell", "LegacyNavigationRail.razor.css");
+        var adapter = Read(root, "Maliev.ShadcnBlazor", "wwwroot", "css", "shadcn-mudblazor.css");
 
         Assert.Contains("--maliev-font-sans: 'IBM Plex Sans Thai', sans-serif", tokens, StringComparison.Ordinal);
         Assert.Contains("--maliev-font-weight-body: 400", tokens, StringComparison.Ordinal);
         Assert.Contains("--maliev-font-weight-heading: 600", tokens, StringComparison.Ordinal);
-        Assert.Contains("font-weight: var(--maliev-font-weight-body)", rail, StringComparison.Ordinal);
-        Assert.Contains("font-weight: var(--maliev-font-weight-heading)", rail, StringComparison.Ordinal);
+        Assert.DoesNotContain("--shadcn-font-sans:", tokens, StringComparison.Ordinal);
+        Assert.Contains(".mud-typography", adapter, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -69,7 +69,7 @@ public sealed class TypographySystemContractTests
         var invalid = new List<string>();
 
         foreach (var file in Directory.EnumerateFiles(root, "*.css", SearchOption.AllDirectories)
-                     .Where(IsProductionStyle))
+                     .Where(path => IsProductionStyle(root, path)))
         {
             var source = File.ReadAllText(file);
             foreach (Match match in FontWeightDeclaration.Matches(source))
@@ -89,20 +89,23 @@ public sealed class TypographySystemContractTests
 
     private static IEnumerable<string> ProductionTypographyFiles(string root) =>
         Directory.EnumerateFiles(root, "*", SearchOption.AllDirectories)
-            .Where(path => IsProductionPath(path)
+            .Where(path => IsProductionPath(root, path)
                 && Path.GetExtension(path) is ".css" or ".html" or ".cshtml");
 
-    private static bool IsProductionStyle(string path) =>
-        IsProductionPath(path) && path.EndsWith(".css", StringComparison.OrdinalIgnoreCase);
+    private static bool IsProductionStyle(string root, string path) =>
+        IsProductionPath(root, path) && path.EndsWith(".css", StringComparison.OrdinalIgnoreCase);
 
-    private static bool IsProductionPath(string path) =>
-        !path.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}", StringComparison.OrdinalIgnoreCase)
-        && !path.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}", StringComparison.OrdinalIgnoreCase)
-        && !path.Contains($"{Path.DirectorySeparatorChar}TestResults{Path.DirectorySeparatorChar}", StringComparison.OrdinalIgnoreCase)
-        && !path.Contains($"{Path.DirectorySeparatorChar}Legacy.Maliev.Intranet.Tests{Path.DirectorySeparatorChar}", StringComparison.OrdinalIgnoreCase)
-        && (path.Contains($"{Path.DirectorySeparatorChar}Legacy.Maliev.Intranet.Client{Path.DirectorySeparatorChar}", StringComparison.OrdinalIgnoreCase)
-            || path.Contains($"{Path.DirectorySeparatorChar}Legacy.Maliev.Intranet.Client.Features.", StringComparison.OrdinalIgnoreCase)
-            || path.Contains($"{Path.DirectorySeparatorChar}Legacy.Maliev.Intranet{Path.DirectorySeparatorChar}", StringComparison.OrdinalIgnoreCase));
+    private static bool IsProductionPath(string root, string path)
+    {
+        var relativePath = Path.GetRelativePath(root, path);
+        return !relativePath.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}", StringComparison.OrdinalIgnoreCase)
+            && !relativePath.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}", StringComparison.OrdinalIgnoreCase)
+            && !relativePath.Contains($"{Path.DirectorySeparatorChar}TestResults{Path.DirectorySeparatorChar}", StringComparison.OrdinalIgnoreCase)
+            && !relativePath.StartsWith($"Legacy.Maliev.Intranet.Tests{Path.DirectorySeparatorChar}", StringComparison.OrdinalIgnoreCase)
+            && (relativePath.StartsWith($"Legacy.Maliev.Intranet.Client{Path.DirectorySeparatorChar}", StringComparison.OrdinalIgnoreCase)
+                || relativePath.StartsWith("Legacy.Maliev.Intranet.Client.Features.", StringComparison.OrdinalIgnoreCase)
+                || relativePath.StartsWith($"Legacy.Maliev.Intranet{Path.DirectorySeparatorChar}", StringComparison.OrdinalIgnoreCase));
+    }
 
     private static string Read(string root, params string[] segments) =>
         File.ReadAllText(Path.Combine([root, .. segments]));

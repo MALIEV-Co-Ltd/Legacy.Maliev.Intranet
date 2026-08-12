@@ -1,29 +1,4 @@
-.purchase-order-downloads {
-    align-items: center;
-    flex-wrap: wrap;
-}
-
-.purchase-order-lines .mud-table-cell {
-    overflow-wrap: anywhere;
-}
-
-.purchase-order-danger-zone {
-    display: flex;
-    justify-content: flex-end;
-    border: 1px solid var(--mud-palette-error);
-    background: color-mix(in srgb, var(--mud-palette-error) 6%, var(--legacy-surface));
-}
-
-@media (max-width: 600px) {
-    .purchase-order-downloads {
-        align-items: stretch;
-        flex-direction: column;
-        width: 100%;
-    }
-
-    .purchase-order-downloads .mud-button-root,
-    .purchase-order-danger-zone .mud-button-root {
-        width: 100%;
-        min-height: 44px;
-    }
-}
+.purchase-order-downloads { align-items: center; flex-wrap: wrap; }
+.purchase-order-lines .mud-table-cell { overflow-wrap: anywhere; }
+.purchase-order-danger-zone { display: flex; justify-content: flex-end; }
+@media (max-width: 600px) { .purchase-order-downloads { align-items: stretch; flex-direction: column; width: 100%; } .purchase-order-downloads .mud-button-root, .purchase-order-danger-zone .mud-button-root { width: 100%; min-height: 44px; } }

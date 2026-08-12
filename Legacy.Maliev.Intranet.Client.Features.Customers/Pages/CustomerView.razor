@@ -8,126 +8,116 @@
 <PageTitle>@(customer is null ? Text["PageTitle"] : Text["CustomerPageTitle", customer.FullName])</PageTitle>
 
 <MudContainer MaxWidth="MaxWidth.Large">
-    @if (loading)
-    {
-        <MudProgressLinear Indeterminate="true" Color="Color.Primary" aria-live="polite" aria-label="@Text["Loading"]" />
-    }
-    else if (!string.IsNullOrWhiteSpace(error))
-    {
-        <MudAlert Severity="errorSeverity" Class="mb-4" aria-live="assertive">@error</MudAlert>
-        <div class="d-flex flex-wrap gap-2">
-            @if (!notFound)
-            {
-                <MudButton OnClick="LoadAsync" Variant="Variant.Filled" Color="Color.Primary">@Text["Retry"]</MudButton>
-            }
-            <MudButton Href="/Customers/Index" Variant="Variant.Text">@Text["BackToCustomers"]</MudButton>
-        </div>
-    }
-    else if (customer is not null)
-    {
-        <header class="operations-page-header">
-            <div><MudText Typo="Typo.h4" HtmlTag="h1">@customer.FullName</MudText><MudText Typo="Typo.body2">@Text["CustomerNumber", customer.Id]</MudText></div>
-            @if (canEdit)
-            {
-                <MudButton Variant="Variant.Outlined" Color="Color.Primary" Disabled="@submitting" OnClick="BeginEdit" aria-label="@Text["EditCustomer"]">
-                    @Text["EditCustomer"]
-                </MudButton>
-            }
-        </header>
+    <div class="customer-detail">
+        @if (loading)
+        {
+            <MudProgressLinear Indeterminate="true" Color="Color.Primary" aria-live="polite" aria-label="@Text["Loading"]" />
+        }
+        else if (!string.IsNullOrWhiteSpace(error))
+        {
+            <MudAlert Severity="errorSeverity" Class="mb-4" aria-live="assertive">@error</MudAlert>
+            <div class="d-flex flex-wrap gap-2">
+                @if (!notFound)
+                {
+                    <MudButton OnClick="LoadAsync" Variant="Variant.Filled" Color="Color.Primary">@Text["Retry"]</MudButton>
+                }
+                <MudButton Href="/Customers/Index" Variant="Variant.Text">@Text["BackToCustomers"]</MudButton>
+            </div>
+        }
+        else if (customer is not null)
+        {
+            <header class="customer-detail__header operations-page-header">
+                <div class="customer-detail__identity">
+                    <MudText Typo="Typo.h4" HtmlTag="h1">@customer.FullName</MudText>
+                    <MudText Typo="Typo.body2" Class="customer-detail__number">@Text["CustomerNumber", customer.Id]</MudText>
+                </div>
+                @if (canEdit)
+                {
+                    <MudButton Variant="Variant.Outlined" Color="Color.Primary" Disabled="@submitting" OnClick="BeginEdit" aria-label="@Text["EditCustomer"]">
+                        @Text["EditCustomer"]
+                    </MudButton>
+                }
+            </header>
 
-        <MudGrid Spacing="3">
-            <MudItem xs="12" md="6">
-                <section>
-                <MudPaper Class="pa-4">
-                    <MudText Typo="Typo.h6" HtmlTag="h2" Class="mb-3">@Text["Contact"]</MudText>
+            <div class="customer-detail__layout">
+                <section class="customer-detail__section customer-detail__primary" aria-labelledby="customer-contact-heading">
+                    <MudText Typo="Typo.h6" HtmlTag="h2" id="customer-contact-heading" Class="customer-detail__section-title">@Text["Contact"]</MudText>
                     @if (editing)
                     {
                         <MudForm @ref="editForm" Model="@editModel" @bind-IsValid="editFormValid">
-                            <MudTextField @bind-Value="editModel.FirstName" For="@(() => editModel.FirstName)" Label="@Text["FirstName"]" Required="true" />
-                            <MudTextField @bind-Value="editModel.LastName" For="@(() => editModel.LastName)" Label="@Text["LastName"]" Required="true" />
-                            <MudTextField @bind-Value="editModel.Email" For="@(() => editModel.Email)" Label="@Text["Email"]" InputType="InputType.Email" Required="true" />
-                            <MudTextField @bind-Value="editModel.Telephone" For="@(() => editModel.Telephone)" Label="@Text["Telephone"]" InputType="InputType.Telephone" />
-                            <MudTextField @bind-Value="editModel.Mobile" For="@(() => editModel.Mobile)" Label="@Text["Mobile"]" InputType="InputType.Telephone" />
-                            <MudTextField @bind-Value="editModel.Fax" For="@(() => editModel.Fax)" Label="@Text["Fax"]" />
-                            <MudDatePicker @bind-Date="editModel.DateOfBirth" For="@(() => editModel.DateOfBirth)" Label="@Text["DateOfBirth"]" />
-                            <MudStack Row="true" Spacing="2" Class="mt-4">
+                            <div class="customer-detail__form-grid">
+                                <MudTextField @bind-Value="editModel.FirstName" For="@(() => editModel.FirstName)" Label="@Text["FirstName"]" Required="true" Variant="Variant.Outlined" />
+                                <MudTextField @bind-Value="editModel.LastName" For="@(() => editModel.LastName)" Label="@Text["LastName"]" Required="true" Variant="Variant.Outlined" />
+                                <MudTextField @bind-Value="editModel.Email" For="@(() => editModel.Email)" Label="@Text["Email"]" InputType="InputType.Email" Required="true" Variant="Variant.Outlined" />
+                                <MudTextField @bind-Value="editModel.Telephone" For="@(() => editModel.Telephone)" Label="@Text["Telephone"]" InputType="InputType.Telephone" Variant="Variant.Outlined" />
+                                <MudTextField @bind-Value="editModel.Mobile" For="@(() => editModel.Mobile)" Label="@Text["Mobile"]" InputType="InputType.Telephone" Variant="Variant.Outlined" />
+                                <MudTextField @bind-Value="editModel.Fax" For="@(() => editModel.Fax)" Label="@Text["Fax"]" Variant="Variant.Outlined" />
+                                <MudDatePicker @bind-Date="editModel.DateOfBirth" For="@(() => editModel.DateOfBirth)" Label="@Text["DateOfBirth"]" Variant="Variant.Outlined" />
+                            </div>
+                            <div class="customer-detail__form-actions">
                                 <MudButton ButtonType="ButtonType.Button" Variant="Variant.Filled" Color="Color.Primary" Disabled="@submitting" OnClick="SaveAsync">
                                     @(submitting ? Text["Saving"] : Text["SaveChanges"])
                                 </MudButton>
                                 <MudButton ButtonType="ButtonType.Button" Variant="Variant.Text" Disabled="@submitting" OnClick="CancelEdit">
                                     @Text["Cancel"]
                                 </MudButton>
-                            </MudStack>
+                            </div>
                         </MudForm>
                     }
                     else
                     {
-                        <dl class="details">
-                            <dt>@Text["Email"]</dt>
-                            <dd><a href="mailto:@customer.Email">@customer.Email</a></dd>
-                            <dt>@Text["Telephone"]</dt><dd>@Display(customer.Telephone)</dd>
-                            <dt>@Text["Mobile"]</dt><dd>@Display(customer.Mobile)</dd>
-                            <dt>@Text["Fax"]</dt><dd>@Display(customer.Fax)</dd>
-                            <dt>@Text["DateOfBirth"]</dt><dd>@DisplayDate(customer.DateOfBirth)</dd>
+                        <dl class="customer-detail__details details">
+                            <div><dt>@Text["Email"]</dt><dd><a href="mailto:@customer.Email">@customer.Email</a></dd></div>
+                            <div><dt>@Text["Telephone"]</dt><dd>@Display(customer.Telephone)</dd></div>
+                            <div><dt>@Text["Mobile"]</dt><dd>@Display(customer.Mobile)</dd></div>
+                            <div><dt>@Text["Fax"]</dt><dd>@Display(customer.Fax)</dd></div>
+                            <div><dt>@Text["DateOfBirth"]</dt><dd>@DisplayDate(customer.DateOfBirth)</dd></div>
                         </dl>
                     }
-                </MudPaper>
                 </section>
-            </MudItem>
 
-            <MudItem xs="12" md="6">
-                <section>
-                <MudPaper Class="pa-4">
-                    <MudText Typo="Typo.h6" HtmlTag="h2" Class="mb-3">@Text["Company"]</MudText>
-                    @if (customer.Company is null)
-                    {
-                        <MudText>@Text["NotAvailable"]</MudText>
-                    }
-                    else
-                    {
-                        <dl class="details">
-                            <dt>@Text["CompanyName"]</dt><dd>@customer.Company.Name</dd>
-                            <dt>@Text["TaxNumber"]</dt><dd>@Display(customer.Company.TaxNumber)</dd>
-                            <dt>@Text["Registrar"]</dt><dd>@Display(customer.Company.Registrar)</dd>
+                <aside class="customer-detail__secondary" aria-label="@Text["Company"]">
+                    <section class="customer-detail__section" aria-labelledby="customer-company-heading">
+                        <MudText Typo="Typo.h6" HtmlTag="h2" id="customer-company-heading" Class="customer-detail__section-title">@Text["Company"]</MudText>
+                        @if (customer.Company is null)
+                        {
+                            <MudText Class="customer-detail__empty">@Text["NotAvailable"]</MudText>
+                        }
+                        else
+                        {
+                            <dl class="customer-detail__details details">
+                                <div><dt>@Text["CompanyName"]</dt><dd>@customer.Company.Name</dd></div>
+                                <div><dt>@Text["TaxNumber"]</dt><dd>@Display(customer.Company.TaxNumber)</dd></div>
+                                <div><dt>@Text["Registrar"]</dt><dd>@Display(customer.Company.Registrar)</dd></div>
+                            </dl>
+                        }
+                    </section>
+                    <section class="customer-detail__section customer-detail__record" aria-labelledby="customer-record-heading">
+                        <MudText Typo="Typo.h6" HtmlTag="h2" id="customer-record-heading" Class="customer-detail__section-title">@Text["RecordInformation"]</MudText>
+                        <dl class="customer-detail__details details">
+                            <div><dt>@Text["CreatedDate"]</dt><dd>@DisplayDateTime(customer.CreatedDate)</dd></div>
+                            <div><dt>@Text["ModifiedDate"]</dt><dd>@DisplayDateTime(customer.ModifiedDate)</dd></div>
                         </dl>
-                    }
-                </MudPaper>
-                </section>
-            </MudItem>
+                    </section>
+                </aside>
+            </div>
 
-            <MudItem xs="12" md="6">
-                <section>
-                <MudPaper Class="pa-4">
-                    <MudText Typo="Typo.h6" HtmlTag="h2" Class="mb-3">@Text["BillingAddress"]</MudText>
-                    <address>@DisplayAddress(customer.BillingAddress)</address>
-                </MudPaper>
+            <div class="customer-detail__addresses">
+                <section class="customer-detail__section" aria-labelledby="customer-billing-heading">
+                    <MudText Typo="Typo.h6" HtmlTag="h2" id="customer-billing-heading" Class="customer-detail__section-title">@Text["BillingAddress"]</MudText>
+                    <address class="customer-detail__address">@DisplayAddress(customer.BillingAddress)</address>
                 </section>
-            </MudItem>
-
-            <MudItem xs="12" md="6">
-                <section>
-                <MudPaper Class="pa-4">
-                    <MudText Typo="Typo.h6" HtmlTag="h2" Class="mb-3">@Text["ShippingAddress"]</MudText>
-                    <address>@DisplayAddress(customer.ShippingAddress)</address>
-                </MudPaper>
+                <section class="customer-detail__section" aria-labelledby="customer-shipping-heading">
+                    <MudText Typo="Typo.h6" HtmlTag="h2" id="customer-shipping-heading" Class="customer-detail__section-title">@Text["ShippingAddress"]</MudText>
+                    <address class="customer-detail__address">@DisplayAddress(customer.ShippingAddress)</address>
                 </section>
-            </MudItem>
+            </div>
 
-            <MudItem xs="12">
-                <section>
-                <MudPaper Class="pa-4">
-                    <MudText Typo="Typo.h6" HtmlTag="h2" Class="mb-3">@Text["RecordInformation"]</MudText>
-                    <dl class="details">
-                        <dt>@Text["CreatedDate"]</dt><dd>@DisplayDateTime(customer.CreatedDate)</dd>
-                        <dt>@Text["ModifiedDate"]</dt><dd>@DisplayDateTime(customer.ModifiedDate)</dd>
-                    </dl>
-                </MudPaper>
-                </section>
-            </MudItem>
-        </MudGrid>
-
-        <MudButton Href="/Customers/Index" Variant="Variant.Text" Class="mt-4">@Text["BackToCustomers"]</MudButton>
-    }
+            <nav class="customer-detail__footer" aria-label="@Text["BackToCustomers"]">
+                <MudButton Href="/Customers/Index" Variant="Variant.Text">@Text["BackToCustomers"]</MudButton>
+            </nav>
+        }
+    </div>
 </MudContainer>
 
 @code {

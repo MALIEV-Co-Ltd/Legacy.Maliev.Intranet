@@ -1,7 +1,29 @@
+using System.Xml.Linq;
+
 namespace Legacy.Maliev.Intranet.Tests;
 
 public sealed class IntranetParityContractTests
 {
+    [Fact]
+    public void Shell_LogosShareCanonicalVisibleGeometry()
+    {
+        var root = FindRoot();
+        var black = XDocument.Load(Path.Combine(root, "Legacy.Maliev.Intranet.Client", "wwwroot", "images", "MALIEV_BLACK.svg"));
+        var white = XDocument.Load(Path.Combine(root, "Legacy.Maliev.Intranet.Client", "wwwroot", "images", "MALIEV_WHITE.svg"));
+        XNamespace svg = "http://www.w3.org/2000/svg";
+        var blackTransform = black.Descendants(svg + "g").Select(group => group.Attribute("transform")?.Value).FirstOrDefault(transform => transform is not null);
+        var whiteTransform = white.Descendants(svg + "g").Select(group => group.Attribute("transform")?.Value).FirstOrDefault(transform => transform is not null);
+        var blackPath = black.Descendants(svg + "path").Single();
+        var whitePath = white.Descendants(svg + "path").Single();
+
+        Assert.Equal(black.Root!.Attribute("viewBox")!.Value, white.Root!.Attribute("viewBox")!.Value);
+        Assert.NotNull(blackTransform);
+        Assert.NotNull(whiteTransform);
+        Assert.Equal(blackTransform, whiteTransform);
+        Assert.Equal(blackPath.Attribute("d")!.Value, whitePath.Attribute("d")!.Value);
+        Assert.Equal("#ffffff", whitePath.Attribute("fill")!.Value);
+    }
+
     [Fact]
     public void Shell_UsesTheWorkspaceNavigationAndResponsiveMobileSurface()
     {
@@ -12,12 +34,19 @@ public sealed class IntranetParityContractTests
         var rail = File.ReadAllText(Path.Combine(root, "Legacy.Maliev.Intranet.Client", "Components", "Shell", "LegacyNavigationRail.razor"));
         var railCss = File.ReadAllText(Path.Combine(root, "Legacy.Maliev.Intranet.Client", "Components", "Shell", "LegacyNavigationRail.razor.css"));
         var navigation = File.ReadAllText(Path.Combine(root, "Legacy.Maliev.Intranet.Client", "Layout", "LegacyAppNavigation.cs"));
+        var blackLogo = Path.Combine(root, "Legacy.Maliev.Intranet.Client", "wwwroot", "images", "MALIEV_BLACK.svg");
+        var whiteLogo = Path.Combine(root, "Legacy.Maliev.Intranet.Client", "wwwroot", "images", "MALIEV_WHITE.svg");
 
         Assert.Contains("<LegacyTopBar", layout, StringComparison.Ordinal);
         Assert.Contains("<LegacyNavigationRail Session=\"session\" />", layout, StringComparison.Ordinal);
         Assert.Contains("IsDrawer=\"true\"", layout, StringComparison.Ordinal);
         Assert.Contains("OnSignOut=\"SignOutAsync\"", layout, StringComparison.Ordinal);
-        Assert.Contains("MALIEV_BLACK.svg", rail, StringComparison.Ordinal);
+        Assert.True(File.Exists(blackLogo));
+        Assert.True(File.Exists(whiteLogo));
+        Assert.Contains("legacy-logo-image--light", topbar, StringComparison.Ordinal);
+        Assert.Contains("legacy-logo-image--dark", topbar, StringComparison.Ordinal);
+        Assert.Contains("legacy-logo-image--light", rail, StringComparison.Ordinal);
+        Assert.Contains("legacy-logo-image--dark", rail, StringComparison.Ordinal);
         Assert.DoesNotContain("legacy-workspace-label", topbar, StringComparison.Ordinal);
         Assert.Contains("aria-label", topbar, StringComparison.Ordinal);
         Assert.Contains("aria-controls=\"legacy-navigation-rail-drawer\"", topbar, StringComparison.Ordinal);

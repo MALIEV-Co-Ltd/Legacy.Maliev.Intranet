@@ -60,6 +60,12 @@ public static class LegacyDataProtection
         redisOptions.SyncTimeout = 10_000;
         var resources = CreateResources(certificatePfxBase64, certificatePassword, redisOptions);
         builder.Services.AddSingleton(_ => resources);
+        // The Data Protection multiplexer is also the shared Intranet session/cache
+        // boundary. Register it in readiness so a disconnected Redis instance cannot
+        // leave either host reporting healthy while cookie/session state is unavailable.
+        builder.Services.AddSingleton(new LegacyIntranetRedisHealthCheck(resources.Redis));
+        builder.Services.AddHealthChecks()
+            .AddCheck<LegacyIntranetRedisHealthCheck>("redis", tags: ["ready"]);
         builder.Services.AddStackExchangeRedisCache(_ => { });
         builder.Services.AddOptions<RedisCacheOptions>()
             .Configure<LegacyDataProtectionResources>((options, resources) =>

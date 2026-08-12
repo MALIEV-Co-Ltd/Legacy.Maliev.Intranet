@@ -209,8 +209,7 @@ public sealed class LegacyDashboardAggregator
 
         await Task.WhenAll(work.Cast<Task>().Concat(supplementalWork));
 
-        var cards = work
-            .Select(task => task.Result)
+        var cards = (await Task.WhenAll(work))
             .Where(result => result is not null)
             .Select(result => result!.ToCard())
             .ToArray();

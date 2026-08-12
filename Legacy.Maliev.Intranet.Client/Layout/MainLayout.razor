@@ -7,11 +7,7 @@
 @inject IStringLocalizer<MainLayout> Text
 @implements IDisposable
 
-<MudThemeProvider Theme="_theme" IsDarkMode="@ThemeService.IsDarkMode" />
-<MudPopoverProvider />
-<MudDialogProvider />
-<MudSnackbarProvider />
-
+<ShadcnThemeProvider IsDarkMode="@ThemeService.IsDarkMode" Direction="ShadcnDirection.LeftToRight" Class="legacy-provider-root">
 <a class="legacy-skip-link" href="#main-content">@Text["Skip to content"]</a>
 
 <MudLayout Class="legacy-layout">
@@ -36,33 +32,9 @@
         </MudMainContent>
     </div>
 </MudLayout>
+</ShadcnThemeProvider>
 
 @code {
-    private static readonly MudTheme _theme = new()
-    {
-        PaletteLight = new PaletteLight
-        {
-            Primary = "#0a72ef",
-            AppbarBackground = "#ffffff",
-            AppbarText = "#14213a",
-            Background = "#f7f8fb",
-            DrawerBackground = "#ffffff",
-            DrawerText = "#34415a",
-        },
-        PaletteDark = new PaletteDark
-        {
-            Primary = "#6ea8fe",
-            Background = "#0d1117",
-            Surface = "#111620",
-            TextPrimary = "#e6edf3",
-            TextSecondary = "#9aa7b7",
-            AppbarBackground = "#111620",
-            AppbarText = "#e6edf3",
-            DrawerBackground = "#111620",
-            DrawerText = "#e6edf3",
-        },
-    };
-
     private EmployeeSessionSummary? session;
     private bool _navigationOpen;
 

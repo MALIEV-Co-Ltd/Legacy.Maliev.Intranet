@@ -36,6 +36,7 @@
             function apply(preference) {
                 const theme = effectiveTheme(preference);
                 root.dataset.malievTheme = theme;
+                root.dataset.shadcnTheme = theme;
                 root.style.colorScheme = theme;
                 return theme === 'dark';
             }
@@ -54,36 +55,21 @@
         })();
     </script>
     <link rel="preload" id="webassembly" />
+    <!-- Package options apply 'IBM Plex Sans Thai', sans-serif; client aliases live in design-tokens.css. -->
     <link href="_content/MudBlazor/MudBlazor.min.css" rel="stylesheet" />
     <link href="css/ibm-plex-sans-thai.css" rel="stylesheet" />
+    <link href="_content/Maliev.ShadcnBlazor/css/shadcn-base.css" rel="stylesheet" />
     <link href="css/design-tokens.css" rel="stylesheet" />
+    <link href="_content/Maliev.ShadcnBlazor/css/shadcn-mudblazor.css" rel="stylesheet" />
     <link href="css/app.css" rel="stylesheet" />
     <link href="css/module-pages.css" rel="stylesheet" />
     <link href="css/utilities.css" rel="stylesheet" />
     <link href="css/mudblazor-overrides.css" rel="stylesheet" />
     <link href="css/operations-pages.css" rel="stylesheet" />
-    <link href="css/loading-shell.css" rel="stylesheet" />
-    <link href="Legacy.Maliev.Intranet.Client.styles.css" rel="stylesheet" />
     <link href="css/shadcn.css" rel="stylesheet" />
+    <link href="Legacy.Maliev.Intranet.Client.styles.css" rel="stylesheet" />
+    <link href="css/loading-shell.css" rel="stylesheet" />
     <link rel="icon" type="image/svg+xml" href="images/favicon.svg" />
-    <style>
-        :root {
-            --mud-typography-default-family: 'IBM Plex Sans Thai', sans-serif;
-            --mud-typography-h1-family: 'IBM Plex Sans Thai', sans-serif;
-            --mud-typography-h2-family: 'IBM Plex Sans Thai', sans-serif;
-            --mud-typography-h3-family: 'IBM Plex Sans Thai', sans-serif;
-            --mud-typography-h4-family: 'IBM Plex Sans Thai', sans-serif;
-            --mud-typography-h5-family: 'IBM Plex Sans Thai', sans-serif;
-            --mud-typography-h6-family: 'IBM Plex Sans Thai', sans-serif;
-            --mud-typography-body1-family: 'IBM Plex Sans Thai', sans-serif;
-            --mud-typography-body2-family: 'IBM Plex Sans Thai', sans-serif;
-            --mud-typography-button-family: 'IBM Plex Sans Thai', sans-serif;
-        }
-
-        body {
-            font-family: 'IBM Plex Sans Thai', sans-serif !important;
-        }
-    </style>
 </head>
 <body>
     <div id="app">

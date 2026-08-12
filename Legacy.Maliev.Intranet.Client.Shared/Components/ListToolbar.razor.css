@@ -1,64 +1,102 @@
 .list-toolbar {
-    margin-bottom: 1rem;
-    padding: 1rem;
-    border: 1px solid var(--legacy-border);
-    border-radius: var(--legacy-radius-lg);
-    background: var(--legacy-surface-muted);
+    box-sizing: border-box;
+    margin-bottom: 1.25rem;
+    padding: 0.625rem;
+    border: 0;
+    border-radius: var(--shadcn-radius-lg);
+    background: var(--shadcn-muted);
+    box-shadow: none;
 }
 
 .list-toolbar__grid {
     display: grid;
-    grid-template-columns: minmax(18rem, 1.6fr) minmax(14rem, 1fr) minmax(8rem, 0.45fr) auto;
+    grid-template-columns: minmax(14rem, 1.8fr) minmax(10rem, 1fr) minmax(7rem, 0.5fr) auto;
     align-items: end;
-    gap: 0.75rem;
+    gap: 0.625rem;
+}
+
+.list-toolbar__grid ::deep > .mud-input-control {
+    min-width: 0;
+    width: 100%;
+    margin: 0 !important;
+}
+
+.list-toolbar__grid ::deep .mud-input-control-input-container {
+    gap: 0.25rem;
 }
 
 .list-toolbar__actions {
     display: flex;
+    align-items: stretch;
+    align-self: end;
     justify-content: flex-end;
     gap: 0.5rem;
-}
-
-.list-toolbar__actions ::deep .mud-button-root {
-    min-height: 2.75rem;
+    padding-inline-start: 0.75rem;
+    border-inline-start: 1px solid var(--shadcn-border);
     white-space: nowrap;
 }
 
-@media (max-width: 1200px) {
+@media (min-width: 601px) and (max-width: 900px) {
     .list-toolbar__grid {
-        grid-template-columns: minmax(14rem, 1.5fr) minmax(13rem, 1fr) minmax(8rem, 0.5fr);
+        grid-template-columns: minmax(0, 1fr) minmax(10rem, 0.65fr);
+    }
+
+    .list-toolbar__grid ::deep .mud-input-control {
+        --shadcn-control-height: 2.75rem;
+    }
+
+    .list-toolbar__grid ::deep .mud-input-control .mud-input {
+        height: var(--shadcn-control-height) !important;
+        min-height: var(--shadcn-control-height) !important;
+    }
+
+    .list-toolbar__actions ::deep .mud-button-root {
+        min-height: 2.75rem;
     }
 
     .list-toolbar__actions {
-        grid-column: 1 / -1;
+        padding-inline-start: 0;
+        border-inline-start: 0;
     }
 }
 
 @media (max-width: 600px) {
     .list-toolbar__grid {
-        grid-template-columns: minmax(0, 1fr);
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .list-toolbar__grid ::deep > .mud-input-control:first-child {
+        grid-column: 1 / -1;
     }
 
     .list-toolbar__actions {
         display: grid;
-        grid-column: auto;
+        grid-column: 1 / -1;
         grid-template-columns: repeat(2, minmax(0, 1fr));
+        padding-inline-start: 0;
+        border-inline-start: 0;
     }
 
     .list-toolbar__actions ::deep .mud-button-root {
         width: 100%;
-        min-height: 44px;
+    }
+
+    .list-toolbar__grid ::deep .mud-input-control {
+        --shadcn-control-height: 2.75rem;
+    }
+
+    .list-toolbar__grid ::deep .mud-input-control .mud-input {
+        height: var(--shadcn-control-height) !important;
+        min-height: var(--shadcn-control-height) !important;
     }
 }
 
 @media (max-width: 420px) {
+    .list-toolbar__grid {
+        grid-template-columns: minmax(9.5rem, 1fr) minmax(4.25rem, 0.45fr);
+    }
+
     .list-toolbar__actions {
         grid-template-columns: minmax(0, 1fr);
-    }
-}
-
-@media (pointer: coarse) {
-    .list-toolbar ::deep :where(.mud-input-root, .mud-button-root) {
-        min-height: 44px;
     }
 }

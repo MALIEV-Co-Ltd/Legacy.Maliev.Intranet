@@ -20,7 +20,8 @@
   <data name="Company" xml:space="preserve"><value>บริษัท</value></data>
   <data name="Actions" xml:space="preserve"><value>การดำเนินการ</value></data>
   <data name="View" xml:space="preserve"><value>ดู</value></data>
-  <data name="CustomerPages" xml:space="preserve"><value>หน้ารายการลูกค้า</value></data>
+  <data name="CustomerPagesTop" xml:space="preserve"><value>หน้าลูกค้าก่อนรายการ</value></data>
+  <data name="CustomerPagesBottom" xml:space="preserve"><value>หน้าลูกค้าหลังรายการ</value></data>
   <data name="Previous" xml:space="preserve"><value>ก่อนหน้า</value></data>
   <data name="Next" xml:space="preserve"><value>ถัดไป</value></data>
   <data name="PageSummary" xml:space="preserve"><value>หน้า {0} จาก {1} · {2} บันทึก</value></data>
@@ -28,15 +29,16 @@
   <data name="RateLimited" xml:space="preserve"><value>ระบบได้รับคำขอข้อมูลลูกค้ามากเกินไป โปรดรอสักครู่แล้วลองอีกครั้ง</value></data>
   <data name="Unavailable" xml:space="preserve"><value>ระบบข้อมูลลูกค้าไม่พร้อมใช้งานชั่วคราว</value></data>
   <data name="InvalidResponse" xml:space="preserve"><value>บริการข้อมูลลูกค้าส่งข้อมูลกลับมาไม่ถูกต้อง</value></data>
-  <data name="CustomerId_Ascending" xml:space="preserve"><value>ID จากน้อยไปหามาก</value></data>
-  <data name="CustomerId_Descending" xml:space="preserve"><value>ID จากมากไปหาน้อย</value></data>
-  <data name="CustomerCompany_Ascending" xml:space="preserve"><value>บริษัทจากน้อยไปหามาก</value></data>
-  <data name="CustomerCompany_Descending" xml:space="preserve"><value>บริษัทจากมากไปน้อย</value></data>
-  <data name="CustomerEmail_Ascending" xml:space="preserve"><value>อีเมลจากน้อยไปหามาก</value></data>
-  <data name="CustomerEmail_Descending" xml:space="preserve"><value>อีเมลจากมากไปน้อย</value></data>
-  <data name="CustomerCreatedDate_Ascending" xml:space="preserve"><value>สร้างเก่าที่สุดก่อน</value></data>
-  <data name="CustomerCreatedDate_Descending" xml:space="preserve"><value>สร้างใหม่ล่าสุดก่อน</value></data>
-  <data name="CustomerModifiedDate_Ascending" xml:space="preserve"><value>แก้ไขเก่าที่สุดก่อน</value></data>
-  <data name="CustomerModifiedDate_Descending" xml:space="preserve"><value>แก้ไขใหม่ล่าสุดก่อน</value></data>
+  <data name="CustomerId_Ascending" xml:space="preserve"><value>ID น้อยไปมาก</value></data>
+  <data name="CustomerId_Descending" xml:space="preserve"><value>ID มากไปน้อย</value></data>
+  <data name="CustomerCompany_Ascending" xml:space="preserve"><value>บริษัท ก–ฮ</value></data>
+  <data name="CustomerCompany_Descending" xml:space="preserve"><value>บริษัท ฮ–ก</value></data>
+  <data name="CustomerEmail_Ascending" xml:space="preserve"><value>อีเมล A–Z</value></data>
+  <data name="CustomerEmail_Descending" xml:space="preserve"><value>อีเมล Z–A</value></data>
+  <data name="CustomerCreatedDate_Ascending" xml:space="preserve"><value>ลูกค้าเก่าสุด</value></data>
+  <data name="CustomerCreatedDate_Descending" xml:space="preserve"><value>ลูกค้าใหม่ล่าสุด</value></data>
+  <data name="CustomerModifiedDate_Ascending" xml:space="preserve"><value>อัปเดตนานที่สุด</value></data>
+  <data name="CustomerModifiedDate_Descending" xml:space="preserve"><value>อัปเดตล่าสุด</value></data>
+  <data name="SortByField" xml:space="preserve"><value>เรียงตาม{0}</value></data>
   <data name="CustomersTable" xml:space="preserve"><value>ตารางข้อมูลลูกค้า</value></data>
 </root>

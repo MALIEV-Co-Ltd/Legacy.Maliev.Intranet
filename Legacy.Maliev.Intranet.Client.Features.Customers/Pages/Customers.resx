@@ -20,7 +20,8 @@
   <data name="Company" xml:space="preserve"><value>Company</value></data>
   <data name="Actions" xml:space="preserve"><value>Actions</value></data>
   <data name="View" xml:space="preserve"><value>View</value></data>
-  <data name="CustomerPages" xml:space="preserve"><value>Customer pages</value></data>
+  <data name="CustomerPagesTop" xml:space="preserve"><value>Customer pages before results</value></data>
+  <data name="CustomerPagesBottom" xml:space="preserve"><value>Customer pages after results</value></data>
   <data name="Previous" xml:space="preserve"><value>Previous</value></data>
   <data name="Next" xml:space="preserve"><value>Next</value></data>
   <data name="PageSummary" xml:space="preserve"><value>Page {0} of {1} · {2} records</value></data>
@@ -28,15 +29,16 @@
   <data name="RateLimited" xml:space="preserve"><value>Customer requests are temporarily limited. Wait and try again.</value></data>
   <data name="Unavailable" xml:space="preserve"><value>Customer profiles are temporarily unavailable.</value></data>
   <data name="InvalidResponse" xml:space="preserve"><value>CustomerService returned an invalid response.</value></data>
-  <data name="CustomerId_Ascending" xml:space="preserve"><value>ID ascending</value></data>
-  <data name="CustomerId_Descending" xml:space="preserve"><value>ID descending</value></data>
-  <data name="CustomerCompany_Ascending" xml:space="preserve"><value>Company ascending</value></data>
-  <data name="CustomerCompany_Descending" xml:space="preserve"><value>Company descending</value></data>
-  <data name="CustomerEmail_Ascending" xml:space="preserve"><value>Email ascending</value></data>
-  <data name="CustomerEmail_Descending" xml:space="preserve"><value>Email descending</value></data>
-  <data name="CustomerCreatedDate_Ascending" xml:space="preserve"><value>Created oldest first</value></data>
-  <data name="CustomerCreatedDate_Descending" xml:space="preserve"><value>Created newest first</value></data>
-  <data name="CustomerModifiedDate_Ascending" xml:space="preserve"><value>Modified oldest first</value></data>
-  <data name="CustomerModifiedDate_Descending" xml:space="preserve"><value>Modified newest first</value></data>
+  <data name="CustomerId_Ascending" xml:space="preserve"><value>Lowest ID first</value></data>
+  <data name="CustomerId_Descending" xml:space="preserve"><value>Highest ID first</value></data>
+  <data name="CustomerCompany_Ascending" xml:space="preserve"><value>Company A–Z</value></data>
+  <data name="CustomerCompany_Descending" xml:space="preserve"><value>Company Z–A</value></data>
+  <data name="CustomerEmail_Ascending" xml:space="preserve"><value>Email A–Z</value></data>
+  <data name="CustomerEmail_Descending" xml:space="preserve"><value>Email Z–A</value></data>
+  <data name="CustomerCreatedDate_Ascending" xml:space="preserve"><value>Oldest customers</value></data>
+  <data name="CustomerCreatedDate_Descending" xml:space="preserve"><value>Newest customers</value></data>
+  <data name="CustomerModifiedDate_Ascending" xml:space="preserve"><value>Updated longest ago</value></data>
+  <data name="CustomerModifiedDate_Descending" xml:space="preserve"><value>Recently updated</value></data>
+  <data name="SortByField" xml:space="preserve"><value>Sort by {0}</value></data>
   <data name="CustomersTable" xml:space="preserve"><value>Customer records</value></data>
 </root>

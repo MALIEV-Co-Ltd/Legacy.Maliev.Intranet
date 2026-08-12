@@ -117,12 +117,14 @@ public sealed class QuotationCreationGateway(
         var countriesTask = GetAsync<IReadOnlyList<CountrySource>>(CatalogClient, "/Countries", cancellationToken);
         await Task.WhenAll(customerTask, employeeTask, currenciesTask, countriesTask);
 
-        var customer = customerTask.Result;
-        var employee = employeeTask.Result;
-        var currency = currenciesTask.Result.Single(value => value.Id == input.CurrencyId);
+        var customer = await customerTask;
+        var employee = await employeeTask;
+        var currencies = await currenciesTask;
+        var countries = await countriesTask;
+        var currency = currencies.Single(value => value.Id == input.CurrencyId);
         var country = customer.BillingAddress is null
             ? string.Empty
-            : countriesTask.Result.SingleOrDefault(value => value.Id == customer.BillingAddress.CountryId)?.Name ?? string.Empty;
+            : countries.SingleOrDefault(value => value.Id == customer.BillingAddress.CountryId)?.Name ?? string.Empty;
         var now = clock.GetUtcNow();
         var fileName = $"Quotation_{quotationId}_{now:ddMMyyyy}.pdf";
         var pdfDocument = BuildDocument(quotationId, input, priced, customer, employee, currency.ShortName, country, now);

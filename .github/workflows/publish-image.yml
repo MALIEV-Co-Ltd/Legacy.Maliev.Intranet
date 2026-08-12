@@ -7,7 +7,6 @@ on:
 
 permissions:
   contents: read
-  id-token: write
 
 jobs:
   deployment-gate:
@@ -18,6 +17,9 @@ jobs:
         run: echo "Deployment remains gated until all 41 historical routes, capacity, secrets, WIF, GitOps and staging gates pass."
 
   publish-compatibility:
+    permissions:
+      contents: read
+      id-token: write
     if: vars.LEGACY_DEPLOY_ENABLED == 'true'
     uses: MALIEV-Co-Ltd/Legacy.Maliev.Workflows/.github/workflows/publish-image.yml@6017816fa67f369d785ed30794f002cfd6299af7
     with:
@@ -29,6 +31,9 @@ jobs:
       service-account: ${{ vars.LEGACY_INTRANET_PUBLISHER_SERVICE_ACCOUNT }}
 
   publish-bff:
+    permissions:
+      contents: read
+      id-token: write
     if: vars.LEGACY_DEPLOY_ENABLED == 'true'
     uses: MALIEV-Co-Ltd/Legacy.Maliev.Workflows/.github/workflows/publish-image.yml@6017816fa67f369d785ed30794f002cfd6299af7
     with:

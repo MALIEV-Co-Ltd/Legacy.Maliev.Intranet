@@ -7,6 +7,11 @@
   <data name="PageTitle" xml:space="preserve"><value>MALIEV | ประตูทางเข้าอินทราเน็ต</value></data>
   <data name="HomeLabel" xml:space="preserve"><value>หน้าหลัก MALIEV Intranet</value></data>
   <data name="Employee gateway" xml:space="preserve"><value>ทางเข้าสำหรับพนักงาน</value></data>
+  <data name="Secure access to your work" xml:space="preserve"><value>เข้าถึงงานของคุณอย่างปลอดภัย</value></data>
+  <data name="Sign in with your MALIEV work account to continue." xml:space="preserve"><value>ลงชื่อเข้าใช้ด้วยบัญชีงาน MALIEV เพื่อดำเนินการต่อ</value></data>
+  <data name="Checking your employee session..." xml:space="preserve"><value>กำลังตรวจสอบเซสชันพนักงานของคุณ...</value></data>
+  <data name="Need help accessing your employee account?" xml:space="preserve"><value>ต้องการความช่วยเหลือในการเข้าถึงบัญชีพนักงานของคุณหรือไม่</value></data>
+  <data name="Contact your MALIEV administrator if you cannot access your employee account." xml:space="preserve"><value>ติดต่อผู้ดูแลระบบ MALIEV หากคุณไม่สามารถเข้าถึงบัญชีพนักงานของคุณได้</value></data>
   <data name="Sign in to" xml:space="preserve"><value>เข้าสู่ระบบ</value></data>
   <data name="Continue with Google" xml:space="preserve"><value>ดำเนินการต่อด้วย Google</value></data>
   <data name="or continue with email" xml:space="preserve"><value>หรือดำเนินการต่อด้วยอีเมล</value></data>

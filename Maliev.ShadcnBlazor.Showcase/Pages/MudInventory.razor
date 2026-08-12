@@ -1,0 +1,237 @@
+@page "/components/mud-inventory"
+@using Maliev.ShadcnBlazor.Adapters.MudBlazor
+@inject IDialogService Dialogs
+@inject ISnackbar Snackbar
+
+<PageTitle>Mud adapter inventory</PageTitle>
+
+<MudLayout data-mud-type="MudLayout" Class="mud-inventory-layout">
+<MudMainContent data-mud-type="MudMainContent">
+<section class="mud-inventory" data-testid="mud-inventory-fixture">
+    <header class="mud-inventory__header">
+        <span class="foundation-eyebrow">Adapter inventory</span>
+        <MudText data-mud-type="MudText" Typo="Typo.h1" HtmlTag="h1">MudBlazor action and form states</MudText>
+        <MudText Typo="Typo.body2">Deterministic fixtures for the reusable scoped adapter.</MudText>
+    </header>
+
+    <section id="mud-actions" class="mud-inventory__section" data-testid="mud-actions" aria-labelledby="mud-actions-heading">
+        <MudText Typo="Typo.h2" HtmlTag="h2" id="mud-actions-heading">Actions</MudText>
+        <div class="mud-inventory__actions">
+            <MudButton data-mud-type="MudButton" data-testid="button-default" Variant="Variant.Filled">Primary</MudButton>
+            <MudButton data-testid="button-small" Variant="Variant.Outlined" Size="Size.Small">Compact</MudButton>
+            <MudButton data-testid="button-hover" Variant="Variant.Outlined">Outline</MudButton>
+            <MudButton Variant="Variant.Text">Ghost</MudButton>
+            <MudButton data-testid="button-disabled" Disabled="true" OnClick="IncrementDisabledCallback">Disabled</MudButton>
+            <MudIconButton data-mud-type="MudIconButton" Icon="@Icons.Material.Outlined.Settings" aria-label="Settings" />
+            <output data-testid="disabled-callback-count" aria-label="Disabled callback count">@DisabledCallbackCount</output>
+        </div>
+    </section>
+
+    <section id="mud-typography" class="mud-inventory__section" data-testid="mud-typography" aria-labelledby="mud-typography-heading">
+        <MudText Typo="Typo.h2" HtmlTag="h2" id="mud-typography-heading">Typography</MudText>
+        <div class="mud-inventory__type">
+            <MudText Typo="Typo.h3" HtmlTag="h3">Manufacturing clarity</MudText>
+            <MudText Typo="Typo.subtitle1">Subtitle uses the same Thai-capable inherited font stack.</MudText>
+            <MudText Typo="Typo.body1">ฐานการผลิตที่ชัดเจนสำหรับทุกทีม</MudText>
+            <MudText Typo="Typo.caption">Caption · updated 10 August 2026</MudText>
+            <div class="mud-inventory__inline">
+                <MudIcon data-mud-type="MudIcon" Icon="@Icons.Material.Outlined.PrecisionManufacturing" aria-label="Manufacturing" />
+                <MudLink data-mud-type="MudLink" Href="#mud-forms">Review form controls</MudLink>
+            </div>
+        </div>
+    </section>
+
+    <section id="mud-forms" class="mud-inventory__section" data-testid="mud-forms" aria-labelledby="mud-forms-heading">
+        <MudText Typo="Typo.h2" HtmlTag="h2" id="mud-forms-heading">Forms</MudText>
+        <MudForm data-mud-type="MudForm" Class="mud-inventory__form">
+            <MudTextField data-mud-type="MudTextField" T="string" Label="Email" Value="@Email" Variant="Variant.Outlined" />
+            <MudTextField data-testid="invalid-input" T="string" Label="Invalid" Error="true" ErrorText="Required" Variant="Variant.Outlined" />
+            <MudNumericField data-mud-type="MudNumericField" T="decimal" Label="Quantity" Value="@Quantity" />
+            <MudSelect data-mud-type="MudSelect" T="string" Label="Material" @bind-Value="InteractiveMaterial">
+                <MudSelectItem data-mud-type="MudSelectItem" T="string" Value="@Steel">Steel</MudSelectItem>
+                <MudSelectItem T="string" Value="@Aluminium">Aluminium</MudSelectItem>
+            </MudSelect>
+            <MudDatePicker data-mud-type="MudDatePicker" Label="Delivery date" Date="@DeliveryDate" />
+            <MudCheckBox data-mud-type="MudCheckBox" T="bool" @bind-Value="InteractiveApproved" Label="Approved" />
+            <MudTextField T="string" Label="Disabled" Value="@Unavailable" Disabled="true" Variant="Variant.Outlined" />
+            <MudTextField T="string" Label="Read-only" Value="@ReadOnlyValue" ReadOnly="true" Variant="Variant.Outlined" />
+            <MudTextField T="string" Label="Clearable" Value="@ClearableValue" Clearable="true" Variant="Variant.Outlined" />
+            <MudTextField T="string" Label="Notes" Value="@Notes" Lines="3" Variant="Variant.Outlined" />
+            <MudTextField T="string" Label="Search" Value="@InteractiveMaterial" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Outlined.Search" Variant="Variant.Outlined" />
+            <MudTextField T="string" Label="ชื่อผู้ติดต่อ" Value="@ThaiContact" Variant="Variant.Outlined" />
+            <MudCheckBox T="bool?" Value="@((bool?)null)" Label="Partially approved" />
+        </MudForm>
+    </section>
+
+    <section id="mud-surfaces-overlays" class="mud-inventory__section" data-testid="mud-surfaces-overlays" aria-labelledby="mud-surfaces-overlays-heading">
+        <MudText Typo="Typo.h2" HtmlTag="h2" id="mud-surfaces-overlays-heading">Surfaces and overlays</MudText>
+        <MudContainer data-mud-type="MudContainer" MaxWidth="MaxWidth.Medium">
+            <MudGrid data-mud-type="MudGrid" Spacing="2">
+                <MudItem data-mud-type="MudItem" xs="12" md="7">
+                    <MudPaper data-mud-type="MudPaper" Class="pa-4" Elevation="0">
+                        <MudStack data-mud-type="MudStack" Spacing="2">
+                            <MudBreadcrumbs data-mud-type="MudBreadcrumbs" Items="@Breadcrumbs" />
+                            <MudText Typo="Typo.h6" HtmlTag="h3">Production surface</MudText>
+                            <MudDivider data-mud-type="MudDivider" />
+                            <MudExpansionPanels data-mud-type="MudExpansionPanels">
+                            <MudExpansionPanel data-mud-type="MudExpansionPanel" data-testid="material-readiness" Text="Material readiness" Expanded="true">Inspection data is retained in the expanded content.</MudExpansionPanel>
+                                <MudExpansionPanel Text="Disabled review" Disabled="true">This panel remains unavailable.</MudExpansionPanel>
+                            </MudExpansionPanels>
+                            <MudTabs data-mud-type="MudTabs">
+                                <MudTabPanel data-mud-type="MudTabPanel" Text="Overview">Active tab content</MudTabPanel>
+                                <MudTabPanel Text="History">History tab content</MudTabPanel>
+                            </MudTabs>
+                        </MudStack>
+                    </MudPaper>
+                </MudItem>
+                <MudItem xs="12" md="5">
+                    <MudStack Spacing="2">
+                        <MudList data-mud-type="MudList" T="string" SelectionMode="SelectionMode.SingleSelection" SelectedValue="@SelectedListItem">
+                            <MudListItem data-mud-type="MudListItem" Value="@Ready">Ready</MudListItem>
+                            <MudListItem Value="@SelectedListItem">Selected list item</MudListItem>
+                        </MudList>
+                        <MudStack Row="true" Spacing="1">
+                            <MudChip data-mud-type="MudChip" T="string" Color="Color.Success">Validated</MudChip>
+                            <MudChip T="string" Color="Color.Warning">Review</MudChip>
+                            <MudChip T="string" Color="Color.Error">Blocked</MudChip>
+                        </MudStack>
+                    </MudStack>
+                </MudItem>
+            </MudGrid>
+        </MudContainer>
+        <MudStack Row="true" Wrap="Wrap.Wrap" Spacing="1" Class="mt-4">
+            <MudButton data-testid="open-dialog" OnClick="OpenDialogAsync">Open dialog</MudButton>
+            <MudMenu Label="Open menu" data-testid="open-popover">
+                <MudMenuItem>Portal menu item</MudMenuItem>
+            </MudMenu>
+            <MudSelect T="string" Label="Portal select" @bind-Value="InteractiveMaterial" data-testid="open-select">
+                <MudSelectItem T="string" Value="@Steel">Steel</MudSelectItem>
+                <MudSelectItem T="string" Value="@Aluminium">Aluminium</MudSelectItem>
+            </MudSelect>
+            <MudDatePicker Label="Open date picker" Date="@DeliveryDate" data-testid="open-date-picker" />
+            <MudButton Variant="Variant.Outlined" data-testid="open-snackbar" OnClick="ShowSnackbar">Show snackbar</MudButton>
+        </MudStack>
+    </section>
+
+    <section id="mud-data-feedback" class="mud-inventory__section" data-testid="mud-data-feedback" aria-labelledby="mud-data-feedback-heading">
+        <MudText Typo="Typo.h2" HtmlTag="h2" id="mud-data-feedback-heading">Data and feedback</MudText>
+        <MudText Typo="Typo.body2">Fixed fixtures cover the responsive table and feedback states without changing production data flows.</MudText>
+
+        <MudTable data-mud-type="MudTable" T="FixtureRow" Items="@FixtureRows" Dense="true" Hover="true" RowClassFunc="FixtureRowClass" OnRowClick="SelectFixtureRow" Breakpoint="Breakpoint.Sm" aria-label="Responsive selected inventory table">
+            <HeaderContent>
+                <MudTh data-mud-type="MudTh">Part</MudTh>
+                <MudTh>Material</MudTh>
+                <MudTh>Readiness</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd data-mud-type="MudTd" DataLabel="Part">@context.Part</MudTd>
+                <MudTd DataLabel="Material">@context.Material</MudTd>
+                <MudTd DataLabel="Readiness">@context.Readiness</MudTd>
+            </RowTemplate>
+        </MudTable>
+
+        <MudSimpleTable data-mud-type="MudSimpleTable" Dense="true" Hover="true" aria-label="Simple inventory table">
+            <thead><tr><th scope="col">Station</th><th scope="col">Status</th></tr></thead>
+            <tbody>
+                <tr><td data-label="Station">Laser cell</td><td data-label="Status">Ready</td></tr>
+                <tr><td data-label="Station">Inspection</td><td data-label="Status">Review</td></tr>
+            </tbody>
+        </MudSimpleTable>
+
+        <MudGrid Spacing="2">
+            <MudItem xs="12" md="4"><MudChart data-mud-type="MudChart" T="double" ChartType="ChartType.Bar" ChartSeries="@FixtureChartSeries" ChartLabels="@FixtureChartLabels" ChartOptions="@ShadcnMudChartOptions.Create()" Width="100%" Height="220px" /></MudItem>
+            <MudItem xs="12" md="4"><MudChart T="double" ChartType="ChartType.Donut" ChartSeries="@FixtureChartSeries" ChartLabels="@FixtureChartLabels" ChartOptions="@ShadcnMudChartOptions.Create()" Width="100%" Height="220px" /></MudItem>
+            <MudItem xs="12" md="4"><MudChart T="double" ChartType="ChartType.Line" ChartSeries="@FixtureChartSeries" ChartLabels="@FixtureChartLabels" ChartOptions="@ShadcnMudChartOptions.Create()" Width="100%" Height="220px" /></MudItem>
+        </MudGrid>
+
+        @if (ShowFixtureCloseAlert)
+        {
+            <MudAlert data-mud-type="MudAlert" Severity="Severity.Normal" aria-live="polite">
+                <MudIcon Icon="@Icons.Material.Outlined.Info" aria-hidden="true" /> Default status
+                <MudIconButton Icon="@Icons.Material.Outlined.Close" aria-label="Dismiss default status" OnClick="DismissFixtureAlert" />
+            </MudAlert>
+        }
+        <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" aria-live="polite"><MudIcon Icon="@Icons.Material.Outlined.Info" aria-hidden="true" /> Information status</MudAlert>
+        <MudAlert Severity="Severity.Success" aria-live="polite"><MudIcon Icon="@Icons.Material.Outlined.CheckCircle" aria-hidden="true" /> Success status</MudAlert>
+        <MudAlert Severity="Severity.Warning" aria-live="polite"><MudIcon Icon="@Icons.Material.Outlined.WarningAmber" aria-hidden="true" /> Warning status</MudAlert>
+        <MudAlert Severity="Severity.Error" Variant="Variant.Outlined" aria-live="assertive"><MudIcon Icon="@Icons.Material.Outlined.ErrorOutline" aria-hidden="true" /> Destructive status</MudAlert>
+
+        <MudStack Row="true" Wrap="Wrap.Wrap" AlignItems="AlignItems.Center" Spacing="2">
+            <MudProgressLinear data-mud-type="MudProgressLinear" Value="60" aria-label="Sixty percent complete" Style="width: 12rem" />
+            <MudProgressLinear Indeterminate="true" aria-label="Loading progress" Style="width: 12rem" />
+            <MudProgressCircular data-mud-type="MudProgressCircular" Value="60" aria-label="Sixty percent complete" />
+            <MudProgressCircular Indeterminate="true" aria-label="Loading progress" />
+        </MudStack>
+
+        <MudStack Row="true" Wrap="Wrap.Wrap" AlignItems="AlignItems.Center" Spacing="2">
+            <MudSkeleton data-mud-type="MudSkeleton" SkeletonType="SkeletonType.Text" Width="9rem" Animation="Animation.False" />
+            <MudSkeleton SkeletonType="SkeletonType.Rectangle" Width="9rem" Height="3rem" Animation="Animation.Pulse" />
+            <MudSkeleton SkeletonType="SkeletonType.Circle" Width="3rem" Height="3rem" Animation="Animation.Wave" />
+            <div class="shadcn-scope" data-shadcn-theme="dark"><MudSkeleton SkeletonType="SkeletonType.Rectangle" Width="9rem" Height="3rem" Animation="Animation.Wave" /></div>
+        </MudStack>
+    </section>
+</section>
+</MudMainContent>
+</MudLayout>
+
+@code {
+    private const string Email = "ada@maliev.com";
+    private const string Steel = "Steel";
+    private const string Aluminium = "Aluminium";
+    private const string Unavailable = "Unavailable";
+    private const string ReadOnlyValue = "Quoted by MALIEV";
+    private const string ClearableValue = "Remove me";
+    private const string Notes = "Stable production notes";
+    private const string ThaiContact = "อดา";
+    private static readonly decimal Quantity = 12.5m;
+    private static readonly DateTime DeliveryDate = new(2026, 8, 10);
+    private bool InteractiveApproved { get; set; } = true;
+    private string InteractiveMaterial { get; set; } = Steel;
+    private bool ShowFixtureCloseAlert { get; set; } = true;
+    private int DisabledCallbackCount { get; set; }
+    private const string SelectedListItem = "SelectedListItem";
+    private const string Ready = "Ready";
+    private static readonly List<BreadcrumbItem> Breadcrumbs =
+    [
+        new("Operations", href: "#operations"),
+        new("Inventory", href: "#inventory"),
+        new("Surface fixture", href: null, disabled: true)
+    ];
+    private static readonly IReadOnlyList<FixtureRow> FixtureRows =
+    [
+        new("Clamp plate", "Aluminium", "Ready"),
+        new("Fixture plate", "Steel", "Selected")
+    ];
+    private FixtureRow SelectedFixtureRow { get; set; } = FixtureRows[1];
+    private static readonly string[] FixtureChartLabels = ["Mon", "Tue", "Wed"];
+    private static readonly List<ChartSeries<double>> FixtureChartSeries =
+    [
+        new() { Name = "Output", Data = new ChartData<double>([24d, 38d, 31d]) },
+        new() { Name = "Inspected", Data = new ChartData<double>([18d, 26d, 29d]) },
+        new() { Name = "Released", Data = new ChartData<double>([12d, 22d, 25d]) },
+        new() { Name = "Rework", Data = new ChartData<double>([5d, 4d, 3d]) },
+        new() { Name = "Queued", Data = new ChartData<double>([9d, 13d, 11d]) }
+    ];
+
+    private async Task OpenDialogAsync() => await Dialogs.ShowMessageBoxAsync(
+        "Portal dialog",
+        "Dialog focus behavior remains owned by MudBlazor.",
+        yesText: "Close",
+        options: new DialogOptions { CloseOnEscapeKey = true });
+
+    private void ShowSnackbar() => Snackbar.Add("Portal snackbar", Severity.Success);
+
+    private void SelectFixtureRow(TableRowClickEventArgs<FixtureRow> args)
+    {
+        if (args.Item is not null)
+            SelectedFixtureRow = args.Item;
+    }
+
+    private string FixtureRowClass(FixtureRow row, int _) => row == SelectedFixtureRow ? "mud-table-row-selected" : string.Empty;
+
+    private void DismissFixtureAlert() => ShowFixtureCloseAlert = false;
+
+    private void IncrementDisabledCallback() => DisabledCallbackCount++;
+
+    private sealed record FixtureRow(string Part, string Material, string Readiness);
+}

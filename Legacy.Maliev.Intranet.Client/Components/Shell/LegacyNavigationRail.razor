@@ -13,7 +13,8 @@
         <span class="legacy-drawer-focus-sentinel" tabindex="0" @onfocus="FocusLastAsync"></span>
         <div class="legacy-rail-header">
             <a class="legacy-rail-logo legacy-logo-link" href="/Dashboard" aria-label="@Text["MALIEV dashboard"]">
-                <img src="images/MALIEV_BLACK.svg" alt="MALIEV" />
+                <img class="legacy-logo-image legacy-logo-image--light" src="images/MALIEV_BLACK.svg" alt="MALIEV" />
+                <img class="legacy-logo-image legacy-logo-image--dark" src="images/MALIEV_WHITE.svg" alt="" aria-hidden="true" />
             </a>
             <MudIconButton ButtonType="ButtonType.Button" Class="legacy-rail-close" Icon="@Icons.Material.Filled.Close"
                            Size="Size.Small" aria-label="@Text["Close navigation"]" @ref="_closeButton" OnClick="CloseAsync" />

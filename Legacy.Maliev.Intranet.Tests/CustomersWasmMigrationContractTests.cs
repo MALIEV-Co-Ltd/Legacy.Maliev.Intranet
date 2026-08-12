@@ -36,13 +36,14 @@ public sealed class CustomersWasmMigrationContractTests
         Assert.Contains("IsBusy=\"@loading\"", page, StringComparison.Ordinal);
         Assert.Contains("ListToolbarChangeReason.Refreshed", page, StringComparison.Ordinal);
         Assert.Contains("Class=\"customers-page\"", page, StringComparison.Ordinal);
+        Assert.Contains("class=\"customer-shell\"", page, StringComparison.Ordinal);
         Assert.DoesNotContain("customers-filter-grid", page, StringComparison.Ordinal);
         Assert.Contains("Class=\"customers-table\"", page, StringComparison.Ordinal);
         Assert.Contains("PageSizeOptions = [25, 50, 100, 250]", page, StringComparison.Ordinal);
         var styles = File.ReadAllText(Path.ChangeExtension(featurePage, ".razor.css"));
-        Assert.Contains("font-family: var(--maliev-font-sans)", styles, StringComparison.Ordinal);
-        Assert.Contains("border-radius: var(--legacy-radius-lg)", styles, StringComparison.Ordinal);
-        Assert.Contains("@media (max-width: 720px)", styles, StringComparison.Ordinal);
+        Assert.DoesNotContain("font-family:", styles, StringComparison.Ordinal);
+        Assert.DoesNotContain("border-radius:", styles, StringComparison.Ordinal);
+        Assert.Contains("@media (min-width: 601px) and (max-width: 720px)", styles, StringComparison.Ordinal);
 
         Assert.Contains("LegacyEmployeePermissions.CustomersList", bffProgram, StringComparison.Ordinal);
         Assert.Contains("public const string CustomersList = \"legacy-customer.customers.list\";", authContracts, StringComparison.Ordinal);
@@ -55,6 +56,38 @@ public sealed class CustomersWasmMigrationContractTests
         Assert.Contains("Legacy.Maliev.Intranet.Client.Features.Customers", solution, StringComparison.Ordinal);
         Assert.True(File.Exists(Path.Combine(root, "Legacy.Maliev.Intranet", "Pages", "Customers", "Index.cshtml")),
             "The compatibility Razor fallback must remain in this slice.");
+    }
+
+    [Fact]
+    public void CustomersIndex_UsesOneResponsiveTableModelAndKeepsAtomicValuesIntact()
+    {
+        var root = FindRoot();
+        var featurePage = Path.Combine(root, "Legacy.Maliev.Intranet.Client.Features.Customers", "Pages", "Customers.razor");
+        var page = File.ReadAllText(featurePage);
+        var styles = File.ReadAllText(Path.ChangeExtension(featurePage, ".razor.css"));
+
+        Assert.Contains("Breakpoint=\"Breakpoint.None\"", page, StringComparison.Ordinal);
+        Assert.DoesNotContain("Breakpoint=\"Breakpoint.Sm\"", page, StringComparison.Ordinal);
+        Assert.Contains("Class=\"customer-id-cell\"", page, StringComparison.Ordinal);
+        Assert.Contains("Class=\"customer-email-cell\"", page, StringComparison.Ordinal);
+        Assert.Contains("Class=\"customer-company-cell\"", page, StringComparison.Ordinal);
+        Assert.Contains("Class=\"customer-action-cell\"", page, StringComparison.Ordinal);
+        Assert.Contains("customer-email-disclosure", page, StringComparison.Ordinal);
+        Assert.Contains("customer-name-disclosure", page, StringComparison.Ordinal);
+        Assert.Contains("customer-company-disclosure", page, StringComparison.Ordinal);
+        Assert.Contains("Class=\"customer-value-disclosure customer-email-disclosure\"", page, StringComparison.Ordinal);
+        Assert.Contains("<MudMenuItem Class=\"customer-full-value\"", page, StringComparison.Ordinal);
+        Assert.DoesNotContain("title=\"@context.Email\"", page, StringComparison.Ordinal);
+
+        Assert.Contains("overflow-x: auto", styles, StringComparison.Ordinal);
+        Assert.DoesNotContain(".customers-table-shell { overflow: hidden; }", styles, StringComparison.Ordinal);
+        Assert.Contains("table-layout: fixed", styles, StringComparison.Ordinal);
+        Assert.Contains("white-space: nowrap", styles, StringComparison.Ordinal);
+        Assert.Contains("text-overflow: ellipsis", styles, StringComparison.Ordinal);
+        Assert.Contains("@media (max-width: 600px)", styles, StringComparison.Ordinal);
+        Assert.Contains(":is(.customers-table, .mud-table-container, .mud-table-root, .mud-table-body)", styles, StringComparison.Ordinal);
+        Assert.Contains("grid-template-areas:", styles, StringComparison.Ordinal);
+        Assert.Contains(".customer-company-cell:empty", styles, StringComparison.Ordinal);
     }
 
     private static string FindRoot()

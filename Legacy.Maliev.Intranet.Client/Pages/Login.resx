@@ -7,6 +7,11 @@
   <data name="PageTitle" xml:space="preserve"><value>MALIEV | Intranet Gateway</value></data>
   <data name="HomeLabel" xml:space="preserve"><value>MALIEV Intranet home</value></data>
   <data name="Employee gateway" xml:space="preserve"><value>Employee gateway</value></data>
+  <data name="Secure access to your work" xml:space="preserve"><value>Secure access to your work</value></data>
+  <data name="Sign in with your MALIEV work account to continue." xml:space="preserve"><value>Sign in with your MALIEV work account to continue.</value></data>
+  <data name="Checking your employee session..." xml:space="preserve"><value>Checking your employee session...</value></data>
+  <data name="Need help accessing your employee account?" xml:space="preserve"><value>Need help accessing your employee account?</value></data>
+  <data name="Contact your MALIEV administrator if you cannot access your employee account." xml:space="preserve"><value>Contact your MALIEV administrator if you cannot access your employee account.</value></data>
   <data name="Sign in to" xml:space="preserve"><value>Sign in to</value></data>
   <data name="Continue with Google" xml:space="preserve"><value>Continue with Google</value></data>
   <data name="or continue with email" xml:space="preserve"><value>or continue with email</value></data>
