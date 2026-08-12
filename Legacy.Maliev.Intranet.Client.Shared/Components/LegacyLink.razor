@@ -3,7 +3,7 @@
 
 @if (Disabled)
 {
-    <span class="@CssClass" aria-disabled="true" @attributes="AdditionalAttributes">
+    <span class="@CssClass" aria-disabled="true" aria-label="@AriaLabel" @attributes="AdditionalAttributes">
         @IconMarkup
         <span class="legacy-link__label">@ChildContent</span>
     </span>
@@ -31,7 +31,7 @@ else
 
     private string RoleName => Role.ToString().ToLowerInvariant();
     private string CssClass => $"legacy-link legacy-link--{RoleName} {Class}".Trim();
-    private string? EffectiveRel => Target == "_blank"
+    private string? EffectiveRel => string.Equals(Target, "_blank", StringComparison.OrdinalIgnoreCase)
         ? string.Join(' ', new[] { Rel, "noopener", "noreferrer" }
             .Where(value => !string.IsNullOrWhiteSpace(value))
             .SelectMany(value => value!.Split(' '))

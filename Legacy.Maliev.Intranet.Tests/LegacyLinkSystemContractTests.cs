@@ -16,6 +16,15 @@ public sealed class LegacyLinkSystemContractTests
         Assert.Contains("aria-disabled", source);
     }
 
+    [Fact]
+    public void SharedLink_UsesCaseInsensitiveBlankTargetProtectionAndNamesDisabledLinks()
+    {
+        var source = File.ReadAllText(Path.Combine(Root, "Legacy.Maliev.Intranet.Client.Shared", "Components", "LegacyLink.razor"));
+
+        Assert.Contains("string.Equals(Target, \"_blank\", StringComparison.OrdinalIgnoreCase)", source);
+        Assert.Contains("aria-label=\"@AriaLabel\"", source);
+    }
+
     private static string Root => FindRoot();
 
     private static string FindRoot()

@@ -1,11 +1,16 @@
 @page "/components/legacy-link"
 @using Legacy.Maliev.Intranet.Client.Shared.Components
 
-<PageTitle>Legacy link fixture</PageTitle>
+<PageTitle>Semantic link fixture | ตัวอย่างลิงก์เชิงความหมาย</PageTitle>
 
-<section data-testid="legacy-link-fixture" aria-label="Legacy link roles">
-    <LegacyLink Href="#inline" Role="LegacyLinkRole.Inline">Inline link</LegacyLink>
-    <LegacyLink Href="#record" Role="LegacyLinkRole.Record">Customer record 123456789</LegacyLink>
-    <LegacyLink Href="#navigation" Role="LegacyLinkRole.Navigation">Customer navigation</LegacyLink>
-    <LegacyLink Href="https://www.maliev.com" Role="LegacyLinkRole.External" Target="_blank" StartIcon="@Icons.Material.Outlined.OpenInNew">External link</LegacyLink>
+<section data-testid="legacy-link-fixture" aria-label="Semantic link roles | บทบาทลิงก์เชิงความหมาย">
+    <LegacyLink Href="#inline" Role="LegacyLinkRole.Inline">Inline link | ลิงก์ในเนื้อหา</LegacyLink>
+    <LegacyLink Href="#record" Role="LegacyLinkRole.Record">Customer record 123456789 | ระเบียนลูกค้า 123456789</LegacyLink>
+    <LegacyLink Href="#navigation" Role="LegacyLinkRole.Navigation">Customer navigation | การนำทางลูกค้า</LegacyLink>
+    <LegacyLink Href="https://www.maliev.com" Role="LegacyLinkRole.External" Target="_BLANK" Rel="external noopener" StartIcon="@Icons.Material.Outlined.OpenInNew" data-testid="mixed-case-external-link">External link | ลิงก์ภายนอก</LegacyLink>
+    <LegacyLink Href="#disabled" Role="LegacyLinkRole.Navigation" Disabled="true" StartIcon="@Icons.Material.Outlined.History" AriaLabel="Disabled customer history | ประวัติลูกค้าที่ปิดใช้งาน" ChildContent="@EmptyContent" data-testid="disabled-icon-only-link" />
 </section>
+
+@code {
+    private static RenderFragment EmptyContent => _ => { };
+}
