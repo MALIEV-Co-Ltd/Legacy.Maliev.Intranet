@@ -146,6 +146,45 @@ public sealed class CustomersViewWasmMigrationContractTests
             "The Razor customer detail rollback PageModel must remain in this slice.");
     }
 
+    [Fact]
+    public void CustomerView_IntegratesPermissionScopedUrlBackedHistoryWithoutReloadingOverview()
+    {
+        var root = FindRoot();
+        var page = File.ReadAllText(Path.Combine(
+            root,
+            "Legacy.Maliev.Intranet.Client.Features.Customers",
+            "Pages",
+            "CustomerView.razor"));
+        var styles = File.ReadAllText(Path.Combine(
+            root,
+            "Legacy.Maliev.Intranet.Client.Features.Customers",
+            "Pages",
+            "CustomerView.razor.css"));
+
+        Assert.Contains("[SupplyParameterFromQuery(Name = \"tab\")]", page, StringComparison.Ordinal);
+        Assert.Contains("Navigation.GetUriWithQueryParameter(\"tab\"", page, StringComparison.Ordinal);
+        Assert.Contains("<MudTabs", page, StringComparison.Ordinal);
+        Assert.Contains("<CustomerOverview", page, StringComparison.Ordinal);
+        Assert.Contains("<CustomerActivity", page, StringComparison.Ordinal);
+        Assert.Contains("<CustomerHistoryTable", page, StringComparison.Ordinal);
+        Assert.Contains("legacy.orders.read", page, StringComparison.Ordinal);
+        Assert.Contains("legacy.quotations.read", page, StringComparison.Ordinal);
+        Assert.Contains("legacy.accounting.read", page, StringComparison.Ordinal);
+        Assert.Contains("/bff/customers/{Id}/activity", page, StringComparison.Ordinal);
+        Assert.Contains("/bff/customers/{Id}/orders", page, StringComparison.Ordinal);
+        Assert.Contains("/bff/customers/{Id}/quotations", page, StringComparison.Ordinal);
+        Assert.Contains("/bff/customers/{Id}/invoices", page, StringComparison.Ordinal);
+        Assert.Contains("item.CustomerId != Id", page, StringComparison.Ordinal);
+        Assert.Contains("HttpStatusCode.ServiceUnavailable", page, StringComparison.Ordinal);
+        Assert.Contains("CancellationTokenSource", page, StringComparison.Ordinal);
+        Assert.Contains("<MudForm", page, StringComparison.Ordinal);
+
+        Assert.Contains("overflow-x: auto", styles, StringComparison.Ordinal);
+        Assert.Contains("min-height: 44px", styles, StringComparison.Ordinal);
+        Assert.Contains("forced-colors: active", styles, StringComparison.Ordinal);
+        Assert.Contains("prefers-reduced-motion: reduce", styles, StringComparison.Ordinal);
+    }
+
     private static string FindRoot()
     {
         var directory = new DirectoryInfo(AppContext.BaseDirectory);

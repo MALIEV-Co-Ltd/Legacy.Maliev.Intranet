@@ -1,5 +1,8 @@
 @page "/Customers/View"
 @attribute [Authorize]
+@implements IDisposable
+@using System.Security.Claims
+@using Legacy.Maliev.Intranet.Client.Features.Customers.Components
 @inject HttpClient Http
 @inject NavigationManager Navigation
 @inject AuthenticationStateProvider AuthenticationStateProvider
@@ -13,10 +16,10 @@
         {
             <MudProgressLinear Indeterminate="true" Color="Color.Primary" aria-live="polite" aria-label="@Text["Loading"]" />
         }
-        else if (!string.IsNullOrWhiteSpace(error))
+        else if (!string.IsNullOrWhiteSpace(loadError))
         {
-            <MudAlert Severity="errorSeverity" Class="mb-4" aria-live="assertive">@error</MudAlert>
-            <div class="d-flex flex-wrap gap-2">
+            <MudAlert Severity="errorSeverity" Class="mb-4" aria-live="assertive">@loadError</MudAlert>
+            <div class="customer-detail__recovery">
                 @if (!notFound)
                 {
                     <MudButton OnClick="LoadAsync" Variant="Variant.Filled" Color="Color.Primary">@Text["Retry"]</MudButton>
@@ -31,86 +34,98 @@
                     <MudText Typo="Typo.h4" HtmlTag="h1">@customer.FullName</MudText>
                     <MudText Typo="Typo.body2" Class="customer-detail__number">@Text["CustomerNumber", customer.Id]</MudText>
                 </div>
-                @if (canEdit)
-                {
-                    <MudButton Variant="Variant.Outlined" Color="Color.Primary" Disabled="@submitting" OnClick="BeginEdit" aria-label="@Text["EditCustomer"]">
-                        @Text["EditCustomer"]
-                    </MudButton>
-                }
             </header>
 
-            <div class="customer-detail__layout">
-                <section class="customer-detail__section customer-detail__primary" aria-labelledby="customer-contact-heading">
-                    <MudText Typo="Typo.h6" HtmlTag="h2" id="customer-contact-heading" Class="customer-detail__section-title">@Text["Contact"]</MudText>
-                    @if (editing)
-                    {
+            @if (!string.IsNullOrWhiteSpace(operationError))
+            {
+                <MudAlert Severity="Severity.Error" aria-live="assertive">@operationError</MudAlert>
+            }
+
+            <div class="customer-detail__tabs" role="region" aria-label="@Text["CustomerWorkspaceTabs"]">
+                <MudTabs ActivePanelIndex="@ActiveTabIndex"
+                         ActivePanelIndexChanged="OnActiveTabChangedAsync"
+                         Class="customer-detail__tab-list"
+                         MinimumTabWidth="0"
+                         ApplyEffectsToContainer="true"
+                         Elevation="0"
+                         Rounded="false"
+                         KeepPanelsAlive="true">
+                    <MudTabPanel Text="@Text["Overview"]">
                         <MudForm @ref="editForm" Model="@editModel" @bind-IsValid="editFormValid">
-                            <div class="customer-detail__form-grid">
-                                <MudTextField @bind-Value="editModel.FirstName" For="@(() => editModel.FirstName)" Label="@Text["FirstName"]" Required="true" Variant="Variant.Outlined" />
-                                <MudTextField @bind-Value="editModel.LastName" For="@(() => editModel.LastName)" Label="@Text["LastName"]" Required="true" Variant="Variant.Outlined" />
-                                <MudTextField @bind-Value="editModel.Email" For="@(() => editModel.Email)" Label="@Text["Email"]" InputType="InputType.Email" Required="true" Variant="Variant.Outlined" />
-                                <MudTextField @bind-Value="editModel.Telephone" For="@(() => editModel.Telephone)" Label="@Text["Telephone"]" InputType="InputType.Telephone" Variant="Variant.Outlined" />
-                                <MudTextField @bind-Value="editModel.Mobile" For="@(() => editModel.Mobile)" Label="@Text["Mobile"]" InputType="InputType.Telephone" Variant="Variant.Outlined" />
-                                <MudTextField @bind-Value="editModel.Fax" For="@(() => editModel.Fax)" Label="@Text["Fax"]" Variant="Variant.Outlined" />
-                                <MudDatePicker @bind-Date="editModel.DateOfBirth" For="@(() => editModel.DateOfBirth)" Label="@Text["DateOfBirth"]" Variant="Variant.Outlined" />
-                            </div>
-                            <div class="customer-detail__form-actions">
-                                <MudButton ButtonType="ButtonType.Button" Variant="Variant.Filled" Color="Color.Primary" Disabled="@submitting" OnClick="SaveAsync">
-                                    @(submitting ? Text["Saving"] : Text["SaveChanges"])
-                                </MudButton>
-                                <MudButton ButtonType="ButtonType.Button" Variant="Variant.Text" Disabled="@submitting" OnClick="CancelEdit">
-                                    @Text["Cancel"]
-                                </MudButton>
-                            </div>
+                            <CustomerOverview Customer="@customer"
+                                              EditModel="@editModel"
+                                              CanEdit="@canEdit"
+                                              Editing="@editing"
+                                              Submitting="@submitting"
+                                              BeginEdit="BeginEdit"
+                                              Save="SaveAsync"
+                                              CancelEdit="CancelEdit"
+                                              Localize="Localize"
+                                              DisplayValue="Display"
+                                              DisplayDate="DisplayDate"
+                                              DisplayDateTime="DisplayDateTime"
+                                              DisplayAddress="DisplayAddress" />
                         </MudForm>
-                    }
-                    else
+                    </MudTabPanel>
+                    <MudTabPanel Text="@Text["Activity"]">
+                        <CustomerActivity Page="@activityPage"
+                                          Loading="@activityLoading"
+                                          Error="@activityError"
+                                          Retry="LoadActivityAsync"
+                                          Localize="Localize"
+                                          LocalizeFormat="LocalizeFormat"
+                                          FormatTimestamp="FormatTimestamp"
+                                          FormatMoney="FormatMoney" />
+                    </MudTabPanel>
+                    @if (canReadOrders)
                     {
-                        <dl class="customer-detail__details details">
-                            <div><dt>@Text["Email"]</dt><dd><LegacyLink Href="@($"mailto:{customer.Email}")" Role="LegacyLinkRole.Inline">@customer.Email</LegacyLink></dd></div>
-                            <div><dt>@Text["Telephone"]</dt><dd>@Display(customer.Telephone)</dd></div>
-                            <div><dt>@Text["Mobile"]</dt><dd>@Display(customer.Mobile)</dd></div>
-                            <div><dt>@Text["Fax"]</dt><dd>@Display(customer.Fax)</dd></div>
-                            <div><dt>@Text["DateOfBirth"]</dt><dd>@DisplayDate(customer.DateOfBirth)</dd></div>
-                        </dl>
+                        <MudTabPanel Text="@Text["Orders"]">
+                            <CustomerHistoryTable Kind="CustomerHistoryKind.Order"
+                                                  Orders="@(ordersPage ?? EmptyOrdersPage(ordersPageIndex))"
+                                                  Loading="@ordersLoading"
+                                                  Error="@ordersError"
+                                                  Retry="LoadOrdersAsync"
+                                                  PageChanged="LoadOrdersPageAsync"
+                                                  Localize="Localize"
+                                                  LocalizeFormat="LocalizeFormat"
+                                                  DisplayValue="Display"
+                                                  FormatDate="DisplayDate"
+                                                  FormatMoney="FormatMoney" />
+                        </MudTabPanel>
                     }
-                </section>
-
-                <aside class="customer-detail__secondary" aria-label="@Text["Company"]">
-                    <section class="customer-detail__section" aria-labelledby="customer-company-heading">
-                        <MudText Typo="Typo.h6" HtmlTag="h2" id="customer-company-heading" Class="customer-detail__section-title">@Text["Company"]</MudText>
-                        @if (customer.Company is null)
-                        {
-                            <MudText Class="customer-detail__empty">@Text["NotAvailable"]</MudText>
-                        }
-                        else
-                        {
-                            <dl class="customer-detail__details details">
-                                <div><dt>@Text["CompanyName"]</dt><dd>@customer.Company.Name</dd></div>
-                                <div><dt>@Text["TaxNumber"]</dt><dd>@Display(customer.Company.TaxNumber)</dd></div>
-                                <div><dt>@Text["Registrar"]</dt><dd>@Display(customer.Company.Registrar)</dd></div>
-                            </dl>
-                        }
-                    </section>
-                    <section class="customer-detail__section customer-detail__record" aria-labelledby="customer-record-heading">
-                        <MudText Typo="Typo.h6" HtmlTag="h2" id="customer-record-heading" Class="customer-detail__section-title">@Text["RecordInformation"]</MudText>
-                        <dl class="customer-detail__details details">
-                            <div><dt>@Text["CreatedDate"]</dt><dd>@DisplayDateTime(customer.CreatedDate)</dd></div>
-                            <div><dt>@Text["ModifiedDate"]</dt><dd>@DisplayDateTime(customer.ModifiedDate)</dd></div>
-                        </dl>
-                    </section>
-                </aside>
-            </div>
-
-            <div class="customer-detail__addresses">
-                <section class="customer-detail__section" aria-labelledby="customer-billing-heading">
-                    <MudText Typo="Typo.h6" HtmlTag="h2" id="customer-billing-heading" Class="customer-detail__section-title">@Text["BillingAddress"]</MudText>
-                    <address class="customer-detail__address">@DisplayAddress(customer.BillingAddress)</address>
-                </section>
-                <section class="customer-detail__section" aria-labelledby="customer-shipping-heading">
-                    <MudText Typo="Typo.h6" HtmlTag="h2" id="customer-shipping-heading" Class="customer-detail__section-title">@Text["ShippingAddress"]</MudText>
-                    <address class="customer-detail__address">@DisplayAddress(customer.ShippingAddress)</address>
-                </section>
+                    @if (canReadQuotations)
+                    {
+                        <MudTabPanel Text="@Text["Quotations"]">
+                            <CustomerHistoryTable Kind="CustomerHistoryKind.Quotation"
+                                                  Quotations="@(quotationsPage ?? EmptyQuotationsPage(quotationsPageIndex))"
+                                                  Loading="@quotationsLoading"
+                                                  Error="@quotationsError"
+                                                  Retry="LoadQuotationsAsync"
+                                                  PageChanged="LoadQuotationsPageAsync"
+                                                  Localize="Localize"
+                                                  LocalizeFormat="LocalizeFormat"
+                                                  DisplayValue="Display"
+                                                  FormatDate="DisplayDate"
+                                                  FormatMoney="FormatMoney" />
+                        </MudTabPanel>
+                    }
+                    @if (canReadInvoices)
+                    {
+                        <MudTabPanel Text="@Text["Invoices"]">
+                            <CustomerHistoryTable Kind="CustomerHistoryKind.Invoice"
+                                                  Invoices="@(invoicesPage ?? EmptyInvoicesPage(invoicesPageIndex))"
+                                                  Loading="@invoicesLoading"
+                                                  Error="@invoicesError"
+                                                  Retry="LoadInvoicesAsync"
+                                                  PageChanged="LoadInvoicesPageAsync"
+                                                  Localize="Localize"
+                                                  LocalizeFormat="LocalizeFormat"
+                                                  DisplayValue="Display"
+                                                  FormatDate="DisplayDate"
+                                                  FormatMoney="FormatMoney" />
+                        </MudTabPanel>
+                    }
+                </MudTabs>
             </div>
 
             <nav class="customer-detail__footer" aria-label="@Text["BackToCustomers"]">
@@ -121,37 +136,107 @@
 </MudContainer>
 
 @code {
+    private const int HistoryPageSize = 20;
+    private static readonly string[] KnownTabs = ["overview", "activity", "orders", "quotations", "invoices"];
+
     [SupplyParameterFromQuery(Name = "id")] public int Id { get; set; }
+    [SupplyParameterFromQuery(Name = "tab")] public string? Tab { get; set; }
 
     private CustomerDetail? customer;
     private readonly CustomerUpdateRequest editModel = new();
     private MudForm? editForm;
     private bool editFormValid;
     private bool canEdit;
+    private bool canReadOrders;
+    private bool canReadQuotations;
+    private bool canReadInvoices;
     private bool editing;
     private bool submitting;
-    private string? error;
+    private string? loadError;
+    private string? operationError;
     private Severity errorSeverity = Severity.Error;
     private bool loading;
     private bool notFound;
+    private int loadedCustomerId;
+    private string selectedTab = "overview";
 
-    protected override Task OnParametersSetAsync() => LoadAsync();
+    private CustomerActivityPage? activityPage;
+    private bool activityLoading;
+    private string? activityError;
+    private CancellationTokenSource? activityLoadCts;
+
+    private OrderListPage? ordersPage;
+    private int ordersPageIndex = 1;
+    private bool ordersLoading;
+    private string? ordersError;
+    private CancellationTokenSource? ordersLoadCts;
+
+    private QuotationListPage? quotationsPage;
+    private int quotationsPageIndex = 1;
+    private bool quotationsLoading;
+    private string? quotationsError;
+    private CancellationTokenSource? quotationsLoadCts;
+
+    private InvoiceListPage? invoicesPage;
+    private int invoicesPageIndex = 1;
+    private bool invoicesLoading;
+    private string? invoicesError;
+    private CancellationTokenSource? invoicesLoadCts;
+
+    private int ActiveTabIndex => VisibleTabs().IndexOf(selectedTab);
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (loadedCustomerId != Id)
+        {
+            ResetHistoryState();
+            await LoadAsync();
+        }
+
+        if (customer is null)
+        {
+            return;
+        }
+
+        var normalized = NormalizeTab(Tab);
+        if (!IsTabAllowed(normalized))
+        {
+            normalized = "overview";
+        }
+
+        selectedTab = normalized;
+        if (!string.Equals(Tab, normalized, StringComparison.OrdinalIgnoreCase))
+        {
+            Navigation.NavigateTo(Navigation.GetUriWithQueryParameter("tab", normalized), replace: true);
+            return;
+        }
+
+        await LoadSelectedTabAsync(normalized);
+    }
 
     private async Task LoadAsync()
     {
         customer = null;
-        error = null;
+        loadError = null;
+        operationError = null;
         errorSeverity = Severity.Error;
         notFound = false;
         editing = false;
         submitting = false;
+        loadedCustomerId = Id;
+
         var authenticationState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
-        canEdit = authenticationState.User.Claims.Any(claim =>
-            claim.Type == "permissions" &&
-            claim.Value == "legacy-customer.customers.update");
+        var user = authenticationState.User;
+        var permissions = user.Claims.Where(claim => claim.Type == "permissions").Select(claim => claim.Value).ToArray();
+        var roles = user.Claims.Where(claim => claim.Type is ClaimTypes.Role or "role").Select(claim => claim.Value).ToArray();
+        canEdit = LegacyNavigationAuthorization.IsEnabled(user.Identity?.IsAuthenticated == true, "legacy-customer.customers.update", permissions, roles);
+        canReadOrders = LegacyNavigationAuthorization.IsEnabled(user.Identity?.IsAuthenticated == true, "legacy.orders.read", permissions, roles);
+        canReadQuotations = LegacyNavigationAuthorization.IsEnabled(user.Identity?.IsAuthenticated == true, "legacy.quotations.read", permissions, roles);
+        canReadInvoices = LegacyNavigationAuthorization.IsEnabled(user.Identity?.IsAuthenticated == true, "legacy.accounting.read", permissions, roles);
+
         if (Id <= 0)
         {
-            error = Text["NotFound"];
+            loadError = Text["NotFound"];
             errorSeverity = Severity.Warning;
             notFound = true;
             return;
@@ -169,13 +254,13 @@
 
             if (response.StatusCode == HttpStatusCode.Forbidden)
             {
-                error = Text["Forbidden"];
+                loadError = Text["Forbidden"];
                 return;
             }
 
             if (response.StatusCode == HttpStatusCode.NotFound)
             {
-                error = Text["NotFound"];
+                loadError = Text["NotFound"];
                 errorSeverity = Severity.Warning;
                 notFound = true;
                 return;
@@ -183,19 +268,19 @@
 
             if (response.StatusCode == HttpStatusCode.TooManyRequests)
             {
-                error = Text["RateLimited"];
+                loadError = Text["RateLimited"];
                 return;
             }
 
             if (response.StatusCode == HttpStatusCode.BadGateway)
             {
-                error = Text["InvalidResponse"];
+                loadError = Text["InvalidResponse"];
                 return;
             }
 
             if (!response.IsSuccessStatusCode)
             {
-                error = Text["Unavailable"];
+                loadError = Text["Unavailable"];
                 return;
             }
 
@@ -203,7 +288,7 @@
             if (customer is null || customer.Id != Id)
             {
                 customer = null;
-                error = Text["InvalidResponse"];
+                loadError = Text["InvalidResponse"];
             }
             else
             {
@@ -212,7 +297,7 @@
         }
         catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException)
         {
-            error = Text["Unavailable"];
+            loadError = Text["Unavailable"];
         }
         finally
         {
@@ -220,40 +305,244 @@
         }
     }
 
-    private void BeginEdit()
+    private async Task OnActiveTabChangedAsync(int index)
     {
-        if (!canEdit || customer is null)
+        var tabs = VisibleTabs();
+        if (index < 0 || index >= tabs.Count)
         {
             return;
         }
 
+        var value = tabs[index];
+        if (string.Equals(value, selectedTab, StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        Navigation.NavigateTo(Navigation.GetUriWithQueryParameter("tab", value));
+        await Task.CompletedTask;
+    }
+
+    private Task LoadSelectedTabAsync(string tab) => tab switch
+    {
+        "activity" when activityPage is null && !activityLoading => LoadActivityAsync(),
+        "orders" when ordersPage is null && !ordersLoading => LoadOrdersAsync(),
+        "quotations" when quotationsPage is null && !quotationsLoading => LoadQuotationsAsync(),
+        "invoices" when invoicesPage is null && !invoicesLoading => LoadInvoicesAsync(),
+        _ => Task.CompletedTask,
+    };
+
+    private async Task LoadActivityAsync()
+    {
+        activityLoadCts?.Cancel();
+        activityLoadCts?.Dispose();
+        activityLoadCts = new();
+        var token = activityLoadCts.Token;
+        activityLoading = true;
+        activityError = null;
+        try
+        {
+            using var response = await Http.GetForPresentationAsync($"/bff/customers/{Id}/activity?size={HistoryPageSize}", token);
+            if (HandleHistoryStatus(response.StatusCode, "activity", ref activityError)) return;
+            var result = await response.Content.ReadFromJsonAsync<CustomerActivityPage>(cancellationToken: token);
+            token.ThrowIfCancellationRequested();
+            activityPage = result ?? throw new System.Text.Json.JsonException();
+        }
+        catch (OperationCanceledException) when (token.IsCancellationRequested) { }
+        catch (System.Text.Json.JsonException) { activityError = Text["HistoryInvalidResponse", Text["Activity"]]; }
+        catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException)
+        {
+            activityError = Text["HistoryUnavailable", Text["Activity"]];
+        }
+        finally
+        {
+            if (!token.IsCancellationRequested) activityLoading = false;
+        }
+    }
+
+    private Task LoadOrdersAsync() => LoadOrdersPageAsync(ordersPageIndex);
+
+    private async Task LoadOrdersPageAsync(int pageIndex)
+    {
+        if (!canReadOrders) return;
+        ordersLoadCts?.Cancel();
+        ordersLoadCts?.Dispose();
+        ordersLoadCts = new();
+        var token = ordersLoadCts.Token;
+        ordersLoading = true;
+        ordersError = null;
+        try
+        {
+            using var response = await Http.GetForPresentationAsync($"/bff/customers/{Id}/orders?index={pageIndex}&size={HistoryPageSize}", token);
+            if (HandleHistoryStatus(response.StatusCode, "orders", ref ordersError)) return;
+            var result = await response.Content.ReadFromJsonAsync<OrderListPage>(cancellationToken: token);
+            token.ThrowIfCancellationRequested();
+            if (result is null || result.Items.Any(item => item.CustomerId != Id)) throw new System.Text.Json.JsonException();
+            ordersPage = result;
+            ordersPageIndex = result.PageIndex;
+        }
+        catch (OperationCanceledException) when (token.IsCancellationRequested) { }
+        catch (System.Text.Json.JsonException) { ordersError = Text["HistoryInvalidResponse", Text["Orders"]]; }
+        catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException)
+        {
+            ordersError = Text["HistoryUnavailable", Text["OrderHistorySubject"]];
+        }
+        finally
+        {
+            if (!token.IsCancellationRequested) ordersLoading = false;
+        }
+    }
+
+    private Task LoadQuotationsAsync() => LoadQuotationsPageAsync(quotationsPageIndex);
+
+    private async Task LoadQuotationsPageAsync(int pageIndex)
+    {
+        if (!canReadQuotations) return;
+        quotationsLoadCts?.Cancel();
+        quotationsLoadCts?.Dispose();
+        quotationsLoadCts = new();
+        var token = quotationsLoadCts.Token;
+        quotationsLoading = true;
+        quotationsError = null;
+        try
+        {
+            using var response = await Http.GetForPresentationAsync($"/bff/customers/{Id}/quotations?index={pageIndex}&size={HistoryPageSize}", token);
+            if (HandleHistoryStatus(response.StatusCode, "quotations", ref quotationsError)) return;
+            var result = await response.Content.ReadFromJsonAsync<QuotationListPage>(cancellationToken: token);
+            token.ThrowIfCancellationRequested();
+            if (result is null || result.Items.Any(item => item.CustomerId != Id)) throw new System.Text.Json.JsonException();
+            quotationsPage = result;
+            quotationsPageIndex = result.PageIndex;
+        }
+        catch (OperationCanceledException) when (token.IsCancellationRequested) { }
+        catch (System.Text.Json.JsonException) { quotationsError = Text["HistoryInvalidResponse", Text["Quotations"]]; }
+        catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException)
+        {
+            quotationsError = Text["HistoryUnavailable", Text["QuotationHistorySubject"]];
+        }
+        finally
+        {
+            if (!token.IsCancellationRequested) quotationsLoading = false;
+        }
+    }
+
+    private Task LoadInvoicesAsync() => LoadInvoicesPageAsync(invoicesPageIndex);
+
+    private async Task LoadInvoicesPageAsync(int pageIndex)
+    {
+        if (!canReadInvoices) return;
+        invoicesLoadCts?.Cancel();
+        invoicesLoadCts?.Dispose();
+        invoicesLoadCts = new();
+        var token = invoicesLoadCts.Token;
+        invoicesLoading = true;
+        invoicesError = null;
+        try
+        {
+            using var response = await Http.GetForPresentationAsync($"/bff/customers/{Id}/invoices?index={pageIndex}&size={HistoryPageSize}", token);
+            if (HandleHistoryStatus(response.StatusCode, "invoices", ref invoicesError)) return;
+            var result = await response.Content.ReadFromJsonAsync<InvoiceListPage>(cancellationToken: token);
+            token.ThrowIfCancellationRequested();
+            if (result is null || result.Items.Any(item => item.CustomerId != Id)) throw new System.Text.Json.JsonException();
+            invoicesPage = result;
+            invoicesPageIndex = result.PageIndex;
+        }
+        catch (OperationCanceledException) when (token.IsCancellationRequested) { }
+        catch (System.Text.Json.JsonException) { invoicesError = Text["HistoryInvalidResponse", Text["Invoices"]]; }
+        catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException)
+        {
+            invoicesError = Text["HistoryUnavailable", Text["InvoiceHistorySubject"]];
+        }
+        finally
+        {
+            if (!token.IsCancellationRequested) invoicesLoading = false;
+        }
+    }
+
+    private bool HandleHistoryStatus(HttpStatusCode statusCode, string family, ref string? targetError)
+    {
+        if (statusCode == HttpStatusCode.Unauthorized)
+        {
+            NavigateToLogin();
+            return true;
+        }
+
+        if (statusCode == HttpStatusCode.Forbidden)
+        {
+            SetFamilyPermission(family, false);
+            NavigateToOverviewIfSelected(family);
+            return true;
+        }
+
+        var subject = family switch
+        {
+            "orders" => Text["OrderHistorySubject"].Value,
+            "quotations" => Text["QuotationHistorySubject"].Value,
+            "invoices" => Text["InvoiceHistorySubject"].Value,
+            _ => Text["Activity"].Value,
+        };
+        if (statusCode == HttpStatusCode.TooManyRequests)
+        {
+            targetError = Text["HistoryRateLimited", subject];
+            return true;
+        }
+
+        if (statusCode == HttpStatusCode.BadGateway)
+        {
+            targetError = Text["HistoryInvalidResponse", subject];
+            return true;
+        }
+
+        if (statusCode == HttpStatusCode.ServiceUnavailable || (int)statusCode is < 200 or > 299)
+        {
+            targetError = Text["HistoryUnavailable", subject];
+            return true;
+        }
+
+        return false;
+    }
+
+    private void SetFamilyPermission(string family, bool value)
+    {
+        if (family == "orders") canReadOrders = value;
+        else if (family == "quotations") canReadQuotations = value;
+        else if (family == "invoices") canReadInvoices = value;
+    }
+
+    private void NavigateToOverviewIfSelected(string family)
+    {
+        if (!string.Equals(selectedTab, family, StringComparison.Ordinal)) return;
+        selectedTab = "overview";
+        Navigation.NavigateTo(Navigation.GetUriWithQueryParameter("tab", "overview"), replace: true);
+    }
+
+    private void BeginEdit()
+    {
+        if (!canEdit || customer is null) return;
         CopyToEditModel(customer);
-        error = null;
+        operationError = null;
         editing = true;
     }
 
     private void CancelEdit()
     {
         editing = false;
-        error = null;
+        operationError = null;
     }
 
     private async Task SaveAsync()
     {
-        if (!canEdit || !editing || submitting || editForm is null)
-        {
-            return;
-        }
+        if (!canEdit || !editing || submitting || editForm is null) return;
 
         await editForm.ValidateAsync();
         if (!editFormValid)
         {
-            error = Text["ValidationFailed"];
+            operationError = Text["ValidationFailed"];
             return;
         }
 
         submitting = true;
-        error = null;
+        operationError = null;
         try
         {
             using var sessionResponse = await Http.GetForPresentationAsync("/bff/session");
@@ -267,69 +556,86 @@
             var session = await sessionResponse.Content.ReadFromJsonAsync<EmployeeSessionSummary>();
             if (string.IsNullOrWhiteSpace(session?.CsrfToken))
             {
-                error = Text["SaveFailed"];
+                operationError = Text["SaveFailed"];
                 return;
             }
 
-            using var request = new HttpRequestMessage(HttpMethod.Put, $"/bff/customers/{Id}")
-            {
-                Content = JsonContent.Create(editModel),
-            };
+            using var request = new HttpRequestMessage(HttpMethod.Put, $"/bff/customers/{Id}") { Content = JsonContent.Create(editModel) };
             request.Headers.Add("X-CSRF-TOKEN", session.CsrfToken);
             using var response = await Http.SendAsync(request);
-            if (response.StatusCode == HttpStatusCode.Unauthorized)
-            {
-                NavigateToLogin();
-                return;
-            }
-
-            if (response.StatusCode == HttpStatusCode.Forbidden)
-            {
-                error = Text["ForbiddenUpdate"];
-                return;
-            }
-
-            if (response.StatusCode == HttpStatusCode.BadRequest)
-            {
-                error = Text["ValidationFailed"];
-                return;
-            }
-
-            if (response.StatusCode == HttpStatusCode.NotFound)
-            {
-                error = Text["NotFound"];
-                return;
-            }
-
-            if (response.StatusCode == HttpStatusCode.Conflict)
-            {
-                error = Text["Conflict"];
-                return;
-            }
-
-            if (response.StatusCode == HttpStatusCode.TooManyRequests)
-            {
-                error = Text["RateLimited"];
-                return;
-            }
-
-            if (!response.IsSuccessStatusCode)
-            {
-                error = Text["SaveFailed"];
-                return;
-            }
+            if (response.StatusCode == HttpStatusCode.Unauthorized) { NavigateToLogin(); return; }
+            if (response.StatusCode == HttpStatusCode.Forbidden) { operationError = Text["ForbiddenUpdate"]; return; }
+            if (response.StatusCode == HttpStatusCode.BadRequest) { operationError = Text["ValidationFailed"]; return; }
+            if (response.StatusCode == HttpStatusCode.NotFound) { operationError = Text["NotFound"]; return; }
+            if (response.StatusCode == HttpStatusCode.Conflict) { operationError = Text["Conflict"]; return; }
+            if (response.StatusCode == HttpStatusCode.TooManyRequests) { operationError = Text["RateLimited"]; return; }
+            if (!response.IsSuccessStatusCode) { operationError = Text["SaveFailed"]; return; }
 
             editing = false;
-            await OnParametersSetAsync();
+            loadedCustomerId = 0;
+            await LoadAsync();
         }
         catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException)
         {
-            error = Text["SaveFailed"];
+            operationError = Text["SaveFailed"];
         }
         finally
         {
             submitting = false;
         }
+    }
+
+    private List<string> VisibleTabs()
+    {
+        var tabs = new List<string> { "overview", "activity" };
+        if (canReadOrders) tabs.Add("orders");
+        if (canReadQuotations) tabs.Add("quotations");
+        if (canReadInvoices) tabs.Add("invoices");
+        return tabs;
+    }
+
+    private static string NormalizeTab(string? value) =>
+        KnownTabs.Contains(value?.Trim() ?? string.Empty, StringComparer.OrdinalIgnoreCase)
+            ? value!.Trim().ToLowerInvariant()
+            : "overview";
+
+    private bool IsTabAllowed(string value) => value switch
+    {
+        "overview" or "activity" => true,
+        "orders" => canReadOrders,
+        "quotations" => canReadQuotations,
+        "invoices" => canReadInvoices,
+        _ => false,
+    };
+
+    private void ResetHistoryState()
+    {
+        CancelHistoryLoads();
+        activityPage = null;
+        activityError = null;
+        activityLoading = false;
+        ordersPage = null;
+        ordersPageIndex = 1;
+        ordersError = null;
+        ordersLoading = false;
+        quotationsPage = null;
+        quotationsPageIndex = 1;
+        quotationsError = null;
+        quotationsLoading = false;
+        invoicesPage = null;
+        invoicesPageIndex = 1;
+        invoicesError = null;
+        invoicesLoading = false;
+    }
+
+    private void CancelHistoryLoads()
+    {
+        foreach (var source in new[] { activityLoadCts, ordersLoadCts, quotationsLoadCts, invoicesLoadCts })
+        {
+            source?.Cancel();
+            source?.Dispose();
+        }
+        activityLoadCts = ordersLoadCts = quotationsLoadCts = invoicesLoadCts = null;
     }
 
     private void CopyToEditModel(CustomerDetail value)
@@ -343,32 +649,28 @@
         editModel.DateOfBirth = value.DateOfBirth;
     }
 
+    private string Localize(string key) => Text[key];
+    private string LocalizeFormat(string key, object?[] arguments) => Text[key, arguments.Select(value => value ?? string.Empty).ToArray()];
     private string Display(string? value) => string.IsNullOrWhiteSpace(value) ? Text["NotAvailable"] : value;
-
-    private string DisplayDate(DateTime? value) =>
-        LegacyPresentation.FormatCalendarDate(value, System.Globalization.CultureInfo.CurrentCulture, Text["NotAvailable"]);
-
-    private string DisplayDateTime(DateTime? value) =>
-        LegacyPresentation.FormatUtcDateTime(value, System.Globalization.CultureInfo.CurrentCulture, Text["NotAvailable"]);
+    private string DisplayDate(DateTime? value) => LegacyPresentation.FormatCalendarDate(value, System.Globalization.CultureInfo.CurrentCulture, Text["NotAvailable"]);
+    private string DisplayDateTime(DateTime? value) => LegacyPresentation.FormatUtcDateTime(value, System.Globalization.CultureInfo.CurrentCulture, Text["NotAvailable"]);
+    private string FormatTimestamp(DateTime value) => LegacyPresentation.FormatUtcDateTime(value, System.Globalization.CultureInfo.CurrentCulture, Text["NotAvailable"]);
+    private string FormatMoney(decimal amount, string currency) => string.Format(System.Globalization.CultureInfo.CurrentCulture, "{0:N2} {1}", amount, currency);
+    private string FormatMoney(decimal? amount, string currency) => amount is null ? Text["NotAvailable"] : FormatMoney(amount.Value, currency);
 
     private string DisplayAddress(CustomerAddressDetail? address)
     {
-        if (address is null)
-        {
-            return Text["NotAvailable"];
-        }
-
-        return string.Join(", ", new[]
-        {
-            address.Building,
-            address.AddressLine1,
-            address.AddressLine2,
-            address.City,
-            address.State,
-            address.PostalCode,
-        }.Where(value => !string.IsNullOrWhiteSpace(value)));
+        if (address is null) return Text["NotAvailable"];
+        var value = string.Join(", ", new[] { address.Building, address.AddressLine1, address.AddressLine2, address.City, address.State, address.PostalCode }
+            .Where(part => !string.IsNullOrWhiteSpace(part)));
+        return string.IsNullOrWhiteSpace(value) ? Text["NotAvailable"] : value;
     }
 
-    private void NavigateToLogin() => Navigation.NavigateTo(
-        $"/Login?returnUrl={Uri.EscapeDataString(Navigation.ToBaseRelativePath(Navigation.Uri))}");
+    private static OrderListPage EmptyOrdersPage(int pageIndex) => new([], pageIndex, 0, 0, false, false);
+    private static QuotationListPage EmptyQuotationsPage(int pageIndex) => new([], pageIndex, 0, 0, false, false);
+    private static InvoiceListPage EmptyInvoicesPage(int pageIndex) => new([], pageIndex, 0, 0, false, false);
+
+    private void NavigateToLogin() => Navigation.NavigateTo($"/Login?returnUrl={Uri.EscapeDataString(Navigation.ToBaseRelativePath(Navigation.Uri))}");
+
+    public void Dispose() => CancelHistoryLoads();
 }

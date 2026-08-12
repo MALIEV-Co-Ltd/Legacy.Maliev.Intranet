@@ -78,7 +78,7 @@ public sealed class LegacyLinkSystemContractTests
 
             E("Legacy.Maliev.Intranet.Client.Features.Customers/Pages/Customers.razor", authorize, "/Customers/View?id={context.Id}", 1, "Role=\"LegacyLinkRole.Record\"", "AriaLabel=\"@($\"{Text[\"View\"]} {context.Id}\")\"", "@Text[\"View\"]</LegacyLink>"),
             E("Legacy.Maliev.Intranet.Client.Features.Customers/Pages/CustomerView.razor", authorize, "Href=\"/Customers/Index\"", 2, "Role=\"LegacyLinkRole.Navigation\"", "AriaLabel=\"@Text[\"BackToCustomers\"]\"", "@Text[\"BackToCustomers\"]</LegacyLink>"),
-            E("Legacy.Maliev.Intranet.Client.Features.Customers/Pages/CustomerView.razor", authorize, "mailto:{customer.Email}", 1, "Role=\"LegacyLinkRole.Inline\"", "@customer.Email"),
+            E("Legacy.Maliev.Intranet.Client.Features.Customers/Components/CustomerOverview.razor", null, "mailto:{Customer.Email}", 1, "Role=\"LegacyLinkRole.Inline\"", "@Customer.Email"),
             E("Legacy.Maliev.Intranet.Client.Features.Customers/Pages/CustomerCreate.razor", authorize, "Href=\"/Customers/Index\"", 1, "Role=\"LegacyLinkRole.Navigation\"", "Disabled=\"@submitting\"", "AriaLabel=\"@Text[\"Cancel\"]\"", "@Text[\"Cancel\"]</LegacyLink>"),
 
             E("Legacy.Maliev.Intranet.Client.Features.Employees/Pages/Employees.razor", authorize, "/Employees/View?id={context.Id}", 1, "Role=\"LegacyLinkRole.Record\"", "AriaLabel=\"@($\"{Text[\"View\"]} {context.Id}\")\"", "@Text[\"View\"]</LegacyLink>"),
