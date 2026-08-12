@@ -15,13 +15,14 @@ public sealed class CustomersViewWasmMigrationContractTests
         Assert.Contains("[Parameter] public bool Editing", source, StringComparison.Ordinal);
         Assert.Contains("[Parameter] public bool Submitting", source, StringComparison.Ordinal);
         Assert.Contains("[Parameter] public EventCallback BeginEdit", source, StringComparison.Ordinal);
-        Assert.Contains("[Parameter] public EventCallback<MudForm> Save", source, StringComparison.Ordinal);
+        Assert.Contains("[Parameter] public EventCallback Save", source, StringComparison.Ordinal);
         Assert.Contains("[Parameter] public EventCallback CancelEdit", source, StringComparison.Ordinal);
         Assert.Contains("[Parameter, EditorRequired] public Func<string, string> Localize", source, StringComparison.Ordinal);
         Assert.Contains("[Parameter, EditorRequired] public Func<DateTime?, string> DisplayDate", source, StringComparison.Ordinal);
         Assert.Contains("[Parameter, EditorRequired] public Func<DateTime?, string> DisplayDateTime", source, StringComparison.Ordinal);
         Assert.Contains("[Parameter, EditorRequired] public Func<CustomerAddressDetail?, string> DisplayAddress", source, StringComparison.Ordinal);
-        Assert.Contains("<MudForm", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("<MudForm", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("MudForm", source, StringComparison.Ordinal);
         Assert.Contains("@bind-Value=\"EditModel.FirstName\"", source, StringComparison.Ordinal);
         AssertPresentationalOnly(source);
     }

@@ -156,11 +156,6 @@
     private void ValidatePageContract()
     {
         var providedPages = (Orders is null ? 0 : 1) + (Quotations is null ? 0 : 1) + (Invoices is null ? 0 : 1);
-        if (providedPages == 0 && (Loading || !string.IsNullOrWhiteSpace(Error)))
-        {
-            return;
-        }
-
         var matchingPageProvided = Kind switch
         {
             CustomerHistoryKind.Order => Orders is not null,
@@ -181,7 +176,10 @@
     private Task RequestPageAsync(int requestedPage)
     {
         var lastPage = Math.Max(CurrentTotalPages, 1);
-        return PageChanged.InvokeAsync(Math.Clamp(requestedPage, 1, lastPage));
+        var boundedPage = Math.Clamp(requestedPage, 1, lastPage);
+        return boundedPage == CurrentPageIndex
+            ? Task.CompletedTask
+            : PageChanged.InvokeAsync(boundedPage);
     }
 
     private string OrderStatus(OrderListItem order) => order.Manufactured >= order.Quantity

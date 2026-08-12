@@ -21,25 +21,23 @@
 
             @if (Editing)
             {
-                <MudForm @ref="editForm" Model="@EditModel" IsValid="@FormValid" IsValidChanged="FormValidChanged">
-                    <div class="customer-overview__form-grid">
-                        <MudTextField @bind-Value="EditModel.FirstName" For="@(() => EditModel.FirstName)" Label="@Localize("FirstName")" Required="true" Variant="Variant.Outlined" />
-                        <MudTextField @bind-Value="EditModel.LastName" For="@(() => EditModel.LastName)" Label="@Localize("LastName")" Required="true" Variant="Variant.Outlined" />
-                        <MudTextField @bind-Value="EditModel.Email" For="@(() => EditModel.Email)" Label="@Localize("Email")" InputType="InputType.Email" Required="true" Variant="Variant.Outlined" />
-                        <MudTextField @bind-Value="EditModel.Telephone" For="@(() => EditModel.Telephone)" Label="@Localize("Telephone")" InputType="InputType.Telephone" Variant="Variant.Outlined" />
-                        <MudTextField @bind-Value="EditModel.Mobile" For="@(() => EditModel.Mobile)" Label="@Localize("Mobile")" InputType="InputType.Telephone" Variant="Variant.Outlined" />
-                        <MudTextField @bind-Value="EditModel.Fax" For="@(() => EditModel.Fax)" Label="@Localize("Fax")" Variant="Variant.Outlined" />
-                        <MudDatePicker @bind-Date="EditModel.DateOfBirth" For="@(() => EditModel.DateOfBirth)" Label="@Localize("DateOfBirth")" Variant="Variant.Outlined" />
-                    </div>
-                    <div class="customer-overview__form-actions">
-                        <MudButton ButtonType="ButtonType.Button" Variant="Variant.Filled" Color="Color.Primary" Disabled="@Submitting" OnClick="SaveAsync">
-                            @(Submitting ? Localize("Saving") : Localize("SaveChanges"))
-                        </MudButton>
-                        <MudButton ButtonType="ButtonType.Button" Variant="Variant.Text" Disabled="@Submitting" OnClick="CancelEdit">
-                            @Localize("Cancel")
-                        </MudButton>
-                    </div>
-                </MudForm>
+                <div class="customer-overview__form-grid">
+                    <MudTextField @bind-Value="EditModel.FirstName" For="@(() => EditModel.FirstName)" Label="@Localize("FirstName")" Required="true" Variant="Variant.Outlined" />
+                    <MudTextField @bind-Value="EditModel.LastName" For="@(() => EditModel.LastName)" Label="@Localize("LastName")" Required="true" Variant="Variant.Outlined" />
+                    <MudTextField @bind-Value="EditModel.Email" For="@(() => EditModel.Email)" Label="@Localize("Email")" InputType="InputType.Email" Required="true" Variant="Variant.Outlined" />
+                    <MudTextField @bind-Value="EditModel.Telephone" For="@(() => EditModel.Telephone)" Label="@Localize("Telephone")" InputType="InputType.Telephone" Variant="Variant.Outlined" />
+                    <MudTextField @bind-Value="EditModel.Mobile" For="@(() => EditModel.Mobile)" Label="@Localize("Mobile")" InputType="InputType.Telephone" Variant="Variant.Outlined" />
+                    <MudTextField @bind-Value="EditModel.Fax" For="@(() => EditModel.Fax)" Label="@Localize("Fax")" Variant="Variant.Outlined" />
+                    <MudDatePicker @bind-Date="EditModel.DateOfBirth" For="@(() => EditModel.DateOfBirth)" Label="@Localize("DateOfBirth")" Variant="Variant.Outlined" />
+                </div>
+                <div class="customer-overview__form-actions">
+                    <MudButton ButtonType="ButtonType.Button" Variant="Variant.Filled" Color="Color.Primary" Disabled="@Submitting" OnClick="Save">
+                        @(Submitting ? Localize("Saving") : Localize("SaveChanges"))
+                    </MudButton>
+                    <MudButton ButtonType="ButtonType.Button" Variant="Variant.Text" Disabled="@Submitting" OnClick="CancelEdit">
+                        @Localize("Cancel")
+                    </MudButton>
+                </div>
             }
             else
             {
@@ -106,10 +104,8 @@
     [Parameter] public bool CanEdit { get; set; }
     [Parameter] public bool Editing { get; set; }
     [Parameter] public bool Submitting { get; set; }
-    [Parameter] public bool FormValid { get; set; }
-    [Parameter] public EventCallback<bool> FormValidChanged { get; set; }
     [Parameter] public EventCallback BeginEdit { get; set; }
-    [Parameter] public EventCallback<MudForm> Save { get; set; }
+    [Parameter] public EventCallback Save { get; set; }
     [Parameter] public EventCallback CancelEdit { get; set; }
     [Parameter, EditorRequired] public Func<string, string> Localize { get; set; } = null!;
     [Parameter, EditorRequired] public Func<string?, string> DisplayValue { get; set; } = null!;
@@ -117,7 +113,4 @@
     [Parameter, EditorRequired] public Func<DateTime?, string> DisplayDateTime { get; set; } = null!;
     [Parameter, EditorRequired] public Func<CustomerAddressDetail?, string> DisplayAddress { get; set; } = null!;
 
-    private MudForm? editForm;
-
-    private Task SaveAsync() => editForm is null ? Task.CompletedTask : Save.InvokeAsync(editForm);
 }
