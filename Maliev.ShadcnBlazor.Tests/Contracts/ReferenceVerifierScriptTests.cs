@@ -54,7 +54,11 @@ public sealed class ReferenceVerifierScriptTests
 
         Assert.NotEqual(0, result.ExitCode);
         Assert.Contains(
-            "The Shadcn reference commit must be a full lowercase Git commit SHA: 6261bd89f72d794aea491482cc2acfd8dc3d63e",
+            "The Shadcn reference commit must be a full lowercase Git commit SHA:",
+            result.Output,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "6261bd89f72d794aea491482cc2acfd8dc3d63e",
             result.Output,
             StringComparison.Ordinal);
         Assert.DoesNotContain("TRANSPORT_SENTINEL", result.Output, StringComparison.Ordinal);

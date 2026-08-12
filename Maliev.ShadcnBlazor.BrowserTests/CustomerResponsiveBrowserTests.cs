@@ -251,6 +251,7 @@ public sealed class CustomerResponsiveBrowserTests(
         await StubProductionBoundariesAsync(page);
 
         await page.GotoAsync(new Uri(server.BaseUri, "customers").AbsoluteUri);
+        await page.Locator(".customers-table .mud-table-body .mud-table-row").First.WaitForAsync();
         var search = page.Locator(".list-toolbar input").First;
         await search.FillAsync("Natthapol");
         await page.WaitForURLAsync(url => url.Contains("search=Natthapol", StringComparison.Ordinal));
