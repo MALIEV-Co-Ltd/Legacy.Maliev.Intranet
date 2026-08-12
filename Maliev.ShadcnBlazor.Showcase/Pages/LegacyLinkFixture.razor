@@ -1,0 +1,11 @@
+@page "/components/legacy-link"
+@using Legacy.Maliev.Intranet.Client.Shared.Components
+
+<PageTitle>Legacy link fixture</PageTitle>
+
+<section data-testid="legacy-link-fixture" aria-label="Legacy link roles">
+    <LegacyLink Href="#inline" Role="LegacyLinkRole.Inline">Inline link</LegacyLink>
+    <LegacyLink Href="#record" Role="LegacyLinkRole.Record">Customer record 123456789</LegacyLink>
+    <LegacyLink Href="#navigation" Role="LegacyLinkRole.Navigation">Customer navigation</LegacyLink>
+    <LegacyLink Href="https://www.maliev.com" Role="LegacyLinkRole.External" Target="_blank" StartIcon="@Icons.Material.Outlined.OpenInNew">External link</LegacyLink>
+</section>
