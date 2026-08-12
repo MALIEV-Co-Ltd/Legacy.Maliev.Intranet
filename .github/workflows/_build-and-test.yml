@@ -36,7 +36,7 @@ jobs:
       - name: Install Playwright Chromium
         shell: bash
         run: |
-          dotnet restore Legacy.Maliev.Intranet.slnx
+          dotnet restore Maliev.ShadcnBlazor.BrowserTests/Maliev.ShadcnBlazor.BrowserTests.csproj
           dotnet build Maliev.ShadcnBlazor.BrowserTests/Maliev.ShadcnBlazor.BrowserTests.csproj \
             --configuration Release \
             --no-restore
