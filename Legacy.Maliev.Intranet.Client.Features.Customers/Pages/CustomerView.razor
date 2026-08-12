@@ -242,6 +242,7 @@
         notFound = false;
         editing = false;
         submitting = false;
+        loading = false;
         loadedCustomerId = request.CustomerId;
 
         var authenticationState = await AuthenticationStateProvider.GetAuthenticationStateAsync();

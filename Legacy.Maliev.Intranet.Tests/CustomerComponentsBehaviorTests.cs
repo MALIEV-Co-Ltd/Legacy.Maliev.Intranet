@@ -7,6 +7,7 @@ using Legacy.Maliev.Intranet.Contracts;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.RenderTree;
 using Microsoft.AspNetCore.Components.Rendering;
+using Microsoft.Extensions.Localization;
 using MudBlazor;
 
 #pragma warning disable BL0006 // Focused tests inspect the compiled Razor render tree without adding a test-only renderer dependency.
@@ -204,6 +205,30 @@ public sealed class CustomerComponentsBehaviorTests
     }
 
     [Fact]
+    public async Task CustomerView_InvalidRouteReplacesASlowValidLoadWithNotFoundState()
+    {
+        var handler = new CustomerRaceHandler();
+        var view = new CustomerView { Id = 41 };
+        SetNonPublicProperty(view, "Http", new HttpClient(handler) { BaseAddress = new Uri("https://localhost") });
+        SetNonPublicProperty(view, "AuthenticationStateProvider", new AuthenticatedStateProvider());
+        SetNonPublicProperty(view, "Text", new KeyLocalizer<CustomerView>());
+
+        var customerA = InvokeTaskAsync(view, "LoadAsync");
+        await handler.CustomerAStarted.Task.WaitAsync(TimeSpan.FromSeconds(5));
+
+        view.Id = 0;
+        await InvokeTaskAsync(view, "LoadAsync");
+
+        Assert.False(Assert.IsType<bool>(GetNonPublicField(view, "loading")));
+        Assert.True(Assert.IsType<bool>(GetNonPublicField(view, "notFound")));
+        Assert.Equal("NotFound", Assert.IsType<string>(GetNonPublicField(view, "loadError")));
+
+        handler.ReleaseCustomerA.TrySetResult();
+        await customerA;
+        view.Dispose();
+    }
+
+    [Fact]
     public async Task CustomerView_UsesSharedPermissionsWithoutExposingUnauthorizedTabs()
     {
         var owner = await LoadCustomerViewAsync(["platform.owner"]);
@@ -378,5 +403,12 @@ public sealed class CustomerComponentsBehaviorTests
                     null)),
             };
         }
+    }
+
+    private sealed class KeyLocalizer<T> : IStringLocalizer<T>
+    {
+        public LocalizedString this[string name] => new(name, name);
+        public LocalizedString this[string name, params object[] arguments] => new(name, name);
+        public IEnumerable<LocalizedString> GetAllStrings(bool includeParentCultures) => [];
     }
 }
