@@ -5,7 +5,7 @@ if ($args.Count -gt 0) {
 }
 
 $root = Split-Path -Parent $PSScriptRoot
-$manifestFile = Join-Path $root 'Maliev.ShadcnBlazor\Reference\shadcn-reference.json'
+$manifestFile = Join-Path (Join-Path (Join-Path $root 'Maliev.ShadcnBlazor') 'Reference') 'shadcn-reference.json'
 $manifest = Get-Content -Raw -LiteralPath $manifestFile | ConvertFrom-Json
 if ($manifest.schema -ne 'shadcn-reference/v1') {
     throw "Unsupported Shadcn reference manifest schema: $($manifest.schema)"

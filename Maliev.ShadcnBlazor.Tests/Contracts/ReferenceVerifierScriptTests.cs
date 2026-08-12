@@ -65,7 +65,7 @@ public sealed class ReferenceVerifierScriptTests
         var wrapper = Path.Combine(root, "verify-with-transport-sentinel.ps1");
         File.WriteAllText(wrapper, """
             function global:Invoke-RestMethod { throw 'TRANSPORT_SENTINEL' }
-            & (Join-Path $PSScriptRoot 'scripts\verify-shadcn-reference.ps1')
+            & (Join-Path (Join-Path $PSScriptRoot 'scripts') 'verify-shadcn-reference.ps1')
             """);
         return RunPowerShellFileAsync(root, wrapper);
     }
