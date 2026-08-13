@@ -1,0 +1,87 @@
+@typeparam TItem
+@typeparam TKey where TKey : notnull
+
+<div class="operational-table__scroll">
+    <table class="operational-table">
+        <caption class="visually-hidden">@TableLabel</caption>
+        <thead>
+            @HeaderContent
+        </thead>
+        <tbody>
+            @if (Items.Count == 0)
+            {
+                @if (EmptyContent is not null)
+                {
+                    <tr class="operational-table__empty">
+                        <td colspan="@ColumnCount">@EmptyContent</td>
+                    </tr>
+                }
+            }
+            else
+            {
+                @foreach (var item in Items)
+                {
+                    var key = KeySelector(item);
+                    var isExpanded = State.IsExpanded(key);
+                    var quickViewId = QuickViewId(key);
+                    var detailHref = DetailHref(item);
+
+                    <tr class="operational-table__row">
+                        @RowContent(item)
+                        <td class="operational-table__actions">
+                            @if (detailHref is not null)
+                            {
+                                <MudIconButton ButtonType="ButtonType.Button"
+                                               Class="operational-table__detail"
+                                               Href="@detailHref"
+                                               Icon="@Icons.Material.Outlined.OpenInNew"
+                                               aria-label="@DetailAriaLabel(item)"
+                                               title="@DetailAriaLabel(item)" />
+                            }
+                            <MudIconButton ButtonType="ButtonType.Button"
+                                           Class="operational-table__toggle"
+                                           Icon="@(isExpanded ? Icons.Material.Outlined.ExpandLess : Icons.Material.Outlined.ExpandMore)"
+                                           aria-label="@(isExpanded ? CollapseAriaLabel(item) : ExpandAriaLabel(item))"
+                                           aria-expanded="@isExpanded.ToString().ToLowerInvariant()"
+                                           aria-controls="@quickViewId"
+                                           title="@(isExpanded ? CollapseAriaLabel(item) : ExpandAriaLabel(item))"
+                                           OnClick="@(() => State.Toggle(key))" />
+                        </td>
+                    </tr>
+                    @if (isExpanded)
+                    {
+                        <tr id="@quickViewId" class="operational-table__quick-view">
+                            <td colspan="@ColumnCount">@QuickViewContent(item)</td>
+                        </tr>
+                    }
+                }
+            }
+        </tbody>
+    </table>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<TItem> Items { get; set; } = default!;
+    [Parameter, EditorRequired] public Func<TItem, TKey> KeySelector { get; set; } = default!;
+    [Parameter, EditorRequired] public RenderFragment HeaderContent { get; set; } = default!;
+    [Parameter, EditorRequired] public RenderFragment<TItem> RowContent { get; set; } = default!;
+    [Parameter, EditorRequired] public RenderFragment<TItem> QuickViewContent { get; set; } = default!;
+    [Parameter, EditorRequired] public Func<TItem, string?> DetailHref { get; set; } = default!;
+    [Parameter, EditorRequired] public Func<TItem, string> DetailAriaLabel { get; set; } = default!;
+    [Parameter, EditorRequired] public Func<TItem, string> ExpandAriaLabel { get; set; } = default!;
+    [Parameter, EditorRequired] public Func<TItem, string> CollapseAriaLabel { get; set; } = default!;
+    [Parameter, EditorRequired] public string TableLabel { get; set; } = default!;
+    [Parameter] public RenderFragment? EmptyContent { get; set; }
+    [Parameter, EditorRequired] public int ColumnCount { get; set; }
+    [Parameter, EditorRequired] public OperationalTableState<TKey> State { get; set; } = default!;
+
+    protected override void OnParametersSet()
+    {
+        if (ColumnCount < 1)
+        {
+            throw new ArgumentOutOfRangeException(nameof(ColumnCount), "ColumnCount must be at least one.");
+        }
+    }
+
+    private static string QuickViewId(TKey key) => $"operational-table-quick-view-{key}";
+}
