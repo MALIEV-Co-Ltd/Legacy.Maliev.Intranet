@@ -1,6 +1,7 @@
 using Bunit;
 using Legacy.Maliev.Intranet.Client.Shared.Components;
 using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Rendering;
 
 namespace Legacy.Maliev.Intranet.Tests;
 
@@ -101,6 +102,22 @@ public sealed class OperationalTableBehaviorTests : BunitContext
     }
 
     [Fact]
+    public void Rendered_document_keeps_quick_view_ids_unique_across_table_instances()
+    {
+        var cut = Render<TwoOperationalTables>();
+        var quickViews = cut.FindAll(".operational-table__quick-view");
+        var ids = quickViews.Select(quickView => quickView.Id).ToArray();
+
+        Assert.Equal(2, ids.Distinct(StringComparer.Ordinal).Count());
+        foreach (var toggle in cut.FindAll("button.operational-table__toggle"))
+        {
+            var controlledId = toggle.GetAttribute("aria-controls");
+            Assert.NotNull(controlledId);
+            Assert.Single(quickViews, quickView => quickView.Id == controlledId);
+        }
+    }
+
+    [Fact]
     public void Scoped_styles_cross_the_render_fragment_boundary_and_target_native_action_roots()
     {
         var root = FindRepositoryRoot();
@@ -164,6 +181,46 @@ public sealed class OperationalTableBehaviorTests : BunitContext
     {
         public override string ToString() => "same display";
         public string Value { get; } = value;
+    }
+
+    private sealed class TwoOperationalTables : ComponentBase
+    {
+        private static readonly IReadOnlyList<Row<int>> Rows = [new(1, "record")];
+        private readonly OperationalTableState<int> firstState = ExpandedState();
+        private readonly OperationalTableState<int> secondState = ExpandedState();
+
+        protected override void BuildRenderTree(RenderTreeBuilder builder)
+        {
+            builder.OpenElement(0, "section");
+            AddTable(builder, firstState);
+            AddTable(builder, secondState);
+            builder.CloseElement();
+        }
+
+        private static OperationalTableState<int> ExpandedState()
+        {
+            var state = new OperationalTableState<int>();
+            state.Toggle(1);
+            return state;
+        }
+
+        private static void AddTable(RenderTreeBuilder builder, OperationalTableState<int> state)
+        {
+            builder.OpenComponent<OperationalTable<Row<int>, int>>(0);
+            builder.AddAttribute(1, nameof(OperationalTable<Row<int>, int>.Items), Rows);
+            builder.AddAttribute(2, nameof(OperationalTable<Row<int>, int>.KeySelector), (Func<Row<int>, int>)(row => row.Key));
+            builder.AddAttribute(3, nameof(OperationalTable<Row<int>, int>.HeaderContent), HeaderContent());
+            builder.AddAttribute(4, nameof(OperationalTable<Row<int>, int>.RowContent), RowContent<int>());
+            builder.AddAttribute(5, nameof(OperationalTable<Row<int>, int>.QuickViewContent), QuickViewContent<int>());
+            builder.AddAttribute(6, nameof(OperationalTable<Row<int>, int>.DetailHref), (Func<Row<int>, string?>)(_ => "/detail"));
+            builder.AddAttribute(7, nameof(OperationalTable<Row<int>, int>.DetailAriaLabel), (Func<Row<int>, string>)(row => $"Open {row.Name}"));
+            builder.AddAttribute(8, nameof(OperationalTable<Row<int>, int>.ExpandAriaLabel), (Func<Row<int>, string>)(row => $"Expand {row.Name}"));
+            builder.AddAttribute(9, nameof(OperationalTable<Row<int>, int>.CollapseAriaLabel), (Func<Row<int>, string>)(row => $"Collapse {row.Name}"));
+            builder.AddAttribute(10, nameof(OperationalTable<Row<int>, int>.TableLabel), "Operational records");
+            builder.AddAttribute(11, nameof(OperationalTable<Row<int>, int>.ColumnCount), 2);
+            builder.AddAttribute(12, nameof(OperationalTable<Row<int>, int>.State), state);
+            builder.CloseComponent();
+        }
     }
 
     private static string FindRepositoryRoot()
