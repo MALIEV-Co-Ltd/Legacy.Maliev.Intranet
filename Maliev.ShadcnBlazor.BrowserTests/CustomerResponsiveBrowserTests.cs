@@ -152,14 +152,32 @@ public sealed class CustomerResponsiveBrowserTests(
         foreach (var width in new[] { 1280, 768, 390, 320 })
         {
             await page.SetViewportSizeAsync(width, 844);
+            if (width <= 900)
+            {
+                await page.WaitForFunctionAsync("""
+                    () => Array.from(document.querySelectorAll('.list-toolbar .mud-input'))
+                        .filter(input => {
+                            const style = getComputedStyle(input);
+                            const rect = input.getBoundingClientRect();
+                            return style.display !== 'none' && style.visibility !== 'hidden' && rect.width > 0 && rect.height > 0;
+                        })
+                        .every(input => input.getBoundingClientRect().height >= 44)
+                    """);
+            }
             var metrics = await page.Locator(".list-toolbar").EvaluateAsync<JsonElement>("""
                 element => {
                     const bounds = node => { const rect = node.getBoundingClientRect(); return { x: rect.x, y: rect.y, width: rect.width, height: rect.height }; };
                     const controls = Array.from(element.querySelectorAll('.mud-input-control'));
+                    const interactiveInputs = Array.from(element.querySelectorAll('.mud-input')).filter(input => {
+                        const style = getComputedStyle(input);
+                        const rect = input.getBoundingClientRect();
+                        return style.display !== 'none' && style.visibility !== 'hidden' && rect.width > 0 && rect.height > 0;
+                    });
                     const buttons = Array.from(element.querySelectorAll('.list-toolbar__actions .mud-button-root'));
                     return {
                         toolbar: bounds(element), search: bounds(controls[0]), sort: bounds(controls[1]), pageSize: bounds(controls[2]),
                         controls: controls.map(bounds),
+                        interactiveInputs: interactiveInputs.map(input => ({ ...bounds(input), classes: input.className })),
                         buttons: buttons.map(bounds)
                     };
                 }
@@ -169,6 +187,8 @@ public sealed class CustomerResponsiveBrowserTests(
             if (width <= 900)
             {
                 Assert.All(metrics.GetProperty("controls").EnumerateArray(), control => Assert.True(control.GetProperty("height").GetDouble() >= 44, metrics.ToString()));
+                Assert.Equal(3, metrics.GetProperty("interactiveInputs").GetArrayLength());
+                Assert.All(metrics.GetProperty("interactiveInputs").EnumerateArray(), input => Assert.True(input.GetProperty("height").GetDouble() >= 44, metrics.ToString()));
                 Assert.All(metrics.GetProperty("buttons").EnumerateArray(), button => Assert.True(button.GetProperty("height").GetDouble() >= 44, metrics.ToString()));
             }
             if (width <= 600)

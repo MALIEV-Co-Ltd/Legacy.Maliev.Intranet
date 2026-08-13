@@ -62,13 +62,10 @@
 @media (min-width: 601px) and (max-width: 900px) {
     .list-toolbar__grid {
         grid-template-columns: minmax(0, 1fr) minmax(10rem, 0.65fr);
-    }
-
-    .list-toolbar__grid ::deep .mud-input-control {
         --shadcn-control-height: 2.75rem;
     }
 
-    .list-toolbar__grid ::deep .mud-input-control .mud-input {
+    .list-toolbar__grid ::deep .mud-input {
         height: var(--shadcn-control-height) !important;
         min-height: var(--shadcn-control-height) !important;
     }
@@ -93,6 +90,7 @@
 @media (max-width: 600px) {
     .list-toolbar__grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
+        --shadcn-control-height: 2.75rem;
     }
 
     .list-toolbar__grid ::deep > .mud-input-control:first-child {
@@ -118,11 +116,7 @@
         min-height: 2.75rem;
     }
 
-    .list-toolbar__grid ::deep .mud-input-control {
-        --shadcn-control-height: 2.75rem;
-    }
-
-    .list-toolbar__grid ::deep .mud-input-control .mud-input {
+    .list-toolbar__grid ::deep .mud-input {
         height: var(--shadcn-control-height) !important;
         min-height: var(--shadcn-control-height) !important;
     }
