@@ -25,6 +25,29 @@ public sealed class OperationalTableMigrationBrowserTests(
         { "Server/ErrorReport", null, "Expand diagnostic 801" },
     };
 
+    public static TheoryData<string, string> AliasLandingBreadcrumbs => new()
+    {
+        { "Invoices/Index", "Invoices" },
+        { "PurchaseOrders/Index", "Purchase orders" },
+        { "Materials/Index", "Materials" },
+    };
+
+    [Theory]
+    [MemberData(nameof(AliasLandingBreadcrumbs))]
+    public async Task AliasLandingPagesRenderDashboardThenCurrentPageOnly(string route, string currentLabel)
+    {
+        await using var context = await playwright.Browser.NewContextAsync();
+        var page = await context.NewPageAsync();
+        await StubOperationalWaveBoundariesAsync(page);
+        await page.GotoAsync(new Uri(server.BaseUri, route).AbsoluteUri);
+        var breadcrumbs = page.Locator("nav.page-breadcrumbs");
+        await breadcrumbs.WaitForAsync();
+
+        Assert.Equal(2, await breadcrumbs.Locator("li").CountAsync());
+        Assert.Equal("/Dashboard", await breadcrumbs.GetByRole(AriaRole.Link).GetAttributeAsync("href"));
+        Assert.Equal(currentLabel, (await breadcrumbs.Locator("li[aria-current='page']").InnerTextAsync()).Trim());
+    }
+
     [Theory]
     [MemberData(nameof(OperationalWavePages))]
     public async Task OperationalWaveUsesContainedTablesExactRoutesAndSingleQuickView(

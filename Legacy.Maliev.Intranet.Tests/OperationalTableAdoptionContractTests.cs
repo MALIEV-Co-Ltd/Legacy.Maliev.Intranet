@@ -21,6 +21,35 @@ public sealed class OperationalTableAdoptionContractTests
         { "Legacy.Maliev.Intranet.Client.Features.Accounting/Pages/InvoiceView.razor", "DetailSubTable" },
     };
 
+    public static TheoryData<string> AliasLandingPages => new()
+    {
+        "Legacy.Maliev.Intranet.Client.Features.Accounting/Pages/Invoices.razor",
+        "Legacy.Maliev.Intranet.Client.Features.Procurement/Pages/PurchaseOrders.razor",
+        "Legacy.Maliev.Intranet.Client.Features.Catalog/Pages/Materials.razor",
+    };
+
+    [Theory]
+    [MemberData(nameof(AliasLandingPages))]
+    public void BreadcrumbIntermediateDestinations_DoNotPointBackToTheCurrentComponentAlias(string relativePath)
+    {
+        var source = File.ReadAllText(Path.Combine(FindRoot(), relativePath.Replace('/', Path.DirectorySeparatorChar)));
+        var routeAliases = System.Text.RegularExpressions.Regex.Matches(source, "@page \\\"([^\\\"]+)\\\"")
+            .Select(match => match.Groups[1].Value)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var breadcrumbBlock = System.Text.RegularExpressions.Regex.Match(
+            source,
+            "private IReadOnlyList<PageBreadcrumbItem> Breadcrumbs =>(?<body>[\\s\\S]*?)\\];").Groups["body"].Value;
+        var intermediateDestinations = System.Text.RegularExpressions.Regex.Matches(
+            breadcrumbBlock,
+            "new\\(Text\\[\\\"[^\\\"]+\\\"\\], \\\"([^\\\"]+)\\\"\\)")
+            .Select(match => match.Groups[1].Value)
+            .ToArray();
+
+        Assert.NotEmpty(routeAliases);
+        Assert.Equal(["/Dashboard"], intermediateDestinations);
+        Assert.DoesNotContain(intermediateDestinations, routeAliases.Contains);
+    }
+
     [Theory]
     [MemberData(nameof(OperationalWaveInventory))]
     public void OperationalWavePages_DeclareExactTypedAdaptersAndCompletePriorityInventory(
