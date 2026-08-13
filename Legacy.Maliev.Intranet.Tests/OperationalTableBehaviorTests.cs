@@ -1,8 +1,10 @@
+using Bunit;
 using Legacy.Maliev.Intranet.Client.Shared.Components;
+using Microsoft.AspNetCore.Components;
 
 namespace Legacy.Maliev.Intranet.Tests;
 
-public sealed class OperationalTableBehaviorTests
+public sealed class OperationalTableBehaviorTests : BunitContext
 {
     [Fact]
     public void Toggle_keeps_only_one_expanded_record()
@@ -55,6 +57,113 @@ public sealed class OperationalTableBehaviorTests
         Assert.Contains("@media (forced-colors: active)", styles, StringComparison.Ordinal);
         Assert.DoesNotContain("display: block", styles, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain(".mud-", styles, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void Rendered_table_uses_opaque_unique_stable_aria_ids_for_distinct_keys()
+    {
+        var first = new CollidingKey("first");
+        var second = new CollidingKey("second");
+        var cut = RenderTable(
+            [new Row<CollidingKey>(first, "first row"), new Row<CollidingKey>(second, "second row")],
+            row => row.Key);
+
+        Assert.Equal("A", cut.Find("a.operational-table__detail").TagName);
+        Assert.Equal("BUTTON", cut.Find("button.operational-table__toggle").TagName);
+        var firstToggle = cut.FindAll(".operational-table__toggle")[0];
+        firstToggle.Click();
+        var firstId = cut.Find(".operational-table__quick-view").Id;
+
+        cut.FindAll(".operational-table__toggle")[1].Click();
+        var secondId = cut.Find(".operational-table__quick-view").Id;
+
+        cut.FindAll(".operational-table__toggle")[0].Click();
+        var firstIdAfterRefresh = cut.Find(".operational-table__quick-view").Id;
+
+        Assert.NotEqual(firstId, secondId);
+        Assert.Equal(firstId, firstIdAfterRefresh);
+        Assert.Matches("^[A-Za-z][A-Za-z0-9_-]*$", firstId);
+        Assert.Equal(firstId, cut.FindAll(".operational-table__toggle")[0].GetAttribute("aria-controls"));
+    }
+
+    [Fact]
+    public void Rendered_table_does_not_disclose_punctuation_or_whitespace_key_in_aria_id()
+    {
+        const string key = " customer / 41 ! ";
+        var cut = RenderTable([new Row<string>(key, "customer row")], row => row.Key);
+
+        cut.Find(".operational-table__toggle").Click();
+        var quickViewId = cut.Find(".operational-table__quick-view").Id;
+
+        Assert.Matches("^[A-Za-z][A-Za-z0-9_-]*$", quickViewId);
+        Assert.DoesNotContain("customer", quickViewId, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal(quickViewId, cut.Find(".operational-table__toggle").GetAttribute("aria-controls"));
+    }
+
+    [Fact]
+    public void Scoped_styles_cross_the_render_fragment_boundary_and_target_native_action_roots()
+    {
+        var root = FindRepositoryRoot();
+        var styles = File.ReadAllText(Path.Combine(root, "Legacy.Maliev.Intranet.Client.Shared", "Components", "OperationalTable.razor.css"));
+
+        Assert.Contains(".operational-table__scroll ::deep .operational-table__identity", styles, StringComparison.Ordinal);
+        Assert.Contains(".operational-table__scroll ::deep [data-priority=\"supporting\"]", styles, StringComparison.Ordinal);
+        Assert.Contains("button.operational-table__toggle", styles, StringComparison.Ordinal);
+        Assert.Contains("a.operational-table__detail", styles, StringComparison.Ordinal);
+    }
+
+    private IRenderedComponent<OperationalTable<Row<TKey>, TKey>> RenderTable<TKey>(
+        IReadOnlyList<Row<TKey>> rows,
+        Func<Row<TKey>, TKey> keySelector)
+        where TKey : notnull =>
+        Render<OperationalTable<Row<TKey>, TKey>>(parameters => parameters
+            .Add(component => component.Items, rows)
+            .Add(component => component.KeySelector, keySelector)
+            .Add(component => component.HeaderContent, HeaderContent())
+            .Add(component => component.RowContent, RowContent<TKey>())
+            .Add(component => component.QuickViewContent, QuickViewContent<TKey>())
+            .Add(component => component.DetailHref, _ => "/detail")
+            .Add(component => component.DetailAriaLabel, row => $"Open {row.Name}")
+            .Add(component => component.ExpandAriaLabel, row => $"Expand {row.Name}")
+            .Add(component => component.CollapseAriaLabel, row => $"Collapse {row.Name}")
+            .Add(component => component.TableLabel, "Operational records")
+            .Add(component => component.ColumnCount, 2)
+            .Add(component => component.State, new OperationalTableState<TKey>()));
+
+    private static RenderFragment HeaderContent() => builder =>
+    {
+        builder.OpenElement(0, "tr");
+        builder.OpenElement(1, "th");
+        builder.AddContent(2, "Record");
+        builder.CloseElement();
+        builder.OpenElement(3, "th");
+        builder.AddContent(4, "Actions");
+        builder.CloseElement();
+        builder.CloseElement();
+    };
+
+    private static RenderFragment<Row<TKey>> RowContent<TKey>() => row => builder =>
+    {
+        builder.OpenElement(0, "td");
+        builder.AddAttribute(1, "class", "operational-table__identity");
+        builder.AddAttribute(2, "data-priority", "supporting");
+        builder.AddContent(3, row.Name);
+        builder.CloseElement();
+    };
+
+    private static RenderFragment<Row<TKey>> QuickViewContent<TKey>() => row => builder =>
+    {
+        builder.OpenElement(0, "span");
+        builder.AddContent(1, $"Quick view {row.Name}");
+        builder.CloseElement();
+    };
+
+    private sealed record Row<TKey>(TKey Key, string Name);
+
+    private sealed class CollidingKey(string value)
+    {
+        public override string ToString() => "same display";
+        public string Value { get; } = value;
     }
 
     private static string FindRepositoryRoot()

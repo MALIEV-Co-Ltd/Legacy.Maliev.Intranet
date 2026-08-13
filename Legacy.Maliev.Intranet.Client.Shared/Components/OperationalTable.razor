@@ -31,21 +31,26 @@
                         <td class="operational-table__actions">
                             @if (detailHref is not null)
                             {
-                                <MudIconButton ButtonType="ButtonType.Button"
-                                               Class="operational-table__detail"
-                                               Href="@detailHref"
-                                               Icon="@Icons.Material.Outlined.OpenInNew"
-                                               aria-label="@DetailAriaLabel(item)"
-                                               title="@DetailAriaLabel(item)" />
+                                <span class="operational-table__detail-wrap">
+                                    <LegacyLink Href="@detailHref"
+                                                Role="LegacyLinkRole.Inline"
+                                                Class="operational-table__detail"
+                                                StartIcon="@Icons.Material.Outlined.OpenInNew"
+                                                AriaLabel="@DetailAriaLabel(item)">
+                                        <span class="visually-hidden">@DetailAriaLabel(item)</span>
+                                    </LegacyLink>
+                                </span>
                             }
-                            <MudIconButton ButtonType="ButtonType.Button"
-                                           Class="operational-table__toggle"
-                                           Icon="@(isExpanded ? Icons.Material.Outlined.ExpandLess : Icons.Material.Outlined.ExpandMore)"
-                                           aria-label="@(isExpanded ? CollapseAriaLabel(item) : ExpandAriaLabel(item))"
-                                           aria-expanded="@isExpanded.ToString().ToLowerInvariant()"
-                                           aria-controls="@quickViewId"
-                                           title="@(isExpanded ? CollapseAriaLabel(item) : ExpandAriaLabel(item))"
-                                           OnClick="@(() => State.Toggle(key))" />
+                            <span class="operational-table__toggle-wrap">
+                                <MudIconButton ButtonType="ButtonType.Button"
+                                               Class="operational-table__toggle"
+                                               Icon="@(isExpanded ? Icons.Material.Outlined.ExpandLess : Icons.Material.Outlined.ExpandMore)"
+                                               aria-label="@(isExpanded ? CollapseAriaLabel(item) : ExpandAriaLabel(item))"
+                                               aria-expanded="@isExpanded.ToString().ToLowerInvariant()"
+                                               aria-controls="@quickViewId"
+                                               title="@(isExpanded ? CollapseAriaLabel(item) : ExpandAriaLabel(item))"
+                                               OnClick="@(() => State.Toggle(key))" />
+                            </span>
                         </td>
                     </tr>
                     @if (isExpanded)
@@ -75,6 +80,9 @@
     [Parameter, EditorRequired] public int ColumnCount { get; set; }
     [Parameter, EditorRequired] public OperationalTableState<TKey> State { get; set; } = default!;
 
+    private readonly Dictionary<TKey, string> quickViewIds = new(EqualityComparer<TKey>.Default);
+    private long nextQuickViewId;
+
     protected override void OnParametersSet()
     {
         if (ColumnCount < 1)
@@ -83,5 +91,15 @@
         }
     }
 
-    private static string QuickViewId(TKey key) => $"operational-table-quick-view-{key}";
+    private string QuickViewId(TKey key)
+    {
+        if (quickViewIds.TryGetValue(key, out var quickViewId))
+        {
+            return quickViewId;
+        }
+
+        quickViewId = $"operational-table-quick-view-{nextQuickViewId++}";
+        quickViewIds.Add(key, quickViewId);
+        return quickViewId;
+    }
 }

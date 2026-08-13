@@ -1,11 +1,11 @@
 .operational-table__scroll { max-width: 100%; overflow-x: auto; overscroll-behavior-inline: contain; }
 .operational-table { width: 100%; min-width: var(--operational-table-min-width, 48rem); border-collapse: separate; border-spacing: 0; }
-.operational-table__identity { position: sticky; inset-inline-start: 0; background: var(--shadcn-background); }
+.operational-table__scroll ::deep .operational-table__identity { position: sticky; inset-inline-start: 0; background: var(--shadcn-background); }
 .operational-table__actions { position: sticky; inset-inline-end: 0; background: var(--shadcn-background); }
-.operational-table__detail, .operational-table__toggle { width: 2.25rem; height: 2.25rem; }
+.operational-table__detail-wrap ::deep a.operational-table__detail, .operational-table__toggle-wrap ::deep button.operational-table__toggle { box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; padding: 0; width: 2.25rem; height: 2.25rem; }
 .operational-table__quick-view > td { padding: 1rem; background: var(--shadcn-muted); }
 
-@media (max-width: 720px) { .operational-table [data-priority="supporting"] { display: none; } }
-@media (max-width: 720px), (pointer: coarse) { .operational-table__detail, .operational-table__toggle { width: 2.75rem; height: 2.75rem; } }
+@media (max-width: 720px) { .operational-table__scroll ::deep [data-priority="supporting"] { display: none; } }
+@media (max-width: 720px), (pointer: coarse) { .operational-table__detail-wrap ::deep a.operational-table__detail, .operational-table__toggle-wrap ::deep button.operational-table__toggle { width: 2.75rem; height: 2.75rem; } }
 @media (prefers-reduced-motion: reduce) { .operational-table__scroll { scroll-behavior: auto; } }
 @media (forced-colors: active) { .operational-table__actions, .operational-table__quick-view > td { border: 1px solid CanvasText; } }
