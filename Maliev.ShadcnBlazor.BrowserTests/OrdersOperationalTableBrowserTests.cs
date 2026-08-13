@@ -23,6 +23,7 @@ public sealed class OrdersOperationalTableBrowserTests(
         await page.GotoAsync(new Uri(server.BaseUri, "sales/orders").AbsoluteUri);
         await page.Locator(".operational-table").First.WaitForAsync();
 
+        Assert.Equal("/Dashboard", await page.GetByRole(AriaRole.Link, new() { Name = "Operations" }).GetAttributeAsync("href"));
         Assert.Equal(3, await page.Locator("table.operational-table").CountAsync());
         Assert.Equal(3, await page.Locator("table.operational-table caption").CountAsync());
         Assert.Equal(0, await page.Locator(".orders-table, [data-label]").CountAsync());

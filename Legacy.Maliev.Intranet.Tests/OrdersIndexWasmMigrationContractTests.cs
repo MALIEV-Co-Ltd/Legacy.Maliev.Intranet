@@ -42,6 +42,8 @@ public sealed class OrdersIndexWasmMigrationContractTests
         Assert.Contains("HandleToolbarRequestAsync", page, StringComparison.Ordinal);
         Assert.Contains("<ProgressiveSkeleton", page, StringComparison.Ordinal);
         Assert.Contains("<PageBreadcrumbs", page, StringComparison.Ordinal);
+        Assert.Contains("new(Text[\"Operations\"], \"/Dashboard\")", page, StringComparison.Ordinal);
+        Assert.DoesNotContain("new(Text[\"Operations\"], \"/\")", page, StringComparison.Ordinal);
         Assert.Contains("<OperationalTable TItem=\"OrderListItem\"", page, StringComparison.Ordinal);
         Assert.Contains("TKey=\"int\"", page, StringComparison.Ordinal);
         Assert.Contains("OperationalTableState<int>", page, StringComparison.Ordinal);
