@@ -9,6 +9,7 @@
 <PageTitle>@Text["PageTitle"]</PageTitle>
 
 <div class="mlv-module-shell orders-module-shell">
+    <PageBreadcrumbs Items="@Breadcrumbs" />
     <ModuleHeader Title="@Text["Orders"]" Subtitle="@Text["PageSubtitle"]">
         <PrimaryButton Icon="@Icons.Material.Outlined.Add" Href="/Orders/Create">
             @Text["CreateOrder"]
@@ -57,47 +58,64 @@
                             }
                             else
                             {
-                                <div class="orders-table-scroll @(section.ShowCount ? "orders-working-set" : "")" tabindex="0" aria-label="@section.Title">
-                                    <MudSimpleTable Class="mlv-table orders-table" Dense="true" Hover="true">
-                                        <caption class="visually-hidden">@section.Title</caption>
-                                        <thead>
+                                <div class="@(section.ShowCount ? "orders-working-set" : null)">
+                                    <OperationalTable TItem="OrderListItem"
+                                                      TKey="int"
+                                                      Items="@section.Items"
+                                                      KeySelector="@(order => TableKey(section.Kind, order.Id))"
+                                                      TableLabel="@section.Title"
+                                                      ColumnCount="11"
+                                                      State="@tableState"
+                                                      DetailHref="@(order => $"/Orders/View?id={order.Id}")"
+                                                      DetailAriaLabel="@(order => Text["ViewOrder", order.Id])"
+                                                      ExpandAriaLabel="@(order => Text["ExpandOrder", order.Id])"
+                                                      CollapseAriaLabel="@(order => Text["CollapseOrder", order.Id])">
+                                        <HeaderContent>
                                             <tr>
-                                                <th>@Text["Id"]</th>
-                                                <th>@Text["Customer"]</th>
-                                                <th>@Text["Process"]</th>
-                                                <th>@Text["Name"]</th>
-                                                <th>@Text["Quantity"]</th>
-                                                <th>@Text["Manufactured"]</th>
-                                                <th>@Text["Remaining"]</th>
-                                                <th>@Text["Employee"]</th>
-                                                <th>@Text["Subtotal"]</th>
-                                                <th>@Text["Promised"]</th>
+                                                <th class="operational-table__identity" data-priority="essential">@Text["Id"]</th>
+                                                <th data-priority="essential">@Text["Customer"]</th>
+                                                <th data-priority="essential">@Text["Name"]</th>
+                                                <th data-priority="essential">@Text["Remaining"]</th>
+                                                <th data-priority="essential">@Text["Promised"]</th>
+                                                <th data-priority="supporting">@Text["Process"]</th>
+                                                <th data-priority="supporting">@Text["Quantity"]</th>
+                                                <th data-priority="supporting">@Text["Manufactured"]</th>
+                                                <th data-priority="supporting">@Text["Employee"]</th>
+                                                <th data-priority="supporting">@Text["Subtotal"]</th>
+                                                <th class="operational-table__actions-heading"><span class="visually-hidden">@Text["Actions"]</span></th>
                                             </tr>
-                                        </thead>
-                                        <tbody>
-                                            @foreach (var order in section.Items)
-                                            {
-                                                <tr>
-                                                    <td data-label="@Text["Id"]" class="mlv-mono"><LegacyLink Href="@($"/Orders/View?id={order.Id}")" Role="LegacyLinkRole.Record" AriaLabel="@Text["OrderNumber", order.Id]">@order.Id</LegacyLink></td>
-                                                    <td data-label="@Text["Customer"]">@ValueOrFallback(order.CustomerId)</td>
-                                                    <td data-label="@Text["Process"]">@ProcessName(order.ProcessId)</td>
-                                                    <td data-label="@Text["Name"]">
-                                                        @ValueOrFallback(order.Name)
-                                                        @if (!order.AllowSocialMedia)
-                                                        {
-                                                            <span class="orders-confidential">@Text["Confidential"]</span>
-                                                        }
-                                                    </td>
-                                                    <td data-label="@Text["Quantity"]">@order.Quantity</td>
-                                                    <td data-label="@Text["Manufactured"]">@order.Manufactured</td>
-                                                    <td data-label="@Text["Remaining"]">@ValueOrFallback(order.Remaining)</td>
-                                                    <td data-label="@Text["Employee"]">@EmployeeName(order.EmployeeId)</td>
-                                                    <td data-label="@Text["Subtotal"]" class="mlv-mono">@FormatAmount(order.Subtotal)</td>
-                                                    <td data-label="@Text["Promised"]">@FormatDate(order.PromisedDate)</td>
-                                                </tr>
-                                            }
-                                        </tbody>
-                                    </MudSimpleTable>
+                                        </HeaderContent>
+                                        <RowContent Context="order">
+                                            <td class="operational-table__identity orders-id mlv-mono" data-priority="essential">@order.Id</td>
+                                            <td class="orders-id" data-priority="essential">@ValueOrFallback(order.CustomerId)</td>
+                                            <td class="orders-name" data-priority="essential" title="@ValueOrFallback(order.Name)">
+                                                <span>@ValueOrFallback(order.Name)</span>
+                                                @if (!order.AllowSocialMedia)
+                                                {
+                                                    <span class="orders-confidential">@Text["Confidential"]</span>
+                                                }
+                                            </td>
+                                            <td class="orders-quantity" data-priority="essential">@ValueOrFallback(order.Remaining)</td>
+                                            <td class="orders-date" data-priority="essential">@FormatDate(order.PromisedDate)</td>
+                                            <td data-priority="supporting">@ProcessName(order.ProcessId)</td>
+                                            <td class="orders-quantity" data-priority="supporting">@order.Quantity</td>
+                                            <td class="orders-quantity" data-priority="supporting">@order.Manufactured</td>
+                                            <td data-priority="supporting">@EmployeeName(order.EmployeeId)</td>
+                                            <td class="orders-money mlv-mono" data-priority="supporting">@FormatAmount(order.Subtotal)</td>
+                                        </RowContent>
+                                        <QuickViewContent Context="order">
+                                            <dl class="orders-quick-view">
+                                                <div><dt>@Text["Process"]</dt><dd>@ProcessName(order.ProcessId)</dd></div>
+                                                <div><dt>@Text["Quantity"]</dt><dd class="orders-quantity">@order.Quantity</dd></div>
+                                                <div><dt>@Text["Manufactured"]</dt><dd class="orders-quantity">@order.Manufactured</dd></div>
+                                                <div><dt>@Text["Employee"]</dt><dd>@EmployeeName(order.EmployeeId)</dd></div>
+                                                <div><dt>@Text["Subtotal"]</dt><dd class="orders-money mlv-mono">@FormatAmount(order.Subtotal)</dd></div>
+                                                <div><dt>@Text["SocialMedia"]</dt><dd>@(order.AllowSocialMedia ? Text["SocialMediaAllowed"] : Text["Confidential"])</dd></div>
+                                                <div><dt>@Text["Created"]</dt><dd class="orders-date">@FormatDate(order.CreatedDate)</dd></div>
+                                                <div><dt>@Text["Modified"]</dt><dd class="orders-date">@FormatDate(order.ModifiedDate)</dd></div>
+                                            </dl>
+                                        </QuickViewContent>
+                                    </OperationalTable>
                                 </div>
                             }
                         </section>
@@ -135,6 +153,15 @@
     private bool loading;
     private OrderListSort currentSort = OrderListSort.OrderCreatedDate_Descending;
     private readonly LatestRequestGate loadGate = new();
+    private readonly OperationalTableState<int> tableState = new();
+    private readonly Dictionary<(OrderSectionKind Section, int OrderId), int> tableKeys = [];
+    private int nextTableKey;
+
+    private IReadOnlyList<PageBreadcrumbItem> Breadcrumbs =>
+    [
+        new(Text["Operations"], "/"),
+        new(Text["Orders"]),
+    ];
 
     private ListToolbarState<OrderListSort> ToolbarValue => new(Search, currentSort, Size);
     private static ListToolbarState<OrderListSort> ToolbarDefaults =>
@@ -149,9 +176,9 @@
 
     private IReadOnlyList<OrderSection> Sections =>
     [
-        new(Text["AssignedToMe"], AssignedOrders, true),
-        new(Text["AwaitingAssignment"], UnassignedOrders, true),
-        new(Text["AllOrders"], Page?.Items ?? [], false),
+        new(OrderSectionKind.Assigned, Text["AssignedToMe"], AssignedOrders, true),
+        new(OrderSectionKind.AwaitingAssignment, Text["AwaitingAssignment"], UnassignedOrders, true),
+        new(OrderSectionKind.All, Text["AllOrders"], Page?.Items ?? [], false),
     ];
 
     protected override async Task OnParametersSetAsync()
@@ -169,6 +196,9 @@
         using var lease = loadGate.Begin();
         if (lease.IsCurrent)
         {
+            tableState.Clear();
+            tableKeys.Clear();
+            nextTableKey = 0;
             loading = true;
             error = null;
             Page = null;
@@ -287,6 +317,7 @@
 
     private Task NavigateAsync(int index, string? search, OrderListSort sort, int size, bool replace = false)
     {
+        tableState.Clear();
         Navigation.NavigateTo($"/Orders/Index?search={Uri.EscapeDataString(search ?? string.Empty)}&sort={sort}&index={index}&size={Math.Clamp(size, 1, 250)}", replace: replace);
         return Task.CompletedTask;
     }
@@ -302,5 +333,29 @@
         LegacyPresentation.FormatCalendarDate(value, CultureInfo.CurrentCulture, "-");
     private static string SectionId(string title) => $"orders-{title.Replace(' ', '-').ToLowerInvariant()}";
 
-    private sealed record OrderSection(string Title, IReadOnlyList<OrderListItem> Items, bool ShowCount);
+    private int TableKey(OrderSectionKind section, int orderId)
+    {
+        var identity = (section, orderId);
+        if (tableKeys.TryGetValue(identity, out var key))
+        {
+            return key;
+        }
+
+        key = nextTableKey++;
+        tableKeys.Add(identity, key);
+        return key;
+    }
+
+    private enum OrderSectionKind
+    {
+        Assigned,
+        AwaitingAssignment,
+        All,
+    }
+
+    private sealed record OrderSection(
+        OrderSectionKind Kind,
+        string Title,
+        IReadOnlyList<OrderListItem> Items,
+        bool ShowCount);
 }

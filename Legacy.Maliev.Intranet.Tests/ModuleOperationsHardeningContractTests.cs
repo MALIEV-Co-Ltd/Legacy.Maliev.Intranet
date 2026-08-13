@@ -68,7 +68,7 @@ public sealed class ModuleOperationsHardeningContractTests
     {
         var source = Read(FindRoot(), "Legacy.Maliev.Intranet.Client.Features.Orders", "Pages", "Orders.razor");
         Assert.Contains("<ModuleHeader", source, StringComparison.Ordinal);
-        Assert.Contains("<caption class=\"visually-hidden\">@section.Title</caption>", source, StringComparison.Ordinal);
+        Assert.Contains("TableLabel=\"@section.Title\"", source, StringComparison.Ordinal);
         Assert.Contains("operations-status-pill", Read(FindRoot(), "Legacy.Maliev.Intranet.Client.Features.Orders", "Pages", "OrderDetail.razor"), StringComparison.Ordinal);
     }
 

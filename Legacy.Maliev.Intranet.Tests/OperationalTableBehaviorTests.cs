@@ -118,6 +118,23 @@ public sealed class OperationalTableBehaviorTests : BunitContext
     }
 
     [Fact]
+    public void Tables_sharing_state_rerender_when_another_table_changes_the_expanded_record()
+    {
+        var cut = Render<SharedStateOperationalTables>();
+        var toggles = cut.FindAll("button.operational-table__toggle");
+
+        toggles[0].Click();
+        Assert.Equal("Quick view first", cut.Find(".operational-table__quick-view").TextContent);
+
+        cut.FindAll("button.operational-table__toggle")[1].Click();
+        Assert.Single(cut.FindAll(".operational-table__quick-view"));
+        Assert.Equal("Quick view second", cut.Find(".operational-table__quick-view").TextContent);
+
+        cut.FindAll("button.operational-table__toggle")[1].Click();
+        Assert.Empty(cut.FindAll(".operational-table__quick-view"));
+    }
+
+    [Fact]
     public void Scoped_styles_cross_the_render_fragment_boundary_and_target_native_action_roots()
     {
         var root = FindRepositoryRoot();
@@ -258,6 +275,35 @@ public sealed class OperationalTableBehaviorTests : BunitContext
         };
 
         private sealed record AlternateRow(int Key, string Name);
+    }
+
+    private sealed class SharedStateOperationalTables : ComponentBase
+    {
+        private readonly OperationalTableState<int> state = new();
+
+        protected override void BuildRenderTree(RenderTreeBuilder builder)
+        {
+            AddTable(builder, new Row<int>(1, "first"));
+            AddTable(builder, new Row<int>(2, "second"));
+        }
+
+        private void AddTable(RenderTreeBuilder builder, Row<int> row)
+        {
+            builder.OpenComponent<OperationalTable<Row<int>, int>>(0);
+            builder.AddAttribute(1, nameof(OperationalTable<Row<int>, int>.Items), new[] { row });
+            builder.AddAttribute(2, nameof(OperationalTable<Row<int>, int>.KeySelector), (Func<Row<int>, int>)(item => item.Key));
+            builder.AddAttribute(3, nameof(OperationalTable<Row<int>, int>.HeaderContent), HeaderContent());
+            builder.AddAttribute(4, nameof(OperationalTable<Row<int>, int>.RowContent), RowContent<int>());
+            builder.AddAttribute(5, nameof(OperationalTable<Row<int>, int>.QuickViewContent), QuickViewContent<int>());
+            builder.AddAttribute(6, nameof(OperationalTable<Row<int>, int>.DetailHref), (Func<Row<int>, string?>)(_ => "/detail"));
+            builder.AddAttribute(7, nameof(OperationalTable<Row<int>, int>.DetailAriaLabel), (Func<Row<int>, string>)(item => $"Open {item.Name}"));
+            builder.AddAttribute(8, nameof(OperationalTable<Row<int>, int>.ExpandAriaLabel), (Func<Row<int>, string>)(item => $"Expand {item.Name}"));
+            builder.AddAttribute(9, nameof(OperationalTable<Row<int>, int>.CollapseAriaLabel), (Func<Row<int>, string>)(item => $"Collapse {item.Name}"));
+            builder.AddAttribute(10, nameof(OperationalTable<Row<int>, int>.TableLabel), $"{row.Name} records");
+            builder.AddAttribute(11, nameof(OperationalTable<Row<int>, int>.ColumnCount), 2);
+            builder.AddAttribute(12, nameof(OperationalTable<Row<int>, int>.State), state);
+            builder.CloseComponent();
+        }
     }
 
     private static string FindRepositoryRoot()

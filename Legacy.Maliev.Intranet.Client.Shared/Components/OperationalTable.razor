@@ -1,5 +1,6 @@
 @typeparam TItem
 @typeparam TKey where TKey : notnull
+@implements IDisposable
 
 <div class="operational-table__scroll">
     <table class="operational-table">
@@ -83,12 +84,24 @@
     private readonly string quickViewIdPrefix = OperationalTableIdNamespace.Allocate();
     private readonly Dictionary<TKey, string> quickViewIds = new(EqualityComparer<TKey>.Default);
     private long nextQuickViewId;
+    private OperationalTableState<TKey>? subscribedState;
 
     protected override void OnParametersSet()
     {
         if (ColumnCount < 1)
         {
             throw new ArgumentOutOfRangeException(nameof(ColumnCount), "ColumnCount must be at least one.");
+        }
+
+        if (!ReferenceEquals(subscribedState, State))
+        {
+            if (subscribedState is not null)
+            {
+                subscribedState.Changed -= HandleStateChanged;
+            }
+
+            subscribedState = State;
+            subscribedState.Changed += HandleStateChanged;
         }
     }
 
@@ -102,5 +115,16 @@
         quickViewId = $"{quickViewIdPrefix}-{nextQuickViewId++}";
         quickViewIds.Add(key, quickViewId);
         return quickViewId;
+    }
+
+    private void HandleStateChanged() => _ = InvokeAsync(StateHasChanged);
+
+    public void Dispose()
+    {
+        if (subscribedState is not null)
+        {
+            subscribedState.Changed -= HandleStateChanged;
+            subscribedState = null;
+        }
     }
 }

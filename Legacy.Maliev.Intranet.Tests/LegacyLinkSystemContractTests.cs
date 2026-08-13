@@ -94,7 +94,6 @@ public sealed class LegacyLinkSystemContractTests
             E("Legacy.Maliev.Intranet.Client.Features.Catalog/Pages/MaterialDetail.razor", authorize, "Href=\"/Materials/Index\"", 2, "Role=\"LegacyLinkRole.Navigation\"", "StartIcon=\"@Icons.Material.Filled.ArrowBack\"", "AriaLabel=\"@Text[\"Back\"]\"", "@Text[\"Back\"]</LegacyLink>"),
             E("Legacy.Maliev.Intranet.Client.Features.Catalog/Pages/MaterialDetail.razor", authorize, "Href=\"/Materials/Index\"", 1, "Role=\"LegacyLinkRole.Navigation\"", "Disabled=\"@submitting\"", "AriaLabel=\"@Text[\"BackToMaterials\"]\"", "@Text[\"BackToMaterials\"]</LegacyLink>"),
 
-            E("Legacy.Maliev.Intranet.Client.Features.Orders/Pages/Orders.razor", authorize, "/Orders/View?id={order.Id}", 1, "Role=\"LegacyLinkRole.Record\"", "AriaLabel=\"@Text[\"OrderNumber\", order.Id]\"", "@order.Id</LegacyLink>"),
             E("Legacy.Maliev.Intranet.Client.Features.Orders/Pages/OrderCreate.razor", authorize, "Href=\"/Orders/Index\"", 1, "Role=\"LegacyLinkRole.Navigation\"", "AriaLabel=\"@Text[\"BackToOrders\"]\"", "@Text[\"BackToOrders\"]</LegacyLink>"),
             E("Legacy.Maliev.Intranet.Client.Features.Orders/Pages/OrderCreate.razor", authorize, "/Orders/View?id={orderId}", 1, "Role=\"LegacyLinkRole.Record\"", "AriaLabel=\"@($\"{Text[\"ViewOrder\"]} {orderId}\")\"", "@Text[\"ViewOrder\"]</LegacyLink>"),
             E("Legacy.Maliev.Intranet.Client.Features.Orders/Pages/OrderDetail.razor", authorize, "Href=\"/Orders/Index\"", 1, "Role=\"LegacyLinkRole.Navigation\"", "AriaLabel=\"@Text[\"BackToOrders\"]\"", "@Text[\"BackToOrders\"]</LegacyLink>"),
@@ -143,6 +142,11 @@ public sealed class LegacyLinkSystemContractTests
                 expectation.Count,
                 LegacyLinkSourceContracts.CountExpectedLinks(source, expectation.Href, expectation.LocalFragments));
         }
+
+        var orders = ReadSource("Legacy.Maliev.Intranet.Client.Features.Orders/Pages/Orders.razor");
+        Assert.Contains("<OperationalTable", orders, StringComparison.Ordinal);
+        Assert.Contains("DetailHref=\"@(order => $\"/Orders/View?id={order.Id}\")\"", orders, StringComparison.Ordinal);
+        Assert.Contains("DetailAriaLabel=\"@(order => Text[\"ViewOrder\", order.Id])\"", orders, StringComparison.Ordinal);
 
         var quotationIndex = ReadSource("Legacy.Maliev.Intranet.Client.Features.Quotations/Pages/Quotations/Index.razor");
         Assert.True(LegacyLinkSourceContracts.MatchesExpectedBuilderLink(
