@@ -142,6 +142,8 @@ public sealed class OperationalTableBehaviorTests : BunitContext
 
         Assert.Contains(".operational-table__scroll ::deep .operational-table__identity", styles, StringComparison.Ordinal);
         Assert.Contains(".operational-table__scroll ::deep [data-priority=\"supporting\"]", styles, StringComparison.Ordinal);
+        Assert.Contains("contain: inline-size layout", styles, StringComparison.Ordinal);
+        Assert.Contains("min-width: 0", styles, StringComparison.Ordinal);
         Assert.Contains("button.operational-table__toggle", styles, StringComparison.Ordinal);
         Assert.Contains("a.operational-table__detail", styles, StringComparison.Ordinal);
     }

@@ -36,4 +36,9 @@
   <data name="RequestCreatedDate_Descending" xml:space="preserve"><value>Created newest first</value></data>
   <data name="RequestModifiedDate_Ascending" xml:space="preserve"><value>Modified oldest first</value></data>
   <data name="RequestModifiedDate_Descending" xml:space="preserve"><value>Modified newest first</value></data>
+  <data name="Operations" xml:space="preserve"><value>Operations</value></data>
+  <data name="Actions" xml:space="preserve"><value>Actions</value></data>
+  <data name="ViewQuotationRequest" xml:space="preserve"><value>View quotation request {0}</value></data>
+  <data name="ExpandQuotationRequest" xml:space="preserve"><value>Expand quotation request {0}</value></data>
+  <data name="CollapseQuotationRequest" xml:space="preserve"><value>Collapse quotation request {0}</value></data>
 </root>

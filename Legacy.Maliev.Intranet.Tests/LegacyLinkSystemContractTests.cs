@@ -76,12 +76,10 @@ public sealed class LegacyLinkSystemContractTests
             E("Legacy.Maliev.Intranet.Client/Components/Dashboard/DashboardPanel.razor", null, "Href=\"@NavigateTo\"", 1, "Role=\"LegacyLinkRole.Navigation\"", "AriaLabel=\"@LinkText\"", "@LinkText"),
             E("Legacy.Maliev.Intranet.Client/Components/Dashboard/DashboardMetricCard.razor", null, "Href=\"@NavigateTo\"", 1, "Role=\"LegacyLinkRole.Navigation\"", "AriaLabel=\"@LinkText\"", "dashboard-metric-link", "@LinkText"),
 
-            E("Legacy.Maliev.Intranet.Client.Features.Customers/Pages/Customers.razor", authorize, "/Customers/View?id={context.Id}", 1, "Role=\"LegacyLinkRole.Record\"", "AriaLabel=\"@($\"{Text[\"View\"]} {context.Id}\")\"", "@Text[\"View\"]</LegacyLink>"),
             E("Legacy.Maliev.Intranet.Client.Features.Customers/Pages/CustomerView.razor", authorize, "Href=\"/Customers/Index\"", 2, "Role=\"LegacyLinkRole.Navigation\"", "AriaLabel=\"@Text[\"BackToCustomers\"]\"", "@Text[\"BackToCustomers\"]</LegacyLink>"),
             E("Legacy.Maliev.Intranet.Client.Features.Customers/Components/CustomerOverview.razor", null, "mailto:{Customer.Email}", 1, "Role=\"LegacyLinkRole.Inline\"", "@Customer.Email"),
             E("Legacy.Maliev.Intranet.Client.Features.Customers/Pages/CustomerCreate.razor", authorize, "Href=\"/Customers/Index\"", 1, "Role=\"LegacyLinkRole.Navigation\"", "Disabled=\"@submitting\"", "AriaLabel=\"@Text[\"Cancel\"]\"", "@Text[\"Cancel\"]</LegacyLink>"),
 
-            E("Legacy.Maliev.Intranet.Client.Features.Employees/Pages/Employees.razor", authorize, "/Employees/View?id={context.Id}", 1, "Role=\"LegacyLinkRole.Record\"", "AriaLabel=\"@($\"{Text[\"View\"]} {context.Id}\")\"", "@Text[\"View\"]</LegacyLink>"),
             E("Legacy.Maliev.Intranet.Client.Features.Employees/Pages/EmployeeView.razor", authorize, "Href=\"/Employees/Index\"", 2, "Role=\"LegacyLinkRole.Navigation\"", "AriaLabel=\"@Text[\"BackToEmployees\"]\"", "@Text[\"BackToEmployees\"]</LegacyLink>"),
             E("Legacy.Maliev.Intranet.Client.Features.Employees/Pages/EmployeeCreate.razor", authorize, "Href=\"/Employees/Index\"", 1, "Role=\"LegacyLinkRole.Navigation\"", "Disabled=\"@submitting\"", "AriaLabel=\"@Text[\"Cancel\"]\"", "@Text[\"Cancel\"]</LegacyLink>"),
             E("Legacy.Maliev.Intranet.Client.Features.Employees/Pages/EmployeeForgotPassword.razor", anonymous, "Href=\"/Login\"", 1, "Role=\"LegacyLinkRole.Navigation\"", "StartIcon=\"@Icons.Material.Filled.ArrowBack\"", "AriaLabel=\"@Text[\"BackToLogin\"]\"", "@Text[\"BackToLogin\"]</LegacyLink>"),
@@ -118,10 +116,8 @@ public sealed class LegacyLinkSystemContractTests
             E("Legacy.Maliev.Intranet.Client.Features.Accounting/Pages/NetProfitChart.razor", authorize, "Href=\"/Finances/Index\"", 1, "Role=\"LegacyLinkRole.Navigation\"", "AriaLabel=\"@Text[\"Back\"]\"", "@Text[\"Back\"]</LegacyLink>"),
             E("Legacy.Maliev.Intranet.Client.Features.Accounting/Pages/YearlyActivityChart.razor", authorize, "Href=\"/Finances/Index\"", 1, "Role=\"LegacyLinkRole.Navigation\"", "AriaLabel=\"@Text[\"Back\"]\"", "@Text[\"Back\"]</LegacyLink>"),
 
-            E("Legacy.Maliev.Intranet.Client.Features.Quotations/Pages/QuotationRequests/Index.razor", authorize, "/QuotationRequests/View?id={context.Id}", 1, "Role=\"LegacyLinkRole.Record\"", "AriaLabel=\"@($\"{Text[\"Id\"]} {context.Id}\")\"", "@context.Id</LegacyLink>"),
             E("Legacy.Maliev.Intranet.Client.Features.Quotations/Pages/QuotationRequests/View.razor", authorize, "Href=\"/QuotationRequests/Index\"", 2, "Role=\"LegacyLinkRole.Navigation\"", "AriaLabel=\"@Text[\"Back\"]\"", "@Text[\"Back\"]</LegacyLink>"),
             E("Legacy.Maliev.Intranet.Client.Features.Quotations/Pages/QuotationRequests/View.razor", authorize, "Href=\"@file.Uri.ToString()\"", 1, "Role=\"LegacyLinkRole.External\"", "Target=\"_blank\"", "Rel=\"noopener\"", "@file.ObjectName"),
-            E("Legacy.Maliev.Intranet.Client.Features.Quotations/Pages/Quotations/Index.razor", authorize, "/Quotations/View?id={quotation.Id}", 1, "Role=\"LegacyLinkRole.Record\"", "AriaLabel=\"@($\"{Text[\"Id\"]} {quotation.Id}\")\"", "@quotation.Id</LegacyLink>"),
             E("Legacy.Maliev.Intranet.Client.Features.Quotations/Pages/Quotations/View.razor", authorize, "Href=\"/Quotations/Index\"", 2, "Role=\"LegacyLinkRole.Navigation\"", "AriaLabel=\"@Text[\"Back\"]\"", "@Text[\"Back\"]</LegacyLink>"),
             E("Legacy.Maliev.Intranet.Client.Features.Quotations/Pages/Quotations/View.razor", authorize, "/Customers/View?id={page.Customer.Id}", 1, "Role=\"LegacyLinkRole.Record\"", "AriaLabel=\"@(page.Customer.FullName)\"", "@(page.Customer.FullName)</LegacyLink>"),
             E("Legacy.Maliev.Intranet.Client.Features.Quotations/Pages/Quotations/View.razor", authorize, "/Invoices/View?id={page.Invoice.Id}", 1, "Role=\"LegacyLinkRole.Record\"", "AriaLabel=\"@($\"{Text[\"Invoice\"]} {page.Invoice.Number}\")\"", "@(page.Invoice.Number)</LegacyLink>"),
@@ -147,6 +143,22 @@ public sealed class LegacyLinkSystemContractTests
         Assert.Contains("<OperationalTable", orders, StringComparison.Ordinal);
         Assert.Contains("DetailHref=\"@(order => $\"/Orders/View?id={order.Id}\")\"", orders, StringComparison.Ordinal);
         Assert.Contains("DetailAriaLabel=\"@(order => Text[\"ViewOrder\", order.Id])\"", orders, StringComparison.Ordinal);
+
+        var extractedOperationalLinks = new[]
+        {
+            ("Legacy.Maliev.Intranet.Client.Features.Customers/Pages/Customers.razor", "/Customers/View?id={context.Id}", "ViewCustomer"),
+            ("Legacy.Maliev.Intranet.Client.Features.Employees/Pages/Employees.razor", "/Employees/View?id={context.Id}", "ViewEmployee"),
+            ("Legacy.Maliev.Intranet.Client.Features.Quotations/Pages/QuotationRequests/Index.razor", "/QuotationRequests/View?id={context.Id}", "ViewQuotationRequest"),
+            ("Legacy.Maliev.Intranet.Client.Features.Quotations/Pages/Quotations/Index.razor", "/Quotations/View?id={quotation.Id}", "ViewQuotation"),
+        };
+        foreach (var (path, href, label) in extractedOperationalLinks)
+        {
+            var source = ReadSource(path);
+            Assert.Contains("<OperationalTable", source, StringComparison.Ordinal);
+            Assert.Contains(href, source, StringComparison.Ordinal);
+            Assert.Contains($"DetailAriaLabel=\"@(", source, StringComparison.Ordinal);
+            Assert.Contains($"Text[\"{label}\"", source, StringComparison.Ordinal);
+        }
 
         var quotationIndex = ReadSource("Legacy.Maliev.Intranet.Client.Features.Quotations/Pages/Quotations/Index.razor");
         Assert.True(LegacyLinkSourceContracts.MatchesExpectedBuilderLink(

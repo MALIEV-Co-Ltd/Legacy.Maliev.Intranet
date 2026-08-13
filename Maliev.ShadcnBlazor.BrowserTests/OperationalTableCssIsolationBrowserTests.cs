@@ -51,6 +51,45 @@ public sealed class OperationalTableCssIsolationBrowserTests(PlaywrightFixture p
         Assert.Equal(44, await coarsePage.Locator("button.operational-table__toggle").EvaluateAsync<double>("element => element.getBoundingClientRect().height"));
     }
 
+    [Theory]
+    [InlineData(1280)]
+    [InlineData(768)]
+    [InlineData(390)]
+    [InlineData(320)]
+    public async Task Scroll_container_owns_table_overflow_without_expanding_the_document(int width)
+    {
+        var stylesheet = ReadCompiledOperationalTableStylesheet();
+        var scope = Regex.Match(stylesheet, @"\[b-(?<scope>[a-z0-9]+)\]").Groups["scope"].Value;
+        await using var context = await playwright.Browser.NewContextAsync(new()
+        {
+            ViewportSize = new() { Width = width, Height = 800 },
+        });
+        var page = await context.NewPageAsync();
+        await SetTableAsync(page, stylesheet, scope);
+
+        var geometry = await page.Locator(".operational-table__scroll").EvaluateAsync<System.Text.Json.JsonElement>("""
+            node => ({
+                documentClientWidth: document.documentElement.clientWidth,
+                documentScrollWidth: document.documentElement.scrollWidth,
+                clientWidth: node.clientWidth,
+                scrollWidth: node.scrollWidth,
+                overflowX: getComputedStyle(node).overflowX
+            })
+            """);
+        Assert.Equal(geometry.GetProperty("documentClientWidth").GetInt32(), geometry.GetProperty("documentScrollWidth").GetInt32());
+        Assert.Contains(geometry.GetProperty("overflowX").GetString(), new[] { "auto", "scroll" });
+        Assert.Equal(width <= 768, geometry.GetProperty("scrollWidth").GetInt32() > geometry.GetProperty("clientWidth").GetInt32());
+
+        var container = page.Locator(".operational-table__scroll");
+        await container.EvaluateAsync("node => node.scrollLeft = node.scrollWidth");
+        Assert.True(await page.Locator(".operational-table__actions").IsVisibleAsync());
+        if (width <= 720)
+        {
+            Assert.Equal(44, await page.Locator("a.operational-table__detail").EvaluateAsync<double>("node => node.getBoundingClientRect().width"));
+            Assert.Equal(44, await page.Locator("button.operational-table__toggle").EvaluateAsync<double>("node => node.getBoundingClientRect().height"));
+        }
+    }
+
     private static async Task SetTableAsync(IPage page, string stylesheet, string scope) =>
         await page.SetContentAsync($"""
             <style>{stylesheet}</style>

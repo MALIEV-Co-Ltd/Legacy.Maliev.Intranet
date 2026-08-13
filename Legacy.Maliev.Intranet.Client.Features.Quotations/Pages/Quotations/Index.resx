@@ -52,4 +52,8 @@
   <data name="QuotationCreatedDate_Descending" xml:space="preserve"><value>Created date descending</value></data>
   <data name="QuotationModifiedDate_Ascending" xml:space="preserve"><value>Modified date ascending</value></data>
   <data name="QuotationModifiedDate_Descending" xml:space="preserve"><value>Modified date descending</value></data>
+  <data name="Operations" xml:space="preserve"><value>Operations</value></data>
+  <data name="ViewQuotation" xml:space="preserve"><value>View quotation {0}</value></data>
+  <data name="ExpandQuotation" xml:space="preserve"><value>Expand quotation {0}</value></data>
+  <data name="CollapseQuotation" xml:space="preserve"><value>Collapse quotation {0}</value></data>
 </root>

@@ -41,4 +41,8 @@
   <data name="CustomerModifiedDate_Descending" xml:space="preserve"><value>อัปเดตล่าสุด</value></data>
   <data name="SortByField" xml:space="preserve"><value>เรียงตาม{0}</value></data>
   <data name="CustomersTable" xml:space="preserve"><value>ตารางข้อมูลลูกค้า</value></data>
+  <data name="Operations" xml:space="preserve"><value>งานปฏิบัติการ</value></data>
+  <data name="ViewCustomer" xml:space="preserve"><value>เปิดข้อมูลลูกค้า {0}</value></data>
+  <data name="ExpandCustomer" xml:space="preserve"><value>ขยายรายละเอียดลูกค้า {0}</value></data>
+  <data name="CollapseCustomer" xml:space="preserve"><value>ย่อรายละเอียดลูกค้า {0}</value></data>
 </root>

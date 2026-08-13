@@ -24,11 +24,15 @@ public sealed class EmployeesWasmMigrationContractTests
         Assert.Contains("[Authorize", page, StringComparison.Ordinal);
         Assert.Contains("EmployeeId_Descending", page, StringComparison.Ordinal);
         Assert.Contains("/bff/employees", page, StringComparison.Ordinal);
-        Assert.Contains("MudTable", page, StringComparison.Ordinal);
+        Assert.Contains("<OperationalTable", page, StringComparison.Ordinal);
+        Assert.Contains("<PageBreadcrumbs", page, StringComparison.Ordinal);
+        Assert.Contains("/Employees/View?id=", page, StringComparison.Ordinal);
+        Assert.Contains("ExpandEmployee", page, StringComparison.Ordinal);
+        Assert.Contains("CollapseEmployee", page, StringComparison.Ordinal);
+        Assert.Contains("data-priority=\"supporting\"", page, StringComparison.Ordinal);
         Assert.Contains("MudProgress", page, StringComparison.Ordinal);
         Assert.Contains("MudAlert", page, StringComparison.Ordinal);
         Assert.Contains("/Employees/Create", page, StringComparison.Ordinal);
-        Assert.Contains("/Employees/View?id=", page, StringComparison.Ordinal);
         Assert.Contains("SupplyParameterFromQuery", page, StringComparison.Ordinal);
         Assert.Contains("HttpStatusCode.Unauthorized", page, StringComparison.Ordinal);
         Assert.Contains("HttpStatusCode.Forbidden", page, StringComparison.Ordinal);

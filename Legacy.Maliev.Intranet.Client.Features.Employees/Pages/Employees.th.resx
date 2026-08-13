@@ -32,4 +32,8 @@
   <data name="EmployeeEmail_Ascending" xml:space="preserve"><value>อีเมลจากน้อยไปหามาก</value></data>
   <data name="EmployeeEmail_Descending" xml:space="preserve"><value>อีเมลจากมากไปน้อย</value></data>
   <data name="EmployeesTable" xml:space="preserve"><value>ตารางข้อมูลพนักงาน</value></data>
+  <data name="Operations" xml:space="preserve"><value>งานปฏิบัติการ</value></data>
+  <data name="ViewEmployee" xml:space="preserve"><value>เปิดข้อมูลพนักงาน {0}</value></data>
+  <data name="ExpandEmployee" xml:space="preserve"><value>ขยายรายละเอียดพนักงาน {0}</value></data>
+  <data name="CollapseEmployee" xml:space="preserve"><value>ย่อรายละเอียดพนักงาน {0}</value></data>
 </root>

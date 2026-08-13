@@ -7,7 +7,9 @@
 
 <PageTitle>@Text["PageTitle"]</PageTitle>
 
-<MudContainer MaxWidth="MaxWidth.ExtraLarge">
+<div class="mlv-module-shell employees-page">
+    <div class="mlv-page-body">
+    <PageBreadcrumbs Items="@Breadcrumbs" />
     <header class="operations-page-header">
         <div><MudText Typo="Typo.h4" HtmlTag="h1">@Text["Employees"]</MudText><MudText Typo="Typo.body2">@Text["Profiles"]</MudText></div>
         <MudButton Href="/Employees/Create" Variant="Variant.Filled" Color="Color.Primary">
@@ -38,31 +40,48 @@
     }
     else
     {
-        <MudTable Items="page.Items" Hover="true" Breakpoint="Breakpoint.Sm" Elevation="1" aria-label="@Text["EmployeesTable"]">
+        <section class="employee-table-region" aria-label="@Text["EmployeesTable"]">
+        <OperationalTable TItem="EmployeeListItem"
+                          TKey="int"
+                          Items="@(page.Items)"
+                          KeySelector="@(context => context.Id)"
+                          TableLabel="@Text["EmployeesTable"]"
+                          ColumnCount="5"
+                          State="@tableState"
+                          DetailHref="@(context => $"/Employees/View?id={context.Id}")"
+                          DetailAriaLabel="@(context => Text["ViewEmployee", context.Id])"
+                          ExpandAriaLabel="@(context => Text["ExpandEmployee", context.Id])"
+                          CollapseAriaLabel="@(context => Text["CollapseEmployee", context.Id])">
             <HeaderContent>
-                <MudTh>@Text["Id"]</MudTh>
-                <MudTh>@Text["Name"]</MudTh>
-                <MudTh>@Text["Email"]</MudTh>
-                <MudTh>@Text["Role"]</MudTh>
-                <MudTh><span class="visually-hidden">@Text["Actions"]</span></MudTh>
+                <tr>
+                    <th class="operational-table__identity employee-id" data-priority="essential">@Text["Id"]</th>
+                    <th class="employee-name" data-priority="essential">@Text["Name"]</th>
+                    <th class="employee-role" data-priority="essential">@Text["Role"]</th>
+                    <th class="employee-email" data-priority="supporting">@Text["Email"]</th>
+                    <th class="operational-table__actions-heading"><span class="visually-hidden">@Text["Actions"]</span></th>
+                </tr>
             </HeaderContent>
-            <RowTemplate>
-                <MudTd DataLabel="@Text["Id"]">@context.Id</MudTd>
-                <MudTd DataLabel="@Text["Name"]">@context.FullName</MudTd>
-                <MudTd DataLabel="@Text["Email"]">@context.Email</MudTd>
-                <MudTd DataLabel="@Text["Role"]">@context.Role?.Name</MudTd>
-                <MudTd DataLabel="@Text["Actions"]">
-                    <LegacyLink Href="@($"/Employees/View?id={context.Id}")" Role="LegacyLinkRole.Record" AriaLabel="@($"{Text["View"]} {context.Id}")">@Text["View"]</LegacyLink>
-                </MudTd>
-            </RowTemplate>
-        </MudTable>
+            <RowContent Context="context">
+                <td class="operational-table__identity employee-id mlv-mono" data-priority="essential">@context.Id</td>
+                <td class="employee-name" data-priority="essential" title="@context.FullName">@context.FullName</td>
+                <td class="employee-role" data-priority="essential" title="@context.Role?.Name">@ValueOrFallback(context.Role?.Name)</td>
+                <td class="employee-email" data-priority="supporting" title="@context.Email">@context.Email</td>
+            </RowContent>
+            <QuickViewContent Context="context">
+                <dl class="employee-quick-view">
+                    <div><dt>@Text["Email"]</dt><dd>@context.Email</dd></div>
+                </dl>
+            </QuickViewContent>
+        </OperationalTable>
+        </section>
         <nav class="d-flex flex-wrap align-center justify-space-between gap-3 mt-4" aria-label="@Text["EmployeePages"]">
             <MudButton Disabled="@(!page.HasPreviousPage)" OnClick="PreviousPageAsync">@Text["Previous"]</MudButton>
             <MudText aria-live="polite">@Text["PageSummary", page.PageIndex, page.TotalPages, page.TotalRecords]</MudText>
             <MudButton Disabled="@(!page.HasNextPage)" OnClick="NextPageAsync">@Text["Next"]</MudButton>
         </nav>
     }
-</MudContainer>
+    </div>
+</div>
 
 @code {
     [SupplyParameterFromQuery(Name = "search")] public string? Search { get; set; }
@@ -75,6 +94,7 @@
     private bool loading;
     private EmployeeListSort currentSort = EmployeeListSort.EmployeeId_Descending;
     private readonly LatestRequestGate requestGate = new();
+    private readonly OperationalTableState<int> tableState = new();
     private static readonly ListToolbarState<EmployeeListSort> DefaultToolbarState =
         new(null, EmployeeListSort.EmployeeId_Descending, 25);
     private static readonly int[] PageSizeOptions = [10, 25, 50, 100, 250];
@@ -83,6 +103,11 @@
         Enum.GetValues<EmployeeListSort>()
             .Select(option => new ListToolbarOption<EmployeeListSort>(option, Text[option.ToString()]))
             .ToArray();
+    private IReadOnlyList<PageBreadcrumbItem> Breadcrumbs =>
+    [
+        new(Text["Operations"], "/Dashboard"),
+        new(Text["Employees"]),
+    ];
 
     protected override async Task OnParametersSetAsync()
     {
@@ -100,6 +125,7 @@
     {
         using var lease = requestGate.Begin(cancellationToken);
         var state = (requestedState ?? ToolbarState).Normalize();
+        tableState.Clear();
         loading = true;
         error = null;
         try
@@ -183,10 +209,13 @@
 
     private Task NavigateAsync(int index, string? search, EmployeeListSort sort, int size, bool replace = false)
     {
+        tableState.Clear();
         var uri = $"/Employees/Index?search={Uri.EscapeDataString(search ?? string.Empty)}&sort={sort}&index={index}&size={Math.Clamp(size, 1, 250)}";
         Navigation.NavigateTo(uri, replace: replace);
         return Task.CompletedTask;
     }
 
     public void Dispose() => requestGate.Dispose();
+
+    private static string ValueOrFallback(string? value) => string.IsNullOrWhiteSpace(value) ? "-" : value;
 }
