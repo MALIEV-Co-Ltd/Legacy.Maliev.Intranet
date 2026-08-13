@@ -50,6 +50,10 @@
     white-space: nowrap;
 }
 
+.customer-history ::deep .history-meta {
+    max-width: 24rem;
+}
+
 .customer-history__pager {
     display: flex;
     align-items: center;
@@ -109,6 +113,10 @@
     .customer-history ::deep .customer-history__table .legacy-link--record,
     .customer-history__pager ::deep .mud-button-root {
         min-height: 44px;
+    }
+
+    .customer-history ::deep .customer-history__table .legacy-link--record {
+        min-width: 44px;
     }
 
     .customer-history__pager ::deep .mud-button-root {

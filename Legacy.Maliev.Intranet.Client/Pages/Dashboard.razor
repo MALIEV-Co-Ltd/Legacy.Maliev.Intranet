@@ -75,18 +75,19 @@
                                 LinkText="@Text["ViewAll"]"
                                 Class="dashboard-wide-panel">
                     <div class="dashboard-table-scroll">
-                        <MudSimpleTable Class="dashboard-table" Dense="true" Hover="true">
+                        <MudSimpleTable Class="dashboard-table" Dense="true" Hover="true" data-projection="dashboard-orders">
                             <caption class="sr-only">@Text["RecentProductionOrders"]</caption>
-                            <thead><tr><th scope="col">@Text["Order"]</th><th scope="col">@Text["Part"]</th><th scope="col">@Text["Quantity"]</th><th scope="col">@Text["Remaining"]</th><th scope="col">@Text["Promised"]</th><th scope="col">@Text["Progress"]</th></tr></thead>
+                            <thead><tr><th scope="col">@Text["Order"]</th><th scope="col">@Text["Part"]</th><th scope="col">@Text["Quantity"]</th><th scope="col">@Text["Manufactured"]</th><th scope="col">@Text["Remaining"]</th><th scope="col">@Text["Promised"]</th><th scope="col">@Text["Progress"]</th></tr></thead>
                             <tbody>
                                 @foreach (var order in _snapshot.RecentOrders)
                                 {
                                     <tr>
-                                        <td data-label="@Text["Order"]" class="mlv-mono"><LegacyLink Href="@order.NavigateTo" Role="LegacyLinkRole.Record" AriaLabel="@Text["OrderNumber", order.Id]">#@order.Id</LegacyLink></td>
-                                        <td data-label="@Text["Part"]" class="dashboard-table-primary">@(string.IsNullOrWhiteSpace(order.Name) ? Text["OrderNumber", order.Id] : order.Name)</td>
-                                        <td data-label="@Text["Quantity"]" class="mlv-mono">@order.Quantity.ToString("N0")</td>
-                                        <td data-label="@Text["Remaining"]" class="mlv-mono">@Remaining(order).ToString("N0")</td>
-                                        <td data-label="@Text["Promised"]" class="mlv-mono">@FormatDate(order.PromisedDate)</td>
+                                        <td data-label="@Text["Order"]" data-field="Id NavigateTo" class="mlv-mono"><LegacyLink Href="@order.NavigateTo" Role="LegacyLinkRole.Record" AriaLabel="@Text["OrderNumber", order.Id]">#@order.Id</LegacyLink></td>
+                                        <td data-label="@Text["Part"]" data-field="Name" class="dashboard-table-primary">@(string.IsNullOrWhiteSpace(order.Name) ? Text["OrderNumber", order.Id] : order.Name)</td>
+                                        <td data-label="@Text["Quantity"]" data-field="Quantity" class="mlv-mono">@order.Quantity.ToString("N0")</td>
+                                        <td data-label="@Text["Manufactured"]" data-field="Manufactured" class="mlv-mono">@order.Manufactured.ToString("N0")</td>
+                                        <td data-label="@Text["Remaining"]" data-field="Remaining" class="mlv-mono">@Remaining(order).ToString("N0")</td>
+                                        <td data-label="@Text["Promised"]" data-field="PromisedDate" class="mlv-mono">@FormatDate(order.PromisedDate)</td>
                                         <td data-label="@Text["Progress"]"><span class="dashboard-status @OrderStatusClass(order)">@OrderStatus(order)</span></td>
                                     </tr>
                                 }
@@ -104,17 +105,19 @@
                                 LinkText="@Text["ViewAll"]"
                                 Class="dashboard-wide-panel">
                     <div class="dashboard-table-scroll">
-                        <MudSimpleTable Class="dashboard-table dashboard-table-compact" Dense="true" Hover="true">
+                        <MudSimpleTable Class="dashboard-table dashboard-table-compact" Dense="true" Hover="true" data-projection="dashboard-quotations">
                             <caption class="sr-only">@Text["RecentQuotations"]</caption>
-                            <thead><tr><th scope="col">@Text["Quote"]</th><th scope="col">@Text["Total"]</th><th scope="col">@Text["Expires"]</th><th scope="col">@Text["Decision"]</th></tr></thead>
+                            <thead><tr><th scope="col">@Text["Quote"]</th><th scope="col">@Text["Total"]</th><th scope="col">@Text["QuotedAmount"]</th><th scope="col">@Text["Expires"]</th><th scope="col">@Text["CreatedDate"]</th><th scope="col">@Text["Decision"]</th></tr></thead>
                             <tbody>
                                 @foreach (var quotation in _snapshot.RecentQuotations)
                                 {
                                     <tr>
-                                        <td data-label="@Text["Quote"]" class="mlv-mono"><LegacyLink Href="@quotation.NavigateTo" Role="LegacyLinkRole.Record" AriaLabel="@($"{Text["Quote"]} #{quotation.Id}")">#@quotation.Id</LegacyLink></td>
-                                        <td data-label="@Text["Total"]" class="dashboard-money mlv-mono">@FormatMoney(quotation.QuotedAmount ?? quotation.Total, quotation.CurrencyId)</td>
-                                        <td data-label="@Text["Expires"]" class="mlv-mono">@FormatDate(quotation.ExpirationDate)</td>
-                                        <td data-label="@Text["Decision"]"><span class="dashboard-status @DecisionClass(quotation.Accepted)">@Decision(quotation.Accepted)</span></td>
+                                        <td data-label="@Text["Quote"]" data-field="Id NavigateTo" class="mlv-mono"><LegacyLink Href="@quotation.NavigateTo" Role="LegacyLinkRole.Record" AriaLabel="@($"{Text["Quote"]} #{quotation.Id}")">#@quotation.Id</LegacyLink></td>
+                                        <td data-label="@Text["Total"]" data-field="Total CurrencyId" class="dashboard-money mlv-mono">@FormatMoney(quotation.Total, quotation.CurrencyId)</td>
+                                        <td data-label="@Text["QuotedAmount"]" data-field="QuotedAmount" class="dashboard-money mlv-mono">@(quotation.QuotedAmount is decimal quotedAmount ? FormatMoney(quotedAmount, quotation.CurrencyId) : "—")</td>
+                                        <td data-label="@Text["Expires"]" data-field="ExpirationDate" class="mlv-mono">@FormatDate(quotation.ExpirationDate)</td>
+                                        <td data-label="@Text["CreatedDate"]" data-field="CreatedDate" class="mlv-mono">@FormatDate(quotation.CreatedDate)</td>
+                                        <td data-label="@Text["Decision"]" data-field="Accepted"><span class="dashboard-status mlv-mono @DecisionClass(quotation.Accepted)">@Decision(quotation.Accepted)</span></td>
                                     </tr>
                                 }
                             </tbody>
@@ -132,17 +135,18 @@
                                 NavigateTo="/Finances/Index"
                                 LinkText="@Text["ViewAll"]">
                     <div class="dashboard-table-scroll">
-                        <MudSimpleTable Class="dashboard-table dashboard-table-compact" Dense="true" Hover="true">
+                        <MudSimpleTable Class="dashboard-table dashboard-table-compact" Dense="true" Hover="true" data-projection="dashboard-payments">
                             <caption class="sr-only">@Text["RecentPayments"]</caption>
-                            <thead><tr><th scope="col">@Text["Payment"]</th><th scope="col">@Text["Recipient"]</th><th scope="col">@Text["Amount"]</th><th scope="col">@Text["Date"]</th></tr></thead>
+                            <thead><tr><th scope="col">@Text["Payment"]</th><th scope="col">@Text["Recipient"]</th><th scope="col">@Text["Amount"]</th><th scope="col">@Text["PaymentDate"]</th><th scope="col">@Text["CreatedDate"]</th></tr></thead>
                             <tbody>
                                 @foreach (var payment in _snapshot.RecentPayments)
                                 {
                                     <tr>
-                                        <td data-label="@Text["Payment"]" class="mlv-mono"><LegacyLink Href="@payment.NavigateTo" Role="LegacyLinkRole.Record" AriaLabel="@($"{Text["Payment"]} #{payment.Id}")">#@payment.Id</LegacyLink></td>
-                                        <td data-label="@Text["Recipient"]" class="dashboard-table-primary">@(string.IsNullOrWhiteSpace(payment.Recipient) ? "—" : payment.Recipient)</td>
-                                        <td data-label="@Text["Amount"]" class="dashboard-money mlv-mono">@FormatMoney(payment.Amount, payment.CurrencyId)</td>
-                                        <td data-label="@Text["Date"]" class="mlv-mono">@FormatDate(payment.PaymentDate ?? payment.CreatedDate)</td>
+                                        <td data-label="@Text["Payment"]" data-field="Id NavigateTo" class="mlv-mono"><LegacyLink Href="@payment.NavigateTo" Role="LegacyLinkRole.Record" AriaLabel="@($"{Text["Payment"]} #{payment.Id}")">#@payment.Id</LegacyLink></td>
+                                        <td data-label="@Text["Recipient"]" data-field="Recipient" class="dashboard-table-primary">@(string.IsNullOrWhiteSpace(payment.Recipient) ? "—" : payment.Recipient)</td>
+                                        <td data-label="@Text["Amount"]" data-field="Amount CurrencyId" class="dashboard-money mlv-mono">@FormatMoney(payment.Amount, payment.CurrencyId)</td>
+                                        <td data-label="@Text["PaymentDate"]" data-field="PaymentDate" class="mlv-mono">@FormatDate(payment.PaymentDate)</td>
+                                        <td data-label="@Text["CreatedDate"]" data-field="CreatedDate" class="mlv-mono">@FormatDate(payment.CreatedDate)</td>
                                     </tr>
                                 }
                             </tbody>
@@ -158,16 +162,16 @@
                                 NavigateTo="/customers"
                                 LinkText="@Text["ViewAll"]">
                     <div class="dashboard-table-scroll">
-                        <MudSimpleTable Class="dashboard-table dashboard-table-compact" Dense="true" Hover="true">
+                        <MudSimpleTable Class="dashboard-table dashboard-table-compact" Dense="true" Hover="true" data-projection="dashboard-customers">
                             <caption class="sr-only">@Text["RecentCustomers"]</caption>
                             <thead><tr><th scope="col">@Text["Customer"]</th><th scope="col">@Text["Company"]</th><th scope="col">@Text["Email"]</th></tr></thead>
                             <tbody>
                                 @foreach (var customer in _snapshot.RecentCustomers)
                                 {
                                     <tr>
-                                        <td data-label="@Text["Customer"]"><LegacyLink Href="@customer.NavigateTo" Role="LegacyLinkRole.Record" AriaLabel="@customer.FullName">@customer.FullName</LegacyLink></td>
-                                        <td data-label="@Text["Company"]" class="dashboard-table-primary">@(string.IsNullOrWhiteSpace(customer.Company) ? "—" : customer.Company)</td>
-                                        <td data-label="@Text["Email"]">@customer.Email</td>
+                                        <td data-label="@Text["Customer"]" data-field="Id FullName NavigateTo"><LegacyLink Href="@customer.NavigateTo" Role="LegacyLinkRole.Record" AriaLabel="@customer.FullName">@customer.FullName</LegacyLink></td>
+                                        <td data-label="@Text["Company"]" data-field="Company" class="dashboard-table-primary">@(string.IsNullOrWhiteSpace(customer.Company) ? "—" : customer.Company)</td>
+                                        <td data-label="@Text["Email"]" data-field="Email">@customer.Email</td>
                                     </tr>
                                 }
                             </tbody>

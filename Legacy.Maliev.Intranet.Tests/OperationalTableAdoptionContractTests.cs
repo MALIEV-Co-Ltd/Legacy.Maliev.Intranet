@@ -15,11 +15,11 @@ public sealed class OperationalTableAdoptionContractTests
     private static readonly TableLedgerEntry[] RepositoryTableLedger =
     [
         new("Legacy.Maliev.Intranet.Client/Pages/Dashboard.razor", "CompactDashboard", "Four bounded six-record comparison tables expose complete summary projections and exact detail links."),
-        new("Legacy.Maliev.Intranet.Client.Features.Accounting/Pages/Finances.razor", "Analytical", "The retained yearly trend is an analytical comparison table; the record list uses OperationalTable."),
-        new("Legacy.Maliev.Intranet.Client.Features.Accounting/Pages/InvoiceCreate.razor", "FormEntry", "The table is an invoice line-entry preview inside a create form."),
-        new("Legacy.Maliev.Intranet.Client.Features.Accounting/Pages/InvoiceView.razor", "DetailLineItems", "The table contains line items belonging to one invoice detail record."),
-        new("Legacy.Maliev.Intranet.Client.Features.Accounting/Pages/NetProfitChart.razor", "Analytical", "The table is the accessible data alternative for the net-profit chart."),
-        new("Legacy.Maliev.Intranet.Client.Features.Accounting/Pages/YearlyActivityChart.razor", "Analytical", "The table is the accessible data alternative for the yearly-activity chart."),
+        new("Legacy.Maliev.Intranet.Client.Features.Accounting/Pages/Finances.razor", "Analytical", "The retained yearly trend is an analytical comparison table; the record list uses OperationalTable.", "AnalyticalMonthlySummary"),
+        new("Legacy.Maliev.Intranet.Client.Features.Accounting/Pages/InvoiceCreate.razor", "FormEntry", "The table is an invoice line-entry preview inside a create form.", "FormSubTable"),
+        new("Legacy.Maliev.Intranet.Client.Features.Accounting/Pages/InvoiceView.razor", "DetailLineItems", "The table contains line items belonging to one invoice detail record.", "DetailSubTable"),
+        new("Legacy.Maliev.Intranet.Client.Features.Accounting/Pages/NetProfitChart.razor", "Analytical", "The table is the accessible data alternative for the net-profit chart.", "AnalyticalChart"),
+        new("Legacy.Maliev.Intranet.Client.Features.Accounting/Pages/YearlyActivityChart.razor", "Analytical", "The table is the accessible data alternative for the yearly-activity chart.", "AnalyticalChart"),
         new("Legacy.Maliev.Intranet.Client.Features.Customers/Components/CustomerHistoryTable.razor", "SpecializedHistory", "Each row is a complete browser-safe customer history projection with its exact detail destination."),
         new("Legacy.Maliev.Intranet.Client.Features.Procurement/Pages/PurchaseOrderView.razor", "DetailLineItems", "The table contains line items belonging to one purchase-order detail record."),
         new("Legacy.Maliev.Intranet.Client.Features.Quotations/Pages/Quotations/Create.razor", "FormEntry", "The table selects order lines while composing a quotation."),
@@ -27,14 +27,18 @@ public sealed class OperationalTableAdoptionContractTests
         new("Legacy.Maliev.Intranet.Client.Shared/Components/OperationalTable.razor", "Adopted", "This is the shared semantic native-table implementation used by migrated operational lists."),
     ];
 
-    public static TheoryData<string, string> OperationalTableExceptions => new()
+    public static TheoryData<string, string> NonListTableExceptions
     {
-        { "Legacy.Maliev.Intranet.Client.Features.Accounting/Pages/Finances.razor", "AnalyticalMonthlySummary" },
-        { "Legacy.Maliev.Intranet.Client.Features.Accounting/Pages/NetProfitChart.razor", "AnalyticalChart" },
-        { "Legacy.Maliev.Intranet.Client.Features.Accounting/Pages/YearlyActivityChart.razor", "AnalyticalChart" },
-        { "Legacy.Maliev.Intranet.Client.Features.Accounting/Pages/InvoiceCreate.razor", "FormSubTable" },
-        { "Legacy.Maliev.Intranet.Client.Features.Accounting/Pages/InvoiceView.razor", "DetailSubTable" },
-    };
+        get
+        {
+            var data = new TheoryData<string, string>();
+            foreach (var entry in RepositoryTableLedger.Where(entry => entry.LegacyDisposition is not null))
+            {
+                data.Add(entry.Path, entry.LegacyDisposition!);
+            }
+            return data;
+        }
+    }
 
     [Fact]
     public void RepositoryTableLedger_ExactlyClassifiesEveryProductionRawTableOwner()
@@ -46,6 +50,8 @@ public sealed class OperationalTableAdoptionContractTests
             .ToArray();
         Assert.Empty(duplicates);
         Assert.All(RepositoryTableLedger, entry => Assert.False(string.IsNullOrWhiteSpace(entry.Reason), entry.Path));
+        Assert.All(RepositoryTableLedger, entry => Assert.False(string.IsNullOrWhiteSpace(entry.Path), entry.Disposition));
+        Assert.All(RepositoryTableLedger, entry => Assert.False(string.IsNullOrWhiteSpace(entry.Disposition), entry.Path));
 
         var allowedExceptions = new HashSet<string>(StringComparer.Ordinal)
         {
@@ -54,6 +60,8 @@ public sealed class OperationalTableAdoptionContractTests
         Assert.All(RepositoryTableLedger.Where(entry => entry.Disposition != "Adopted"),
             entry => Assert.Contains(entry.Disposition, allowedExceptions));
         Assert.DoesNotContain(RepositoryTableLedger, entry => entry.Disposition == "LegacyFallback");
+        Assert.All(RepositoryTableLedger.Where(entry => entry.LegacyDisposition is not null),
+            entry => Assert.False(string.IsNullOrWhiteSpace(entry.LegacyDisposition), entry.Path));
 
         var actual = ProductionRazorFiles()
             .Where(file => System.Text.RegularExpressions.Regex.IsMatch(
@@ -149,7 +157,7 @@ public sealed class OperationalTableAdoptionContractTests
     }
 
     [Theory]
-    [MemberData(nameof(OperationalTableExceptions))]
+    [MemberData(nameof(NonListTableExceptions))]
     public void OperationalTableExceptionLedger_RecordsNonListTables(string relativePath, string disposition)
     {
         var root = FindRoot();
@@ -268,5 +276,5 @@ public sealed class OperationalTableAdoptionContractTests
     private static string NormalizePath(string path) =>
         Path.GetRelativePath(FindRoot(), path).Replace('\\', '/');
 
-    private sealed record TableLedgerEntry(string Path, string Disposition, string Reason);
+    private sealed record TableLedgerEntry(string Path, string Disposition, string Reason, string? LegacyDisposition = null);
 }

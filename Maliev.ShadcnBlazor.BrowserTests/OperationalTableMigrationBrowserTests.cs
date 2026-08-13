@@ -257,28 +257,85 @@ public sealed class OperationalTableMigrationBrowserTests(
         var errors = CaptureErrors(page);
         await StubSpecializedTableBoundariesAsync(page);
         await page.GotoAsync(new Uri(server.BaseUri, "Dashboard").AbsoluteUri);
-        var table = page.Locator(".dashboard-table table").First;
-        await table.WaitForAsync();
+        var tables = page.Locator(".dashboard-table table");
+        await tables.First.WaitForAsync();
 
         var breadcrumbs = page.Locator("nav.page-breadcrumbs");
         Assert.Equal(1, await breadcrumbs.Locator("li").CountAsync());
         Assert.Equal("Dashboard", (await breadcrumbs.Locator("[aria-current='page']").InnerTextAsync()).Trim());
-        Assert.Equal("table", await table.EvaluateAsync<string>("node => getComputedStyle(node).display"));
-        Assert.NotEqual("none", await table.Locator("thead").EvaluateAsync<string>("node => getComputedStyle(node).display"));
-        var scroller = page.Locator(".dashboard-table-scroll").First;
-        Assert.Contains(await scroller.EvaluateAsync<string>("node => getComputedStyle(node).overflowX"), new[] { "auto", "scroll" });
+        Assert.Equal(4, await tables.CountAsync());
+        foreach (var table in await tables.AllAsync())
+        {
+            Assert.Equal("table", await table.EvaluateAsync<string>("node => getComputedStyle(node).display"));
+            Assert.NotEqual("none", await table.Locator("thead").EvaluateAsync<string>("node => getComputedStyle(node).display"));
+            var scroller = table.Locator("xpath=ancestor::div[contains(@class,'dashboard-table-scroll')]");
+            Assert.Contains(await scroller.EvaluateAsync<string>("node => getComputedStyle(node).overflowX"), new[] { "auto", "scroll" });
+            Assert.True(await scroller.EvaluateAsync<bool>("node => node.scrollWidth > node.clientWidth"));
+        }
         Assert.Equal(
             await page.EvaluateAsync<int>("() => document.documentElement.clientWidth"),
             await page.EvaluateAsync<int>("() => document.documentElement.scrollWidth"));
-        foreach (var atomic in await table.Locator(".mlv-mono").AllAsync())
+        foreach (var atomic in await tables.Locator(".mlv-mono").AllAsync())
         {
             Assert.Equal("nowrap", await atomic.EvaluateAsync<string>("node => getComputedStyle(node).whiteSpace"));
         }
-        var record = table.GetByRole(AriaRole.Link, new() { Name = "Order #901" });
+        var record = tables.First.GetByRole(AriaRole.Link, new() { Name = "Order #901" });
         Assert.True(await record.EvaluateAsync<double>("node => node.getBoundingClientRect().height") >= 44);
         await record.FocusAsync();
         Assert.True(await record.EvaluateAsync<bool>("node => document.activeElement === node"));
         Assert.Equal(0, await page.Locator(".operational-table__toggle").CountAsync());
+        Assert.Empty(errors);
+    }
+
+    [Theory]
+    [InlineData("orders", "history-orders", "/Orders/View?id=901")]
+    [InlineData("quotations", "history-quotations", "/Quotations/View?id=902")]
+    [InlineData("invoices", "history-invoices", "/Invoices/View?id=903")]
+    public async Task SpecializedCustomerHistoryMapsCompleteDtoInThaiAt320(
+        string tab,
+        string projection,
+        string expectedHref)
+    {
+        await using var context = await playwright.Browser.NewContextAsync(new()
+        {
+            ViewportSize = new() { Width = 320, Height = 844 },
+            HasTouch = true,
+            ReducedMotion = ReducedMotion.Reduce,
+        });
+        await context.AddInitScriptAsync("localStorage.setItem('maliev_culture', 'th-TH')");
+        var page = await context.NewPageAsync();
+        var errors = CaptureErrors(page);
+        await StubSpecializedTableBoundariesAsync(page);
+        await page.GotoAsync(new Uri(server.BaseUri, $"Customers/View?id=69738&tab={tab}").AbsoluteUri);
+        var table = page.Locator($"[data-projection='{projection}'] table");
+        await table.WaitForAsync();
+
+        var mapped = await table.Locator("[data-field]").EvaluateAllAsync<string[]>(
+            "nodes => [...new Set(nodes.flatMap(node => node.dataset.field.split(/\\s+/).filter(Boolean)))]");
+        var expectedFields = tab switch
+        {
+            "orders" => new[] { "Id", "CustomerId", "EmployeeId", "Name", "ProcessId", "Quantity", "Manufactured", "Remaining", "Subtotal", "PromisedDate", "AllowSocialMedia", "CreatedDate", "ModifiedDate" },
+            "quotations" => new[] { "Id", "CustomerId", "EmployeeId", "InvoiceId", "Period", "ExpirationDate", "Subtotal", "Vat", "Total", "WithholdingTax", "QuotedAmount", "CurrencyId", "Comment", "Fob", "ShippedVia", "Terms", "Accepted", "CreatedDate", "ModifiedDate" },
+            "invoices" => new[] { "Id", "CustomerId", "Number", "Currency", "PurchaseOrderNumber", "Subtotal", "Vat", "Total", "WithholdingTax", "Outstanding", "IsPaid", "ReceiptId", "PaymentDate", "CreatedDate" },
+            _ => throw new InvalidOperationException($"Unsupported history tab '{tab}'."),
+        };
+        Assert.Equal(expectedFields.Order(StringComparer.Ordinal), mapped.Order(StringComparer.Ordinal));
+        var scroller = page.Locator($"[data-projection='{projection}'] .mud-table-container");
+        Assert.True(await scroller.EvaluateAsync<bool>("node => node.scrollWidth > node.clientWidth"));
+        Assert.Equal(
+            await page.EvaluateAsync<int>("() => document.documentElement.clientWidth"),
+            await page.EvaluateAsync<int>("() => document.documentElement.scrollWidth"));
+        foreach (var status in await table.Locator(".history-status").AllAsync())
+        {
+            Assert.Equal("nowrap", await status.EvaluateAsync<string>("node => getComputedStyle(node).whiteSpace"));
+        }
+        var record = table.Locator($"a[href='{expectedHref}']");
+        var box = await record.BoundingBoxAsync();
+        Assert.NotNull(box);
+        Assert.True(box!.Width >= 44 && box.Height >= 44, $"Expected 44x44 record target, found {box.Width:F2}x{box.Height:F2}.");
+        await record.FocusAsync();
+        Assert.True(await record.EvaluateAsync<bool>("node => document.activeElement === node"));
+        Assert.Equal(0, await page.Locator(".operational-table__toggle, .operational-table__quick-view").CountAsync());
         Assert.Empty(errors);
     }
 
@@ -412,7 +469,7 @@ public sealed class OperationalTableMigrationBrowserTests(
             roles = new[] { "Employee" },
             csrfToken = "specialized-table-browser-csrf",
             legacyDatabaseId = 1,
-            permissions = new[] { "legacy-customer.customers.read", "legacy.orders.read" },
+            permissions = new[] { "legacy-customer.customers.read", "legacy.orders.read", "legacy.quotations.read", "legacy.accounting.read" },
         });
         await page.RouteAsync("**/bff/session", route => route.FulfillAsync(new() { Status = 200, ContentType = "application/json", Body = session }));
         await page.RouteAsync("**/bff/dashboard", route => route.FulfillAsync(new()
@@ -425,9 +482,9 @@ public sealed class OperationalTableMigrationBrowserTests(
                 cards = Array.Empty<object>(),
                 degradedSources = Array.Empty<string>(),
                 recentOrders = new[] { new { id = 901, name = "Precision fixture", quantity = 4, manufactured = 1, remaining = 3, promisedDate = "2030-08-20T00:00:00Z", navigateTo = "/sales/orders/901" } },
-                recentQuotations = Array.Empty<object>(),
-                recentCustomers = Array.Empty<object>(),
-                recentPayments = Array.Empty<object>(),
+                recentQuotations = new[] { new { id = 902, total = 1200m, quotedAmount = 1100m, currencyId = 1, expirationDate = "2030-09-01T00:00:00Z", accepted = (bool?)null, createdDate = "2030-08-02T00:00:00Z", navigateTo = "/Quotations/View?id=902" } },
+                recentCustomers = new[] { new { id = 69738, fullName = "Mali Dee", email = "mali@maliev.com", company = "MALIEV", navigateTo = "/Customers/View?id=69738" } },
+                recentPayments = new[] { new { id = 903, amount = 900m, currencyId = (int?)1, recipient = "Mali Dee", paymentDate = "2030-08-04T00:00:00Z", createdDate = "2030-08-03T00:00:00Z", navigateTo = "/Finances/View?id=903" } },
                 recentActivity = Array.Empty<object>(),
                 monthlyFinance = Array.Empty<object>(),
                 quotationSummary = (object?)null,
@@ -465,6 +522,34 @@ public sealed class OperationalTableMigrationBrowserTests(
             Body = JsonSerializer.Serialize(new
             {
                 items = new[] { new { id = 901, customerId = 69738, employeeId = 1, name = "Precision fixture", processId = 1, quantity = 4, manufactured = 1, remaining = 3, subtotal = (decimal?)null, promisedDate = "2030-08-20T00:00:00Z", allowSocialMedia = false, createdDate = "2030-08-01T00:00:00Z", modifiedDate = (string?)null } },
+                pageIndex = 1,
+                totalPages = 1,
+                totalRecords = 1,
+                hasNextPage = false,
+                hasPreviousPage = false,
+            }),
+        }));
+        await page.RouteAsync("**/bff/customers/69738/quotations*", route => route.FulfillAsync(new()
+        {
+            Status = 200,
+            ContentType = "application/json",
+            Body = JsonSerializer.Serialize(new
+            {
+                items = new[] { new { id = 902, customerId = 69738, employeeId = 1, invoiceId = (int?)null, period = 30, expirationDate = "2030-09-01T00:00:00Z", subtotal = 1000m, vat = 70m, total = 1070m, withholdingTax = (decimal?)null, quotedAmount = 1050m, currencyId = 1, comment = "Precision quote", fob = "Bangkok", shippedVia = "Courier", terms = "Net 30", accepted = (bool?)null, createdDate = "2030-08-01T00:00:00Z", modifiedDate = "2030-08-02T00:00:00Z" } },
+                pageIndex = 1,
+                totalPages = 1,
+                totalRecords = 1,
+                hasNextPage = false,
+                hasPreviousPage = false,
+            }),
+        }));
+        await page.RouteAsync("**/bff/customers/69738/invoices*", route => route.FulfillAsync(new()
+        {
+            Status = 200,
+            ContentType = "application/json",
+            Body = JsonSerializer.Serialize(new
+            {
+                items = new[] { new { id = 903, customerId = 69738, number = "INV-903", currency = "THB", purchaseOrderNumber = "PO-1", subtotal = 1000m, vat = 70m, total = 1070m, withholdingTax = (decimal?)null, outstanding = 1070m, isPaid = false, receiptId = (int?)null, paymentDate = (string?)null, createdDate = "2030-08-01T00:00:00Z" } },
                 pageIndex = 1,
                 totalPages = 1,
                 totalRecords = 1,

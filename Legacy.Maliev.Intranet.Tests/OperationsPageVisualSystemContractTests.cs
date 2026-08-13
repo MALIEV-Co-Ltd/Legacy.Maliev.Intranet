@@ -1,3 +1,5 @@
+using Legacy.Maliev.Intranet.Contracts;
+
 namespace Legacy.Maliev.Intranet.Tests;
 
 public sealed class OperationsPageVisualSystemContractTests
@@ -48,7 +50,7 @@ public sealed class OperationsPageVisualSystemContractTests
         Assert.Contains("<PageBreadcrumbs Items=\"@Breadcrumbs\"", page, StringComparison.Ordinal);
         Assert.Contains("new(Text[\"Dashboard\"])", page, StringComparison.Ordinal);
         Assert.DoesNotContain("<QuickViewContent", page, StringComparison.Ordinal);
-        foreach (var field in new[] { "Order", "Part", "Quantity", "Remaining", "Promised", "Progress", "Quote", "Total", "Expires", "Decision", "Payment", "Recipient", "Amount", "Date", "Customer", "Company", "Email" })
+        foreach (var field in new[] { "Order", "Part", "Quantity", "Manufactured", "Remaining", "Promised", "Progress", "Quote", "Total", "QuotedAmount", "Expires", "CreatedDate", "Decision", "Payment", "Recipient", "Amount", "PaymentDate", "Customer", "Company", "Email" })
         {
             Assert.Contains($"Text[\"{field}\"]", page, StringComparison.Ordinal);
         }
@@ -89,6 +91,57 @@ public sealed class OperationsPageVisualSystemContractTests
         Assert.Contains("new(customer!.FullName)", customer, StringComparison.Ordinal);
         Assert.DoesNotContain("new(Text[\"Home\"]", dashboard, StringComparison.Ordinal);
         Assert.DoesNotContain("new(Text[\"Home\"]", customer, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void SpecializedTableExceptionsMapEveryBrowserSafeDtoPropertyToRenderedContent()
+    {
+        var dashboard = Read("Legacy.Maliev.Intranet.Client", "Pages", "Dashboard.razor");
+        var history = Read("Legacy.Maliev.Intranet.Client.Features.Customers", "Components", "CustomerHistoryTable.razor");
+
+        AssertCompletePropertyMapping<LegacyDashboardOrder>(dashboard, "dashboard-orders");
+        AssertCompletePropertyMapping<LegacyDashboardQuotation>(dashboard, "dashboard-quotations");
+        AssertCompletePropertyMapping<LegacyDashboardPayment>(dashboard, "dashboard-payments");
+        AssertCompletePropertyMapping<LegacyDashboardCustomer>(dashboard, "dashboard-customers");
+        AssertCompletePropertyMapping<OrderListItem>(history, "history-orders");
+        AssertCompletePropertyMapping<QuotationListItem>(history, "history-quotations");
+        AssertCompletePropertyMapping<InvoiceListItem>(history, "history-invoices");
+        Assert.DoesNotContain("data-field-exclusion", dashboard, StringComparison.Ordinal);
+        Assert.DoesNotContain("data-field-exclusion", history, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void SpecializedHistoryNarrowStylesKeepRecordTargetsSquareAndStatusesAtomic()
+    {
+        var page = Read("Legacy.Maliev.Intranet.Client.Features.Customers", "Components", "CustomerHistoryTable.razor");
+        var styles = Read("Legacy.Maliev.Intranet.Client.Features.Customers", "Components", "CustomerHistoryTable.razor.css");
+
+        Assert.Contains("Class=\"history-status mlv-mono\"", page, StringComparison.Ordinal);
+        Assert.Contains("min-width: 44px", styles, StringComparison.Ordinal);
+        Assert.Contains("white-space: nowrap", styles, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void TableLedgerIsTheOnlyExceptionInventory()
+    {
+        var source = Read("Legacy.Maliev.Intranet.Tests", "OperationalTableAdoptionContractTests.cs");
+
+        Assert.DoesNotContain("OperationalTableExceptions => new()", source, StringComparison.Ordinal);
+        Assert.Contains("RepositoryTableLedger.Where", source, StringComparison.Ordinal);
+    }
+
+    private static void AssertCompletePropertyMapping<T>(string source, string scope)
+    {
+        var block = System.Text.RegularExpressions.Regex.Match(
+            source,
+            $"data-projection=\"{System.Text.RegularExpressions.Regex.Escape(scope)}\"(?<body>[\\s\\S]*?)(?:data-projection=\"|</MudSimpleTable>|</MudTable>)").Groups["body"].Value;
+        Assert.False(string.IsNullOrWhiteSpace(block), $"Missing projection scope '{scope}'.");
+        var mapped = System.Text.RegularExpressions.Regex.Matches(block, "data-field=\"([^\"]+)\"")
+            .SelectMany(match => match.Groups[1].Value.Split(' ', StringSplitOptions.RemoveEmptyEntries))
+            .ToHashSet(StringComparer.Ordinal);
+        var expected = typeof(T).GetProperties().Select(property => property.Name).ToHashSet(StringComparer.Ordinal);
+
+        Assert.Equal(expected.Order(StringComparer.Ordinal), mapped.Order(StringComparer.Ordinal));
     }
 
     private static string Read(params string[] segments) => File.ReadAllText(Path.Combine([FindRoot(), .. segments]));
