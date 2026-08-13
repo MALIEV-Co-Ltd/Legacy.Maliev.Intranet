@@ -23,7 +23,25 @@ public sealed class OrdersOperationalTableBrowserTests(
         await page.GotoAsync(new Uri(server.BaseUri, "sales/orders").AbsoluteUri);
         await page.Locator(".operational-table").First.WaitForAsync();
 
-        Assert.Equal("/Dashboard", await page.GetByRole(AriaRole.Link, new() { Name = "Operations" }).GetAttributeAsync("href"));
+        await page.EvaluateAsync("""
+            () => {
+                const decoy = document.createElement('a');
+                decoy.href = '/unrelated-operations';
+                decoy.setAttribute('aria-label', 'Operations');
+                decoy.textContent = 'Operations';
+                document.body.append(decoy);
+            }
+            """);
+        var breadcrumbs = page.Locator("nav.page-breadcrumbs");
+        Assert.Equal(1, await breadcrumbs.CountAsync());
+        Assert.Equal(2, await breadcrumbs.Locator(":scope > ol > li").CountAsync());
+        Assert.Equal(1, await breadcrumbs.GetByRole(AriaRole.Link).CountAsync());
+        Assert.Equal(
+            "/Dashboard",
+            await breadcrumbs.GetByRole(AriaRole.Link, new() { Name = "Operations", Exact = true }).GetAttributeAsync("href"));
+        var currentCrumb = breadcrumbs.Locator("li[aria-current='page']");
+        Assert.Equal(1, await currentCrumb.CountAsync());
+        Assert.Equal("Orders", (await currentCrumb.InnerTextAsync()).Trim());
         Assert.Equal(3, await page.Locator("table.operational-table").CountAsync());
         Assert.Equal(3, await page.Locator("table.operational-table caption").CountAsync());
         Assert.Equal(0, await page.Locator(".orders-table, [data-label]").CountAsync());
