@@ -60,9 +60,6 @@
 
 .customer-history ::deep .history-primary {
     min-width: 10rem;
-    max-width: 18rem;
-    overflow: hidden;
-    text-overflow: ellipsis;
     white-space: nowrap;
 }
 

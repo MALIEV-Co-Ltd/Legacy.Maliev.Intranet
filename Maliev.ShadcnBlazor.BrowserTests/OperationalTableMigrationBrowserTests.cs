@@ -391,14 +391,26 @@ public sealed class OperationalTableMigrationBrowserTests(
                     return range.getBoundingClientRect().height;
                 })(),
                 lineHeight: parseFloat(getComputedStyle(node).lineHeight),
-                whiteSpace: getComputedStyle(node).whiteSpace
+                whiteSpace: getComputedStyle(node).whiteSpace,
+                textOverflow: getComputedStyle(node).textOverflow,
+                overflow: getComputedStyle(node).overflow,
+                maxWidth: getComputedStyle(node).maxWidth
             })
             """);
         Assert.Equal("nowrap", nameGeometry.GetProperty("whiteSpace").GetString());
         Assert.True(nameGeometry.GetProperty("width").GetDouble() >= 160, nameGeometry.ToString());
+        Assert.Equal("clip", nameGeometry.GetProperty("textOverflow").GetString());
+        Assert.NotEqual("hidden", nameGeometry.GetProperty("overflow").GetString());
+        Assert.Equal("none", nameGeometry.GetProperty("maxWidth").GetString());
+        Assert.Equal("High precision aerospace fixture with inspection datum references", (await nameCell.InnerTextAsync()).Trim());
         Assert.True(
             nameGeometry.GetProperty("contentHeight").GetDouble() <= nameGeometry.GetProperty("lineHeight").GetDouble() * 2,
             nameGeometry.ToString());
+        await scroller.FocusAsync();
+        Assert.True(await scroller.EvaluateAsync<bool>("node => document.activeElement === node"));
+        await scroller.PressAsync("ArrowRight");
+        await page.WaitForTimeoutAsync(100);
+        Assert.True(await scroller.EvaluateAsync<double>("node => node.scrollLeft") > 0);
         Assert.Equal(
             await page.EvaluateAsync<int>("() => document.documentElement.clientWidth"),
             await page.EvaluateAsync<int>("() => document.documentElement.scrollWidth"));
@@ -557,7 +569,7 @@ public sealed class OperationalTableMigrationBrowserTests(
             ContentType = "application/json",
             Body = JsonSerializer.Serialize(new
             {
-                items = new[] { new { id = 901, customerId = 69738, employeeId = 1, name = "Precision fixture", processId = 1, quantity = 4, manufactured = 1, remaining = 3, subtotal = (decimal?)null, promisedDate = "2030-08-20T00:00:00Z", allowSocialMedia = false, createdDate = "2030-08-01T00:00:00Z", modifiedDate = (string?)null } },
+                items = new[] { new { id = 901, customerId = 69738, employeeId = 1, name = "High precision aerospace fixture with inspection datum references", processId = 1, quantity = 4, manufactured = 1, remaining = 3, subtotal = (decimal?)null, promisedDate = "2030-08-20T00:00:00Z", allowSocialMedia = false, createdDate = "2030-08-01T00:00:00Z", modifiedDate = (string?)null } },
                 pageIndex = 1,
                 totalPages = 1,
                 totalRecords = 1,
