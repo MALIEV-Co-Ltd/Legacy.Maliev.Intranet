@@ -1,5 +1,7 @@
 .operational-table__scroll { contain: inline-size layout; box-sizing: border-box; width: 100%; min-width: 0; max-width: 100%; overflow-x: auto; overscroll-behavior-inline: contain; }
-.operational-table { width: 100%; min-width: var(--operational-table-min-width, 48rem); border-collapse: separate; border-spacing: 0; }
+.operational-table { width: 100%; min-width: var(--operational-table-min-width, 64rem); border-collapse: separate; border-spacing: 0; }
+.operational-table ::deep th, .operational-table ::deep td { padding: 0.625rem 0.75rem; vertical-align: middle; line-height: 1.35; }
+.operational-table ::deep th { white-space: nowrap; }
 .operational-table__scroll ::deep .operational-table__identity { position: sticky; inset-inline-start: 0; background: var(--shadcn-background); }
 .operational-table__actions { position: sticky; inset-inline-end: 0; background: var(--shadcn-background); }
 .operational-table__detail-wrap ::deep a.operational-table__detail, .operational-table__toggle-wrap ::deep button.operational-table__toggle { box-sizing: border-box; display: inline-flex; flex: 0 0 2.25rem; align-items: center; justify-content: center; padding: 0; width: 2.25rem; height: 2.25rem; }

@@ -182,7 +182,7 @@ public sealed class CustomerResponsiveBrowserTests(
                     };
                 }
                 """);
-            Assert.True(metrics.GetProperty("toolbar").GetProperty("height").GetDouble() <= (width >= 1024 ? 100 : width > 600 ? 200 : 250), metrics.ToString());
+            Assert.True(metrics.GetProperty("toolbar").GetProperty("height").GetDouble() <= (width >= 1024 ? 100 : width > 600 ? 200 : 360), metrics.ToString());
             Assert.True(metrics.GetProperty("search").GetProperty("width").GetDouble() >= metrics.GetProperty("sort").GetProperty("width").GetDouble(), metrics.ToString());
             if (width <= 900)
             {
@@ -193,7 +193,9 @@ public sealed class CustomerResponsiveBrowserTests(
             }
             if (width <= 600)
             {
-                Assert.InRange(Math.Abs(metrics.GetProperty("sort").GetProperty("y").GetDouble() - metrics.GetProperty("pageSize").GetProperty("y").GetDouble()), 0, 1);
+                Assert.True(
+                    metrics.GetProperty("pageSize").GetProperty("y").GetDouble() > metrics.GetProperty("sort").GetProperty("y").GetDouble(),
+                    metrics.ToString());
             }
             Assert.Equal(width > 900 ? "1px" : "0px", await page.Locator(".list-toolbar__actions").EvaluateAsync<string>("element => getComputedStyle(element).borderInlineStartWidth"));
             Assert.Equal(

@@ -42,7 +42,7 @@
                                 @LocalizeFormat("OrderNumber", new object?[] { order.Id })
                             </LegacyLink>
                         </MudTd>
-                        <MudTd DataLabel="@Localize("Name")" data-field="Name">@DisplayValue(order.Name)</MudTd>
+                        <MudTd DataLabel="@Localize("Name")" Class="history-primary" data-field="Name">@DisplayValue(order.Name)</MudTd>
                         <MudTd DataLabel="@Localize("Status")" Class="history-status mlv-mono" data-field="Quantity Manufactured Remaining">@OrderStatus(order) · @DisplayNumber(order.Remaining)</MudTd>
                         <MudTd DataLabel="@Localize("PromisedDate")" Class="mlv-mono" data-field="PromisedDate">@FormatDate(order.PromisedDate)</MudTd>
                         <MudTd DataLabel="@Localize("References")" Class="history-meta mlv-mono" data-field="CustomerId EmployeeId ProcessId">@DisplayReference("C", order.CustomerId) · @DisplayReference("E", order.EmployeeId) · @DisplayReference("P", order.ProcessId)</MudTd>

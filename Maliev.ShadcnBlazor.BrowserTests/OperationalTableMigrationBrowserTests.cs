@@ -377,8 +377,28 @@ public sealed class OperationalTableMigrationBrowserTests(
         Assert.Equal("Mali Dee", (await breadcrumbs.Locator("[aria-current='page']").InnerTextAsync()).Trim());
         Assert.Equal("table", await table.EvaluateAsync<string>("node => getComputedStyle(node).display"));
         Assert.NotEqual("none", await table.Locator("thead").EvaluateAsync<string>("node => getComputedStyle(node).display"));
+        Assert.Equal("none", await table.Locator("tbody td").First.EvaluateAsync<string>("node => getComputedStyle(node, '::before').content"));
         var scroller = page.Locator(".customer-history .mud-table-container");
         Assert.Contains(await scroller.EvaluateAsync<string>("node => getComputedStyle(node).overflowX"), new[] { "auto", "scroll" });
+        var nameCell = page.Locator("[data-projection='history-orders'] td[data-field='Name']");
+        var nameGeometry = await nameCell.EvaluateAsync<JsonElement>("""
+            node => ({
+                width: node.getBoundingClientRect().width,
+                height: node.getBoundingClientRect().height,
+                contentHeight: (() => {
+                    const range = document.createRange();
+                    range.selectNodeContents(node);
+                    return range.getBoundingClientRect().height;
+                })(),
+                lineHeight: parseFloat(getComputedStyle(node).lineHeight),
+                whiteSpace: getComputedStyle(node).whiteSpace
+            })
+            """);
+        Assert.Equal("nowrap", nameGeometry.GetProperty("whiteSpace").GetString());
+        Assert.True(nameGeometry.GetProperty("width").GetDouble() >= 160, nameGeometry.ToString());
+        Assert.True(
+            nameGeometry.GetProperty("contentHeight").GetDouble() <= nameGeometry.GetProperty("lineHeight").GetDouble() * 2,
+            nameGeometry.ToString());
         Assert.Equal(
             await page.EvaluateAsync<int>("() => document.documentElement.clientWidth"),
             await page.EvaluateAsync<int>("() => document.documentElement.scrollWidth"));

@@ -42,6 +42,10 @@
     vertical-align: middle;
 }
 
+.customer-history ::deep .customer-history__table td[data-label]::before {
+    content: none;
+}
+
 .customer-history ::deep .customer-history__table table {
     min-width: 36rem;
 }
@@ -52,6 +56,14 @@
 
 .customer-history ::deep .history-meta {
     max-width: 24rem;
+}
+
+.customer-history ::deep .history-primary {
+    min-width: 10rem;
+    max-width: 18rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .customer-history__pager {

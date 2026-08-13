@@ -17,7 +17,7 @@
 }
 
 .orders-section {
-    --operational-table-min-width: 55rem;
+    --operational-table-min-width: 72rem;
     contain: paint;
     min-width: 0;
     overflow-x: hidden;

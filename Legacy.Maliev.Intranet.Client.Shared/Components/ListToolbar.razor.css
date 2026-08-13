@@ -89,17 +89,17 @@
 
 @media (max-width: 600px) {
     .list-toolbar__grid {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
+        grid-template-columns: minmax(0, 1fr);
         --shadcn-control-height: 2.75rem;
     }
 
     .list-toolbar__grid ::deep > .mud-input-control:first-child {
-        grid-column: 1 / -1;
+        grid-column: auto;
     }
 
     .list-toolbar__actions {
         display: flex;
-        grid-column: 1 / -1;
+        grid-column: auto;
         padding-inline-start: 0;
         border-inline-start: 0;
     }
@@ -124,7 +124,22 @@
 
 @media (max-width: 420px) {
     .list-toolbar__grid {
-        grid-template-columns: minmax(9.5rem, 1fr) minmax(4.25rem, 0.45fr);
+        grid-template-columns: minmax(0, 1fr);
     }
 
+    .list-toolbar__grid ::deep > .mud-input-control:first-child,
+    .list-toolbar__actions {
+        grid-column: auto;
+    }
+}
+
+@media (min-width: 421px) and (max-width: 720px) {
+    .list-toolbar__grid {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .list-toolbar__grid ::deep > .mud-input-control:first-child,
+    .list-toolbar__actions {
+        grid-column: auto;
+    }
 }

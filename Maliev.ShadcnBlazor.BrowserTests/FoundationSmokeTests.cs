@@ -7,6 +7,38 @@ namespace Maliev.ShadcnBlazor.BrowserTests;
 public sealed class FoundationSmokeTests(ShowcaseServerFixture server, PlaywrightFixture playwright)
 {
     [Fact]
+    public async Task ShowcaseDoesNotRequestMissingDeclaredResources()
+    {
+        var failedResources = new List<string>();
+        await using var context = await playwright.Browser.NewContextAsync();
+        var page = await context.NewPageAsync();
+        page.Response += (_, response) =>
+        {
+            if (response.Status >= 400 && response.Url.StartsWith(server.BaseUri.AbsoluteUri, StringComparison.Ordinal))
+                failedResources.Add($"{response.Status} {response.Url}");
+        };
+
+        await page.GotoAsync(new Uri(server.BaseUri, "/components/foundation").ToString());
+        await page.GetByTestId("foundation-fixture").WaitForAsync();
+
+        Assert.Empty(failedResources);
+    }
+
+    [Fact]
+    public async Task ShowcaseDeclaresAnExplicitEmbeddedFavicon()
+    {
+        await using var context = await playwright.Browser.NewContextAsync();
+        var page = await context.NewPageAsync();
+
+        await page.GotoAsync(new Uri(server.BaseUri, "/components/foundation").ToString());
+        await page.GetByTestId("foundation-fixture").WaitForAsync();
+
+        var icon = page.Locator("link[rel~='icon']");
+        Assert.Equal(1, await icon.CountAsync());
+        Assert.StartsWith("data:image/", await icon.GetAttributeAsync("href"), StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task FoundationFixtureHasHealthyConsoleAndSwitchesThemeAndDirection()
     {
         var errors = new List<string>();

@@ -45,6 +45,10 @@ public sealed class OrdersOperationalTableBrowserTests(
         Assert.Equal(3, await page.Locator("table.operational-table").CountAsync());
         Assert.Equal(3, await page.Locator("table.operational-table caption").CountAsync());
         Assert.Equal(0, await page.Locator(".orders-table, [data-label]").CountAsync());
+        var firstHeader = page.Locator(".operational-table thead th").First;
+        Assert.Equal("nowrap", await firstHeader.EvaluateAsync<string>("node => getComputedStyle(node).whiteSpace"));
+        Assert.True(await firstHeader.EvaluateAsync<double>("node => parseFloat(getComputedStyle(node).paddingInlineStart)") >= 10);
+        Assert.True(await page.Locator(".operational-table").First.EvaluateAsync<double>("node => node.getBoundingClientRect().width") >= 1152);
 
         foreach (var width in new[] { 1280, 768, 390, 320 })
         {
@@ -94,6 +98,31 @@ public sealed class OrdersOperationalTableBrowserTests(
         {
             Assert.Equal("nowrap", await page.Locator(selector).First.EvaluateAsync<string>("node => getComputedStyle(node).whiteSpace"));
         }
+    }
+
+    [Fact]
+    public async Task OrdersToolbarKeepsEveryLabelReadableAtModeledTwoHundredPercentZoom()
+    {
+        await using var context = await playwright.Browser.NewContextAsync(new()
+        {
+            ViewportSize = new() { Width = 640, Height = 900 },
+            ReducedMotion = ReducedMotion.Reduce,
+        });
+        var page = await context.NewPageAsync();
+        await StubOrdersBoundariesAsync(page);
+        await page.GotoAsync(new Uri(server.BaseUri, "sales/orders").AbsoluteUri);
+        await page.Locator(".list-toolbar").WaitForAsync();
+        await page.EvaluateAsync("document.documentElement.style.zoom = '2'");
+
+        Assert.Equal(1, await page.Locator(".list-toolbar__grid").EvaluateAsync<int>(
+            "node => getComputedStyle(node).gridTemplateColumns.split(' ').length"));
+        foreach (var label in await page.Locator(".list-toolbar label").AllAsync())
+        {
+            Assert.True(await label.EvaluateAsync<bool>("node => node.scrollWidth <= node.clientWidth"), await label.InnerTextAsync());
+        }
+        Assert.Equal(
+            await page.EvaluateAsync<int>("() => document.documentElement.clientWidth"),
+            await page.EvaluateAsync<int>("() => document.documentElement.scrollWidth"));
     }
 
     [Fact]
