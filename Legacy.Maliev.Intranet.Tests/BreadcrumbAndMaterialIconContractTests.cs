@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Reflection;
 using System.Security.Cryptography;
 using System.Text;
@@ -90,6 +91,16 @@ public sealed class BreadcrumbAndMaterialIconContractTests : BunitContext
             ["Legacy.Maliev.Intranet.Client/wwwroot/fonts/ibm-plex-sans-thai/IBMPlexSansThai-SemiBold.woff2"] = new(
             "83F9D86C099E0006077854CAC1CF6F9D3177FB0C4F356254A7D56D047C097E52",
             "Self-hosted IBM Plex Sans Thai semibold text font"),
+        };
+    private static readonly IReadOnlyDictionary<string, ApprovedTextVendorAsset> ApprovedTextVendorAssets =
+        new Dictionary<string, ApprovedTextVendorAsset>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["Legacy.Maliev.Intranet/wwwroot/css/ibm-plex-sans-thai.css"] = new(
+                "31D529DDFE8C39FA94A1F5659923C0500479D5C7FA7E4803A470D7B206F18581",
+                "Exact IBM Plex Sans Thai text-font face declarations for the server shell"),
+            ["Legacy.Maliev.Intranet.Client/wwwroot/css/ibm-plex-sans-thai.css"] = new(
+                "31D529DDFE8C39FA94A1F5659923C0500479D5C7FA7E4803A470D7B206F18581",
+                "Exact IBM Plex Sans Thai text-font face declarations for the Blazor client"),
         };
     private static readonly IReadOnlySet<string> ApprovedExtensionlessTextFiles = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
     {
@@ -259,6 +270,10 @@ public sealed class BreadcrumbAndMaterialIconContractTests : BunitContext
                 "<link rel=\"icon\" href=\"images/missing.svg\" />",
                 "Deliberately unresolved test target")],
             ApprovedSvgAssets));
+        Assert.NotEmpty(FindApprovalGraphViolations(files.Select(file =>
+            file.Path == "Legacy.Maliev.Intranet.Client/wwwroot/css/ibm-plex-sans-thai.css"
+                ? file with { Source = file.Source + "/* mutated */" }
+                : file)));
     }
 
     [Fact]
@@ -274,6 +289,17 @@ public sealed class BreadcrumbAndMaterialIconContractTests : BunitContext
                 "Legacy.Maliev.Intranet.Client/wwwroot/lib/vendor/icons.css",
                 "@font-face { font-family: 'Material Icons'; src: url('icons.woff2'); }")
         ]));
+    }
+
+    [Theory]
+    [InlineData("Client/wwwroot/lib/acme-icons.css", "@font-face{font-family:'AcmeGlyphs';src:url(data:font/woff2;base64,AA==)}.icon::before{font-family:'AcmeGlyphs';content:'\\e001'}")]
+    [InlineData("Client/wwwroot/lib/acme-icons.css", "@font-face{font-family:'AcmeGlyphs';src:url('/fonts/acme.woff2')}[class^='acme-']::before{font-family:'AcmeGlyphs';content:'\\f101'}")]
+    [InlineData("Client/wwwroot/lib/acme-icons.js", "style.textContent=\"@font-face{font-family:AcmeGlyphs;src:local('Acme Glyphs')} .acme::before{font-family:AcmeGlyphs;content:'\\\\e123'}\";")]
+    public void Icon_inventory_rejects_custom_glyph_font_constructs_independent_of_family_name(
+        string path,
+        string source)
+    {
+        Assert.NotEmpty(FindIconInventoryViolations([new(path, source)]));
     }
 
     [Fact]
@@ -392,6 +418,7 @@ public sealed class BreadcrumbAndMaterialIconContractTests : BunitContext
                     file.Source,
                     "font-family\\s*:\\s*['\\\"]?(?:Material\\s+(?:Icons|Symbols)|Font\\s*Awesome)",
                     RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)
+                || HasUnapprovedFontConstruct(file)
                 || file.Source.Contains("fonts.googleapis.com", StringComparison.OrdinalIgnoreCase))
             {
                 violations.Add(file.Path);
@@ -442,6 +469,18 @@ public sealed class BreadcrumbAndMaterialIconContractTests : BunitContext
                 || !filesByPath.TryGetValue(path, out var approvedFiles)
                 || approvedFiles.Length != 1
                 || !string.Equals(approvedFiles[0].ContentSha256, approval.Sha256, StringComparison.Ordinal))
+            {
+                violations.Add(path);
+            }
+        }
+
+        foreach (var (path, approval) in ApprovedTextVendorAssets)
+        {
+            if (!string.Equals(path, NormalizeRelativePath(path), StringComparison.Ordinal)
+                || string.IsNullOrWhiteSpace(approval.Purpose)
+                || !filesByPath.TryGetValue(path, out var approvedFiles)
+                || approvedFiles.Length != 1
+                || !string.Equals(Sha256(approvedFiles[0].Source), approval.Sha256, StringComparison.Ordinal))
             {
                 violations.Add(path);
             }
@@ -537,6 +576,41 @@ public sealed class BreadcrumbAndMaterialIconContractTests : BunitContext
         }
 
         return string.Join('/', segments);
+    }
+
+    private static bool HasUnapprovedFontConstruct(InventoryFile file)
+    {
+        if (file.Source.Contains("data:font/", StringComparison.OrdinalIgnoreCase)
+            || HasPrivateUseGlyph(file.Source))
+        {
+            return true;
+        }
+
+        if (!file.Source.Contains("@font-face", StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        return !ApprovedTextVendorAssets.TryGetValue(file.Path, out var approved)
+            || string.IsNullOrWhiteSpace(approved.Purpose)
+            || !string.Equals(Sha256(file.Source), approved.Sha256, StringComparison.Ordinal);
+    }
+
+    private static bool HasPrivateUseGlyph(string source)
+    {
+        if (source.EnumerateRunes().Any(rune => rune.Value is >= 0xE000 and <= 0xF8FF
+                or >= 0xF0000 and <= 0xFFFFD
+                or >= 0x100000 and <= 0x10FFFD))
+        {
+            return true;
+        }
+
+        return Regex.Matches(source, @"\\(?<hex>[0-9a-f]{1,6})\s?", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)
+            .Select(match => match.Groups["hex"].Value)
+            .Any(value => int.TryParse(value, NumberStyles.HexNumber, CultureInfo.InvariantCulture, out var codePoint)
+                && codePoint is >= 0xE000 and <= 0xF8FF
+                    or >= 0xF0000 and <= 0xFFFFD
+                    or >= 0x100000 and <= 0x10FFFD);
     }
 
     private static bool HasUnapprovedInlineOrDataSvg(InventoryFile file)
@@ -670,5 +744,6 @@ public sealed class BreadcrumbAndMaterialIconContractTests : BunitContext
     private sealed record ApprovedInlineSvg(string Path, string Markup, string Purpose);
     private sealed record ApprovedSvgAsset(string Sha256, string Purpose);
     private sealed record ApprovedBinaryAsset(string Sha256, string Purpose);
+    private sealed record ApprovedTextVendorAsset(string Sha256, string Purpose);
     private sealed record ApprovedSvgReference(string SourcePath, string Target, string Marker, string Purpose);
 }
