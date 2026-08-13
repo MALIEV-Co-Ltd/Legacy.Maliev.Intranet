@@ -10,6 +10,52 @@ public sealed class OperationalShellBrowserTests(
     PlaywrightFixture playwright)
 {
     [Fact]
+    public async Task NarrowQuickCreateRoutesRemainVisibleFocusableAndTouchSized()
+    {
+        await using var context = await playwright.Browser.NewContextAsync(new()
+        {
+            ViewportSize = new() { Width = 768, Height = 844 },
+            DeviceScaleFactor = 1,
+            ReducedMotion = ReducedMotion.Reduce,
+        });
+        var page = await context.NewPageAsync();
+        await StubProductionBoundariesAsync(page);
+        await page.GotoAsync(new Uri(server.BaseUri, "sales/orders").AbsoluteUri);
+        await page.Locator(".legacy-topbar__actions").WaitForAsync();
+
+        foreach (var width in new[] { 768, 390, 320 })
+        {
+            await page.SetViewportSizeAsync(width, 844);
+            foreach (var href in new[] { "/Quotations/Create", "/Orders/Create" })
+            {
+                var action = page.Locator($".legacy-topbar__actions a[href='{href}']");
+                Assert.True(await action.IsVisibleAsync(), $"{href} was not visible at {width}px.");
+                Assert.True(await action.EvaluateAsync<bool>(
+                    "element => element.getBoundingClientRect().width >= 44 && element.getBoundingClientRect().height >= 44"));
+                await action.FocusAsync();
+                Assert.True(await action.EvaluateAsync<bool>("element => element === document.activeElement"));
+            }
+        }
+    }
+
+    [Fact]
+    public async Task ThreeHundredTwentyPixelTopbarContainsNonOverlappingZonesControlsAndLogo()
+    {
+        await using var context = await playwright.Browser.NewContextAsync(new()
+        {
+            ViewportSize = new() { Width = 320, Height = 844 },
+            DeviceScaleFactor = 1,
+            ReducedMotion = ReducedMotion.Reduce,
+        });
+        var page = await context.NewPageAsync();
+        await StubProductionBoundariesAsync(page);
+        await page.GotoAsync(new Uri(server.BaseUri, "sales/orders").AbsoluteUri);
+        await page.Locator(".legacy-topbar__actions").WaitForAsync();
+
+        await AssertStrictNarrowTopbarGeometryAsync(page);
+    }
+
+    [Fact]
     public async Task ProductionShellKeepsHierarchyAlignmentContainmentAndDrawerFocusAcrossSupportedWidths()
     {
         await using var context = await playwright.Browser.NewContextAsync(new()
@@ -26,6 +72,36 @@ public sealed class OperationalShellBrowserTests(
 
         await page.GotoAsync(new Uri(server.BaseUri, "sales/orders").AbsoluteUri);
         await page.Locator(".legacy-topbar__utilities").WaitForAsync();
+
+        var desktopShell = await page.EvaluateAsync<JsonElement>("""
+            () => {
+                const bounds = selector => {
+                    const rect = document.querySelector(selector).getBoundingClientRect();
+                    return { left: rect.left, right: rect.right, top: rect.top, bottom: rect.bottom, width: rect.width, height: rect.height };
+                };
+                return {
+                    viewportWidth: document.documentElement.clientWidth,
+                    topbar: bounds('.legacy-topbar'),
+                    brand: bounds('.legacy-topbar__brand'),
+                    logo: bounds('.legacy-topbar-logo img:not([aria-hidden=true])'),
+                    workspace: bounds('.legacy-workspace-shell')
+                };
+            }
+            """);
+        var desktopTopbar = desktopShell.GetProperty("topbar");
+        var desktopBrand = desktopShell.GetProperty("brand");
+        var desktopLogo = desktopShell.GetProperty("logo");
+        var desktopWorkspace = desktopShell.GetProperty("workspace");
+        Assert.InRange(desktopTopbar.GetProperty("left").GetDouble(), -0.5, 0.5);
+        Assert.InRange(
+            desktopTopbar.GetProperty("right").GetDouble(),
+            desktopShell.GetProperty("viewportWidth").GetInt32() - 0.5,
+            desktopShell.GetProperty("viewportWidth").GetInt32() + 0.5);
+        Assert.InRange(
+            Math.Abs(desktopBrand.GetProperty("right").GetDouble() - desktopWorkspace.GetProperty("left").GetDouble()),
+            0,
+            2);
+        Assert.True(desktopLogo.GetProperty("left").GetDouble() < desktopWorkspace.GetProperty("left").GetDouble(), desktopShell.ToString());
 
         var parent = page.Locator("#legacy-navigation-rail a[href='/sales/orders']");
         var child = page.Locator("#legacy-navigation-rail a[href='/Orders/Create']");
@@ -85,7 +161,19 @@ public sealed class OperationalShellBrowserTests(
                 containment.ToString());
 
             foreach (var href in new[] { "/Quotations/Create", "/Orders/Create" })
-                Assert.Equal(1, await page.Locator($".legacy-topbar__actions a[href='{href}']").CountAsync());
+            {
+                var action = page.Locator($".legacy-topbar__actions a[href='{href}']");
+                Assert.Equal(1, await action.CountAsync());
+                Assert.True(await action.IsVisibleAsync(), $"{href} was not visible at {width}px.");
+                Assert.True(await action.EvaluateAsync<bool>(
+                    "element => element.getBoundingClientRect().width >= 44 && element.getBoundingClientRect().height >= 44"),
+                    $"{href} was not touch sized at {width}px.");
+                await action.FocusAsync();
+                Assert.True(await action.EvaluateAsync<bool>("element => element === document.activeElement"));
+            }
+
+            if (width == 320)
+                await AssertStrictNarrowTopbarGeometryAsync(page);
         }
 
         await page.SetViewportSizeAsync(768, 844);
@@ -110,6 +198,83 @@ public sealed class OperationalShellBrowserTests(
 
         Assert.Empty(errors);
     }
+
+    private static async Task AssertStrictNarrowTopbarGeometryAsync(IPage page)
+    {
+        var geometry = await page.EvaluateAsync<JsonElement>("""
+            () => {
+                const topbar = document.querySelector('.legacy-topbar');
+                const headerRect = topbar.getBoundingClientRect();
+                const rect = element => {
+                    const bounds = element.getBoundingClientRect();
+                    return {
+                        name: element.getAttribute('aria-label') || element.getAttribute('href') || element.className?.baseVal || element.className || element.tagName,
+                        left: bounds.left,
+                        right: bounds.right,
+                        top: bounds.top,
+                        bottom: bounds.bottom,
+                        width: bounds.width,
+                        height: bounds.height
+                    };
+                };
+                const visible = element => {
+                    const style = getComputedStyle(element);
+                    const bounds = element.getBoundingClientRect();
+                    return style.display !== 'none' && style.visibility !== 'hidden' && bounds.width > 0 && bounds.height > 0;
+                };
+                return {
+                    header: rect(topbar),
+                    zones: Array.from(topbar.querySelectorAll(':scope > [class*="legacy-topbar__"]')).filter(visible).map(rect),
+                    controls: Array.from(topbar.querySelectorAll('a, button, input:not([type="hidden"])')).filter(visible).map(rect),
+                    logo: rect(topbar.querySelector('.legacy-topbar-logo img:not([aria-hidden=true])')),
+                    brand: rect(topbar.querySelector('.legacy-topbar__brand'))
+                };
+            }
+            """);
+
+        var header = geometry.GetProperty("header");
+        var zones = geometry.GetProperty("zones").EnumerateArray().ToArray();
+        var controls = geometry.GetProperty("controls").EnumerateArray().ToArray();
+        foreach (var element in zones.Concat(controls))
+        {
+            Assert.True(element.GetProperty("left").GetDouble() >= header.GetProperty("left").GetDouble() - 0.5, geometry.ToString());
+            Assert.True(element.GetProperty("right").GetDouble() <= header.GetProperty("right").GetDouble() + 0.5, geometry.ToString());
+            Assert.True(element.GetProperty("top").GetDouble() >= header.GetProperty("top").GetDouble() - 0.5, geometry.ToString());
+            Assert.True(element.GetProperty("bottom").GetDouble() <= header.GetProperty("bottom").GetDouble() + 0.5, geometry.ToString());
+        }
+
+        for (var index = 0; index < zones.Length; index++)
+        {
+            for (var other = index + 1; other < zones.Length; other++)
+                Assert.False(Overlaps(zones[index], zones[other]), geometry.ToString());
+        }
+
+        foreach (var control in controls)
+        {
+            Assert.True(control.GetProperty("width").GetDouble() >= 44, geometry.ToString());
+            Assert.True(control.GetProperty("height").GetDouble() >= 44, geometry.ToString());
+        }
+
+        for (var index = 0; index < controls.Length; index++)
+        {
+            for (var other = index + 1; other < controls.Length; other++)
+                Assert.False(Overlaps(controls[index], controls[other]), geometry.ToString());
+        }
+
+        var logo = geometry.GetProperty("logo");
+        var brand = geometry.GetProperty("brand");
+        Assert.True(logo.GetProperty("width").GetDouble() > 0 && logo.GetProperty("height").GetDouble() > 0, geometry.ToString());
+        Assert.True(logo.GetProperty("left").GetDouble() >= brand.GetProperty("left").GetDouble(), geometry.ToString());
+        Assert.True(logo.GetProperty("right").GetDouble() <= brand.GetProperty("right").GetDouble(), geometry.ToString());
+        Assert.True(logo.GetProperty("top").GetDouble() >= brand.GetProperty("top").GetDouble(), geometry.ToString());
+        Assert.True(logo.GetProperty("bottom").GetDouble() <= brand.GetProperty("bottom").GetDouble(), geometry.ToString());
+    }
+
+    private static bool Overlaps(JsonElement first, JsonElement second) =>
+        first.GetProperty("left").GetDouble() < second.GetProperty("right").GetDouble() - 0.5 &&
+        first.GetProperty("right").GetDouble() > second.GetProperty("left").GetDouble() + 0.5 &&
+        first.GetProperty("top").GetDouble() < second.GetProperty("bottom").GetDouble() - 0.5 &&
+        first.GetProperty("bottom").GetDouble() > second.GetProperty("top").GetDouble() + 0.5;
 
     private static async Task StubProductionBoundariesAsync(IPage page)
     {

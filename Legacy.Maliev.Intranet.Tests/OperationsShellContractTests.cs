@@ -66,7 +66,7 @@ public sealed class OperationsShellContractTests
         var topBar = Read(root, "Legacy.Maliev.Intranet.Client", "Layout", "LegacyTopBar.razor");
         var navigation = Read(root, "Legacy.Maliev.Intranet.Client", "Components", "Shell", "LegacyNavigationRail.razor");
 
-        Assert.Contains("@attributes=\"WorkspaceAccessibilityAttributes\"", layout, StringComparison.Ordinal);
+        Assert.Contains("class=\"legacy-workspace-frame\" @attributes=\"WorkspaceAccessibilityAttributes\"", layout, StringComparison.Ordinal);
         Assert.Contains("[\"inert\"] = string.Empty", layout, StringComparison.Ordinal);
         Assert.Contains("[\"aria-hidden\"] = \"true\"", layout, StringComparison.Ordinal);
         Assert.Contains("@ref=\"_navigationToggle\"", topBar, StringComparison.Ordinal);
