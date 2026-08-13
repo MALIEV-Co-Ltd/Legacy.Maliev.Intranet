@@ -9,6 +9,18 @@ public sealed class OperationalShellBrowserTests(
     IntranetClientServerFixture server,
     PlaywrightFixture playwright)
 {
+    private static readonly (string ParentHref, string ChildHref)[] NavigationHierarchy =
+    [
+        ("/customers", "/customers/new"),
+        ("/sales/orders", "/Orders/Create"),
+        ("/Quotations/Index", "/Quotations/Create"),
+        ("/finance/invoices", "/accounting/new"),
+        ("/Finances/Index", "/Finances/Create"),
+        ("/mfg/materials", "/Materials/Create"),
+        ("/purchasing", "/purchasing/new"),
+        ("/purchasing/suppliers", "/Suppliers/Create"),
+    ];
+
     [Fact]
     public async Task NarrowQuickCreateRoutesRemainVisibleFocusableAndTouchSized()
     {
@@ -197,6 +209,52 @@ public sealed class OperationalShellBrowserTests(
         Assert.True(await menu.EvaluateAsync<bool>("element => element === document.activeElement"));
 
         Assert.Empty(errors);
+    }
+
+    [Theory]
+    [InlineData(1280, false)]
+    [InlineData(320, true)]
+    public async Task EveryCreateRouteHasOneMostSpecificCurrentLinkInsideItsAuthorizedParent(int width, bool thai)
+    {
+        await using var context = await playwright.Browser.NewContextAsync(new()
+        {
+            ViewportSize = new() { Width = width, Height = 844 },
+            HasTouch = width <= 720,
+            ReducedMotion = ReducedMotion.Reduce,
+        });
+        if (thai)
+            await context.AddInitScriptAsync("localStorage.setItem('maliev_culture', 'th-TH')");
+        var page = await context.NewPageAsync();
+        await StubProductionBoundariesAsync(page);
+
+        foreach (var (parentHref, childHref) in NavigationHierarchy)
+        {
+            await page.GotoAsync(new Uri(server.BaseUri, childHref.TrimStart('/')).AbsoluteUri);
+            if (width <= 1180)
+                await page.GetByRole(AriaRole.Button, new() { Name = thai ? "เปิดเมนูนำทาง" : "Open navigation" }).ClickAsync();
+
+            var rail = page.Locator(width <= 1180 ? "#legacy-navigation-rail-drawer" : "#legacy-navigation-rail");
+            await rail.WaitForAsync();
+            var parent = rail.Locator($"a[href='{parentHref}']");
+            var child = rail.Locator($"a[href='{childHref}']");
+            await parent.WaitForAsync();
+            await child.WaitForAsync();
+            Assert.Equal(1, await parent.CountAsync());
+            Assert.Equal(1, await child.CountAsync());
+            Assert.Equal(1, await rail.Locator("[aria-current='page']").CountAsync());
+            Assert.Null(await parent.GetAttributeAsync("aria-current"));
+            Assert.Equal("page", await child.GetAttributeAsync("aria-current"));
+            Assert.True(await child.EvaluateAsync<bool>(
+                "(node, parentSelector) => node.closest('ul.legacy-rail-children')?.parentElement?.querySelector(':scope > ' + parentSelector) !== null",
+                $"a[href='{parentHref}']"));
+            Assert.True(await child.EvaluateAsync<bool>("node => node.getBoundingClientRect().height >= 44"));
+            await parent.FocusAsync();
+            await page.Keyboard.PressAsync("Tab");
+            Assert.True(await child.EvaluateAsync<bool>("node => document.activeElement === node"));
+
+            if (width <= 1180)
+                await page.GetByRole(AriaRole.Button, new() { Name = thai ? "ปิดเมนูนำทาง" : "Close navigation" }).ClickAsync();
+        }
     }
 
     private static async Task AssertStrictNarrowTopbarGeometryAsync(IPage page)

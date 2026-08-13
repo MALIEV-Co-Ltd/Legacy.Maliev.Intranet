@@ -78,6 +78,7 @@
             </RowContent>
             <QuickViewContent Context="context">
                 <dl class="quotation-request-quick-view">
+                    <div><dt>@Text["Customer"]</dt><dd>@Name(context)</dd></div>
                     <div><dt>@Text["Company"]</dt><dd>@Fallback(context.CompanyName)</dd></div>
                 </dl>
             </QuickViewContent>

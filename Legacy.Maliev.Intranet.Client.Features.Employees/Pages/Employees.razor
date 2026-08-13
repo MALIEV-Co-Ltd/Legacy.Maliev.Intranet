@@ -69,6 +69,8 @@
             </RowContent>
             <QuickViewContent Context="context">
                 <dl class="employee-quick-view">
+                    <div><dt>@Text["Name"]</dt><dd>@context.FullName</dd></div>
+                    <div><dt>@Text["Role"]</dt><dd>@ValueOrFallback(context.Role?.Name)</dd></div>
                     <div><dt>@Text["Email"]</dt><dd>@context.Email</dd></div>
                 </dl>
             </QuickViewContent>

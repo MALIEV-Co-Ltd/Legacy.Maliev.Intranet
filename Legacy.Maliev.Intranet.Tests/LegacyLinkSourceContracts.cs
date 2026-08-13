@@ -12,6 +12,7 @@ internal static class LegacyLinkSourceContracts
         Raw("Legacy.Maliev.Intranet.Client/Layout/LegacyTopBar.razor", "href=\"/Login\"", "class=\"legacy-signin-link\"", "@Text[\"Sign in\"]"),
         Raw("Legacy.Maliev.Intranet.Client/Components/Shell/LegacyNavigationRail.razor", "href=\"/Dashboard\"", "class=\"legacy-rail-logo legacy-logo-link\"", "@Text[\"MALIEV dashboard\"]"),
         Raw("Legacy.Maliev.Intranet.Client/Components/Shell/LegacyNavigationRail.razor", "href=\"@item.Href\"", "legacy-rail-link", "aria-current=", "@onclick=\"CloseAsync\""),
+        Raw("Legacy.Maliev.Intranet.Client/Components/Shell/LegacyNavigationRail.razor", "href=\"@child.Href\"", "legacy-rail-link--child", "aria-current=", "@onclick=\"CloseAsync\""),
         Raw("Legacy.Maliev.Intranet.Client/Components/Shell/LegacyQuickActions.razor", "href=\"@item.Href\"", "legacy-quick-action", "aria-label=\"@Text[item.Label]\"", "@Text[item.Label]"),
         Raw("Legacy.Maliev.Intranet.Client/Pages/Login.razor", "href=\"/\"", "class=\"legacy-login-brand\"", "aria-label=\"@Text[\"HomeLabel\"]\""),
 

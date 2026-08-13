@@ -105,6 +105,7 @@
                                         </RowContent>
                                         <QuickViewContent Context="order">
                                             <dl class="orders-quick-view">
+                                                <div><dt>@Text["Name"]</dt><dd>@ValueOrFallback(order.Name)</dd></div>
                                                 <div><dt>@Text["Process"]</dt><dd>@ProcessName(order.ProcessId)</dd></div>
                                                 <div><dt>@Text["Quantity"]</dt><dd class="orders-quantity">@order.Quantity</dd></div>
                                                 <div><dt>@Text["Manufactured"]</dt><dd class="orders-quantity">@order.Manufactured</dd></div>

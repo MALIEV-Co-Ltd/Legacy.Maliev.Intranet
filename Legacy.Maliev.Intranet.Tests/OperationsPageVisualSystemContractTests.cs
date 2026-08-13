@@ -57,6 +57,23 @@ public sealed class OperationsPageVisualSystemContractTests
     }
 
     [Fact]
+    public void ClippedOperationalValuesHaveSemanticNonTitleRecovery()
+    {
+        var orders = Read("Legacy.Maliev.Intranet.Client.Features.Orders", "Pages", "Orders.razor");
+        var employees = Read("Legacy.Maliev.Intranet.Client.Features.Employees", "Pages", "Employees.razor");
+        var requests = Read("Legacy.Maliev.Intranet.Client.Features.Quotations", "Pages", "QuotationRequests", "Index.razor");
+        var dashboardStyles = Read("Legacy.Maliev.Intranet.Client", "Pages", "Dashboard.razor.css");
+
+        Assert.Matches("<QuickViewContent Context=\"order\">[\\s\\S]*?<dt>@Text\\[\"Name\"\\]</dt><dd>@ValueOrFallback\\(order.Name\\)</dd>", orders);
+        Assert.Matches("<QuickViewContent Context=\"context\">[\\s\\S]*?<dt>@Text\\[\"Name\"\\]</dt><dd>@context.FullName</dd>[\\s\\S]*?<dt>@Text\\[\"Role\"\\]</dt><dd>@ValueOrFallback\\(context.Role\\?\\.Name\\)</dd>", employees);
+        Assert.Matches("<QuickViewContent Context=\"context\">[\\s\\S]*?<dt>@Text\\[\"Customer\"\\]</dt><dd>@Name\\(context\\)</dd>", requests);
+        Assert.DoesNotContain(".dashboard-table-primary { max-width:", dashboardStyles, StringComparison.Ordinal);
+        Assert.DoesNotContain(".dashboard-table-primary { overflow: hidden", dashboardStyles, StringComparison.Ordinal);
+        Assert.DoesNotContain(".dashboard-table-primary { text-overflow: ellipsis", dashboardStyles, StringComparison.Ordinal);
+        Assert.Contains(".dashboard-table-primary { white-space: nowrap; }", dashboardStyles, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void SpecializedCustomerHistoryRemainsSemanticContainedAndCompleteWithoutQuickView()
     {
         var page = Read("Legacy.Maliev.Intranet.Client.Features.Customers", "Components", "CustomerHistoryTable.razor");

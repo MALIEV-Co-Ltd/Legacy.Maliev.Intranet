@@ -147,6 +147,7 @@ public sealed class OrdersOperationalTableBrowserTests(
         Assert.Equal(1, await page.Locator(".operational-table__quick-view").CountAsync());
         Assert.Contains("Confidential", await page.Locator(".operational-table__quick-view").InnerTextAsync());
         Assert.Contains("CNC Milling", await page.Locator(".operational-table__quick-view").InnerTextAsync());
+        Assert.Contains("ชิ้นส่วนประกอบความเที่ยงตรงสูงสำหรับสายการผลิต", await page.Locator(".operational-table__quick-view").InnerTextAsync());
 
         await page.GetByRole(AriaRole.Button, new() { Name = "Expand order 9102" }).First.ClickAsync();
         Assert.Equal(1, await page.Locator(".operational-table__quick-view").CountAsync());

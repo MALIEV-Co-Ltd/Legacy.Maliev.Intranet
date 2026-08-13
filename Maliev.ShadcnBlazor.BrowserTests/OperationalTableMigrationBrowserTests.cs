@@ -198,7 +198,7 @@ public sealed class OperationalTableMigrationBrowserTests(
         Assert.Equal(1, await page.Locator(".operational-table__quick-view").CountAsync());
         await page.Locator(".list-toolbar__refresh").ClickAsync();
         await page.WaitForFunctionAsync("() => document.querySelectorAll('.operational-table__quick-view').length === 0");
-        Assert.Empty(errors);
+        Assert.True(errors.Count == 0, string.Join(Environment.NewLine, errors));
     }
 
     [Fact]
@@ -225,6 +225,35 @@ public sealed class OperationalTableMigrationBrowserTests(
             await page.EvaluateAsync<int>("() => document.documentElement.clientWidth"),
             await page.EvaluateAsync<int>("() => document.documentElement.scrollWidth"));
         Assert.Empty(errors);
+    }
+
+    [Fact]
+    public async Task ThaiSalesQuickViewsRecoverClippedEmployeeAndQuotationRequestIdentityAt320()
+    {
+        await using var context = await playwright.Browser.NewContextAsync(new()
+        {
+            ViewportSize = new() { Width = 320, Height = 844 },
+            HasTouch = true,
+            ReducedMotion = ReducedMotion.Reduce,
+        });
+        await context.AddInitScriptAsync("localStorage.setItem('maliev_culture', 'th-TH')");
+        var page = await context.NewPageAsync();
+        await StubSalesBoundariesAsync(page);
+
+        await page.GotoAsync(new Uri(server.BaseUri, "Employees/Index").AbsoluteUri);
+        await page.Locator("table.operational-table").WaitForAsync();
+        await page.Locator(".operational-table__toggle").First.ClickAsync();
+        var employeeQuickView = page.Locator(".employee-quick-view");
+        Assert.Contains("มาลี ดี ผู้เชี่ยวชาญงานขายอุตสาหกรรม", await employeeQuickView.InnerTextAsync());
+        Assert.Contains("วิศวกรฝ่ายขายอาวุโสและผู้ประสานงานโครงการ", await employeeQuickView.InnerTextAsync());
+
+        await page.GotoAsync(new Uri(server.BaseUri, "QuotationRequests/Index").AbsoluteUri);
+        await page.Locator("table.operational-table").WaitForAsync();
+        await page.Locator(".operational-table__toggle").First.ClickAsync();
+        Assert.Contains("สุดา แก้ว ผู้ประสานงานโครงการอุตสาหกรรม", await page.Locator(".quotation-request-quick-view").InnerTextAsync());
+        Assert.Equal(
+            await page.EvaluateAsync<int>("() => document.documentElement.clientWidth"),
+            await page.EvaluateAsync<int>("() => document.documentElement.scrollWidth"));
     }
 
     [Theory]
@@ -298,6 +327,20 @@ public sealed class OperationalTableMigrationBrowserTests(
             Assert.True(bounds.Height >= 44, $"{expected.Projection} record link height was {bounds.Height}px.");
             await record.FocusAsync();
             Assert.True(await record.EvaluateAsync<bool>("node => document.activeElement === node"));
+        }
+        var fullValues = new[]
+        {
+            (Projection: "dashboard-orders", Value: "ชิ้นส่วนประกอบความเที่ยงตรงสูงสำหรับสายการผลิต"),
+            (Projection: "dashboard-payments", Value: "ผู้รับชำระเงินสำหรับโครงการอุตสาหกรรมระยะยาว"),
+            (Projection: "dashboard-customers", Value: "บริษัท มาลีฟ พรีซิชั่น แมนูแฟคเจอริ่ง จำกัด"),
+        };
+        foreach (var expected in fullValues)
+        {
+            var cell = page.Locator($"[data-projection='{expected.Projection}'] .dashboard-table-primary");
+            Assert.Equal(expected.Value, (await cell.InnerTextAsync()).Trim());
+            Assert.Equal("nowrap", await cell.EvaluateAsync<string>("node => getComputedStyle(node).whiteSpace"));
+            Assert.NotEqual("hidden", await cell.EvaluateAsync<string>("node => getComputedStyle(node).overflow"));
+            Assert.NotEqual("ellipsis", await cell.EvaluateAsync<string>("node => getComputedStyle(node).textOverflow"));
         }
         Assert.Equal(0, await page.Locator(".operational-table__toggle, .operational-table__quick-view").CountAsync());
         Assert.Empty(errors);
@@ -461,13 +504,13 @@ public sealed class OperationalTableMigrationBrowserTests(
         {
             Status = 200,
             ContentType = "application/json",
-            Body = "{\"items\":[{\"id\":201,\"firstName\":\"Mali\",\"lastName\":\"Dee\",\"fullName\":\"Mali Dee\",\"email\":\"mali.employee@maliev.com\",\"role\":{\"id\":8,\"name\":\"Sales Engineer\"}},{\"id\":202,\"firstName\":\"Niran\",\"lastName\":\"Chai\",\"fullName\":\"Niran Chai\",\"email\":\"niran@maliev.com\",\"role\":null}],\"pageIndex\":1,\"totalPages\":2,\"totalRecords\":26,\"hasNextPage\":true,\"hasPreviousPage\":false}",
+            Body = "{\"items\":[{\"id\":201,\"firstName\":\"มาลี\",\"lastName\":\"ดี ผู้เชี่ยวชาญงานขายอุตสาหกรรม\",\"fullName\":\"มาลี ดี ผู้เชี่ยวชาญงานขายอุตสาหกรรม\",\"email\":\"mali.employee@maliev.com\",\"role\":{\"id\":8,\"name\":\"วิศวกรฝ่ายขายอาวุโสและผู้ประสานงานโครงการ\"}},{\"id\":202,\"firstName\":\"Niran\",\"lastName\":\"Chai\",\"fullName\":\"Niran Chai\",\"email\":\"niran@maliev.com\",\"role\":null}],\"pageIndex\":1,\"totalPages\":2,\"totalRecords\":26,\"hasNextPage\":true,\"hasPreviousPage\":false}",
         }));
         await page.RouteAsync("**/bff/quotation-requests?*", route => route.FulfillAsync(new()
         {
             Status = 200,
             ContentType = "application/json",
-            Body = "{\"items\":[{\"id\":301,\"firstName\":\"Suda\",\"lastName\":\"Kaew\",\"email\":\"suda@example.com\",\"telephoneNumber\":\"0812345678\",\"country\":\"Thailand\",\"companyName\":\"Thai Industrial Fixture Company\",\"taxIdentification\":\"0100000000001\",\"message\":\"Precision fixture request\",\"internalComment\":\"Priority\",\"done\":false,\"createdDate\":\"2030-08-01T00:00:00Z\",\"modifiedDate\":\"2030-08-02T00:00:00Z\"},{\"id\":302,\"firstName\":\"Somchai\",\"lastName\":\"Dee\",\"email\":null,\"telephoneNumber\":null,\"country\":null,\"companyName\":null,\"taxIdentification\":null,\"message\":null,\"internalComment\":null,\"done\":true,\"createdDate\":\"2030-08-03T00:00:00Z\",\"modifiedDate\":null}],\"pageIndex\":1,\"totalPages\":2,\"totalRecords\":26,\"hasNextPage\":true,\"hasPreviousPage\":false}",
+            Body = "{\"items\":[{\"id\":301,\"firstName\":\"สุดา\",\"lastName\":\"แก้ว ผู้ประสานงานโครงการอุตสาหกรรม\",\"email\":\"suda@example.com\",\"telephoneNumber\":\"0812345678\",\"country\":\"Thailand\",\"companyName\":\"Thai Industrial Fixture Company\",\"taxIdentification\":\"0100000000001\",\"message\":\"Precision fixture request\",\"internalComment\":\"Priority\",\"done\":false,\"createdDate\":\"2030-08-01T00:00:00Z\",\"modifiedDate\":\"2030-08-02T00:00:00Z\"},{\"id\":302,\"firstName\":\"Somchai\",\"lastName\":\"Dee\",\"email\":null,\"telephoneNumber\":null,\"country\":null,\"companyName\":null,\"taxIdentification\":null,\"message\":null,\"internalComment\":null,\"done\":true,\"createdDate\":\"2030-08-03T00:00:00Z\",\"modifiedDate\":null}],\"pageIndex\":1,\"totalPages\":2,\"totalRecords\":26,\"hasNextPage\":true,\"hasPreviousPage\":false}",
         }));
         await page.RouteAsync("**/bff/quotations/stats", route => route.FulfillAsync(new() { Status = 200, ContentType = "application/json", Body = "{\"accepted\":1,\"declined\":0,\"open\":1}" }));
         await page.RouteAsync("**/bff/catalog/currencies", route => route.FulfillAsync(new() { Status = 200, ContentType = "application/json", Body = "[{\"id\":1,\"shortName\":\"THB\",\"longName\":\"Thai baht\"}]" }));
@@ -529,10 +572,10 @@ public sealed class OperationalTableMigrationBrowserTests(
                 generatedAt = "2030-08-13T10:00:00+07:00",
                 cards = Array.Empty<object>(),
                 degradedSources = Array.Empty<string>(),
-                recentOrders = new[] { new { id = 901, name = "Precision fixture", quantity = 4, manufactured = 1, remaining = 3, promisedDate = "2030-08-20T00:00:00Z", navigateTo = "/sales/orders/901" } },
+                recentOrders = new[] { new { id = 901, name = "ชิ้นส่วนประกอบความเที่ยงตรงสูงสำหรับสายการผลิต", quantity = 4, manufactured = 1, remaining = 3, promisedDate = "2030-08-20T00:00:00Z", navigateTo = "/sales/orders/901" } },
                 recentQuotations = new[] { new { id = 902, total = 1200m, quotedAmount = 1100m, currencyId = 1, expirationDate = "2030-09-01T00:00:00Z", accepted = (bool?)null, createdDate = "2030-08-02T00:00:00Z", navigateTo = "/Quotations/View?id=902" } },
-                recentCustomers = new[] { new { id = 69738, fullName = "Mali Dee", email = "mali@maliev.com", company = "MALIEV", navigateTo = "/Customers/View?id=69738" } },
-                recentPayments = new[] { new { id = 903, amount = 900m, currencyId = (int?)1, recipient = "Mali Dee", paymentDate = "2030-08-04T00:00:00Z", createdDate = "2030-08-03T00:00:00Z", navigateTo = "/Finances/View?id=903" } },
+                recentCustomers = new[] { new { id = 69738, fullName = "Mali Dee", email = "mali@maliev.com", company = "บริษัท มาลีฟ พรีซิชั่น แมนูแฟคเจอริ่ง จำกัด", navigateTo = "/Customers/View?id=69738" } },
+                recentPayments = new[] { new { id = 903, amount = 900m, currencyId = (int?)1, recipient = "ผู้รับชำระเงินสำหรับโครงการอุตสาหกรรมระยะยาว", paymentDate = "2030-08-04T00:00:00Z", createdDate = "2030-08-03T00:00:00Z", navigateTo = "/Finances/View?id=903" } },
                 recentActivity = Array.Empty<object>(),
                 monthlyFinance = Array.Empty<object>(),
                 quotationSummary = (object?)null,

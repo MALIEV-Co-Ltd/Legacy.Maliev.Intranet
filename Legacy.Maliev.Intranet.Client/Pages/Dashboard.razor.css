@@ -62,7 +62,7 @@
 .dashboard-table-scroll ::deep .dashboard-table a:focus-visible,
 .dashboard-activity-list a:hover,
 .dashboard-activity-list a:focus-visible { text-decoration: underline; }
-.dashboard-table-primary { max-width: 14rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dashboard-table-primary { white-space: nowrap; }
 .dashboard-table .mlv-mono { white-space: nowrap; }
 .dashboard-money { font-variant-numeric: tabular-nums; white-space: nowrap; }
 

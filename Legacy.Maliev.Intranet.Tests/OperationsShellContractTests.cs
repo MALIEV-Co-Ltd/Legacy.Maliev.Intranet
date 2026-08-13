@@ -216,6 +216,21 @@ public sealed class OperationsShellContractTests
     }
 
     [Fact]
+    public void NavigationHierarchy_RendersChildActionsAsOwnedNestedListsAndSelectsOneMostSpecificPage()
+    {
+        var root = FindRoot();
+        var navigation = Read(root, "Legacy.Maliev.Intranet.Client", "Components", "Shell", "LegacyNavigationRail.razor");
+
+        Assert.Contains("<ul class=\"legacy-rail-items\">", navigation, StringComparison.Ordinal);
+        Assert.Contains("<li class=\"legacy-rail-item\">", navigation, StringComparison.Ordinal);
+        Assert.Contains("<ul class=\"legacy-rail-children\"", navigation, StringComparison.Ordinal);
+        Assert.Contains("GetEnabledChildren(item)", navigation, StringComparison.Ordinal);
+        Assert.Contains("IsItemPageCurrent(item)", navigation, StringComparison.Ordinal);
+        Assert.Contains("FindCurrentItem()", navigation, StringComparison.Ordinal);
+        Assert.DoesNotContain("aria-current=\"@(IsItemActive(item) ? \"page\" : null)\"", navigation, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void TopBar_DeclaresFourResponsiveGridZonesWithoutRemovingQuickCreateRoutes()
     {
         var root = FindRoot();
