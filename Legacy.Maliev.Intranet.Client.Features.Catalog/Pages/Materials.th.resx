@@ -50,4 +50,6 @@
   <data name="MaterialNumber_Ascending" xml:space="preserve"><value>หมายเลขวัสดุ: น้อยไปมาก</value></data>
   <data name="MaterialNumber_Descending" xml:space="preserve"><value>หมายเลขวัสดุ: มากไปน้อย</value></data>
   <data name="Retry" xml:space="preserve"><value>ลองอีกครั้ง</value></data>
+  <data name="Operations" xml:space="preserve"><value>การดำเนินงาน</value></data><data name="Actions" xml:space="preserve"><value>การดำเนินการ</value></data>
+  <data name="ViewMaterial" xml:space="preserve"><value>เปิดวัสดุ {0}</value></data><data name="ExpandMaterial" xml:space="preserve"><value>ขยายวัสดุ {0}</value></data><data name="CollapseMaterial" xml:space="preserve"><value>ย่อวัสดุ {0}</value></data>
 </root>

@@ -33,4 +33,6 @@
   <data name="LogLevel_Ascending" xml:space="preserve"><value>ระดับความรุนแรง: ต่ำไปสูง</value></data>
   <data name="LogLevel_Descending" xml:space="preserve"><value>ระดับความรุนแรง: สูงไปต่ำ</value></data>
   <data name="DiagnosticsTable" xml:space="preserve"><value>ตารางเหตุขัดข้องล่าสุด</value></data>
+  <data name="Actions" xml:space="preserve"><value>การดำเนินการ</value></data><data name="ViewDiagnostic" xml:space="preserve"><value>เปิดเหตุการณ์ {0}</value></data>
+  <data name="ExpandDiagnostic" xml:space="preserve"><value>ขยายเหตุการณ์ {0}</value></data><data name="CollapseDiagnostic" xml:space="preserve"><value>ย่อเหตุการณ์ {0}</value></data>
 </root>

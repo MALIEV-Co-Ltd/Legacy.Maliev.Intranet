@@ -17,6 +17,97 @@ public sealed class OperationalTableMigrationBrowserTests(
         { "Quotations/Index", "View quotation 401", "/Quotations/View?id=401", "Expand quotation 401" },
     };
 
+    public static TheoryData<string, string?, string> OperationalWavePages => new()
+    {
+        { "Invoices/Index", "/Invoices/View?id=501", "Expand invoice 501" },
+        { "PurchaseOrders/Index", "/PurchaseOrders/View?id=601", "Expand purchase order 601" },
+        { "Materials/Index", "/Materials/View?id=701", "Expand material 701" },
+        { "Server/ErrorReport", null, "Expand diagnostic 801" },
+    };
+
+    [Theory]
+    [MemberData(nameof(OperationalWavePages))]
+    public async Task OperationalWaveUsesContainedTablesExactRoutesAndSingleQuickView(
+        string route, string? detailHref, string expandName)
+    {
+        await using var context = await playwright.Browser.NewContextAsync(new()
+        {
+            ViewportSize = new() { Width = 1280, Height = 900 },
+            ReducedMotion = ReducedMotion.Reduce,
+        });
+        var page = await context.NewPageAsync();
+        var errors = CaptureErrors(page);
+        await StubOperationalWaveBoundariesAsync(page);
+        await page.GotoAsync(new Uri(server.BaseUri, route).AbsoluteUri);
+        await page.Locator("table.operational-table").First.WaitForAsync();
+
+        Assert.Equal("/Dashboard", await page.Locator("nav.page-breadcrumbs").GetByRole(AriaRole.Link).First.GetAttributeAsync("href"));
+        var actionLinks = page.Locator(".operational-table__actions a");
+        if (detailHref is null)
+        {
+            Assert.Equal(0, await actionLinks.CountAsync());
+        }
+        else
+        {
+            Assert.Equal(detailHref, await actionLinks.First.GetAttributeAsync("href"));
+        }
+
+        foreach (var width in new[] { 1280, 768, 390, 320 })
+        {
+            await page.SetViewportSizeAsync(width, 844);
+            await page.WaitForFunctionAsync("width => document.documentElement.clientWidth === width", width);
+            await page.WaitForFunctionAsync("() => document.documentElement.scrollWidth === document.documentElement.clientWidth");
+            Assert.Equal(
+                await page.EvaluateAsync<int>("() => document.documentElement.clientWidth"),
+                await page.EvaluateAsync<int>("() => document.documentElement.scrollWidth"));
+            Assert.All(await page.Locator(".operational-table__scroll").AllAsync(), async table =>
+                Assert.Contains(await table.EvaluateAsync<string>("node => getComputedStyle(node).overflowX"), new[] { "auto", "scroll" }));
+            if (width <= 720)
+            {
+                foreach (var action in await page.Locator(".operational-table__actions a, .operational-table__actions button").AllAsync())
+                {
+                    var size = await action.EvaluateAsync<JsonElement>("node => ({ width: node.getBoundingClientRect().width, height: node.getBoundingClientRect().height })");
+                    Assert.True(size.GetProperty("width").GetDouble() >= 44 && size.GetProperty("height").GetDouble() >= 44, size.ToString());
+                }
+            }
+        }
+
+        await page.GetByRole(AriaRole.Button, new() { Name = expandName }).First.ClickAsync();
+        Assert.Equal(1, await page.Locator(".operational-table__quick-view").CountAsync());
+        var secondToggle = page.Locator(".operational-table__toggle").Nth(1);
+        if (await secondToggle.CountAsync() == 1)
+        {
+            await secondToggle.ClickAsync();
+            Assert.Equal(1, await page.Locator(".operational-table__quick-view").CountAsync());
+        }
+        foreach (var atomic in await page.Locator(".operational-table .mlv-mono").AllAsync())
+        {
+            Assert.Equal("nowrap", await atomic.EvaluateAsync<string>("node => getComputedStyle(node).whiteSpace"));
+        }
+        Assert.Empty(errors);
+    }
+
+    [Fact]
+    public async Task ThaiOperationalWaveKeepsLongDiagnosticActionsReachableAt320()
+    {
+        await using var context = await playwright.Browser.NewContextAsync(new()
+        {
+            ViewportSize = new() { Width = 320, Height = 844 },
+            HasTouch = true,
+        });
+        await context.AddInitScriptAsync("localStorage.setItem('maliev_culture', 'th-TH')");
+        var page = await context.NewPageAsync();
+        var errors = CaptureErrors(page);
+        await StubOperationalWaveBoundariesAsync(page);
+        await page.GotoAsync(new Uri(server.BaseUri, "Server/ErrorReport").AbsoluteUri);
+        await page.Locator("table.operational-table").WaitForAsync();
+        await page.GetByRole(AriaRole.Button, new() { Name = "ขยายเหตุการณ์ 801" }).ClickAsync();
+        Assert.Equal(1, await page.Locator(".operational-table__quick-view").CountAsync());
+        Assert.Equal(0, await page.Locator(".operational-table__actions a").CountAsync());
+        Assert.Equal(await page.EvaluateAsync<int>("() => document.documentElement.clientWidth"), await page.EvaluateAsync<int>("() => document.documentElement.scrollWidth"));
+        Assert.Empty(errors);
+    }
+
     [Theory]
     [MemberData(nameof(SalesPages))]
     public async Task SalesPagesUseContainedSemanticOperationalTablesAcrossSupportedWidths(
@@ -184,5 +275,33 @@ public sealed class OperationalTableMigrationBrowserTests(
             ContentType = "application/json",
             Body = "{\"items\":[{\"id\":401,\"customerId\":101,\"employeeId\":201,\"invoiceId\":null,\"period\":30,\"expirationDate\":\"2030-09-30T00:00:00Z\",\"subtotal\":100000.00,\"vat\":7000.00,\"total\":107000.00,\"withholdingTax\":3000.00,\"quotedAmount\":104000.00,\"currencyId\":1,\"comment\":\"fixture\",\"fob\":\"Bangkok\",\"shippedVia\":\"Dedicated industrial courier service\",\"terms\":\"เงื่อนไขการจัดส่งและชำระเงินสำหรับลูกค้าอุตสาหกรรม\",\"accepted\":null,\"createdDate\":\"2030-08-01T00:00:00Z\",\"modifiedDate\":\"2030-08-02T00:00:00Z\"},{\"id\":402,\"customerId\":102,\"employeeId\":202,\"invoiceId\":null,\"period\":14,\"expirationDate\":\"2030-09-15T00:00:00Z\",\"subtotal\":5000.00,\"vat\":350.00,\"total\":5350.00,\"withholdingTax\":null,\"quotedAmount\":5350.00,\"currencyId\":1,\"comment\":null,\"fob\":null,\"shippedVia\":null,\"terms\":null,\"accepted\":true,\"createdDate\":\"2030-08-03T00:00:00Z\",\"modifiedDate\":null}],\"pageIndex\":1,\"totalPages\":2,\"totalRecords\":12,\"hasNextPage\":true,\"hasPreviousPage\":false}",
         }));
+    }
+
+    private static async Task StubOperationalWaveBoundariesAsync(IPage page)
+    {
+        var session = JsonSerializer.Serialize(new
+        {
+            isAuthenticated = true,
+            employeeId = "operations-browser-employee",
+            email = "operations.browser@maliev.com",
+            displayName = "Operations Browser Employee",
+            roles = new[] { "Employee" },
+            csrfToken = "operations-browser-csrf",
+            legacyDatabaseId = 201,
+            permissions = new[] { "accounting.read", "purchase-orders.read", "suppliers.read", "materials.read", "diagnostics.read" },
+        });
+        await page.RouteAsync("**/bff/session", route => route.FulfillAsync(new() { Status = 200, ContentType = "application/json", Body = session }));
+        await page.RouteAsync("**/bff/invoices?*", route => route.FulfillAsync(new()
+        {
+            Status = 200,
+            ContentType = "application/json",
+            Body = route.Request.Url.Contains("paid=true", StringComparison.Ordinal)
+                ? "{\"items\":[{\"id\":502,\"customerId\":102,\"number\":\"INV-502\",\"currency\":\"THB\",\"purchaseOrderNumber\":\"PO-502\",\"subtotal\":2000,\"vat\":140,\"total\":2140,\"withholdingTax\":60,\"outstanding\":0,\"isPaid\":true,\"receiptId\":902,\"paymentDate\":\"2030-08-02T00:00:00Z\",\"createdDate\":\"2030-08-01T00:00:00Z\"}],\"pageIndex\":1,\"totalPages\":1,\"totalRecords\":1,\"hasNextPage\":false,\"hasPreviousPage\":false}"
+                : "{\"items\":[{\"id\":501,\"customerId\":101,\"number\":\"INV-501\",\"currency\":\"THB\",\"purchaseOrderNumber\":\"PO-501-LONG\",\"subtotal\":1000,\"vat\":70,\"total\":1070,\"withholdingTax\":30,\"outstanding\":1040,\"isPaid\":false,\"receiptId\":null,\"paymentDate\":null,\"createdDate\":\"2030-08-01T00:00:00Z\"}],\"pageIndex\":1,\"totalPages\":1,\"totalRecords\":1,\"hasNextPage\":false,\"hasPreviousPage\":false}",
+        }));
+        await page.RouteAsync("**/bff/purchase-orders?*", route => route.FulfillAsync(new() { Status = 200, ContentType = "application/json", Body = "{\"items\":[{\"id\":601,\"employeeId\":201,\"fob\":\"Bangkok\",\"terms\":\"Net 30 industrial procurement terms\",\"shippingMethod\":\"Dedicated courier\",\"createdDate\":\"2030-08-01T00:00:00Z\"},{\"id\":602,\"employeeId\":202,\"fob\":\"Rayong\",\"terms\":\"Net 15\",\"shippingMethod\":\"Freight\",\"createdDate\":\"2030-08-02T00:00:00Z\"}],\"pageIndex\":1,\"totalPages\":1,\"totalRecords\":2,\"hasNextPage\":false,\"hasPreviousPage\":false}" }));
+        await page.RouteAsync("**/bff/employees?*", route => route.FulfillAsync(new() { Status = 200, ContentType = "application/json", Body = "{\"items\":[{\"id\":201,\"fullName\":\"Mali Dee\"},{\"id\":202,\"fullName\":\"Somchai Chai\"}],\"pageIndex\":1,\"totalPages\":1,\"totalRecords\":2,\"hasNextPage\":false,\"hasPreviousPage\":false}" }));
+        await page.RouteAsync("**/bff/catalog/materials?*", route => route.FulfillAsync(new() { Status = 200, ContentType = "application/json", Body = "{\"items\":[{\"id\":701,\"materialNumber\":\"AL-6061-T6\",\"name\":\"Aluminium 6061-T6\",\"densityKilogramPerCubicMeter\":2700,\"machinable\":true,\"printable\":false,\"materialGroup\":{\"id\":1,\"name\":\"Metals\"}},{\"id\":702,\"materialNumber\":\"PA12\",\"name\":\"Nylon PA12\",\"densityKilogramPerCubicMeter\":1020,\"machinable\":false,\"printable\":true,\"materialGroup\":{\"id\":2,\"name\":\"Polymers\"}}],\"pageIndex\":1,\"totalPages\":1,\"totalRecords\":2,\"hasNextPage\":false,\"hasPreviousPage\":false}" }));
+        await page.RouteAsync("**/bff/diagnostics/events?*", route => route.FulfillAsync(new() { Status = 200, ContentType = "application/json", Body = "{\"items\":[{\"id\":801,\"level\":\"Error\",\"code\":\"BFF_TIMEOUT\",\"category\":\"Integration\",\"path\":\"/bff/operations/long-diagnostic-path\",\"correlationId\":\"corr-801-atomic\",\"timestamp\":\"2030-08-01T10:30:00Z\"},{\"id\":802,\"level\":\"Warning\",\"code\":\"RETRY\",\"category\":\"Integration\",\"path\":\"/bff/operations\",\"correlationId\":\"corr-802\",\"timestamp\":\"2030-08-01T10:31:00Z\"}],\"pageIndex\":1,\"totalPages\":1,\"totalRecords\":2,\"hasNextPage\":false,\"hasPreviousPage\":false}" }));
     }
 }

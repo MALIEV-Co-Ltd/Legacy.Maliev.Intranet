@@ -38,7 +38,10 @@ public sealed class ModuleOperationsHardeningContractTests
     {
         var root = FindRoot();
         var page = Read(root, project, folder, file);
-        Assert.Contains($"aria-label=\"@Text[\"{resourceKey}\"]\"", page, StringComparison.Ordinal);
+        Assert.True(
+            page.Contains($"aria-label=\"@Text[\"{resourceKey}\"]\"", StringComparison.Ordinal)
+            || page.Contains($"TableLabel=\"@Text[\"{resourceKey}\"]\"", StringComparison.Ordinal),
+            $"{file} must supply its localized accessible name to the native or shared semantic table.");
 
         var resourceStem = Path.GetFileNameWithoutExtension(file);
         AssertResourcePairContains(root, project, folder, resourceStem, resourceKey);

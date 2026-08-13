@@ -87,7 +87,6 @@ public sealed class LegacyLinkSystemContractTests
             E("Legacy.Maliev.Intranet.Client.Features.Employees/Pages/EmployeeResetPassword.razor", anonymous, "Href=\"/Employees/ForgotPassword\"", 1, "Role=\"LegacyLinkRole.Navigation\"", "AriaLabel=\"@Text[\"RequestNewLink\"]\"", "@Text[\"RequestNewLink\"]</LegacyLink>"),
             E("Legacy.Maliev.Intranet.Client.Features.Employees/Pages/EmployeeResetPassword.razor", anonymous, "Href=\"/Login\"", 1, "Role=\"LegacyLinkRole.Navigation\"", "AriaLabel=\"@Text[\"SignIn\"]\"", "@Text[\"SignIn\"]</LegacyLink>"),
 
-            E("Legacy.Maliev.Intranet.Client.Features.Catalog/Pages/Materials.razor", authorize, "/Materials/View?id={context.Id}", 1, "Role=\"LegacyLinkRole.Record\"", "AriaLabel=\"@($\"{Text[\"Id\"]} {context.Id}\")\"", "@context.Id</LegacyLink>"),
             E("Legacy.Maliev.Intranet.Client.Features.Catalog/Pages/MaterialCreate.razor", authorize, "Href=\"/Materials/Index\"", 1, "Role=\"LegacyLinkRole.Navigation\"", "Disabled=\"@submitting\"", "AriaLabel=\"@Text[\"Cancel\"]\"", "@Text[\"Cancel\"]</LegacyLink>"),
             E("Legacy.Maliev.Intranet.Client.Features.Catalog/Pages/MaterialDetail.razor", authorize, "Href=\"/Materials/Index\"", 2, "Role=\"LegacyLinkRole.Navigation\"", "StartIcon=\"@Icons.Material.Filled.ArrowBack\"", "AriaLabel=\"@Text[\"Back\"]\"", "@Text[\"Back\"]</LegacyLink>"),
             E("Legacy.Maliev.Intranet.Client.Features.Catalog/Pages/MaterialDetail.razor", authorize, "Href=\"/Materials/Index\"", 1, "Role=\"LegacyLinkRole.Navigation\"", "Disabled=\"@submitting\"", "AriaLabel=\"@Text[\"BackToMaterials\"]\"", "@Text[\"BackToMaterials\"]</LegacyLink>"),
@@ -97,20 +96,16 @@ public sealed class LegacyLinkSystemContractTests
             E("Legacy.Maliev.Intranet.Client.Features.Orders/Pages/OrderDetail.razor", authorize, "Href=\"/Orders/Index\"", 1, "Role=\"LegacyLinkRole.Navigation\"", "AriaLabel=\"@Text[\"BackToOrders\"]\"", "@Text[\"BackToOrders\"]</LegacyLink>"),
             E("Legacy.Maliev.Intranet.Client.Features.Orders/Pages/OrderDetail.razor", authorize, "Href=\"@file.Uri?.ToString()\"", 1, "Role=\"LegacyLinkRole.External\"", "Target=\"_blank\"", "Rel=\"noopener\"", "@file.ObjectName"),
 
-            E("Legacy.Maliev.Intranet.Client.Features.Procurement/Pages/Suppliers.razor", authorize, "/Suppliers/View?id={context.Id}", 1, "Role=\"LegacyLinkRole.Record\"", "AriaLabel=\"@($\"{Text[\"Id\"]} {context.Id}\")\"", "@context.Id</LegacyLink>"),
             E("Legacy.Maliev.Intranet.Client.Features.Procurement/Pages/SupplierView.razor", authorize, "Href=\"/Suppliers/Index\"", 1, "Role=\"LegacyLinkRole.Navigation\"", "AriaLabel=\"@Text[\"Back\"]\"", "@Text[\"Back\"]</LegacyLink>"),
             E("Legacy.Maliev.Intranet.Client.Features.Procurement/Pages/SupplierCreate.razor", authorize, "Href=\"/Suppliers/Index\"", 1, "Role=\"LegacyLinkRole.Navigation\"", "Disabled=\"@submitting\"", "AriaLabel=\"@Text[\"Cancel\"]\"", "@Text[\"Cancel\"]</LegacyLink>"),
-            E("Legacy.Maliev.Intranet.Client.Features.Procurement/Pages/PurchaseOrders.razor", authorize, "/PurchaseOrders/View?id={context.Id}", 1, "Role=\"LegacyLinkRole.Record\"", "AriaLabel=\"@($\"{Text[\"Id\"]} {context.Id}\")\"", "@context.Id</LegacyLink>"),
             E("Legacy.Maliev.Intranet.Client.Features.Procurement/Pages/PurchaseOrderView.razor", authorize, "Href=\"/PurchaseOrders/Index\"", 2, "Role=\"LegacyLinkRole.Navigation\"", "AriaLabel=\"@Text[\"Back\"]\"", "@Text[\"Back\"]</LegacyLink>"),
             E("Legacy.Maliev.Intranet.Client.Features.Procurement/Pages/PurchaseOrderCreate.razor", authorize, "Href=\"/PurchaseOrders/Index\"", 1, "Role=\"LegacyLinkRole.Navigation\"", "Disabled=\"@submitting\"", "AriaLabel=\"@Text[\"Cancel\"]\"", "@Text[\"Cancel\"]</LegacyLink>"),
 
-            E("Legacy.Maliev.Intranet.Client.Features.Accounting/Pages/Invoices.razor", authorize, "/Invoices/View?id={invoice.Id}", 1, "Role=\"LegacyLinkRole.Record\"", "AriaLabel=\"@($\"{Text[\"Id\"]} {invoice.Id}\")\"", "@invoice.Id</LegacyLink>"),
             E("Legacy.Maliev.Intranet.Client.Features.Accounting/Pages/Invoices.razor", authorize, "/Customers/View?id={invoice.CustomerId}", 1, "Role=\"LegacyLinkRole.Record\"", "AriaLabel=\"@($\"{Text[\"CustomerId\"]} {invoice.CustomerId}\")\"", "@invoice.CustomerId</LegacyLink>"),
             E("Legacy.Maliev.Intranet.Client.Features.Accounting/Pages/InvoiceView.razor", authorize, "Href=\"/Invoices/Index\"", 2, "Role=\"LegacyLinkRole.Navigation\"", "AriaLabel=\"@Text[\"Back\"]\"", "@Text[\"Back\"]</LegacyLink>"),
             E("Legacy.Maliev.Intranet.Client.Features.Accounting/Pages/InvoiceView.razor", authorize, "/Customers/View?id={detailPage.Invoice.CustomerId}", 1, "Role=\"LegacyLinkRole.Record\"", "AriaLabel=\"@($\"{Text[\"CustomerId\"]} {detailPage.Invoice.CustomerId}\")\"", "@detailPage.Invoice.CustomerId</LegacyLink>"),
             E("Legacy.Maliev.Intranet.Client.Features.Accounting/Pages/InvoiceView.razor", authorize, "Href=\"@file.Uri?.ToString()\"", 1, "Role=\"LegacyLinkRole.External\"", "Target=\"_blank\"", "Rel=\"noopener\"", "@file.ObjectName"),
             E("Legacy.Maliev.Intranet.Client.Features.Accounting/Pages/InvoiceCreate.razor", authorize, "Href=\"/Invoices/Index\"", 1, "Role=\"LegacyLinkRole.Navigation\"", "AriaLabel=\"@Text[\"Back\"]\"", "@Text[\"Back\"]</LegacyLink>"),
-            E("Legacy.Maliev.Intranet.Client.Features.Accounting/Pages/Finances.razor", authorize, "/Finances/View?id={context.Id}", 1, "Role=\"LegacyLinkRole.Record\"", "AriaLabel=\"@($\"{Text[\"Id\"]} {context.Id}\")\"", "@context.Id</LegacyLink>"),
             E("Legacy.Maliev.Intranet.Client.Features.Accounting/Pages/FinanceView.razor", authorize, "Href=\"/Finances/Index\"", 2, "Role=\"LegacyLinkRole.Navigation\"", "AriaLabel=\"@Text[\"Back\"]\"", "@Text[\"Back\"]</LegacyLink>"),
             E("Legacy.Maliev.Intranet.Client.Features.Accounting/Pages/FinanceView.razor", authorize, "Href=\"@file.Uri?.ToString()\"", 1, "Role=\"LegacyLinkRole.External\"", "Target=\"_blank\"", "Rel=\"noopener\"", "@file.ObjectName"),
             E("Legacy.Maliev.Intranet.Client.Features.Accounting/Pages/NetProfitChart.razor", authorize, "Href=\"/Finances/Index\"", 1, "Role=\"LegacyLinkRole.Navigation\"", "AriaLabel=\"@Text[\"Back\"]\"", "@Text[\"Back\"]</LegacyLink>"),
@@ -150,6 +145,11 @@ public sealed class LegacyLinkSystemContractTests
             ("Legacy.Maliev.Intranet.Client.Features.Employees/Pages/Employees.razor", "/Employees/View?id={context.Id}", "ViewEmployee"),
             ("Legacy.Maliev.Intranet.Client.Features.Quotations/Pages/QuotationRequests/Index.razor", "/QuotationRequests/View?id={context.Id}", "ViewQuotationRequest"),
             ("Legacy.Maliev.Intranet.Client.Features.Quotations/Pages/Quotations/Index.razor", "/Quotations/View?id={quotation.Id}", "ViewQuotation"),
+            ("Legacy.Maliev.Intranet.Client.Features.Accounting/Pages/Invoices.razor", "/Invoices/View?id={invoice.Id}", "ViewInvoice"),
+            ("Legacy.Maliev.Intranet.Client.Features.Accounting/Pages/Finances.razor", "/Finances/View?id={payment.Id}", "ViewFinance"),
+            ("Legacy.Maliev.Intranet.Client.Features.Procurement/Pages/Suppliers.razor", "/Suppliers/View?id={supplier.Id}", "ViewSupplier"),
+            ("Legacy.Maliev.Intranet.Client.Features.Procurement/Pages/PurchaseOrders.razor", "/PurchaseOrders/View?id={order.Id}", "ViewPurchaseOrder"),
+            ("Legacy.Maliev.Intranet.Client.Features.Catalog/Pages/Materials.razor", "/Materials/View?id={material.Id}", "ViewMaterial"),
         };
         foreach (var (path, href, label) in extractedOperationalLinks)
         {
@@ -170,19 +170,9 @@ public sealed class LegacyLinkSystemContractTests
             "content.AddContent(0, id)"));
 
         var suppliers = ReadSource("Legacy.Maliev.Intranet.Client.Features.Procurement/Pages/Suppliers.razor");
-        Assert.True(LegacyLinkSourceContracts.MatchesExpectedContainer(
-            suppliers,
-            "span",
-            "/Suppliers/View?id={context.Id}",
-            "@onclick=\"@(() => OpenSupplier(context.Id))\"",
-            "@onclick:preventDefault=\"true\""));
+        Assert.DoesNotContain("OpenSupplier", suppliers, StringComparison.Ordinal);
         var purchaseOrders = ReadSource("Legacy.Maliev.Intranet.Client.Features.Procurement/Pages/PurchaseOrders.razor");
-        Assert.True(LegacyLinkSourceContracts.MatchesExpectedContainer(
-            purchaseOrders,
-            "span",
-            "/PurchaseOrders/View?id={context.Id}",
-            "@onclick=\"@(() => OpenPurchaseOrder(context.Id))\"",
-            "@onclick:preventDefault=\"true\""));
+        Assert.DoesNotContain("OpenPurchaseOrder", purchaseOrders, StringComparison.Ordinal);
 
         var orderCreate = ReadSource("Legacy.Maliev.Intranet.Client.Features.Orders/Pages/OrderCreate.razor");
         Assert.True(LegacyLinkSourceContracts.MatchesExpectedConditionalLink(

@@ -8,6 +8,7 @@
 <PageTitle>@Text["PageTitle"]</PageTitle>
 
 <MudContainer MaxWidth="MaxWidth.ExtraLarge">
+    <PageBreadcrumbs Items="@Breadcrumbs" />
     <header class="operations-page-header"><div><MudText Typo="Typo.h4" HtmlTag="h1">@Text["Title"]</MudText><MudText Typo="Typo.body2">@Text["Operations"]</MudText></div></header>
     <MudAlert Severity="Severity.Info" Class="mb-4">@Text["PrivacyNote"]</MudAlert>
 
@@ -34,24 +35,31 @@
     }
     else
     {
-        <MudTable Items="page.Items" Hover="true" Breakpoint="Breakpoint.Sm" Elevation="1" aria-label="@Text["DiagnosticsTable"]">
+        <OperationalTable TItem="DiagnosticEventItem" TKey="long" Items="@(page.Items)"
+                          KeySelector="@(diagnostic => diagnostic.Id)" TableLabel="@Text["DiagnosticsTable"]"
+                          ColumnCount="7" State="@tableState" DetailHref="@(_ => null)"
+                          DetailAriaLabel="@(diagnostic => Text["ViewDiagnostic", diagnostic.Id])"
+                          ExpandAriaLabel="@(diagnostic => Text["ExpandDiagnostic", diagnostic.Id])"
+                          CollapseAriaLabel="@(diagnostic => Text["CollapseDiagnostic", diagnostic.Id])">
             <HeaderContent>
-                <MudTh>@Text["Timestamp"]</MudTh>
-                <MudTh>@Text["Level"]</MudTh>
-                <MudTh>@Text["Code"]</MudTh>
-                <MudTh>@Text["Category"]</MudTh>
-                <MudTh>@Text["Path"]</MudTh>
-                <MudTh>@Text["CorrelationId"]</MudTh>
+                <tr><th class="operational-table__identity" data-priority="essential">@Text["Timestamp"]</th>
+                    <th data-priority="essential">@Text["Level"]</th><th data-priority="essential">@Text["Code"]</th>
+                    <th data-priority="essential">@Text["Category"]</th><th data-priority="supporting">@Text["Path"]</th>
+                    <th data-priority="supporting">@Text["CorrelationId"]</th>
+                    <th class="operational-table__actions-heading"><span class="visually-hidden">@Text["Actions"]</span></th></tr>
             </HeaderContent>
-            <RowTemplate>
-                <MudTd DataLabel="@Text["Timestamp"]">@LegacyPresentation.FormatUtcDateTime(context.Timestamp, CultureInfo.CurrentCulture)</MudTd>
-                <MudTd DataLabel="@Text["Level"]">@context.Level</MudTd>
-                <MudTd DataLabel="@Text["Code"]"><code>@context.Code</code></MudTd>
-                <MudTd DataLabel="@Text["Category"]">@context.Category</MudTd>
-                <MudTd DataLabel="@Text["Path"]"><code>@context.Path</code></MudTd>
-                <MudTd DataLabel="@Text["CorrelationId"]"><code>@context.CorrelationId</code></MudTd>
-            </RowTemplate>
-        </MudTable>
+            <RowContent Context="diagnostic">
+                <td class="operational-table__identity mlv-mono" data-priority="essential">@LegacyPresentation.FormatUtcDateTime(diagnostic.Timestamp, CultureInfo.CurrentCulture)</td>
+                <td data-priority="essential">@diagnostic.Level</td><td class="mlv-mono" data-priority="essential">@diagnostic.Code</td>
+                <td data-priority="essential">@diagnostic.Category</td><td class="mlv-mono" data-priority="supporting">@diagnostic.Path</td>
+                <td class="mlv-mono" data-priority="supporting">@diagnostic.CorrelationId</td>
+            </RowContent>
+            <QuickViewContent Context="diagnostic"><dl class="operational-quick-view">
+                <div><dt>@Text["Path"]</dt><dd class="mlv-mono">@diagnostic.Path</dd></div>
+                <div><dt>@Text["CorrelationId"]</dt><dd class="mlv-mono">@diagnostic.CorrelationId</dd></div>
+                <div><dt>@Text["Code"]</dt><dd class="mlv-mono">@diagnostic.Code</dd></div>
+            </dl></QuickViewContent>
+        </OperationalTable>
         <nav class="d-flex flex-wrap align-center justify-space-between gap-3 mt-4" aria-label="@Text["Pages"]">
             <MudButton Disabled="@(!page.HasPreviousPage)" OnClick="PreviousPageAsync">@Text["Previous"]</MudButton>
             <MudText aria-live="polite">@Text["PageSummary", page.PageIndex, page.TotalPages, page.TotalRecords]</MudText>
@@ -71,6 +79,12 @@
     private bool loading;
     private DiagnosticEventSort currentSort = DiagnosticEventSort.LogTimestamp_Descending;
     private readonly LatestRequestGate requestGate = new();
+    private readonly OperationalTableState<long> tableState = new();
+    private IReadOnlyList<PageBreadcrumbItem> Breadcrumbs =>
+    [
+        new(Text["Operations"], "/Dashboard"),
+        new(Text["Title"]),
+    ];
     private static readonly ListToolbarState<DiagnosticEventSort> DefaultToolbarState =
         new(null, DiagnosticEventSort.LogTimestamp_Descending, 10);
     private static readonly int[] PageSizeOptions = [10, 25, 50, 100];
@@ -96,6 +110,7 @@
     {
         using var lease = requestGate.Begin(cancellationToken);
         var state = (requestedState ?? ToolbarState).Normalize();
+        tableState.Clear();
         loading = true;
         error = null;
         try
@@ -167,6 +182,7 @@
 
     private Task NavigateAsync(int index, string? search, DiagnosticEventSort sort, int size, bool replace = false)
     {
+        tableState.Clear();
         Navigation.NavigateTo($"/Server/ErrorReport?search={Uri.EscapeDataString(search ?? string.Empty)}&sort={sort}&index={index}&size={Math.Clamp(size, 1, 100)}", replace: replace);
         return Task.CompletedTask;
     }

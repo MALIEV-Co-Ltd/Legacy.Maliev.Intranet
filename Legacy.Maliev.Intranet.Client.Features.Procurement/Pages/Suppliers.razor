@@ -9,6 +9,7 @@
 <PageTitle>@Text["PageTitle"]</PageTitle>
 
 <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="procurement-list-page supplier-list">
+    <PageBreadcrumbs Items="@Breadcrumbs" />
     <header class="operations-page-header">
         <div><MudText Typo="Typo.h4" HtmlTag="h1">@Text["Suppliers"]</MudText><MudText Typo="Typo.body2">@Text["Procurement"]</MudText></div>
         <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="OpenCreate">@Text["CreateSupplier"]</MudButton>
@@ -40,26 +41,30 @@
     else
     {
         <div id="suppliers-results" aria-busy="false">
-        <MudTable Items="page.Items" Hover="true" Breakpoint="Breakpoint.Md" Elevation="1" Class="procurement-responsive-table" aria-label="@Text["SuppliersTable"]">
+        <OperationalTable TItem="SupplierListItem" TKey="int" Items="@(page.Items)"
+                          KeySelector="@(supplier => supplier.Id)" TableLabel="@Text["SuppliersTable"]"
+                          ColumnCount="5" State="@tableState"
+                          DetailHref="@(supplier => $"/Suppliers/View?id={supplier.Id}")"
+                          DetailAriaLabel="@(supplier => Text["ViewSupplier", supplier.Id])"
+                          ExpandAriaLabel="@(supplier => Text["ExpandSupplier", supplier.Id])"
+                          CollapseAriaLabel="@(supplier => Text["CollapseSupplier", supplier.Id])">
             <HeaderContent>
-                <MudTh>@Text["Id"]</MudTh>
-                <MudTh>@Text["Name"]</MudTh>
-                <MudTh>@Text["Email"]</MudTh>
-                <MudTh>@Text["Telephone"]</MudTh>
+                <tr><th class="operational-table__identity" data-priority="essential">@Text["Id"]</th>
+                    <th data-priority="essential">@Text["Name"]</th><th data-priority="essential">@Text["Email"]</th>
+                    <th data-priority="supporting">@Text["Telephone"]</th>
+                    <th class="operational-table__actions-heading"><span class="visually-hidden">@Text["Actions"]</span></th></tr>
             </HeaderContent>
-            <RowTemplate>
-                <MudTd DataLabel="@Text["Id"]">
-                    <span @onclick="@(() => OpenSupplier(context.Id))" @onclick:preventDefault="true">
-                        <LegacyLink Href="@($"/Suppliers/View?id={context.Id}")"
-                                    Role="LegacyLinkRole.Record"
-                                    AriaLabel="@($"{Text["Id"]} {context.Id}")">@context.Id</LegacyLink>
-                    </span>
-                </MudTd>
-                <MudTd DataLabel="@Text["Name"]">@ValueOrFallback(context.Name)</MudTd>
-                <MudTd DataLabel="@Text["Email"]">@ValueOrFallback(context.Email)</MudTd>
-                <MudTd DataLabel="@Text["Telephone"]">@ValueOrFallback(context.Telephone)</MudTd>
-            </RowTemplate>
-        </MudTable>
+            <RowContent Context="supplier">
+                <td class="operational-table__identity mlv-mono" data-priority="essential">@supplier.Id</td>
+                <td data-priority="essential">@ValueOrFallback(supplier.Name)</td>
+                <td data-priority="essential">@ValueOrFallback(supplier.Email)</td>
+                <td data-priority="supporting">@ValueOrFallback(supplier.Telephone)</td>
+            </RowContent>
+            <QuickViewContent Context="supplier"><dl class="operational-quick-view">
+                <div><dt>@Text["Telephone"]</dt><dd>@ValueOrFallback(supplier.Telephone)</dd></div>
+                <div><dt>@Text["Email"]</dt><dd>@ValueOrFallback(supplier.Email)</dd></div>
+            </dl></QuickViewContent>
+        </OperationalTable>
         </div>
         <nav class="procurement-pager" aria-label="@Text["SupplierPages"]">
             <MudButton Disabled="@(!page.HasPreviousPage)" OnClick="PreviousPageAsync">@Text["Previous"]</MudButton>
@@ -82,6 +87,13 @@
     private bool loading;
     private SupplierListSort currentSort = SupplierListSort.SupplierId_Descending;
     private readonly LatestRequestGate loadGate = new();
+    private readonly OperationalTableState<int> tableState = new();
+    private IReadOnlyList<PageBreadcrumbItem> Breadcrumbs =>
+    [
+        new(Text["Operations"], "/Dashboard"),
+        new(Text["Procurement"], "/purchasing"),
+        new(Text["Suppliers"]),
+    ];
 
     private ListToolbarState<SupplierListSort> ToolbarValue => new(Search, currentSort, Size);
     private static ListToolbarState<SupplierListSort> ToolbarDefaults =>
@@ -107,6 +119,7 @@
     private async Task LoadAsync()
     {
         using var lease = loadGate.Begin();
+        tableState.Clear();
         if (lease.IsCurrent)
         {
             loading = true;
@@ -197,10 +210,9 @@
 
     private void OpenCreate() => Navigation.NavigateTo("/Suppliers/Create");
 
-    private void OpenSupplier(int id) => Navigation.NavigateTo($"/Suppliers/View?id={id}");
-
     private Task NavigateAsync(int index, string? search, SupplierListSort sort, int size, bool replace = false)
     {
+        tableState.Clear();
         Navigation.NavigateTo($"/Suppliers/Index?search={Uri.EscapeDataString(search ?? string.Empty)}&sort={sort}&index={index}&size={Math.Clamp(size, 1, 250)}", replace: replace);
         return Task.CompletedTask;
     }

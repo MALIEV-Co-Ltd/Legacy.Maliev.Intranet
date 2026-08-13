@@ -77,8 +77,11 @@ public sealed class OrdersProcurementResponsiveContractTests
         var toolbarStyles = Read(root, "Legacy.Maliev.Intranet.Client.Shared", "Components", "ListToolbar.razor.css");
         var adapterStyles = Read(root, "Maliev.ShadcnBlazor", "wwwroot", "css", "shadcn-mudblazor.css");
 
-        Assert.Contains("Breakpoint=\"Breakpoint.Md\"", purchaseOrders, StringComparison.Ordinal);
-        Assert.Contains("Breakpoint=\"Breakpoint.Md\"", suppliers, StringComparison.Ordinal);
+        Assert.Contains("<OperationalTable", purchaseOrders, StringComparison.Ordinal);
+        Assert.Contains("<OperationalTable", suppliers, StringComparison.Ordinal);
+        var operationalTableStyles = Read(root, "Legacy.Maliev.Intranet.Client.Shared", "Components", "OperationalTable.razor.css");
+        Assert.Contains("@media (max-width: 720px)", operationalTableStyles, StringComparison.Ordinal);
+        Assert.Contains("overflow-x: auto", operationalTableStyles, StringComparison.Ordinal);
         Assert.Contains("public int Size { get; set; } = 25", suppliers, StringComparison.Ordinal);
         Assert.Contains("fallback: 25", suppliers, StringComparison.Ordinal);
         Assert.Contains("@media (max-width: 600px)", toolbarStyles, StringComparison.Ordinal);

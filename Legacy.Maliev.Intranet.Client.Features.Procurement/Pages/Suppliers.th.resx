@@ -34,4 +34,6 @@
   <data name="SupplierModifiedDate_Ascending" xml:space="preserve"><value>แก้ไขให้เก่าที่สุดก่อน</value></data>
   <data name="SupplierModifiedDate_Descending" xml:space="preserve"><value>วันที่แก้ไข: ใหม่ไปเก่า</value></data>
   <data name="SuppliersTable" xml:space="preserve"><value>ตารางข้อมูลผู้ขาย</value></data>
+  <data name="Operations" xml:space="preserve"><value>การดำเนินงาน</value></data><data name="Actions" xml:space="preserve"><value>การดำเนินการ</value></data>
+  <data name="ViewSupplier" xml:space="preserve"><value>เปิดผู้ขาย {0}</value></data><data name="ExpandSupplier" xml:space="preserve"><value>ขยายผู้ขาย {0}</value></data><data name="CollapseSupplier" xml:space="preserve"><value>ย่อผู้ขาย {0}</value></data>
 </root>

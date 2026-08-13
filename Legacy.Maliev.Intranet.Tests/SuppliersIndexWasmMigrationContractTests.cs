@@ -27,11 +27,12 @@ public sealed class SuppliersIndexWasmMigrationContractTests
         Assert.Contains("@attribute [Authorize]", page, StringComparison.Ordinal);
         Assert.Contains("[SupplyParameterFromQuery", page, StringComparison.Ordinal);
         Assert.Contains("/bff/suppliers", page, StringComparison.Ordinal);
-        Assert.Contains("MudTable", page, StringComparison.Ordinal);
+        Assert.Contains("OperationalTable", page, StringComparison.Ordinal);
         Assert.Contains("/Suppliers/Create", page, StringComparison.Ordinal);
         Assert.Contains("/Suppliers/View?id=", page, StringComparison.Ordinal);
         Assert.Contains("Navigation.NavigateTo(\"/Suppliers/Create\")", page, StringComparison.Ordinal);
-        Assert.Contains("Navigation.NavigateTo($\"/Suppliers/View?id={id}\")", page, StringComparison.Ordinal);
+        Assert.Contains("DetailHref=\"@(supplier => $\"/Suppliers/View?id={supplier.Id}\")\"", page, StringComparison.Ordinal);
+        Assert.DoesNotContain("OpenSupplier", page, StringComparison.Ordinal);
         Assert.Equal(0, CountOccurrences(page, "forceLoad: true"));
         Assert.Contains("HttpStatusCode.Unauthorized", page, StringComparison.Ordinal);
         Assert.Contains("HttpStatusCode.Forbidden", page, StringComparison.Ordinal);

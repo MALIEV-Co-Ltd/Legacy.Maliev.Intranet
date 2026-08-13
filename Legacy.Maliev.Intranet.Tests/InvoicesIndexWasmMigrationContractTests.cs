@@ -19,7 +19,9 @@ public sealed class InvoicesIndexWasmMigrationContractTests
         Assert.Contains("/bff/invoices", page, StringComparison.Ordinal);
         Assert.Contains("paid=true", page, StringComparison.Ordinal);
         Assert.Contains("paid=false", page, StringComparison.Ordinal);
-        Assert.Contains("MudTable", page, StringComparison.Ordinal);
+        Assert.Contains("OperationalTable", page, StringComparison.Ordinal);
+        Assert.Contains("/Invoices/View?id=", page, StringComparison.Ordinal);
+        Assert.Contains("ViewInvoice", page, StringComparison.Ordinal);
         Assert.Contains("Invoices/", app, StringComparison.Ordinal);
         Assert.Contains("MapGet(\"/bff/invoices\"", bff, StringComparison.Ordinal);
         Assert.Contains("LegacyEmployeePermissions.AccountingRead", bff, StringComparison.Ordinal);

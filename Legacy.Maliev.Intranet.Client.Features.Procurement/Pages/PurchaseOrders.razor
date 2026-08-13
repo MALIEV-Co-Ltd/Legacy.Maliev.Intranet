@@ -10,6 +10,7 @@
 <PageTitle>@Text["PageTitle"]</PageTitle>
 
 <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="procurement-list-page purchase-order-list">
+    <PageBreadcrumbs Items="@Breadcrumbs" />
     <header class="operations-page-header">
         <div><MudText Typo="Typo.h4" HtmlTag="h1">@Text["PurchaseOrders"]</MudText><MudText Typo="Typo.body2">@Text["Procurement"]</MudText></div>
         <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="OpenCreate">@Text["CreatePurchaseOrder"]</MudButton>
@@ -41,30 +42,45 @@
     else
     {
         <div id="purchase-orders-results" aria-busy="false">
-        <MudTable Items="page.Items" Hover="true" Breakpoint="Breakpoint.Md" Elevation="1" Class="procurement-responsive-table" aria-label="@Text["PurchaseOrdersTable"]">
+        <OperationalTable TItem="PurchaseOrderListItem"
+                          TKey="int"
+                          Items="@(page.Items)"
+                          KeySelector="@(order => order.Id)"
+                          TableLabel="@Text["PurchaseOrdersTable"]"
+                          ColumnCount="7"
+                          State="@tableState"
+                          DetailHref="@(order => $"/PurchaseOrders/View?id={order.Id}")"
+                          DetailAriaLabel="@(order => Text["ViewPurchaseOrder", order.Id])"
+                          ExpandAriaLabel="@(order => Text["ExpandPurchaseOrder", order.Id])"
+                          CollapseAriaLabel="@(order => Text["CollapsePurchaseOrder", order.Id])">
             <HeaderContent>
-                <MudTh>@Text["Id"]</MudTh>
-                <MudTh>@Text["Employee"]</MudTh>
-                <MudTh>@Text["Fob"]</MudTh>
-                <MudTh>@Text["Terms"]</MudTh>
-                <MudTh>@Text["Shipping"]</MudTh>
-                <MudTh>@Text["Created"]</MudTh>
+                <tr>
+                    <th class="operational-table__identity" data-priority="essential">@Text["Id"]</th>
+                    <th data-priority="essential">@Text["Employee"]</th>
+                    <th data-priority="essential">@Text["Fob"]</th>
+                    <th data-priority="essential">@Text["CreatedDate"]</th>
+                    <th data-priority="supporting">@Text["Terms"]</th>
+                    <th data-priority="supporting">@Text["ShippingMethod"]</th>
+                    <th class="operational-table__actions-heading"><span class="visually-hidden">@Text["Actions"]</span></th>
+                </tr>
             </HeaderContent>
-            <RowTemplate>
-                <MudTd DataLabel="@Text["Id"]">
-                    <span @onclick="@(() => OpenPurchaseOrder(context.Id))" @onclick:preventDefault="true">
-                        <LegacyLink Href="@($"/PurchaseOrders/View?id={context.Id}")"
-                                    Role="LegacyLinkRole.Record"
-                                    AriaLabel="@($"{Text["Id"]} {context.Id}")">@context.Id</LegacyLink>
-                    </span>
-                </MudTd>
-                <MudTd DataLabel="@Text["Employee"]">@EmployeeName(context.EmployeeId)</MudTd>
-                <MudTd DataLabel="@Text["Fob"]">@ValueOrFallback(context.Fob)</MudTd>
-                <MudTd DataLabel="@Text["Terms"]">@ValueOrFallback(context.Terms)</MudTd>
-                <MudTd DataLabel="@Text["Shipping"]">@ValueOrFallback(context.ShippingMethod)</MudTd>
-                <MudTd DataLabel="@Text["Created"]">@FormatDate(context.CreatedDate)</MudTd>
-            </RowTemplate>
-        </MudTable>
+            <RowContent Context="order">
+                <td class="operational-table__identity mlv-mono" data-priority="essential">@order.Id</td>
+                <td data-priority="essential">@EmployeeName(order.EmployeeId)</td>
+                <td data-priority="essential">@ValueOrFallback(order.Fob)</td>
+                <td class="mlv-mono" data-priority="essential">@FormatDate(order.CreatedDate)</td>
+                <td data-priority="supporting">@ValueOrFallback(order.Terms)</td>
+                <td data-priority="supporting">@ValueOrFallback(order.ShippingMethod)</td>
+            </RowContent>
+            <QuickViewContent Context="order">
+                <dl class="operational-quick-view">
+                    <div><dt>@Text["Terms"]</dt><dd>@ValueOrFallback(order.Terms)</dd></div>
+                    <div><dt>@Text["ShippingMethod"]</dt><dd>@ValueOrFallback(order.ShippingMethod)</dd></div>
+                    <div><dt>@Text["Employee"]</dt><dd>@EmployeeName(order.EmployeeId)</dd></div>
+                    <div><dt>@Text["Fob"]</dt><dd>@ValueOrFallback(order.Fob)</dd></div>
+                </dl>
+            </QuickViewContent>
+        </OperationalTable>
         </div>
         <nav class="procurement-pager" aria-label="@Text["PurchaseOrderPages"]">
             <MudButton Disabled="@(!page.HasPreviousPage)" OnClick="PreviousPageAsync">@Text["Previous"]</MudButton>
@@ -88,6 +104,13 @@
     private bool loading;
     private PurchaseOrderListSort currentSort = PurchaseOrderListSort.PurchaseOrderId_Descending;
     private readonly LatestRequestGate loadGate = new();
+    private readonly OperationalTableState<int> tableState = new();
+    private IReadOnlyList<PageBreadcrumbItem> Breadcrumbs =>
+    [
+        new(Text["Operations"], "/Dashboard"),
+        new(Text["Procurement"], "/purchasing"),
+        new(Text["PurchaseOrders"]),
+    ];
 
     private ListToolbarState<PurchaseOrderListSort> ToolbarValue => new(Search, currentSort, Size);
     private static ListToolbarState<PurchaseOrderListSort> ToolbarDefaults =>
@@ -113,6 +136,7 @@
     private async Task LoadAsync()
     {
         using var lease = loadGate.Begin();
+        tableState.Clear();
         if (lease.IsCurrent)
         {
             loading = true;
@@ -218,10 +242,9 @@
     private Task PreviousPageAsync() => NavigateAsync(Math.Max(1, Index - 1), Search, currentSort, Size);
     private Task NextPageAsync() => NavigateAsync(Index + 1, Search, currentSort, Size);
     private void OpenCreate() => Navigation.NavigateTo("/PurchaseOrders/Create");
-    private void OpenPurchaseOrder(int id) => Navigation.NavigateTo($"/PurchaseOrders/View?id={id}");
-
     private Task NavigateAsync(int index, string? search, PurchaseOrderListSort sort, int size, bool replace = false)
     {
+        tableState.Clear();
         Navigation.NavigateTo($"/PurchaseOrders/Index?search={Uri.EscapeDataString(search ?? string.Empty)}&sort={sort}&index={index}&size={Math.Clamp(size, 1, 250)}", replace: replace);
         return Task.CompletedTask;
     }
