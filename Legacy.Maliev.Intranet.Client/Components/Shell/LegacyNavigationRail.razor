@@ -32,7 +32,7 @@
                     {
                         <a href="@item.Href"
                            @ref="_lastNavigationLink"
-                           class="legacy-rail-link @(IsItemActive(item) ? "active" : string.Empty)"
+                           class="legacy-rail-link @(item.Kind == LegacyNavItemKind.ChildAction ? "legacy-rail-link--child" : string.Empty) @(IsItemActive(item) ? "active" : string.Empty)"
                            aria-current="@(IsItemActive(item) ? "page" : null)"
                            title="@Text[item.Description ?? item.Label]"
                            @onclick="CloseAsync">

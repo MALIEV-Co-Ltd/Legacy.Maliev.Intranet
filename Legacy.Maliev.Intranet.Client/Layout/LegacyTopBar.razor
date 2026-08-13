@@ -5,19 +5,25 @@
 @implements IDisposable
 
 <header class="legacy-topbar" @onkeydown="HandleKeyDown">
-    <a class="legacy-topbar-logo" href="/Dashboard" aria-label="@Text["MALIEV dashboard"]">
-        <img class="legacy-logo-image legacy-logo-image--light" src="images/MALIEV_BLACK.svg" alt="MALIEV" />
-        <img class="legacy-logo-image legacy-logo-image--dark" src="images/MALIEV_WHITE.svg" alt="" aria-hidden="true" />
-    </a>
+    <div class="legacy-topbar__brand">
+        <a class="legacy-topbar-logo" href="/Dashboard" aria-label="@Text["MALIEV dashboard"]">
+            <img class="legacy-logo-image legacy-logo-image--light" src="images/MALIEV_BLACK.svg" alt="MALIEV" />
+            <img class="legacy-logo-image legacy-logo-image--dark" src="images/MALIEV_WHITE.svg" alt="" aria-hidden="true" />
+        </a>
 
-    <MudIconButton Class="legacy-mobile-menu-button" ButtonType="ButtonType.Button"
-                   @ref="_navigationToggle" Icon="@Icons.Material.Filled.Menu" Size="Size.Small"
-                   aria-label="@Text["Open navigation"]" aria-expanded="@NavigationOpen"
-                   aria-controls="legacy-navigation-rail-drawer" OnClick="OnToggleNavigation" />
+        <MudIconButton Class="legacy-mobile-menu-button" ButtonType="ButtonType.Button"
+                       @ref="_navigationToggle" Icon="@Icons.Material.Filled.Menu" Size="Size.Small"
+                       aria-label="@Text["Open navigation"]" aria-expanded="@NavigationOpen"
+                       aria-controls="legacy-navigation-rail-drawer" OnClick="OnToggleNavigation" />
+    </div>
 
-    <LegacyGlobalSearch Session="Session" />
-    <LegacyQuickActions Session="Session" />
-    <div class="legacy-topbar-utilities">
+    <div class="legacy-topbar__search">
+        <LegacyGlobalSearch Session="Session" />
+    </div>
+    <div class="legacy-topbar__actions">
+        <LegacyQuickActions Session="Session" />
+    </div>
+    <div class="legacy-topbar__utilities legacy-topbar-utilities">
         <LegacyLanguageSelector />
 
         <MudIconButton Class="legacy-theme-toggle" ButtonType="ButtonType.Button"
