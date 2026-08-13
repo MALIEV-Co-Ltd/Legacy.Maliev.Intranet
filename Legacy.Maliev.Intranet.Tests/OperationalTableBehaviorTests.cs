@@ -193,7 +193,7 @@ public sealed class OperationalTableBehaviorTests : BunitContext
         {
             builder.OpenElement(0, "section");
             AddTable(builder, firstState);
-            AddTable(builder, secondState);
+            AddAlternateTable(builder, secondState);
             builder.CloseElement();
         }
 
@@ -221,6 +221,43 @@ public sealed class OperationalTableBehaviorTests : BunitContext
             builder.AddAttribute(12, nameof(OperationalTable<Row<int>, int>.State), state);
             builder.CloseComponent();
         }
+
+        private static void AddAlternateTable(RenderTreeBuilder builder, OperationalTableState<int> state)
+        {
+            builder.OpenComponent<OperationalTable<AlternateRow, int>>(20);
+            builder.AddAttribute(21, nameof(OperationalTable<AlternateRow, int>.Items), AlternateRows);
+            builder.AddAttribute(22, nameof(OperationalTable<AlternateRow, int>.KeySelector), (Func<AlternateRow, int>)(row => row.Key));
+            builder.AddAttribute(23, nameof(OperationalTable<AlternateRow, int>.HeaderContent), HeaderContent());
+            builder.AddAttribute(24, nameof(OperationalTable<AlternateRow, int>.RowContent), AlternateRowContent());
+            builder.AddAttribute(25, nameof(OperationalTable<AlternateRow, int>.QuickViewContent), AlternateQuickViewContent());
+            builder.AddAttribute(26, nameof(OperationalTable<AlternateRow, int>.DetailHref), (Func<AlternateRow, string?>)(_ => "/detail"));
+            builder.AddAttribute(27, nameof(OperationalTable<AlternateRow, int>.DetailAriaLabel), (Func<AlternateRow, string>)(row => $"Open {row.Name}"));
+            builder.AddAttribute(28, nameof(OperationalTable<AlternateRow, int>.ExpandAriaLabel), (Func<AlternateRow, string>)(row => $"Expand {row.Name}"));
+            builder.AddAttribute(29, nameof(OperationalTable<AlternateRow, int>.CollapseAriaLabel), (Func<AlternateRow, string>)(row => $"Collapse {row.Name}"));
+            builder.AddAttribute(30, nameof(OperationalTable<AlternateRow, int>.TableLabel), "Alternate operational records");
+            builder.AddAttribute(31, nameof(OperationalTable<AlternateRow, int>.ColumnCount), 2);
+            builder.AddAttribute(32, nameof(OperationalTable<AlternateRow, int>.State), state);
+            builder.CloseComponent();
+        }
+
+        private static readonly IReadOnlyList<AlternateRow> AlternateRows = [new(1, "alternate record")];
+
+        private static RenderFragment<AlternateRow> AlternateRowContent() => row => builder =>
+        {
+            builder.OpenElement(0, "td");
+            builder.AddAttribute(1, "class", "operational-table__identity");
+            builder.AddContent(2, row.Name);
+            builder.CloseElement();
+        };
+
+        private static RenderFragment<AlternateRow> AlternateQuickViewContent() => row => builder =>
+        {
+            builder.OpenElement(0, "span");
+            builder.AddContent(1, $"Quick view {row.Name}");
+            builder.CloseElement();
+        };
+
+        private sealed record AlternateRow(int Key, string Name);
     }
 
     private static string FindRepositoryRoot()

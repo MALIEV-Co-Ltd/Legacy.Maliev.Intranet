@@ -80,8 +80,7 @@
     [Parameter, EditorRequired] public int ColumnCount { get; set; }
     [Parameter, EditorRequired] public OperationalTableState<TKey> State { get; set; } = default!;
 
-    private static long nextComponentInstanceId;
-    private readonly string quickViewIdPrefix = $"operational-table-{Interlocked.Increment(ref nextComponentInstanceId)}-quick-view";
+    private readonly string quickViewIdPrefix = OperationalTableIdNamespace.Allocate();
     private readonly Dictionary<TKey, string> quickViewIds = new(EqualityComparer<TKey>.Default);
     private long nextQuickViewId;
 
