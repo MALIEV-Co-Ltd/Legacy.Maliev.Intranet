@@ -238,7 +238,7 @@ public sealed class CustomerResponsiveBrowserTests(
     }
 
     [Fact]
-    public async Task ThaiCustomerToolbarStacksBothActionsWithoutClippingAtNarrowWidth()
+    public async Task ThaiCustomerToolbarKeepsIconOnlyRefreshAccessibleAndCompactAtNarrowWidth()
     {
         await using var context = await playwright.Browser.NewContextAsync(new()
         {
@@ -260,7 +260,9 @@ public sealed class CustomerResponsiveBrowserTests(
         await actions.Nth(1).WaitForAsync();
         Assert.Equal(2, await actions.CountAsync());
         Assert.Equal("ล้างตัวกรอง", (await actions.Nth(0).InnerTextAsync()).Trim());
-        Assert.Equal("รีเฟรชข้อมูล", (await actions.Nth(1).InnerTextAsync()).Trim());
+        Assert.Equal(string.Empty, (await actions.Nth(1).InnerTextAsync()).Trim());
+        Assert.Equal("รีเฟรชข้อมูล", await actions.Nth(1).GetAttributeAsync("aria-label"));
+        Assert.Equal("รีเฟรชข้อมูล", await actions.Nth(1).GetAttributeAsync("title"));
 
         var geometry = await actions.EvaluateAllAsync<JsonElement>("""
             elements => elements.map(element => {
@@ -278,8 +280,8 @@ public sealed class CustomerResponsiveBrowserTests(
             """);
         var clear = geometry[0];
         var refresh = geometry[1];
-        Assert.InRange(Math.Abs(clear.GetProperty("x").GetDouble() - refresh.GetProperty("x").GetDouble()), 0, 1);
-        Assert.True(refresh.GetProperty("y").GetDouble() > clear.GetProperty("y").GetDouble(), geometry.ToString());
+        Assert.InRange(Math.Abs(clear.GetProperty("y").GetDouble() - refresh.GetProperty("y").GetDouble()), 0, 1);
+        Assert.True(refresh.GetProperty("x").GetDouble() > clear.GetProperty("x").GetDouble(), geometry.ToString());
         foreach (var button in geometry.EnumerateArray())
         {
             Assert.True(button.GetProperty("height").GetDouble() >= 44, geometry.ToString());

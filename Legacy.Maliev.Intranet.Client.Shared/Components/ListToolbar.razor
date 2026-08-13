@@ -43,9 +43,13 @@
                     @Text["Clear"]
                 </MudButton>
             }
-            <MudButton Variant="Variant.Outlined" Color="Color.Default" OnClick="RefreshAsync" Disabled="@IsBusy" StartIcon="@Icons.Material.Outlined.Refresh">
-                @Text["Refresh"]
-            </MudButton>
+            <MudIconButton ButtonType="ButtonType.Button"
+                           Class="list-toolbar__refresh"
+                           Icon="@Icons.Material.Outlined.Refresh"
+                           Disabled="@IsBusy"
+                           aria-label="@Text["Refresh"]"
+                           title="@Text["Refresh"]"
+                           OnClick="RefreshAsync" />
         </div>
     </div>
     <span class="visually-hidden" role="status" aria-live="polite">

@@ -1,4 +1,5 @@
 using System.Xml.Linq;
+using System.Text.RegularExpressions;
 
 namespace Legacy.Maliev.Intranet.Tests;
 
@@ -67,6 +68,31 @@ public sealed class ListToolbarAdoptionContractTests
         Assert.Equal("จำนวนต่อหน้า", thai["PerPage"]);
         Assert.Equal("ล้างตัวกรอง", thai["Clear"]);
         Assert.Equal("รีเฟรชข้อมูล", thai["Refresh"]);
+    }
+
+    [Fact]
+    public void Shared_toolbar_exposes_one_localized_icon_only_refresh_action()
+    {
+        var folder = Path.Combine(FindRepositoryRoot(), "Legacy.Maliev.Intranet.Client.Shared", "Components");
+        var markup = File.ReadAllText(Path.Combine(folder, "ListToolbar.razor"));
+        var styles = File.ReadAllText(Path.Combine(folder, "ListToolbar.razor.css"));
+        var refresh = Regex.Match(
+            markup,
+            @"<MudIconButton\b(?=[^>]*\bClass=\""list-toolbar__refresh\""\s)[^>]*/>",
+            RegexOptions.Singleline | RegexOptions.CultureInvariant);
+
+        Assert.True(refresh.Success, "Refresh must render as one self-closing MudIconButton root.");
+        Assert.Single(Regex.Matches(markup, @"<MudIconButton\b", RegexOptions.CultureInvariant).Cast<Match>());
+        Assert.Contains("ButtonType=\"ButtonType.Button\"", refresh.Value, StringComparison.Ordinal);
+        Assert.Contains("Icon=\"@Icons.Material.Outlined.Refresh\"", refresh.Value, StringComparison.Ordinal);
+        Assert.Contains("aria-label=\"@Text[\"Refresh\"]\"", refresh.Value, StringComparison.Ordinal);
+        Assert.Contains("title=\"@Text[\"Refresh\"]\"", refresh.Value, StringComparison.Ordinal);
+        Assert.DoesNotContain(">@Text[\"Refresh\"]<", markup, StringComparison.Ordinal);
+        Assert.Contains(".list-toolbar__refresh", styles, StringComparison.Ordinal);
+        Assert.Contains("min-width: 2.25rem", styles, StringComparison.Ordinal);
+        Assert.Contains("min-height: 2.25rem", styles, StringComparison.Ordinal);
+        Assert.Contains("min-width: 2.75rem", styles, StringComparison.Ordinal);
+        Assert.Contains("min-height: 2.75rem", styles, StringComparison.Ordinal);
     }
 
     private static Dictionary<string, string> ReadResources(string path) =>
