@@ -259,6 +259,13 @@ public sealed class OperationalTableMigrationBrowserTests(
         await page.GotoAsync(new Uri(server.BaseUri, "Dashboard").AbsoluteUri);
         var tables = page.Locator(".dashboard-table table");
         await tables.First.WaitForAsync();
+        var expectedRecords = new[]
+        {
+            (Projection: "dashboard-orders", AccessibleName: "Order #901", Href: "/sales/orders/901"),
+            (Projection: "dashboard-quotations", AccessibleName: "Quote #902", Href: "/Quotations/View?id=902"),
+            (Projection: "dashboard-payments", AccessibleName: "Payment #903", Href: "/Finances/View?id=903"),
+            (Projection: "dashboard-customers", AccessibleName: "Mali Dee", Href: "/Customers/View?id=69738"),
+        };
 
         var breadcrumbs = page.Locator("nav.page-breadcrumbs");
         Assert.Equal(1, await breadcrumbs.Locator("li").CountAsync());
@@ -279,11 +286,20 @@ public sealed class OperationalTableMigrationBrowserTests(
         {
             Assert.Equal("nowrap", await atomic.EvaluateAsync<string>("node => getComputedStyle(node).whiteSpace"));
         }
-        var record = tables.First.GetByRole(AriaRole.Link, new() { Name = "Order #901" });
-        Assert.True(await record.EvaluateAsync<double>("node => node.getBoundingClientRect().height") >= 44);
-        await record.FocusAsync();
-        Assert.True(await record.EvaluateAsync<bool>("node => document.activeElement === node"));
-        Assert.Equal(0, await page.Locator(".operational-table__toggle").CountAsync());
+        foreach (var expected in expectedRecords)
+        {
+            var table = page.Locator($"[data-projection='{expected.Projection}']:is(table), [data-projection='{expected.Projection}'] table");
+            Assert.Equal(1, await table.CountAsync());
+            var record = table.GetByRole(AriaRole.Link, new() { Name = expected.AccessibleName, Exact = true });
+            Assert.Equal(expected.Href, await record.GetAttributeAsync("href"));
+            var bounds = await record.BoundingBoxAsync();
+            Assert.NotNull(bounds);
+            Assert.True(bounds!.Width >= 44, $"{expected.Projection} record link width was {bounds.Width}px.");
+            Assert.True(bounds.Height >= 44, $"{expected.Projection} record link height was {bounds.Height}px.");
+            await record.FocusAsync();
+            Assert.True(await record.EvaluateAsync<bool>("node => document.activeElement === node"));
+        }
+        Assert.Equal(0, await page.Locator(".operational-table__toggle, .operational-table__quick-view").CountAsync());
         Assert.Empty(errors);
     }
 
