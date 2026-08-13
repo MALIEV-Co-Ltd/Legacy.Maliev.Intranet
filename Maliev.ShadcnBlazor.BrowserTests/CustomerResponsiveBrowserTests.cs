@@ -327,6 +327,44 @@ public sealed class CustomerResponsiveBrowserTests(
         await AssertNoDocumentOverflowAsync(page);
     }
 
+    [Fact]
+    public async Task CustomerToolbarRefreshUsesDenseIconAndTouchTargetAtWideCoarsePointer()
+    {
+        await using var context = await playwright.Browser.NewContextAsync(new()
+        {
+            ViewportSize = new() { Width = 1280, Height = 900 },
+            DeviceScaleFactor = 1,
+            HasTouch = true,
+            ReducedMotion = ReducedMotion.Reduce
+        });
+        var page = await context.NewPageAsync();
+        await StubProductionBoundariesAsync(page);
+
+        await page.GotoAsync(new Uri(server.BaseUri, "customers").AbsoluteUri);
+        await page.Locator(".customers-table .mud-table-body .mud-table-row").First.WaitForAsync();
+        Assert.True(await page.EvaluateAsync<bool>("() => matchMedia('(pointer: coarse)').matches"));
+
+        var refresh = page.Locator("button.list-toolbar__refresh");
+        var geometry = await refresh.EvaluateAsync<JsonElement>("""
+            element => {
+                const root = element.getBoundingClientRect();
+                const icon = element.querySelector('svg').getBoundingClientRect();
+                return {
+                    rootWidth: root.width,
+                    rootHeight: root.height,
+                    iconWidth: icon.width,
+                    iconHeight: icon.height
+                };
+            }
+            """);
+
+        Assert.True(geometry.GetProperty("rootWidth").GetDouble() >= 44, geometry.ToString());
+        Assert.True(geometry.GetProperty("rootHeight").GetDouble() >= 44, geometry.ToString());
+        Assert.Equal(20, geometry.GetProperty("iconWidth").GetDouble());
+        Assert.Equal(20, geometry.GetProperty("iconHeight").GetDouble());
+        await AssertNoDocumentOverflowAsync(page);
+    }
+
     [Theory]
     [InlineData(1280)]
     [InlineData(768)]

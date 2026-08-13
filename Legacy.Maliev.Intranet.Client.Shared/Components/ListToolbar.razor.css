@@ -44,6 +44,21 @@
     padding: 0;
 }
 
+.list-toolbar__actions ::deep button.list-toolbar__refresh svg {
+    width: 1.25rem;
+    height: 1.25rem;
+    font-size: 1.25rem;
+}
+
+@media (pointer: coarse) {
+    .list-toolbar__actions ::deep button.list-toolbar__refresh {
+        width: 2.75rem;
+        min-width: 2.75rem;
+        height: 2.75rem;
+        min-height: 2.75rem;
+    }
+}
+
 @media (min-width: 601px) and (max-width: 900px) {
     .list-toolbar__grid {
         grid-template-columns: minmax(0, 1fr) minmax(10rem, 0.65fr);

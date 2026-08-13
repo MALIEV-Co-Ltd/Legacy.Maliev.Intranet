@@ -93,6 +93,10 @@ public sealed class ListToolbarAdoptionContractTests
         Assert.Contains("min-height: 2.25rem", styles, StringComparison.Ordinal);
         Assert.Contains("min-width: 2.75rem", styles, StringComparison.Ordinal);
         Assert.Contains("min-height: 2.75rem", styles, StringComparison.Ordinal);
+        Assert.Contains("@media (pointer: coarse)", styles, StringComparison.Ordinal);
+        Assert.Contains("button.list-toolbar__refresh svg", styles, StringComparison.Ordinal);
+        Assert.Contains("width: 1.25rem", styles, StringComparison.Ordinal);
+        Assert.Contains("height: 1.25rem", styles, StringComparison.Ordinal);
     }
 
     private static Dictionary<string, string> ReadResources(string path) =>
