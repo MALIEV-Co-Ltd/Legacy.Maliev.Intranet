@@ -73,6 +73,7 @@
                                   Items="@(page.Items)"
                                   KeySelector="@(quotation => quotation.Id)"
                                   TableLabel="@Text["TableCaption"]"
+                                  AriaDescribedBy="quotation-table-caption"
                                   ColumnCount="15"
                                   State="@tableState"
                                   DetailHref="@(quotation => $"/Quotations/View?id={quotation.Id}")"

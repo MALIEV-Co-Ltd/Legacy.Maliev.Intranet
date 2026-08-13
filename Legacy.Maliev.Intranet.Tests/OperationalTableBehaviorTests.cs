@@ -102,6 +102,26 @@ public sealed class OperationalTableBehaviorTests : BunitContext
     }
 
     [Fact]
+    public void Rendered_table_applies_description_relationship_to_the_native_table()
+    {
+        var cut = RenderTable(
+            [new Row<int>(41, "customer row")],
+            row => row.Key,
+            "customer-records-summary");
+
+        Assert.Equal("customer-records-summary", cut.Find("table.operational-table").GetAttribute("aria-describedby"));
+        Assert.Null(cut.Find(".operational-table__scroll").GetAttribute("aria-describedby"));
+    }
+
+    [Fact]
+    public void Rendered_table_omits_description_relationship_when_not_supplied()
+    {
+        var cut = RenderTable([new Row<int>(41, "customer row")], row => row.Key);
+
+        Assert.Null(cut.Find("table.operational-table").GetAttribute("aria-describedby"));
+    }
+
+    [Fact]
     public void Rendered_document_keeps_quick_view_ids_unique_across_table_instances()
     {
         var cut = Render<TwoOperationalTables>();
@@ -150,7 +170,8 @@ public sealed class OperationalTableBehaviorTests : BunitContext
 
     private IRenderedComponent<OperationalTable<Row<TKey>, TKey>> RenderTable<TKey>(
         IReadOnlyList<Row<TKey>> rows,
-        Func<Row<TKey>, TKey> keySelector)
+        Func<Row<TKey>, TKey> keySelector,
+        string? ariaDescribedBy = null)
         where TKey : notnull =>
         Render<OperationalTable<Row<TKey>, TKey>>(parameters => parameters
             .Add(component => component.Items, rows)
@@ -163,6 +184,7 @@ public sealed class OperationalTableBehaviorTests : BunitContext
             .Add(component => component.ExpandAriaLabel, row => $"Expand {row.Name}")
             .Add(component => component.CollapseAriaLabel, row => $"Collapse {row.Name}")
             .Add(component => component.TableLabel, "Operational records")
+            .Add(component => component.AriaDescribedBy, ariaDescribedBy)
             .Add(component => component.ColumnCount, 2)
             .Add(component => component.State, new OperationalTableState<TKey>()));
 

@@ -113,6 +113,23 @@ public sealed class OperationalTableMigrationBrowserTests(
         Assert.Empty(errors);
     }
 
+    [Theory]
+    [InlineData("QuotationRequests/Index", "quotation-request-table-summary")]
+    [InlineData("Quotations/Index", "quotation-table-caption")]
+    public async Task QuotationRecordSummariesDescribeTheNativeOperationalTable(string route, string summaryId)
+    {
+        await using var context = await playwright.Browser.NewContextAsync();
+        var page = await context.NewPageAsync();
+        await StubSalesBoundariesAsync(page);
+        await page.GotoAsync(new Uri(server.BaseUri, route).AbsoluteUri);
+
+        var table = page.Locator("table.operational-table");
+        await table.WaitForAsync();
+        Assert.Equal(summaryId, await table.GetAttributeAsync("aria-describedby"));
+        Assert.Equal(1, await page.Locator($"#{summaryId}").CountAsync());
+        Assert.Equal(0, await page.Locator($"section[aria-describedby='{summaryId}']").CountAsync());
+    }
+
     private static List<string> CaptureErrors(IPage page)
     {
         var errors = new List<string>();

@@ -46,12 +46,13 @@
         <MudText id="quotation-request-table-summary" Typo="Typo.caption" Class="mb-3">
             @Text["RecordsSummary", page.TotalRecords]
         </MudText>
-        <section class="quotation-request-table-region" aria-describedby="quotation-request-table-summary">
+        <section class="quotation-request-table-region">
         <OperationalTable TItem="QuotationRequestItem"
                           TKey="int"
                           Items="@(page.Items)"
                           KeySelector="@(context => context.Id)"
                           TableLabel="@Text["TableCaption"]"
+                          AriaDescribedBy="quotation-request-table-summary"
                           ColumnCount="6"
                           State="@tableState"
                           DetailHref="@(context => $"/QuotationRequests/View?id={context.Id}")"

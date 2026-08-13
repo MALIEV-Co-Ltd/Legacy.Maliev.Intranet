@@ -3,7 +3,7 @@
 @implements IDisposable
 
 <div class="operational-table__scroll">
-    <table class="operational-table">
+    <table class="operational-table" aria-describedby="@AriaDescribedBy">
         <caption class="visually-hidden">@TableLabel</caption>
         <thead>
             @HeaderContent
@@ -77,6 +77,7 @@
     [Parameter, EditorRequired] public Func<TItem, string> ExpandAriaLabel { get; set; } = default!;
     [Parameter, EditorRequired] public Func<TItem, string> CollapseAriaLabel { get; set; } = default!;
     [Parameter, EditorRequired] public string TableLabel { get; set; } = default!;
+    [Parameter] public string? AriaDescribedBy { get; set; }
     [Parameter] public RenderFragment? EmptyContent { get; set; }
     [Parameter, EditorRequired] public int ColumnCount { get; set; }
     [Parameter, EditorRequired] public OperationalTableState<TKey> State { get; set; } = default!;
