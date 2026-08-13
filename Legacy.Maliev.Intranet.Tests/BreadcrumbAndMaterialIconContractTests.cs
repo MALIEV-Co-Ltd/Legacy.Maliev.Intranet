@@ -75,15 +75,25 @@ public sealed class BreadcrumbAndMaterialIconContractTests : BunitContext
         ".cshtml", ".razor", ".cs", ".js", ".mjs", ".css", ".scss", ".html", ".csproj", ".props", ".targets",
         ".svg", ".json", ".xml", ".resx", ".yaml", ".yml", ".lock", ".md", ".txt",
     };
-    private static readonly IReadOnlySet<string> ApprovedBinaryExtensions = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
-    {
-        ".woff2",
-    };
-    private static readonly IReadOnlySet<string> ApprovedExtensionlessFiles = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+    private static readonly IReadOnlyDictionary<string, ApprovedBinaryAsset> ApprovedBinaryAssets =
+        new Dictionary<string, ApprovedBinaryAsset>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["Legacy.Maliev.Intranet/wwwroot/fonts/ibm-plex-sans-thai/IBMPlexSansThai-Regular.woff2"] = new(
+            "0350508969DAD82FFD2B7608D8299454BF19EC54E464A16A66E5A9733E83654D",
+            "Self-hosted IBM Plex Sans Thai regular text font"),
+            ["Legacy.Maliev.Intranet/wwwroot/fonts/ibm-plex-sans-thai/IBMPlexSansThai-SemiBold.woff2"] = new(
+            "83F9D86C099E0006077854CAC1CF6F9D3177FB0C4F356254A7D56D047C097E52",
+            "Self-hosted IBM Plex Sans Thai semibold text font"),
+            ["Legacy.Maliev.Intranet.Client/wwwroot/fonts/ibm-plex-sans-thai/IBMPlexSansThai-Regular.woff2"] = new(
+            "0350508969DAD82FFD2B7608D8299454BF19EC54E464A16A66E5A9733E83654D",
+            "Self-hosted IBM Plex Sans Thai regular text font"),
+            ["Legacy.Maliev.Intranet.Client/wwwroot/fonts/ibm-plex-sans-thai/IBMPlexSansThai-SemiBold.woff2"] = new(
+            "83F9D86C099E0006077854CAC1CF6F9D3177FB0C4F356254A7D56D047C097E52",
+            "Self-hosted IBM Plex Sans Thai semibold text font"),
+        };
+    private static readonly IReadOnlySet<string> ApprovedExtensionlessTextFiles = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
     {
         "Legacy.Maliev.Intranet/Dockerfile",
-        "Legacy.Maliev.Intranet/wwwroot/fonts/ibm-plex-sans-thai/LICENSE.txt",
-        "Legacy.Maliev.Intranet.Client/wwwroot/fonts/ibm-plex-sans-thai/LICENSE.txt",
         "Maliev.ShadcnBlazor/licenses/MudBlazor-LICENSE",
     };
 
@@ -152,7 +162,7 @@ public sealed class BreadcrumbAndMaterialIconContractTests : BunitContext
     {
         var root = FindRepositoryRoot();
         var files = EnumerateProductionInventoryFiles(root);
-        var violations = FindIconInventoryViolations(files);
+        var violations = FindProductionIconInventoryViolations(files);
 
         Assert.Empty(violations);
     }
@@ -217,15 +227,53 @@ public sealed class BreadcrumbAndMaterialIconContractTests : BunitContext
     public void Production_inventory_fails_on_unclassified_file_extension()
     {
         Assert.Equal(
-            ["Legacy.Maliev.Intranet.Client/wwwroot/icons/generated.unknowntext"],
+            [
+                "Legacy.Maliev.Intranet.Client/wwwroot/icons/generated.unknowntext",
+                "Legacy.Maliev.Intranet.Client/wwwroot/fonts/unapproved-icon.woff2"
+            ],
             FindUnclassifiedProductionFiles([
                 "Legacy.Maliev.Intranet.Client/wwwroot/icons/generated.unknowntext",
+                "Legacy.Maliev.Intranet.Client/wwwroot/fonts/unapproved-icon.woff2",
                 "Legacy.Maliev.Intranet.Client/wwwroot/app.mjs",
                 "Legacy.Maliev.Intranet.Client/wwwroot/tokens.json",
                 "Legacy.Maliev.Intranet.Client/wwwroot/styles.scss",
                 "Legacy.Maliev.Intranet.Client/Resources/Text.resx",
                 "Legacy.Maliev.Intranet.Client/Config.xml"
             ]));
+    }
+
+    [Fact]
+    public void Approval_graph_rejects_missing_assets_sources_and_unresolved_targets()
+    {
+        var files = EnumerateProductionInventoryFiles(FindRepositoryRoot());
+
+        Assert.NotEmpty(FindApprovalGraphViolations(files.Where(file =>
+            file.Path != "Legacy.Maliev.Intranet.Client/wwwroot/images/favicon.svg")));
+        Assert.NotEmpty(FindApprovalGraphViolations(files.Where(file =>
+            file.Path != "Legacy.Maliev.Intranet.Client/wwwroot/index.html")));
+        Assert.NotEmpty(FindApprovalGraphViolations(
+            files,
+            [.. ApprovedSvgReferences, new(
+                "Legacy.Maliev.Intranet.Client/wwwroot/index.html",
+                "images/missing.svg",
+                "<link rel=\"icon\" href=\"images/missing.svg\" />",
+                "Deliberately unresolved test target")],
+            ApprovedSvgAssets));
+    }
+
+    [Fact]
+    public void Deployable_library_sources_are_scanned_and_icon_font_css_is_rejected()
+    {
+        var libraryCss = Path.Combine(
+            FindRepositoryRoot(),
+            "Legacy.Maliev.Intranet.Client", "wwwroot", "lib", "vendor", "icons.css");
+
+        Assert.False(IsGeneratedOrVendorPath(libraryCss));
+        Assert.NotEmpty(FindIconInventoryViolations([
+            new(
+                "Legacy.Maliev.Intranet.Client/wwwroot/lib/vendor/icons.css",
+                "@font-face { font-family: 'Material Icons'; src: url('icons.woff2'); }")
+        ]));
     }
 
     [Fact]
@@ -271,10 +319,14 @@ public sealed class BreadcrumbAndMaterialIconContractTests : BunitContext
         Assert.Empty(unclassified);
 
         return productionFiles
-            .Where(IsScannedTextFile)
             .Select(path => new InventoryFile(
                 path,
-                File.ReadAllText(Path.Combine(root, path.Replace('/', Path.DirectorySeparatorChar)))))
+                IsScannedTextFile(path)
+                    ? File.ReadAllText(Path.Combine(root, path.Replace('/', Path.DirectorySeparatorChar)))
+                    : string.Empty,
+                IsScannedTextFile(path)
+                    ? null
+                    : Sha256(File.ReadAllBytes(Path.Combine(root, path.Replace('/', Path.DirectorySeparatorChar))))))
             .ToArray();
     }
 
@@ -302,21 +354,27 @@ public sealed class BreadcrumbAndMaterialIconContractTests : BunitContext
 
     private static IReadOnlyList<string> FindUnclassifiedProductionFiles(IEnumerable<string> paths) => paths
         .Where(path => !IsScannedTextFile(path)
-            && !ApprovedBinaryExtensions.Contains(Path.GetExtension(path))
-            && !ApprovedExtensionlessFiles.Contains(path))
+            && !ApprovedBinaryAssets.ContainsKey(path)
+            && !ApprovedExtensionlessTextFiles.Contains(path))
         .ToArray();
 
     private static bool IsScannedTextFile(string path) =>
         ScannedTextExtensions.Contains(Path.GetExtension(path))
-        || DependencyManifestNames.Contains(Path.GetFileName(path));
+        || DependencyManifestNames.Contains(Path.GetFileName(path))
+        || ApprovedExtensionlessTextFiles.Contains(path);
 
     private static bool IsGeneratedOrVendorPath(string path) =>
         path.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}", StringComparison.OrdinalIgnoreCase)
         || path.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}", StringComparison.OrdinalIgnoreCase)
         || path.Contains($"{Path.DirectorySeparatorChar}node_modules{Path.DirectorySeparatorChar}", StringComparison.OrdinalIgnoreCase)
-        || path.Contains($"{Path.DirectorySeparatorChar}wwwroot{Path.DirectorySeparatorChar}lib{Path.DirectorySeparatorChar}", StringComparison.OrdinalIgnoreCase)
         || path.Contains($"{Path.DirectorySeparatorChar}.git{Path.DirectorySeparatorChar}", StringComparison.OrdinalIgnoreCase)
         || path.Contains($"{Path.DirectorySeparatorChar}.superpowers{Path.DirectorySeparatorChar}", StringComparison.OrdinalIgnoreCase);
+
+    private static IReadOnlyList<string> FindProductionIconInventoryViolations(IReadOnlyList<InventoryFile> files)
+    {
+        var graphViolations = FindApprovalGraphViolations(files);
+        return graphViolations.Count > 0 ? graphViolations : FindIconInventoryViolations(files);
+    }
 
     private static IReadOnlyList<string> FindIconInventoryViolations(IEnumerable<InventoryFile> files)
     {
@@ -330,6 +388,10 @@ public sealed class BreadcrumbAndMaterialIconContractTests : BunitContext
                 || HasMudIconAlias(file.Source)
                 || Regex.IsMatch(file.Source, @"Icons\.(?!Material\.)", RegexOptions.CultureInvariant)
                 || Regex.IsMatch(file.Source, @"Font[ -]?Awesome|\bfa-[a-z]", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)
+                || Regex.IsMatch(
+                    file.Source,
+                    "font-family\\s*:\\s*['\\\"]?(?:Material\\s+(?:Icons|Symbols)|Font\\s*Awesome)",
+                    RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)
                 || file.Source.Contains("fonts.googleapis.com", StringComparison.OrdinalIgnoreCase))
             {
                 violations.Add(file.Path);
@@ -337,6 +399,144 @@ public sealed class BreadcrumbAndMaterialIconContractTests : BunitContext
         }
 
         return violations;
+    }
+
+    private static IReadOnlyList<string> FindApprovalGraphViolations(
+        IEnumerable<InventoryFile> files,
+        IReadOnlyList<ApprovedSvgReference>? references = null,
+        IReadOnlyDictionary<string, ApprovedSvgAsset>? assets = null)
+    {
+        references ??= ApprovedSvgReferences;
+        assets ??= ApprovedSvgAssets;
+        var inventory = files.ToArray();
+        var violations = new List<string>();
+        var filesByPath = inventory
+            .GroupBy(file => file.Path, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(group => group.Key, group => group.ToArray(), StringComparer.OrdinalIgnoreCase);
+
+        foreach (var file in inventory)
+        {
+            if (!string.Equals(file.Path, NormalizeRelativePath(file.Path), StringComparison.Ordinal)
+                || filesByPath[file.Path].Length != 1)
+            {
+                violations.Add(file.Path);
+            }
+        }
+
+        foreach (var (path, approval) in assets)
+        {
+            if (!string.Equals(path, NormalizeRelativePath(path), StringComparison.Ordinal)
+                || string.IsNullOrWhiteSpace(approval.Purpose)
+                || !filesByPath.TryGetValue(path, out var approvedFiles)
+                || approvedFiles.Length != 1
+                || !IsApprovedSvgAsset(approvedFiles[0]))
+            {
+                violations.Add(path);
+            }
+        }
+
+        foreach (var (path, approval) in ApprovedBinaryAssets)
+        {
+            if (!string.Equals(path, NormalizeRelativePath(path), StringComparison.Ordinal)
+                || string.IsNullOrWhiteSpace(approval.Purpose)
+                || !filesByPath.TryGetValue(path, out var approvedFiles)
+                || approvedFiles.Length != 1
+                || !string.Equals(approvedFiles[0].ContentSha256, approval.Sha256, StringComparison.Ordinal))
+            {
+                violations.Add(path);
+            }
+        }
+
+        foreach (var duplicate in references.GroupBy(
+                     approval => $"{approval.SourcePath}\n{approval.Marker}",
+                     StringComparer.OrdinalIgnoreCase).Where(group => group.Count() != 1))
+        {
+            violations.Add(duplicate.Key);
+        }
+
+        foreach (var duplicate in ApprovedInlineSvgs.GroupBy(
+                     approval => $"{approval.Path}\n{approval.Markup}",
+                     StringComparer.OrdinalIgnoreCase).Where(group => group.Count() != 1))
+        {
+            violations.Add(duplicate.Key);
+        }
+
+        foreach (var approval in ApprovedInlineSvgs)
+        {
+            if (!string.Equals(approval.Path, NormalizeRelativePath(approval.Path), StringComparison.Ordinal)
+                || string.IsNullOrWhiteSpace(approval.Purpose)
+                || !filesByPath.TryGetValue(approval.Path, out var sourceFiles)
+                || sourceFiles.Length != 1
+                || CountOccurrences(sourceFiles[0].Source, approval.Markup) != 1)
+            {
+                violations.Add(approval.Path);
+            }
+        }
+
+        foreach (var approval in references)
+        {
+            var target = ResolveReferenceTarget(approval);
+            if (!string.Equals(approval.SourcePath, NormalizeRelativePath(approval.SourcePath), StringComparison.Ordinal)
+                || string.IsNullOrWhiteSpace(approval.Purpose)
+                || !filesByPath.TryGetValue(approval.SourcePath, out var sourceFiles)
+                || sourceFiles.Length != 1
+                || CountOccurrences(sourceFiles[0].Source, approval.Marker) != 1
+                || target is null
+                || !assets.ContainsKey(target)
+                || !filesByPath.TryGetValue(target, out var targetFiles)
+                || targetFiles.Length != 1
+                || !IsApprovedSvgAsset(targetFiles[0]))
+            {
+                violations.Add($"{approval.SourcePath} -> {approval.Target}");
+            }
+        }
+
+        return violations.Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
+    }
+
+    private static string? ResolveReferenceTarget(ApprovedSvgReference approval)
+    {
+        var source = NormalizeRelativePath(approval.SourcePath);
+        if (source is null)
+        {
+            return null;
+        }
+
+        var project = source.Split('/')[0];
+        var sourceDirectory = source.Contains("/wwwroot/", StringComparison.OrdinalIgnoreCase)
+            ? source[..source.LastIndexOf('/')]
+            : $"{project}/wwwroot";
+        var target = approval.Target.StartsWith('/')
+            ? $"{project}/wwwroot/{approval.Target.TrimStart('/')}"
+            : $"{sourceDirectory}/{approval.Target}";
+        return NormalizeRelativePath(target);
+    }
+
+    private static string? NormalizeRelativePath(string path)
+    {
+        var segments = new List<string>();
+        foreach (var segment in path.Replace('\\', '/').Split('/', StringSplitOptions.RemoveEmptyEntries))
+        {
+            if (segment == ".")
+            {
+                continue;
+            }
+
+            if (segment == "..")
+            {
+                if (segments.Count == 0)
+                {
+                    return null;
+                }
+
+                segments.RemoveAt(segments.Count - 1);
+                continue;
+            }
+
+            segments.Add(segment);
+        }
+
+        return string.Join('/', segments);
     }
 
     private static bool HasUnapprovedInlineOrDataSvg(InventoryFile file)
@@ -426,6 +626,8 @@ public sealed class BreadcrumbAndMaterialIconContractTests : BunitContext
     private static string Sha256(string value) =>
         Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(value)));
 
+    private static string Sha256(byte[] value) => Convert.ToHexString(SHA256.HashData(value));
+
     private IRenderedComponent<IComponent> RenderDynamicComponent(Type componentType, Array items) => Render(builder =>
     {
         builder.OpenComponent(0, componentType);
@@ -464,8 +666,9 @@ public sealed class BreadcrumbAndMaterialIconContractTests : BunitContext
         return directory?.FullName ?? throw new DirectoryNotFoundException("Repository root was not found.");
     }
 
-    private sealed record InventoryFile(string Path, string Source);
+    private sealed record InventoryFile(string Path, string Source, string? ContentSha256 = null);
     private sealed record ApprovedInlineSvg(string Path, string Markup, string Purpose);
     private sealed record ApprovedSvgAsset(string Sha256, string Purpose);
+    private sealed record ApprovedBinaryAsset(string Sha256, string Purpose);
     private sealed record ApprovedSvgReference(string SourcePath, string Target, string Marker, string Purpose);
 }
