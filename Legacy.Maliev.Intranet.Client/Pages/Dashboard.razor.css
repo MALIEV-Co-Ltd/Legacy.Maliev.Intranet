@@ -56,13 +56,14 @@
 .dashboard-table td { border-bottom: 1px solid var(--shadcn-border); font-size: 0.76rem; padding: 0.72rem 0.75rem; text-align: left; vertical-align: middle; }
 .dashboard-table th { color: var(--shadcn-muted-foreground); font-size: 0.68rem; font-weight: 600; letter-spacing: 0.025em; text-transform: uppercase; }
 .dashboard-table tbody tr:last-child td { border-bottom: 0; }
-.dashboard-table a,
+.dashboard-table-scroll ::deep .dashboard-table a,
 .dashboard-activity-list a { align-items: center; justify-content: center; color: var(--shadcn-primary); display: inline-flex; min-width: 44px; min-height: 44px; font-weight: 400; text-decoration: none; }
-.dashboard-table a:hover,
-.dashboard-table a:focus-visible,
+.dashboard-table-scroll ::deep .dashboard-table a:hover,
+.dashboard-table-scroll ::deep .dashboard-table a:focus-visible,
 .dashboard-activity-list a:hover,
 .dashboard-activity-list a:focus-visible { text-decoration: underline; }
 .dashboard-table-primary { max-width: 14rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dashboard-table .mlv-mono { white-space: nowrap; }
 .dashboard-money { font-variant-numeric: tabular-nums; white-space: nowrap; }
 
 .dashboard-status { border-radius: 999px; display: inline-flex; font-size: 0.68rem; font-weight: 400; padding: 0.23rem 0.52rem; white-space: nowrap; }
@@ -119,34 +120,7 @@
     .dashboard-freshness { align-items: flex-start; text-align: left; }
     .dashboard-primary-grid,
     .dashboard-secondary-grid { grid-template-columns: minmax(0, 1fr); }
-    .dashboard-table-scroll { overflow-x: visible; }
-    .dashboard-table,
-    .dashboard-table-compact { display: block; min-width: 0; }
-    .dashboard-table thead { display: none; }
-    .dashboard-table tbody { display: grid; gap: 0.75rem; }
-    .dashboard-table tr {
-        display: grid;
-        overflow: hidden;
-        border: 1px solid var(--shadcn-border);
-        border-radius: var(--shadcn-radius-md);
-        background: var(--shadcn-card);
-    }
-    .dashboard-table td {
-        display: grid;
-        min-width: 0;
-        grid-template-columns: minmax(7rem, 40%) minmax(0, 1fr);
-        gap: 0.75rem;
-        padding: 0.68rem 0.75rem;
-        overflow-wrap: anywhere;
-    }
-    .dashboard-table td::before {
-        color: var(--shadcn-muted-foreground);
-        content: attr(data-label);
-        font-size: 0.72rem;
-        font-weight: 400;
-    }
-    .dashboard-table-primary { max-width: none; white-space: normal; }
-    .dashboard-table a,
+    .dashboard-table-scroll ::deep .dashboard-table a,
     .dashboard-activity-list a { align-items: center; min-height: 44px; }
 }
 

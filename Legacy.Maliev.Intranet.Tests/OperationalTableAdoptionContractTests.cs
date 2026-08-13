@@ -12,6 +12,21 @@ public sealed class OperationalTableAdoptionContractTests
         { "Legacy.Maliev.Intranet.Client.Features.Diagnostics", "Pages/ErrorReport.razor", "long", null, ["Timestamp", "Level", "Code", "Category"], ["Path", "CorrelationId"], "QuickViewOnly" },
     };
 
+    private static readonly TableLedgerEntry[] RepositoryTableLedger =
+    [
+        new("Legacy.Maliev.Intranet.Client/Pages/Dashboard.razor", "CompactDashboard", "Four bounded six-record comparison tables expose complete summary projections and exact detail links."),
+        new("Legacy.Maliev.Intranet.Client.Features.Accounting/Pages/Finances.razor", "Analytical", "The retained yearly trend is an analytical comparison table; the record list uses OperationalTable."),
+        new("Legacy.Maliev.Intranet.Client.Features.Accounting/Pages/InvoiceCreate.razor", "FormEntry", "The table is an invoice line-entry preview inside a create form."),
+        new("Legacy.Maliev.Intranet.Client.Features.Accounting/Pages/InvoiceView.razor", "DetailLineItems", "The table contains line items belonging to one invoice detail record."),
+        new("Legacy.Maliev.Intranet.Client.Features.Accounting/Pages/NetProfitChart.razor", "Analytical", "The table is the accessible data alternative for the net-profit chart."),
+        new("Legacy.Maliev.Intranet.Client.Features.Accounting/Pages/YearlyActivityChart.razor", "Analytical", "The table is the accessible data alternative for the yearly-activity chart."),
+        new("Legacy.Maliev.Intranet.Client.Features.Customers/Components/CustomerHistoryTable.razor", "SpecializedHistory", "Each row is a complete browser-safe customer history projection with its exact detail destination."),
+        new("Legacy.Maliev.Intranet.Client.Features.Procurement/Pages/PurchaseOrderView.razor", "DetailLineItems", "The table contains line items belonging to one purchase-order detail record."),
+        new("Legacy.Maliev.Intranet.Client.Features.Quotations/Pages/Quotations/Create.razor", "FormEntry", "The table selects order lines while composing a quotation."),
+        new("Legacy.Maliev.Intranet.Client.Features.Quotations/Pages/Quotations/Estimate.razor", "DetailLineItems", "The table previews line-item amounts for one quotation estimate."),
+        new("Legacy.Maliev.Intranet.Client.Shared/Components/OperationalTable.razor", "Adopted", "This is the shared semantic native-table implementation used by migrated operational lists."),
+    ];
+
     public static TheoryData<string, string> OperationalTableExceptions => new()
     {
         { "Legacy.Maliev.Intranet.Client.Features.Accounting/Pages/Finances.razor", "AnalyticalMonthlySummary" },
@@ -20,6 +35,38 @@ public sealed class OperationalTableAdoptionContractTests
         { "Legacy.Maliev.Intranet.Client.Features.Accounting/Pages/InvoiceCreate.razor", "FormSubTable" },
         { "Legacy.Maliev.Intranet.Client.Features.Accounting/Pages/InvoiceView.razor", "DetailSubTable" },
     };
+
+    [Fact]
+    public void RepositoryTableLedger_ExactlyClassifiesEveryProductionRawTableOwner()
+    {
+        var duplicates = RepositoryTableLedger
+            .GroupBy(entry => entry.Path, StringComparer.OrdinalIgnoreCase)
+            .Where(group => group.Count() > 1)
+            .Select(group => group.Key)
+            .ToArray();
+        Assert.Empty(duplicates);
+        Assert.All(RepositoryTableLedger, entry => Assert.False(string.IsNullOrWhiteSpace(entry.Reason), entry.Path));
+
+        var allowedExceptions = new HashSet<string>(StringComparer.Ordinal)
+        {
+            "Analytical", "FormEntry", "DetailLineItems", "CompactDashboard", "LegacyFallback", "SpecializedHistory",
+        };
+        Assert.All(RepositoryTableLedger.Where(entry => entry.Disposition != "Adopted"),
+            entry => Assert.Contains(entry.Disposition, allowedExceptions));
+        Assert.DoesNotContain(RepositoryTableLedger, entry => entry.Disposition == "LegacyFallback");
+
+        var actual = ProductionRazorFiles()
+            .Where(file => System.Text.RegularExpressions.Regex.IsMatch(
+                File.ReadAllText(file),
+                "<(?:MudTable|MudSimpleTable|table)(?:\\s|>)",
+                System.Text.RegularExpressions.RegexOptions.CultureInvariant))
+            .Select(NormalizePath)
+            .Order(StringComparer.Ordinal)
+            .ToArray();
+        var ledger = RepositoryTableLedger.Select(entry => entry.Path).Order(StringComparer.Ordinal).ToArray();
+
+        Assert.Equal(ledger, actual);
+    }
 
     public static TheoryData<string> AliasLandingPages => new()
     {
@@ -211,4 +258,15 @@ public sealed class OperationalTableAdoptionContractTests
 
         return directory?.FullName ?? throw new DirectoryNotFoundException("Could not find repository root.");
     }
+
+    private static IEnumerable<string> ProductionRazorFiles() =>
+        Directory.EnumerateDirectories(FindRoot(), "Legacy.Maliev.Intranet.Client*")
+            .SelectMany(directory => Directory.EnumerateFiles(directory, "*.razor", SearchOption.AllDirectories))
+            .Where(file => !file.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}", StringComparison.OrdinalIgnoreCase) &&
+                           !file.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}", StringComparison.OrdinalIgnoreCase));
+
+    private static string NormalizePath(string path) =>
+        Path.GetRelativePath(FindRoot(), path).Replace('\\', '/');
+
+    private sealed record TableLedgerEntry(string Path, string Disposition, string Reason);
 }

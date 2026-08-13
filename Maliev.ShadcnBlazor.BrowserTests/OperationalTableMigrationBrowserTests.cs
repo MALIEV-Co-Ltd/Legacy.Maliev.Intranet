@@ -244,6 +244,80 @@ public sealed class OperationalTableMigrationBrowserTests(
         Assert.Equal(0, await page.Locator($"section[aria-describedby='{summaryId}']").CountAsync());
     }
 
+    [Fact]
+    public async Task CompactDashboardTableRemainsSemanticContainedAtomicAndKeyboardReachableAt320()
+    {
+        await using var context = await playwright.Browser.NewContextAsync(new()
+        {
+            ViewportSize = new() { Width = 320, Height = 844 },
+            HasTouch = true,
+            ReducedMotion = ReducedMotion.Reduce,
+        });
+        var page = await context.NewPageAsync();
+        var errors = CaptureErrors(page);
+        await StubSpecializedTableBoundariesAsync(page);
+        await page.GotoAsync(new Uri(server.BaseUri, "Dashboard").AbsoluteUri);
+        var table = page.Locator(".dashboard-table table").First;
+        await table.WaitForAsync();
+
+        var breadcrumbs = page.Locator("nav.page-breadcrumbs");
+        Assert.Equal(1, await breadcrumbs.Locator("li").CountAsync());
+        Assert.Equal("Dashboard", (await breadcrumbs.Locator("[aria-current='page']").InnerTextAsync()).Trim());
+        Assert.Equal("table", await table.EvaluateAsync<string>("node => getComputedStyle(node).display"));
+        Assert.NotEqual("none", await table.Locator("thead").EvaluateAsync<string>("node => getComputedStyle(node).display"));
+        var scroller = page.Locator(".dashboard-table-scroll").First;
+        Assert.Contains(await scroller.EvaluateAsync<string>("node => getComputedStyle(node).overflowX"), new[] { "auto", "scroll" });
+        Assert.Equal(
+            await page.EvaluateAsync<int>("() => document.documentElement.clientWidth"),
+            await page.EvaluateAsync<int>("() => document.documentElement.scrollWidth"));
+        foreach (var atomic in await table.Locator(".mlv-mono").AllAsync())
+        {
+            Assert.Equal("nowrap", await atomic.EvaluateAsync<string>("node => getComputedStyle(node).whiteSpace"));
+        }
+        var record = table.GetByRole(AriaRole.Link, new() { Name = "Order #901" });
+        Assert.True(await record.EvaluateAsync<double>("node => node.getBoundingClientRect().height") >= 44);
+        await record.FocusAsync();
+        Assert.True(await record.EvaluateAsync<bool>("node => document.activeElement === node"));
+        Assert.Equal(0, await page.Locator(".operational-table__toggle").CountAsync());
+        Assert.Empty(errors);
+    }
+
+    [Fact]
+    public async Task SpecializedCustomerHistoryRemainsSemanticContainedAndUsesExactBreadcrumbsAt320()
+    {
+        await using var context = await playwright.Browser.NewContextAsync(new()
+        {
+            ViewportSize = new() { Width = 320, Height = 844 },
+            HasTouch = true,
+            ReducedMotion = ReducedMotion.Reduce,
+        });
+        var page = await context.NewPageAsync();
+        var errors = CaptureErrors(page);
+        await StubSpecializedTableBoundariesAsync(page);
+        await page.GotoAsync(new Uri(server.BaseUri, "Customers/View?id=69738&tab=orders").AbsoluteUri);
+        var table = page.Locator(".customer-history table");
+        await table.WaitForAsync();
+
+        var breadcrumbs = page.Locator("nav.page-breadcrumbs");
+        Assert.Equal(2, await breadcrumbs.Locator("li").CountAsync());
+        Assert.Equal("/customers", await breadcrumbs.GetByRole(AriaRole.Link, new() { Name = "Customers" }).GetAttributeAsync("href"));
+        Assert.Equal("Mali Dee", (await breadcrumbs.Locator("[aria-current='page']").InnerTextAsync()).Trim());
+        Assert.Equal("table", await table.EvaluateAsync<string>("node => getComputedStyle(node).display"));
+        Assert.NotEqual("none", await table.Locator("thead").EvaluateAsync<string>("node => getComputedStyle(node).display"));
+        var scroller = page.Locator(".customer-history .mud-table-container");
+        Assert.Contains(await scroller.EvaluateAsync<string>("node => getComputedStyle(node).overflowX"), new[] { "auto", "scroll" });
+        Assert.Equal(
+            await page.EvaluateAsync<int>("() => document.documentElement.clientWidth"),
+            await page.EvaluateAsync<int>("() => document.documentElement.scrollWidth"));
+        var record = page.GetByRole(AriaRole.Link, new() { Name = "View order 901" });
+        Assert.Equal("/Orders/View?id=901", await record.GetAttributeAsync("href"));
+        Assert.True(await record.EvaluateAsync<double>("node => node.getBoundingClientRect().height") >= 44);
+        await record.FocusAsync();
+        Assert.True(await record.EvaluateAsync<bool>("node => document.activeElement === node"));
+        Assert.Equal(0, await page.Locator(".operational-table__toggle, .operational-table__quick-view").CountAsync());
+        Assert.Empty(errors);
+    }
+
     private static List<string> CaptureErrors(IPage page)
     {
         var errors = new List<string>();
@@ -326,5 +400,77 @@ public sealed class OperationalTableMigrationBrowserTests(
         await page.RouteAsync("**/bff/employees?*", route => route.FulfillAsync(new() { Status = 200, ContentType = "application/json", Body = "{\"items\":[{\"id\":201,\"fullName\":\"Mali Dee\"},{\"id\":202,\"fullName\":\"Somchai Chai\"}],\"pageIndex\":1,\"totalPages\":1,\"totalRecords\":2,\"hasNextPage\":false,\"hasPreviousPage\":false}" }));
         await page.RouteAsync("**/bff/catalog/materials?*", route => route.FulfillAsync(new() { Status = 200, ContentType = "application/json", Body = "{\"items\":[{\"id\":701,\"materialNumber\":\"AL-6061-T6\",\"name\":\"Aluminium 6061-T6\",\"densityKilogramPerCubicMeter\":2700,\"machinable\":true,\"printable\":false,\"materialGroup\":{\"id\":1,\"name\":\"Metals\"}},{\"id\":702,\"materialNumber\":\"PA12\",\"name\":\"Nylon PA12\",\"densityKilogramPerCubicMeter\":1020,\"machinable\":false,\"printable\":true,\"materialGroup\":{\"id\":2,\"name\":\"Polymers\"}}],\"pageIndex\":1,\"totalPages\":1,\"totalRecords\":2,\"hasNextPage\":false,\"hasPreviousPage\":false}" }));
         await page.RouteAsync("**/bff/diagnostics/events?*", route => route.FulfillAsync(new() { Status = 200, ContentType = "application/json", Body = "{\"items\":[{\"id\":801,\"level\":\"Error\",\"code\":\"BFF_TIMEOUT\",\"category\":\"Integration\",\"path\":\"/bff/operations/long-diagnostic-path\",\"correlationId\":\"corr-801-atomic\",\"timestamp\":\"2030-08-01T10:30:00Z\"},{\"id\":802,\"level\":\"Warning\",\"code\":\"RETRY\",\"category\":\"Integration\",\"path\":\"/bff/operations\",\"correlationId\":\"corr-802\",\"timestamp\":\"2030-08-01T10:31:00Z\"}],\"pageIndex\":1,\"totalPages\":1,\"totalRecords\":2,\"hasNextPage\":false,\"hasPreviousPage\":false}" }));
+    }
+
+    private static async Task StubSpecializedTableBoundariesAsync(IPage page)
+    {
+        var session = JsonSerializer.Serialize(new
+        {
+            isAuthenticated = true,
+            employeeId = "specialized-table-browser-employee",
+            displayName = "Specialized Table Browser Employee",
+            roles = new[] { "Employee" },
+            csrfToken = "specialized-table-browser-csrf",
+            legacyDatabaseId = 1,
+            permissions = new[] { "legacy-customer.customers.read", "legacy.orders.read" },
+        });
+        await page.RouteAsync("**/bff/session", route => route.FulfillAsync(new() { Status = 200, ContentType = "application/json", Body = session }));
+        await page.RouteAsync("**/bff/dashboard", route => route.FulfillAsync(new()
+        {
+            Status = 200,
+            ContentType = "application/json",
+            Body = JsonSerializer.Serialize(new
+            {
+                generatedAt = "2030-08-13T10:00:00+07:00",
+                cards = Array.Empty<object>(),
+                degradedSources = Array.Empty<string>(),
+                recentOrders = new[] { new { id = 901, name = "Precision fixture", quantity = 4, manufactured = 1, remaining = 3, promisedDate = "2030-08-20T00:00:00Z", navigateTo = "/sales/orders/901" } },
+                recentQuotations = Array.Empty<object>(),
+                recentCustomers = Array.Empty<object>(),
+                recentPayments = Array.Empty<object>(),
+                recentActivity = Array.Empty<object>(),
+                monthlyFinance = Array.Empty<object>(),
+                quotationSummary = (object?)null,
+            }),
+        }));
+        await page.RouteAsync("**/bff/customers/69738", route => route.FulfillAsync(new()
+        {
+            Status = 200,
+            ContentType = "application/json",
+            Body = JsonSerializer.Serialize(new
+            {
+                id = 69738,
+                firstName = "Mali",
+                lastName = "Dee",
+                fullName = "Mali Dee",
+                email = "mali@maliev.com",
+                telephone = (string?)null,
+                mobile = "0812345678",
+                fax = (string?)null,
+                dateOfBirth = (string?)null,
+                companyId = (int?)null,
+                billingAddressId = (int?)null,
+                shippingAddressId = (int?)null,
+                createdDate = "2030-08-01T00:00:00Z",
+                modifiedDate = "2030-08-02T00:00:00Z",
+                company = (object?)null,
+                billingAddress = (object?)null,
+                shippingAddress = (object?)null,
+            }),
+        }));
+        await page.RouteAsync("**/bff/customers/69738/orders*", route => route.FulfillAsync(new()
+        {
+            Status = 200,
+            ContentType = "application/json",
+            Body = JsonSerializer.Serialize(new
+            {
+                items = new[] { new { id = 901, customerId = 69738, employeeId = 1, name = "Precision fixture", processId = 1, quantity = 4, manufactured = 1, remaining = 3, subtotal = (decimal?)null, promisedDate = "2030-08-20T00:00:00Z", allowSocialMedia = false, createdDate = "2030-08-01T00:00:00Z", modifiedDate = (string?)null } },
+                pageIndex = 1,
+                totalPages = 1,
+                totalRecords = 1,
+                hasNextPage = false,
+                hasPreviousPage = false,
+            }),
+        }));
     }
 }

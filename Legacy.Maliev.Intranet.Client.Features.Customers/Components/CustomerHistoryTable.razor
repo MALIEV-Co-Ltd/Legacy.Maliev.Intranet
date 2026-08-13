@@ -27,7 +27,7 @@
         @switch (Kind)
         {
             case CustomerHistoryKind.Order:
-                <MudTable T="OrderListItem" Items="@Orders!.Items" Dense="true" Hover="true" Breakpoint="Breakpoint.Sm" Class="customer-history__table">
+                <MudTable T="OrderListItem" Items="@Orders!.Items" Dense="true" Hover="true" Breakpoint="Breakpoint.None" Class="customer-history__table">
                     <HeaderContent>
                         <MudTh>@Localize("Record")</MudTh>
                         <MudTh>@Localize("Name")</MudTh>
@@ -35,19 +35,19 @@
                         <MudTh>@Localize("PromisedDate")</MudTh>
                     </HeaderContent>
                     <RowTemplate Context="order">
-                        <MudTd DataLabel="@Localize("Record")">
+                        <MudTd DataLabel="@Localize("Record")" Class="mlv-mono">
                             <LegacyLink Href="@($"/Orders/View?id={order.Id}")" Role="LegacyLinkRole.Record" AriaLabel="@RecordActivityTitle(CustomerHistoryKind.Order, order.Id)">
                                 @LocalizeFormat("OrderNumber", new object?[] { order.Id })
                             </LegacyLink>
                         </MudTd>
                         <MudTd DataLabel="@Localize("Name")">@DisplayValue(order.Name)</MudTd>
                         <MudTd DataLabel="@Localize("Status")">@OrderStatus(order)</MudTd>
-                        <MudTd DataLabel="@Localize("PromisedDate")">@FormatDate(order.PromisedDate)</MudTd>
+                        <MudTd DataLabel="@Localize("PromisedDate")" Class="mlv-mono">@FormatDate(order.PromisedDate)</MudTd>
                     </RowTemplate>
                 </MudTable>
                 break;
             case CustomerHistoryKind.Quotation:
-                <MudTable T="QuotationListItem" Items="@Quotations!.Items" Dense="true" Hover="true" Breakpoint="Breakpoint.Sm" Class="customer-history__table">
+                <MudTable T="QuotationListItem" Items="@Quotations!.Items" Dense="true" Hover="true" Breakpoint="Breakpoint.None" Class="customer-history__table">
                     <HeaderContent>
                         <MudTh>@Localize("Record")</MudTh>
                         <MudTh>@Localize("Status")</MudTh>
@@ -55,19 +55,19 @@
                         <MudTh>@Localize("Period")</MudTh>
                     </HeaderContent>
                     <RowTemplate Context="quotation">
-                        <MudTd DataLabel="@Localize("Record")">
+                        <MudTd DataLabel="@Localize("Record")" Class="mlv-mono">
                             <LegacyLink Href="@($"/Quotations/View?id={quotation.Id}")" Role="LegacyLinkRole.Record" AriaLabel="@RecordActivityTitle(CustomerHistoryKind.Quotation, quotation.Id)">
                                 @LocalizeFormat("QuotationNumber", new object?[] { quotation.Id })
                             </LegacyLink>
                         </MudTd>
                         <MudTd DataLabel="@Localize("Status")">@QuotationStatus(quotation)</MudTd>
-                        <MudTd DataLabel="@Localize("ExpirationDate")">@FormatDate(quotation.ExpirationDate)</MudTd>
-                        <MudTd DataLabel="@Localize("Period")">@LocalizeFormat("PeriodDays", new object?[] { quotation.Period })</MudTd>
+                        <MudTd DataLabel="@Localize("ExpirationDate")" Class="mlv-mono">@FormatDate(quotation.ExpirationDate)</MudTd>
+                        <MudTd DataLabel="@Localize("Period")" Class="mlv-mono">@LocalizeFormat("PeriodDays", new object?[] { quotation.Period })</MudTd>
                     </RowTemplate>
                 </MudTable>
                 break;
             case CustomerHistoryKind.Invoice:
-                <MudTable T="InvoiceListItem" Items="@Invoices!.Items" Dense="true" Hover="true" Breakpoint="Breakpoint.Sm" Class="customer-history__table">
+                <MudTable T="InvoiceListItem" Items="@Invoices!.Items" Dense="true" Hover="true" Breakpoint="Breakpoint.None" Class="customer-history__table">
                     <HeaderContent>
                         <MudTh>@Localize("Record")</MudTh>
                         <MudTh>@Localize("Status")</MudTh>
@@ -75,14 +75,14 @@
                         <MudTh>@Localize("CreatedDate")</MudTh>
                     </HeaderContent>
                     <RowTemplate Context="invoice">
-                        <MudTd DataLabel="@Localize("Record")">
+                        <MudTd DataLabel="@Localize("Record")" Class="mlv-mono">
                             <LegacyLink Href="@($"/Invoices/View?id={invoice.Id}")" Role="LegacyLinkRole.Record" AriaLabel="@RecordActivityTitle(CustomerHistoryKind.Invoice, invoice.Id, invoice.Number)">
                                 @invoice.Number
                             </LegacyLink>
                         </MudTd>
                         <MudTd DataLabel="@Localize("Status")">@(invoice.IsPaid ? Localize("StatusPaid") : Localize("StatusOutstanding"))</MudTd>
-                        <MudTd DataLabel="@Localize("Total")">@FormatInvoiceMoney(invoice.Total, invoice.Currency)</MudTd>
-                        <MudTd DataLabel="@Localize("CreatedDate")">@FormatDate(invoice.CreatedDate)</MudTd>
+                        <MudTd DataLabel="@Localize("Total")" Class="mlv-mono">@FormatInvoiceMoney(invoice.Total, invoice.Currency)</MudTd>
+                        <MudTd DataLabel="@Localize("CreatedDate")" Class="mlv-mono">@FormatDate(invoice.CreatedDate)</MudTd>
                     </RowTemplate>
                 </MudTable>
                 break;

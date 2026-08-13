@@ -8,6 +8,8 @@
 
 <PageTitle>@Text["PageTitle"]</PageTitle>
 
+<PageBreadcrumbs Items="@Breadcrumbs" />
+
 <main class="dashboard-page" aria-labelledby="dashboard-heading">
     <header class="dashboard-heading">
         <div>
@@ -80,11 +82,11 @@
                                 @foreach (var order in _snapshot.RecentOrders)
                                 {
                                     <tr>
-                                        <td data-label="@Text["Order"]"><LegacyLink Href="@order.NavigateTo" Role="LegacyLinkRole.Record" AriaLabel="@Text["OrderNumber", order.Id]">#@order.Id</LegacyLink></td>
+                                        <td data-label="@Text["Order"]" class="mlv-mono"><LegacyLink Href="@order.NavigateTo" Role="LegacyLinkRole.Record" AriaLabel="@Text["OrderNumber", order.Id]">#@order.Id</LegacyLink></td>
                                         <td data-label="@Text["Part"]" class="dashboard-table-primary">@(string.IsNullOrWhiteSpace(order.Name) ? Text["OrderNumber", order.Id] : order.Name)</td>
-                                        <td data-label="@Text["Quantity"]">@order.Quantity.ToString("N0")</td>
-                                        <td data-label="@Text["Remaining"]">@Remaining(order).ToString("N0")</td>
-                                        <td data-label="@Text["Promised"]">@FormatDate(order.PromisedDate)</td>
+                                        <td data-label="@Text["Quantity"]" class="mlv-mono">@order.Quantity.ToString("N0")</td>
+                                        <td data-label="@Text["Remaining"]" class="mlv-mono">@Remaining(order).ToString("N0")</td>
+                                        <td data-label="@Text["Promised"]" class="mlv-mono">@FormatDate(order.PromisedDate)</td>
                                         <td data-label="@Text["Progress"]"><span class="dashboard-status @OrderStatusClass(order)">@OrderStatus(order)</span></td>
                                     </tr>
                                 }
@@ -109,9 +111,9 @@
                                 @foreach (var quotation in _snapshot.RecentQuotations)
                                 {
                                     <tr>
-                                        <td data-label="@Text["Quote"]"><LegacyLink Href="@quotation.NavigateTo" Role="LegacyLinkRole.Record" AriaLabel="@($"{Text["Quote"]} #{quotation.Id}")">#@quotation.Id</LegacyLink></td>
-                                        <td data-label="@Text["Total"]" class="dashboard-money">@FormatMoney(quotation.QuotedAmount ?? quotation.Total, quotation.CurrencyId)</td>
-                                        <td data-label="@Text["Expires"]">@FormatDate(quotation.ExpirationDate)</td>
+                                        <td data-label="@Text["Quote"]" class="mlv-mono"><LegacyLink Href="@quotation.NavigateTo" Role="LegacyLinkRole.Record" AriaLabel="@($"{Text["Quote"]} #{quotation.Id}")">#@quotation.Id</LegacyLink></td>
+                                        <td data-label="@Text["Total"]" class="dashboard-money mlv-mono">@FormatMoney(quotation.QuotedAmount ?? quotation.Total, quotation.CurrencyId)</td>
+                                        <td data-label="@Text["Expires"]" class="mlv-mono">@FormatDate(quotation.ExpirationDate)</td>
                                         <td data-label="@Text["Decision"]"><span class="dashboard-status @DecisionClass(quotation.Accepted)">@Decision(quotation.Accepted)</span></td>
                                     </tr>
                                 }
@@ -137,10 +139,10 @@
                                 @foreach (var payment in _snapshot.RecentPayments)
                                 {
                                     <tr>
-                                        <td data-label="@Text["Payment"]"><LegacyLink Href="@payment.NavigateTo" Role="LegacyLinkRole.Record" AriaLabel="@($"{Text["Payment"]} #{payment.Id}")">#@payment.Id</LegacyLink></td>
+                                        <td data-label="@Text["Payment"]" class="mlv-mono"><LegacyLink Href="@payment.NavigateTo" Role="LegacyLinkRole.Record" AriaLabel="@($"{Text["Payment"]} #{payment.Id}")">#@payment.Id</LegacyLink></td>
                                         <td data-label="@Text["Recipient"]" class="dashboard-table-primary">@(string.IsNullOrWhiteSpace(payment.Recipient) ? "—" : payment.Recipient)</td>
-                                        <td data-label="@Text["Amount"]" class="dashboard-money">@FormatMoney(payment.Amount, payment.CurrencyId)</td>
-                                        <td data-label="@Text["Date"]">@FormatDate(payment.PaymentDate ?? payment.CreatedDate)</td>
+                                        <td data-label="@Text["Amount"]" class="dashboard-money mlv-mono">@FormatMoney(payment.Amount, payment.CurrencyId)</td>
+                                        <td data-label="@Text["Date"]" class="mlv-mono">@FormatDate(payment.PaymentDate ?? payment.CreatedDate)</td>
                                     </tr>
                                 }
                             </tbody>
@@ -255,6 +257,7 @@
 
 @code {
     private static readonly TimeSpan BangkokOffset = TimeSpan.FromHours(7);
+    private IReadOnlyList<PageBreadcrumbItem> Breadcrumbs => [new(Text["Dashboard"])];
     private LegacyDashboardSnapshot? _snapshot;
     private string? _error;
     private bool _loading = true;
