@@ -10,6 +10,7 @@
 <PageTitle>@Text["PageTitle"]</PageTitle>
 
 <MudContainer MaxWidth="MaxWidth.ExtraLarge">
+    <PageBreadcrumbs Items="@Breadcrumbs" />
     <div class="operations-page-header d-flex flex-wrap align-center justify-space-between gap-3 mb-4">
         <MudText Typo="Typo.h4" HtmlTag="h1">@Text["Invoices"]</MudText>
         <MudButton Href="/Invoices/Create" Variant="Variant.Filled" Color="Color.Primary">@Text["Create"]</MudButton>
@@ -54,42 +55,52 @@
                 }
                 else
                 {
-                    <MudTable Items="section.Page.Items" Hover="true" Breakpoint="Breakpoint.Sm" Elevation="0" aria-label="@Text["InvoiceTableLabel", section.Title]">
+                    <OperationalTable TItem="InvoiceListItem" TKey="int" Items="@section.Page.Items"
+                                      KeySelector="@(invoice => invoice.Id)" TableLabel="@Text["InvoiceTableLabel", section.Title]"
+                                      ColumnCount="14" State="@tableState"
+                                      DetailHref="@(invoice => $"/Invoices/View?id={invoice.Id}")"
+                                      DetailAriaLabel="@(invoice => Text["ViewInvoice", invoice.Id])"
+                                      ExpandAriaLabel="@(invoice => Text["ExpandInvoice", invoice.Id])"
+                                      CollapseAriaLabel="@(invoice => Text["CollapseInvoice", invoice.Id])">
                         <HeaderContent>
-                            <MudTh>@Text["Id"]</MudTh>
-                            <MudTh>@Text["CustomerId"]</MudTh>
-                            <MudTh>@Text["Number"]</MudTh>
-                            <MudTh>@Text["Paid"]</MudTh>
-                            <MudTh>@Text["ReceiptId"]</MudTh>
-                            <MudTh>@Text["PurchaseOrder"]</MudTh>
-                            <MudTh>@Text["Subtotal"]</MudTh>
-                            <MudTh>@Text["Vat"]</MudTh>
-                            <MudTh>@Text["Total"]</MudTh>
-                            <MudTh>@Text["WithholdingTax"]</MudTh>
-                            <MudTh>@Text["Outstanding"]</MudTh>
-                            <MudTh>@Text["PaymentDate"]</MudTh>
-                            <MudTh>@Text["CreatedDate"]</MudTh>
+                            <tr><th class="operational-table__identity" data-priority="essential">@Text["Id"]</th>
+                                <th data-priority="essential">@Text["Number"]</th><th data-priority="essential">@Text["CustomerId"]</th>
+                                <th data-priority="essential">@Text["Paid"]</th><th data-priority="essential">@Text["Outstanding"]</th>
+                                <th data-priority="essential">@Text["Total"]</th><th data-priority="supporting">@Text["ReceiptId"]</th>
+                                <th data-priority="supporting">@Text["PurchaseOrder"]</th><th data-priority="supporting">@Text["Subtotal"]</th>
+                                <th data-priority="supporting">@Text["Vat"]</th><th data-priority="supporting">@Text["WithholdingTax"]</th>
+                                <th data-priority="supporting">@Text["PaymentDate"]</th><th data-priority="supporting">@Text["CreatedDate"]</th>
+                                <th class="operational-table__actions-heading"><span class="visually-hidden">@Text["Actions"]</span></th></tr>
                         </HeaderContent>
-                        <RowTemplate Context="invoice">
-                            <MudTd DataLabel="@Text["Id"]"><LegacyLink Href="@($"/Invoices/View?id={invoice.Id}")" Role="LegacyLinkRole.Record" AriaLabel="@($"{Text["Id"]} {invoice.Id}")">@invoice.Id</LegacyLink></MudTd>
-                            <MudTd DataLabel="@Text["CustomerId"]"><LegacyLink Href="@($"/Customers/View?id={invoice.CustomerId}")" Role="LegacyLinkRole.Record" AriaLabel="@($"{Text["CustomerId"]} {invoice.CustomerId}")">@invoice.CustomerId</LegacyLink></MudTd>
-                            <MudTd DataLabel="@Text["Number"]">@invoice.Number</MudTd>
-                            <MudTd DataLabel="@Text["Paid"]">
+                        <RowContent Context="invoice">
+                            <td class="operational-table__identity mlv-mono" data-priority="essential">@invoice.Id</td>
+                            <td class="mlv-mono" data-priority="essential">@invoice.Number</td>
+                            <td class="mlv-mono" data-priority="essential"><LegacyLink Href="@($"/Customers/View?id={invoice.CustomerId}")" Role="LegacyLinkRole.Record" AriaLabel="@($"{Text["CustomerId"]} {invoice.CustomerId}")">@invoice.CustomerId</LegacyLink></td>
+                            <td data-priority="essential">
                                 <MudChip T="string" Size="MudBlazor.Size.Small" Color="@(invoice.IsPaid ? Color.Success : Color.Warning)" Variant="Variant.Outlined">
                                     @(invoice.IsPaid ? Text["PaidStatus"] : Text["UnpaidStatus"])
                                 </MudChip>
-                            </MudTd>
-                            <MudTd DataLabel="@Text["ReceiptId"]">@(invoice.ReceiptId?.ToString(CultureInfo.InvariantCulture) ?? "-")</MudTd>
-                            <MudTd DataLabel="@Text["PurchaseOrder"]">@ValueOrFallback(invoice.PurchaseOrderNumber)</MudTd>
-                            <MudTd DataLabel="@Text["Subtotal"]">@FormatMoney(invoice.Subtotal, invoice.Currency)</MudTd>
-                            <MudTd DataLabel="@Text["Vat"]">@FormatMoney(invoice.Vat, invoice.Currency)</MudTd>
-                            <MudTd DataLabel="@Text["Total"]">@FormatMoney(invoice.Total, invoice.Currency)</MudTd>
-                            <MudTd DataLabel="@Text["WithholdingTax"]">@FormatMoney(invoice.WithholdingTax, invoice.Currency, negate: true)</MudTd>
-                            <MudTd DataLabel="@Text["Outstanding"]"><strong>@FormatMoney(invoice.Outstanding, invoice.Currency)</strong></MudTd>
-                            <MudTd DataLabel="@Text["PaymentDate"]">@FormatCalendarDate(invoice.PaymentDate)</MudTd>
-                            <MudTd DataLabel="@Text["CreatedDate"]">@FormatTimestamp(invoice.CreatedDate)</MudTd>
-                        </RowTemplate>
-                    </MudTable>
+                            </td>
+                            <td class="mlv-mono" data-priority="essential"><strong>@FormatMoney(invoice.Outstanding, invoice.Currency)</strong></td>
+                            <td class="mlv-mono" data-priority="essential">@FormatMoney(invoice.Total, invoice.Currency)</td>
+                            <td class="mlv-mono" data-priority="supporting">@(invoice.ReceiptId?.ToString(CultureInfo.InvariantCulture) ?? "-")</td>
+                            <td class="mlv-mono" data-priority="supporting">@ValueOrFallback(invoice.PurchaseOrderNumber)</td>
+                            <td class="mlv-mono" data-priority="supporting">@FormatMoney(invoice.Subtotal, invoice.Currency)</td>
+                            <td class="mlv-mono" data-priority="supporting">@FormatMoney(invoice.Vat, invoice.Currency)</td>
+                            <td class="mlv-mono" data-priority="supporting">@FormatMoney(invoice.WithholdingTax, invoice.Currency, negate: true)</td>
+                            <td class="mlv-mono" data-priority="supporting">@FormatCalendarDate(invoice.PaymentDate)</td>
+                            <td class="mlv-mono" data-priority="supporting">@FormatTimestamp(invoice.CreatedDate)</td>
+                        </RowContent>
+                        <QuickViewContent Context="invoice"><dl class="operational-quick-view">
+                            <div><dt>@Text["ReceiptId"]</dt><dd class="mlv-mono">@(invoice.ReceiptId?.ToString(CultureInfo.InvariantCulture) ?? "-")</dd></div>
+                            <div><dt>@Text["PurchaseOrder"]</dt><dd class="mlv-mono">@ValueOrFallback(invoice.PurchaseOrderNumber)</dd></div>
+                            <div><dt>@Text["Subtotal"]</dt><dd class="mlv-mono">@FormatMoney(invoice.Subtotal, invoice.Currency)</dd></div>
+                            <div><dt>@Text["Vat"]</dt><dd class="mlv-mono">@FormatMoney(invoice.Vat, invoice.Currency)</dd></div>
+                            <div><dt>@Text["WithholdingTax"]</dt><dd class="mlv-mono">@FormatMoney(invoice.WithholdingTax, invoice.Currency, negate: true)</dd></div>
+                            <div><dt>@Text["PaymentDate"]</dt><dd class="mlv-mono">@FormatCalendarDate(invoice.PaymentDate)</dd></div>
+                            <div><dt>@Text["CreatedDate"]</dt><dd class="mlv-mono">@FormatTimestamp(invoice.CreatedDate)</dd></div>
+                        </dl></QuickViewContent>
+                    </OperationalTable>
                 }
             </MudPaper>
         }
@@ -111,6 +122,12 @@
     private static readonly InvoiceListPage EmptyPage = new([], 1, 0, 0, false, false);
     private static readonly int[] InvoicePageSizes = [10, 25, 50, 100, 150];
     private readonly LatestRequestGate requestGate = new();
+    private readonly OperationalTableState<int> tableState = new();
+    private IReadOnlyList<PageBreadcrumbItem> Breadcrumbs =>
+    [
+        new(Text["Operations"], "/Dashboard"),
+        new(Text["Invoices"]),
+    ];
     private InvoiceListPage paidInvoices = EmptyPage;
     private InvoiceListPage unpaidInvoices = EmptyPage;
     private InvoiceListSort currentSort = InvoiceListSort.InvoiceCreatedDate_Descending;
@@ -145,6 +162,7 @@
     private async Task LoadAsync()
     {
         using var lease = requestGate.Begin();
+        tableState.Clear();
         loading = true;
         error = null;
         HttpResponseMessage[]? responses = null;
@@ -233,6 +251,7 @@
 
     private Task NavigateAsync(int index, string? search, InvoiceListSort sort, int size, bool replace = false)
     {
+        tableState.Clear();
         Navigation.NavigateTo($"/Invoices/Index?search={Uri.EscapeDataString(search ?? string.Empty)}&sort={sort}&index={index}&size={size}", replace: replace);
         return Task.CompletedTask;
     }

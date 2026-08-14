@@ -20,6 +20,9 @@ if ($registryComponents.Count -ne 61) {
 }
 
 $headers = @{ 'User-Agent' = 'Maliev-Shadcn-reference-verifier' }
+if (-not [string]::IsNullOrWhiteSpace($env:GITHUB_TOKEN)) {
+    $headers['Authorization'] = "Bearer $($env:GITHUB_TOKEN)"
+}
 $token = if (-not [string]::IsNullOrWhiteSpace($env:GH_TOKEN)) {
     $env:GH_TOKEN
 } elseif (-not [string]::IsNullOrWhiteSpace($env:GITHUB_TOKEN)) {

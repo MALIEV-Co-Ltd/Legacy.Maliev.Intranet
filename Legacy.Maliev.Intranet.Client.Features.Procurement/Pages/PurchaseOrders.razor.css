@@ -1,3 +1,7 @@
 .procurement-pager { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; margin-top: 1rem; }
-.procurement-responsive-table a { display: inline-flex; min-height: 2.75rem; align-items: center; }
+.operational-quick-view { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(12rem, 100%), 1fr)); gap: .75rem 1rem; margin: 0; }
+.operational-quick-view > div { min-width: 0; }
+.operational-quick-view dt { color: var(--shadcn-muted-foreground); font-size: .75rem; font-weight: 600; }
+.operational-quick-view dd { margin: .25rem 0 0; overflow-wrap: break-word; }
 @media (max-width: 600px) { .purchase-order-list .procurement-pager { align-items: stretch; flex-direction: column; text-align: center; } .purchase-order-list .procurement-pager .mud-button-root { width: 100%; min-height: 44px; } }
+.mlv-mono { white-space: nowrap; }

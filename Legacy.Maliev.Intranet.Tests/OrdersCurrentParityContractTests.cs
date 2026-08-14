@@ -20,7 +20,8 @@ public sealed class OrdersCurrentParityContractTests
         Assert.Contains("<ProgressiveSkeleton", source, StringComparison.Ordinal);
         Assert.Contains("<PrimaryButton", source, StringComparison.Ordinal);
         Assert.Contains("<SecondaryButton", source, StringComparison.Ordinal);
-        Assert.Contains("mlv-table", source, StringComparison.Ordinal);
+        Assert.Contains("<OperationalTable", source, StringComparison.Ordinal);
+        Assert.Contains("<PageBreadcrumbs", source, StringComparison.Ordinal);
         Assert.Contains("aria-live", source, StringComparison.Ordinal);
         Assert.DoesNotContain("<MudContainer", source, StringComparison.Ordinal);
     }

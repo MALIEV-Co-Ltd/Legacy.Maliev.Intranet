@@ -30,6 +30,14 @@
   <data name="Subtotal" xml:space="preserve"><value>ยอดก่อนภาษี</value></data>
   <data name="Promised" xml:space="preserve"><value>กำหนดส่ง</value></data>
   <data name="Confidential" xml:space="preserve"><value>เป็นความลับ</value></data>
+  <data name="Actions" xml:space="preserve"><value>การดำเนินการ</value></data>
+  <data name="ViewOrder" xml:space="preserve"><value>ดูใบสั่งผลิต {0}</value></data>
+  <data name="ExpandOrder" xml:space="preserve"><value>ขยายรายละเอียดใบสั่งผลิต {0}</value></data>
+  <data name="CollapseOrder" xml:space="preserve"><value>ย่อรายละเอียดใบสั่งผลิต {0}</value></data>
+  <data name="SocialMedia" xml:space="preserve"><value>สื่อสังคมออนไลน์</value></data>
+  <data name="SocialMediaAllowed" xml:space="preserve"><value>อนุญาต</value></data>
+  <data name="Created" xml:space="preserve"><value>สร้างเมื่อ</value></data>
+  <data name="Modified" xml:space="preserve"><value>แก้ไขเมื่อ</value></data>
   <data name="OrderPages" xml:space="preserve"><value>หน้ารายการใบสั่งผลิต</value></data>
   <data name="Previous" xml:space="preserve"><value>ก่อนหน้า</value></data>
   <data name="Next" xml:space="preserve"><value>ต่อไป</value></data>

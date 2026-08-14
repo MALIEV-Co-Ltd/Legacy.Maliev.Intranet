@@ -66,7 +66,7 @@ public sealed class OperationsShellContractTests
         var topBar = Read(root, "Legacy.Maliev.Intranet.Client", "Layout", "LegacyTopBar.razor");
         var navigation = Read(root, "Legacy.Maliev.Intranet.Client", "Components", "Shell", "LegacyNavigationRail.razor");
 
-        Assert.Contains("@attributes=\"WorkspaceAccessibilityAttributes\"", layout, StringComparison.Ordinal);
+        Assert.Contains("class=\"legacy-workspace-frame\" @attributes=\"WorkspaceAccessibilityAttributes\"", layout, StringComparison.Ordinal);
         Assert.Contains("[\"inert\"] = string.Empty", layout, StringComparison.Ordinal);
         Assert.Contains("[\"aria-hidden\"] = \"true\"", layout, StringComparison.Ordinal);
         Assert.Contains("@ref=\"_navigationToggle\"", topBar, StringComparison.Ordinal);
@@ -161,18 +161,94 @@ public sealed class OperationsShellContractTests
         var navigation = Read(root, "Legacy.Maliev.Intranet.Client", "Components", "Shell", "LegacyNavigationRail.razor");
         var railCss = Read(root, "Legacy.Maliev.Intranet.Client", "Components", "Shell", "LegacyNavigationRail.razor.css");
 
-        Assert.Contains("class=\"legacy-topbar-logo\"", topBar, StringComparison.Ordinal);
+        Assert.Contains("class=\"legacy-topbar__brand\"", topBar, StringComparison.Ordinal);
         Assert.DoesNotContain("Text[\"Light\"]", topBar, StringComparison.Ordinal);
         Assert.DoesNotContain("Text[\"Dark\"]", topBar, StringComparison.Ordinal);
         Assert.Contains("aria-label=\"@ThemeLabel\"", topBar, StringComparison.Ordinal);
-        Assert.Contains("class=\"legacy-topbar-utilities\"", topBar, StringComparison.Ordinal);
-        Assert.Contains("margin-left: auto", topBarCss, StringComparison.Ordinal);
-        Assert.Contains("flex: 0 0 var(--legacy-rail-width)", topBarCss, StringComparison.Ordinal);
-        Assert.Contains("margin-block: -10px", topBarCss, StringComparison.Ordinal);
+        Assert.Contains("legacy-topbar__utilities", topBar, StringComparison.Ordinal);
+        Assert.Contains("display: grid", topBarCss, StringComparison.Ordinal);
+        Assert.Contains("grid-template-columns: var(--legacy-rail-width)", topBarCss, StringComparison.Ordinal);
+        Assert.DoesNotContain("margin-left: calc(-1", topBarCss, StringComparison.Ordinal);
+        Assert.DoesNotContain("margin-block: -", topBarCss, StringComparison.Ordinal);
         Assert.Contains("border: 1px solid var(--legacy-border)", topBarCss, StringComparison.Ordinal);
         Assert.Contains("@if (IsDrawer)", navigation, StringComparison.Ordinal);
         Assert.Contains("inset: var(--legacy-utility-height) auto 0 0", railCss, StringComparison.Ordinal);
         Assert.Contains("height: calc(100dvh - var(--legacy-utility-height))", railCss, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void NavigationHierarchy_DeclaresEveryCreateActionAndItsPrimaryOwnerExplicitly()
+    {
+        var root = FindRoot();
+        var model = Read(root, "Legacy.Maliev.Intranet.Client", "Layout", "LegacyAppNavigation.cs");
+        var navigation = Read(root, "Legacy.Maliev.Intranet.Client", "Components", "Shell", "LegacyNavigationRail.razor");
+        var railCss = Read(root, "Legacy.Maliev.Intranet.Client", "Components", "Shell", "LegacyNavigationRail.razor.css");
+
+        Assert.Contains("enum LegacyNavItemKind", model, StringComparison.Ordinal);
+        Assert.Contains("LegacyNavItemKind Kind = LegacyNavItemKind.Primary", model, StringComparison.Ordinal);
+        Assert.Contains("string? ParentHref = null", model, StringComparison.Ordinal);
+
+        var expectedChildren = new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            ["/customers/new"] = "/customers",
+            ["/Orders/Create"] = "/sales/orders",
+            ["/Quotations/Create"] = "/Quotations/Index",
+            ["/accounting/new"] = "/finance/invoices",
+            ["/Finances/Create"] = "/Finances/Index",
+            ["/Materials/Create"] = "/mfg/materials",
+            ["/purchasing/new"] = "/purchasing",
+            ["/Suppliers/Create"] = "/purchasing/suppliers",
+        };
+
+        foreach (var (href, parentHref) in expectedChildren)
+        {
+            var escapedHref = System.Text.RegularExpressions.Regex.Escape(href);
+            var escapedParent = System.Text.RegularExpressions.Regex.Escape(parentHref);
+            Assert.Matches(
+                $"new\\([^\\r\\n]*\"{escapedHref}\"[^\\r\\n]*Kind: LegacyNavItemKind\\.ChildAction[^\\r\\n]*ParentHref: \"{escapedParent}\"",
+                model);
+        }
+
+        Assert.Contains("item.Kind == LegacyNavItemKind.ChildAction", navigation, StringComparison.Ordinal);
+        Assert.Contains("legacy-rail-link--child", navigation, StringComparison.Ordinal);
+        Assert.Contains(".legacy-rail-link--child", railCss, StringComparison.Ordinal);
+        Assert.Contains("min-height: 44px", railCss, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void NavigationHierarchy_RendersChildActionsAsOwnedNestedListsAndSelectsOneMostSpecificPage()
+    {
+        var root = FindRoot();
+        var navigation = Read(root, "Legacy.Maliev.Intranet.Client", "Components", "Shell", "LegacyNavigationRail.razor");
+
+        Assert.Contains("<ul class=\"legacy-rail-items\">", navigation, StringComparison.Ordinal);
+        Assert.Contains("<li class=\"legacy-rail-item\">", navigation, StringComparison.Ordinal);
+        Assert.Contains("<ul class=\"legacy-rail-children\"", navigation, StringComparison.Ordinal);
+        Assert.Contains("GetEnabledChildren(item)", navigation, StringComparison.Ordinal);
+        Assert.Contains("IsItemPageCurrent(item)", navigation, StringComparison.Ordinal);
+        Assert.Contains("FindCurrentItem()", navigation, StringComparison.Ordinal);
+        Assert.DoesNotContain("aria-current=\"@(IsItemActive(item) ? \"page\" : null)\"", navigation, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void TopBar_DeclaresFourResponsiveGridZonesWithoutRemovingQuickCreateRoutes()
+    {
+        var root = FindRoot();
+        var topBar = Read(root, "Legacy.Maliev.Intranet.Client", "Layout", "LegacyTopBar.razor");
+        var topBarCss = Read(root, "Legacy.Maliev.Intranet.Client", "Layout", "LegacyTopBar.razor.css");
+        var quickActions = Read(root, "Legacy.Maliev.Intranet.Client", "Components", "Shell", "LegacyQuickActions.razor");
+
+        foreach (var zone in new[] { "brand", "search", "actions", "utilities" })
+            Assert.Contains($"legacy-topbar__{zone}", topBar, StringComparison.Ordinal);
+
+        Assert.Contains("display: grid", topBarCss, StringComparison.Ordinal);
+        Assert.Contains("@media (max-width: 1180px)", topBarCss, StringComparison.Ordinal);
+        Assert.Contains("@media (max-width: 960px)", topBarCss, StringComparison.Ordinal);
+        Assert.Contains("@media (max-width: 720px)", topBarCss, StringComparison.Ordinal);
+        Assert.DoesNotContain("margin-left: calc(-1", topBarCss, StringComparison.Ordinal);
+        Assert.DoesNotContain("margin-block: -", topBarCss, StringComparison.Ordinal);
+        Assert.Contains("/Quotations/Create", quickActions, StringComparison.Ordinal);
+        Assert.Contains("/Orders/Create", quickActions, StringComparison.Ordinal);
     }
 
     private static string Read(string root, params string[] segments) =>

@@ -30,6 +30,7 @@
         }
         else if (customer is not null)
         {
+            <PageBreadcrumbs Items="@Breadcrumbs" />
             <header class="customer-detail__header operations-page-header">
                 <div class="customer-detail__identity">
                     <MudText Typo="Typo.h4" HtmlTag="h1">@customer.FullName</MudText>
@@ -161,6 +162,11 @@
     private int loadedCustomerId;
     private readonly CustomerLoadGate customerLoadGate = new();
     private string selectedTab = "overview";
+    private IReadOnlyList<PageBreadcrumbItem> Breadcrumbs =>
+    [
+        new(Text["Customers"], "/customers"),
+        new(customer!.FullName),
+    ];
 
     private CustomerActivityPage? activityPage;
     private bool activityLoading;

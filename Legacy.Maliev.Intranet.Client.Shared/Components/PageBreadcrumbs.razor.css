@@ -1,0 +1,55 @@
+.page-breadcrumbs {
+    min-width: 0;
+    color: var(--shadcn-muted-foreground);
+    font-size: 0.8125rem;
+    line-height: 1.25rem;
+}
+
+.page-breadcrumbs ol {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.page-breadcrumbs li {
+    display: inline-flex;
+    min-width: 0;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.page-breadcrumbs li:not(:last-child)::after {
+    content: "/";
+    color: var(--shadcn-muted-foreground);
+    opacity: 0.7;
+}
+
+.page-breadcrumbs li[aria-current="page"] {
+    color: var(--shadcn-foreground);
+    font-weight: 500;
+    overflow-wrap: break-word;
+}
+
+.page-breadcrumbs ::deep .legacy-link--navigation {
+    min-height: 2.25rem;
+    padding-inline: 0.25rem;
+    color: inherit;
+}
+
+@media (max-width: 720px), (pointer: coarse) {
+    .page-breadcrumbs ::deep .legacy-link--navigation {
+        min-height: 2.75rem;
+        padding-inline: 0.5rem;
+    }
+}
+
+@media (forced-colors: active) {
+    .page-breadcrumbs li:not(:last-child)::after {
+        opacity: 1;
+    }
+}

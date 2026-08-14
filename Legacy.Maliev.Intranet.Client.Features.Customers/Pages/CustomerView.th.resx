@@ -30,6 +30,7 @@
   <data name="CreatedDate" xml:space="preserve"><value>วันที่สร้าง</value></data>
   <data name="ModifiedDate" xml:space="preserve"><value>แก้ไขครั้งล่าสุด</value></data>
   <data name="BackToCustomers" xml:space="preserve"><value>กลับไปยังรายชื่อลูกค้า</value></data>
+  <data name="Customers" xml:space="preserve"><value>ลูกค้า</value></data>
   <data name="NotAvailable" xml:space="preserve"><value>ไม่มีข้อมูล</value></data>
   <data name="Forbidden" xml:space="preserve"><value>คุณไม่ได้รับอนุญาตให้ดูลูกค้ารายนี้</value></data>
   <data name="ForbiddenUpdate" xml:space="preserve"><value>คุณไม่ได้รับอนุญาตให้อัปเดตลูกค้ารายนี้</value></data>
@@ -92,4 +93,11 @@
   <data name="PreviousPage" xml:space="preserve"><value>หน้าก่อนหน้า</value></data>
   <data name="NextPage" xml:space="preserve"><value>หน้าถัดไป</value></data>
   <data name="PageOf" xml:space="preserve"><value>หน้า {0} จาก {1}</value></data>
+  <data name="References" xml:space="preserve"><value>ข้อมูลอ้างอิง</value></data>
+  <data name="FinancialAndDates" xml:space="preserve"><value>การเงินและวันที่</value></data>
+  <data name="Amounts" xml:space="preserve"><value>จำนวนเงิน</value></data>
+  <data name="TermsAndDates" xml:space="preserve"><value>เงื่อนไขและวันที่</value></data>
+  <data name="Payment" xml:space="preserve"><value>การชำระเงิน</value></data>
+  <data name="Yes" xml:space="preserve"><value>ใช่</value></data>
+  <data name="No" xml:space="preserve"><value>ไม่</value></data>
 </root>

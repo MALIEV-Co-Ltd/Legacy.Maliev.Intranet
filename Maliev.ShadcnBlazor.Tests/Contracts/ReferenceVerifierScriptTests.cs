@@ -46,6 +46,40 @@ public sealed class ReferenceVerifierScriptTests
     }
 
     [Fact]
+    public async Task WorkflowTokenAuthenticatesUpstreamReferenceRequests()
+    {
+        var root = FindRoot();
+        var wrapper = Path.Combine(Path.GetTempPath(), $"shadcn-auth-{Guid.NewGuid():N}.ps1");
+        try
+        {
+            File.WriteAllText(wrapper, """
+                function global:Invoke-RestMethod {
+                    param($Headers, $Uri)
+                    throw "AUTH=$($Headers.Authorization) TRANSPORT_SENTINEL"
+                }
+                & (Join-Path (Join-Path $env:REFERENCE_ROOT 'scripts') 'verify-shadcn-reference.ps1')
+                """);
+
+            var result = await RunPowerShellFileAsync(
+                root,
+                wrapper,
+                environment: new Dictionary<string, string>
+                {
+                    ["GITHUB_TOKEN"] = "test-token",
+                    ["REFERENCE_ROOT"] = root
+                });
+
+            Assert.NotEqual(0, result.ExitCode);
+            Assert.Contains("AUTH=Bearer test-token", result.Output, StringComparison.Ordinal);
+            Assert.Contains("TRANSPORT_SENTINEL", result.Output, StringComparison.Ordinal);
+        }
+        finally
+        {
+            File.Delete(wrapper);
+        }
+    }
+
+    [Fact]
     public async Task ShortCommitPinFailsBeforeContactingUpstream()
     {
         using var fixture = IsolatedRoot.CreateWithShortCommit();
@@ -83,7 +117,8 @@ public sealed class ReferenceVerifierScriptTests
     private static async Task<ProcessResult> RunPowerShellFileAsync(
         string root,
         string script,
-        params string[] arguments)
+        string[]? arguments = null,
+        IReadOnlyDictionary<string, string>? environment = null)
     {
         var startInfo = new ProcessStartInfo("pwsh")
         {
@@ -96,8 +131,10 @@ public sealed class ReferenceVerifierScriptTests
         startInfo.ArgumentList.Add("-NoProfile");
         startInfo.ArgumentList.Add("-File");
         startInfo.ArgumentList.Add(script);
-        foreach (var argument in arguments)
+        foreach (var argument in arguments ?? [])
             startInfo.ArgumentList.Add(argument);
+        foreach (var (name, value) in environment ?? new Dictionary<string, string>())
+            startInfo.Environment[name] = value;
 
         using var process = Process.Start(startInfo)
             ?? throw new InvalidOperationException("Could not start PowerShell.");

@@ -19,7 +19,8 @@ public sealed class MaterialsWasmMigrationContractTests
         Assert.Contains("[Authorize", page, StringComparison.Ordinal);
         Assert.Contains("MaterialId_Descending", page, StringComparison.Ordinal);
         Assert.Contains("/bff/catalog/materials", page, StringComparison.Ordinal);
-        Assert.Contains("MudTable", page, StringComparison.Ordinal);
+        Assert.Contains("OperationalTable", page, StringComparison.Ordinal);
+        Assert.Contains("/Materials/View?id=", page, StringComparison.Ordinal);
         Assert.Contains("MudProgress", page, StringComparison.Ordinal);
         Assert.Contains("MudAlert", page, StringComparison.Ordinal);
 

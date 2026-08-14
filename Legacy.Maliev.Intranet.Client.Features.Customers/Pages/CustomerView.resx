@@ -30,6 +30,7 @@
   <data name="CreatedDate" xml:space="preserve"><value>Created</value></data>
   <data name="ModifiedDate" xml:space="preserve"><value>Last modified</value></data>
   <data name="BackToCustomers" xml:space="preserve"><value>Back to customers</value></data>
+  <data name="Customers" xml:space="preserve"><value>Customers</value></data>
   <data name="NotAvailable" xml:space="preserve"><value>Not available</value></data>
   <data name="Forbidden" xml:space="preserve"><value>You do not have permission to view this customer.</value></data>
   <data name="ForbiddenUpdate" xml:space="preserve"><value>You do not have permission to update this customer.</value></data>
@@ -92,4 +93,11 @@
   <data name="PreviousPage" xml:space="preserve"><value>Previous page</value></data>
   <data name="NextPage" xml:space="preserve"><value>Next page</value></data>
   <data name="PageOf" xml:space="preserve"><value>Page {0} of {1}</value></data>
+  <data name="References" xml:space="preserve"><value>References</value></data>
+  <data name="FinancialAndDates" xml:space="preserve"><value>Financial and dates</value></data>
+  <data name="Amounts" xml:space="preserve"><value>Amounts</value></data>
+  <data name="TermsAndDates" xml:space="preserve"><value>Terms and dates</value></data>
+  <data name="Payment" xml:space="preserve"><value>Payment</value></data>
+  <data name="Yes" xml:space="preserve"><value>Yes</value></data>
+  <data name="No" xml:space="preserve"><value>No</value></data>
 </root>

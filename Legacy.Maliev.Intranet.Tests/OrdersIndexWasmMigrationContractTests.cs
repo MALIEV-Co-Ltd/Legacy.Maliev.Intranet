@@ -41,8 +41,22 @@ public sealed class OrdersIndexWasmMigrationContractTests
         Assert.Contains("<ListToolbar", page, StringComparison.Ordinal);
         Assert.Contains("HandleToolbarRequestAsync", page, StringComparison.Ordinal);
         Assert.Contains("<ProgressiveSkeleton", page, StringComparison.Ordinal);
-        Assert.Contains("<MudSimpleTable Class=\"mlv-table orders-table\"", page, StringComparison.Ordinal);
-        Assert.Contains("data-label=", page, StringComparison.Ordinal);
+        Assert.Contains("<PageBreadcrumbs", page, StringComparison.Ordinal);
+        Assert.Contains("new(Text[\"Operations\"], \"/Dashboard\")", page, StringComparison.Ordinal);
+        Assert.DoesNotContain("new(Text[\"Operations\"], \"/\")", page, StringComparison.Ordinal);
+        Assert.Contains("<OperationalTable TItem=\"OrderListItem\"", page, StringComparison.Ordinal);
+        Assert.Contains("TKey=\"int\"", page, StringComparison.Ordinal);
+        Assert.Contains("OperationalTableState<int>", page, StringComparison.Ordinal);
+        Assert.Contains("State=\"@tableState\"", page, StringComparison.Ordinal);
+        Assert.Contains("DetailHref=\"@(order => $\"/Orders/View?id={order.Id}\")\"", page, StringComparison.Ordinal);
+        Assert.Contains("DetailAriaLabel=\"@(order => Text[\"ViewOrder\", order.Id])\"", page, StringComparison.Ordinal);
+        Assert.Contains("ExpandAriaLabel=\"@(order => Text[\"ExpandOrder\", order.Id])\"", page, StringComparison.Ordinal);
+        Assert.Contains("CollapseAriaLabel=\"@(order => Text[\"CollapseOrder\", order.Id])\"", page, StringComparison.Ordinal);
+        Assert.Contains("data-priority=\"essential\"", page, StringComparison.Ordinal);
+        Assert.Contains("data-priority=\"supporting\"", page, StringComparison.Ordinal);
+        Assert.Contains("QuickViewContent", page, StringComparison.Ordinal);
+        Assert.DoesNotContain("<MudSimpleTable", page, StringComparison.Ordinal);
+        Assert.DoesNotContain("data-label=", page, StringComparison.Ordinal);
         Assert.Contains("aria-live=\"polite\"", page, StringComparison.Ordinal);
         Assert.Contains("/Orders/Create", page, StringComparison.Ordinal);
         Assert.Contains("/Orders/View?id=", page, StringComparison.Ordinal);
@@ -53,6 +67,7 @@ public sealed class OrdersIndexWasmMigrationContractTests
         Assert.Contains("HttpStatusCode.TooManyRequests", page, StringComparison.Ordinal);
         Assert.Contains("Math.Clamp", page, StringComparison.Ordinal);
         Assert.Contains("Uri.EscapeDataString", page, StringComparison.Ordinal);
+        Assert.Contains("tableState.Clear();", page, StringComparison.Ordinal);
 
         Assert.Contains("Legacy.Maliev.Intranet.Client.Features.Orders.wasm", app, StringComparison.Ordinal);
         Assert.Contains("Legacy.Maliev.Intranet.Client.Features.Orders.wasm", clientProject, StringComparison.Ordinal);
@@ -67,6 +82,42 @@ public sealed class OrdersIndexWasmMigrationContractTests
         Assert.DoesNotContain("DbContext", bff, StringComparison.Ordinal);
         Assert.True(File.Exists(Path.Combine(root, "Legacy.Maliev.Intranet", "Pages", "Orders", "Index.cshtml")),
             "The compatibility Razor fallback must remain in this slice.");
+    }
+
+    [Fact]
+    public void OrdersIndex_PreservesAllDisplayedFieldsAndRejectsMobileCardConversion()
+    {
+        var root = FindRoot();
+        var page = File.ReadAllText(Path.Combine(root, "Legacy.Maliev.Intranet.Client.Features.Orders", "Pages", "Orders.razor"));
+        var css = File.ReadAllText(Path.Combine(root, "Legacy.Maliev.Intranet.Client.Features.Orders", "Pages", "Orders.razor.css"));
+
+        foreach (var field in new[]
+                 {
+                     "order.Id", "order.CustomerId", "order.ProcessId", "order.Name", "order.Quantity",
+                     "order.Manufactured", "order.Remaining", "order.EmployeeId", "order.Subtotal", "order.PromisedDate",
+                     "order.AllowSocialMedia",
+                 })
+        {
+            Assert.Contains(field, page, StringComparison.Ordinal);
+        }
+
+        Assert.Contains("--operational-table-min-width", css, StringComparison.Ordinal);
+        Assert.DoesNotContain("display: block", css, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("content: attr(data-label)", css, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("overflow-wrap: anywhere", css, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void OrdersIndex_LocalizedRowActionsHaveExactEnglishAndThaiParity()
+    {
+        var root = FindRoot();
+        var resources = ReadResourceNames(Path.Combine(root, "Legacy.Maliev.Intranet.Client.Features.Orders", "Pages", "Orders.resx"));
+        var thaiResources = ReadResourceNames(Path.Combine(root, "Legacy.Maliev.Intranet.Client.Features.Orders", "Pages", "Orders.th.resx"));
+
+        Assert.Equal(resources, thaiResources);
+        Assert.Contains("ViewOrder", resources);
+        Assert.Contains("ExpandOrder", resources);
+        Assert.Contains("CollapseOrder", resources);
     }
 
     [Fact]
@@ -120,4 +171,14 @@ public sealed class OrdersIndexWasmMigrationContractTests
 
         return directory?.FullName ?? throw new DirectoryNotFoundException("Could not find repository root.");
     }
+
+    private static string[] ReadResourceNames(string path) =>
+        System.Xml.Linq.XDocument.Load(path)
+            .Root!
+            .Elements("data")
+            .Select(element => (string?)element.Attribute("name"))
+            .Where(name => name is not null)
+            .Select(name => name!)
+            .Order(StringComparer.Ordinal)
+            .ToArray();
 }

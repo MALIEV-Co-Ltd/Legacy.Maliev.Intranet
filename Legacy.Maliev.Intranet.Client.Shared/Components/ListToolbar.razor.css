@@ -36,21 +36,48 @@
     white-space: nowrap;
 }
 
+.list-toolbar__actions ::deep button.list-toolbar__refresh {
+    width: 2.25rem;
+    min-width: 2.25rem;
+    height: 2.25rem;
+    min-height: 2.25rem;
+    padding: 0;
+}
+
+.list-toolbar__actions ::deep button.list-toolbar__refresh svg {
+    width: 1.25rem;
+    height: 1.25rem;
+    font-size: 1.25rem;
+}
+
+@media (pointer: coarse) {
+    .list-toolbar__actions ::deep button.list-toolbar__refresh {
+        width: 2.75rem;
+        min-width: 2.75rem;
+        height: 2.75rem;
+        min-height: 2.75rem;
+    }
+}
+
 @media (min-width: 601px) and (max-width: 900px) {
     .list-toolbar__grid {
         grid-template-columns: minmax(0, 1fr) minmax(10rem, 0.65fr);
-    }
-
-    .list-toolbar__grid ::deep .mud-input-control {
         --shadcn-control-height: 2.75rem;
     }
 
-    .list-toolbar__grid ::deep .mud-input-control .mud-input {
+    .list-toolbar__grid ::deep .mud-input {
         height: var(--shadcn-control-height) !important;
         min-height: var(--shadcn-control-height) !important;
     }
 
     .list-toolbar__actions ::deep .mud-button-root {
+        min-height: 2.75rem;
+    }
+
+    .list-toolbar__actions ::deep button.list-toolbar__refresh {
+        width: 2.75rem;
+        min-width: 2.75rem;
+        height: 2.75rem;
         min-height: 2.75rem;
     }
 
@@ -62,30 +89,34 @@
 
 @media (max-width: 600px) {
     .list-toolbar__grid {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
+        grid-template-columns: minmax(0, 1fr);
+        --shadcn-control-height: 2.75rem;
     }
 
     .list-toolbar__grid ::deep > .mud-input-control:first-child {
-        grid-column: 1 / -1;
+        grid-column: auto;
     }
 
     .list-toolbar__actions {
-        display: grid;
-        grid-column: 1 / -1;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
+        display: flex;
+        grid-column: auto;
         padding-inline-start: 0;
         border-inline-start: 0;
     }
 
-    .list-toolbar__actions ::deep .mud-button-root {
-        width: 100%;
+    .list-toolbar__actions ::deep .mud-button-root:not(.list-toolbar__refresh) {
+        flex: 1 1 auto;
     }
 
-    .list-toolbar__grid ::deep .mud-input-control {
-        --shadcn-control-height: 2.75rem;
+    .list-toolbar__actions ::deep button.list-toolbar__refresh {
+        flex: 0 0 2.75rem;
+        width: 2.75rem;
+        min-width: 2.75rem;
+        height: 2.75rem;
+        min-height: 2.75rem;
     }
 
-    .list-toolbar__grid ::deep .mud-input-control .mud-input {
+    .list-toolbar__grid ::deep .mud-input {
         height: var(--shadcn-control-height) !important;
         min-height: var(--shadcn-control-height) !important;
     }
@@ -93,10 +124,22 @@
 
 @media (max-width: 420px) {
     .list-toolbar__grid {
-        grid-template-columns: minmax(9.5rem, 1fr) minmax(4.25rem, 0.45fr);
+        grid-template-columns: minmax(0, 1fr);
     }
 
+    .list-toolbar__grid ::deep > .mud-input-control:first-child,
     .list-toolbar__actions {
+        grid-column: auto;
+    }
+}
+
+@media (min-width: 421px) and (max-width: 720px) {
+    .list-toolbar__grid {
         grid-template-columns: minmax(0, 1fr);
+    }
+
+    .list-toolbar__grid ::deep > .mud-input-control:first-child,
+    .list-toolbar__actions {
+        grid-column: auto;
     }
 }

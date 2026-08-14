@@ -11,6 +11,7 @@ public sealed class OrdersProcurementResponsiveContractTests
         var globalStyles = Read(root, "Legacy.Maliev.Intranet.Client", "wwwroot", "css", "operations-pages.css");
         var toolbar = Read(root, "Legacy.Maliev.Intranet.Client.Shared", "Components", "ListToolbar.razor");
         var toolbarStyles = Read(root, "Legacy.Maliev.Intranet.Client.Shared", "Components", "ListToolbar.razor.css");
+        var operationalTableStyles = Read(root, "Legacy.Maliev.Intranet.Client.Shared", "Components", "OperationalTable.razor.css");
         var adapterStyles = Read(root, "Maliev.ShadcnBlazor", "wwwroot", "css", "shadcn-mudblazor.css");
         var primaryButtonStyles = Read(root, "Legacy.Maliev.Intranet.Client.Features.Orders", "Components", "Shared", "PrimaryButton.razor.css");
         var secondaryButtonStyles = Read(root, "Legacy.Maliev.Intranet.Client.Features.Orders", "Components", "Shared", "SecondaryButton.razor.css");
@@ -19,13 +20,17 @@ public sealed class OrdersProcurementResponsiveContractTests
         Assert.Contains("max-height:", styles, StringComparison.Ordinal);
         Assert.Contains("overflow: auto", styles, StringComparison.Ordinal);
         Assert.Contains("position: sticky", styles, StringComparison.Ordinal);
-        Assert.Contains("data-label=", page, StringComparison.Ordinal);
+        Assert.Contains("<OperationalTable", page, StringComparison.Ordinal);
+        Assert.Contains("data-priority=\"essential\"", page, StringComparison.Ordinal);
+        Assert.Contains("data-priority=\"supporting\"", page, StringComparison.Ordinal);
+        Assert.DoesNotContain("data-label=", page, StringComparison.Ordinal);
         Assert.Contains("@media (max-width: 720px)", styles, StringComparison.Ordinal);
         Assert.Contains("public int Size { get; set; } = 10", page, StringComparison.Ordinal);
         Assert.Contains("fallback: 10", page, StringComparison.Ordinal);
-        Assert.Contains(".orders-module-shell .mlv-button", styles, StringComparison.Ordinal);
-        Assert.Contains(".orders-table a", styles, StringComparison.Ordinal);
-        Assert.Contains("min-height: 44px", styles, StringComparison.Ordinal);
+        Assert.Contains("--operational-table-min-width", styles, StringComparison.Ordinal);
+        Assert.DoesNotContain("display: block", styles, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("width: 2.75rem", operationalTableStyles, StringComparison.Ordinal);
+        Assert.Contains("height: 2.75rem", operationalTableStyles, StringComparison.Ordinal);
         Assert.Contains(".orders-module-shell .orders-toolbar", globalStyles, StringComparison.Ordinal);
         Assert.Contains(".orders-module-shell .orders-toolbar .mud-input-slot", globalStyles, StringComparison.Ordinal);
         Assert.Contains("role=\"search\"", toolbar, StringComparison.Ordinal);
@@ -72,12 +77,15 @@ public sealed class OrdersProcurementResponsiveContractTests
         var toolbarStyles = Read(root, "Legacy.Maliev.Intranet.Client.Shared", "Components", "ListToolbar.razor.css");
         var adapterStyles = Read(root, "Maliev.ShadcnBlazor", "wwwroot", "css", "shadcn-mudblazor.css");
 
-        Assert.Contains("Breakpoint=\"Breakpoint.Md\"", purchaseOrders, StringComparison.Ordinal);
-        Assert.Contains("Breakpoint=\"Breakpoint.Md\"", suppliers, StringComparison.Ordinal);
+        Assert.Contains("<OperationalTable", purchaseOrders, StringComparison.Ordinal);
+        Assert.Contains("<OperationalTable", suppliers, StringComparison.Ordinal);
+        var operationalTableStyles = Read(root, "Legacy.Maliev.Intranet.Client.Shared", "Components", "OperationalTable.razor.css");
+        Assert.Contains("@media (max-width: 720px)", operationalTableStyles, StringComparison.Ordinal);
+        Assert.Contains("overflow-x: auto", operationalTableStyles, StringComparison.Ordinal);
         Assert.Contains("public int Size { get; set; } = 25", suppliers, StringComparison.Ordinal);
         Assert.Contains("fallback: 25", suppliers, StringComparison.Ordinal);
         Assert.Contains("@media (max-width: 600px)", toolbarStyles, StringComparison.Ordinal);
-        Assert.Contains("grid-template-columns: repeat(2, minmax(0, 1fr))", toolbarStyles, StringComparison.Ordinal);
+        Assert.Contains("grid-template-columns: minmax(0, 1fr)", toolbarStyles, StringComparison.Ordinal);
         Assert.Contains("@media (max-width: 420px)", toolbarStyles, StringComparison.Ordinal);
         Assert.Contains("min-height: var(--shadcn-control-height) !important", toolbarStyles, StringComparison.Ordinal);
         Assert.Contains("min-height: var(--shadcn-control-height)", adapterStyles, StringComparison.Ordinal);

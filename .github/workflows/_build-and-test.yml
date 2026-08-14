@@ -44,6 +44,11 @@ jobs:
             install --with-deps chromium
       - name: Validate .NET solution
         uses: MALIEV-Co-Ltd/Legacy.Maliev.Workflows/actions/dotnet-validate@6017816fa67f369d785ed30794f002cfd6299af7
+        env:
+          # The shared action tests solution projects concurrently by default. Keep the
+          # Playwright fixture isolated from the long-running integration test host.
+          DOTNET_PROCESSOR_COUNT: '1'
+          GITHUB_TOKEN: ${{ github.token }}
         with:
           solution: Legacy.Maliev.Intranet.slnx
           use-local-maliev-dependencies: 'true'

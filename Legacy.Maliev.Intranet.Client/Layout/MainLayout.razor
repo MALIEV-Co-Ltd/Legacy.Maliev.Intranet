@@ -19,17 +19,19 @@
         <LegacyNavigationRail Session="session" IsDrawer="true" OnClose="CloseNavigationAsync" />
     }
 
-    <div class="legacy-workspace-shell" @attributes="WorkspaceAccessibilityAttributes">
+    <div class="legacy-workspace-frame" @attributes="WorkspaceAccessibilityAttributes">
         <LegacyTopBar Session="session"
                       NavigationOpen="_navigationOpen"
                       OnToggleNavigation="ToggleNavigationAsync"
                       OnCloseNavigation="CloseNavigationAsync"
                       OnSignOut="SignOutAsync" />
-        <MudMainContent Class="legacy-main-content">
-            <main id="main-content" class="legacy-page-container" tabindex="-1">
-                @Body
-            </main>
-        </MudMainContent>
+        <div class="legacy-workspace-shell">
+            <MudMainContent Class="legacy-main-content">
+                <main id="main-content" class="legacy-page-container" tabindex="-1">
+                    @Body
+                </main>
+            </MudMainContent>
+        </div>
     </div>
 </MudLayout>
 </ShadcnThemeProvider>

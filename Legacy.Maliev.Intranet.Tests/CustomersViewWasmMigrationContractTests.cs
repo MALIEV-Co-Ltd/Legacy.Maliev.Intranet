@@ -78,9 +78,9 @@ public sealed class CustomersViewWasmMigrationContractTests
         Assert.Contains("Href=\"@($\"/Orders/View?id={order.Id}\")\"", source, StringComparison.Ordinal);
         Assert.Contains("Href=\"@($\"/Quotations/View?id={quotation.Id}\")\"", source, StringComparison.Ordinal);
         Assert.Contains("Href=\"@($\"/Invoices/View?id={invoice.Id}\")\"", source, StringComparison.Ordinal);
-        Assert.DoesNotContain("order.Subtotal", source, StringComparison.Ordinal);
-        Assert.DoesNotContain("quotation.Subtotal", source, StringComparison.Ordinal);
-        Assert.DoesNotContain("quotation.Total", source, StringComparison.Ordinal);
+        Assert.Contains("order.Subtotal", source, StringComparison.Ordinal);
+        Assert.Contains("quotation.Subtotal", source, StringComparison.Ordinal);
+        Assert.Contains("quotation.Total", source, StringComparison.Ordinal);
         Assert.Contains("invoice.Currency", source, StringComparison.Ordinal);
         AssertPresentationalOnly(source);
     }

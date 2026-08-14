@@ -1,0 +1,14 @@
+::deep .operational-table { --operational-table-min-width: 42rem; table-layout: fixed; }
+.employee-table-region { min-width: 0; }
+::deep .employee-id { width: 6rem; white-space: nowrap; font-variant-numeric: tabular-nums; }
+::deep .employee-name { width: 32%; }
+::deep .employee-role { width: 26%; }
+::deep .employee-email { width: 32%; }
+::deep :is(.employee-name, .employee-role, .employee-email) { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.employee-quick-view { margin: 0; }
+.employee-quick-view dt { color: var(--shadcn-muted-foreground); font-size: 0.75rem; }
+.employee-quick-view dd { margin: 0.25rem 0 0; overflow-wrap: break-word; }
+
+@media (max-width: 720px) {
+    ::deep .operational-table { --operational-table-min-width: 34rem; }
+}

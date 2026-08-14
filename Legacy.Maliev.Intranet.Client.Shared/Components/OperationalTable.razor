@@ -1,0 +1,131 @@
+@typeparam TItem
+@typeparam TKey where TKey : notnull
+@implements IDisposable
+
+<div class="operational-table__scroll">
+    <table class="operational-table" aria-describedby="@AriaDescribedBy">
+        <caption class="visually-hidden">@TableLabel</caption>
+        <thead>
+            @HeaderContent
+        </thead>
+        <tbody>
+            @if (Items.Count == 0)
+            {
+                @if (EmptyContent is not null)
+                {
+                    <tr class="operational-table__empty">
+                        <td colspan="@ColumnCount">@EmptyContent</td>
+                    </tr>
+                }
+            }
+            else
+            {
+                @foreach (var item in Items)
+                {
+                    var key = KeySelector(item);
+                    var isExpanded = State.IsExpanded(key);
+                    var quickViewId = QuickViewId(key);
+                    var detailHref = DetailHref(item);
+
+                    <tr class="operational-table__row">
+                        @RowContent(item)
+                        <td class="operational-table__actions">
+                            @if (detailHref is not null)
+                            {
+                                <span class="operational-table__detail-wrap">
+                                    <LegacyLink Href="@detailHref"
+                                                Role="LegacyLinkRole.Inline"
+                                                Class="operational-table__detail"
+                                                StartIcon="@Icons.Material.Outlined.OpenInNew"
+                                                AriaLabel="@DetailAriaLabel(item)">
+                                        <span class="visually-hidden">@DetailAriaLabel(item)</span>
+                                    </LegacyLink>
+                                </span>
+                            }
+                            <span class="operational-table__toggle-wrap">
+                                <MudIconButton ButtonType="ButtonType.Button"
+                                               Class="operational-table__toggle"
+                                               Icon="@(isExpanded ? Icons.Material.Outlined.ExpandLess : Icons.Material.Outlined.ExpandMore)"
+                                               aria-label="@(isExpanded ? CollapseAriaLabel(item) : ExpandAriaLabel(item))"
+                                               aria-expanded="@isExpanded.ToString().ToLowerInvariant()"
+                                               aria-controls="@quickViewId"
+                                               title="@(isExpanded ? CollapseAriaLabel(item) : ExpandAriaLabel(item))"
+                                               OnClick="@(() => State.Toggle(key))" />
+                            </span>
+                        </td>
+                    </tr>
+                    @if (isExpanded)
+                    {
+                        <tr id="@quickViewId" class="operational-table__quick-view">
+                            <td colspan="@ColumnCount">@QuickViewContent(item)</td>
+                        </tr>
+                    }
+                }
+            }
+        </tbody>
+    </table>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<TItem> Items { get; set; } = default!;
+    [Parameter, EditorRequired] public Func<TItem, TKey> KeySelector { get; set; } = default!;
+    [Parameter, EditorRequired] public RenderFragment HeaderContent { get; set; } = default!;
+    [Parameter, EditorRequired] public RenderFragment<TItem> RowContent { get; set; } = default!;
+    [Parameter, EditorRequired] public RenderFragment<TItem> QuickViewContent { get; set; } = default!;
+    [Parameter, EditorRequired] public Func<TItem, string?> DetailHref { get; set; } = default!;
+    [Parameter, EditorRequired] public Func<TItem, string> DetailAriaLabel { get; set; } = default!;
+    [Parameter, EditorRequired] public Func<TItem, string> ExpandAriaLabel { get; set; } = default!;
+    [Parameter, EditorRequired] public Func<TItem, string> CollapseAriaLabel { get; set; } = default!;
+    [Parameter, EditorRequired] public string TableLabel { get; set; } = default!;
+    [Parameter] public string? AriaDescribedBy { get; set; }
+    [Parameter] public RenderFragment? EmptyContent { get; set; }
+    [Parameter, EditorRequired] public int ColumnCount { get; set; }
+    [Parameter, EditorRequired] public OperationalTableState<TKey> State { get; set; } = default!;
+
+    private readonly string quickViewIdPrefix = OperationalTableIdNamespace.Allocate();
+    private readonly Dictionary<TKey, string> quickViewIds = new(EqualityComparer<TKey>.Default);
+    private long nextQuickViewId;
+    private OperationalTableState<TKey>? subscribedState;
+
+    protected override void OnParametersSet()
+    {
+        if (ColumnCount < 1)
+        {
+            throw new ArgumentOutOfRangeException(nameof(ColumnCount), "ColumnCount must be at least one.");
+        }
+
+        if (!ReferenceEquals(subscribedState, State))
+        {
+            if (subscribedState is not null)
+            {
+                subscribedState.Changed -= HandleStateChanged;
+            }
+
+            subscribedState = State;
+            subscribedState.Changed += HandleStateChanged;
+        }
+    }
+
+    private string QuickViewId(TKey key)
+    {
+        if (quickViewIds.TryGetValue(key, out var quickViewId))
+        {
+            return quickViewId;
+        }
+
+        quickViewId = $"{quickViewIdPrefix}-{nextQuickViewId++}";
+        quickViewIds.Add(key, quickViewId);
+        return quickViewId;
+    }
+
+    private void HandleStateChanged() => _ = InvokeAsync(StateHasChanged);
+
+    public void Dispose()
+    {
+        if (subscribedState is not null)
+        {
+            subscribedState.Changed -= HandleStateChanged;
+            subscribedState = null;
+        }
+    }
+}

@@ -8,6 +8,7 @@
 <PageTitle>@Text["PageTitle"]</PageTitle>
 
 <MudContainer MaxWidth="MaxWidth.ExtraLarge">
+    <PageBreadcrumbs Items="@Breadcrumbs" />
     <div class="operations-page-header d-flex flex-wrap align-center justify-space-between gap-3 mb-4">
         <MudText Typo="Typo.h4" HtmlTag="h1">@Text["Finance"]</MudText>
         <div class="d-flex flex-wrap gap-2" role="group" aria-label="@Text["FinanceActions"]">
@@ -59,6 +60,7 @@
         {
             <MudPaper Class="pa-4 mb-4" Elevation="1" role="region" aria-labelledby="yearly-trend-heading">
                 <MudText id="yearly-trend-heading" Typo="Typo.h6" HtmlTag="h2" Class="mb-3">@Text["YearlyTrend"]</MudText>
+                @* OperationalTable exception: AnalyticalMonthlySummary. Comparison-oriented aggregate, not a record list. *@
                 <MudTable Items="TrendRows" Hover="true" Breakpoint="Breakpoint.Sm" Elevation="0" aria-label="@Text["YearlyTrendTable"]">
                     <HeaderContent>
                         <MudTh>@Text["Month"]</MudTh>
@@ -91,30 +93,36 @@
         }
         else
         {
-            <MudTable Items="Page.Items" Hover="true" Breakpoint="Breakpoint.Sm" Elevation="1" aria-label="@Text["PaymentsTable"]">
+            <OperationalTable TItem="FinancePaymentItem" TKey="int" Items="@Page.Items"
+                              KeySelector="@(payment => payment.Id)" TableLabel="@Text["PaymentsTable"]"
+                              ColumnCount="10" State="@tableState"
+                              DetailHref="@(payment => $"/Finances/View?id={payment.Id}")"
+                              DetailAriaLabel="@(payment => Text["ViewFinance", payment.Id])"
+                              ExpandAriaLabel="@(payment => Text["ExpandFinance", payment.Id])"
+                              CollapseAriaLabel="@(payment => Text["CollapseFinance", payment.Id])">
                 <HeaderContent>
-                    <MudTh>@Text["Id"]</MudTh>
-                    <MudTh>@Text["Direction"]</MudTh>
-                    <MudTh>@Text["Type"]</MudTh>
-                    <MudTh>@Text["Description"]</MudTh>
-                    <MudTh>@Text["Method"]</MudTh>
-                    <MudTh>@Text["Amount"]</MudTh>
-                    <MudTh>@Text["Recipient"]</MudTh>
-                    <MudTh>@Text["TransactionNumber"]</MudTh>
-                    <MudTh>@Text["PaymentDate"]</MudTh>
+                    <tr><th class="operational-table__identity" data-priority="essential">@Text["Id"]</th>
+                        <th data-priority="essential">@Text["Direction"]</th><th data-priority="essential">@Text["Type"]</th>
+                        <th data-priority="essential">@Text["Amount"]</th><th data-priority="essential">@Text["PaymentDate"]</th>
+                        <th data-priority="supporting">@Text["Description"]</th><th data-priority="supporting">@Text["Method"]</th>
+                        <th data-priority="supporting">@Text["Recipient"]</th><th data-priority="supporting">@Text["TransactionNumber"]</th>
+                        <th class="operational-table__actions-heading"><span class="visually-hidden">@Text["Actions"]</span></th></tr>
                 </HeaderContent>
-                <RowTemplate>
-                    <MudTd DataLabel="@Text["Id"]"><LegacyLink Href="@($"/Finances/View?id={context.Id}")" Role="LegacyLinkRole.Record" AriaLabel="@($"{Text["Id"]} {context.Id}")">@context.Id</LegacyLink></MudTd>
-                    <MudTd DataLabel="@Text["Direction"]">@context.PaymentDirectionId</MudTd>
-                    <MudTd DataLabel="@Text["Type"]">@context.PaymentTypeId</MudTd>
-                    <MudTd DataLabel="@Text["Description"]">@ValueOrFallback(context.Description)</MudTd>
-                    <MudTd DataLabel="@Text["Method"]">@context.PaymentMethodId</MudTd>
-                    <MudTd DataLabel="@Text["Amount"]">@FormatAmount(context.Amount, context.CurrencyId?.ToString(CultureInfo.InvariantCulture))</MudTd>
-                    <MudTd DataLabel="@Text["Recipient"]">@ValueOrFallback(context.Recipient)</MudTd>
-                    <MudTd DataLabel="@Text["TransactionNumber"]">@ValueOrFallback(context.TransactionNumber)</MudTd>
-                    <MudTd DataLabel="@Text["PaymentDate"]">@FormatDate(context.PaymentDate)</MudTd>
-                </RowTemplate>
-            </MudTable>
+                <RowContent Context="payment">
+                    <td class="operational-table__identity mlv-mono" data-priority="essential">@payment.Id</td>
+                    <td data-priority="essential">@payment.PaymentDirectionId</td><td data-priority="essential">@payment.PaymentTypeId</td>
+                    <td class="mlv-mono" data-priority="essential">@FormatAmount(payment.Amount, payment.CurrencyId?.ToString(CultureInfo.InvariantCulture))</td>
+                    <td class="mlv-mono" data-priority="essential">@FormatDate(payment.PaymentDate)</td>
+                    <td data-priority="supporting">@ValueOrFallback(payment.Description)</td><td data-priority="supporting">@payment.PaymentMethodId</td>
+                    <td data-priority="supporting">@ValueOrFallback(payment.Recipient)</td><td class="mlv-mono" data-priority="supporting">@ValueOrFallback(payment.TransactionNumber)</td>
+                </RowContent>
+                <QuickViewContent Context="payment"><dl class="operational-quick-view">
+                    <div><dt>@Text["Description"]</dt><dd>@ValueOrFallback(payment.Description)</dd></div>
+                    <div><dt>@Text["Method"]</dt><dd>@payment.PaymentMethodId</dd></div>
+                    <div><dt>@Text["Recipient"]</dt><dd>@ValueOrFallback(payment.Recipient)</dd></div>
+                    <div><dt>@Text["TransactionNumber"]</dt><dd class="mlv-mono">@ValueOrFallback(payment.TransactionNumber)</dd></div>
+                </dl></QuickViewContent>
+            </OperationalTable>
         }
 
         @if (Page is not null)
@@ -137,6 +145,13 @@
     private FinancePaymentPage? Page { get; set; }
     private static readonly int[] FinancePageSizes = [10, 25, 50, 100];
     private readonly LatestRequestGate requestGate = new();
+    private readonly OperationalTableState<int> tableState = new();
+    private IReadOnlyList<PageBreadcrumbItem> Breadcrumbs =>
+    [
+        new(Text["Operations"], "/Dashboard"),
+        new(Text["Accounting"], "/accounting"),
+        new(Text["Finance"]),
+    ];
     private FinanceSummary Weekly { get; set; } = new([]);
     private FinanceSummary Monthly { get; set; } = new([]);
     private FinanceSummary MonthlyJobIncome { get; set; } = new([]);
@@ -187,6 +202,7 @@
     private async Task LoadAsync()
     {
         using var lease = requestGate.Begin();
+        tableState.Clear();
         loading = true;
         error = null;
         HttpResponseMessage[]? responses = null;
@@ -317,6 +333,7 @@
 
     private Task NavigateAsync(int index, string? search, FinancePaymentSort sort, int size, bool replace = false)
     {
+        tableState.Clear();
         Navigation.NavigateTo($"/Finances/Index?search={Uri.EscapeDataString(search ?? string.Empty)}&sort={sort}&index={index}&size={Math.Clamp(size, 1, 100)}", replace: replace);
         return Task.CompletedTask;
     }
