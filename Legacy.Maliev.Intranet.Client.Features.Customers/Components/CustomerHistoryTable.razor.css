@@ -1,0 +1,134 @@
+.customer-history {
+    display: grid;
+    gap: 0.875rem;
+    min-width: 0;
+    padding: 1rem;
+    border: 1px solid var(--shadcn-border);
+    border-radius: var(--shadcn-radius-lg);
+    background: var(--shadcn-card);
+    color: var(--shadcn-card-foreground);
+}
+
+.customer-history__header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.75rem;
+}
+
+.customer-history__heading {
+    margin: 0;
+    font-size: 0.875rem;
+    font-weight: 600;
+    line-height: 1.25rem;
+}
+
+.customer-history__count,
+.customer-history__empty {
+    color: var(--shadcn-muted-foreground);
+}
+
+.customer-history ::deep .customer-history__table {
+    min-width: 0;
+}
+
+.customer-history ::deep .customer-history__table .mud-table-container {
+    max-width: 100%;
+    overflow-x: auto;
+}
+
+.customer-history ::deep .customer-history__table th,
+.customer-history ::deep .customer-history__table td {
+    vertical-align: middle;
+}
+
+.customer-history ::deep .customer-history__table td[data-label]::before {
+    content: none;
+}
+
+.customer-history ::deep .customer-history__table table {
+    min-width: 36rem;
+}
+
+.customer-history ::deep .customer-history__table .mlv-mono {
+    white-space: nowrap;
+}
+
+.customer-history ::deep .history-meta {
+    max-width: 24rem;
+}
+
+.customer-history ::deep .history-primary {
+    min-width: 10rem;
+    white-space: nowrap;
+}
+
+.customer-history__pager {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.75rem;
+    min-width: 0;
+    padding-top: 0.25rem;
+}
+
+@media (pointer: coarse), (max-width: 760px) {
+    .customer-history {
+        padding: 0.875rem;
+    }
+
+    .customer-history__header,
+    .customer-history__pager {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .customer-history ::deep .customer-history__table .mud-table-container {
+        overflow-x: auto;
+    }
+
+    .customer-history ::deep .customer-history__table .mud-table-root {
+        display: table;
+        min-width: 36rem;
+    }
+
+    .customer-history ::deep .customer-history__table .mud-table-head {
+        position: static;
+        display: table-header-group;
+        width: auto;
+        height: auto;
+        overflow: visible;
+        clip: auto;
+    }
+
+    .customer-history ::deep .customer-history__table .mud-table-body {
+        display: table-row-group;
+        min-width: 36rem;
+    }
+
+    .customer-history ::deep .customer-history__table .mud-table-row {
+        display: table-row;
+        width: auto;
+        margin-bottom: 0;
+        padding: 0;
+    }
+
+    .customer-history ::deep .customer-history__table .mud-table-cell {
+        display: table-cell;
+        min-height: 0;
+        padding: 0.75rem 1rem;
+    }
+
+    .customer-history ::deep .customer-history__table .legacy-link--record,
+    .customer-history__pager ::deep .mud-button-root {
+        min-height: 44px;
+    }
+
+    .customer-history ::deep .customer-history__table .legacy-link--record {
+        min-width: 44px;
+    }
+
+    .customer-history__pager ::deep .mud-button-root {
+        width: 100%;
+    }
+}

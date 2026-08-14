@@ -52,4 +52,8 @@
   <data name="QuotationCreatedDate_Descending" xml:space="preserve"><value>วันที่สร้างจากมากไปน้อย</value></data>
   <data name="QuotationModifiedDate_Ascending" xml:space="preserve"><value>วันที่แก้ไขจากน้อยไปหามาก</value></data>
   <data name="QuotationModifiedDate_Descending" xml:space="preserve"><value>วันที่แก้ไขจากมากไปน้อย</value></data>
+  <data name="Operations" xml:space="preserve"><value>งานปฏิบัติการ</value></data>
+  <data name="ViewQuotation" xml:space="preserve"><value>เปิดใบเสนอราคา {0}</value></data>
+  <data name="ExpandQuotation" xml:space="preserve"><value>ขยายรายละเอียดใบเสนอราคา {0}</value></data>
+  <data name="CollapseQuotation" xml:space="preserve"><value>ย่อรายละเอียดใบเสนอราคา {0}</value></data>
 </root>

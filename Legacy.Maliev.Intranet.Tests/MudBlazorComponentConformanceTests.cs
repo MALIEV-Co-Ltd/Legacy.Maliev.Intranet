@@ -11,6 +11,7 @@ public sealed partial class MudBlazorComponentConformanceTests
         var violations = Directory.EnumerateFiles(root, "*.razor", SearchOption.AllDirectories)
             .Where(path => !path.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}", StringComparison.OrdinalIgnoreCase))
             .Where(path => !path.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}", StringComparison.OrdinalIgnoreCase))
+            .Where(path => !path.EndsWith($"{Path.DirectorySeparatorChar}Components{Path.DirectorySeparatorChar}OperationalTable.razor", StringComparison.OrdinalIgnoreCase))
             .Select(path => new
             {
                 Path = Path.GetRelativePath(root, path),

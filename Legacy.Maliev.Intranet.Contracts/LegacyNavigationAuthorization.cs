@@ -1,3 +1,5 @@
+using System.Security.Claims;
+
 namespace Legacy.Maliev.Intranet.Contracts;
 
 /// <summary>
@@ -6,6 +8,16 @@ namespace Legacy.Maliev.Intranet.Contracts;
 /// </summary>
 public static class LegacyNavigationAuthorization
 {
+    /// <summary>Determines whether a principal has the requested legacy permission.</summary>
+    public static bool IsEnabled(ClaimsPrincipal? user, string? requiredPermission) =>
+        IsEnabled(
+            user?.Identity?.IsAuthenticated == true,
+            requiredPermission,
+            user?.FindAll("permissions").Select(static claim => claim.Value),
+            user?.Claims
+                .Where(static claim => claim.Type is ClaimTypes.Role or "role")
+                .Select(static claim => claim.Value));
+
     /// <summary>
     /// Determines whether a navigation item can be activated for the projected session.
     /// </summary>

@@ -29,7 +29,9 @@ public sealed record OrderListItem(
     int? Remaining,
     decimal? Subtotal,
     DateTime? PromisedDate,
-    bool AllowSocialMedia);
+    bool AllowSocialMedia,
+    DateTime? CreatedDate = null,
+    DateTime? ModifiedDate = null);
 
 /// <summary>Browser-safe legacy-compatible page of orders.</summary>
 public sealed record OrderListPage(

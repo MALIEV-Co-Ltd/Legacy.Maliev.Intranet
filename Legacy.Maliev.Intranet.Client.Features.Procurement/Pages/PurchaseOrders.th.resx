@@ -32,4 +32,6 @@
   <data name="PurchaseOrderCreatedDate_Ascending" xml:space="preserve"><value>วันที่สร้าง: เก่าไปใหม่</value></data>
   <data name="PurchaseOrderCreatedDate_Descending" xml:space="preserve"><value>วันที่สร้าง: ใหม่ไปเก่า</value></data>
   <data name="PurchaseOrdersTable" xml:space="preserve"><value>ตารางใบสั่งซื้อ</value></data>
+  <data name="Operations" xml:space="preserve"><value>การดำเนินงาน</value></data><data name="Actions" xml:space="preserve"><value>การดำเนินการ</value></data><data name="CreatedDate" xml:space="preserve"><value>วันที่สร้าง</value></data><data name="ShippingMethod" xml:space="preserve"><value>การจัดส่ง</value></data>
+  <data name="ViewPurchaseOrder" xml:space="preserve"><value>เปิดใบสั่งซื้อ {0}</value></data><data name="ExpandPurchaseOrder" xml:space="preserve"><value>ขยายใบสั่งซื้อ {0}</value></data><data name="CollapsePurchaseOrder" xml:space="preserve"><value>ย่อใบสั่งซื้อ {0}</value></data>
 </root>

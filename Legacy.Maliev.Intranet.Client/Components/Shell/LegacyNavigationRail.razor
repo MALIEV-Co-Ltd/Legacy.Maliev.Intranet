@@ -26,21 +26,51 @@
         {
             <section class="legacy-rail-group" aria-labelledby="@GroupId(group)">
                 <h2 id="@GroupId(group)">@Text[group.Label]</h2>
-                @foreach (var item in group.Items)
+                <ul class="legacy-rail-items">
+                @foreach (var item in group.Items.Where(candidate => candidate.Kind == LegacyNavItemKind.Primary))
                 {
-                    @if (IsItemEnabled(item))
+                    var children = GetEnabledChildren(item);
+                    @if (IsItemEnabled(item) || children.Count > 0)
                     {
-                        <a href="@item.Href"
-                           @ref="_lastNavigationLink"
-                           class="legacy-rail-link @(IsItemActive(item) ? "active" : string.Empty)"
-                           aria-current="@(IsItemActive(item) ? "page" : null)"
-                           title="@Text[item.Description ?? item.Label]"
-                           @onclick="CloseAsync">
-                            <MudIcon Icon="@item.Icon" Size="Size.Small" />
-                            <span>@Text[item.Label]</span>
-                        </a>
+                        <li class="legacy-rail-item">
+                            @if (IsItemEnabled(item))
+                            {
+                                <a id="@ItemId(item)"
+                                   href="@item.Href"
+                                   @ref="_lastNavigationLink"
+                                   class="legacy-rail-link @(IsItemActive(item) ? "active" : string.Empty)"
+                                   aria-current="@(IsItemPageCurrent(item) ? "page" : null)"
+                                   title="@Text[item.Description ?? item.Label]"
+                                   @onclick="CloseAsync">
+                                    <MudIcon Icon="@item.Icon" Size="Size.Small" />
+                                    <span>@Text[item.Label]</span>
+                                </a>
+                            }
+                            @if (children.Count > 0)
+                            {
+                                <ul class="legacy-rail-children"
+                                    aria-labelledby="@(IsItemEnabled(item) ? ItemId(item) : null)"
+                                    aria-label="@(!IsItemEnabled(item) ? Text[item.Label].Value : null)">
+                                @foreach (var child in children)
+                                {
+                                    <li>
+                                        <a href="@child.Href"
+                                           @ref="_lastNavigationLink"
+                                           class="legacy-rail-link legacy-rail-link--child @(IsItemActive(child) ? "active" : string.Empty)"
+                                           aria-current="@(IsItemPageCurrent(child) ? "page" : null)"
+                                           title="@Text[child.Description ?? child.Label]"
+                                           @onclick="CloseAsync">
+                                            <MudIcon Icon="@child.Icon" Size="Size.Small" />
+                                            <span>@Text[child.Label]</span>
+                                        </a>
+                                    </li>
+                                }
+                                </ul>
+                            }
+                        </li>
                     }
                 }
+                </ul>
             </section>
         }
     </nav>
@@ -77,13 +107,35 @@
 
     private bool IsItemActive(LegacyNavItem item)
     {
-        var current = Navigation.ToBaseRelativePath(Navigation.Uri).Split('?', '#')[0].Trim('/');
-        var target = item.Href.Trim('/').Split('?', '#')[0];
+        var current = CurrentRoute();
+        var target = NormalizeRoute(item.Href);
         return item.Match == NavLinkMatch.All
             ? string.Equals(current, target, StringComparison.OrdinalIgnoreCase)
             : string.Equals(current, target, StringComparison.OrdinalIgnoreCase) ||
               current.StartsWith($"{target}/", StringComparison.OrdinalIgnoreCase);
     }
+
+    private bool IsItemPageCurrent(LegacyNavItem item) => ReferenceEquals(FindCurrentItem(), item);
+
+    private LegacyNavItem? FindCurrentItem() => LegacyAppNavigation.Groups
+        .SelectMany(group => group.Items)
+        .Where(IsItemEnabled)
+        .Where(IsItemActive)
+        .OrderByDescending(item => NormalizeRoute(item.Href).Length)
+        .FirstOrDefault();
+
+    private IReadOnlyList<LegacyNavItem> GetEnabledChildren(LegacyNavItem parent) => LegacyAppNavigation.Groups
+        .SelectMany(group => group.Items)
+        .Where(item => item.Kind == LegacyNavItemKind.ChildAction &&
+                       string.Equals(item.ParentHref, parent.Href, StringComparison.OrdinalIgnoreCase) &&
+                       IsItemEnabled(item))
+        .ToArray();
+
+    private string CurrentRoute() => Navigation.ToBaseRelativePath(Navigation.Uri).Split('?', '#')[0].Trim('/');
+
+    private static string NormalizeRoute(string href) => href.Trim('/').Split('?', '#')[0];
+
+    private static string ItemId(LegacyNavItem item) => $"legacy-rail-owner-{NormalizeRoute(item.Href).Replace('/', '-').ToLowerInvariant()}";
 
     private static string GroupId(LegacyNavGroup group) => $"legacy-rail-{group.Label.ToLowerInvariant().Replace(' ', '-')}";
 

@@ -1,0 +1,32 @@
+@inject IStringLocalizer<PageBreadcrumbsResources> Text
+
+@if (Items.Count > 0)
+{
+    <nav class="page-breadcrumbs" aria-label="@Text["BreadcrumbLabel"]">
+        <ol>
+            @for (var index = 0; index < Items.Count - 1; index++)
+            {
+                var item = Items[index];
+                <li>
+                    <LegacyLink Href="@(item.Href!)" Role="LegacyLinkRole.Navigation">@item.Label</LegacyLink>
+                </li>
+            }
+            <li aria-current="page">@Items[^1].Label</li>
+        </ol>
+    </nav>
+}
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<PageBreadcrumbItem> Items { get; set; } = [];
+
+    protected override void OnParametersSet()
+    {
+        for (var index = 0; index < Items.Count - 1; index++)
+        {
+            if (string.IsNullOrWhiteSpace(Items[index].Href))
+            {
+                throw new InvalidOperationException("Every non-final breadcrumb item must have a destination.");
+            }
+        }
+    }
+}

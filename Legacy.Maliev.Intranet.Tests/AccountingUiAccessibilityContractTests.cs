@@ -71,8 +71,8 @@ public sealed class AccountingUiAccessibilityContractTests
         Assert.Contains("EmailReceiptConfirmation", invoiceView, StringComparison.Ordinal);
         Assert.Contains("RemoveReceiptConfirmation", invoiceView, StringComparison.Ordinal);
         Assert.Contains("DeleteConfirmation", invoiceView, StringComparison.Ordinal);
-        Assert.Contains("rel=\"noopener\"", financeView, StringComparison.Ordinal);
-        Assert.Contains("rel=\"noopener\"", invoiceView, StringComparison.Ordinal);
+        Assert.Contains("Rel=\"noopener\"", financeView, StringComparison.Ordinal);
+        Assert.Contains("Rel=\"noopener\"", invoiceView, StringComparison.Ordinal);
     }
 
     [Fact]

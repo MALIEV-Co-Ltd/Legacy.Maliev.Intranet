@@ -59,8 +59,24 @@
     background: color-mix(in srgb, currentColor 10%, transparent);
 }
 
+.quotation-table-section { margin-bottom: 1rem; }
+::deep .operational-table { --operational-table-min-width: 86rem; }
+::deep :is(.quotation-id, .quotation-period, .quotation-date, .quotation-money, .quotation-decision) { white-space: nowrap; }
+::deep .quotation-id { font-variant-numeric: tabular-nums; }
+::deep .quotation-customer { min-width: 8rem; }
+::deep .quotation-money { text-align: end; font-variant-numeric: tabular-nums; }
+::deep .quotation-decision { min-width: 9rem; }
+
+.quotation-quick-view { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.75rem 1rem; margin: 0; }
+.quotation-quick-view > div { min-width: 0; }
+.quotation-quick-view dt { color: var(--shadcn-muted-foreground); font-size: 0.75rem; }
+.quotation-quick-view dd { margin: 0.25rem 0 0; overflow-wrap: break-word; }
+
 @media (max-width: 800px) {
     .quotation-decision-layout {
         grid-template-columns: 1fr;
     }
+
+    ::deep .operational-table { --operational-table-min-width: 50rem; }
+    .quotation-quick-view { grid-template-columns: 1fr; }
 }

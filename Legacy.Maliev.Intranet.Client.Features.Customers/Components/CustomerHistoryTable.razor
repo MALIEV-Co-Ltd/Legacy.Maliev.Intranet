@@ -1,0 +1,230 @@
+@namespace Legacy.Maliev.Intranet.Client.Features.Customers.Components
+
+<section class="customer-history" aria-labelledby="@HeadingId">
+    <div class="customer-history__header">
+        <MudText Typo="Typo.h6" HtmlTag="h2" id="@HeadingId" Class="customer-history__heading">@Localize(HeadingKey)</MudText>
+        @if (!Loading && string.IsNullOrWhiteSpace(Error) && CurrentTotalRecords is int totalRecords)
+        {
+            <MudText Typo="Typo.body2" Class="customer-history__count">@LocalizeFormat("HistoryResultCount", new object?[] { totalRecords })</MudText>
+        }
+    </div>
+
+    @if (Loading)
+    {
+        <MudProgressLinear Indeterminate="true" Color="Color.Primary" aria-live="polite" aria-label="@Localize("HistoryLoading")" />
+    }
+    else if (!string.IsNullOrWhiteSpace(Error))
+    {
+        <MudAlert Severity="Severity.Error" aria-live="assertive">@Error</MudAlert>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="Retry">@Localize("Retry")</MudButton>
+    }
+    else if (Items.Count == 0)
+    {
+        <MudText Class="customer-history__empty">@Localize(EmptyKey)</MudText>
+    }
+    else
+    {
+        @switch (Kind)
+        {
+            case CustomerHistoryKind.Order:
+                <MudTable T="OrderListItem" Items="@Orders!.Items" Dense="true" Hover="true" Breakpoint="Breakpoint.None" Class="customer-history__table" data-projection="history-orders">
+                    <HeaderContent>
+                        <MudTh>@Localize("Record")</MudTh>
+                        <MudTh>@Localize("Name")</MudTh>
+                        <MudTh>@Localize("Status")</MudTh>
+                        <MudTh>@Localize("PromisedDate")</MudTh>
+                        <MudTh>@Localize("References")</MudTh>
+                        <MudTh>@Localize("FinancialAndDates")</MudTh>
+                    </HeaderContent>
+                    <RowTemplate Context="order">
+                        <MudTd DataLabel="@Localize("Record")" Class="mlv-mono" data-field="Id">
+                            <LegacyLink Href="@($"/Orders/View?id={order.Id}")" Role="LegacyLinkRole.Record" AriaLabel="@RecordActivityTitle(CustomerHistoryKind.Order, order.Id)">
+                                @LocalizeFormat("OrderNumber", new object?[] { order.Id })
+                            </LegacyLink>
+                        </MudTd>
+                        <MudTd DataLabel="@Localize("Name")" Class="history-primary" data-field="Name">@DisplayValue(order.Name)</MudTd>
+                        <MudTd DataLabel="@Localize("Status")" Class="history-status mlv-mono" data-field="Quantity Manufactured Remaining">@OrderStatus(order) · @DisplayNumber(order.Remaining)</MudTd>
+                        <MudTd DataLabel="@Localize("PromisedDate")" Class="mlv-mono" data-field="PromisedDate">@FormatDate(order.PromisedDate)</MudTd>
+                        <MudTd DataLabel="@Localize("References")" Class="history-meta mlv-mono" data-field="CustomerId EmployeeId ProcessId">@DisplayReference("C", order.CustomerId) · @DisplayReference("E", order.EmployeeId) · @DisplayReference("P", order.ProcessId)</MudTd>
+                        <MudTd DataLabel="@Localize("FinancialAndDates")" Class="history-meta mlv-mono" data-field="Subtotal AllowSocialMedia CreatedDate ModifiedDate">@DisplayMoney(order.Subtotal) · @DisplayBoolean(order.AllowSocialMedia) · @FormatDate(order.CreatedDate) · @FormatDate(order.ModifiedDate)</MudTd>
+                    </RowTemplate>
+                </MudTable>
+                break;
+            case CustomerHistoryKind.Quotation:
+                <MudTable T="QuotationListItem" Items="@Quotations!.Items" Dense="true" Hover="true" Breakpoint="Breakpoint.None" Class="customer-history__table" data-projection="history-quotations">
+                    <HeaderContent>
+                        <MudTh>@Localize("Record")</MudTh>
+                        <MudTh>@Localize("Status")</MudTh>
+                        <MudTh>@Localize("ExpirationDate")</MudTh>
+                        <MudTh>@Localize("Period")</MudTh>
+                        <MudTh>@Localize("References")</MudTh>
+                        <MudTh>@Localize("Amounts")</MudTh>
+                        <MudTh>@Localize("TermsAndDates")</MudTh>
+                    </HeaderContent>
+                    <RowTemplate Context="quotation">
+                        <MudTd DataLabel="@Localize("Record")" Class="mlv-mono" data-field="Id">
+                            <LegacyLink Href="@($"/Quotations/View?id={quotation.Id}")" Role="LegacyLinkRole.Record" AriaLabel="@RecordActivityTitle(CustomerHistoryKind.Quotation, quotation.Id)">
+                                @LocalizeFormat("QuotationNumber", new object?[] { quotation.Id })
+                            </LegacyLink>
+                        </MudTd>
+                        <MudTd DataLabel="@Localize("Status")" Class="history-status mlv-mono" data-field="Accepted">@QuotationStatus(quotation)</MudTd>
+                        <MudTd DataLabel="@Localize("ExpirationDate")" Class="mlv-mono" data-field="ExpirationDate">@FormatDate(quotation.ExpirationDate)</MudTd>
+                        <MudTd DataLabel="@Localize("Period")" Class="mlv-mono" data-field="Period">@LocalizeFormat("PeriodDays", new object?[] { quotation.Period })</MudTd>
+                        <MudTd DataLabel="@Localize("References")" Class="history-meta mlv-mono" data-field="CustomerId EmployeeId InvoiceId CurrencyId">@DisplayReference("C", quotation.CustomerId) · @DisplayReference("E", quotation.EmployeeId) · @DisplayReference("I", quotation.InvoiceId) · @DisplayReference("¤", quotation.CurrencyId)</MudTd>
+                        <MudTd DataLabel="@Localize("Amounts")" Class="history-meta mlv-mono" data-field="Subtotal Vat Total WithholdingTax QuotedAmount">@DisplayMoney(quotation.Subtotal) · @DisplayMoney(quotation.Vat) · @DisplayMoney(quotation.Total) · @DisplayMoney(quotation.WithholdingTax) · @DisplayMoney(quotation.QuotedAmount)</MudTd>
+                        <MudTd DataLabel="@Localize("TermsAndDates")" Class="history-meta" data-field="Comment Fob ShippedVia Terms CreatedDate ModifiedDate">@DisplayValue(quotation.Comment) · @DisplayValue(quotation.Fob) · @DisplayValue(quotation.ShippedVia) · @DisplayValue(quotation.Terms) · @FormatDate(quotation.CreatedDate) · @FormatDate(quotation.ModifiedDate)</MudTd>
+                    </RowTemplate>
+                </MudTable>
+                break;
+            case CustomerHistoryKind.Invoice:
+                <MudTable T="InvoiceListItem" Items="@Invoices!.Items" Dense="true" Hover="true" Breakpoint="Breakpoint.None" Class="customer-history__table" data-projection="history-invoices">
+                    <HeaderContent>
+                        <MudTh>@Localize("Record")</MudTh>
+                        <MudTh>@Localize("Status")</MudTh>
+                        <MudTh>@Localize("Total")</MudTh>
+                        <MudTh>@Localize("CreatedDate")</MudTh>
+                        <MudTh>@Localize("References")</MudTh>
+                        <MudTh>@Localize("Amounts")</MudTh>
+                        <MudTh>@Localize("Payment")</MudTh>
+                    </HeaderContent>
+                    <RowTemplate Context="invoice">
+                        <MudTd DataLabel="@Localize("Record")" Class="mlv-mono" data-field="Id Number">
+                            <LegacyLink Href="@($"/Invoices/View?id={invoice.Id}")" Role="LegacyLinkRole.Record" AriaLabel="@RecordActivityTitle(CustomerHistoryKind.Invoice, invoice.Id, invoice.Number)">
+                                @invoice.Number
+                            </LegacyLink>
+                        </MudTd>
+                        <MudTd DataLabel="@Localize("Status")" Class="history-status mlv-mono" data-field="IsPaid">@(invoice.IsPaid ? Localize("StatusPaid") : Localize("StatusOutstanding"))</MudTd>
+                        <MudTd DataLabel="@Localize("Total")" Class="mlv-mono" data-field="Total Currency">@FormatInvoiceMoney(invoice.Total, invoice.Currency)</MudTd>
+                        <MudTd DataLabel="@Localize("CreatedDate")" Class="mlv-mono" data-field="CreatedDate">@FormatDate(invoice.CreatedDate)</MudTd>
+                        <MudTd DataLabel="@Localize("References")" Class="history-meta mlv-mono" data-field="CustomerId PurchaseOrderNumber ReceiptId">@DisplayReference("C", invoice.CustomerId) · @DisplayValue(invoice.PurchaseOrderNumber) · @DisplayReference("R", invoice.ReceiptId)</MudTd>
+                        <MudTd DataLabel="@Localize("Amounts")" Class="history-meta mlv-mono" data-field="Subtotal Vat WithholdingTax Outstanding">@DisplayMoney(invoice.Subtotal) · @DisplayMoney(invoice.Vat) · @DisplayMoney(invoice.WithholdingTax) · @DisplayMoney(invoice.Outstanding)</MudTd>
+                        <MudTd DataLabel="@Localize("Payment")" Class="history-meta mlv-mono" data-field="PaymentDate">@FormatDate(invoice.PaymentDate)</MudTd>
+                    </RowTemplate>
+                </MudTable>
+                break;
+        }
+
+        <nav class="customer-history__pager" aria-label="@LocalizeFormat("HistoryPagination", new object?[] { Localize(HeadingKey) })">
+            <MudButton Variant="Variant.Outlined" Disabled="@(Loading || CurrentPageIndex <= 1)" OnClick="PreviousPageAsync" aria-label="@Localize("PreviousPage")">
+                @Localize("PreviousPage")
+            </MudButton>
+            <MudText Typo="Typo.body2">@LocalizeFormat("PageOf", new object?[] { CurrentPageIndex, Math.Max(CurrentTotalPages, 1) })</MudText>
+            <MudButton Variant="Variant.Outlined" Disabled="@(Loading || CurrentPageIndex >= CurrentTotalPages)" OnClick="NextPageAsync" aria-label="@Localize("NextPage")">
+                @Localize("NextPage")
+            </MudButton>
+        </nav>
+    }
+</section>
+
+@code {
+    [Parameter, EditorRequired] public CustomerHistoryKind Kind { get; set; }
+    [Parameter] public OrderListPage? Orders { get; set; }
+    [Parameter] public QuotationListPage? Quotations { get; set; }
+    [Parameter] public InvoiceListPage? Invoices { get; set; }
+    [Parameter] public bool Loading { get; set; }
+    [Parameter] public string? Error { get; set; }
+    [Parameter] public EventCallback Retry { get; set; }
+    [Parameter] public EventCallback<int> PageChanged { get; set; }
+    [Parameter, EditorRequired] public Func<string, string> Localize { get; set; } = null!;
+    [Parameter, EditorRequired] public Func<string, object?[], string> LocalizeFormat { get; set; } = null!;
+    [Parameter, EditorRequired] public Func<string?, string> DisplayValue { get; set; } = null!;
+    [Parameter, EditorRequired] public Func<DateTime?, string> FormatDate { get; set; } = null!;
+    [Parameter, EditorRequired] public Func<decimal?, string, string> FormatMoney { get; set; } = null!;
+
+    protected override void OnParametersSet() => ValidatePageContract();
+
+    private IReadOnlyList<object> Items => Kind switch
+    {
+        CustomerHistoryKind.Order => Orders?.Items.Cast<object>().ToArray() ?? [],
+        CustomerHistoryKind.Quotation => Quotations?.Items.Cast<object>().ToArray() ?? [],
+        CustomerHistoryKind.Invoice => Invoices?.Items.Cast<object>().ToArray() ?? [],
+        _ => [],
+    };
+
+    private string HeadingId => $"customer-{Kind.ToString().ToLowerInvariant()}-heading";
+    private string HeadingKey => Kind.ToString() + "s";
+    private string EmptyKey => Kind.ToString() + "sEmpty";
+
+    private int CurrentPageIndex => Kind switch
+    {
+        CustomerHistoryKind.Order => Orders?.PageIndex ?? 1,
+        CustomerHistoryKind.Quotation => Quotations?.PageIndex ?? 1,
+        CustomerHistoryKind.Invoice => Invoices?.PageIndex ?? 1,
+        _ => 1,
+    };
+
+    private int CurrentTotalPages => Kind switch
+    {
+        CustomerHistoryKind.Order => Orders?.TotalPages ?? 0,
+        CustomerHistoryKind.Quotation => Quotations?.TotalPages ?? 0,
+        CustomerHistoryKind.Invoice => Invoices?.TotalPages ?? 0,
+        _ => 0,
+    };
+
+    private int? CurrentTotalRecords => Kind switch
+    {
+        CustomerHistoryKind.Order => Orders?.TotalRecords,
+        CustomerHistoryKind.Quotation => Quotations?.TotalRecords,
+        CustomerHistoryKind.Invoice => Invoices?.TotalRecords,
+        _ => null,
+    };
+
+    private void ValidatePageContract()
+    {
+        var providedPages = (Orders is null ? 0 : 1) + (Quotations is null ? 0 : 1) + (Invoices is null ? 0 : 1);
+        var matchingPageProvided = Kind switch
+        {
+            CustomerHistoryKind.Order => Orders is not null,
+            CustomerHistoryKind.Quotation => Quotations is not null,
+            CustomerHistoryKind.Invoice => Invoices is not null,
+            _ => false,
+        };
+
+        if (providedPages != 1 || !matchingPageProvided)
+        {
+            throw new InvalidOperationException($"Customer history kind '{Kind}' requires exactly one matching page contract.");
+        }
+    }
+
+    private Task PreviousPageAsync() => RequestPageAsync(CurrentPageIndex - 1);
+    private Task NextPageAsync() => RequestPageAsync(CurrentPageIndex + 1);
+
+    private Task RequestPageAsync(int requestedPage)
+    {
+        var lastPage = Math.Max(CurrentTotalPages, 1);
+        var boundedPage = Math.Clamp(requestedPage, 1, lastPage);
+        return boundedPage == CurrentPageIndex
+            ? Task.CompletedTask
+            : PageChanged.InvokeAsync(boundedPage);
+    }
+
+    private string OrderStatus(OrderListItem order) => order.Manufactured >= order.Quantity
+        ? Localize("StatusComplete")
+        : LocalizeFormat("OrderProgress", new object?[] { order.Manufactured, order.Quantity });
+
+    private string QuotationStatus(QuotationListItem quotation) => quotation.Accepted switch
+    {
+        true => Localize("StatusAccepted"),
+        false => Localize("StatusDeclined"),
+        null => Localize("StatusOpen"),
+    };
+
+    private string RecordActivityTitle(CustomerHistoryKind kind, int id, string? label = null) => kind switch
+    {
+        CustomerHistoryKind.Order => LocalizeFormat("ViewOrderAccessible", new object?[] { id }),
+        CustomerHistoryKind.Quotation => LocalizeFormat("ViewQuotationAccessible", new object?[] { id }),
+        CustomerHistoryKind.Invoice => LocalizeFormat("ViewInvoiceAccessible", new object?[] { label ?? id.ToString(System.Globalization.CultureInfo.InvariantCulture) }),
+        _ => throw new InvalidOperationException($"Unsupported customer history kind '{kind}'."),
+    };
+
+    private string FormatInvoiceMoney(decimal? amount, string currency) =>
+        string.IsNullOrWhiteSpace(currency) ? DisplayValue(null) : FormatMoney(amount, currency);
+
+    private string DisplayReference(string prefix, int? value) => value is null
+        ? DisplayValue(null)
+        : $"{prefix}{value.Value.ToString(System.Globalization.CultureInfo.InvariantCulture)}";
+
+    private string DisplayNumber(int? value) => value?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? DisplayValue(null);
+    private string DisplayMoney(decimal? value) => value?.ToString("N2", System.Globalization.CultureInfo.CurrentCulture) ?? DisplayValue(null);
+    private string DisplayBoolean(bool value) => value ? Localize("Yes") : Localize("No");
+}

@@ -45,4 +45,6 @@
   <data name="FinanceActions" xml:space="preserve"><value>คำสั่งจัดการการเงิน</value></data>
   <data name="YearlyTrendTable" xml:space="preserve"><value>ตารางรายรับ รายจ่าย และยอดสุทธิรายเดือน หน่วยเป็นบาท</value></data>
   <data name="PaymentsTable" xml:space="preserve"><value>ตารางรายการรับและจ่ายเงิน</value></data>
+  <data name="Operations" xml:space="preserve"><value>การดำเนินงาน</value></data><data name="Actions" xml:space="preserve"><value>การดำเนินการ</value></data>
+  <data name="ViewFinance" xml:space="preserve"><value>เปิดรายการการเงิน {0}</value></data><data name="ExpandFinance" xml:space="preserve"><value>ขยายรายการการเงิน {0}</value></data><data name="CollapseFinance" xml:space="preserve"><value>ย่อรายการการเงิน {0}</value></data>
 </root>

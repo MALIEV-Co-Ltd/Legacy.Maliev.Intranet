@@ -22,6 +22,16 @@ public sealed class InvoicesProxy(HttpClient httpClient)
         return SendAsync(path, cancellationToken);
     }
 
+    /// <summary>Gets a bounded invoice page owned by one customer.</summary>
+    public Task<HttpResponseMessage> GetCustomerPageAsync(
+        int customerId,
+        InvoiceListSort sort,
+        string? search,
+        int index,
+        int size,
+        CancellationToken cancellationToken) =>
+        SendAsync($"/invoices/customers/{customerId}?sort={sort}&search={Uri.EscapeDataString(search ?? string.Empty)}&index={index}&size={size}", cancellationToken);
+
     private async Task<HttpResponseMessage> SendAsync(string path, CancellationToken cancellationToken)
     {
         using var request = new HttpRequestMessage(HttpMethod.Get, path);

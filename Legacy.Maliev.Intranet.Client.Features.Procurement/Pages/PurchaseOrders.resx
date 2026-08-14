@@ -32,4 +32,6 @@
   <data name="PurchaseOrderCreatedDate_Ascending" xml:space="preserve"><value>Created oldest first</value></data>
   <data name="PurchaseOrderCreatedDate_Descending" xml:space="preserve"><value>Created newest first</value></data>
   <data name="PurchaseOrdersTable" xml:space="preserve"><value>Purchase orders</value></data>
+  <data name="Operations" xml:space="preserve"><value>Operations</value></data><data name="Actions" xml:space="preserve"><value>Actions</value></data><data name="CreatedDate" xml:space="preserve"><value>Created</value></data><data name="ShippingMethod" xml:space="preserve"><value>Shipping</value></data>
+  <data name="ViewPurchaseOrder" xml:space="preserve"><value>View purchase order {0}</value></data><data name="ExpandPurchaseOrder" xml:space="preserve"><value>Expand purchase order {0}</value></data><data name="CollapsePurchaseOrder" xml:space="preserve"><value>Collapse purchase order {0}</value></data>
 </root>

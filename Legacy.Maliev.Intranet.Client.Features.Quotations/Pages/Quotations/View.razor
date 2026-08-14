@@ -19,7 +19,7 @@
         <MudAlert Severity="Severity.Error" aria-live="assertive">@error</MudAlert>
         <div class="d-flex flex-wrap gap-2 mt-4">
             <MudButton OnClick="LoadAsync" Variant="Variant.Filled" Color="Color.Primary">@Text["Retry"]</MudButton>
-            <MudButton Href="/Quotations/Index" Variant="Variant.Text">@Text["Back"]</MudButton>
+            <LegacyLink Href="/Quotations/Index" Role="LegacyLinkRole.Navigation" StartIcon="@Icons.Material.Filled.ArrowBack" AriaLabel="@Text["Back"]">@Text["Back"]</LegacyLink>
         </div>
     }
     else if (page is not null)
@@ -34,7 +34,7 @@
                 {
                     <MudButton Href="@quotationUri.ToString()" Target="_blank" Rel="noopener" Variant="Variant.Filled" Color="Color.Primary">@Text["ViewPdf"]</MudButton>
                 }
-                <MudButton Href="/Quotations/Index" Variant="Variant.Outlined">@Text["Back"]</MudButton>
+                <LegacyLink Href="/Quotations/Index" Role="LegacyLinkRole.Navigation" StartIcon="@Icons.Material.Filled.ArrowBack" AriaLabel="@Text["Back"]">@Text["Back"]</LegacyLink>
             </div>
         </header>
 
@@ -70,7 +70,7 @@
                         else
                         {
                             <dl class="quotation-detail-list">
-                                <div><dt>@Text["CustomerNameLabel"]</dt><dd><MudLink Href="@($"/Customers/View?id={page.Customer.Id}")">@(page.Customer.FullName)</MudLink></dd></div>
+                                <div><dt>@Text["CustomerNameLabel"]</dt><dd><LegacyLink Href="@($"/Customers/View?id={page.Customer.Id}")" Role="LegacyLinkRole.Record" AriaLabel="@(page.Customer.FullName)">@(page.Customer.FullName)</LegacyLink></dd></div>
                                 <div><dt>@Text["EmailLabel"]</dt><dd>@Value(page.Customer.Email)</dd></div>
                                 <div><dt>@Text["TelephoneLabel"]</dt><dd>@Value(page.Customer.Telephone)</dd></div>
                                 <div><dt>@Text["MobileLabel"]</dt><dd>@Value(page.Customer.Mobile)</dd></div>
@@ -93,7 +93,7 @@
                         </dl>
                         @if (page.Invoice is not null)
                         {
-                            <MudText Class="mt-3">@Text["Invoice"] <MudLink Href="@($"/Invoices/View?id={page.Invoice.Id}")">@(page.Invoice.Number)</MudLink></MudText>
+                            <MudText Class="mt-3">@Text["Invoice"] <LegacyLink Href="@($"/Invoices/View?id={page.Invoice.Id}")" Role="LegacyLinkRole.Record" AriaLabel="@($"{Text["Invoice"]} {page.Invoice.Number}")">@(page.Invoice.Number)</LegacyLink></MudText>
                         }
                     </MudPaper>
                 </section>
@@ -112,7 +112,7 @@
                             <MudList T="QuotationOrderLink">
                                 @foreach (var order in page.Orders)
                                 {
-                                    <MudListItem T="QuotationOrderLink" Value="order"><MudLink Href="@($"/Orders/View?id={order.OrderId}")">@Text["Order", order.OrderId]</MudLink></MudListItem>
+                                    <MudListItem T="QuotationOrderLink" Value="order"><LegacyLink Href="@($"/Orders/View?id={order.OrderId}")" Role="LegacyLinkRole.Record" AriaLabel="@Text["Order", order.OrderId]">@Text["Order", order.OrderId]</LegacyLink></MudListItem>
                                 }
                             </MudList>
                         }
@@ -140,7 +140,7 @@
                                         }
                                         else
                                         {
-                                            <MudLink Href="@file.Uri.ToString()" Target="_blank" rel="noopener">@file.ObjectName</MudLink>
+                                            <LegacyLink Href="@file.Uri.ToString()" Role="LegacyLinkRole.External" Target="_blank" Rel="noopener">@file.ObjectName</LegacyLink>
                                         }
                                     </MudListItem>
                                 }

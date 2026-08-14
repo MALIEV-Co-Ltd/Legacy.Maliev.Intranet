@@ -1,0 +1,5 @@
+.operational-quick-view { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(12rem, 100%), 1fr)); gap: .75rem 1rem; margin: 0; }
+.operational-quick-view > div { min-width: 0; }
+.operational-quick-view dt { color: var(--shadcn-muted-foreground); font-size: .75rem; font-weight: 600; }
+.operational-quick-view dd { margin: .25rem 0 0; overflow-wrap: break-word; }
+.mlv-mono { white-space: nowrap; }

@@ -50,4 +50,6 @@
   <data name="InvoiceTableLabel" xml:space="preserve"><value>{0} table</value></data>
   <data name="PaidStatus" xml:space="preserve"><value>Paid</value></data>
   <data name="UnpaidStatus" xml:space="preserve"><value>Unpaid</value></data>
+  <data name="Operations" xml:space="preserve"><value>Operations</value></data><data name="Actions" xml:space="preserve"><value>Actions</value></data>
+  <data name="ViewInvoice" xml:space="preserve"><value>View invoice {0}</value></data><data name="ExpandInvoice" xml:space="preserve"><value>Expand invoice {0}</value></data><data name="CollapseInvoice" xml:space="preserve"><value>Collapse invoice {0}</value></data>
 </root>

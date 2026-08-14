@@ -6,6 +6,7 @@
   <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
   <data name="PageTitle" xml:space="preserve"><value>ศูนย์ควบคุมการปฏิบัติงาน - อินทราเน็ต MALIEV</value></data>
   <data name="Heading" xml:space="preserve"><value>ศูนย์ควบคุมการปฏิบัติงาน</value></data>
+  <data name="Dashboard" xml:space="preserve"><value>แดชบอร์ด</value></data>
   <data name="Description" xml:space="preserve"><value>ข้อมูลการดำเนินงานจากระบบ CRM และ ERP เดิม โดยแสดงเฉพาะส่วนที่คุณมีสิทธิ์เข้าถึง</value></data>
   <data name="ConnectedSourcesOperational" xml:space="preserve"><value>แหล่งข้อมูลที่เชื่อมต่อทำงานเป็นปกติ</value></data>
   <data name="SourcesDegraded" xml:space="preserve"><value>แหล่งข้อมูล {0} รายการไม่พร้อมใช้งานชั่วคราว</value></data>
@@ -83,4 +84,8 @@
   <data name="Metric_purchase-orders" xml:space="preserve"><value>ใบสั่งซื้อ</value></data>
   <data name="Metric_materials" xml:space="preserve"><value>วัสดุ</value></data>
   <data name="Metric_payments" xml:space="preserve"><value>รายการทางการเงิน</value></data>
+  <data name="Manufactured" xml:space="preserve"><value>ผลิตแล้ว</value></data>
+  <data name="QuotedAmount" xml:space="preserve"><value>ยอดเสนอราคา</value></data>
+  <data name="CreatedDate" xml:space="preserve"><value>สร้างเมื่อ</value></data>
+  <data name="PaymentDate" xml:space="preserve"><value>วันที่ชำระ</value></data>
 </root>

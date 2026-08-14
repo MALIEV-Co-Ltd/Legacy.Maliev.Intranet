@@ -97,7 +97,7 @@
                 <MudButton ButtonType="ButtonType.Button" Variant="Variant.Filled" Color="Color.Primary" Disabled="@submitting" OnClick="SubmitAsync">
                     @(submitting ? Text["Submitting"] : Text["CreateMaterial"])
                 </MudButton>
-                <MudButton Href="/Materials/Index" Variant="Variant.Text" Disabled="@submitting">@Text["Cancel"]</MudButton>
+                <LegacyLink Href="/Materials/Index" Role="LegacyLinkRole.Navigation" Disabled="@submitting" AriaLabel="@Text["Cancel"]">@Text["Cancel"]</LegacyLink>
             </MudStack>
         </MudForm>
     }

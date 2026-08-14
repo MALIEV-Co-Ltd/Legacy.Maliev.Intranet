@@ -1,0 +1,48 @@
+@namespace Legacy.Maliev.Intranet.Client.Shared.Components
+@using MudBlazor
+
+@if (Disabled)
+{
+    <span class="@CssClass" aria-disabled="true" aria-label="@AriaLabel" @attributes="AdditionalAttributes">
+        @IconMarkup
+        <span class="legacy-link__label">@ChildContent</span>
+    </span>
+}
+else
+{
+    <a href="@Href" class="@CssClass" target="@Target" rel="@EffectiveRel"
+       aria-label="@AriaLabel" data-link-role="@RoleName" @attributes="AdditionalAttributes">
+        @IconMarkup
+        <span class="legacy-link__label">@ChildContent</span>
+    </a>
+}
+
+@code {
+    [Parameter, EditorRequired] public string Href { get; set; } = string.Empty;
+    [Parameter] public LegacyLinkRole Role { get; set; } = LegacyLinkRole.Inline;
+    [Parameter] public string? StartIcon { get; set; }
+    [Parameter] public string? Target { get; set; }
+    [Parameter] public string? Rel { get; set; }
+    [Parameter] public string? AriaLabel { get; set; }
+    [Parameter] public bool Disabled { get; set; }
+    [Parameter] public string? Class { get; set; }
+    [Parameter, EditorRequired] public RenderFragment? ChildContent { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)] public IReadOnlyDictionary<string, object>? AdditionalAttributes { get; set; }
+
+    private string RoleName => Role.ToString().ToLowerInvariant();
+    private string CssClass => $"legacy-link legacy-link--{RoleName} {Class}".Trim();
+    private string? EffectiveRel => string.Equals(Target, "_blank", StringComparison.OrdinalIgnoreCase)
+        ? string.Join(' ', new[] { Rel, "noopener", "noreferrer" }
+            .Where(value => !string.IsNullOrWhiteSpace(value))
+            .SelectMany(value => value!.Split(' '))
+            .Distinct())
+        : Rel;
+    private RenderFragment? IconMarkup => string.IsNullOrWhiteSpace(StartIcon) ? null : builder =>
+    {
+        builder.OpenComponent<MudIcon>(0);
+        builder.AddAttribute(1, nameof(MudIcon.Icon), StartIcon);
+        builder.AddAttribute(2, nameof(MudIcon.Size), Size.Small);
+        builder.AddAttribute(3, "aria-hidden", "true");
+        builder.CloseComponent();
+    };
+}

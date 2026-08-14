@@ -19,7 +19,7 @@ else if (page is not null)
     <header class="operations-page-header order-detail-header">
         <div><MudText Typo="Typo.h4" HtmlTag="h1">@Text["OrderHeading", page.Order.Id]</MudText><MudText Typo="Typo.body2">@Text["OrderDetails"]</MudText></div>
         <div class="order-header-actions">
-            <MudButton Href="/Orders/Index" Variant="Variant.Outlined">@Text["BackToOrders"]</MudButton>
+            <LegacyLink Href="/Orders/Index" Role="LegacyLinkRole.Navigation" StartIcon="@Icons.Material.Filled.ArrowBack" AriaLabel="@Text["BackToOrders"]">@Text["BackToOrders"]</LegacyLink>
             <MudButton Href="@($"/bff/orders/{page.Order.Id}/label")" Target="_blank" Rel="noopener" Variant="Variant.Outlined">@Text["OrderLabel"]</MudButton>
         </div>
     </header>
@@ -150,7 +150,7 @@ else if (page is not null)
             @foreach (var file in page.Files)
             {
                 <MudListItem T="OrderFileItem" Value="file">
-                    <MudLink Href="@file.Uri?.ToString()" Target="_blank" rel="noopener">@file.ObjectName</MudLink>
+                    <LegacyLink Href="@file.Uri?.ToString()" Role="LegacyLinkRole.External" Target="_blank" Rel="noopener">@file.ObjectName</LegacyLink>
                     <MudIconButton Icon="@Icons.Material.Filled.Delete" OnClick="() => RemoveFileAsync(file.Id)" Disabled="@submitting" aria-label="@Text["RemoveFile", file.ObjectName]" />
                 </MudListItem>
             }

@@ -36,4 +36,9 @@
   <data name="RequestCreatedDate_Descending" xml:space="preserve"><value>วันที่สร้าง: ใหม่ไปเก่า</value></data>
   <data name="RequestModifiedDate_Ascending" xml:space="preserve"><value>วันที่แก้ไข: เก่าไปใหม่</value></data>
   <data name="RequestModifiedDate_Descending" xml:space="preserve"><value>วันที่แก้ไข: ใหม่ไปเก่า</value></data>
+  <data name="Operations" xml:space="preserve"><value>งานปฏิบัติการ</value></data>
+  <data name="Actions" xml:space="preserve"><value>การดำเนินการ</value></data>
+  <data name="ViewQuotationRequest" xml:space="preserve"><value>เปิดคำขอใบเสนอราคา {0}</value></data>
+  <data name="ExpandQuotationRequest" xml:space="preserve"><value>ขยายรายละเอียดคำขอใบเสนอราคา {0}</value></data>
+  <data name="CollapseQuotationRequest" xml:space="preserve"><value>ย่อรายละเอียดคำขอใบเสนอราคา {0}</value></data>
 </root>

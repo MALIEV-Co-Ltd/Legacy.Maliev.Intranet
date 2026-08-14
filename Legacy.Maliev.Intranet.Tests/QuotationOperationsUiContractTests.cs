@@ -36,14 +36,16 @@ public sealed class QuotationOperationsUiContractTests
         Assert.Contains("role=\"search\"", sharedToolbar, StringComparison.Ordinal);
         Assert.Contains("quotation-request-status", requestIndex, StringComparison.Ordinal);
         Assert.Contains("aria-label=\"@Text[\"PaginationLabel\"]\"", requestIndex, StringComparison.Ordinal);
-        Assert.Contains("aria-describedby=\"quotation-request-table-summary\"", requestIndex, StringComparison.Ordinal);
+        Assert.Contains("AriaDescribedBy=\"quotation-request-table-summary\"", requestIndex, StringComparison.Ordinal);
+        Assert.DoesNotContain("<section class=\"quotation-request-table-region\" aria-describedby=", requestIndex, StringComparison.Ordinal);
+        Assert.Contains("AriaDescribedBy=\"quotation-table-caption\"", quotationIndex, StringComparison.Ordinal);
 
         var requestView = Read(feature, "QuotationRequests", "View.razor");
         Assert.Contains("X-CSRF-TOKEN", requestView, StringComparison.Ordinal);
         Assert.Contains("HttpMethod.Put", requestView, StringComparison.Ordinal);
         Assert.Contains("CustomerDetails", requestView, StringComparison.Ordinal);
         Assert.Contains("RequestDetails", requestView, StringComparison.Ordinal);
-        Assert.Contains("rel=\"noopener\"", requestView, StringComparison.Ordinal);
+        Assert.Contains("Rel=\"noopener\"", requestView, StringComparison.Ordinal);
         Assert.Contains("aria-busy", requestView, StringComparison.Ordinal);
     }
 

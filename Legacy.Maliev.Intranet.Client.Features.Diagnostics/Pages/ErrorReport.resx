@@ -33,4 +33,6 @@
   <data name="LogLevel_Ascending" xml:space="preserve"><value>Level ascending</value></data>
   <data name="LogLevel_Descending" xml:space="preserve"><value>Level descending</value></data>
   <data name="DiagnosticsTable" xml:space="preserve"><value>Recent diagnostic events</value></data>
+  <data name="Actions" xml:space="preserve"><value>Actions</value></data><data name="ViewDiagnostic" xml:space="preserve"><value>View diagnostic {0}</value></data>
+  <data name="ExpandDiagnostic" xml:space="preserve"><value>Expand diagnostic {0}</value></data><data name="CollapseDiagnostic" xml:space="preserve"><value>Collapse diagnostic {0}</value></data>
 </root>

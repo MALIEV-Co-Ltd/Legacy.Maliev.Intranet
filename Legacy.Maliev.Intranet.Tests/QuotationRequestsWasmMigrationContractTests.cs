@@ -23,6 +23,12 @@ public sealed class QuotationRequestsWasmMigrationContractTests
         var bffProgram = File.ReadAllText(Path.Combine(root, "Legacy.Maliev.Intranet.Bff", "Program.cs"));
 
         Assert.Contains("@page \"/QuotationRequests/Index\"", index, StringComparison.Ordinal);
+        Assert.Contains("<OperationalTable", index, StringComparison.Ordinal);
+        Assert.Contains("<PageBreadcrumbs", index, StringComparison.Ordinal);
+        Assert.Contains("/QuotationRequests/View?id=", index, StringComparison.Ordinal);
+        Assert.Contains("ExpandQuotationRequest", index, StringComparison.Ordinal);
+        Assert.Contains("CollapseQuotationRequest", index, StringComparison.Ordinal);
+        Assert.Contains("data-priority=\"supporting\"", index, StringComparison.Ordinal);
         Assert.Contains("@page \"/QuotationRequests/View\"", view, StringComparison.Ordinal);
         Assert.Contains("X-CSRF-TOKEN", view, StringComparison.Ordinal);
         Assert.Contains("X-Expected-Modified-Date", proxy, StringComparison.Ordinal);

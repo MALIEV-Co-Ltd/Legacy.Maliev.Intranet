@@ -7,7 +7,9 @@
 
 <PageTitle>@Text["PageTitle"]</PageTitle>
 
-<MudContainer MaxWidth="MaxWidth.ExtraLarge">
+<div class="mlv-module-shell quotation-requests-page">
+    <div class="mlv-page-body">
+    <PageBreadcrumbs Items="@Breadcrumbs" />
     <header class="operations-page-header">
         <div>
             <MudText Typo="Typo.h4" HtmlTag="h1">@Text["Heading"]</MudText>
@@ -44,29 +46,52 @@
         <MudText id="quotation-request-table-summary" Typo="Typo.caption" Class="mb-3">
             @Text["RecordsSummary", page.TotalRecords]
         </MudText>
-        <MudTable Items="page.Items" Hover="true" Breakpoint="Breakpoint.Sm" aria-label="@Text["TableCaption"]" aria-describedby="quotation-request-table-summary">
+        <section class="quotation-request-table-region">
+        <OperationalTable TItem="QuotationRequestItem"
+                          TKey="int"
+                          Items="@(page.Items)"
+                          KeySelector="@(context => context.Id)"
+                          TableLabel="@Text["TableCaption"]"
+                          AriaDescribedBy="quotation-request-table-summary"
+                          ColumnCount="6"
+                          State="@tableState"
+                          DetailHref="@(context => $"/QuotationRequests/View?id={context.Id}")"
+                          DetailAriaLabel="@(context => Text["ViewQuotationRequest", context.Id])"
+                          ExpandAriaLabel="@(context => Text["ExpandQuotationRequest", context.Id])"
+                          CollapseAriaLabel="@(context => Text["CollapseQuotationRequest", context.Id])">
             <HeaderContent>
-                <MudTh>@Text["Id"]</MudTh>
-                <MudTh>@Text["Customer"]</MudTh>
-                <MudTh>@Text["Company"]</MudTh>
-                <MudTh>@Text["Status"]</MudTh>
-                <MudTh>@Text["Created"]</MudTh>
+                <tr>
+                    <th class="operational-table__identity quotation-request-id" data-priority="essential">@Text["Id"]</th>
+                    <th class="quotation-request-customer" data-priority="essential">@Text["Customer"]</th>
+                    <th class="quotation-request-status-cell" data-priority="essential">@Text["Status"]</th>
+                    <th class="quotation-request-created" data-priority="essential">@Text["Created"]</th>
+                    <th class="quotation-request-company" data-priority="supporting">@Text["Company"]</th>
+                    <th class="operational-table__actions-heading"><span class="visually-hidden">@Text["Actions"]</span></th>
+                </tr>
             </HeaderContent>
-            <RowTemplate>
-                <MudTd DataLabel="@Text["Id"]"><MudLink Href="@($"/QuotationRequests/View?id={context.Id}")">@context.Id</MudLink></MudTd>
-                <MudTd DataLabel="@Text["Customer"]">@Name(context)</MudTd>
-                <MudTd DataLabel="@Text["Company"]">@Fallback(context.CompanyName)</MudTd>
-                <MudTd DataLabel="@Text["Status"]"><span class="@StatusClass(context.Done)">@(context.Done == true ? Text["Done"] : Text["Open"])</span></MudTd>
-                <MudTd DataLabel="@Text["Created"]">@Format(context.CreatedDate)</MudTd>
-            </RowTemplate>
-        </MudTable>
+            <RowContent Context="context">
+                <td class="operational-table__identity quotation-request-id mlv-mono" data-priority="essential">@context.Id</td>
+                <td class="quotation-request-customer" data-priority="essential" title="@Name(context)">@Name(context)</td>
+                <td class="quotation-request-status-cell" data-priority="essential"><span class="@StatusClass(context.Done)">@(context.Done == true ? Text["Done"] : Text["Open"])</span></td>
+                <td class="quotation-request-created" data-priority="essential">@Format(context.CreatedDate)</td>
+                <td class="quotation-request-company" data-priority="supporting" title="@Fallback(context.CompanyName)">@Fallback(context.CompanyName)</td>
+            </RowContent>
+            <QuickViewContent Context="context">
+                <dl class="quotation-request-quick-view">
+                    <div><dt>@Text["Customer"]</dt><dd>@Name(context)</dd></div>
+                    <div><dt>@Text["Company"]</dt><dd>@Fallback(context.CompanyName)</dd></div>
+                </dl>
+            </QuickViewContent>
+        </OperationalTable>
+        </section>
         <nav class="d-flex justify-space-between align-center mt-4" aria-label="@Text["PaginationLabel"]">
             <MudButton Disabled="@(!page.HasPreviousPage)" OnClick="PreviousAsync">@Text["Previous"]</MudButton>
             <MudText aria-live="polite" aria-atomic="true">@Text["Page", page.PageIndex, page.TotalPages, page.TotalRecords]</MudText>
             <MudButton Disabled="@(!page.HasNextPage)" OnClick="NextAsync">@Text["Next"]</MudButton>
         </nav>
     }
-</MudContainer>
+    </div>
+</div>
 
 @code {
     [SupplyParameterFromQuery] public string? Search { get; set; }
@@ -77,6 +102,7 @@
     private QuotationRequestPage? page;
     private static readonly int[] StandardPageSizes = [10, 25, 50, 100, 250];
     private readonly LatestRequestGate requestGate = new();
+    private readonly OperationalTableState<int> tableState = new();
     private bool loading = true;
     private string? error;
     private QuotationRequestSort sortInput;
@@ -85,6 +111,11 @@
         new(null, QuotationRequestSort.RequestCreatedDate_Descending, 25);
     private IReadOnlyList<ListToolbarOption<QuotationRequestSort>> ToolbarSortOptions =>
         Enum.GetValues<QuotationRequestSort>().Select(option => new ListToolbarOption<QuotationRequestSort>(option, Text[option.ToString()])).ToArray();
+    private IReadOnlyList<PageBreadcrumbItem> Breadcrumbs =>
+    [
+        new(Text["Operations"], "/Dashboard"),
+        new(Text["Heading"]),
+    ];
 
     protected override async Task OnParametersSetAsync()
     {
@@ -99,6 +130,7 @@
     private async Task LoadAsync()
     {
         using var lease = requestGate.Begin();
+        tableState.Clear();
         loading = true;
         error = null;
         try
@@ -157,6 +189,7 @@
 
     private Task NavigateAsync(int index, string? search, QuotationRequestSort sort, int size, bool replace = false)
     {
+        tableState.Clear();
         Navigation.NavigateTo($"/QuotationRequests/Index?search={Uri.EscapeDataString(search ?? string.Empty)}&sort={sort}&index={index}&size={Math.Clamp(size, 1, 250)}", replace: replace);
         return Task.CompletedTask;
     }

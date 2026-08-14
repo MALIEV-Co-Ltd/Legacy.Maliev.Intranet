@@ -1,0 +1,116 @@
+@namespace Legacy.Maliev.Intranet.Client.Features.Customers.Components
+
+<div class="customer-overview">
+    <div class="customer-overview__layout">
+        <section class="customer-overview__section customer-overview__primary" aria-labelledby="customer-overview-contact-heading">
+            <div class="customer-overview__section-header">
+                <MudText Typo="Typo.h6" HtmlTag="h2" id="customer-overview-contact-heading" Class="customer-overview__section-title">
+                    @Localize("Contact")
+                </MudText>
+                @if (CanEdit && !Editing)
+                {
+                    <MudButton Variant="Variant.Outlined"
+                               Color="Color.Primary"
+                               Disabled="@Submitting"
+                               OnClick="BeginEdit"
+                               aria-label="@Localize("EditCustomer")">
+                        @Localize("EditCustomer")
+                    </MudButton>
+                }
+            </div>
+
+            @if (Editing)
+            {
+                <div class="customer-overview__form-grid">
+                    <MudTextField @bind-Value="EditModel.FirstName" For="@(() => EditModel.FirstName)" Label="@Localize("FirstName")" Required="true" Variant="Variant.Outlined" />
+                    <MudTextField @bind-Value="EditModel.LastName" For="@(() => EditModel.LastName)" Label="@Localize("LastName")" Required="true" Variant="Variant.Outlined" />
+                    <MudTextField @bind-Value="EditModel.Email" For="@(() => EditModel.Email)" Label="@Localize("Email")" InputType="InputType.Email" Required="true" Variant="Variant.Outlined" />
+                    <MudTextField @bind-Value="EditModel.Telephone" For="@(() => EditModel.Telephone)" Label="@Localize("Telephone")" InputType="InputType.Telephone" Variant="Variant.Outlined" />
+                    <MudTextField @bind-Value="EditModel.Mobile" For="@(() => EditModel.Mobile)" Label="@Localize("Mobile")" InputType="InputType.Telephone" Variant="Variant.Outlined" />
+                    <MudTextField @bind-Value="EditModel.Fax" For="@(() => EditModel.Fax)" Label="@Localize("Fax")" Variant="Variant.Outlined" />
+                    <MudDatePicker @bind-Date="EditModel.DateOfBirth" For="@(() => EditModel.DateOfBirth)" Label="@Localize("DateOfBirth")" Variant="Variant.Outlined" />
+                </div>
+                <div class="customer-overview__form-actions">
+                    <MudButton ButtonType="ButtonType.Button" Variant="Variant.Filled" Color="Color.Primary" Disabled="@Submitting" OnClick="Save">
+                        @(Submitting ? Localize("Saving") : Localize("SaveChanges"))
+                    </MudButton>
+                    <MudButton ButtonType="ButtonType.Button" Variant="Variant.Text" Disabled="@Submitting" OnClick="CancelEdit">
+                        @Localize("Cancel")
+                    </MudButton>
+                </div>
+            }
+            else
+            {
+                <dl class="customer-overview__details">
+                    <div><dt>@Localize("Email")</dt><dd><LegacyLink Href="@($"mailto:{Customer.Email}")" Role="LegacyLinkRole.Inline">@Customer.Email</LegacyLink></dd></div>
+                    <div><dt>@Localize("Telephone")</dt><dd>@DisplayValue(Customer.Telephone)</dd></div>
+                    <div><dt>@Localize("Mobile")</dt><dd>@DisplayValue(Customer.Mobile)</dd></div>
+                    <div><dt>@Localize("Fax")</dt><dd>@DisplayValue(Customer.Fax)</dd></div>
+                    <div><dt>@Localize("DateOfBirth")</dt><dd>@DisplayDate(Customer.DateOfBirth)</dd></div>
+                </dl>
+            }
+        </section>
+
+        <aside class="customer-overview__secondary" aria-label="@Localize("Company")">
+            <section class="customer-overview__section" aria-labelledby="customer-overview-company-heading">
+                <MudText Typo="Typo.h6" HtmlTag="h2" id="customer-overview-company-heading" Class="customer-overview__section-title">
+                    @Localize("Company")
+                </MudText>
+                @if (Customer.Company is null)
+                {
+                    <MudText Class="customer-overview__empty">@Localize("NotAvailable")</MudText>
+                }
+                else
+                {
+                    <dl class="customer-overview__details">
+                        <div><dt>@Localize("CompanyName")</dt><dd>@Customer.Company.Name</dd></div>
+                        <div><dt>@Localize("TaxNumber")</dt><dd>@DisplayValue(Customer.Company.TaxNumber)</dd></div>
+                        <div><dt>@Localize("Registrar")</dt><dd>@DisplayValue(Customer.Company.Registrar)</dd></div>
+                    </dl>
+                }
+            </section>
+
+            <section class="customer-overview__section customer-overview__record" aria-labelledby="customer-overview-record-heading">
+                <MudText Typo="Typo.h6" HtmlTag="h2" id="customer-overview-record-heading" Class="customer-overview__section-title">
+                    @Localize("RecordInformation")
+                </MudText>
+                <dl class="customer-overview__details">
+                    <div><dt>@Localize("CreatedDate")</dt><dd>@DisplayDateTime(Customer.CreatedDate)</dd></div>
+                    <div><dt>@Localize("ModifiedDate")</dt><dd>@DisplayDateTime(Customer.ModifiedDate)</dd></div>
+                </dl>
+            </section>
+        </aside>
+    </div>
+
+    <div class="customer-overview__addresses">
+        <section class="customer-overview__section" aria-labelledby="customer-overview-billing-heading">
+            <MudText Typo="Typo.h6" HtmlTag="h2" id="customer-overview-billing-heading" Class="customer-overview__section-title">
+                @Localize("BillingAddress")
+            </MudText>
+            <address class="customer-overview__address">@DisplayAddress(Customer.BillingAddress)</address>
+        </section>
+        <section class="customer-overview__section" aria-labelledby="customer-overview-shipping-heading">
+            <MudText Typo="Typo.h6" HtmlTag="h2" id="customer-overview-shipping-heading" Class="customer-overview__section-title">
+                @Localize("ShippingAddress")
+            </MudText>
+            <address class="customer-overview__address">@DisplayAddress(Customer.ShippingAddress)</address>
+        </section>
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public CustomerDetail Customer { get; set; } = null!;
+    [Parameter, EditorRequired] public CustomerUpdateRequest EditModel { get; set; } = null!;
+    [Parameter] public bool CanEdit { get; set; }
+    [Parameter] public bool Editing { get; set; }
+    [Parameter] public bool Submitting { get; set; }
+    [Parameter] public EventCallback BeginEdit { get; set; }
+    [Parameter] public EventCallback Save { get; set; }
+    [Parameter] public EventCallback CancelEdit { get; set; }
+    [Parameter, EditorRequired] public Func<string, string> Localize { get; set; } = null!;
+    [Parameter, EditorRequired] public Func<string?, string> DisplayValue { get; set; } = null!;
+    [Parameter, EditorRequired] public Func<DateTime?, string> DisplayDate { get; set; } = null!;
+    [Parameter, EditorRequired] public Func<DateTime?, string> DisplayDateTime { get; set; } = null!;
+    [Parameter, EditorRequired] public Func<CustomerAddressDetail?, string> DisplayAddress { get; set; } = null!;
+
+}

@@ -6,11 +6,11 @@
 .legacy-quick-action:focus-visible { outline: none; box-shadow: var(--legacy-focus-ring); }
 
 @media (max-width: 900px) {
-    .legacy-quick-action:not(.primary) { display: none; }
-}
-
-@media (max-width: 520px) {
     .legacy-quick-actions { gap: 4px; }
     .legacy-quick-action { width: 44px; min-width: 44px; padding: 8px; }
     .legacy-quick-action span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+}
+
+@media (max-width: 520px) {
+    .legacy-quick-actions { max-width: 100%; }
 }

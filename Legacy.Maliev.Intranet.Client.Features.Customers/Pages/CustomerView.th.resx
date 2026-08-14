@@ -30,6 +30,7 @@
   <data name="CreatedDate" xml:space="preserve"><value>วันที่สร้าง</value></data>
   <data name="ModifiedDate" xml:space="preserve"><value>แก้ไขครั้งล่าสุด</value></data>
   <data name="BackToCustomers" xml:space="preserve"><value>กลับไปยังรายชื่อลูกค้า</value></data>
+  <data name="Customers" xml:space="preserve"><value>ลูกค้า</value></data>
   <data name="NotAvailable" xml:space="preserve"><value>ไม่มีข้อมูล</value></data>
   <data name="Forbidden" xml:space="preserve"><value>คุณไม่ได้รับอนุญาตให้ดูลูกค้ารายนี้</value></data>
   <data name="ForbiddenUpdate" xml:space="preserve"><value>คุณไม่ได้รับอนุญาตให้อัปเดตลูกค้ารายนี้</value></data>
@@ -41,4 +42,62 @@
   <data name="Conflict" xml:space="preserve"><value>ข้อมูลลูกค้าถูกแก้ไขจากที่อื่น โปรดโหลดข้อมูลล่าสุดแล้วลองอีกครั้ง</value></data>
   <data name="SaveFailed" xml:space="preserve"><value>บันทึกข้อมูลลูกค้าไม่สำเร็จ</value></data>
   <data name="Retry" xml:space="preserve"><value>ลองอีกครั้ง</value></data>
+  <data name="CustomerWorkspaceTabs" xml:space="preserve"><value>พื้นที่ทำงานของลูกค้า</value></data>
+  <data name="Overview" xml:space="preserve"><value>ภาพรวม</value></data>
+  <data name="Activity" xml:space="preserve"><value>กิจกรรม</value></data>
+  <data name="Orders" xml:space="preserve"><value>คำสั่งซื้อ</value></data>
+  <data name="Quotations" xml:space="preserve"><value>ใบเสนอราคา</value></data>
+  <data name="Invoices" xml:space="preserve"><value>ใบแจ้งหนี้</value></data>
+  <data name="OrderHistorySubject" xml:space="preserve"><value>คำสั่งซื้อ</value></data>
+  <data name="QuotationHistorySubject" xml:space="preserve"><value>ใบเสนอราคา</value></data>
+  <data name="InvoiceHistorySubject" xml:space="preserve"><value>ใบแจ้งหนี้</value></data>
+  <data name="ActivityLoading" xml:space="preserve"><value>กำลังโหลดกิจกรรมของลูกค้า</value></data>
+  <data name="HistoryLoading" xml:space="preserve"><value>กำลังโหลดประวัติลูกค้า</value></data>
+  <data name="ActivityEmpty" xml:space="preserve"><value>ยังไม่มีกิจกรรมล่าสุดของลูกค้ารายนี้</value></data>
+  <data name="OrdersEmpty" xml:space="preserve"><value>ยังไม่มีคำสั่งซื้อของลูกค้ารายนี้</value></data>
+  <data name="QuotationsEmpty" xml:space="preserve"><value>ยังไม่มีใบเสนอราคาของลูกค้ารายนี้</value></data>
+  <data name="InvoicesEmpty" xml:space="preserve"><value>ยังไม่มีใบแจ้งหนี้ของลูกค้ารายนี้</value></data>
+  <data name="HistoryResultCount" xml:space="preserve"><value>{0} รายการ</value></data>
+  <data name="HistoryRateLimited" xml:space="preserve"><value>มีคำขอประวัติ{0}มากเกินไป โปรดรอสักครู่แล้วลองอีกครั้ง</value></data>
+  <data name="HistoryInvalidResponse" xml:space="preserve"><value>ข้อมูลประวัติ{0}ไม่ถูกต้อง โปรดลองอีกครั้ง</value></data>
+  <data name="HistoryUnavailable" xml:space="preserve"><value>ประวัติ{0}ไม่พร้อมใช้งานชั่วคราว</value></data>
+  <data name="ActivitySourceWarnings" xml:space="preserve"><value>คำเตือนเกี่ยวกับแหล่งข้อมูลกิจกรรม</value></data>
+  <data name="ActivitySourceWarning" xml:space="preserve"><value>{0}: {1}</value></data>
+  <data name="SourceStateForbidden" xml:space="preserve"><value>ไม่มีสิทธิ์เข้าถึง</value></data>
+  <data name="SourceStateRateLimited" xml:space="preserve"><value>มีคำขอมากเกินไป</value></data>
+  <data name="SourceStateUnavailable" xml:space="preserve"><value>ไม่พร้อมใช้งานชั่วคราว</value></data>
+  <data name="SourceStateInvalidResponse" xml:space="preserve"><value>ข้อมูลตอบกลับไม่ถูกต้อง</value></data>
+  <data name="StatusInProgress" xml:space="preserve"><value>กำลังดำเนินการ</value></data>
+  <data name="StatusComplete" xml:space="preserve"><value>เสร็จสมบูรณ์</value></data>
+  <data name="StatusOpen" xml:space="preserve"><value>เปิดอยู่</value></data>
+  <data name="StatusAccepted" xml:space="preserve"><value>ยอมรับแล้ว</value></data>
+  <data name="StatusDeclined" xml:space="preserve"><value>ปฏิเสธแล้ว</value></data>
+  <data name="StatusPaid" xml:space="preserve"><value>ชำระแล้ว</value></data>
+  <data name="StatusOutstanding" xml:space="preserve"><value>ค้างชำระ</value></data>
+  <data name="OrderProgress" xml:space="preserve"><value>เสร็จแล้ว {0} จาก {1}</value></data>
+  <data name="OrderNumber" xml:space="preserve"><value>คำสั่งซื้อ #{0}</value></data>
+  <data name="QuotationNumber" xml:space="preserve"><value>ใบเสนอราคา #{0}</value></data>
+  <data name="InvoiceNumber" xml:space="preserve"><value>ใบแจ้งหนี้ #{0}</value></data>
+  <data name="ViewOrderAccessible" xml:space="preserve"><value>ดูคำสั่งซื้อ {0}</value></data>
+  <data name="ViewQuotationAccessible" xml:space="preserve"><value>ดูใบเสนอราคา {0}</value></data>
+  <data name="ViewInvoiceAccessible" xml:space="preserve"><value>ดูใบแจ้งหนี้ {0}</value></data>
+  <data name="Record" xml:space="preserve"><value>รายการ</value></data>
+  <data name="Name" xml:space="preserve"><value>ชื่อ</value></data>
+  <data name="Status" xml:space="preserve"><value>สถานะ</value></data>
+  <data name="PromisedDate" xml:space="preserve"><value>วันที่สัญญาส่งมอบ</value></data>
+  <data name="ExpirationDate" xml:space="preserve"><value>วันหมดอายุ</value></data>
+  <data name="Period" xml:space="preserve"><value>ระยะเวลา</value></data>
+  <data name="PeriodDays" xml:space="preserve"><value>{0} วัน</value></data>
+  <data name="Total" xml:space="preserve"><value>รวม</value></data>
+  <data name="HistoryPagination" xml:space="preserve"><value>การแบ่งหน้าของ{0}</value></data>
+  <data name="PreviousPage" xml:space="preserve"><value>หน้าก่อนหน้า</value></data>
+  <data name="NextPage" xml:space="preserve"><value>หน้าถัดไป</value></data>
+  <data name="PageOf" xml:space="preserve"><value>หน้า {0} จาก {1}</value></data>
+  <data name="References" xml:space="preserve"><value>ข้อมูลอ้างอิง</value></data>
+  <data name="FinancialAndDates" xml:space="preserve"><value>การเงินและวันที่</value></data>
+  <data name="Amounts" xml:space="preserve"><value>จำนวนเงิน</value></data>
+  <data name="TermsAndDates" xml:space="preserve"><value>เงื่อนไขและวันที่</value></data>
+  <data name="Payment" xml:space="preserve"><value>การชำระเงิน</value></data>
+  <data name="Yes" xml:space="preserve"><value>ใช่</value></data>
+  <data name="No" xml:space="preserve"><value>ไม่</value></data>
 </root>

@@ -1,3 +1,5 @@
+@using Legacy.Maliev.Intranet.Client.Shared.Components
+
 <article class="dashboard-metric-card">
     <div class="dashboard-metric-icon" aria-hidden="true">
         <MudIcon Icon="@Icon" />
@@ -5,7 +7,7 @@
     <div class="dashboard-metric-copy">
         <span class="dashboard-metric-label">@Label</span>
         <strong class="dashboard-metric-value">@Value</strong>
-        <a class="dashboard-metric-link" href="@NavigateTo">@LinkText <span aria-hidden="true">→</span></a>
+        <LegacyLink Href="@NavigateTo" Role="LegacyLinkRole.Navigation" AriaLabel="@LinkText" Class="dashboard-metric-link">@LinkText <span aria-hidden="true">→</span></LegacyLink>
     </div>
 </article>
 

@@ -21,7 +21,9 @@ public sealed class FinancesIndexWasmMigrationContractTests
         var page = File.ReadAllText(pagePath);
         Assert.Contains("@page \"/Finances/Index\"", page, StringComparison.Ordinal);
         Assert.Contains("/bff/finances", page, StringComparison.Ordinal);
-        Assert.Contains("MudTable", page, StringComparison.Ordinal);
+        Assert.Contains("OperationalTable", page, StringComparison.Ordinal);
+        Assert.Contains("/Finances/View?id=", page, StringComparison.Ordinal);
+        Assert.Contains("AnalyticalMonthlySummary", page, StringComparison.Ordinal);
         Assert.Contains("Legacy.Maliev.Intranet.Client.Features.Accounting.wasm", clientProject, StringComparison.Ordinal);
         Assert.Contains("Finances/", app, StringComparison.Ordinal);
         Assert.Contains("LegacyEmployeePermissions.AccountingRead", bff, StringComparison.Ordinal);
