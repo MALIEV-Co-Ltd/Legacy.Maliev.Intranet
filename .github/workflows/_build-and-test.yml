@@ -48,6 +48,7 @@ jobs:
           # The shared action tests solution projects concurrently by default. Keep the
           # Playwright fixture isolated from the long-running integration test host.
           DOTNET_PROCESSOR_COUNT: '1'
+          GITHUB_TOKEN: ${{ github.token }}
         with:
           solution: Legacy.Maliev.Intranet.slnx
           use-local-maliev-dependencies: 'true'
