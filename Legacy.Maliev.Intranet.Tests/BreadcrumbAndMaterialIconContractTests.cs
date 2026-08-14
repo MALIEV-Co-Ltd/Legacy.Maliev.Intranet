@@ -502,11 +502,16 @@ public sealed class BreadcrumbAndMaterialIconContractTests : BunitContext
 
         foreach (var approval in ApprovedInlineSvgs)
         {
+            var normalizedSource = NormalizeLineEndings(filesByPath.TryGetValue(approval.Path, out var approvedSourceFiles)
+                && approvedSourceFiles.Length == 1
+                    ? approvedSourceFiles[0].Source
+                    : string.Empty);
+            var normalizedMarkup = NormalizeLineEndings(approval.Markup);
             if (!string.Equals(approval.Path, NormalizeRelativePath(approval.Path), StringComparison.Ordinal)
                 || string.IsNullOrWhiteSpace(approval.Purpose)
-                || !filesByPath.TryGetValue(approval.Path, out var sourceFiles)
-                || sourceFiles.Length != 1
-                || CountOccurrences(sourceFiles[0].Source, approval.Markup) != 1)
+                || approvedSourceFiles is null
+                || approvedSourceFiles.Length != 1
+                || CountOccurrences(normalizedSource, normalizedMarkup) != 1)
             {
                 violations.Add(approval.Path);
             }
@@ -615,16 +620,17 @@ public sealed class BreadcrumbAndMaterialIconContractTests : BunitContext
 
     private static bool HasUnapprovedInlineOrDataSvg(InventoryFile file)
     {
-        var sourceWithoutApprovals = file.Source;
+        var sourceWithoutApprovals = NormalizeLineEndings(file.Source);
         foreach (var approved in ApprovedInlineSvgs.Where(approved =>
                      string.Equals(approved.Path, file.Path, StringComparison.OrdinalIgnoreCase)))
         {
-            if (CountOccurrences(sourceWithoutApprovals, approved.Markup) != 1)
+            var normalizedMarkup = NormalizeLineEndings(approved.Markup);
+            if (CountOccurrences(sourceWithoutApprovals, normalizedMarkup) != 1)
             {
                 return true;
             }
 
-            sourceWithoutApprovals = sourceWithoutApprovals.Replace(approved.Markup, string.Empty, StringComparison.Ordinal);
+            sourceWithoutApprovals = sourceWithoutApprovals.Replace(normalizedMarkup, string.Empty, StringComparison.Ordinal);
         }
 
         foreach (Match match in Regex.Matches(
@@ -669,6 +675,8 @@ public sealed class BreadcrumbAndMaterialIconContractTests : BunitContext
 
         return count;
     }
+
+    private static string NormalizeLineEndings(string source) => source.ReplaceLineEndings("\n");
 
     private static bool IsApprovedSvgAsset(InventoryFile file) =>
         ApprovedSvgAssets.TryGetValue(file.Path, out var approved)
