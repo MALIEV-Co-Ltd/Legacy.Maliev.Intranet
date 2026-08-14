@@ -196,6 +196,7 @@ public sealed class OperationalTableMigrationBrowserTests(
 
         await page.GetByRole(AriaRole.Button, new() { Name = expandName }).ClickAsync();
         Assert.Equal(1, await page.Locator(".operational-table__quick-view").CountAsync());
+        await page.WaitForTimeoutAsync(200);
         await page.Locator(".list-toolbar__refresh").ClickAsync();
         await page.WaitForFunctionAsync("() => document.querySelectorAll('.operational-table__quick-view').length === 0");
         Assert.True(errors.Count == 0, string.Join(Environment.NewLine, errors));
