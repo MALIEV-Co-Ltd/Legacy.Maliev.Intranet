@@ -25,6 +25,10 @@ public sealed class InvoicesCreateWasmMigrationContractTests
         Assert.Contains("X-CSRF-TOKEN", page, StringComparison.Ordinal);
         Assert.Contains("Idempotency-Key", page, StringComparison.Ordinal);
         Assert.Contains("Guid.NewGuid", page, StringComparison.Ordinal);
+        Assert.Contains("<EditForm", page, StringComparison.Ordinal);
+        Assert.Contains("<ShadcnTable", page, StringComparison.Ordinal);
+        Assert.Contains("<AccountingInputField", page, StringComparison.Ordinal);
+        Assert.DoesNotContain("<Mud", page, StringComparison.Ordinal);
         Assert.Contains("AddEndpointFilter<AntiforgeryValidationFilter>()", program, StringComparison.Ordinal);
         Assert.Contains("LegacyEmployeePermissions.AccountingCreate", program, StringComparison.Ordinal);
         Assert.DoesNotContain("jquery", page, StringComparison.OrdinalIgnoreCase);

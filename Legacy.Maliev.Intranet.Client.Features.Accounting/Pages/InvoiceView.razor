@@ -6,145 +6,80 @@
 
 <PageTitle>@Text["PageTitle", Id ?? 0]</PageTitle>
 
-<MudContainer MaxWidth="MaxWidth.Large">
+<main class="invoice-detail">
     @if (loading)
     {
-        <div role="status" aria-live="polite">
-            <MudProgressLinear Indeterminate="true" Color="Color.Primary" aria-label="@Text["Loading"]" />
-            <span class="visually-hidden">@Text["Loading"]</span>
-        </div>
+        <div role="status" aria-live="polite"><ShadcnSpinner Label="@Text["Loading"]" Size="1.25rem" /><span>@Text["Loading"]</span></div>
     }
     else if (!string.IsNullOrWhiteSpace(error))
     {
-        <MudAlert Severity="Severity.Error" aria-live="assertive">@error</MudAlert>
-        <div class="d-flex flex-wrap gap-2 mt-4">
-            <MudButton OnClick="LoadAsync" Variant="Variant.Filled" Color="Color.Primary">@Text["Retry"]</MudButton>
-            <LegacyLink Href="/Invoices/Index" Role="LegacyLinkRole.Navigation" StartIcon="@Icons.Material.Filled.ArrowBack" AriaLabel="@Text["Back"]">@Text["Back"]</LegacyLink>
-        </div>
+        <ShadcnAlert Variant="ShadcnAlertVariant.Destructive" AlertRole="ShadcnAlertRole.Alert"><ShadcnAlertDescription>@error</ShadcnAlertDescription></ShadcnAlert>
+        <div class="invoice-detail__actions"><ShadcnButton OnClick="LoadAsync">@Text["Retry"]</ShadcnButton><LegacyLink Href="/Invoices/Index" Role="LegacyLinkRole.Navigation" AriaLabel="@Text["Back"]">@Text["Back"]</LegacyLink></div>
     }
     else if (detailPage is not null)
     {
-        <div class="operations-page-header d-flex flex-wrap align-center justify-space-between gap-3 mb-4">
-            <MudText Typo="Typo.h4" HtmlTag="h1">@Text["Heading", detailPage.Invoice.Number]</MudText>
-            <LegacyLink Href="/Invoices/Index" Role="LegacyLinkRole.Navigation" StartIcon="@Icons.Material.Filled.ArrowBack" AriaLabel="@Text["Back"]">@Text["Back"]</LegacyLink>
-        </div>
-        @if (!string.IsNullOrWhiteSpace(notice)) { <MudAlert Severity="Severity.Success" Class="mb-4" aria-live="polite">@notice</MudAlert> }
+        <div class="operations-page-header"><h1>@Text["Heading", detailPage.Invoice.Number]</h1><LegacyLink Href="/Invoices/Index" Role="LegacyLinkRole.Navigation" AriaLabel="@Text["Back"]">@Text["Back"]</LegacyLink></div>
+        @if (!string.IsNullOrWhiteSpace(notice)) { <ShadcnAlert AlertRole="ShadcnAlertRole.Status"><ShadcnAlertDescription>@notice</ShadcnAlertDescription></ShadcnAlert> }
 
-        <MudPaper Class="pa-4 mb-4">
-            <MudGrid>
-                <MudItem xs="12" md="4"><MudText Typo="Typo.caption">@Text["InvoiceId"]</MudText><MudText>@detailPage.Invoice.Id</MudText></MudItem>
-                <MudItem xs="12" md="4"><MudText Typo="Typo.caption">@Text["CustomerId"]</MudText><LegacyLink Href="@($"/Customers/View?id={detailPage.Invoice.CustomerId}")" Role="LegacyLinkRole.Record" AriaLabel="@($"{Text["CustomerId"]} {detailPage.Invoice.CustomerId}")">@detailPage.Invoice.CustomerId</LegacyLink></MudItem>
-                <MudItem xs="12" md="4"><MudText Typo="Typo.caption">@Text["CreatedDate"]</MudText><MudText>@FormatDate(detailPage.Invoice.CreatedDate)</MudText></MudItem>
-                <MudItem xs="12" md="4"><MudText Typo="Typo.caption">@Text["SalesPerson"]</MudText><MudText>@Value(detailPage.Invoice.SalesPerson)</MudText></MudItem>
-                <MudItem xs="12" md="4"><MudText Typo="Typo.caption">@Text["PurchaseOrder"]</MudText><MudText>@Value(detailPage.Invoice.PurchaseOrderNumber)</MudText></MudItem>
-                <MudItem xs="12" md="4"><MudText Typo="Typo.caption">@Text["Terms"]</MudText><MudText>@Value(detailPage.Invoice.Terms)</MudText></MudItem>
-                <MudItem xs="12" md="4">
-                    <MudText Typo="Typo.caption">@Text["PaymentStatus"]</MudText>
-                    <MudChip T="string" Size="MudBlazor.Size.Small" Color="@(detailPage.Invoice.IsPaid ? Color.Success : Color.Warning)" Variant="Variant.Outlined">
-                        @(detailPage.Invoice.IsPaid ? Text["PaidStatus"] : Text["UnpaidStatus"])
-                    </MudChip>
-                </MudItem>
-                <MudItem xs="12" md="6"><MudText Typo="Typo.h6" HtmlTag="h2">@Text["Billing"]</MudText><MudText Style="white-space: pre-line">@Address(detailPage.Invoice, false)</MudText></MudItem>
-                <MudItem xs="12" md="6"><MudText Typo="Typo.h6" HtmlTag="h2">@Text["Shipping"]</MudText><MudText Style="white-space: pre-line">@Address(detailPage.Invoice, true)</MudText></MudItem>
-            </MudGrid>
-        </MudPaper>
+        <section class="invoice-detail__section">
+            <dl class="invoice-detail__facts">
+                <div><dt>@Text["InvoiceId"]</dt><dd>@detailPage.Invoice.Id</dd></div>
+                <div><dt>@Text["CustomerId"]</dt><dd><LegacyLink Href="@($"/Customers/View?id={detailPage.Invoice.CustomerId}")" Role="LegacyLinkRole.Record" AriaLabel="@($"{Text["CustomerId"]} {detailPage.Invoice.CustomerId}")">@detailPage.Invoice.CustomerId</LegacyLink></dd></div>
+                <div><dt>@Text["CreatedDate"]</dt><dd>@FormatDate(detailPage.Invoice.CreatedDate)</dd></div>
+                <div><dt>@Text["SalesPerson"]</dt><dd>@Value(detailPage.Invoice.SalesPerson)</dd></div>
+                <div><dt>@Text["PurchaseOrder"]</dt><dd>@Value(detailPage.Invoice.PurchaseOrderNumber)</dd></div>
+                <div><dt>@Text["Terms"]</dt><dd>@Value(detailPage.Invoice.Terms)</dd></div>
+                <div><dt>@Text["PaymentStatus"]</dt><dd><ShadcnBadge Variant="@(detailPage.Invoice.IsPaid ? ShadcnBadgeVariant.Default : ShadcnBadgeVariant.Secondary)">@(detailPage.Invoice.IsPaid ? Text["PaidStatus"] : Text["UnpaidStatus"])</ShadcnBadge></dd></div>
+            </dl>
+            <div class="invoice-detail__addresses"><section><h2>@Text["Billing"]</h2><p>@Address(detailPage.Invoice, false)</p></section><section><h2>@Text["Shipping"]</h2><p>@Address(detailPage.Invoice, true)</p></section></div>
+        </section>
 
-        <MudPaper Class="pa-4 mb-4">
-            <MudText Typo="Typo.h5" HtmlTag="h2" Class="mb-3">@Text["Items"]</MudText>
-            <MudTable Items="detailPage.OrderItems" Breakpoint="Breakpoint.Sm" Elevation="0" aria-label="@Text["OrderItemsTable"]">
-                <HeaderContent>
-                    <MudTh>@Text["Description"]</MudTh>
-                    <MudTh>@Text["UnitPrice"]</MudTh>
-                    <MudTh>@Text["Quantity"]</MudTh>
-                    <MudTh>@Text["Subtotal"]</MudTh>
-                </HeaderContent>
-                <RowTemplate Context="item">
-                    <MudTd DataLabel="@Text["Description"]">@Value(item.Description)</MudTd>
-                    <MudTd DataLabel="@Text["UnitPrice"]">@Money(item.UnitPrice)</MudTd>
-                    <MudTd DataLabel="@Text["Quantity"]">@item.Quantity</MudTd>
-                    <MudTd DataLabel="@Text["Subtotal"]">@Money(item.Subtotal)</MudTd>
-                </RowTemplate>
-                <NoRecordsContent><MudText>@Text["NoItems"]</MudText></NoRecordsContent>
-            </MudTable>
-        </MudPaper>
+        <section class="invoice-detail__section" aria-labelledby="items-heading">
+            <h2 id="items-heading">@Text["Items"]</h2>
+            @if (detailPage.OrderItems.Count == 0) { <p>@Text["NoItems"]</p> }
+            else
+            {
+                <ShadcnTable ExpectedColumnCount="4" aria-label="@Text["OrderItemsTable"]"><ShadcnTableHeader><ShadcnTableRow><ShadcnTableHead>@Text["Description"]</ShadcnTableHead><ShadcnTableHead>@Text["UnitPrice"]</ShadcnTableHead><ShadcnTableHead>@Text["Quantity"]</ShadcnTableHead><ShadcnTableHead>@Text["Subtotal"]</ShadcnTableHead></ShadcnTableRow></ShadcnTableHeader><ShadcnTableBody>@foreach (var item in detailPage.OrderItems) { <ShadcnTableRow><ShadcnTableCell data-label="@Text["Description"]">@Value(item.Description)</ShadcnTableCell><ShadcnTableCell data-label="@Text["UnitPrice"]">@Money(item.UnitPrice)</ShadcnTableCell><ShadcnTableCell data-label="@Text["Quantity"]">@item.Quantity</ShadcnTableCell><ShadcnTableCell data-label="@Text["Subtotal"]">@Money(item.Subtotal)</ShadcnTableCell></ShadcnTableRow> }</ShadcnTableBody></ShadcnTable>
+            }
+        </section>
 
-        <MudPaper Class="pa-4 mb-4">
-            <MudText Typo="Typo.h5" HtmlTag="h2" Class="mb-3">@Text["ReceiptActions"]</MudText>
-            <div class="d-flex flex-wrap gap-2" role="group" aria-label="@Text["ReceiptActionGroup"]">
+        <section class="invoice-detail__section" aria-labelledby="receipt-actions-heading">
+            <h2 id="receipt-actions-heading">@Text["ReceiptActions"]</h2>
+            <div class="invoice-detail__actions" role="group" aria-label="@Text["ReceiptActionGroup"]">
                 @if (detailPage.Invoice.ReceiptId is null)
                 {
-                    <MudButton OnClick="CreateReceiptAsync" Disabled="@(submitting || !detailPage.Invoice.IsPaid)" Variant="Variant.Filled" Color="Color.Primary">@Text["CreateReceipt"]</MudButton>
+                    <ShadcnButton OnClick="CreateReceiptAsync" Disabled="@(submitting || !detailPage.Invoice.IsPaid)">@Text["CreateReceipt"]</ShadcnButton>
                 }
                 else
                 {
-                    <MudButton OnClick="ArmEmailReceipt" Disabled="@submitting" Variant="Variant.Outlined" Color="Color.Primary" aria-expanded="@emailReceiptArmed">@Text["EmailReceipt"]</MudButton>
-                    @if (emailReceiptArmed)
-                    {
-                        <div class="d-flex flex-wrap gap-2" role="group" aria-label="@Text["EmailReceiptConfirmation"]">
-                            <MudButton OnClick="EmailReceiptAsync" Disabled="@submitting" Variant="Variant.Filled" Color="Color.Primary">@Text["ConfirmEmailReceipt"]</MudButton>
-                            <MudButton OnClick="CancelEmailReceipt" Disabled="@submitting">@Text["Cancel"]</MudButton>
-                        </div>
-                    }
-                    <MudButton OnClick="ArmRemoveReceipt" Disabled="@submitting" Variant="Variant.Outlined" Color="Color.Error" aria-expanded="@receiptRemoveArmed">@Text["RemoveReceipt"]</MudButton>
-                    @if (receiptRemoveArmed)
-                    {
-                        <div class="d-flex flex-wrap gap-2" role="group" aria-label="@Text["RemoveReceiptConfirmation"]">
-                            <MudButton OnClick="RemoveReceiptAsync" Disabled="@submitting" Variant="Variant.Filled" Color="Color.Error">@Text["ConfirmRemoveReceipt"]</MudButton>
-                            <MudButton OnClick="CancelRemoveReceipt" Disabled="@submitting">@Text["Cancel"]</MudButton>
-                        </div>
-                    }
+                    <ShadcnButton OnClick="ArmEmailReceipt" Disabled="@submitting" Variant="ShadcnButtonVariant.Outline" aria-expanded="@emailReceiptArmed">@Text["EmailReceipt"]</ShadcnButton>
+                    @if (emailReceiptArmed) { <div class="invoice-detail__actions" role="group" aria-label="@Text["EmailReceiptConfirmation"]"><ShadcnButton OnClick="EmailReceiptAsync" Disabled="@submitting">@Text["ConfirmEmailReceipt"]</ShadcnButton><ShadcnButton OnClick="CancelEmailReceipt" Disabled="@submitting" Variant="ShadcnButtonVariant.Ghost">@Text["Cancel"]</ShadcnButton></div> }
+                    <ShadcnButton OnClick="ArmRemoveReceipt" Disabled="@submitting" Variant="ShadcnButtonVariant.Destructive" aria-expanded="@receiptRemoveArmed">@Text["RemoveReceipt"]</ShadcnButton>
+                    @if (receiptRemoveArmed) { <div class="invoice-detail__actions" role="group" aria-label="@Text["RemoveReceiptConfirmation"]"><ShadcnButton OnClick="RemoveReceiptAsync" Disabled="@submitting" Variant="ShadcnButtonVariant.Destructive">@Text["ConfirmRemoveReceipt"]</ShadcnButton><ShadcnButton OnClick="CancelRemoveReceipt" Disabled="@submitting" Variant="ShadcnButtonVariant.Ghost">@Text["Cancel"]</ShadcnButton></div> }
                 }
             </div>
-            @if (!detailPage.Invoice.IsPaid && detailPage.Invoice.ReceiptId is null) { <MudText Typo="Typo.caption" Class="mt-2">@Text["ReceiptRequiresPayment"]</MudText> }
-        </MudPaper>
+            @if (!detailPage.Invoice.IsPaid && detailPage.Invoice.ReceiptId is null) { <p class="invoice-detail__muted">@Text["ReceiptRequiresPayment"]</p> }
+        </section>
 
-        <MudPaper Class="pa-4 mb-4">
-            <MudText Typo="Typo.h5" HtmlTag="h2" Class="mb-3">@Text["Documents"]</MudText>
-            <MudList T="InvoiceDownload">
-                @foreach (var file in detailPage.InvoiceFiles.Concat(detailPage.ReceiptFiles))
-                {
-                    <MudListItem T="InvoiceDownload" Value="file"><LegacyLink Href="@file.Uri?.ToString()" Role="LegacyLinkRole.External" Target="_blank" Rel="noopener">@file.ObjectName</LegacyLink></MudListItem>
-                }
-            </MudList>
-            @if (detailPage.InvoiceFiles.Count + detailPage.ReceiptFiles.Count == 0) { <MudText>@Text["NoDocuments"]</MudText> }
-        </MudPaper>
+        <section class="invoice-detail__section" aria-labelledby="documents-heading">
+            <h2 id="documents-heading">@Text["Documents"]</h2>
+            @if (detailPage.InvoiceFiles.Count + detailPage.ReceiptFiles.Count == 0) { <p>@Text["NoDocuments"]</p> }
+            else { <ul class="invoice-detail__documents">@foreach (var file in detailPage.InvoiceFiles.Concat(detailPage.ReceiptFiles)) { <li><LegacyLink Href="@file.Uri?.ToString()" Role="LegacyLinkRole.External" Target="_blank" Rel="noopener">@file.ObjectName</LegacyLink></li> }</ul> }
+        </section>
 
-        <MudPaper Class="pa-4">
-            <MudForm @ref="form" Model="edit">
-                <MudGrid>
-                    <MudItem xs="12" md="4"><MudNumericField T="decimal?" Label="@Text["Subtotal"]" Value="detailPage.Invoice.Subtotal" ReadOnly="true" Adornment="Adornment.End" AdornmentText="@detailPage.Invoice.Currency" /></MudItem>
-                    <MudItem xs="12" md="4"><MudNumericField T="decimal?" Label="@Text["Vat"]" Value="detailPage.Invoice.Vat" ReadOnly="true" Adornment="Adornment.End" AdornmentText="@detailPage.Invoice.Currency" /></MudItem>
-                    <MudItem xs="12" md="4"><MudNumericField T="decimal?" Label="@Text["Total"]" Value="detailPage.Invoice.Total" ReadOnly="true" Adornment="Adornment.End" AdornmentText="@detailPage.Invoice.Currency" /></MudItem>
-                    <MudItem xs="12" md="6"><MudNumericField T="decimal?" Label="@Text["WithholdingTax"]" Value="detailPage.Invoice.WithholdingTax" ReadOnly="true" Adornment="Adornment.End" AdornmentText="@detailPage.Invoice.Currency" /></MudItem>
-                    <MudItem xs="12" md="6"><MudNumericField T="decimal?" Label="@Text["Outstanding"]" Value="detailPage.Invoice.Outstanding" ReadOnly="true" Adornment="Adornment.End" AdornmentText="@detailPage.Invoice.Currency" /></MudItem>
-                    <MudItem xs="12" md="6"><MudCheckBox T="bool" Label="@Text["Paid"]" @bind-Value="edit.IsPaid" /></MudItem>
-                    <MudItem xs="12" md="6"><MudDatePicker Label="@Text["PaymentDate"]" @bind-Date="edit.PaymentDate" /></MudItem>
-                    <MudItem xs="12"><MudTextField Label="@Text["InternalComment"]" @bind-Value="edit.InternalComment" Lines="5" MaxLength="1000" /></MudItem>
-                    <MudItem xs="12">
-                        <div class="d-flex flex-wrap gap-2" role="group" aria-label="@Text["InvoiceActionGroup"]">
-                            <MudButton OnClick="SaveAsync" Disabled="@submitting" Variant="Variant.Filled" Color="Color.Primary">@Text["Save"]</MudButton>
-                            <MudButton OnClick="ArmDelete" Disabled="@submitting" Color="Color.Error" Variant="Variant.Outlined" aria-expanded="@deleteArmed">@Text["Delete"]</MudButton>
-                            @if (deleteArmed)
-                            {
-                                <div class="d-flex flex-wrap gap-2" role="group" aria-label="@Text["DeleteConfirmation"]">
-                                    <MudButton OnClick="DeleteAsync" Disabled="@submitting" Color="Color.Error" Variant="Variant.Filled">@Text["ConfirmDelete"]</MudButton>
-                                    <MudButton OnClick="CancelDelete" Disabled="@submitting">@Text["Cancel"]</MudButton>
-                                </div>
-                            }
-                        </div>
-                    </MudItem>
-                </MudGrid>
-            </MudForm>
-        </MudPaper>
+        <section class="invoice-detail__section">
+            <dl class="invoice-detail__totals"><div><dt>@Text["Subtotal"]</dt><dd>@Money(detailPage.Invoice.Subtotal)</dd></div><div><dt>@Text["Vat"]</dt><dd>@Money(detailPage.Invoice.Vat)</dd></div><div><dt>@Text["Total"]</dt><dd>@Money(detailPage.Invoice.Total)</dd></div><div><dt>@Text["WithholdingTax"]</dt><dd>@Money(detailPage.Invoice.WithholdingTax)</dd></div><div><dt>@Text["Outstanding"]</dt><dd>@Money(detailPage.Invoice.Outstanding)</dd></div></dl>
+            <EditForm EditContext="@editContext" OnValidSubmit="SaveAsync" class="invoice-detail__form"><DataAnnotationsValidator /><div class="invoice-detail__form-grid"><AccountingCheckboxField Id="invoice-paid" Label="@Text["Paid"]" @bind-Value="edit.IsPaid" Disabled="@submitting" /><AccountingInputField TValue="DateTime?" Id="invoice-payment-date" Label="@Text["PaymentDate"]" Type="date" @bind-Value="edit.PaymentDate" Disabled="@submitting" /><div class="invoice-detail__wide"><ShadcnFormField Id="invoice-internal-comment" Label="@Text["InternalComment"]"><Control><ShadcnTextarea TValue="string" id="invoice-internal-comment" @bind-Value="edit.InternalComment" rows="5" maxlength="1000" Disabled="@submitting" /></Control></ShadcnFormField></div><div class="invoice-detail__wide invoice-detail__actions" role="group" aria-label="@Text["InvoiceActionGroup"]"><ShadcnButton ButtonType="ShadcnButtonType.Submit" OperationFeedback="false" Disabled="@submitting">@Text["Save"]</ShadcnButton><ShadcnButton ButtonType="ShadcnButtonType.Button" OnClick="ArmDelete" Disabled="@submitting" Variant="ShadcnButtonVariant.Destructive" aria-expanded="@deleteArmed">@Text["Delete"]</ShadcnButton>@if (deleteArmed) { <div class="invoice-detail__actions" role="group" aria-label="@Text["DeleteConfirmation"]"><ShadcnButton ButtonType="ShadcnButtonType.Button" OnClick="DeleteAsync" Disabled="@submitting" Variant="ShadcnButtonVariant.Destructive">@Text["ConfirmDelete"]</ShadcnButton><ShadcnButton ButtonType="ShadcnButtonType.Button" OnClick="CancelDelete" Disabled="@submitting" Variant="ShadcnButtonVariant.Ghost">@Text["Cancel"]</ShadcnButton></div> }</div></div></EditForm>
+        </section>
     }
-</MudContainer>
+</main>
 
 @code {
     [SupplyParameterFromQuery(Name = "id")] public int? Id { get; set; }
-    private MudForm? form;
     private InvoiceDetailPage? detailPage;
     private EmployeeSessionSummary? session;
     private InvoiceEditModel edit = new();
+    private EditContext editContext = null!;
     private bool loading = true;
     private bool submitting;
     private bool deleteArmed;
@@ -171,6 +106,7 @@
             detailPage = await response.Content.ReadFromJsonAsync<InvoiceDetailPage>();
             if (detailPage is null) { error = Text["InvalidResponse"]; return; }
             edit = InvoiceEditModel.From(detailPage.Invoice);
+            editContext = new EditContext(edit);
         }
         catch (InvalidDataException) { error = Text["InvalidResponse"]; }
         catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException) { error = Text["Unavailable"]; }
@@ -178,8 +114,7 @@
     }
     private async Task SaveAsync()
     {
-        if (detailPage is null || form is null) return;
-        await form.ValidateAsync(); if (!form.IsValid) return;
+        if (detailPage is null || submitting) return;
         using var request = WriteRequest(HttpMethod.Put, $"/bff/invoices/{detailPage.Invoice.Id}");
         request.Content = JsonContent.Create(edit.ToRequest());
         await SendAsync(request, Text["Saved"]);
@@ -215,21 +150,11 @@
         using var request = ReceiptRequest(HttpMethod.Delete, $"/bff/invoices/{detailPage.Invoice.Id}/receipt", removeReceiptOperationId.Value);
         await SendReceiptAsync(request, Text["ReceiptRemoved"], () => { removeReceiptOperationId = null; receiptRemoveArmed = false; });
     }
-    private HttpRequestMessage ReceiptRequest(HttpMethod method, string path, Guid operationId)
-    {
-        var request = WriteRequest(method, path);
-        request.Headers.Add("Idempotency-Key", operationId.ToString("D"));
-        return request;
-    }
+    private HttpRequestMessage ReceiptRequest(HttpMethod method, string path, Guid operationId) { var request = WriteRequest(method, path); request.Headers.Add("Idempotency-Key", operationId.ToString("D")); return request; }
     private async Task SendReceiptAsync(HttpRequestMessage request, string success, Action completed)
     {
         submitting = true; error = null; notice = null;
-        try
-        {
-            using var response = await Http.SendAsync(request);
-            if (!response.IsSuccessStatusCode) { error = ErrorFor(response.StatusCode); return; }
-            completed(); notice = success; await LoadAsync();
-        }
+        try { using var response = await Http.SendAsync(request); if (!response.IsSuccessStatusCode) { error = ErrorFor(response.StatusCode); return; } completed(); notice = success; await LoadAsync(); }
         catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException) { error = Text["Unavailable"]; }
         finally { submitting = false; }
     }
@@ -249,12 +174,9 @@
     private void CancelEmailReceipt() => emailReceiptArmed = false;
     private string ErrorFor(HttpStatusCode status) => status switch { HttpStatusCode.Forbidden => Text["Forbidden"], HttpStatusCode.TooManyRequests => Text["RateLimited"], HttpStatusCode.BadGateway => Text["InvalidResponse"], _ => Text["Unavailable"] };
     private string Money(decimal? value) => value is null ? "-" : $"{value:N2} {detailPage?.Invoice.Currency}";
-    private static string FormatDate(DateTime? value) =>
-        LegacyPresentation.FormatUtcDateTime(value, CultureInfo.CurrentCulture, "-");
+    private static string FormatDate(DateTime? value) => LegacyPresentation.FormatUtcDateTime(value, CultureInfo.CurrentCulture, "-");
     private static string Value(string? value) => string.IsNullOrWhiteSpace(value) ? "-" : value;
-    private static string Address(InvoiceDetail value, bool shipping) => string.Join(Environment.NewLine, (shipping
-        ? new[] { value.ShippingAddressRecipient, value.ShippingAddressCompany, value.ShippingAddressBuilding, value.ShippingAddressLine1, value.ShippingAddressLine2, value.ShippingAddressCity, value.ShippingAddressState, value.ShippingAddressPostalCode, value.ShippingAddressCountry }
-        : new[] { value.BillingAddressRecipient, value.BillingAddressCompany, value.BillingAddressBuilding, value.BillingAddressLine1, value.BillingAddressLine2, value.BillingAddressCity, value.BillingAddressState, value.BillingAddressPostalCode, value.BillingAddressCountry }).Where(item => !string.IsNullOrWhiteSpace(item)));
+    private static string Address(InvoiceDetail value, bool shipping) => string.Join(Environment.NewLine, (shipping ? new[] { value.ShippingAddressRecipient, value.ShippingAddressCompany, value.ShippingAddressBuilding, value.ShippingAddressLine1, value.ShippingAddressLine2, value.ShippingAddressCity, value.ShippingAddressState, value.ShippingAddressPostalCode, value.ShippingAddressCountry } : new[] { value.BillingAddressRecipient, value.BillingAddressCompany, value.BillingAddressBuilding, value.BillingAddressLine1, value.BillingAddressLine2, value.BillingAddressCity, value.BillingAddressState, value.BillingAddressPostalCode, value.BillingAddressCountry }).Where(item => !string.IsNullOrWhiteSpace(item)));
     private sealed class InvoiceEditModel
     {
         public bool IsPaid { get; set; }
