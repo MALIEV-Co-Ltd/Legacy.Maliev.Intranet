@@ -35,7 +35,11 @@ public sealed class OrdersCreateWasmMigrationContractTests
         Assert.Contains("@page \"/Orders/Create\"", page, StringComparison.Ordinal);
         Assert.Contains("@attribute [Authorize]", page, StringComparison.Ordinal);
         Assert.Contains("[SupplyParameterFromQuery(Name = \"customerId\")]", page, StringComparison.Ordinal);
-        Assert.Contains("MudForm", page, StringComparison.Ordinal);
+        Assert.Contains("<EditForm", page, StringComparison.Ordinal);
+        Assert.Contains("<ShadcnInput", page, StringComparison.Ordinal);
+        Assert.Contains("<ShadcnSelect", page, StringComparison.Ordinal);
+        Assert.Contains("<ShadcnCheckbox", page, StringComparison.Ordinal);
+        Assert.DoesNotContain("<Mud", page, StringComparison.Ordinal);
         Assert.Contains("InputFile", page, StringComparison.Ordinal);
         Assert.Contains("MultipartFormDataContent", page, StringComparison.Ordinal);
         Assert.Contains("X-CSRF-TOKEN", page, StringComparison.Ordinal);

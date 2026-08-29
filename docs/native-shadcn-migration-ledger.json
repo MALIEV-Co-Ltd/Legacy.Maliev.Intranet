@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "packageVersion": "1.2.2",
   "baseline": { "renderSites": 1485, "componentTypes": 36, "razorFiles": 60 },
-  "current": { "renderSites": 895, "razorFiles": 22 },
+  "current": { "renderSites": 853, "razorFiles": 21 },
   "files": [
     { "path": "Legacy.Maliev.Intranet.Client/LoginRedirect.razor", "baselineRenderSites": 3, "remainingRenderSites": 0, "status": "migrated" },
     { "path": "Legacy.Maliev.Intranet.Client/Components/Dashboard/DashboardMetricCard.razor", "baselineRenderSites": 1, "remainingRenderSites": 0, "status": "migrated" },
@@ -50,7 +50,7 @@
     { "path": "Legacy.Maliev.Intranet.Client.Features.Orders/Components/Shared/PrimaryButton.razor", "baselineRenderSites": 3, "remainingRenderSites": 0, "status": "migrated" },
     { "path": "Legacy.Maliev.Intranet.Client.Features.Orders/Components/Shared/ProgressiveSkeleton.razor", "baselineRenderSites": 20, "remainingRenderSites": 0, "status": "migrated" },
     { "path": "Legacy.Maliev.Intranet.Client.Features.Orders/Components/Shared/SecondaryButton.razor", "baselineRenderSites": 2, "remainingRenderSites": 0, "status": "migrated" },
-    { "path": "Legacy.Maliev.Intranet.Client.Features.Orders/Pages/OrderCreate.razor", "baselineRenderSites": 42, "remainingRenderSites": 42, "status": "pending" },
+    { "path": "Legacy.Maliev.Intranet.Client.Features.Orders/Pages/OrderCreate.razor", "baselineRenderSites": 42, "remainingRenderSites": 0, "status": "migrated" },
     { "path": "Legacy.Maliev.Intranet.Client.Features.Orders/Pages/OrderDetail.razor", "baselineRenderSites": 84, "remainingRenderSites": 84, "status": "pending" },
     { "path": "Legacy.Maliev.Intranet.Client.Features.Procurement/Pages/PurchaseOrderCreate.razor", "baselineRenderSites": 65, "remainingRenderSites": 65, "status": "pending" },
     { "path": "Legacy.Maliev.Intranet.Client.Features.Procurement/Pages/PurchaseOrders.razor", "baselineRenderSites": 10, "remainingRenderSites": 10, "status": "pending" },
