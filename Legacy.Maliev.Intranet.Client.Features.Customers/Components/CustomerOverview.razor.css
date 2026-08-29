@@ -94,6 +94,7 @@
 }
 
 .customer-overview__empty {
+    margin: 0;
     color: var(--shadcn-muted-foreground);
 }
 
@@ -104,7 +105,7 @@
     min-width: 0;
 }
 
-.customer-overview__form-grid ::deep .mud-input-control {
+.customer-overview__form-grid ::deep .shadcn-field {
     min-width: 0;
     margin: 0;
 }
@@ -140,8 +141,8 @@
     }
 
     .customer-overview__details ::deep .legacy-link,
-    .customer-overview__section-header ::deep .mud-button-root,
-    .customer-overview__form-actions ::deep .mud-button-root {
+    .customer-overview__section-header ::deep .shadcn-button,
+    .customer-overview__form-actions ::deep .shadcn-button {
         min-height: 44px;
     }
 }
@@ -152,8 +153,8 @@
         flex-direction: column;
     }
 
-    .customer-overview__section-header ::deep .mud-button-root,
-    .customer-overview__form-actions ::deep .mud-button-root {
+    .customer-overview__section-header ::deep .shadcn-button,
+    .customer-overview__form-actions ::deep .shadcn-button {
         width: 100%;
     }
 }

@@ -15,7 +15,8 @@ public sealed class CustomersCreateWasmMigrationContractTests
         var page = File.ReadAllText(featurePage);
         Assert.Contains("@page \"/Customers/Create\"", page, StringComparison.Ordinal);
         Assert.Contains("[Authorize", page, StringComparison.Ordinal);
-        Assert.Contains("MudForm", page, StringComparison.Ordinal);
+        Assert.Contains("<EditForm", page, StringComparison.Ordinal);
+        Assert.Contains("<ShadcnFormField", page, StringComparison.Ordinal);
         Assert.Contains("model.Password", page, StringComparison.Ordinal);
         Assert.Contains("model.ConfirmPassword", page, StringComparison.Ordinal);
         Assert.Contains("submitting", page, StringComparison.Ordinal);
@@ -28,7 +29,8 @@ public sealed class CustomersCreateWasmMigrationContractTests
         Assert.Contains("HttpStatusCode.Conflict", page, StringComparison.Ordinal);
         Assert.Contains("HttpStatusCode.TooManyRequests", page, StringComparison.Ordinal);
         Assert.Contains("NavigateToLogin", page, StringComparison.Ordinal);
-        Assert.Contains("aria-live=\"assertive\"", page, StringComparison.Ordinal);
+        Assert.Contains("AlertRole=\"ShadcnAlertRole.Alert\"", page, StringComparison.Ordinal);
+        Assert.DoesNotContain("<Mud", page, StringComparison.Ordinal);
 
         Assert.True(File.Exists(workflow), "The server-side profile/identity orchestration service is missing.");
         Assert.True(File.Exists(clients), "The server-only CustomerService and AuthService clients are missing.");

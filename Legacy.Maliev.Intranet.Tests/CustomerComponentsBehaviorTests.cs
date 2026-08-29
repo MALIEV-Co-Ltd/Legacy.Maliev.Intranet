@@ -8,7 +8,7 @@ using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.RenderTree;
 using Microsoft.AspNetCore.Components.Rendering;
 using Microsoft.Extensions.Localization;
-using MudBlazor;
+using Maliev.ShadcnBlazor.Components.Feedback;
 
 #pragma warning disable BL0006 // Focused tests inspect the compiled Razor render tree without adding a test-only renderer dependency.
 
@@ -17,17 +17,17 @@ namespace Legacy.Maliev.Intranet.Tests;
 public sealed class CustomerComponentsBehaviorTests
 {
     [Fact]
-    public void Overview_LeavesMudFormAndValidationOwnershipWithItsParent()
+    public void Overview_LeavesEditFormAndValidationOwnershipWithItsParent()
     {
         var componentType = typeof(CustomerOverview);
 
         Assert.Equal(typeof(EventCallback), componentType.GetProperty(nameof(CustomerOverview.Save))?.PropertyType);
         Assert.DoesNotContain(
             componentType.GetFields(BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public),
-            field => field.FieldType == typeof(MudForm));
+            field => field.FieldType.Name == "MudForm");
         Assert.DoesNotContain(
             componentType.GetProperties(BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public),
-            property => property.PropertyType == typeof(MudForm));
+            property => property.PropertyType.Name == "MudForm");
     }
 
     [Theory]
@@ -134,8 +134,8 @@ public sealed class CustomerComponentsBehaviorTests
             [nameof(CustomerActivity.Error)] = "ERROR-WINS-WHEN-NOT-LOADING",
         });
         var loadingComponents = RenderedComponentTypes(loading);
-        Assert.Contains(typeof(MudProgressLinear), loadingComponents);
-        Assert.DoesNotContain(typeof(MudAlert), loadingComponents);
+        Assert.Contains(typeof(ShadcnSpinner), loadingComponents);
+        Assert.DoesNotContain(typeof(ShadcnAlert), loadingComponents);
         Assert.DoesNotContain(typeof(Legacy.Maliev.Intranet.Client.Shared.Components.LegacyLink), loadingComponents);
 
         var error = CreateActivity();
@@ -146,8 +146,8 @@ public sealed class CustomerComponentsBehaviorTests
             [nameof(CustomerActivity.Error)] = "ERROR-WINS-WHEN-NOT-LOADING",
         });
         var errorComponents = RenderedComponentTypes(error);
-        Assert.Contains(typeof(MudAlert), errorComponents);
-        Assert.DoesNotContain(typeof(MudProgressLinear), errorComponents);
+        Assert.Contains(typeof(ShadcnAlert), errorComponents);
+        Assert.DoesNotContain(typeof(ShadcnSpinner), errorComponents);
         Assert.DoesNotContain(typeof(Legacy.Maliev.Intranet.Client.Shared.Components.LegacyLink), errorComponents);
     }
 
@@ -166,7 +166,7 @@ public sealed class CustomerComponentsBehaviorTests
 
         var rendered = RenderedComponentTypes(activity);
 
-        Assert.Single(rendered, type => type == typeof(MudAlert));
+        Assert.Single(rendered, type => type == typeof(ShadcnAlert));
     }
 
     [Fact]

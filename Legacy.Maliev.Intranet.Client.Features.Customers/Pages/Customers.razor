@@ -13,10 +13,10 @@
 <div class="customer-shell mlv-page-body">
     <PageBreadcrumbs Items="@Breadcrumbs" />
     <header class="operations-page-header customers-page-header">
-        <div><MudText Typo="Typo.h4" HtmlTag="h1">@Text["Customers"]</MudText><MudText Typo="Typo.body2">@Text["Profiles"]</MudText></div>
-        <MudButton Href="/Customers/Create" Variant="Variant.Filled" Color="Color.Primary">
+        <div><h1>@Text["Customers"]</h1><p class="customers-page-subtitle">@Text["Profiles"]</p></div>
+        <ShadcnButton Href="/Customers/Create">
             @Text["CreateCustomer"]
-        </MudButton>
+        </ShadcnButton>
     </header>
 
     <ListToolbar TSort="CustomerListSort"
@@ -30,27 +30,27 @@
 
     @if (loading)
     {
-        <div role="status" aria-live="polite"><MudProgressLinear Indeterminate="true" Color="Color.Primary" aria-label="@Text["Loading"]" /><span class="visually-hidden">@Text["Loading"]</span></div>
+        <div role="status" aria-live="polite" class="customers-loading"><ShadcnSpinner Label="@Text["Loading"]" Size="1.25rem" /><span>@Text["Loading"]</span></div>
     }
     else if (!string.IsNullOrWhiteSpace(error))
     {
-        <MudAlert Severity="Severity.Error" aria-live="assertive">@error</MudAlert>
+        <ShadcnAlert Variant="ShadcnAlertVariant.Destructive" AlertRole="ShadcnAlertRole.Alert"><ShadcnAlertDescription>@error</ShadcnAlertDescription></ShadcnAlert>
     }
     else if (page is null || page.Items.Count == 0)
     {
-        <MudAlert Severity="Severity.Info">@Text["Empty"]</MudAlert>
+        <ShadcnAlert AlertRole="ShadcnAlertRole.Status"><ShadcnAlertDescription>@Text["Empty"]</ShadcnAlertDescription></ShadcnAlert>
     }
     else
     {
         <div class="customers-results-bar">
-            <MudText Class="customers-results-summary" aria-live="polite">
+            <p class="customers-results-summary" aria-live="polite">
                 @Text["PageSummary", page.PageIndex, page.TotalPages, page.TotalRecords]
-            </MudText>
+            </p>
             @if (page.TotalPages > 1)
             {
                 <nav class="customers-pagination customers-pagination--top" aria-label="@Text["CustomerPagesTop"]">
-                    <MudButton Variant="Variant.Text" Disabled="@(!page.HasPreviousPage)" OnClick="PreviousPageAsync">@Text["Previous"]</MudButton>
-                    <MudButton Variant="Variant.Text" Disabled="@(!page.HasNextPage)" OnClick="NextPageAsync">@Text["Next"]</MudButton>
+                    <ShadcnButton Variant="ShadcnButtonVariant.Ghost" Disabled="@(!page.HasPreviousPage)" OnClick="PreviousPageAsync">@Text["Previous"]</ShadcnButton>
+                    <ShadcnButton Variant="ShadcnButtonVariant.Ghost" Disabled="@(!page.HasNextPage)" OnClick="NextPageAsync">@Text["Next"]</ShadcnButton>
                 </nav>
             }
         </div>
@@ -69,14 +69,14 @@
             <HeaderContent>
                 <tr>
                 <th class="operational-table__identity customer-id" data-priority="essential" aria-sort="@GetAriaSort(CustomerListSort.CustomerId_Ascending, CustomerListSort.CustomerId_Descending)">
-                    <MudButton Class="customer-sort-button" Variant="Variant.Text" OnClick="@(() => SortFromHeaderAsync(CustomerListSort.CustomerId_Ascending, CustomerListSort.CustomerId_Descending))" aria-label="@Text["SortByField", Text["Id"]]">@Text["Id"]</MudButton>
+                    <ShadcnButton Class="customer-sort-button" Variant="ShadcnButtonVariant.Ghost" OnClick="@(() => SortFromHeaderAsync(CustomerListSort.CustomerId_Ascending, CustomerListSort.CustomerId_Descending))" aria-label="@Text["SortByField", Text["Id"]]">@Text["Id"]</ShadcnButton>
                 </th>
                 <th class="customer-name" data-priority="essential">@Text["Name"]</th>
                 <th class="customer-email" data-priority="essential" aria-sort="@GetAriaSort(CustomerListSort.CustomerEmail_Ascending, CustomerListSort.CustomerEmail_Descending)">
-                    <MudButton Class="customer-sort-button" Variant="Variant.Text" OnClick="@(() => SortFromHeaderAsync(CustomerListSort.CustomerEmail_Ascending, CustomerListSort.CustomerEmail_Descending))" aria-label="@Text["SortByField", Text["Email"]]">@Text["Email"]</MudButton>
+                    <ShadcnButton Class="customer-sort-button" Variant="ShadcnButtonVariant.Ghost" OnClick="@(() => SortFromHeaderAsync(CustomerListSort.CustomerEmail_Ascending, CustomerListSort.CustomerEmail_Descending))" aria-label="@Text["SortByField", Text["Email"]]">@Text["Email"]</ShadcnButton>
                 </th>
                 <th class="customer-company" data-priority="supporting" aria-sort="@GetAriaSort(CustomerListSort.CustomerCompany_Ascending, CustomerListSort.CustomerCompany_Descending)">
-                    <MudButton Class="customer-sort-button" Variant="Variant.Text" OnClick="@(() => SortFromHeaderAsync(CustomerListSort.CustomerCompany_Ascending, CustomerListSort.CustomerCompany_Descending))" aria-label="@Text["SortByField", Text["Company"]]">@Text["Company"]</MudButton>
+                    <ShadcnButton Class="customer-sort-button" Variant="ShadcnButtonVariant.Ghost" OnClick="@(() => SortFromHeaderAsync(CustomerListSort.CustomerCompany_Ascending, CustomerListSort.CustomerCompany_Descending))" aria-label="@Text["SortByField", Text["Company"]]">@Text["Company"]</ShadcnButton>
                 </th>
                 <th class="operational-table__actions-heading"><span class="visually-hidden">@Text["Actions"]</span></th>
                 </tr>
@@ -99,8 +99,8 @@
         @if (page.TotalPages > 1)
         {
             <nav class="customers-pagination customers-pagination--bottom" aria-label="@Text["CustomerPagesBottom"]">
-                <MudButton Variant="Variant.Text" Disabled="@(!page.HasPreviousPage)" OnClick="PreviousPageAsync">@Text["Previous"]</MudButton>
-                <MudButton Variant="Variant.Text" Disabled="@(!page.HasNextPage)" OnClick="NextPageAsync">@Text["Next"]</MudButton>
+                <ShadcnButton Variant="ShadcnButtonVariant.Ghost" Disabled="@(!page.HasPreviousPage)" OnClick="PreviousPageAsync">@Text["Previous"]</ShadcnButton>
+                <ShadcnButton Variant="ShadcnButtonVariant.Ghost" Disabled="@(!page.HasNextPage)" OnClick="NextPageAsync">@Text["Next"]</ShadcnButton>
             </nav>
         }
     }

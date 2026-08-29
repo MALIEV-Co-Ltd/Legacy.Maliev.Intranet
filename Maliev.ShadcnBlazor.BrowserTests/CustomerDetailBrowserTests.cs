@@ -92,10 +92,10 @@ public sealed class CustomerDetailBrowserTests(
         var dateInput = page.GetByLabel("Date of birth", new() { Exact = true });
         var dateGeometry = await dateInput.EvaluateAsync<JsonElement>("""
             element => {
-                const control = element.closest('.mud-input-control');
-                const input = element.closest('.mud-input');
-                const border = input.querySelector('.mud-input-outlined-border') ?? input;
-                const label = control.querySelector('.mud-input-label');
+                const control = element.closest('.shadcn-field');
+                const input = element.closest('.shadcn-date-picker-trigger') ?? element;
+                const border = input;
+                const label = control.querySelector('.shadcn-field-label');
                 const inputRect = input.getBoundingClientRect();
                 const labelRect = label.getBoundingClientRect();
                 return {
@@ -124,12 +124,12 @@ public sealed class CustomerDetailBrowserTests(
         var dateInputHandle = await dateInput.ElementHandleAsync();
         Assert.NotNull(dateInputHandle);
         await page.WaitForFunctionAsync(
-            "element => element.closest('.mud-input').getBoundingClientRect().height >= 44",
+            "element => element.getBoundingClientRect().height >= 44",
             dateInputHandle,
             new() { Timeout = 10_000 });
         var narrowDateGeometry = await dateInput.EvaluateAsync<JsonElement>("""
             element => {
-                const input = element.closest('.mud-input');
+                const input = element.closest('.shadcn-date-picker-trigger') ?? element;
                 return {
                     height: input.getBoundingClientRect().height,
                     controlHeight: getComputedStyle(input).getPropertyValue('--shadcn-control-height').trim(),
@@ -435,7 +435,7 @@ public sealed class CustomerDetailBrowserTests(
                 Assert.Equal(1, await activeTab.CountAsync());
                 var activeTabIsFullyVisible = await activeTab.EvaluateAsync<bool>("""
                     element => {
-                        const viewport = element.closest('.mud-tabs-tabbar-content');
+                        const viewport = element.closest('.shadcn-tabs-list');
                         const tab = element.getBoundingClientRect();
                         const bounds = viewport.getBoundingClientRect();
                         return tab.left >= bounds.left - 0.5 && tab.right <= bounds.right + 0.5;

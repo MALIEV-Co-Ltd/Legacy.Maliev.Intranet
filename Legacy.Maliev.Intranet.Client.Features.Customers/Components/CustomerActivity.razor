@@ -1,39 +1,39 @@
 @namespace Legacy.Maliev.Intranet.Client.Features.Customers.Components
 
 <section class="customer-activity" aria-labelledby="customer-activity-heading">
-    <MudText Typo="Typo.h6" HtmlTag="h2" id="customer-activity-heading" Class="customer-activity__heading">
+    <h2 id="customer-activity-heading" class="customer-activity__heading">
         @Localize("Activity")
-    </MudText>
+    </h2>
 
     @if (Loading)
     {
-        <MudProgressLinear Indeterminate="true" Color="Color.Primary" aria-live="polite" aria-label="@Localize("ActivityLoading")" />
+        <div class="customer-activity__loading" role="status" aria-live="polite"><ShadcnSpinner Label="@Localize("ActivityLoading")" Size="1.25rem" /><span>@Localize("ActivityLoading")</span></div>
     }
     else if (!string.IsNullOrWhiteSpace(Error))
     {
-        <MudAlert Severity="Severity.Error" aria-live="assertive">@Error</MudAlert>
-        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="Retry">@Localize("Retry")</MudButton>
+        <ShadcnAlert Variant="ShadcnAlertVariant.Destructive" AlertRole="ShadcnAlertRole.Alert"><ShadcnAlertDescription>@Error</ShadcnAlertDescription></ShadcnAlert>
+        <ShadcnButton OnClick="Retry">@Localize("Retry")</ShadcnButton>
     }
     else if (Page is not null)
     {
         <div class="customer-activity__warnings" aria-label="@Localize("ActivitySourceWarnings")">
             @if (ShouldWarn(Page.Orders))
             {
-                <MudAlert Severity="Severity.Warning">@SourceWarning("Orders", Page.Orders)</MudAlert>
+                <ShadcnAlert AlertRole="ShadcnAlertRole.Status"><ShadcnAlertDescription>@SourceWarning("Orders", Page.Orders)</ShadcnAlertDescription></ShadcnAlert>
             }
             @if (ShouldWarn(Page.Quotations))
             {
-                <MudAlert Severity="Severity.Warning">@SourceWarning("Quotations", Page.Quotations)</MudAlert>
+                <ShadcnAlert AlertRole="ShadcnAlertRole.Status"><ShadcnAlertDescription>@SourceWarning("Quotations", Page.Quotations)</ShadcnAlertDescription></ShadcnAlert>
             }
             @if (ShouldWarn(Page.Invoices))
             {
-                <MudAlert Severity="Severity.Warning">@SourceWarning("Invoices", Page.Invoices)</MudAlert>
+                <ShadcnAlert AlertRole="ShadcnAlertRole.Status"><ShadcnAlertDescription>@SourceWarning("Invoices", Page.Invoices)</ShadcnAlertDescription></ShadcnAlert>
             }
         </div>
 
         @if (Page.Items.Count == 0)
         {
-            <MudText Class="customer-activity__empty">@Localize("ActivityEmpty")</MudText>
+            <p class="customer-activity__empty">@Localize("ActivityEmpty")</p>
         }
         else
         {
@@ -67,7 +67,7 @@
     }
     else
     {
-        <MudText Class="customer-activity__empty">@Localize("ActivityEmpty")</MudText>
+        <p class="customer-activity__empty">@Localize("ActivityEmpty")</p>
     }
 </section>
 

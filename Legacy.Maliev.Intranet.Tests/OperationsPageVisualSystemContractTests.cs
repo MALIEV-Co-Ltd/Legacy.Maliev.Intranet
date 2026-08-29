@@ -80,9 +80,9 @@ public sealed class OperationsPageVisualSystemContractTests
         var page = Read("Legacy.Maliev.Intranet.Client.Features.Customers", "Components", "CustomerHistoryTable.razor");
         var styles = Read("Legacy.Maliev.Intranet.Client.Features.Customers", "Components", "CustomerHistoryTable.razor.css");
 
-        Assert.Equal(3, System.Text.RegularExpressions.Regex.Matches(page, "<MudTable").Count);
-        Assert.Equal(3, System.Text.RegularExpressions.Regex.Matches(page, "Breakpoint=\"Breakpoint.None\"").Count);
-        Assert.DoesNotContain("Breakpoint=\"Breakpoint.Sm\"", page, StringComparison.Ordinal);
+        Assert.Equal(3, System.Text.RegularExpressions.Regex.Matches(page, "<ShadcnTable ").Count);
+        Assert.Equal(3, System.Text.RegularExpressions.Regex.Matches(page, "ExpectedColumnCount=\"").Count);
+        Assert.DoesNotContain("<MudTable", page, StringComparison.Ordinal);
         Assert.Contains("overflow-x: auto", styles, StringComparison.Ordinal);
         Assert.Contains("min-height: 44px", styles, StringComparison.Ordinal);
         Assert.DoesNotContain("<QuickViewContent", page, StringComparison.Ordinal);
@@ -134,7 +134,7 @@ public sealed class OperationsPageVisualSystemContractTests
         var page = Read("Legacy.Maliev.Intranet.Client.Features.Customers", "Components", "CustomerHistoryTable.razor");
         var styles = Read("Legacy.Maliev.Intranet.Client.Features.Customers", "Components", "CustomerHistoryTable.razor.css");
 
-        Assert.Contains("Class=\"history-status mlv-mono\"", page, StringComparison.Ordinal);
+        Assert.Contains("class=\"history-status mlv-mono\"", page, StringComparison.Ordinal);
         Assert.Contains("min-width: 44px", styles, StringComparison.Ordinal);
         Assert.Contains("white-space: nowrap", styles, StringComparison.Ordinal);
     }

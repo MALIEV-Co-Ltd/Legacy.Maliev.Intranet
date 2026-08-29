@@ -367,7 +367,7 @@ public sealed class OperationalTableMigrationBrowserTests(
         var errors = CaptureErrors(page);
         await StubSpecializedTableBoundariesAsync(page);
         await page.GotoAsync(new Uri(server.BaseUri, $"Customers/View?id=69738&tab={tab}").AbsoluteUri);
-        var table = page.Locator($"[data-projection='{projection}'] table");
+        var table = page.Locator($"table[data-projection='{projection}']");
         await table.WaitForAsync();
 
         var mapped = await table.Locator("[data-field]").EvaluateAllAsync<string[]>(
@@ -380,7 +380,7 @@ public sealed class OperationalTableMigrationBrowserTests(
             _ => throw new InvalidOperationException($"Unsupported history tab '{tab}'."),
         };
         Assert.Equal(expectedFields.Order(StringComparer.Ordinal), mapped.Order(StringComparer.Ordinal));
-        var scroller = page.Locator($"[data-projection='{projection}'] .mud-table-container");
+        var scroller = table.Locator("xpath=..");
         Assert.True(await scroller.EvaluateAsync<bool>("node => node.scrollWidth > node.clientWidth"));
         Assert.Equal(
             await page.EvaluateAsync<int>("() => document.documentElement.clientWidth"),
@@ -422,7 +422,7 @@ public sealed class OperationalTableMigrationBrowserTests(
         Assert.Equal("table", await table.EvaluateAsync<string>("node => getComputedStyle(node).display"));
         Assert.NotEqual("none", await table.Locator("thead").EvaluateAsync<string>("node => getComputedStyle(node).display"));
         Assert.Equal("none", await table.Locator("tbody td").First.EvaluateAsync<string>("node => getComputedStyle(node, '::before').content"));
-        var scroller = page.Locator(".customer-history .mud-table-container");
+        var scroller = page.Locator(".customer-history .shadcn-table-container");
         Assert.Contains(await scroller.EvaluateAsync<string>("node => getComputedStyle(node).overflowX"), new[] { "auto", "scroll" });
         var nameCell = page.Locator("[data-projection='history-orders'] td[data-field='Name']");
         var nameGeometry = await nameCell.EvaluateAsync<JsonElement>("""
@@ -452,9 +452,11 @@ public sealed class OperationalTableMigrationBrowserTests(
             nameGeometry.ToString());
         await scroller.FocusAsync();
         Assert.True(await scroller.EvaluateAsync<bool>("node => document.activeElement === node"));
+        var scrollState = await scroller.EvaluateAsync<JsonElement>("node => ({ clientWidth: node.clientWidth, scrollWidth: node.scrollWidth, overflowX: getComputedStyle(node).overflowX, tabIndex: node.tabIndex })");
+        Assert.True(scrollState.GetProperty("scrollWidth").GetInt32() > scrollState.GetProperty("clientWidth").GetInt32(), scrollState.ToString());
         await scroller.PressAsync("ArrowRight");
         await page.WaitForTimeoutAsync(100);
-        Assert.True(await scroller.EvaluateAsync<double>("node => node.scrollLeft") > 0);
+        Assert.True(await scroller.EvaluateAsync<double>("node => node.scrollLeft") > 0, scrollState.ToString());
         Assert.Equal(
             await page.EvaluateAsync<int>("() => document.documentElement.clientWidth"),
             await page.EvaluateAsync<int>("() => document.documentElement.scrollWidth"));

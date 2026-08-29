@@ -4,39 +4,38 @@
     <div class="customer-overview__layout">
         <section class="customer-overview__section customer-overview__primary" aria-labelledby="customer-overview-contact-heading">
             <div class="customer-overview__section-header">
-                <MudText Typo="Typo.h6" HtmlTag="h2" id="customer-overview-contact-heading" Class="customer-overview__section-title">
+                <h2 id="customer-overview-contact-heading" class="customer-overview__section-title">
                     @Localize("Contact")
-                </MudText>
+                </h2>
                 @if (CanEdit && !Editing)
                 {
-                    <MudButton Variant="Variant.Outlined"
-                               Color="Color.Primary"
-                               Disabled="@Submitting"
-                               OnClick="BeginEdit"
-                               aria-label="@Localize("EditCustomer")">
+                    <ShadcnButton Variant="ShadcnButtonVariant.Outline"
+                                  Disabled="@Submitting"
+                                  OnClick="BeginEdit"
+                                  aria-label="@Localize("EditCustomer")">
                         @Localize("EditCustomer")
-                    </MudButton>
+                    </ShadcnButton>
                 }
             </div>
 
             @if (Editing)
             {
                 <div class="customer-overview__form-grid">
-                    <MudTextField @bind-Value="EditModel.FirstName" For="@(() => EditModel.FirstName)" Label="@Localize("FirstName")" Required="true" Variant="Variant.Outlined" />
-                    <MudTextField @bind-Value="EditModel.LastName" For="@(() => EditModel.LastName)" Label="@Localize("LastName")" Required="true" Variant="Variant.Outlined" />
-                    <MudTextField @bind-Value="EditModel.Email" For="@(() => EditModel.Email)" Label="@Localize("Email")" InputType="InputType.Email" Required="true" Variant="Variant.Outlined" />
-                    <MudTextField @bind-Value="EditModel.Telephone" For="@(() => EditModel.Telephone)" Label="@Localize("Telephone")" InputType="InputType.Telephone" Variant="Variant.Outlined" />
-                    <MudTextField @bind-Value="EditModel.Mobile" For="@(() => EditModel.Mobile)" Label="@Localize("Mobile")" InputType="InputType.Telephone" Variant="Variant.Outlined" />
-                    <MudTextField @bind-Value="EditModel.Fax" For="@(() => EditModel.Fax)" Label="@Localize("Fax")" Variant="Variant.Outlined" />
-                    <MudDatePicker @bind-Date="EditModel.DateOfBirth" For="@(() => EditModel.DateOfBirth)" Label="@Localize("DateOfBirth")" Variant="Variant.Outlined" />
+                    <ShadcnFormField Id="customer-first-name" Label="@Localize("FirstName")" Required="true"><Control><ShadcnInput TValue="string" id="customer-first-name" @bind-Value="EditModel.FirstName" Required="true" /></Control></ShadcnFormField>
+                    <ShadcnFormField Id="customer-last-name" Label="@Localize("LastName")" Required="true"><Control><ShadcnInput TValue="string" id="customer-last-name" @bind-Value="EditModel.LastName" Required="true" /></Control></ShadcnFormField>
+                    <ShadcnFormField Id="customer-email" Label="@Localize("Email")" Required="true"><Control><ShadcnInput TValue="string" id="customer-email" Type="email" @bind-Value="EditModel.Email" Required="true" /></Control></ShadcnFormField>
+                    <ShadcnFormField Id="customer-telephone" Label="@Localize("Telephone")"><Control><ShadcnInput TValue="string" id="customer-telephone" Type="tel" @bind-Value="EditModel.Telephone" /></Control></ShadcnFormField>
+                    <ShadcnFormField Id="customer-mobile" Label="@Localize("Mobile")"><Control><ShadcnInput TValue="string" id="customer-mobile" Type="tel" @bind-Value="EditModel.Mobile" /></Control></ShadcnFormField>
+                    <ShadcnFormField Id="customer-fax" Label="@Localize("Fax")"><Control><ShadcnInput TValue="string" id="customer-fax" @bind-Value="EditModel.Fax" /></Control></ShadcnFormField>
+                    <ShadcnFormField Id="customer-date-of-birth" Label="@Localize("DateOfBirth")"><Control><ShadcnDatePicker id="customer-date-of-birth" @bind-Value="EditDateOfBirth" Clearable="true" CalendarLabel="@Localize("DateOfBirth")" /></Control></ShadcnFormField>
                 </div>
                 <div class="customer-overview__form-actions">
-                    <MudButton ButtonType="ButtonType.Button" Variant="Variant.Filled" Color="Color.Primary" Disabled="@Submitting" OnClick="Save">
+                    <ShadcnButton ButtonType="ShadcnButtonType.Button" Disabled="@Submitting" OnClick="Save">
                         @(Submitting ? Localize("Saving") : Localize("SaveChanges"))
-                    </MudButton>
-                    <MudButton ButtonType="ButtonType.Button" Variant="Variant.Text" Disabled="@Submitting" OnClick="CancelEdit">
+                    </ShadcnButton>
+                    <ShadcnButton ButtonType="ShadcnButtonType.Button" Variant="ShadcnButtonVariant.Ghost" Disabled="@Submitting" OnClick="CancelEdit">
                         @Localize("Cancel")
-                    </MudButton>
+                    </ShadcnButton>
                 </div>
             }
             else
@@ -53,12 +52,12 @@
 
         <aside class="customer-overview__secondary" aria-label="@Localize("Company")">
             <section class="customer-overview__section" aria-labelledby="customer-overview-company-heading">
-                <MudText Typo="Typo.h6" HtmlTag="h2" id="customer-overview-company-heading" Class="customer-overview__section-title">
+                <h2 id="customer-overview-company-heading" class="customer-overview__section-title">
                     @Localize("Company")
-                </MudText>
+                </h2>
                 @if (Customer.Company is null)
                 {
-                    <MudText Class="customer-overview__empty">@Localize("NotAvailable")</MudText>
+                    <p class="customer-overview__empty">@Localize("NotAvailable")</p>
                 }
                 else
                 {
@@ -71,9 +70,9 @@
             </section>
 
             <section class="customer-overview__section customer-overview__record" aria-labelledby="customer-overview-record-heading">
-                <MudText Typo="Typo.h6" HtmlTag="h2" id="customer-overview-record-heading" Class="customer-overview__section-title">
+                <h2 id="customer-overview-record-heading" class="customer-overview__section-title">
                     @Localize("RecordInformation")
-                </MudText>
+                </h2>
                 <dl class="customer-overview__details">
                     <div><dt>@Localize("CreatedDate")</dt><dd>@DisplayDateTime(Customer.CreatedDate)</dd></div>
                     <div><dt>@Localize("ModifiedDate")</dt><dd>@DisplayDateTime(Customer.ModifiedDate)</dd></div>
@@ -84,15 +83,15 @@
 
     <div class="customer-overview__addresses">
         <section class="customer-overview__section" aria-labelledby="customer-overview-billing-heading">
-            <MudText Typo="Typo.h6" HtmlTag="h2" id="customer-overview-billing-heading" Class="customer-overview__section-title">
+            <h2 id="customer-overview-billing-heading" class="customer-overview__section-title">
                 @Localize("BillingAddress")
-            </MudText>
+            </h2>
             <address class="customer-overview__address">@DisplayAddress(Customer.BillingAddress)</address>
         </section>
         <section class="customer-overview__section" aria-labelledby="customer-overview-shipping-heading">
-            <MudText Typo="Typo.h6" HtmlTag="h2" id="customer-overview-shipping-heading" Class="customer-overview__section-title">
+            <h2 id="customer-overview-shipping-heading" class="customer-overview__section-title">
                 @Localize("ShippingAddress")
-            </MudText>
+            </h2>
             <address class="customer-overview__address">@DisplayAddress(Customer.ShippingAddress)</address>
         </section>
     </div>
@@ -113,4 +112,9 @@
     [Parameter, EditorRequired] public Func<DateTime?, string> DisplayDateTime { get; set; } = null!;
     [Parameter, EditorRequired] public Func<CustomerAddressDetail?, string> DisplayAddress { get; set; } = null!;
 
+    private DateOnly? EditDateOfBirth
+    {
+        get => EditModel.DateOfBirth is DateTime date ? DateOnly.FromDateTime(date) : null;
+        set => EditModel.DateOfBirth = value?.ToDateTime(TimeOnly.MinValue);
+    }
 }

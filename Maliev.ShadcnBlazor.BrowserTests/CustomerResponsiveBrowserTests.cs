@@ -67,7 +67,7 @@ public sealed class CustomerResponsiveBrowserTests(
             await page.GotoAsync(new Uri(server.BaseUri, $"customers?sort={value}&index=2&size=25").AbsoluteUri);
             await page.Locator("table.operational-table").WaitForAsync();
             Assert.Contains($"sort={value}", page.Url, StringComparison.Ordinal);
-            Assert.Equal(label, (await page.GetByRole(AriaRole.Combobox, new() { Name = "Sort by" }).InnerTextAsync()).Trim());
+            Assert.Equal(label, (await page.Locator("#list-toolbar-sort option:checked").InnerTextAsync()).Trim());
         }
 
         await page.GotoAsync(new Uri(server.BaseUri, "customers?sort=CustomerCreatedDate_Descending&index=3&size=25").AbsoluteUri);
@@ -93,10 +93,10 @@ public sealed class CustomerResponsiveBrowserTests(
         Assert.Equal("Page 2 of 4 · 76 records", (await page.Locator(".customers-results-summary").InnerTextAsync()).Trim());
 
         await page.GetByRole(AriaRole.Button, new() { Name = "Expand customer 101" }).ClickAsync();
-        await page.GetByRole(AriaRole.Textbox, new() { Name = "Search" }).FillAsync("Natthapol");
+        await page.Locator("#list-toolbar-search").FillAsync("Natthapol");
         await page.WaitForURLAsync(url => url.Contains("search=Natthapol", StringComparison.Ordinal));
         Assert.Equal(0, await page.Locator(".operational-table__quick-view").CountAsync());
-        await page.GetByRole(AriaRole.Button, new() { Name = "Clear", Exact = true }).ClickAsync();
+        await page.GetByRole(AriaRole.Button, new() { Name = "Clear filters", Exact = true }).ClickAsync();
         await page.WaitForURLAsync(url => url.Contains("search=&", StringComparison.Ordinal));
         await page.WaitForFunctionAsync("() => document.querySelectorAll('.operational-table__row').length === 2");
         Assert.Equal(2, await page.Locator(".operational-table__row").CountAsync());
@@ -155,7 +155,7 @@ public sealed class CustomerResponsiveBrowserTests(
             if (width <= 900)
             {
                 await page.WaitForFunctionAsync("""
-                    () => Array.from(document.querySelectorAll('.list-toolbar .mud-input'))
+                    () => Array.from(document.querySelectorAll('.list-toolbar input, .list-toolbar select'))
                         .filter(input => {
                             const style = getComputedStyle(input);
                             const rect = input.getBoundingClientRect();
@@ -167,13 +167,13 @@ public sealed class CustomerResponsiveBrowserTests(
             var metrics = await page.Locator(".list-toolbar").EvaluateAsync<JsonElement>("""
                 element => {
                     const bounds = node => { const rect = node.getBoundingClientRect(); return { x: rect.x, y: rect.y, width: rect.width, height: rect.height }; };
-                    const controls = Array.from(element.querySelectorAll('.mud-input-control'));
-                    const interactiveInputs = Array.from(element.querySelectorAll('.mud-input')).filter(input => {
+                    const controls = Array.from(element.querySelectorAll('.list-toolbar__field'));
+                    const interactiveInputs = Array.from(element.querySelectorAll('input, select')).filter(input => {
                         const style = getComputedStyle(input);
                         const rect = input.getBoundingClientRect();
                         return style.display !== 'none' && style.visibility !== 'hidden' && rect.width > 0 && rect.height > 0;
                     });
-                    const buttons = Array.from(element.querySelectorAll('.list-toolbar__actions .mud-button-root'));
+                    const buttons = Array.from(element.querySelectorAll('.list-toolbar__actions .shadcn-button'));
                     return {
                         toolbar: bounds(element), search: bounds(controls[0]), sort: bounds(controls[1]), pageSize: bounds(controls[2]),
                         controls: controls.map(bounds),
@@ -214,9 +214,9 @@ public sealed class CustomerResponsiveBrowserTests(
         await page.GotoAsync(new Uri(server.BaseUri, "customers").AbsoluteUri);
         await page.Locator("table.operational-table").WaitForAsync();
 
-        await page.GetByRole(AriaRole.Textbox, new() { Name = "ค้นหา" }).FillAsync("Natthapol");
+        await page.Locator("#list-toolbar-search").FillAsync("Natthapol");
         await page.WaitForURLAsync(url => url.Contains("search=Natthapol", StringComparison.Ordinal));
-        var actions = page.Locator(".list-toolbar__actions .mud-button-root");
+        var actions = page.Locator(".list-toolbar__actions .shadcn-button");
         Assert.Equal(2, await actions.CountAsync());
         Assert.Equal("ล้างตัวกรอง", (await actions.Nth(0).InnerTextAsync()).Trim());
         Assert.Equal(string.Empty, (await actions.Nth(1).InnerTextAsync()).Trim());
@@ -225,13 +225,11 @@ public sealed class CustomerResponsiveBrowserTests(
         var actionHeights = await actions.EvaluateAllAsync<double[]>("elements => elements.map(element => element.getBoundingClientRect().height)");
         Assert.All(actionHeights, height => Assert.True(height >= 44));
 
-        var selectedSort = page.Locator(".list-toolbar .mud-select-input").First;
+        var selectedSort = page.Locator("#list-toolbar-sort option:checked");
         Assert.Equal("ลูกค้าใหม่ล่าสุด", (await selectedSort.InnerTextAsync()).Trim());
-        await page.Locator(".list-toolbar .mud-select").First.ClickAsync();
-        var options = page.Locator(".mud-popover-open .mud-list-item");
-        await options.First.WaitForAsync();
+        var options = page.Locator("#list-toolbar-sort option");
         Assert.Equal(new[] { "ลูกค้าใหม่ล่าสุด", "ลูกค้าเก่าสุด", "อัปเดตล่าสุด", "อัปเดตนานที่สุด", "บริษัท ก–ฮ", "บริษัท ฮ–ก", "อีเมล A–Z", "อีเมล Z–A", "ID มากไปน้อย", "ID น้อยไปมาก" }, await options.AllInnerTextsAsync());
-        var menu = await page.Locator(".mud-popover-open").Last.EvaluateAsync<JsonElement>("element => { const rect = element.getBoundingClientRect(); return { left: rect.left, right: rect.right, width: rect.width, viewport: innerWidth }; }");
+        var menu = await page.Locator("#list-toolbar-sort").EvaluateAsync<JsonElement>("element => { const rect = element.getBoundingClientRect(); return { left: rect.left, right: rect.right, width: rect.width, viewport: innerWidth }; }");
         Assert.True(menu.GetProperty("left").GetDouble() >= 8, menu.ToString());
         Assert.True(menu.GetProperty("right").GetDouble() <= menu.GetProperty("viewport").GetDouble() - 8, menu.ToString());
         Assert.True(menu.GetProperty("width").GetDouble() <= 304, menu.ToString());

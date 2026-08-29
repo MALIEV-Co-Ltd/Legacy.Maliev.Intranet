@@ -2,6 +2,7 @@
 @attribute [Authorize]
 @implements IDisposable
 @using Microsoft.JSInterop
+@using Microsoft.AspNetCore.Components.Forms
 @using Legacy.Maliev.Intranet.Client.Features.Customers.Components
 @inject HttpClient Http
 @inject NavigationManager Navigation
@@ -11,21 +12,21 @@
 
 <PageTitle>@(customer is null ? Text["PageTitle"] : Text["CustomerPageTitle", customer.FullName])</PageTitle>
 
-<MudContainer MaxWidth="MaxWidth.Large">
+<main class="customer-detail-page">
     <div class="customer-detail">
         @if (loading)
         {
-            <MudProgressLinear Indeterminate="true" Color="Color.Primary" aria-live="polite" aria-label="@Text["Loading"]" />
+            <div class="customer-detail__loading" role="status" aria-live="polite"><ShadcnSpinner Label="@Text["Loading"]" Size="1.25rem" /><span>@Text["Loading"]</span></div>
         }
         else if (!string.IsNullOrWhiteSpace(loadError))
         {
-            <MudAlert Severity="errorSeverity" Class="mb-4" aria-live="assertive">@loadError</MudAlert>
+            <ShadcnAlert Variant="@(notFound ? ShadcnAlertVariant.Default : ShadcnAlertVariant.Destructive)" AlertRole="ShadcnAlertRole.Alert"><ShadcnAlertDescription>@loadError</ShadcnAlertDescription></ShadcnAlert>
             <div class="customer-detail__recovery">
                 @if (!notFound)
                 {
-                    <MudButton OnClick="LoadAsync" Variant="Variant.Filled" Color="Color.Primary">@Text["Retry"]</MudButton>
+                    <ShadcnButton OnClick="LoadAsync">@Text["Retry"]</ShadcnButton>
                 }
-                <LegacyLink Href="/Customers/Index" Role="LegacyLinkRole.Navigation" StartIcon="@Icons.Material.Filled.ArrowBack" AriaLabel="@Text["BackToCustomers"]">@Text["BackToCustomers"]</LegacyLink>
+                <LegacyLink Href="/Customers/Index" Role="LegacyLinkRole.Navigation" StartIconData="ArrowLeftIcon" AriaLabel="@Text["BackToCustomers"]">@Text["BackToCustomers"]</LegacyLink>
             </div>
         }
         else if (customer is not null)
@@ -33,27 +34,28 @@
             <PageBreadcrumbs Items="@Breadcrumbs" />
             <header class="customer-detail__header operations-page-header">
                 <div class="customer-detail__identity">
-                    <MudText Typo="Typo.h4" HtmlTag="h1">@customer.FullName</MudText>
-                    <MudText Typo="Typo.body2" Class="customer-detail__number">@Text["CustomerNumber", customer.Id]</MudText>
+                    <h1>@customer.FullName</h1>
+                    <p class="customer-detail__number">@Text["CustomerNumber", customer.Id]</p>
                 </div>
             </header>
 
             @if (!string.IsNullOrWhiteSpace(operationError))
             {
-                <MudAlert Severity="Severity.Error" aria-live="assertive">@operationError</MudAlert>
+                <ShadcnAlert Variant="ShadcnAlertVariant.Destructive" AlertRole="ShadcnAlertRole.Alert"><ShadcnAlertDescription>@operationError</ShadcnAlertDescription></ShadcnAlert>
             }
 
             <div class="customer-detail__tabs" role="region" aria-label="@Text["CustomerWorkspaceTabs"]">
-                <MudTabs ActivePanelIndex="@ActiveTabIndex"
-                         ActivePanelIndexChanged="OnActiveTabChangedAsync"
-                         Class="customer-detail__tab-list"
-                         MinimumTabWidth="0"
-                         ApplyEffectsToContainer="true"
-                         Elevation="0"
-                         Rounded="false"
-                         KeepPanelsAlive="true">
-                    <MudTabPanel Text="@Text["Overview"]">
-                        <MudForm @ref="editForm" Model="@editModel" @bind-IsValid="editFormValid">
+                <ShadcnTabs Value="@selectedTab" ValueChanged="OnActiveTabChangedAsync" Class="customer-detail__tab-list">
+                    <ShadcnTabsList aria-label="@Text["CustomerWorkspaceTabs"]">
+                        <ShadcnTabsTrigger Value="overview">@Text["Overview"]</ShadcnTabsTrigger>
+                        <ShadcnTabsTrigger Value="activity">@Text["Activity"]</ShadcnTabsTrigger>
+                        @if (canReadOrders) { <ShadcnTabsTrigger Value="orders">@Text["Orders"]</ShadcnTabsTrigger> }
+                        @if (canReadQuotations) { <ShadcnTabsTrigger Value="quotations">@Text["Quotations"]</ShadcnTabsTrigger> }
+                        @if (canReadInvoices) { <ShadcnTabsTrigger Value="invoices">@Text["Invoices"]</ShadcnTabsTrigger> }
+                    </ShadcnTabsList>
+                    <ShadcnTabsContent Value="overview" ForceMount="true">
+                        <EditForm EditContext="@editContext">
+                            <DataAnnotationsValidator />
                             <CustomerOverview Customer="@customer"
                                               EditModel="@editModel"
                                               CanEdit="@canEdit"
@@ -67,9 +69,9 @@
                                               DisplayDate="DisplayDate"
                                               DisplayDateTime="DisplayDateTime"
                                               DisplayAddress="DisplayAddress" />
-                        </MudForm>
-                    </MudTabPanel>
-                    <MudTabPanel Text="@Text["Activity"]">
+                        </EditForm>
+                    </ShadcnTabsContent>
+                    <ShadcnTabsContent Value="activity" ForceMount="true">
                         <CustomerActivity Page="@activityPage"
                                           Loading="@activityLoading"
                                           Error="@activityError"
@@ -78,10 +80,10 @@
                                           LocalizeFormat="LocalizeFormat"
                                           FormatTimestamp="FormatTimestamp"
                                           FormatMoney="FormatMoney" />
-                    </MudTabPanel>
+                    </ShadcnTabsContent>
                     @if (canReadOrders)
                     {
-                        <MudTabPanel Text="@Text["Orders"]">
+                        <ShadcnTabsContent Value="orders" ForceMount="true">
                             <CustomerHistoryTable Kind="CustomerHistoryKind.Order"
                                                   Orders="@(ordersPage ?? EmptyOrdersPage(ordersPageIndex))"
                                                   Loading="@ordersLoading"
@@ -93,11 +95,11 @@
                                                   DisplayValue="Display"
                                                   FormatDate="DisplayDate"
                                                   FormatMoney="FormatMoney" />
-                        </MudTabPanel>
+                        </ShadcnTabsContent>
                     }
                     @if (canReadQuotations)
                     {
-                        <MudTabPanel Text="@Text["Quotations"]">
+                        <ShadcnTabsContent Value="quotations" ForceMount="true">
                             <CustomerHistoryTable Kind="CustomerHistoryKind.Quotation"
                                                   Quotations="@(quotationsPage ?? EmptyQuotationsPage(quotationsPageIndex))"
                                                   Loading="@quotationsLoading"
@@ -109,11 +111,11 @@
                                                   DisplayValue="Display"
                                                   FormatDate="DisplayDate"
                                                   FormatMoney="FormatMoney" />
-                        </MudTabPanel>
+                        </ShadcnTabsContent>
                     }
                     @if (canReadInvoices)
                     {
-                        <MudTabPanel Text="@Text["Invoices"]">
+                        <ShadcnTabsContent Value="invoices" ForceMount="true">
                             <CustomerHistoryTable Kind="CustomerHistoryKind.Invoice"
                                                   Invoices="@(invoicesPage ?? EmptyInvoicesPage(invoicesPageIndex))"
                                                   Loading="@invoicesLoading"
@@ -125,17 +127,17 @@
                                                   DisplayValue="Display"
                                                   FormatDate="DisplayDate"
                                                   FormatMoney="FormatMoney" />
-                        </MudTabPanel>
+                        </ShadcnTabsContent>
                     }
-                </MudTabs>
+                </ShadcnTabs>
             </div>
 
             <nav class="customer-detail__footer" aria-label="@Text["BackToCustomers"]">
-                <LegacyLink Href="/Customers/Index" Role="LegacyLinkRole.Navigation" StartIcon="@Icons.Material.Filled.ArrowBack" AriaLabel="@Text["BackToCustomers"]">@Text["BackToCustomers"]</LegacyLink>
+                <LegacyLink Href="/Customers/Index" Role="LegacyLinkRole.Navigation" StartIconData="ArrowLeftIcon" AriaLabel="@Text["BackToCustomers"]">@Text["BackToCustomers"]</LegacyLink>
             </nav>
         }
     </div>
-</MudContainer>
+</main>
 
 @code {
     private const int HistoryPageSize = 20;
@@ -146,8 +148,7 @@
 
     private CustomerDetail? customer;
     private readonly CustomerUpdateRequest editModel = new();
-    private MudForm? editForm;
-    private bool editFormValid;
+    private EditContext editContext = null!;
     private bool canEdit;
     private bool canReadOrders;
     private bool canReadQuotations;
@@ -156,7 +157,6 @@
     private bool submitting;
     private string? loadError;
     private string? operationError;
-    private Severity errorSeverity = Severity.Error;
     private bool loading;
     private bool notFound;
     private int loadedCustomerId;
@@ -192,7 +192,9 @@
     private CancellationTokenSource? invoicesLoadCts;
     private bool activeTabNeedsVisibilitySync;
 
-    private int ActiveTabIndex => VisibleTabs().IndexOf(selectedTab);
+    private static readonly ShadcnIconData ArrowLeftIcon = LucideIconCatalog.Instance.Get(LucideIconNames.ArrowLeft);
+
+    protected override void OnInitialized() => editContext = new EditContext(editModel);
 
     protected override async Task OnParametersSetAsync()
     {
@@ -229,6 +231,8 @@
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
+        await JS.InvokeVoidAsync("malievCustomerWorkspace.preservePanelKeyDefaults");
+
         if (!activeTabNeedsVisibilitySync)
         {
             return;
@@ -244,7 +248,6 @@
         customer = null;
         loadError = null;
         operationError = null;
-        errorSeverity = Severity.Error;
         notFound = false;
         editing = false;
         submitting = false;
@@ -262,7 +265,6 @@
         if (request.CustomerId <= 0)
         {
             loadError = Text["NotFound"];
-            errorSeverity = Severity.Warning;
             notFound = true;
             return;
         }
@@ -289,7 +291,6 @@
             if (response.StatusCode == HttpStatusCode.NotFound)
             {
                 loadError = Text["NotFound"];
-                errorSeverity = Severity.Warning;
                 notFound = true;
                 return;
             }
@@ -339,15 +340,13 @@
         }
     }
 
-    private async Task OnActiveTabChangedAsync(int index)
+    private async Task OnActiveTabChangedAsync(string value)
     {
         var tabs = VisibleTabs();
-        if (index < 0 || index >= tabs.Count)
+        if (!tabs.Contains(value, StringComparer.Ordinal))
         {
             return;
         }
-
-        var value = tabs[index];
         if (string.Equals(value, selectedTab, StringComparison.Ordinal))
         {
             return;
@@ -569,10 +568,9 @@
 
     private async Task SaveAsync()
     {
-        if (!canEdit || !editing || submitting || editForm is null) return;
+        if (!canEdit || !editing || submitting) return;
 
-        await editForm.ValidateAsync();
-        if (!editFormValid)
+        if (!editContext.Validate())
         {
             operationError = Text["ValidationFailed"];
             return;
@@ -684,6 +682,7 @@
         editModel.Mobile = value.Mobile;
         editModel.Fax = value.Fax;
         editModel.DateOfBirth = value.DateOfBirth;
+        editContext = new EditContext(editModel);
     }
 
     private string Localize(string key) => Text[key];

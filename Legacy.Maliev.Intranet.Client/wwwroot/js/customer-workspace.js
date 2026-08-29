@@ -1,27 +1,34 @@
 window.malievCustomerWorkspace = {
+    preservePanelKeyDefaults() {
+        const keys = new Set(['Home', 'End', 'ArrowLeft', 'ArrowRight']);
+        document.querySelectorAll('.customer-detail__tabs [role="tabpanel"]').forEach(panel => {
+            if (panel.dataset.malievKeyGuard === 'true') {
+                return;
+            }
+
+            panel.dataset.malievKeyGuard = 'true';
+            panel.addEventListener('keydown', event => {
+                if (keys.has(event.key)) {
+                    event.stopPropagation();
+                }
+            });
+        });
+    },
     async ensureActiveTabVisible() {
         await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
         const activeTab = document.querySelector('.customer-detail__tabs [role="tab"][aria-selected="true"]');
-        const viewport = activeTab?.closest('.mud-tabs-tabbar-content');
+        const viewport = activeTab?.closest('.shadcn-tabs-list');
         if (!activeTab || !viewport) {
             return;
         }
 
         const tab = activeTab.getBoundingClientRect();
         const bounds = viewport.getBoundingClientRect();
-        const wrapper = activeTab.closest('.mud-tabs-tabbar-wrapper');
-        if (!wrapper) {
-            return;
-        }
         const inset = 6;
-        const currentTransform = getComputedStyle(wrapper).transform;
-        const currentOffset = currentTransform === 'none' ? 0 : new DOMMatrixReadOnly(currentTransform).m41;
         if (tab.left < bounds.left + inset) {
-            wrapper.style.setProperty('transform', `translateX(${currentOffset + bounds.left + inset - tab.left}px)`, 'important');
+            viewport.scrollLeft -= bounds.left + inset - tab.left;
         } else if (tab.right > bounds.right - inset) {
-            wrapper.style.setProperty('transform', `translateX(${currentOffset - (tab.right - bounds.right + inset)}px)`, 'important');
-        } else {
-            wrapper.style.removeProperty('transform');
+            viewport.scrollLeft += tab.right - bounds.right + inset;
         }
     }
 };
