@@ -45,7 +45,7 @@ public sealed class QuotationViewWasmMigrationContractTests
     }
 
     [Fact]
-    public void ViewRoute_IsLazyReadOnlyAndContainsNoDecisionMutation()
+    public void ViewRoute_IsLazyAndDecisionMutationUsesProtectedBffContract()
     {
         var root = FindRepositoryRoot();
         var page = File.ReadAllText(Path.Combine(root, "Legacy.Maliev.Intranet.Client.Features.Quotations", "Pages", "Quotations", "View.razor"));
@@ -61,9 +61,13 @@ public sealed class QuotationViewWasmMigrationContractTests
         Assert.Contains("LegacyEmployeePermissions.QuotationOrdersRead", program, StringComparison.Ordinal);
         Assert.Contains("LegacyEmployeePermissions.QuotationFilesRead", program, StringComparison.Ordinal);
         Assert.Contains("LegacyEmployeePermissions.FileUploadsRead", program, StringComparison.Ordinal);
-        Assert.DoesNotContain("HttpMethod.Put", page, StringComparison.Ordinal);
-        Assert.DoesNotContain("Accepted =", page, StringComparison.Ordinal);
+        Assert.Contains("HttpMethod.Put", page, StringComparison.Ordinal);
+        Assert.Contains("/bff/quotations/{Id.Value}/decision", page, StringComparison.Ordinal);
+        Assert.Contains("X-CSRF-TOKEN", page, StringComparison.Ordinal);
+        Assert.Contains("LegacyQuotationPermissions.Update", page, StringComparison.Ordinal);
+        Assert.Contains("QuotationDecisionInput(accepted, page.Quotation.ModifiedDate)", page, StringComparison.Ordinal);
         Assert.DoesNotContain("access_token", page, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("refresh_token", page, StringComparison.OrdinalIgnoreCase);
     }
 
     private static HttpClient Client(HttpMessageHandler handler, string host) => new(handler) { BaseAddress = new($"http://{host}/") };

@@ -71,6 +71,13 @@ public sealed class QuotationOperationsUiContractTests
         Assert.Contains("/bff/quotations/{Id.Value}", view, StringComparison.Ordinal);
         Assert.Contains("quotation-price-grid", view, StringComparison.Ordinal);
         Assert.Contains("DecisionClass", view, StringComparison.Ordinal);
+        Assert.Contains("AuthenticationStateProvider", view, StringComparison.Ordinal);
+        Assert.Contains("LegacyQuotationPermissions.Update", view, StringComparison.Ordinal);
+        Assert.Contains("/bff/quotations/{Id.Value}/decision", view, StringComparison.Ordinal);
+        Assert.Contains("/bff/session", view, StringComparison.Ordinal);
+        Assert.Contains("X-CSRF-TOKEN", view, StringComparison.Ordinal);
+        Assert.Contains("aria-busy", view, StringComparison.Ordinal);
+        Assert.DoesNotContain("ReadOnlyNotice", view, StringComparison.Ordinal);
         var externalLinks = Count(view, "Target=\"_blank\"");
         Assert.True(externalLinks > 0);
         Assert.Equal(externalLinks, Count(view, "rel=\"noopener\"") + Count(view, "Rel=\"noopener\""));

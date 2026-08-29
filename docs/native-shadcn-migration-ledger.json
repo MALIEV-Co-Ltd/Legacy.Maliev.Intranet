@@ -63,6 +63,6 @@
     { "path": "Legacy.Maliev.Intranet.Client.Features.Quotations/Pages/Quotations/Create.razor", "baselineRenderSites": 57, "remainingRenderSites": 57, "status": "pending" },
     { "path": "Legacy.Maliev.Intranet.Client.Features.Quotations/Pages/Quotations/Estimate.razor", "baselineRenderSites": 84, "remainingRenderSites": 84, "status": "pending" },
     { "path": "Legacy.Maliev.Intranet.Client.Features.Quotations/Pages/Quotations/Index.razor", "baselineRenderSites": 14, "remainingRenderSites": 14, "status": "pending" },
-    { "path": "Legacy.Maliev.Intranet.Client.Features.Quotations/Pages/Quotations/View.razor", "baselineRenderSites": 35, "remainingRenderSites": 35, "status": "pending" }
+    { "path": "Legacy.Maliev.Intranet.Client.Features.Quotations/Pages/Quotations/View.razor", "baselineRenderSites": 35, "remainingRenderSites": 47, "status": "pending" }
   ]
 }

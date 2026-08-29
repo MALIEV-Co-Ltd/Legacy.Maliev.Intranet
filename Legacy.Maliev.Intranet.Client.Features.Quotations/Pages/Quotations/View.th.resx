@@ -11,7 +11,23 @@
   <data name="Description" xml:space="preserve"><value>ตรวจสอบข้อมูลลูกค้า ราคา ใบสั่งผลิตที่เกี่ยวข้อง และเอกสารของใบเสนอราคานี้</value></data>
   <data name="Actions" xml:space="preserve"><value>การดำเนินการเกี่ยวกับใบเสนอราคา</value></data>
   <data name="Back" xml:space="preserve"><value>กลับไปยังรายการใบเสนอราคา</value></data>
-  <data name="ReadOnlyNotice" xml:space="preserve"><value>ใบเสนอราคานี้เปิดให้อ่านเท่านั้น การเปลี่ยนผลการพิจารณาจะเปิดใช้งานเมื่อบริการที่รับผิดชอบรองรับแล้ว</value></data>
+  <data name="DecisionActions" xml:space="preserve"><value>ผลการพิจารณาใบเสนอราคา</value></data>
+  <data name="DecisionHelp" xml:space="preserve"><value>บันทึกว่าลูกค้ายอมรับหรือปฏิเสธใบเสนอราคา ระบบจะตรวจสอบข้อมูลล่าสุดก่อนบันทึกทุกครั้ง</value></data>
+  <data name="AcceptQuotation" xml:space="preserve"><value>ยอมรับใบเสนอราคา</value></data>
+  <data name="DeclineQuotation" xml:space="preserve"><value>ปฏิเสธใบเสนอราคา</value></data>
+  <data name="ConfirmDecision" xml:space="preserve"><value>ยืนยันผลการพิจารณา</value></data>
+  <data name="ConfirmAccept" xml:space="preserve"><value>ยืนยันว่าต้องการยอมรับใบเสนอราคานี้ใช่หรือไม่</value></data>
+  <data name="ConfirmDecline" xml:space="preserve"><value>ยืนยันว่าต้องการปฏิเสธใบเสนอราคานี้ใช่หรือไม่</value></data>
+  <data name="Cancel" xml:space="preserve"><value>ยกเลิก</value></data>
+  <data name="DecisionSucceeded" xml:space="preserve"><value>บันทึกผลการพิจารณาเรียบร้อยแล้ว</value></data>
+  <data name="DecisionConflict" xml:space="preserve"><value>ใบเสนอราคานี้มีการเปลี่ยนแปลง กรุณาโหลดข้อมูลล่าสุดก่อนลองอีกครั้ง</value></data>
+  <data name="DecisionPartial" xml:space="preserve"><value>บันทึกผลแล้ว แต่ปรับสถานะใบสั่งผลิตสำเร็จ {0} จาก {1} รายการ กรุณาลองอีกครั้งเพื่อดำเนินการส่วนที่เหลือ</value></data>
+  <data name="DecisionRateLimited" xml:space="preserve"><value>มีการส่งคำขอถี่เกินไป กรุณาลองอีกครั้งใน {0} วินาที</value></data>
+  <data name="DecisionForbidden" xml:space="preserve"><value>คุณไม่มีสิทธิ์เปลี่ยนผลการพิจารณาใบเสนอราคานี้</value></data>
+  <data name="DecisionInvalidResponse" xml:space="preserve"><value>ระบบส่งผลการพิจารณากลับมาไม่ถูกต้อง</value></data>
+  <data name="DecisionUnavailable" xml:space="preserve"><value>ยังไม่สามารถบันทึกผลการพิจารณาได้ในขณะนี้</value></data>
+  <data name="RetryDecision" xml:space="preserve"><value>ลองบันทึกอีกครั้ง</value></data>
+  <data name="ReloadQuotation" xml:space="preserve"><value>โหลดข้อมูลล่าสุด</value></data>
   <data name="Quotation" xml:space="preserve"><value>ข้อมูลใบเสนอราคา</value></data>
   <data name="Created" xml:space="preserve"><value>สร้างเมื่อ: {0}</value></data>
   <data name="Modified" xml:space="preserve"><value>แก้ไขเมื่อ: {0}</value></data>

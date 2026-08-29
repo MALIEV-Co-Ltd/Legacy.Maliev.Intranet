@@ -1,8 +1,10 @@
 @page "/Quotations/View"
 @attribute [Authorize]
+@using Microsoft.AspNetCore.Components.Authorization
 @inject HttpClient Http
 @inject NavigationManager Navigation
 @inject IStringLocalizer<View> Text
+@inject AuthenticationStateProvider AuthenticationStateProvider
 
 <PageTitle>@Text["PageTitle", Id ?? 0]</PageTitle>
 
@@ -38,7 +40,56 @@
             </div>
         </header>
 
-        <MudAlert Severity="Severity.Info" Class="mb-4" aria-live="polite">@Text["ReadOnlyNotice"]</MudAlert>
+        @if (canDecide)
+        {
+            <MudPaper Class="pa-4 mb-4" aria-busy="@decisionBusy.ToString().ToLowerInvariant()">
+                <MudText Typo="Typo.h6" HtmlTag="h2">@Text["DecisionActions"]</MudText>
+                <MudText Typo="Typo.body2" Class="mb-3">@Text["DecisionHelp"]</MudText>
+                @if (!string.IsNullOrWhiteSpace(decisionMessage))
+                {
+                    <MudAlert Severity="Severity.Success" Class="mb-3" aria-live="polite">@Text[decisionMessage]</MudAlert>
+                }
+                @if (!string.IsNullOrWhiteSpace(decisionError))
+                {
+                    <MudAlert Severity="Severity.Error" Class="mb-3" aria-live="assertive">
+                        @if (decisionError == "DecisionPartial" && decisionResult is not null)
+                        {
+                            @Text[decisionError, decisionResult.CompletedOrders, decisionResult.TotalOrders]
+                        }
+                        else if (decisionError == "DecisionRateLimited")
+                        {
+                            @Text[decisionError, retryAfterSeconds]
+                        }
+                        else
+                        {
+                            @Text[decisionError]
+                        }
+                    </MudAlert>
+                }
+                @if (pendingDecision is bool decision)
+                {
+                    <MudAlert Severity="Severity.Warning" Class="mb-3" aria-live="polite">
+                        <MudText Typo="Typo.subtitle2">@Text["ConfirmDecision"]</MudText>
+                        <MudText Typo="Typo.body2">@Text[decision ? "ConfirmAccept" : "ConfirmDecline"]</MudText>
+                    </MudAlert>
+                    <div class="d-flex flex-wrap gap-2">
+                        <MudButton OnClick="SubmitDecisionAsync" Disabled="decisionBusy" Variant="Variant.Filled" Color="@(decision ? Color.Success : Color.Error)">@Text[string.IsNullOrWhiteSpace(decisionError) ? "ConfirmDecision" : "RetryDecision"]</MudButton>
+                        <MudButton OnClick="CancelDecision" Disabled="decisionBusy" Variant="Variant.Outlined">@Text["Cancel"]</MudButton>
+                        @if (!string.IsNullOrWhiteSpace(decisionError))
+                        {
+                            <MudButton OnClick="LoadAsync" Disabled="decisionBusy" Variant="Variant.Text">@Text["ReloadQuotation"]</MudButton>
+                        }
+                    </div>
+                }
+                else
+                {
+                    <div class="d-flex flex-wrap gap-2">
+                        <MudButton OnClick="@(() => BeginDecision(true))" Disabled="decisionBusy" Variant="Variant.Filled" Color="Color.Success">@Text["AcceptQuotation"]</MudButton>
+                        <MudButton OnClick="@(() => BeginDecision(false))" Disabled="decisionBusy" Variant="Variant.Outlined" Color="Color.Error">@Text["DeclineQuotation"]</MudButton>
+                    </div>
+                }
+            </MudPaper>
+        }
 
         <MudGrid>
             <MudItem xs="12" md="7">
@@ -158,6 +209,13 @@
     private QuotationDetailPage? page;
     private bool loading = true;
     private string? error;
+    private bool canDecide;
+    private bool? pendingDecision;
+    private bool decisionBusy;
+    private string? decisionMessage;
+    private string? decisionError;
+    private int retryAfterSeconds;
+    private QuotationDecisionResult? decisionResult;
 
     protected override Task OnParametersSetAsync() => LoadAsync();
 
@@ -165,6 +223,14 @@
     {
         loading = true;
         error = null;
+        pendingDecision = null;
+        decisionMessage = null;
+        decisionError = null;
+        decisionResult = null;
+        retryAfterSeconds = 0;
+        var authenticationState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        canDecide = authenticationState.User.Claims.Any(claim =>
+            claim.Type == "permissions" && claim.Value == LegacyQuotationPermissions.Update);
         if (Id is not > 0)
         {
             error = Text["InvalidId"];
@@ -203,6 +269,161 @@
         {
             loading = false;
         }
+    }
+
+    private void BeginDecision(bool accepted)
+    {
+        if (!canDecide || decisionBusy) return;
+        pendingDecision = accepted;
+        decisionMessage = null;
+        decisionError = null;
+        decisionResult = null;
+        retryAfterSeconds = 0;
+    }
+
+    private void CancelDecision()
+    {
+        if (decisionBusy) return;
+        pendingDecision = null;
+        decisionError = null;
+        decisionResult = null;
+        retryAfterSeconds = 0;
+    }
+
+    private async Task SubmitDecisionAsync()
+    {
+        if (!canDecide || decisionBusy || pendingDecision is not bool accepted || Id is not > 0 || page is null) return;
+
+        decisionBusy = true;
+        decisionMessage = null;
+        decisionError = null;
+        decisionResult = null;
+        retryAfterSeconds = 0;
+        try
+        {
+            using var sessionResponse = await Http.GetForPresentationAsync("/bff/session");
+            if (sessionResponse.StatusCode == HttpStatusCode.Unauthorized)
+            {
+                NavigateToLogin();
+                return;
+            }
+            if (!sessionResponse.IsSuccessStatusCode)
+            {
+                decisionError = "DecisionUnavailable";
+                return;
+            }
+
+            var session = await sessionResponse.Content.ReadFromJsonAsync<EmployeeSessionSummary>();
+            if (session is null || !session.IsAuthenticated || string.IsNullOrWhiteSpace(session.CsrfToken))
+            {
+                decisionError = "DecisionInvalidResponse";
+                return;
+            }
+            if (session.Permissions?.Contains(LegacyQuotationPermissions.Update, StringComparer.Ordinal) != true)
+            {
+                canDecide = false;
+                decisionError = "DecisionForbidden";
+                return;
+            }
+
+            using var request = new HttpRequestMessage(HttpMethod.Put, $"/bff/quotations/{Id.Value}/decision")
+            {
+                Content = JsonContent.Create(new QuotationDecisionInput(accepted, page.Quotation.ModifiedDate)),
+            };
+            request.Headers.Add("X-CSRF-TOKEN", session.CsrfToken);
+            using var response = await Http.SendAsync(request);
+            if (response.StatusCode == HttpStatusCode.Unauthorized)
+            {
+                NavigateToLogin();
+                return;
+            }
+            if (response.StatusCode == HttpStatusCode.Forbidden)
+            {
+                canDecide = false;
+                decisionError = "DecisionForbidden";
+                return;
+            }
+            if (response.StatusCode == HttpStatusCode.NotFound)
+            {
+                decisionError = "NotFound";
+                return;
+            }
+            if (response.StatusCode == HttpStatusCode.TooManyRequests)
+            {
+                retryAfterSeconds = BoundedRetryAfter(response.Headers.RetryAfter);
+                decisionError = "DecisionRateLimited";
+                return;
+            }
+            if (response.StatusCode == HttpStatusCode.Conflict)
+            {
+                decisionResult = await ReadDecisionResultAsync(response);
+                decisionError = decisionResult?.Status == "DependencyConflict" ? "DecisionPartial" : "DecisionConflict";
+                return;
+            }
+            if (response.StatusCode == HttpStatusCode.BadGateway)
+            {
+                decisionError = "DecisionInvalidResponse";
+                return;
+            }
+            if (!response.IsSuccessStatusCode)
+            {
+                decisionError = "DecisionUnavailable";
+                return;
+            }
+
+            decisionResult = await ReadDecisionResultAsync(response);
+            if (decisionResult is null || decisionResult.Status != "Completed" ||
+                decisionResult.CompletedOrders < 0 || decisionResult.TotalOrders < 0 ||
+                decisionResult.CompletedOrders > decisionResult.TotalOrders)
+            {
+                decisionError = "DecisionInvalidResponse";
+                return;
+            }
+
+            page = page with
+            {
+                Quotation = page.Quotation with
+                {
+                    Accepted = accepted,
+                    ModifiedDate = decisionResult.ModifiedDate ?? page.Quotation.ModifiedDate,
+                },
+            };
+            pendingDecision = null;
+            decisionMessage = "DecisionSucceeded";
+        }
+        catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException)
+        {
+            decisionError = "DecisionUnavailable";
+        }
+        finally
+        {
+            decisionBusy = false;
+        }
+    }
+
+    private async Task<QuotationDecisionResult?> ReadDecisionResultAsync(HttpResponseMessage response)
+    {
+        try
+        {
+            return await response.Content.ReadFromJsonAsync<QuotationDecisionResult>();
+        }
+        catch (System.Text.Json.JsonException)
+        {
+            return null;
+        }
+    }
+
+    private void NavigateToLogin() =>
+        Navigation.NavigateTo($"/Login?returnUrl={Uri.EscapeDataString(Navigation.ToBaseRelativePath(Navigation.Uri))}");
+
+    private static int BoundedRetryAfter(System.Net.Http.Headers.RetryConditionHeaderValue? retryAfter)
+    {
+        var seconds = retryAfter?.Delta is TimeSpan delta
+            ? (int)Math.Ceiling(delta.TotalSeconds)
+            : retryAfter?.Date is DateTimeOffset date
+                ? (int)Math.Ceiling((date - DateTimeOffset.UtcNow).TotalSeconds)
+                : 0;
+        return Math.Clamp(seconds, 0, 3600);
     }
 
     private string Money(decimal value)
