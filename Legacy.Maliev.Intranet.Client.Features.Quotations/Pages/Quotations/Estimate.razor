@@ -4,117 +4,38 @@
 
 <PageTitle>@Text["PageTitle"]</PageTitle>
 
-<MudStack Spacing="3">
-    <MudBreadcrumbs Items="Breadcrumbs" />
+<main class="quotation-estimate">
+    <PageBreadcrumbs Items="Breadcrumbs" />
     <header class="operations-page-header">
         <div>
-            <MudText Typo="Typo.h1" HtmlTag="h1">@Text["Heading"]</MudText>
-            <MudText Typo="Typo.body1">@Text["Description"]</MudText>
+            <h1>@Text["Heading"]</h1>
+            <p>@Text["Description"]</p>
         </div>
     </header>
 
-    <MudTabs Elevation="1" Rounded="true">
-        <MudTabPanel Text="@Text["Printing"]">
-            <MudAlert Severity="Severity.Info" aria-live="polite">@Text["ComingSoon"]</MudAlert>
-        </MudTabPanel>
-        <MudTabPanel Text="@Text["CncMachining"]">
-            <MudGrid Spacing="3">
-                <MudItem xs="12" lg="8">
-                    <MudStack Spacing="3">
-                        <MudPaper Class="pa-4" Elevation="1">
-                            <MudText Typo="Typo.h2" HtmlTag="h2" Class="mb-3">@Text["Machine"]</MudText>
-                            <MudGrid>
-                                <MudItem xs="12" md="6"><MudNumericField T="decimal" @bind-Value="model.MachineCost" @bind-Value:after="Recalculate" Label="@Text["MachineCost"]" Min="0" /></MudItem>
-                                <MudItem xs="12" md="6"><MudNumericField T="decimal" @bind-Value="model.ReturnOnInvestmentYears" @bind-Value:after="Recalculate" Label="@Text["RoiYears"]" Min="0" Max="100" Step="0.5m" /></MudItem>
-                                <MudItem xs="12" md="6"><MudNumericField T="int" @bind-Value="model.WeekdaysPerMonth" @bind-Value:after="Recalculate" Label="@Text["WeekdaysPerMonth"]" Min="1" Max="31" /></MudItem>
-                                <MudItem xs="12" md="6"><MudNumericField T="int" @bind-Value="model.WorkingHoursPerDay" @bind-Value:after="Recalculate" Label="@Text["WorkingHoursPerDay"]" Min="1" Max="24" /></MudItem>
-                                <MudItem xs="12"><MudNumericField T="decimal" Value="machineCostPerHour" ValueChanged="SetMachineCostPerHour" Label="@Text["MachineCostPerHour"]" Min="0" HelperText="@Text["ManualOverride"]" /></MudItem>
-                            </MudGrid>
-                            <MudText Typo="Typo.caption">@Text["RoiBreakdown", calculated.ReturnOnInvestmentMonths, calculated.ReturnOnInvestmentDays, calculated.ReturnOnInvestmentHours]</MudText>
-                        </MudPaper>
-
-                        <MudPaper Class="pa-4" Elevation="1">
-                            <MudText Typo="Typo.h2" HtmlTag="h2" Class="mb-3">@Text["Job"]</MudText>
-                            <MudGrid>
-                                <MudItem xs="12" md="4"><MudNumericField T="int" @bind-Value="model.PartCount" @bind-Value:after="Recalculate" Label="@Text["PartCount"]" Min="1" /></MudItem>
-                                <MudItem xs="6" md="4"><MudNumericField T="int" @bind-Value="model.TimePerPartHours" @bind-Value:after="Recalculate" Label="@Text["Hours"]" Min="0" /></MudItem>
-                                <MudItem xs="6" md="4"><MudNumericField T="int" @bind-Value="model.TimePerPartMinutes" @bind-Value:after="Recalculate" Label="@Text["Minutes"]" Min="0" Max="59" /></MudItem>
-                                <MudItem xs="12"><MudNumericField T="decimal" Value="machineCost" ValueChanged="SetMachineCost" Label="@Text["MachineCostAllParts"]" Min="0" HelperText="@Text["MachineHours", calculated.TimePerPartHours, calculated.TotalMachiningHours]" /></MudItem>
-                            </MudGrid>
-                        </MudPaper>
-
-                        <MudPaper Class="pa-4" Elevation="1">
-                            <MudText Typo="Typo.h2" HtmlTag="h2" Class="mb-3">@Text["Material"]</MudText>
-                            <MudGrid>
-                                <MudItem xs="12" sm="4"><MudNumericField T="decimal" @bind-Value="model.StockLengthMillimetres" @bind-Value:after="Recalculate" Label="@Text["StockX"]" Min="0" /></MudItem>
-                                <MudItem xs="12" sm="4"><MudNumericField T="decimal" @bind-Value="model.StockWidthMillimetres" @bind-Value:after="Recalculate" Label="@Text["StockY"]" Min="0" /></MudItem>
-                                <MudItem xs="12" sm="4"><MudNumericField T="decimal" @bind-Value="model.StockHeightMillimetres" @bind-Value:after="Recalculate" Label="@Text["StockZ"]" Min="0" /></MudItem>
-                                <MudItem xs="12" md="4"><MudNumericField T="decimal" @bind-Value="model.StockCostPerKilogram" @bind-Value:after="Recalculate" Label="@Text["StockCostPerKilogram"]" Min="0" /></MudItem>
-                                <MudItem xs="12" md="4"><MudNumericField T="decimal" @bind-Value="model.StockWeightKilograms" @bind-Value:after="Recalculate" Label="@Text["StockWeight"]" Min="0" /></MudItem>
-                                <MudItem xs="12" md="4"><MudNumericField T="decimal" @bind-Value="model.StockMarkupPercent" @bind-Value:after="Recalculate" Label="@Text["StockMarkup"]" Min="0" Max="100" /></MudItem>
-                                <MudItem xs="12" md="6"><MudNumericField T="decimal" Value="materialCostPerPart" ValueChanged="SetMaterialCostPerPart" Label="@Text["MaterialCostPerPart"]" Min="0" HelperText="@Text["ManualOverride"]" /></MudItem>
-                                <MudItem xs="12" md="6"><MudNumericField T="decimal" Value="materialCost" ValueChanged="SetMaterialCost" Label="@Text["MaterialCostAllParts"]" Min="0" HelperText="@Text["StockVolume", calculated.StockVolumeCubicMillimetres]" /></MudItem>
-                            </MudGrid>
-                        </MudPaper>
-
-                        <MudPaper Class="pa-4" Elevation="1">
-                            <MudText Typo="Typo.h2" HtmlTag="h2" Class="mb-3">@Text["Electricity"]</MudText>
-                            <MudGrid>
-                                <MudItem xs="12" md="4"><MudNumericField T="decimal" @bind-Value="model.MaximumPowerKilowatts" @bind-Value:after="Recalculate" Label="@Text["MaximumPower"]" Min="0" /></MudItem>
-                                <MudItem xs="12" md="4"><MudNumericField T="decimal" @bind-Value="model.ElectricityBaseCost" @bind-Value:after="Recalculate" Label="@Text["ElectricityBaseCost"]" Min="0" /></MudItem>
-                                <MudItem xs="12" md="4"><MudNumericField T="decimal" @bind-Value="model.ElectricityCostPerKilowattHour" @bind-Value:after="Recalculate" Label="@Text["CostPerKwh"]" Min="0" /></MudItem>
-                                <MudItem xs="12"><MudNumericField T="decimal" Value="electricityCost" ValueChanged="SetElectricityCost" Label="@Text["ElectricityCost"]" Min="0" HelperText="@Text["PowerConsumption", calculated.TotalPowerConsumptionKilowattHours]" /></MudItem>
-                            </MudGrid>
-                        </MudPaper>
-
-                        <MudPaper Class="pa-4" Elevation="1">
-                            <MudText Typo="Typo.h2" HtmlTag="h2" Class="mb-3">@Text["Setup"]</MudText>
-                            <MudGrid>
-                                <MudItem xs="12" md="6"><MudNumericField T="int" @bind-Value="model.NumberOfSetups" @bind-Value:after="Recalculate" Label="@Text["NumberOfSetups"]" Min="0" /></MudItem>
-                                <MudItem xs="12" md="6"><MudNumericField T="decimal" @bind-Value="model.CostPerSetup" @bind-Value:after="Recalculate" Label="@Text["CostPerSetup"]" Min="0" /></MudItem>
-                                <MudItem xs="12"><MudNumericField T="decimal" Value="setupCost" ValueChanged="SetSetupCost" Label="@Text["SetupCostAllParts"]" Min="0" HelperText="@Text["SetupCostPerPart", calculated.SetupCostPerPart]" /></MudItem>
-                            </MudGrid>
-                        </MudPaper>
-                    </MudStack>
-                </MudItem>
-
-                <MudItem xs="12" lg="4">
-                    <aside class="quotation-estimate-summary" aria-labelledby="estimate-summary-heading">
-                    <MudPaper Class="pa-4" Elevation="2">
-                        <div role="status" aria-live="polite" aria-atomic="true">
-                            <MudText id="estimate-summary-heading" Typo="Typo.h2" HtmlTag="h2" Class="mb-3">@Text["Summary"]</MudText>
-                            <MudSimpleTable Dense="true" Hover="false">
-                                <caption class="sr-only">@Text["SummaryCaption"]</caption>
-                                <tbody>
-                                    <tr><th scope="row">@Text["MachineCost"]</th><td class="text-end">@FormatMoney(machineCost)</td></tr>
-                                    <tr><th scope="row">@Text["MaterialCost"]</th><td class="text-end">@FormatMoney(materialCost)</td></tr>
-                                    <tr><th scope="row">@Text["ElectricityCost"]</th><td class="text-end">@FormatMoney(electricityCost)</td></tr>
-                                    <tr><th scope="row">@Text["SetupCost"]</th><td class="text-end">@FormatMoney(setupCost)</td></tr>
-                                </tbody>
-                                <tfoot><tr><th scope="row">@Text["GrandTotal"]</th><td class="text-end fw-bold">@FormatMoney(GrandTotal)</td></tr></tfoot>
-                            </MudSimpleTable>
-                        </div>
-                        <MudButton Class="mt-4" Variant="Variant.Outlined" OnClick="Reset">@Text["Reset"]</MudButton>
-                    </MudPaper>
-                    </aside>
-                </MudItem>
-            </MudGrid>
-        </MudTabPanel>
-        <MudTabPanel Text="@Text["Scanning"]">
-            <MudAlert Severity="Severity.Info" aria-live="polite">@Text["ComingSoon"]</MudAlert>
-        </MudTabPanel>
-        <MudTabPanel Text="@Text["Designing"]">
-            <MudAlert Severity="Severity.Info" aria-live="polite">@Text["ComingSoon"]</MudAlert>
-        </MudTabPanel>
-    </MudTabs>
-</MudStack>
+    <ShadcnTabs Value="cnc">
+        <ShadcnTabsList><ShadcnTabsTrigger Value="printing">@Text["Printing"]</ShadcnTabsTrigger><ShadcnTabsTrigger Value="cnc">@Text["CncMachining"]</ShadcnTabsTrigger><ShadcnTabsTrigger Value="scanning">@Text["Scanning"]</ShadcnTabsTrigger><ShadcnTabsTrigger Value="designing">@Text["Designing"]</ShadcnTabsTrigger></ShadcnTabsList>
+        <ShadcnTabsContent Value="printing"><ShadcnAlert AlertRole="ShadcnAlertRole.Status"><ShadcnAlertDescription>@Text["ComingSoon"]</ShadcnAlertDescription></ShadcnAlert></ShadcnTabsContent>
+        <ShadcnTabsContent Value="cnc">
+            <div class="quotation-estimate-layout"><div class="quotation-estimate-inputs">
+                <section class="quotation-estimate-card"><h2>@Text["Machine"]</h2><div class="quotation-estimate-grid"><QuotationInputField TValue="decimal" Id="estimate-machine-cost" Label="@Text["MachineCost"]" Type="number" Min="0" @bind-Value="model.MachineCost" @bind-Value:after="Recalculate" /><QuotationInputField TValue="decimal" Id="estimate-roi-years" Label="@Text["RoiYears"]" Type="number" Min="0" @bind-Value="model.ReturnOnInvestmentYears" @bind-Value:after="Recalculate" /><QuotationInputField TValue="int" Id="estimate-weekdays" Label="@Text["WeekdaysPerMonth"]" Type="number" Min="1" @bind-Value="model.WeekdaysPerMonth" @bind-Value:after="Recalculate" /><QuotationInputField TValue="int" Id="estimate-hours-day" Label="@Text["WorkingHoursPerDay"]" Type="number" Min="1" @bind-Value="model.WorkingHoursPerDay" @bind-Value:after="Recalculate" /><div class="quotation-estimate-wide"><QuotationInputField TValue="decimal" Id="estimate-machine-hour" Label="@Text["MachineCostPerHour"]" Type="number" Min="0" Value="@machineCostPerHour" ValueChanged="SetMachineCostPerHour" /></div></div><p class="quotation-estimate-help">@Text["RoiBreakdown", calculated.ReturnOnInvestmentMonths, calculated.ReturnOnInvestmentDays, calculated.ReturnOnInvestmentHours] · @Text["ManualOverride"]</p></section>
+                <section class="quotation-estimate-card"><h2>@Text["Job"]</h2><div class="quotation-estimate-grid quotation-estimate-grid--three"><QuotationInputField TValue="int" Id="estimate-parts" Label="@Text["PartCount"]" Type="number" Min="1" @bind-Value="model.PartCount" @bind-Value:after="Recalculate" /><QuotationInputField TValue="int" Id="estimate-hours" Label="@Text["Hours"]" Type="number" Min="0" @bind-Value="model.TimePerPartHours" @bind-Value:after="Recalculate" /><QuotationInputField TValue="int" Id="estimate-minutes" Label="@Text["Minutes"]" Type="number" Min="0" @bind-Value="model.TimePerPartMinutes" @bind-Value:after="Recalculate" /><div class="quotation-estimate-wide"><QuotationInputField TValue="decimal" Id="estimate-machine-total" Label="@Text["MachineCostAllParts"]" Type="number" Min="0" Value="@machineCost" ValueChanged="SetMachineCost" /></div></div><p class="quotation-estimate-help">@Text["MachineHours", calculated.TimePerPartHours, calculated.TotalMachiningHours]</p></section>
+                <section class="quotation-estimate-card"><h2>@Text["Material"]</h2><div class="quotation-estimate-grid quotation-estimate-grid--three"><QuotationInputField TValue="decimal" Id="estimate-stock-x" Label="@Text["StockX"]" Type="number" Min="0" @bind-Value="model.StockLengthMillimetres" @bind-Value:after="Recalculate" /><QuotationInputField TValue="decimal" Id="estimate-stock-y" Label="@Text["StockY"]" Type="number" Min="0" @bind-Value="model.StockWidthMillimetres" @bind-Value:after="Recalculate" /><QuotationInputField TValue="decimal" Id="estimate-stock-z" Label="@Text["StockZ"]" Type="number" Min="0" @bind-Value="model.StockHeightMillimetres" @bind-Value:after="Recalculate" /><QuotationInputField TValue="decimal" Id="estimate-stock-kg" Label="@Text["StockCostPerKilogram"]" Type="number" Min="0" @bind-Value="model.StockCostPerKilogram" @bind-Value:after="Recalculate" /><QuotationInputField TValue="decimal" Id="estimate-stock-weight" Label="@Text["StockWeight"]" Type="number" Min="0" @bind-Value="model.StockWeightKilograms" @bind-Value:after="Recalculate" /><QuotationInputField TValue="decimal" Id="estimate-stock-markup" Label="@Text["StockMarkup"]" Type="number" Min="0" @bind-Value="model.StockMarkupPercent" @bind-Value:after="Recalculate" /><QuotationInputField TValue="decimal" Id="estimate-material-part" Label="@Text["MaterialCostPerPart"]" Type="number" Min="0" Value="@materialCostPerPart" ValueChanged="SetMaterialCostPerPart" /><QuotationInputField TValue="decimal" Id="estimate-material-total" Label="@Text["MaterialCostAllParts"]" Type="number" Min="0" Value="@materialCost" ValueChanged="SetMaterialCost" /></div><p class="quotation-estimate-help">@Text["StockVolume", calculated.StockVolumeCubicMillimetres] · @Text["ManualOverride"]</p></section>
+                <section class="quotation-estimate-card"><h2>@Text["Electricity"]</h2><div class="quotation-estimate-grid quotation-estimate-grid--three"><QuotationInputField TValue="decimal" Id="estimate-power" Label="@Text["MaximumPower"]" Type="number" Min="0" @bind-Value="model.MaximumPowerKilowatts" @bind-Value:after="Recalculate" /><QuotationInputField TValue="decimal" Id="estimate-electric-base" Label="@Text["ElectricityBaseCost"]" Type="number" Min="0" @bind-Value="model.ElectricityBaseCost" @bind-Value:after="Recalculate" /><QuotationInputField TValue="decimal" Id="estimate-kwh" Label="@Text["CostPerKwh"]" Type="number" Min="0" @bind-Value="model.ElectricityCostPerKilowattHour" @bind-Value:after="Recalculate" /><div class="quotation-estimate-wide"><QuotationInputField TValue="decimal" Id="estimate-electric-total" Label="@Text["ElectricityCost"]" Type="number" Min="0" Value="@electricityCost" ValueChanged="SetElectricityCost" /></div></div><p class="quotation-estimate-help">@Text["PowerConsumption", calculated.TotalPowerConsumptionKilowattHours]</p></section>
+                <section class="quotation-estimate-card"><h2>@Text["Setup"]</h2><div class="quotation-estimate-grid"><QuotationInputField TValue="int" Id="estimate-setups" Label="@Text["NumberOfSetups"]" Type="number" Min="0" @bind-Value="model.NumberOfSetups" @bind-Value:after="Recalculate" /><QuotationInputField TValue="decimal" Id="estimate-setup-cost" Label="@Text["CostPerSetup"]" Type="number" Min="0" @bind-Value="model.CostPerSetup" @bind-Value:after="Recalculate" /><div class="quotation-estimate-wide"><QuotationInputField TValue="decimal" Id="estimate-setup-total" Label="@Text["SetupCostAllParts"]" Type="number" Min="0" Value="@setupCost" ValueChanged="SetSetupCost" /></div></div><p class="quotation-estimate-help">@Text["SetupCostPerPart", calculated.SetupCostPerPart]</p></section>
+            </div>
+            <aside class="quotation-estimate-summary" aria-labelledby="estimate-summary-heading"><div class="quotation-estimate-card" role="status" aria-live="polite" aria-atomic="true"><h2 id="estimate-summary-heading">@Text["Summary"]</h2><ShadcnTable ExpectedColumnCount="2"><caption class="sr-only">@Text["SummaryCaption"]</caption><ShadcnTableBody><ShadcnTableRow><ShadcnTableHead Scope="ShadcnTableHeadScope.Row">@Text["MachineCost"]</ShadcnTableHead><ShadcnTableCell>@FormatMoney(machineCost)</ShadcnTableCell></ShadcnTableRow><ShadcnTableRow><ShadcnTableHead Scope="ShadcnTableHeadScope.Row">@Text["MaterialCost"]</ShadcnTableHead><ShadcnTableCell>@FormatMoney(materialCost)</ShadcnTableCell></ShadcnTableRow><ShadcnTableRow><ShadcnTableHead Scope="ShadcnTableHeadScope.Row">@Text["ElectricityCost"]</ShadcnTableHead><ShadcnTableCell>@FormatMoney(electricityCost)</ShadcnTableCell></ShadcnTableRow><ShadcnTableRow><ShadcnTableHead Scope="ShadcnTableHeadScope.Row">@Text["SetupCost"]</ShadcnTableHead><ShadcnTableCell>@FormatMoney(setupCost)</ShadcnTableCell></ShadcnTableRow><ShadcnTableRow><ShadcnTableHead Scope="ShadcnTableHeadScope.Row"><strong>@Text["GrandTotal"]</strong></ShadcnTableHead><ShadcnTableCell><strong>@FormatMoney(GrandTotal)</strong></ShadcnTableCell></ShadcnTableRow></ShadcnTableBody></ShadcnTable><ShadcnButton Variant="ShadcnButtonVariant.Outline" OnClick="Reset">@Text["Reset"]</ShadcnButton></div></aside></div>
+        </ShadcnTabsContent>
+        <ShadcnTabsContent Value="scanning"><ShadcnAlert AlertRole="ShadcnAlertRole.Status"><ShadcnAlertDescription>@Text["ComingSoon"]</ShadcnAlertDescription></ShadcnAlert></ShadcnTabsContent>
+        <ShadcnTabsContent Value="designing"><ShadcnAlert AlertRole="ShadcnAlertRole.Status"><ShadcnAlertDescription>@Text["ComingSoon"]</ShadcnAlertDescription></ShadcnAlert></ShadcnTabsContent>
+    </ShadcnTabs>
+</main>
 
 @code {
-    private IReadOnlyList<BreadcrumbItem> Breadcrumbs =>
+    private IReadOnlyList<PageBreadcrumbItem> Breadcrumbs =>
     [
-        new(Text["Sales"], href: null, disabled: true),
-        new(Text["Quotations"], href: "/Quotations/Index"),
-        new(Text["Estimate"], href: null, disabled: true),
+        new(Text["Quotations"], "/Quotations/Index"),
+        new(Text["Estimate"]),
     ];
 
     private EstimateFormModel model = EstimateFormModel.LegacyDefaults();

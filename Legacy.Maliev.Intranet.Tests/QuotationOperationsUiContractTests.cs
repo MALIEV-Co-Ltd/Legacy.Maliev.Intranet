@@ -58,14 +58,15 @@ public sealed class QuotationOperationsUiContractTests
         var estimateCss = File.ReadAllText(Path.Combine(feature, "Estimate.razor.css"));
         var view = File.ReadAllText(Path.Combine(feature, "View.razor"));
 
-        Assert.Contains("new(Text[\"Quotations\"], href: \"/Quotations/Index\")", estimate, StringComparison.Ordinal);
-        Assert.Contains("HtmlTag=\"h1\"", estimate, StringComparison.Ordinal);
-        Assert.Contains("HtmlTag=\"h2\"", estimate, StringComparison.Ordinal);
+        Assert.Contains("new(Text[\"Quotations\"], \"/Quotations/Index\")", estimate, StringComparison.Ordinal);
+        Assert.Contains("<h1>", estimate, StringComparison.Ordinal);
+        Assert.Contains("<h2>", estimate, StringComparison.Ordinal);
         Assert.Contains("SummaryCaption", estimate, StringComparison.Ordinal);
         Assert.Contains("THB", estimate, StringComparison.Ordinal);
         Assert.Contains("aria-atomic=\"true\"", estimate, StringComparison.Ordinal);
         Assert.Contains("@media (min-width: 1280px)", estimateCss, StringComparison.Ordinal);
         Assert.Contains("position: sticky", estimateCss, StringComparison.Ordinal);
+        Assert.DoesNotContain("<Mud", estimate, StringComparison.Ordinal);
 
         Assert.Contains("@page \"/Quotations/View\"", view, StringComparison.Ordinal);
         Assert.Contains("/bff/quotations/{Id.Value}", view, StringComparison.Ordinal);
