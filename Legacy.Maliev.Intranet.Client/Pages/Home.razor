@@ -9,20 +9,22 @@
 
 @if (_checkingSession)
 {
-    <MudContainer MaxWidth="MaxWidth.Medium" Class="py-8" aria-busy="true" aria-label="@Text["CheckingSession"]">
-        <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
-    </MudContainer>
+    <div class="legacy-content-container py-8" aria-busy="true">
+        <ShadcnProgress Label="@Text["CheckingSession"]" />
+    </div>
 }
 else
 {
-    <MudContainer MaxWidth="MaxWidth.Medium" Class="py-8">
-        <MudPaper Class="pa-8 text-center" Elevation="1">
-            <MudText Typo="Typo.overline">@Text["Eyebrow"]</MudText>
-            <MudText Typo="Typo.h2" HtmlTag="h1" Class="mb-3">@Text["Heading"]</MudText>
-            <MudText Typo="Typo.body1" Class="mb-6">@Text["Description"]</MudText>
-            <MudButton Href="/Login" Variant="Variant.Filled" Color="Color.Primary" Size="Size.Large">@Text["SignIn"]</MudButton>
-        </MudPaper>
-    </MudContainer>
+    <div class="legacy-content-container py-8">
+        <ShadcnCard Class="pa-8 text-center">
+            <ShadcnCardContent>
+                <ShadcnTypography Variant="ShadcnTypographyVariant.Small">@Text["Eyebrow"]</ShadcnTypography>
+                <ShadcnTypography Variant="ShadcnTypographyVariant.H1" Class="mb-3">@Text["Heading"]</ShadcnTypography>
+                <ShadcnTypography Class="mb-6">@Text["Description"]</ShadcnTypography>
+                <ShadcnButton Href="/Login" Size="ShadcnButtonSize.Large">@Text["SignIn"]</ShadcnButton>
+            </ShadcnCardContent>
+        </ShadcnCard>
+    </div>
 }
 
 @code {

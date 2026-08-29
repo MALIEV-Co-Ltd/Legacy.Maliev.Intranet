@@ -287,7 +287,7 @@ public sealed class OperationalTableMigrationBrowserTests(
         var errors = CaptureErrors(page);
         await StubSpecializedTableBoundariesAsync(page);
         await page.GotoAsync(new Uri(server.BaseUri, "Dashboard").AbsoluteUri);
-        var tables = page.Locator(".dashboard-table table");
+        var tables = page.Locator("table.dashboard-table");
         await tables.First.WaitForAsync();
         var expectedRecords = new[]
         {
@@ -305,7 +305,7 @@ public sealed class OperationalTableMigrationBrowserTests(
         {
             Assert.Equal("table", await table.EvaluateAsync<string>("node => getComputedStyle(node).display"));
             Assert.NotEqual("none", await table.Locator("thead").EvaluateAsync<string>("node => getComputedStyle(node).display"));
-            var scroller = table.Locator("xpath=ancestor::div[contains(@class,'dashboard-table-scroll')]");
+            var scroller = table.Locator("xpath=ancestor::div[contains(@class,'shadcn-table-container')]");
             Assert.Contains(await scroller.EvaluateAsync<string>("node => getComputedStyle(node).overflowX"), new[] { "auto", "scroll" });
             Assert.True(await scroller.EvaluateAsync<bool>("node => node.scrollWidth > node.clientWidth"));
         }

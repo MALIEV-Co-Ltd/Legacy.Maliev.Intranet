@@ -1,10 +1,10 @@
 @inject NavigationManager Navigation
 @inject IStringLocalizer<LoginRedirect> Text
 
-<MudStack AlignItems="AlignItems.Center" Spacing="2" Class="pa-6">
-    <MudProgressCircular Indeterminate="true" Color="Color.Primary" />
-    <MudText Typo="Typo.body2">@Text["Redirecting"]</MudText>
-</MudStack>
+<div class="pa-6 d-flex flex-column align-center gap-2" role="status">
+    <ShadcnSpinner Label="@Text["Redirecting"]" Size="1.5rem" />
+    <ShadcnTypography Variant="ShadcnTypographyVariant.Muted">@Text["Redirecting"]</ShadcnTypography>
+</div>
 
 @code {
     protected override void OnAfterRender(bool firstRender)

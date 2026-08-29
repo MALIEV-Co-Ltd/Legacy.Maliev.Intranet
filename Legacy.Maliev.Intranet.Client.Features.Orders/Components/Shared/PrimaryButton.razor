@@ -1,18 +1,22 @@
 @if (!string.IsNullOrWhiteSpace(Href))
 {
-    <MudButton Class="@($"mlv-button primary {Class}")" Href="@Href" StartIcon="@Icon"
-               Variant="Variant.Filled" Color="Color.Primary">
+    <ShadcnButton Class="@CssClass" Href="@Href" Variant="ShadcnButtonVariant.Default">
+        @IconMarkup
         @ChildContent
-    </MudButton>
+    </ShadcnButton>
 }
 else
 {
-    <MudButton Class="@($"mlv-button primary {Class}")" ButtonType="@ResolvedButtonType"
-               Disabled="@(Disabled || Busy)" aria-busy="@Busy" OnClick="OnClick"
-               StartIcon="@(Busy ? null : Icon)" Variant="Variant.Filled" Color="Color.Primary">
+    <ShadcnButton Class="@CssClass" ButtonType="@ResolvedButtonType"
+                  Disabled="@(Disabled || Busy)" aria-busy="@Busy" OnClick="OnClick"
+                  Variant="ShadcnButtonVariant.Default">
         @if (Busy)
         {
-            <MudProgressCircular Class="mlv-button-spinner" Size="Size.Small" Indeterminate="true" />
+            <ShadcnSpinner Class="mlv-button-spinner" Label="@BusyLabel" Size="1rem" />
+        }
+        else
+        {
+            @IconMarkup
         }
         @if (Busy && !string.IsNullOrWhiteSpace(BusyLabel))
         {
@@ -22,7 +26,7 @@ else
         {
             <span>@ChildContent</span>
         }
-    </MudButton>
+    </ShadcnButton>
 }
 
 @code {
@@ -36,7 +40,16 @@ else
     [Parameter] public EventCallback<MouseEventArgs> OnClick { get; set; }
     [Parameter] public string? Class { get; set; }
 
-    private ButtonType ResolvedButtonType => string.Equals(Type, "submit", StringComparison.OrdinalIgnoreCase)
-        ? ButtonType.Submit
-        : ButtonType.Button;
+    private string CssClass => $"mlv-button primary {Class}".Trim();
+    private ShadcnButtonType ResolvedButtonType => string.Equals(Type, "submit", StringComparison.OrdinalIgnoreCase)
+        ? ShadcnButtonType.Submit
+        : ShadcnButtonType.Button;
+    private RenderFragment? IconMarkup => string.IsNullOrWhiteSpace(Icon) ? null : builder =>
+    {
+        var icon = new ShadcnIconData("material-path", "legacy", "0 0 24 24", $"<path d=\"{System.Security.SecurityElement.Escape(Icon)}\" />");
+        builder.OpenComponent<ShadcnIcon>(0);
+        builder.AddAttribute(1, nameof(ShadcnIcon.Icon), icon);
+        builder.AddAttribute(2, nameof(ShadcnIcon.Size), 18d);
+        builder.CloseComponent();
+    };
 }

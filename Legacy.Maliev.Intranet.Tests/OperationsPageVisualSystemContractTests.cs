@@ -41,7 +41,8 @@ public sealed class OperationsPageVisualSystemContractTests
         var page = Read("Legacy.Maliev.Intranet.Client", "Pages", "Dashboard.razor");
         var styles = Read("Legacy.Maliev.Intranet.Client", "Pages", "Dashboard.razor.css");
 
-        Assert.Equal(4, System.Text.RegularExpressions.Regex.Matches(page, "<MudSimpleTable").Count);
+        Assert.Equal(4, System.Text.RegularExpressions.Regex.Matches(page, "<ShadcnTable\\b").Count);
+        Assert.DoesNotContain("<MudSimpleTable", page, StringComparison.Ordinal);
         Assert.True(System.Text.RegularExpressions.Regex.Matches(page, "<LegacyLink Href=\"@").Count >= 4);
         Assert.Contains("dashboard-table-scroll { overflow-x: auto; }", styles, StringComparison.Ordinal);
         Assert.DoesNotContain(".dashboard-table-scroll { overflow-x: visible; }", styles, StringComparison.Ordinal);
@@ -151,7 +152,7 @@ public sealed class OperationsPageVisualSystemContractTests
     {
         var block = System.Text.RegularExpressions.Regex.Match(
             source,
-            $"data-projection=\"{System.Text.RegularExpressions.Regex.Escape(scope)}\"(?<body>[\\s\\S]*?)(?:data-projection=\"|</MudSimpleTable>|</MudTable>)").Groups["body"].Value;
+            $"data-projection=\"{System.Text.RegularExpressions.Regex.Escape(scope)}\"(?<body>[\\s\\S]*?)(?:data-projection=\"|</ShadcnTable>|</MudTable>)").Groups["body"].Value;
         Assert.False(string.IsNullOrWhiteSpace(block), $"Missing projection scope '{scope}'.");
         var mapped = System.Text.RegularExpressions.Regex.Matches(block, "data-field=\"([^\"]+)\"")
             .SelectMany(match => match.Groups[1].Value.Split(' ', StringSplitOptions.RemoveEmptyEntries))

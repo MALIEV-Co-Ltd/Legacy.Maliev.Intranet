@@ -2,10 +2,10 @@ using System.Text.RegularExpressions;
 
 namespace Legacy.Maliev.Intranet.Tests;
 
-public sealed partial class MudBlazorComponentConformanceTests
+public sealed partial class NativeShadcnComponentConformanceTests
 {
     [Fact]
-    public void EmployeeFacingRazorControls_UseMudBlazorPrimitives()
+    public void EmployeeFacingRazorControls_UseComponentPrimitives()
     {
         var root = FindRoot();
         var violations = Directory.EnumerateFiles(root, "*.razor", SearchOption.AllDirectories)
@@ -23,10 +23,36 @@ public sealed partial class MudBlazorComponentConformanceTests
             .ToArray();
 
         Assert.True(violations.Length == 0,
-            $"Employee-facing controls must use MudBlazor primitives:{Environment.NewLine}{string.Join(Environment.NewLine, violations)}");
+            $"Employee-facing controls must use reviewed component primitives:{Environment.NewLine}{string.Join(Environment.NewLine, violations)}");
     }
 
-    [GeneratedRegex(@"<\s*(?:form|input|select|textarea|button|table|details|summary)\b", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
+    [Fact]
+    public void CoreMigrationSliceUsesOnlyNativeShadcnComponents()
+    {
+        string[] files =
+        [
+            "Legacy.Maliev.Intranet.Client/LoginRedirect.razor",
+            "Legacy.Maliev.Intranet.Client/Pages/AccessDenied.razor",
+            "Legacy.Maliev.Intranet.Client/Pages/CompatibilityDetailRedirect.razor",
+            "Legacy.Maliev.Intranet.Client/Pages/Dashboard.razor",
+            "Legacy.Maliev.Intranet.Client/Pages/Foundation.razor",
+            "Legacy.Maliev.Intranet.Client/Pages/Home.razor",
+            "Legacy.Maliev.Intranet.Client/Pages/NotFound.razor",
+            "Legacy.Maliev.Intranet.Client.Features.Diagnostics/Pages/ErrorReport.razor",
+            "Legacy.Maliev.Intranet.Client.Features.Orders/Components/Shared/PrimaryButton.razor",
+            "Legacy.Maliev.Intranet.Client.Features.Orders/Components/Shared/SecondaryButton.razor",
+            "Legacy.Maliev.Intranet.Client.Features.Orders/Components/Shared/ProgressiveSkeleton.razor"
+        ];
+
+        var violations = files
+            .Where(file => File.ReadAllText(Path.Combine(FindRoot(), file.Replace('/', Path.DirectorySeparatorChar)))
+                .Contains("<Mud", StringComparison.Ordinal))
+            .ToArray();
+
+        Assert.True(violations.Length == 0, $"Core migration files still contain Mud components: {string.Join(", ", violations)}");
+    }
+
+    [GeneratedRegex(@"<\s*(?:form|input|select|textarea|button|details|summary)\b", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
     private static partial Regex NativeInteractiveElement();
 
     private static string FindRoot()
