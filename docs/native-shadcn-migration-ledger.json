@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "packageVersion": "1.2.2",
   "baseline": { "renderSites": 1485, "componentTypes": 36, "razorFiles": 60 },
-  "current": { "renderSites": 676, "razorFiles": 16 },
+  "current": { "renderSites": 688, "razorFiles": 16 },
   "files": [
     { "path": "Legacy.Maliev.Intranet.Client/LoginRedirect.razor", "baselineRenderSites": 3, "remainingRenderSites": 0, "status": "migrated" },
     { "path": "Legacy.Maliev.Intranet.Client/Components/Dashboard/DashboardMetricCard.razor", "baselineRenderSites": 1, "remainingRenderSites": 0, "status": "migrated" },
