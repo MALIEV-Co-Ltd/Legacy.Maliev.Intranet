@@ -21,9 +21,9 @@ internal static class LegacyLinkSourceContracts
         ShadcnButton("Legacy.Maliev.Intranet.Client/Pages/Home.razor", "Href=\"/Login\"", "Size=\"ShadcnButtonSize.Large\"", "@Text[\"SignIn\"]"),
         ShadcnButton("Legacy.Maliev.Intranet.Client/Pages/AccessDenied.razor", "Href=\"/Login\"", "@Text[\"ReturnToSignIn\"]"),
         ShadcnButton("Legacy.Maliev.Intranet.Client/Pages/NotFound.razor", "Href=\"/Dashboard\"", "@Text[\"Dashboard\"]"),
-        Button("Legacy.Maliev.Intranet.Client.Features.Customers/Pages/Customers.razor", "Href=\"/Customers/Create\"", "Variant=\"Variant.Filled\"", "@Text[\"CreateCustomer\"]"),
-        Button("Legacy.Maliev.Intranet.Client.Features.Employees/Pages/Employees.razor", "Href=\"/Employees/Create\"", "Variant=\"Variant.Filled\"", "@Text[\"CreateEmployee\"]"),
-        Button("Legacy.Maliev.Intranet.Client.Features.Catalog/Pages/Materials.razor", "Href=\"/Materials/Create\"", "Variant=\"Variant.Filled\"", "@Text[\"CreateMaterial\"]"),
+        ShadcnButton("Legacy.Maliev.Intranet.Client.Features.Customers/Pages/Customers.razor", "Href=\"/Customers/Create\"", "@Text[\"CreateCustomer\"]"),
+        ShadcnButton("Legacy.Maliev.Intranet.Client.Features.Employees/Pages/Employees.razor", "Href=\"/Employees/Create\"", "@Text[\"CreateEmployee\"]"),
+        ShadcnButton("Legacy.Maliev.Intranet.Client.Features.Catalog/Pages/Materials.razor", "Href=\"/Materials/Create\"", "@Text[\"CreateMaterial\"]"),
         Button("Legacy.Maliev.Intranet.Client.Features.Accounting/Pages/Invoices.razor", "Href=\"/Invoices/Create\"", "Variant=\"Variant.Filled\"", "@Text[\"Create\"]"),
         Button("Legacy.Maliev.Intranet.Client.Features.Accounting/Pages/Finances.razor", "Href=\"/Finances/Create\"", "Variant=\"Variant.Filled\"", "@Text[\"Create\"]"),
         Button("Legacy.Maliev.Intranet.Client.Features.Accounting/Pages/Finances.razor", "Href=\"/Finances/YearlyActivityChart\"", "Variant=\"Variant.Outlined\"", "@Text[\"YearlyActivity\"]"),
@@ -31,8 +31,8 @@ internal static class LegacyLinkSourceContracts
         Button("Legacy.Maliev.Intranet.Client.Features.Quotations/Pages/Quotations/Index.razor", "Href=\"/Quotations/Create\"", "Variant=\"Variant.Filled\"", "@Text[\"Create\"]"),
         Button("Legacy.Maliev.Intranet.Client.Features.Quotations/Pages/Quotations/Index.razor", "Href=\"/Quotations/Estimate\"", "Variant=\"Variant.Outlined\"", "@Text[\"Estimate\"]"),
         Button("Legacy.Maliev.Intranet.Client.Features.Quotations/Pages/Quotations/View.razor", "Href=\"@quotationUri.ToString()\"", "Target=\"_blank\"", "Rel=\"noopener\"", "@Text[\"ViewPdf\"]"),
-        Button("Legacy.Maliev.Intranet.Client.Features.Orders/Pages/OrderDetail.razor", "/bff/orders/{page.Order.Id}/label", "Target=\"_blank\"", "Rel=\"noopener\"", "@Text[\"OrderLabel\"]"),
-        Button("Legacy.Maliev.Intranet.Client.Features.Orders/Pages/OrderDetail.razor", "/Customers/View?id={customerId}", "Variant=\"Variant.Outlined\"", "@Text[\"CustomerInfo\"]"),
+        ShadcnButton("Legacy.Maliev.Intranet.Client.Features.Orders/Pages/OrderDetail.razor", "/bff/orders/{page.Order.Id}/label", "Target=\"_blank\"", "Rel=\"noopener\"", "@Text[\"OrderLabel\"]"),
+        ShadcnButton("Legacy.Maliev.Intranet.Client.Features.Orders/Pages/OrderDetail.razor", "/Customers/View?id={customerId}", "Variant=\"ShadcnButtonVariant.Outline\"", "@Text[\"CustomerInfo\"]"),
         Button("Legacy.Maliev.Intranet.Client.Features.Procurement/Pages/PurchaseOrderView.razor", "Href=\"@download.Url.AbsoluteUri\"", "Target=\"_blank\"", "Rel=\"noopener\"", "StartIcon=\"@Icons.Material.Filled.Download\"", "@Text[\"DownloadPdf\"]"),
     ];
 

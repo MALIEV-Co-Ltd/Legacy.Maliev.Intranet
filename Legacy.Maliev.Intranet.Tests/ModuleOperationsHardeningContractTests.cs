@@ -97,11 +97,13 @@ public sealed class ModuleOperationsHardeningContractTests
     {
         var source = Read(FindRoot(), project, "Pages", file);
         Assert.Contains("operations-page-header", source, StringComparison.Ordinal);
-        Assert.Contains("HtmlTag=\"h2\"", source, StringComparison.Ordinal);
+        Assert.True(
+            source.Contains("<h2", StringComparison.Ordinal) || source.Contains("HtmlTag=\"h2\"", StringComparison.Ordinal),
+            $"{file} must use a semantic level-two heading for each form section.");
         if (file == "OrderDetail.razor")
         {
-            Assert.Contains("<MudExpansionPanels", source, StringComparison.Ordinal);
-            Assert.Contains("Text=\"@Text[", source, StringComparison.Ordinal);
+            Assert.Contains("<ShadcnAccordion", source, StringComparison.Ordinal);
+            Assert.Contains("<ShadcnAccordionTrigger>@Text[", source, StringComparison.Ordinal);
         }
         else
         {
