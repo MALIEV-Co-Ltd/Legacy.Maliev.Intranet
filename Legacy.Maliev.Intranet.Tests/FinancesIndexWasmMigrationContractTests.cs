@@ -22,6 +22,11 @@ public sealed class FinancesIndexWasmMigrationContractTests
         Assert.Contains("@page \"/Finances/Index\"", page, StringComparison.Ordinal);
         Assert.Contains("/bff/finances", page, StringComparison.Ordinal);
         Assert.Contains("OperationalTable", page, StringComparison.Ordinal);
+        Assert.Contains("<ShadcnTable", page, StringComparison.Ordinal);
+        Assert.Contains("<ShadcnButton", page, StringComparison.Ordinal);
+        Assert.Contains("<ShadcnSpinner", page, StringComparison.Ordinal);
+        Assert.Contains("<ShadcnAlert", page, StringComparison.Ordinal);
+        Assert.DoesNotContain("<Mud", page, StringComparison.Ordinal);
         Assert.Contains("/Finances/View?id=", page, StringComparison.Ordinal);
         Assert.Contains("AnalyticalMonthlySummary", page, StringComparison.Ordinal);
         Assert.Contains("Legacy.Maliev.Intranet.Client.Features.Accounting.wasm", clientProject, StringComparison.Ordinal);

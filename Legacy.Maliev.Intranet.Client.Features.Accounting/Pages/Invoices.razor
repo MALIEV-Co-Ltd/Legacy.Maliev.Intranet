@@ -9,11 +9,11 @@
 
 <PageTitle>@Text["PageTitle"]</PageTitle>
 
-<MudContainer MaxWidth="MaxWidth.ExtraLarge">
+<main class="invoice-index-page">
     <PageBreadcrumbs Items="@Breadcrumbs" />
-    <div class="operations-page-header d-flex flex-wrap align-center justify-space-between gap-3 mb-4">
-        <MudText Typo="Typo.h4" HtmlTag="h1">@Text["Invoices"]</MudText>
-        <MudButton Href="/Invoices/Create" Variant="Variant.Filled" Color="Color.Primary">@Text["Create"]</MudButton>
+    <div class="operations-page-header">
+        <h1>@Text["Invoices"]</h1>
+        <ShadcnButton Href="/Invoices/Create">@Text["Create"]</ShadcnButton>
     </div>
 
     <ListToolbar TSort="InvoiceListSort"
@@ -28,30 +28,30 @@
     @if (loading)
     {
         <div role="status" aria-live="polite">
-            <MudProgressLinear Indeterminate="true" Color="Color.Primary" aria-label="@Text["Loading"]" />
-            <span class="visually-hidden">@Text["Loading"]</span>
+            <ShadcnSpinner Label="@Text["Loading"]" Size="1.25rem" />
+            <span>@Text["Loading"]</span>
         </div>
     }
     else if (!string.IsNullOrWhiteSpace(error))
     {
-        <MudAlert Severity="Severity.Error" aria-live="assertive">@error</MudAlert>
+        <ShadcnAlert Variant="ShadcnAlertVariant.Destructive" AlertRole="ShadcnAlertRole.Alert"><ShadcnAlertDescription>@error</ShadcnAlertDescription></ShadcnAlert>
     }
     else
     {
         @foreach (var section in Sections)
         {
-            <MudPaper Class="pa-4 mb-4" Elevation="1">
-                <MudText Typo="Typo.h6" HtmlTag="h2" Class="mb-2">@section.Title</MudText>
-                <MudText Typo="Typo.caption" Class="mb-3">
+            <section class="invoice-section">
+                <h2>@section.Title</h2>
+                <p class="invoice-section__summary">
                     @Text["RecordsSummary", section.Page.TotalRecords, section.Page.TotalPages]
                     @if (!section.Paid)
                     {
                         <span> · @Text["OutstandingSummary", FormatMoney(section.Page.Items.Sum(invoice => invoice.Outstanding), section.Page.Items.FirstOrDefault()?.Currency)]</span>
                     }
-                </MudText>
+                </p>
                 @if (section.Page.Items.Count == 0)
                 {
-                    <MudAlert Severity="Severity.Info" aria-live="polite">@section.EmptyMessage</MudAlert>
+                    <ShadcnAlert AlertRole="ShadcnAlertRole.Status"><ShadcnAlertDescription>@section.EmptyMessage</ShadcnAlertDescription></ShadcnAlert>
                 }
                 else
                 {
@@ -77,9 +77,9 @@
                             <td class="mlv-mono" data-priority="essential">@invoice.Number</td>
                             <td class="mlv-mono" data-priority="essential"><LegacyLink Href="@($"/Customers/View?id={invoice.CustomerId}")" Role="LegacyLinkRole.Record" AriaLabel="@($"{Text["CustomerId"]} {invoice.CustomerId}")">@invoice.CustomerId</LegacyLink></td>
                             <td data-priority="essential">
-                                <MudChip T="string" Size="MudBlazor.Size.Small" Color="@(invoice.IsPaid ? Color.Success : Color.Warning)" Variant="Variant.Outlined">
+                                <ShadcnBadge Variant="ShadcnBadgeVariant.Outline" Class="@(invoice.IsPaid ? "invoice-status--paid" : "invoice-status--unpaid")">
                                     @(invoice.IsPaid ? Text["PaidStatus"] : Text["UnpaidStatus"])
-                                </MudChip>
+                                </ShadcnBadge>
                             </td>
                             <td class="mlv-mono" data-priority="essential"><strong>@FormatMoney(invoice.Outstanding, invoice.Currency)</strong></td>
                             <td class="mlv-mono" data-priority="essential">@FormatMoney(invoice.Total, invoice.Currency)</td>
@@ -102,16 +102,16 @@
                         </dl></QuickViewContent>
                     </OperationalTable>
                 }
-            </MudPaper>
+            </section>
         }
 
-        <nav class="d-flex flex-wrap align-center justify-space-between gap-3" aria-label="@Text["InvoicePages"]">
-            <MudButton Disabled="@(!HasPreviousPage)" OnClick="PreviousPageAsync">@Text["Previous"]</MudButton>
-            <MudText aria-live="polite">@Text["PageSummary", Index, TotalPages, TotalRecords]</MudText>
-            <MudButton Disabled="@(!HasNextPage)" OnClick="NextPageAsync">@Text["Next"]</MudButton>
+        <nav class="invoice-pager" aria-label="@Text["InvoicePages"]">
+            <ShadcnButton Variant="ShadcnButtonVariant.Outline" Disabled="@(!HasPreviousPage)" OnClick="PreviousPageAsync">@Text["Previous"]</ShadcnButton>
+            <span aria-live="polite">@Text["PageSummary", Index, TotalPages, TotalRecords]</span>
+            <ShadcnButton Variant="ShadcnButtonVariant.Outline" Disabled="@(!HasNextPage)" OnClick="NextPageAsync">@Text["Next"]</ShadcnButton>
         </nav>
     }
-</MudContainer>
+</main>
 
 @code {
     [SupplyParameterFromQuery(Name = "search")] public string? Search { get; set; }
