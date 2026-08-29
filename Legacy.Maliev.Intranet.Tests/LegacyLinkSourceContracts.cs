@@ -30,7 +30,7 @@ internal static class LegacyLinkSourceContracts
         ShadcnButton("Legacy.Maliev.Intranet.Client.Features.Accounting/Pages/Finances.razor", "/Finances/NetProfitChart?year={BangkokYear}", "Variant=\"ShadcnButtonVariant.Outline\"", "@Text[\"NetProfit\"]"),
         ShadcnButton("Legacy.Maliev.Intranet.Client.Features.Quotations/Pages/Quotations/Index.razor", "Href=\"/Quotations/Create\"", "@Text[\"Create\"]"),
         ShadcnButton("Legacy.Maliev.Intranet.Client.Features.Quotations/Pages/Quotations/Index.razor", "Href=\"/Quotations/Estimate\"", "Variant=\"ShadcnButtonVariant.Outline\"", "@Text[\"Estimate\"]"),
-        Button("Legacy.Maliev.Intranet.Client.Features.Quotations/Pages/Quotations/View.razor", "Href=\"@quotationUri.ToString()\"", "Target=\"_blank\"", "Rel=\"noopener\"", "@Text[\"ViewPdf\"]"),
+        ShadcnButton("Legacy.Maliev.Intranet.Client.Features.Quotations/Pages/Quotations/View.razor", "Href=\"@quotationUri.ToString()\"", "Target=\"_blank\"", "Rel=\"noopener\"", "@Text[\"ViewPdf\"]"),
         ShadcnButton("Legacy.Maliev.Intranet.Client.Features.Orders/Pages/OrderDetail.razor", "/bff/orders/{page.Order.Id}/label", "Target=\"_blank\"", "Rel=\"noopener\"", "@Text[\"OrderLabel\"]"),
         ShadcnButton("Legacy.Maliev.Intranet.Client.Features.Orders/Pages/OrderDetail.razor", "/Customers/View?id={customerId}", "Variant=\"ShadcnButtonVariant.Outline\"", "@Text[\"CustomerInfo\"]"),
         ShadcnButton("Legacy.Maliev.Intranet.Client.Features.Procurement/Pages/PurchaseOrderView.razor", "Href=\"@download.Url.AbsoluteUri\"", "Target=\"_blank\"", "Rel=\"noopener\"", "Variant=\"ShadcnButtonVariant.Outline\"", "@Text[\"DownloadPdf\"]"),

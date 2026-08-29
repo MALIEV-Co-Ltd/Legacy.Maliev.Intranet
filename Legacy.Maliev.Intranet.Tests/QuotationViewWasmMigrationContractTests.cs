@@ -66,6 +66,9 @@ public sealed class QuotationViewWasmMigrationContractTests
         Assert.Contains("X-CSRF-TOKEN", page, StringComparison.Ordinal);
         Assert.Contains("LegacyQuotationPermissions.Update", page, StringComparison.Ordinal);
         Assert.Contains("QuotationDecisionInput(accepted, page.Quotation.ModifiedDate)", page, StringComparison.Ordinal);
+        Assert.Contains("<ShadcnButton", page, StringComparison.Ordinal);
+        Assert.Contains("<ShadcnAlert", page, StringComparison.Ordinal);
+        Assert.DoesNotContain("<Mud", page, StringComparison.Ordinal);
         Assert.DoesNotContain("access_token", page, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("refresh_token", page, StringComparison.OrdinalIgnoreCase);
     }
