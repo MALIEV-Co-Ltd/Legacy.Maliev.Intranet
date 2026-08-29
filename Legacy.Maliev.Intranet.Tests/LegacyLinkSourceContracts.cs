@@ -33,7 +33,7 @@ internal static class LegacyLinkSourceContracts
         Button("Legacy.Maliev.Intranet.Client.Features.Quotations/Pages/Quotations/View.razor", "Href=\"@quotationUri.ToString()\"", "Target=\"_blank\"", "Rel=\"noopener\"", "@Text[\"ViewPdf\"]"),
         ShadcnButton("Legacy.Maliev.Intranet.Client.Features.Orders/Pages/OrderDetail.razor", "/bff/orders/{page.Order.Id}/label", "Target=\"_blank\"", "Rel=\"noopener\"", "@Text[\"OrderLabel\"]"),
         ShadcnButton("Legacy.Maliev.Intranet.Client.Features.Orders/Pages/OrderDetail.razor", "/Customers/View?id={customerId}", "Variant=\"ShadcnButtonVariant.Outline\"", "@Text[\"CustomerInfo\"]"),
-        Button("Legacy.Maliev.Intranet.Client.Features.Procurement/Pages/PurchaseOrderView.razor", "Href=\"@download.Url.AbsoluteUri\"", "Target=\"_blank\"", "Rel=\"noopener\"", "StartIcon=\"@Icons.Material.Filled.Download\"", "@Text[\"DownloadPdf\"]"),
+        ShadcnButton("Legacy.Maliev.Intranet.Client.Features.Procurement/Pages/PurchaseOrderView.razor", "Href=\"@download.Url.AbsoluteUri\"", "Target=\"_blank\"", "Rel=\"noopener\"", "Variant=\"ShadcnButtonVariant.Outline\"", "@Text[\"DownloadPdf\"]"),
     ];
 
     internal static bool IsSpecializedOwner(string relativePath, string kind, string markup) =>

@@ -2,75 +2,91 @@
 @attribute [Authorize]
 @inject HttpClient Http
 @inject NavigationManager Navigation
-@inject IDialogService Dialogs
 @inject IStringLocalizer<PurchaseOrderView> Text
 
 <PageTitle>@(detail is null ? Text["PageTitle"] : Text["PageTitleWithId", detail.Id])</PageTitle>
 
-<MudContainer MaxWidth="MaxWidth.Large" Class="purchase-order-view-page">
+<main class="purchase-order-view-page">
     @if (loading)
     {
-        <div role="status" aria-live="polite"><MudProgressLinear Indeterminate="true" Color="Color.Primary" aria-label="@Text["Loading"]" /><span class="visually-hidden">@Text["Loading"]</span></div>
+        <div class="purchase-order-view-loading" role="status" aria-live="polite"><ShadcnSpinner Label="@Text["Loading"]" Size="1.25rem" /><span>@Text["Loading"]</span></div>
     }
     else if (!string.IsNullOrWhiteSpace(error) && detail is null)
     {
-        <MudAlert Severity="Severity.Error" Class="mb-4" aria-live="assertive">@error</MudAlert>
-        <div class="d-flex flex-wrap gap-2">
-            @if (!forbidden)
-            {
-                <MudButton OnClick="LoadAsync" Variant="Variant.Filled" Color="Color.Primary">@Text["Retry"]</MudButton>
-            }
-            <LegacyLink Href="/PurchaseOrders/Index" Role="LegacyLinkRole.Navigation" StartIcon="@Icons.Material.Filled.ArrowBack" AriaLabel="@Text["Back"]">@Text["Back"]</LegacyLink>
+        <ShadcnAlert Variant="ShadcnAlertVariant.Destructive" AlertRole="ShadcnAlertRole.Alert"><ShadcnAlertDescription>@error</ShadcnAlertDescription></ShadcnAlert>
+        <div class="purchase-order-view-actions">
+            @if (!forbidden) { <ShadcnButton OnClick="LoadAsync">@Text["Retry"]</ShadcnButton> }
+            <LegacyLink Href="/PurchaseOrders/Index" Role="LegacyLinkRole.Navigation" AriaLabel="@Text["Back"]">@Text["Back"]</LegacyLink>
         </div>
     }
     else if (notFound)
     {
-        <MudAlert Severity="Severity.Warning">@Text["NotFound"]</MudAlert>
-        <LegacyLink Href="/PurchaseOrders/Index" Role="LegacyLinkRole.Navigation" StartIcon="@Icons.Material.Filled.ArrowBack" AriaLabel="@Text["Back"]" Class="mt-3">@Text["Back"]</LegacyLink>
+        <ShadcnAlert AlertRole="ShadcnAlertRole.Status"><ShadcnAlertDescription>@Text["NotFound"]</ShadcnAlertDescription></ShadcnAlert>
+        <LegacyLink Href="/PurchaseOrders/Index" Role="LegacyLinkRole.Navigation" AriaLabel="@Text["Back"]" Class="purchase-order-view-back">@Text["Back"]</LegacyLink>
     }
     else if (detail is not null)
     {
         <header class="operations-page-header">
-            <div><MudText Typo="Typo.h4" HtmlTag="h1">@Text["PurchaseOrder", detail.Id]</MudText><MudText Typo="Typo.body2">@Text["Procurement"]</MudText></div>
-            <MudStack Row="true" Spacing="2" Class="purchase-order-downloads">
+            <div><h1>@Text["PurchaseOrder", detail.Id]</h1><p>@Text["Procurement"]</p></div>
+            <div class="purchase-order-downloads">
                 @foreach (var download in detail.Downloads)
                 {
-                    <MudButton Href="@download.Url.AbsoluteUri" Target="_blank" Rel="noopener" Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Download">@Text["DownloadPdf"]</MudButton>
+                    <ShadcnButton Href="@download.Url.AbsoluteUri" Target="_blank" Rel="noopener" Variant="ShadcnButtonVariant.Outline">@Text["DownloadPdf"]</ShadcnButton>
                 }
-            </MudStack>
+            </div>
         </header>
         @if (!string.IsNullOrWhiteSpace(error))
         {
-            <MudAlert Severity="Severity.Error" Class="mb-4" aria-live="assertive">@error</MudAlert>
+            <ShadcnAlert Variant="ShadcnAlertVariant.Destructive" AlertRole="ShadcnAlertRole.Alert"><ShadcnAlertDescription>@error</ShadcnAlertDescription></ShadcnAlert>
         }
-        <MudPaper Class="pa-4 mb-4">
-            <MudGrid>
-                <MudItem xs="12" md="6"><MudText Typo="Typo.caption">@Text["Supplier"]</MudText><MudText>@Value(detail.SupplierName)</MudText></MudItem>
-                <MudItem xs="12" md="6"><MudText Typo="Typo.caption">@Text["SupplierContact"]</MudText><MudText>@Value(detail.SupplierContactPerson)</MudText></MudItem>
-                <MudItem xs="12" md="6"><MudText Typo="Typo.caption">@Text["OrderedBy"]</MudText><MudText>@Value(detail.OrderedBy)</MudText></MudItem>
-                <MudItem xs="12" md="6"><MudText Typo="Typo.caption">@Text["ShippingMethod"]</MudText><MudText>@Value(detail.ShippingMethod)</MudText></MudItem>
-                <MudItem xs="12" md="4"><MudText Typo="Typo.caption">@Text["Fob"]</MudText><MudText>@Value(detail.Fob)</MudText></MudItem>
-                <MudItem xs="12" md="4"><MudText Typo="Typo.caption">@Text["Terms"]</MudText><MudText>@Value(detail.Terms)</MudText></MudItem>
-                <MudItem xs="12" md="4"><MudText Typo="Typo.caption">@Text["Created"]</MudText><MudText>@FormatDate(detail.CreatedDate)</MudText></MudItem>
-                <MudItem xs="12"><MudText Typo="Typo.caption">@Text["Notes"]</MudText><MudText>@Value(detail.Notes)</MudText></MudItem>
-            </MudGrid>
-        </MudPaper>
-        <MudTable Items="detail.Items" Hover="true" Breakpoint="Breakpoint.Md" Elevation="1" Class="purchase-order-lines" aria-label="@Text["LineItemsTable"]">
-            <HeaderContent><MudTh>@Text["PartNumber"]</MudTh><MudTh>@Text["Description"]</MudTh><MudTh>@Text["UnitPrice"]</MudTh><MudTh>@Text["Quantity"]</MudTh><MudTh>@Text["Subtotal"]</MudTh></HeaderContent>
-            <RowTemplate>
-                <MudTd DataLabel="@Text["PartNumber"]">@Value(context.PartNumber)</MudTd>
-                <MudTd DataLabel="@Text["Description"]">@Value(context.Description)</MudTd>
-                <MudTd DataLabel="@Text["UnitPrice"]">@Money(context.UnitPrice)</MudTd>
-                <MudTd DataLabel="@Text["Quantity"]">@context.Quantity</MudTd>
-                <MudTd DataLabel="@Text["Subtotal"]">@Money(context.Subtotal)</MudTd>
-            </RowTemplate>
-        </MudTable>
+        <section class="purchase-order-summary" aria-label="@Text["PurchaseOrder", detail.Id]">
+            <dl>
+                <div><dt>@Text["Supplier"]</dt><dd>@Value(detail.SupplierName)</dd></div>
+                <div><dt>@Text["SupplierContact"]</dt><dd>@Value(detail.SupplierContactPerson)</dd></div>
+                <div><dt>@Text["OrderedBy"]</dt><dd>@Value(detail.OrderedBy)</dd></div>
+                <div><dt>@Text["ShippingMethod"]</dt><dd>@Value(detail.ShippingMethod)</dd></div>
+                <div><dt>@Text["Fob"]</dt><dd>@Value(detail.Fob)</dd></div>
+                <div><dt>@Text["Terms"]</dt><dd>@Value(detail.Terms)</dd></div>
+                <div><dt>@Text["Created"]</dt><dd>@FormatDate(detail.CreatedDate)</dd></div>
+                <div class="purchase-order-summary-wide"><dt>@Text["Notes"]</dt><dd>@Value(detail.Notes)</dd></div>
+            </dl>
+        </section>
 
-        <MudPaper Class="pa-4 mt-6 purchase-order-danger-zone" Elevation="0">
-            <MudButton Color="Color.Error" Variant="Variant.Filled" Disabled="@deleting" OnClick="ConfirmDeleteAsync">@Text["Delete"]</MudButton>
-        </MudPaper>
+        <ShadcnTable Class="purchase-order-lines" ExpectedColumnCount="5">
+            <ShadcnTableCaption Class="sr-only">@Text["LineItemsTable"]</ShadcnTableCaption>
+            <ShadcnTableHeader><ShadcnTableRow><ShadcnTableHead>@Text["PartNumber"]</ShadcnTableHead><ShadcnTableHead>@Text["Description"]</ShadcnTableHead><ShadcnTableHead>@Text["UnitPrice"]</ShadcnTableHead><ShadcnTableHead>@Text["Quantity"]</ShadcnTableHead><ShadcnTableHead>@Text["Subtotal"]</ShadcnTableHead></ShadcnTableRow></ShadcnTableHeader>
+            <ShadcnTableBody>
+                @foreach (var item in detail.Items)
+                {
+                    <ShadcnTableRow>
+                        <ShadcnTableCell data-label="@Text["PartNumber"]">@Value(item.PartNumber)</ShadcnTableCell>
+                        <ShadcnTableCell data-label="@Text["Description"]">@Value(item.Description)</ShadcnTableCell>
+                        <ShadcnTableCell data-label="@Text["UnitPrice"]" class="purchase-order-money">@Money(item.UnitPrice)</ShadcnTableCell>
+                        <ShadcnTableCell data-label="@Text["Quantity"]" class="purchase-order-number">@item.Quantity</ShadcnTableCell>
+                        <ShadcnTableCell data-label="@Text["Subtotal"]" class="purchase-order-money">@Money(item.Subtotal)</ShadcnTableCell>
+                    </ShadcnTableRow>
+                }
+            </ShadcnTableBody>
+        </ShadcnTable>
+
+        <section class="purchase-order-danger-zone" aria-labelledby="purchase-order-danger-heading">
+            <h2 id="purchase-order-danger-heading">@Text["ConfirmDeleteTitle"]</h2>
+            <ShadcnAlertDialog>
+                <ShadcnAlertDialogTrigger Disabled="@deleting">@Text["Delete"]</ShadcnAlertDialogTrigger>
+                <ShadcnAlertDialogContent>
+                    <ShadcnAlertDialogHeader>
+                        <ShadcnAlertDialogTitle>@Text["ConfirmDeleteTitle"]</ShadcnAlertDialogTitle>
+                        <ShadcnAlertDialogDescription>@Text["ConfirmDeleteBody"]</ShadcnAlertDialogDescription>
+                    </ShadcnAlertDialogHeader>
+                    <ShadcnAlertDialogFooter>
+                        <ShadcnAlertDialogCancel Disabled="@deleting">@Text["Cancel"]</ShadcnAlertDialogCancel>
+                        <ShadcnAlertDialogAction Disabled="@deleting" OnClick="@(_ => DeleteAsync())">@Text["Delete"]</ShadcnAlertDialogAction>
+                    </ShadcnAlertDialogFooter>
+                </ShadcnAlertDialogContent>
+            </ShadcnAlertDialog>
+        </section>
     }
-</MudContainer>
+</main>
 
 @code {
     [SupplyParameterFromQuery(Name = "id")] public int Id { get; set; }
@@ -127,22 +143,8 @@
         finally { deleting = false; }
     }
 
-    private async Task ConfirmDeleteAsync()
-    {
-        var confirmed = await Dialogs.ShowMessageBoxAsync(
-            Text["ConfirmDeleteTitle"],
-            Text["ConfirmDeleteBody"],
-            yesText: Text["Delete"],
-            cancelText: Text["Cancel"]);
-        if (confirmed is true)
-        {
-            await DeleteAsync();
-        }
-    }
-
     private string Value(string? value) => string.IsNullOrWhiteSpace(value) ? "-" : value;
     private static string Money(decimal value) => $"{value:N2} THB";
-    private static string FormatDate(DateTime? value) =>
-        LegacyPresentation.FormatUtcDateTime(value, CultureInfo.CurrentCulture, "-");
+    private static string FormatDate(DateTime? value) => LegacyPresentation.FormatUtcDateTime(value, CultureInfo.CurrentCulture, "-");
     private void NavigateToLogin() => Navigation.NavigateTo($"/Login?returnUrl={Uri.EscapeDataString(Navigation.ToBaseRelativePath(Navigation.Uri))}");
 }

@@ -98,7 +98,6 @@ public sealed class OrdersProcurementResponsiveContractTests
         var root = FindRoot();
         var create = Read(root, "Legacy.Maliev.Intranet.Client.Features.Procurement", "Pages", "PurchaseOrderCreate.razor");
         var createStyles = Read(root, "Legacy.Maliev.Intranet.Client.Features.Procurement", "Pages", "PurchaseOrderCreate.razor.css");
-        var globalStyles = Read(root, "Legacy.Maliev.Intranet.Client", "wwwroot", "css", "operations-pages.css");
         var supplierCreate = Read(root, "Legacy.Maliev.Intranet.Client.Features.Procurement", "Pages", "SupplierCreate.razor");
         var supplierView = Read(root, "Legacy.Maliev.Intranet.Client.Features.Procurement", "Pages", "SupplierView.razor");
         var purchaseView = Read(root, "Legacy.Maliev.Intranet.Client.Features.Procurement", "Pages", "PurchaseOrderView.razor");
@@ -113,9 +112,9 @@ public sealed class OrdersProcurementResponsiveContractTests
         Assert.Contains("model.EmployeeId <= 0", create, StringComparison.Ordinal);
         Assert.Contains("position: sticky", createStyles, StringComparison.Ordinal);
         Assert.Contains("min-height: 44px", createStyles, StringComparison.Ordinal);
-        Assert.Contains(".purchase-order-addresses.mud-grid-spacing-xs-6", globalStyles, StringComparison.Ordinal);
-        Assert.Contains("margin: 0 !important", globalStyles, StringComparison.Ordinal);
-        Assert.Contains("> .mud-grid-item", globalStyles, StringComparison.Ordinal);
+        Assert.Contains("grid-template-columns: repeat(2, minmax(0, 1fr))", createStyles, StringComparison.Ordinal);
+        Assert.Contains("@media (max-width: 800px)", createStyles, StringComparison.Ordinal);
+        Assert.Contains(".purchase-order-addresses", createStyles, StringComparison.Ordinal);
 
         Assert.Contains("ProcurementInputField TValue=\"int\"", supplierCreate, StringComparison.Ordinal);
         Assert.Contains("@bind-Value=\"model.CountryId\"", supplierCreate, StringComparison.Ordinal);

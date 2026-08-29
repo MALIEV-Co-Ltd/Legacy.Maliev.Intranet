@@ -544,6 +544,91 @@ public sealed class OperationalTableMigrationBrowserTests(
         Assert.Empty(errors);
     }
 
+    [Fact]
+    public async Task PurchaseOrderEditorsUseNativeSelectionsLinesTableAndDeleteDialog()
+    {
+        await using var context = await playwright.Browser.NewContextAsync(new()
+        {
+            ViewportSize = new() { Width = 390, Height = 844 },
+            HasTouch = true,
+            ReducedMotion = ReducedMotion.Reduce,
+        });
+        var page = await context.NewPageAsync();
+        var errors = CaptureErrors(page);
+        await page.RouteAsync("**/bff/session", route => route.FulfillAsync(new()
+        {
+            Status = 200,
+            ContentType = "application/json",
+            Body = JsonSerializer.Serialize(new
+            {
+                isAuthenticated = true,
+                employeeId = "purchase-order-browser",
+                displayName = "Purchase Order Browser",
+                roles = new[] { "Employee" },
+                csrfToken = "purchase-order-csrf",
+                legacyDatabaseId = 1,
+                permissions = new[] { "legacy-procurement.purchase-orders.read", "legacy-procurement.purchase-orders.create", "legacy-procurement.purchase-orders.delete" },
+            }),
+        }));
+        await page.RouteAsync("**/bff/purchase-orders/create-options", route => route.FulfillAsync(new()
+        {
+            Status = 200,
+            ContentType = "application/json",
+            Body = JsonSerializer.Serialize(new
+            {
+                suppliers = new[] { new { id = 7, name = "Thai Precision Supplier" } },
+                employees = new[] { new { id = 9, fullName = "Mali Dee" } },
+                addresses = new[] { new { id = 11, addressLine1 = "1 Manufacturing Road", city = "Bangkok" } },
+            }),
+        }));
+        await page.RouteAsync("**/bff/purchase-orders/84", route => route.FulfillAsync(new()
+        {
+            Status = 200,
+            ContentType = "application/json",
+            Body = JsonSerializer.Serialize(new
+            {
+                id = 84,
+                supplierName = "Thai Precision Supplier",
+                supplierContactPerson = "Somchai",
+                orderedBy = "Mali Dee",
+                shippingMethod = "Dedicated courier",
+                fob = "Bangkok",
+                terms = "Net 30",
+                notes = "Inspection certificate required",
+                createdDate = "2030-08-01T00:00:00Z",
+                items = new[] { new { partNumber = "PO-84-A", description = "Precision fixture", quantity = 2, unitPrice = 1500m, subtotal = 3000m } },
+                downloads = new[] { new { name = "purchase-order-84.pdf", url = "https://downloads.example/purchase-order-84.pdf" } },
+            }),
+        }));
+
+        await page.GotoAsync(new Uri(server.BaseUri, "PurchaseOrders/Create").AbsoluteUri);
+        await page.Locator("#purchase-order-supplier").WaitForAsync();
+        Assert.Equal(4, await page.Locator("[data-slot='select-trigger']").CountAsync());
+        Assert.Equal(1, await page.Locator("[id$='-description']").CountAsync());
+        await page.GetByRole(AriaRole.Button, new() { Name = "Add line item", Exact = true }).ClickAsync();
+        Assert.Equal(2, await page.Locator("[id$='-description']").CountAsync());
+        await page.GetByRole(AriaRole.Button, new() { Name = "Remove line item", Exact = true }).Last.ClickAsync();
+        Assert.Equal(1, await page.Locator("[id$='-description']").CountAsync());
+        Assert.Equal(
+            await page.EvaluateAsync<int>("() => document.documentElement.clientWidth"),
+            await page.EvaluateAsync<int>("() => document.documentElement.scrollWidth"));
+
+        await page.GotoAsync(new Uri(server.BaseUri, "PurchaseOrders/View?id=84").AbsoluteUri);
+        var table = page.GetByRole(AriaRole.Table, new() { Name = "Purchase order line items", Exact = true });
+        await table.WaitForAsync();
+        Assert.Contains("Precision fixture", await table.InnerTextAsync());
+        Assert.Equal("https://downloads.example/purchase-order-84.pdf", await page.GetByRole(AriaRole.Link, new() { Name = "Download PDF", Exact = true }).GetAttributeAsync("href"));
+        var deleteTrigger = page.Locator("[data-slot='alert-dialog-trigger']");
+        await deleteTrigger.ClickAsync();
+        var dialog = page.GetByRole(AriaRole.Alertdialog);
+        await dialog.WaitForAsync();
+        Assert.Contains("Delete this purchase order?", await dialog.InnerTextAsync());
+        await dialog.GetByRole(AriaRole.Button, new() { Name = "Cancel", Exact = true }).ClickAsync();
+        await Assertions.Expect(dialog).ToBeHiddenAsync();
+        Assert.True(await deleteTrigger.EvaluateAsync<bool>("node => document.activeElement === node"));
+        Assert.Empty(errors);
+    }
+
     private static List<string> CaptureErrors(IPage page)
     {
         var errors = new List<string>();
