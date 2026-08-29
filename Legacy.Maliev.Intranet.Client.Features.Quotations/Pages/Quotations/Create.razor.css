@@ -8,11 +8,20 @@
 .quotation-order-table td:nth-child(3), .quotation-order-table td:nth-child(4), .quotation-order-table td:nth-child(5) { font-variant-numeric: tabular-nums; white-space: nowrap; }
 .quotation-order-table td:last-child { text-align: right; }
 .quotation-line-editor { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr) minmax(20rem, 1.35fr) 3rem; align-items: start; gap: 0.75rem; padding-block: 1rem; }
-.quotation-line-editor ::deep .mud-input-control, .quotation-line-editor ::deep .mud-input, .quotation-line-editor ::deep .mud-select { width: 100%; min-width: 0; }
-.quotation-line-editor ::deep .mud-input-slot { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.quotation-line-editor ::deep .shadcn-field, .quotation-line-editor ::deep .shadcn-input, .quotation-line-editor ::deep [data-slot="select-trigger"] { width: 100%; min-width: 0; }
 .quotation-line-numbers { display: grid; grid-template-columns: minmax(5.5rem, 0.65fr) minmax(8rem, 1fr) minmax(7rem, 0.8fr); gap: 0.75rem; min-width: 0; }
 .quotation-line-actions { display: flex; min-height: 3.5rem; align-items: center; justify-content: flex-end; }
-.quotation-line-actions ::deep .mud-icon-button { flex: 0 0 2.75rem; width: 2.75rem; height: 2.75rem; }
+.quotation-create__estimate { display: grid; justify-items: end; gap: .25rem; padding-top: 1rem; border-top: 1px solid var(--shadcn-border); }
+.quotation-create__estimate span { color: var(--shadcn-muted-foreground); font-size: .8rem; }
 @media (max-width: 920px) { .quotation-line-editor { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 3rem; } .quotation-line-numbers { grid-column: 1 / 3; } .quotation-line-actions { grid-column: 3; grid-row: 1 / 3; align-self: end; } }
 @media (max-width: 760px) { .quotation-order-candidates { padding: 0.75rem; } .quotation-order-candidates-heading, .quotation-order-search { grid-template-columns: minmax(0, 1fr); } .quotation-order-table-scroll { overflow: visible; } .quotation-order-table { display: block; min-width: 0; } .quotation-order-table thead { display: none; } .quotation-order-table tbody { display: grid; gap: 0.65rem; } .quotation-order-table tr { display: grid; overflow: hidden; } .quotation-order-table td { display: grid; grid-template-columns: minmax(7rem, 40%) minmax(0, 1fr); gap: 0.75rem; overflow-wrap: anywhere; } .quotation-order-table td::before { content: attr(data-label); } .quotation-order-table td:last-child { text-align: left; } }
-@media (max-width: 620px) { .quotation-line-editor { grid-template-columns: minmax(0, 1fr) 3rem; gap: 0.65rem; } .quotation-line-editor ::deep .quotation-line-order, .quotation-line-editor ::deep .quotation-line-description, .quotation-line-numbers { grid-column: 1 / -1; } .quotation-line-numbers { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } .quotation-line-numbers ::deep .mud-input-control:last-child { grid-column: 1 / -1; } .quotation-line-actions { grid-column: 2; grid-row: 4; align-self: end; } }
+@media (max-width: 620px) { .quotation-create__grid, .quotation-create__grid--three { grid-template-columns: 1fr; } .quotation-create__customer, .quotation-create__section-heading, .quotation-create__actions { align-items: stretch; flex-direction: column; } .quotation-create__customer ::deep .shadcn-button, .quotation-create__section-heading ::deep .shadcn-button, .quotation-create__actions ::deep .shadcn-button { width: 100%; min-height: 44px; } .quotation-line-editor { grid-template-columns: minmax(0, 1fr); gap: 0.65rem; } .quotation-line-numbers { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } .quotation-line-numbers ::deep .shadcn-field:last-child { grid-column: 1 / -1; } .quotation-line-actions { grid-column: 1; grid-row: auto; align-self: end; } }
+.quotation-create { width: min(100%, 90rem); margin-inline: auto; }
+.operations-page-header { margin-bottom: 1rem; }
+.quotation-create__form { display: grid; gap: 1rem; }
+.quotation-create__section { min-width: 0; padding: 1rem; border: 1px solid var(--shadcn-border); border-radius: var(--shadcn-radius); background: var(--shadcn-card); }
+.quotation-create__section h2 { margin: 0 0 .75rem; font-size: 1.125rem; }
+.quotation-create__customer, .quotation-create__section-heading, .quotation-create__actions { display: flex; align-items: end; justify-content: space-between; flex-wrap: wrap; gap: .75rem; }
+.quotation-create__grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
+.quotation-create__grid--three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.quotation-create__wide { grid-column: 1 / -1; }

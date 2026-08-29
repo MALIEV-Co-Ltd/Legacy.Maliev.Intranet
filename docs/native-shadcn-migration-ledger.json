@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "packageVersion": "1.2.2",
   "baseline": { "renderSites": 1485, "componentTypes": 36, "razorFiles": 60 },
-  "current": { "renderSites": 188, "razorFiles": 3 },
+  "current": { "renderSites": 131, "razorFiles": 2 },
   "files": [
     { "path": "Legacy.Maliev.Intranet.Client/LoginRedirect.razor", "baselineRenderSites": 3, "remainingRenderSites": 0, "status": "migrated" },
     { "path": "Legacy.Maliev.Intranet.Client/Components/Dashboard/DashboardMetricCard.razor", "baselineRenderSites": 1, "remainingRenderSites": 0, "status": "migrated" },
@@ -60,7 +60,7 @@
     { "path": "Legacy.Maliev.Intranet.Client.Features.Procurement/Pages/SupplierView.razor", "baselineRenderSites": 30, "remainingRenderSites": 0, "status": "migrated" },
     { "path": "Legacy.Maliev.Intranet.Client.Features.Quotations/Pages/QuotationRequests/Index.razor", "baselineRenderSites": 9, "remainingRenderSites": 0, "status": "migrated" },
     { "path": "Legacy.Maliev.Intranet.Client.Features.Quotations/Pages/QuotationRequests/View.razor", "baselineRenderSites": 46, "remainingRenderSites": 0, "status": "migrated" },
-    { "path": "Legacy.Maliev.Intranet.Client.Features.Quotations/Pages/Quotations/Create.razor", "baselineRenderSites": 57, "remainingRenderSites": 57, "status": "pending" },
+    { "path": "Legacy.Maliev.Intranet.Client.Features.Quotations/Pages/Quotations/Create.razor", "baselineRenderSites": 57, "remainingRenderSites": 0, "status": "migrated" },
     { "path": "Legacy.Maliev.Intranet.Client.Features.Quotations/Pages/Quotations/Estimate.razor", "baselineRenderSites": 84, "remainingRenderSites": 84, "status": "pending" },
     { "path": "Legacy.Maliev.Intranet.Client.Features.Quotations/Pages/Quotations/Index.razor", "baselineRenderSites": 14, "remainingRenderSites": 0, "status": "migrated" },
     { "path": "Legacy.Maliev.Intranet.Client.Features.Quotations/Pages/Quotations/View.razor", "baselineRenderSites": 35, "remainingRenderSites": 47, "status": "pending" }

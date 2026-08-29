@@ -1,4 +1,5 @@
 @page "/Quotations/Create"
+@using System.ComponentModel.DataAnnotations
 @attribute [Authorize]
 @inject HttpClient Http
 @inject NavigationManager Navigation
@@ -6,299 +7,115 @@
 
 <PageTitle>@Text["PageTitle"]</PageTitle>
 
-<MudContainer MaxWidth="MaxWidth.Large">
-    <header class="operations-page-header">
-        <MudText Typo="Typo.h4" HtmlTag="h1">@Text["Heading"]</MudText>
-    </header>
-    @if (loading)
-    {
-        <MudProgressLinear Indeterminate="true" Color="Color.Primary" aria-label="@Text["Loading"]" />
-    }
+<main class="quotation-create">
+    <header class="operations-page-header"><h1>@Text["Heading"]</h1></header>
+    @if (loading) { <div role="status" aria-live="polite"><ShadcnSpinner Label="@Text["Loading"]" Size="1.25rem" /><span>@Text["Loading"]</span></div> }
     else
     {
-        @if (!string.IsNullOrWhiteSpace(error))
-        {
-            <MudAlert Severity="Severity.Error" Class="mb-4" aria-live="assertive">@error</MudAlert>
-        }
-        @if (!string.IsNullOrWhiteSpace(warning))
-        {
-            <MudAlert Severity="Severity.Warning" Class="mb-4" aria-live="polite">@warning</MudAlert>
-        }
-        <MudForm @ref="form" Model="model" @bind-IsValid="formValid">
-            <MudPaper Class="pa-4 mb-4">
-                <MudText Typo="Typo.h6" HtmlTag="h2">@Text["Customer"]</MudText>
-                <MudGrid>
-                    <MudItem xs="12" sm="8"><MudNumericField T="int" @bind-Value="model.CustomerId" Label="@Text["CustomerId"]" Min="1" Required="true" /></MudItem>
-                    <MudItem xs="12" sm="4"><MudButton ButtonType="ButtonType.Button" Variant="Variant.Outlined" OnClick="LoadCustomerAsync">@Text["LoadCustomer"]</MudButton></MudItem>
-                </MudGrid>
-                @if (page?.Customer is not null)
-                {
-                    <MudText Class="mt-2"><strong>@(page.Customer.FullName)</strong> · @(page.Customer.Email)</MudText>
-                }
-            </MudPaper>
+        @if (!string.IsNullOrWhiteSpace(error)) { <ShadcnAlert Variant="ShadcnAlertVariant.Destructive" AlertRole="ShadcnAlertRole.Alert"><ShadcnAlertDescription>@error</ShadcnAlertDescription></ShadcnAlert> }
+        @if (!string.IsNullOrWhiteSpace(warning)) { <ShadcnAlert AlertRole="ShadcnAlertRole.Status"><ShadcnAlertDescription>@warning</ShadcnAlertDescription></ShadcnAlert> }
+        <EditForm EditContext="@editContext" OnValidSubmit="SubmitAsync" class="quotation-create__form">
+            <DataAnnotationsValidator />
+            <section class="quotation-create__section" aria-labelledby="customer-heading">
+                <h2 id="customer-heading">@Text["Customer"]</h2>
+                <div class="quotation-create__customer"><QuotationInputField TValue="int" Id="quotation-customer" Label="@Text["CustomerId"]" Type="number" InputMode="numeric" Min="1" @bind-Value="model.CustomerId" Required="true" Disabled="@submitting" /><ShadcnButton ButtonType="ShadcnButtonType.Button" Variant="ShadcnButtonVariant.Outline" OnClick="LoadCustomerAsync" Disabled="@submitting">@Text["LoadCustomer"]</ShadcnButton></div>
+                @if (page?.Customer is not null) { <p><strong>@(page.Customer.FullName)</strong> · @(page.Customer.Email)</p> }
+            </section>
 
-            <MudPaper Class="pa-4 mb-4">
-                <MudText Typo="Typo.h6" HtmlTag="h2">@Text["TermsHeading"]</MudText>
-                <MudGrid>
-                    <MudItem xs="12" md="4"><MudSelect T="int" @bind-Value="model.EmployeeId" Label="@Text["Employee"]" Required="true">@foreach (var employee in page?.Employees ?? []) { <MudSelectItem T="int" Value="employee.Id">@employee.FullName</MudSelectItem> }</MudSelect></MudItem>
-                    <MudItem xs="12" md="4"><MudSelect T="int" @bind-Value="model.CurrencyId" Label="@Text["Currency"]" Required="true">@foreach (var currency in page?.Currencies ?? []) { <MudSelectItem T="int" Value="currency.Id">@currency.ShortName</MudSelectItem> }</MudSelect></MudItem>
-                    <MudItem xs="12" md="4"><MudNumericField T="int" @bind-Value="model.Period" Label="@Text["Period"]" Min="1" Max="365" Required="true" /></MudItem>
-                    <MudItem xs="12" md="4"><MudTextField @bind-Value="model.ShippedVia" Label="@Text["ShippedVia"]" /></MudItem>
-                    <MudItem xs="12" md="4"><MudTextField @bind-Value="model.Fob" Label="@Text["Fob"]" /></MudItem>
-                    <MudItem xs="12" md="4"><MudTextField @bind-Value="model.Terms" Label="@Text["Terms"]" /></MudItem>
-                    <MudItem xs="12"><MudTextField @bind-Value="model.Comment" Label="@Text["Comment"]" Lines="3" /></MudItem>
-                    <MudItem xs="12"><MudCheckBox T="bool" @bind-Value="model.WithholdingTaxEnabled" Label="@Text["Withholding"]" /></MudItem>
-                </MudGrid>
-            </MudPaper>
-
-            <MudPaper Class="pa-4 mb-4">
-                <div class="d-flex align-center justify-space-between mb-3">
-                    <MudText Typo="Typo.h6" HtmlTag="h2">@Text["Lines"]</MudText>
-                    <MudButton ButtonType="ButtonType.Button" Variant="Variant.Outlined" OnClick="AddLine">@Text["AddLine"]</MudButton>
+            <section class="quotation-create__section" aria-labelledby="terms-heading">
+                <h2 id="terms-heading">@Text["TermsHeading"]</h2>
+                <div class="quotation-create__grid quotation-create__grid--three">
+                    <QuotationSelectField TValue="int" Id="quotation-employee" Label="@Text["Employee"]" @bind-Value="model.EmployeeId" Options="@EmployeeOptions" Placeholder="@Text["Employee"]" Required="true" Disabled="@submitting" />
+                    <QuotationSelectField TValue="int" Id="quotation-currency" Label="@Text["Currency"]" @bind-Value="model.CurrencyId" Options="@CurrencyOptions" Placeholder="@Text["Currency"]" Required="true" Disabled="@submitting" />
+                    <QuotationInputField TValue="int" Id="quotation-period" Label="@Text["Period"]" Type="number" InputMode="numeric" Min="1" @bind-Value="model.Period" Required="true" Disabled="@submitting" />
+                    <QuotationInputField TValue="string" Id="quotation-shipped-via" Label="@Text["ShippedVia"]" @bind-Value="model.ShippedVia" Disabled="@submitting" />
+                    <QuotationInputField TValue="string" Id="quotation-fob" Label="@Text["Fob"]" @bind-Value="model.Fob" Disabled="@submitting" />
+                    <QuotationInputField TValue="string" Id="quotation-terms" Label="@Text["Terms"]" @bind-Value="model.Terms" Disabled="@submitting" />
+                    <div class="quotation-create__wide"><ShadcnFormField Id="quotation-comment" Label="@Text["Comment"]"><Control><ShadcnTextarea TValue="string" id="quotation-comment" @bind-Value="model.Comment" rows="3" Disabled="@submitting" /></Control></ShadcnFormField></div>
+                    <div class="quotation-create__wide"><QuotationCheckboxField Id="quotation-withholding" Label="@Text["Withholding"]" @bind-Value="model.WithholdingTaxEnabled" Disabled="@submitting" /></div>
                 </div>
+            </section>
+
+            <section class="quotation-create__section" aria-labelledby="lines-heading">
+                <div class="quotation-create__section-heading"><h2 id="lines-heading">@Text["Lines"]</h2><ShadcnButton ButtonType="ShadcnButtonType.Button" Variant="ShadcnButtonVariant.Outline" OnClick="AddLine" Disabled="@submitting">@Text["AddLine"]</ShadcnButton></div>
                 @if (page?.Customer is not null)
                 {
                     <section class="quotation-order-candidates" aria-labelledby="quotation-order-candidates-heading">
-                        <div class="quotation-order-candidates-heading">
-                            <div>
-                                <MudText id="quotation-order-candidates-heading" Typo="Typo.subtitle1" HtmlTag="h3">@Text["CustomerOrders"]</MudText>
-                                <MudText Typo="Typo.caption">@Text["CustomerOrdersSummary", page.Orders.Count]</MudText>
-                            </div>
-                            <div class="quotation-order-search">
-                                <MudTextField T="string" @bind-Value="orderSearch" Label="@Text["SearchOrders"]" Immediate="true"
-                                              Variant="Variant.Outlined" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Outlined.Search" />
-                                <MudButton ButtonType="ButtonType.Button" Variant="Variant.Outlined" OnClick="SearchOrdersAsync">@Text["Search"]</MudButton>
-                            </div>
-                        </div>
-                        @if (VisibleOrders.Count == 0)
-                        {
-                            <MudAlert Severity="Severity.Info" Variant="Variant.Outlined">@Text[page.Orders.Count == 0 ? "NoCustomerOrders" : "NoMatchingOrders"]</MudAlert>
-                        }
+                        <div class="quotation-order-candidates-heading"><div><h3 id="quotation-order-candidates-heading">@Text["CustomerOrders"]</h3><p>@Text["CustomerOrdersSummary", page.Orders.Count]</p></div><div class="quotation-order-search"><QuotationInputField TValue="string" Id="quotation-order-search" Label="@Text["SearchOrders"]" @bind-Value="orderSearch" Disabled="@submitting" /><ShadcnButton ButtonType="ShadcnButtonType.Button" Variant="ShadcnButtonVariant.Outline" OnClick="SearchOrdersAsync" Disabled="@submitting">@Text["Search"]</ShadcnButton></div></div>
+                        @if (VisibleOrders.Count == 0) { <ShadcnAlert AlertRole="ShadcnAlertRole.Status"><ShadcnAlertDescription>@Text[page.Orders.Count == 0 ? "NoCustomerOrders" : "NoMatchingOrders"]</ShadcnAlertDescription></ShadcnAlert> }
                         else
                         {
-                            <div class="quotation-order-table-scroll">
-                                <MudSimpleTable Class="quotation-order-table" Dense="true" Hover="true">
-                                    <thead>
-                                        <tr><th scope="col">@Text["OrderId"]</th><th scope="col">@Text["OrderName"]</th><th scope="col">@Text["Quantity"]</th><th scope="col">@Text["UnitPrice"]</th><th scope="col">@Text["Discount"]</th><th scope="col"><span class="visually-hidden">@Text["Actions"]</span></th></tr>
-                                    </thead>
-                                    <tbody>
-                                        @foreach (var order in VisibleOrders)
-                                        {
-                                            <tr>
-                                                <td data-label="@Text["OrderId"]">#@order.Id</td>
-                                                <td data-label="@Text["OrderName"]">@(string.IsNullOrWhiteSpace(order.Name) ? Text["UnnamedOrder"] : order.Name)</td>
-                                                <td data-label="@Text["Quantity"]">@order.Quantity.ToString("N0")</td>
-                                                <td data-label="@Text["UnitPrice"]">@FormatOrderMoney(order.UnitPrice)</td>
-                                                <td data-label="@Text["Discount"]">@FormatDiscount(order.DiscountPercent)</td>
-                                                <td data-label="@Text["Actions"]">
-                                                    <MudButton ButtonType="ButtonType.Button" Variant="Variant.Outlined" Size="Size.Small"
-                                                               Disabled="@IsOrderSelected(order.Id)" OnClick="@(() => AddOrder(order))">
-                                                        @Text[IsOrderSelected(order.Id) ? "OrderAdded" : "AddOrder"]
-                                                    </MudButton>
-                                                </td>
-                                            </tr>
-                                        }
-                                    </tbody>
-                                </MudSimpleTable>
-                            </div>
+                            <div class="quotation-order-table-scroll"><ShadcnTable ExpectedColumnCount="6" Class="quotation-order-table"><ShadcnTableHeader><ShadcnTableRow><ShadcnTableHead>@Text["OrderId"]</ShadcnTableHead><ShadcnTableHead>@Text["OrderName"]</ShadcnTableHead><ShadcnTableHead>@Text["Quantity"]</ShadcnTableHead><ShadcnTableHead>@Text["UnitPrice"]</ShadcnTableHead><ShadcnTableHead>@Text["Discount"]</ShadcnTableHead><ShadcnTableHead><span class="visually-hidden">@Text["Actions"]</span></ShadcnTableHead></ShadcnTableRow></ShadcnTableHeader><ShadcnTableBody>@foreach (var order in VisibleOrders) { <ShadcnTableRow><ShadcnTableCell data-label="@Text["OrderId"]">#@order.Id</ShadcnTableCell><ShadcnTableCell data-label="@Text["OrderName"]">@(string.IsNullOrWhiteSpace(order.Name) ? Text["UnnamedOrder"] : order.Name)</ShadcnTableCell><ShadcnTableCell data-label="@Text["Quantity"]">@order.Quantity.ToString("N0")</ShadcnTableCell><ShadcnTableCell data-label="@Text["UnitPrice"]">@FormatOrderMoney(order.UnitPrice)</ShadcnTableCell><ShadcnTableCell data-label="@Text["Discount"]">@FormatDiscount(order.DiscountPercent)</ShadcnTableCell><ShadcnTableCell data-label="@Text["Actions"]"><ShadcnButton ButtonType="ShadcnButtonType.Button" Variant="ShadcnButtonVariant.Outline" Size="ShadcnButtonSize.Small" Disabled="@(submitting || IsOrderSelected(order.Id))" OnClick="@(() => AddOrder(order))">@Text[IsOrderSelected(order.Id) ? "OrderAdded" : "AddOrder"]</ShadcnButton></ShadcnTableCell></ShadcnTableRow> }</ShadcnTableBody></ShadcnTable></div>
                         }
                     </section>
                 }
                 @foreach (var line in model.Lines)
                 {
                     <div class="quotation-line-editor" data-testid="quotation-line-editor" @key="line">
-                        <MudSelect T="int?" Class="quotation-line-order" Value="line.OrderId"
-                                   ValueChanged="@((int? value) => SelectOrder(line, value))" Label="@Text["Order"]"
-                                   Variant="Variant.Outlined" Margin="Margin.Dense" Clearable="true">
-                            @foreach (var order in page?.Orders ?? [])
-                            {
-                                <MudSelectItem T="int?" Value="order.Id">#@order.Id @order.Name</MudSelectItem>
-                            }
-                        </MudSelect>
-                        <MudTextField Class="quotation-line-description" @bind-Value="line.Description"
-                                      Label="@Text["Description"]" Variant="Variant.Outlined" Margin="Margin.Dense" Required="true" />
-                        <div class="quotation-line-numbers">
-                            <MudNumericField T="int" @bind-Value="line.Quantity" Label="@Text["Quantity"]"
-                                             Variant="Variant.Outlined" Margin="Margin.Dense" HideSpinButtons="true" Min="1" Required="true" />
-                            <MudNumericField T="decimal" @bind-Value="line.UnitPrice" Label="@Text["UnitPrice"]"
-                                                 Variant="Variant.Outlined" Margin="Margin.Dense" HideSpinButtons="true" Min="0" Required="true" />
-                            <MudNumericField T="decimal" @bind-Value="line.DiscountPercent" Label="@Text["Discount"]"
-                                                 Variant="Variant.Outlined" Margin="Margin.Dense" HideSpinButtons="true" Min="0" Max="100" />
-                        </div>
-                        <div class="quotation-line-actions">
-                            <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" Variant="Variant.Outlined"
-                                           Disabled="@(model.Lines.Count == 1)" OnClick="@(() => RemoveLine(line))"
-                                           aria-label="@Text["RemoveLine"]" />
-                        </div>
+                        <QuotationSelectField TValue="int?" Id="@($"quotation-line-order-{LineIndex(line)}")" Label="@Text["Order"]" Value="@line.OrderId" ValueChanged="@((int? value) => SelectOrder(line, value))" Options="@OrderOptions" Placeholder="@Text["Order"]" Clearable="true" Disabled="@submitting" />
+                        <QuotationInputField TValue="string" Id="@($"quotation-line-description-{LineIndex(line)}")" Label="@Text["Description"]" @bind-Value="line.Description" Required="true" Disabled="@submitting" />
+                        <div class="quotation-line-numbers"><QuotationInputField TValue="int" Id="@($"quotation-line-quantity-{LineIndex(line)}")" Label="@Text["Quantity"]" Type="number" InputMode="numeric" Min="1" @bind-Value="line.Quantity" Required="true" Disabled="@submitting" /><QuotationInputField TValue="decimal" Id="@($"quotation-line-price-{LineIndex(line)}")" Label="@Text["UnitPrice"]" Type="number" InputMode="decimal" Min="0" @bind-Value="line.UnitPrice" Required="true" Disabled="@submitting" /><QuotationInputField TValue="decimal" Id="@($"quotation-line-discount-{LineIndex(line)}")" Label="@Text["Discount"]" Type="number" InputMode="decimal" Min="0" @bind-Value="line.DiscountPercent" Disabled="@submitting" /></div>
+                        <div class="quotation-line-actions"><ShadcnButton ButtonType="ShadcnButtonType.Button" Variant="ShadcnButtonVariant.Destructive" Size="ShadcnButtonSize.Small" Disabled="@(submitting || model.Lines.Count == 1)" OnClick="@(() => RemoveLine(line))" aria-label="@Text["RemoveLine"]">@Text["RemoveLine"]</ShadcnButton></div>
                     </div>
                 }
-                <MudDivider Class="my-3" />
-                <MudText Align="Align.Right">@Text["EstimatedSubtotal", EstimatedSubtotal.ToString("N2", CultureInfo.CurrentCulture), CurrencyLabel]</MudText>
-                <MudText Typo="Typo.caption" Align="Align.Right">@Text["ServerAuthoritative"]</MudText>
-            </MudPaper>
-
-            <MudStack Row="true" Spacing="2">
-                <MudButton ButtonType="ButtonType.Button" Variant="Variant.Filled" Color="Color.Primary" Disabled="submitting" OnClick="SubmitAsync">@(submitting ? Text["Submitting"] : Text["Create"])</MudButton>
-                <LegacyLink Href="/Quotations/Index" Role="LegacyLinkRole.Navigation" Disabled="submitting" AriaLabel="@Text["Cancel"]">@Text["Cancel"]</LegacyLink>
-            </MudStack>
-        </MudForm>
+                <div class="quotation-create__estimate"><strong>@Text["EstimatedSubtotal", EstimatedSubtotal.ToString("N2", CultureInfo.CurrentCulture), CurrencyLabel]</strong><span>@Text["ServerAuthoritative"]</span></div>
+            </section>
+            <div class="quotation-create__actions"><ShadcnButton ButtonType="ShadcnButtonType.Submit" OperationFeedback="false" Disabled="@submitting">@(submitting ? Text["Submitting"] : Text["Create"])</ShadcnButton><LegacyLink Href="/Quotations/Index" Role="LegacyLinkRole.Navigation" Disabled="submitting" AriaLabel="@Text["Cancel"]">@Text["Cancel"]</LegacyLink></div>
+        </EditForm>
     }
-</MudContainer>
+</main>
 
 @code {
     [SupplyParameterFromQuery(Name = "customerId")] public int? CustomerId { get; set; }
     private readonly FormModel model = new();
     private readonly string attemptId = Guid.NewGuid().ToString("D");
     private QuotationCreatePage? page;
-    private MudForm? form;
-    private bool formValid;
+    private EditContext editContext = null!;
     private bool loading = true;
     private bool submitting;
     private string? error;
     private string? warning;
     private string orderSearch = string.Empty;
-
-    protected override async Task OnParametersSetAsync()
-    {
-        model.CustomerId = CustomerId is > 0 ? CustomerId.Value : model.CustomerId;
-        await LoadPageAsync(model.CustomerId > 0 ? model.CustomerId : null);
-    }
-
+    private IReadOnlyList<ShadcnSelectOption<int>> EmployeeOptions => page?.Employees.Select(value => new ShadcnSelectOption<int>(value.Id, value.FullName)).ToArray() ?? [];
+    private IReadOnlyList<ShadcnSelectOption<int>> CurrencyOptions => page?.Currencies.Select(value => new ShadcnSelectOption<int>(value.Id, value.ShortName)).ToArray() ?? [];
+    private IReadOnlyList<ShadcnSelectOption<int?>> OrderOptions => page?.Orders.Select(value => new ShadcnSelectOption<int?>(value.Id, $"#{value.Id} {value.Name}")).ToArray() ?? [];
+    protected override void OnInitialized() => editContext = new EditContext(model);
+    protected override async Task OnParametersSetAsync() { model.CustomerId = CustomerId is > 0 ? CustomerId.Value : model.CustomerId; await LoadPageAsync(model.CustomerId > 0 ? model.CustomerId : null); }
     private async Task LoadCustomerAsync() => await LoadPageAsync(model.CustomerId > 0 ? model.CustomerId : null);
-
     private async Task SearchOrdersAsync()
     {
         if (page is null || string.IsNullOrWhiteSpace(orderSearch)) return;
-        try
-        {
-            using var response = await Http.GetForPresentationAsync($"/bff/quotations/create/orders?search={Uri.EscapeDataString(orderSearch)}&customerId={model.CustomerId}");
-            if (response.StatusCode == HttpStatusCode.Unauthorized) { NavigateToLogin(); return; }
-            if (!response.IsSuccessStatusCode) { error = Text["Unavailable"]; return; }
-            var orders = await response.Content.ReadFromJsonAsync<IReadOnlyList<QuotationOrderCandidate>>();
-            page = page with { Orders = orders ?? [] };
-        }
-        catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException)
-        {
-            error = Text["Unavailable"];
-        }
+        try { using var response = await Http.GetForPresentationAsync($"/bff/quotations/create/orders?search={Uri.EscapeDataString(orderSearch)}&customerId={model.CustomerId}"); if (response.StatusCode == HttpStatusCode.Unauthorized) { NavigateToLogin(); return; } if (!response.IsSuccessStatusCode) { error = Text["Unavailable"]; return; } var orders = await response.Content.ReadFromJsonAsync<IReadOnlyList<QuotationOrderCandidate>>(); page = page with { Orders = orders ?? [] }; }
+        catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException) { error = Text["Unavailable"]; }
     }
-
     private async Task LoadPageAsync(int? customerId)
     {
         loading = true; error = null;
-        try
-        {
-            var uri = customerId is > 0 ? $"/bff/quotations/create?customerId={customerId}" : "/bff/quotations/create";
-            using var response = await Http.GetForPresentationAsync(uri);
-            if (response.StatusCode == HttpStatusCode.Unauthorized) { NavigateToLogin(); return; }
-            if (response.StatusCode == HttpStatusCode.NotFound) { error = Text["CustomerNotFound"]; return; }
-            if (!response.IsSuccessStatusCode) { error = response.StatusCode == HttpStatusCode.Forbidden ? Text["Forbidden"] : Text["Unavailable"]; return; }
-            page = await response.Content.ReadFromJsonAsync<QuotationCreatePage>();
-            if (page is null) { error = Text["InvalidResponse"]; return; }
-            model.Lines.RemoveAll(line => line.OrderId is int orderId && page.Orders.All(order => order.Id != orderId));
-            if (model.Lines.Count == 0) model.Lines.Add(new());
-            if (model.EmployeeId <= 0) model.EmployeeId = page.CurrentEmployeeId ?? page.Employees.FirstOrDefault()?.Id ?? 0;
-            if (model.CurrencyId <= 0) model.CurrencyId = page.Currencies.FirstOrDefault(value => value.ShortName == "THB")?.Id ?? page.Currencies.FirstOrDefault()?.Id ?? 0;
-        }
+        try { var uri = customerId is > 0 ? $"/bff/quotations/create?customerId={customerId}" : "/bff/quotations/create"; using var response = await Http.GetForPresentationAsync(uri); if (response.StatusCode == HttpStatusCode.Unauthorized) { NavigateToLogin(); return; } if (response.StatusCode == HttpStatusCode.NotFound) { error = Text["CustomerNotFound"]; return; } if (!response.IsSuccessStatusCode) { error = response.StatusCode == HttpStatusCode.Forbidden ? Text["Forbidden"] : Text["Unavailable"]; return; } page = await response.Content.ReadFromJsonAsync<QuotationCreatePage>(); if (page is null) { error = Text["InvalidResponse"]; return; } model.Lines.RemoveAll(line => line.OrderId is int orderId && page.Orders.All(order => order.Id != orderId)); if (model.Lines.Count == 0) model.Lines.Add(new()); if (model.EmployeeId <= 0) model.EmployeeId = page.CurrentEmployeeId ?? page.Employees.FirstOrDefault()?.Id ?? 0; if (model.CurrencyId <= 0) model.CurrencyId = page.Currencies.FirstOrDefault(value => value.ShortName == "THB")?.Id ?? page.Currencies.FirstOrDefault()?.Id ?? 0; }
         catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException) { error = Text["Unavailable"]; }
         finally { loading = false; }
     }
-
     private void AddLine() => model.Lines.Add(new());
     private void RemoveLine(LineModel line) { if (model.Lines.Count > 1) model.Lines.Remove(line); }
-    private void AddOrder(QuotationOrderCandidate order)
-    {
-        if (IsOrderSelected(order.Id)) return;
-        var line = model.Lines.FirstOrDefault(value => value.OrderId is null && string.IsNullOrWhiteSpace(value.Description) && value.UnitPrice == 0m)
-            ?? new LineModel();
-        if (!model.Lines.Contains(line)) model.Lines.Add(line);
-        PopulateLine(line, order);
-    }
-    private void SelectOrder(LineModel line, int? orderId)
-    {
-        line.OrderId = orderId;
-        if (orderId is int value && page?.Orders.FirstOrDefault(order => order.Id == value) is { } order) PopulateLine(line, order);
-    }
-    private static void PopulateLine(LineModel line, QuotationOrderCandidate order)
-    {
-        line.OrderId = order.Id;
-        line.Description = string.IsNullOrWhiteSpace(order.Description) ? order.Name ?? $"Order #{order.Id}" : order.Description;
-        line.Quantity = Math.Max(1, order.Quantity);
-        line.UnitPrice = order.UnitPrice ?? (order.Subtotal is decimal subtotal ? subtotal / Math.Max(1, order.Quantity) : 0m);
-        line.DiscountPercent = order.DiscountPercent ?? 0m;
-    }
+    private int LineIndex(LineModel line) => model.Lines.IndexOf(line);
+    private void AddOrder(QuotationOrderCandidate order) { if (IsOrderSelected(order.Id)) return; var line = model.Lines.FirstOrDefault(value => value.OrderId is null && string.IsNullOrWhiteSpace(value.Description) && value.UnitPrice == 0m) ?? new LineModel(); if (!model.Lines.Contains(line)) model.Lines.Add(line); PopulateLine(line, order); }
+    private void SelectOrder(LineModel line, int? orderId) { line.OrderId = orderId; if (orderId is int value && page?.Orders.FirstOrDefault(order => order.Id == value) is { } order) PopulateLine(line, order); }
+    private static void PopulateLine(LineModel line, QuotationOrderCandidate order) { line.OrderId = order.Id; line.Description = string.IsNullOrWhiteSpace(order.Description) ? order.Name ?? $"Order #{order.Id}" : order.Description; line.Quantity = Math.Max(1, order.Quantity); line.UnitPrice = order.UnitPrice ?? (order.Subtotal is decimal subtotal ? subtotal / Math.Max(1, order.Quantity) : 0m); line.DiscountPercent = order.DiscountPercent ?? 0m; }
     private bool IsOrderSelected(int orderId) => model.Lines.Any(line => line.OrderId == orderId);
-
     private async Task SubmitAsync()
     {
-        if (submitting || form is null) return;
-        await form.ValidateAsync();
-        if (!formValid || page?.Customer?.Id != model.CustomerId) { error = Text["ValidationFailed"]; return; }
+        if (submitting || page?.Customer?.Id != model.CustomerId || model.Lines.Any(line => string.IsNullOrWhiteSpace(line.Description) || line.Quantity < 1 || line.UnitPrice < 0 || line.DiscountPercent is < 0 or > 100)) { error = Text["ValidationFailed"]; return; }
         submitting = true; error = null; warning = null;
-        try
-        {
-            using var sessionResponse = await Http.GetForPresentationAsync("/bff/session");
-            sessionResponse.EnsureSuccessStatusCode();
-            var session = await sessionResponse.Content.ReadFromJsonAsync<EmployeeSessionSummary>();
-            if (string.IsNullOrWhiteSpace(session?.CsrfToken)) { error = Text["CreateFailed"]; return; }
-            var input = new QuotationCreateRequest(model.CustomerId, model.EmployeeId, model.CurrencyId, model.Period, model.ShippedVia, model.Fob, model.Terms, model.Comment, model.WithholdingTaxEnabled,
-                model.Lines.Select(line => new QuotationCreateLine(line.OrderId, line.Description, line.Quantity, line.UnitPrice, line.DiscountPercent)).ToArray());
-            using var request = new HttpRequestMessage(HttpMethod.Post, "/bff/quotations") { Content = JsonContent.Create(input) };
-            request.Headers.Add("X-CSRF-TOKEN", session.CsrfToken);
-            request.Headers.Add("Idempotency-Key", attemptId);
-            using var response = await Http.SendAsync(request);
-            if (response.StatusCode == HttpStatusCode.Unauthorized) { NavigateToLogin(); return; }
-            if (response.StatusCode == HttpStatusCode.Forbidden) { error = Text["Forbidden"]; return; }
-            if (response.StatusCode == HttpStatusCode.BadRequest) { error = Text["ValidationFailed"]; return; }
-            if (response.StatusCode == HttpStatusCode.Conflict) { error = Text["Conflict"]; return; }
-            if (!response.IsSuccessStatusCode) { error = Text["CreateFailed"]; return; }
-            var created = await response.Content.ReadFromJsonAsync<QuotationCreatedResult>();
-            if (created is null || created.Id <= 0) { error = Text["InvalidResponse"]; return; }
-            warning = created.Warning;
-            Navigation.NavigateTo($"/Quotations/View?id={created.Id}");
-        }
+        try { using var sessionResponse = await Http.GetForPresentationAsync("/bff/session"); sessionResponse.EnsureSuccessStatusCode(); var session = await sessionResponse.Content.ReadFromJsonAsync<EmployeeSessionSummary>(); if (string.IsNullOrWhiteSpace(session?.CsrfToken)) { error = Text["CreateFailed"]; return; } var input = new QuotationCreateRequest(model.CustomerId, model.EmployeeId, model.CurrencyId, model.Period, model.ShippedVia, model.Fob, model.Terms, model.Comment, model.WithholdingTaxEnabled, model.Lines.Select(line => new QuotationCreateLine(line.OrderId, line.Description, line.Quantity, line.UnitPrice, line.DiscountPercent)).ToArray()); using var request = new HttpRequestMessage(HttpMethod.Post, "/bff/quotations") { Content = JsonContent.Create(input) }; request.Headers.Add("X-CSRF-TOKEN", session.CsrfToken); request.Headers.Add("Idempotency-Key", attemptId); using var response = await Http.SendAsync(request); if (response.StatusCode == HttpStatusCode.Unauthorized) { NavigateToLogin(); return; } if (response.StatusCode == HttpStatusCode.Forbidden) { error = Text["Forbidden"]; return; } if (response.StatusCode == HttpStatusCode.BadRequest) { error = Text["ValidationFailed"]; return; } if (response.StatusCode == HttpStatusCode.Conflict) { error = Text["Conflict"]; return; } if (!response.IsSuccessStatusCode) { error = Text["CreateFailed"]; return; } var created = await response.Content.ReadFromJsonAsync<QuotationCreatedResult>(); if (created is null || created.Id <= 0) { error = Text["InvalidResponse"]; return; } warning = created.Warning; Navigation.NavigateTo($"/Quotations/View?id={created.Id}"); }
         catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException) { error = Text["CreateFailed"]; }
         finally { submitting = false; }
     }
-
     private decimal EstimatedSubtotal => model.Lines.Sum(line => Math.Round((line.UnitPrice * (1m - line.DiscountPercent / 100m)) * line.Quantity, 2, MidpointRounding.AwayFromZero));
-    private IReadOnlyList<QuotationOrderCandidate> VisibleOrders => page?.Orders
-        .Where(order => string.IsNullOrWhiteSpace(orderSearch)
-            || order.Id.ToString(CultureInfo.InvariantCulture).Contains(orderSearch.Trim(), StringComparison.OrdinalIgnoreCase)
-            || (order.Name?.Contains(orderSearch.Trim(), StringComparison.CurrentCultureIgnoreCase) ?? false))
-        .ToArray() ?? [];
-    private string CurrencyLabel
-    {
-        get
-        {
-            var currency = page?.Currencies.FirstOrDefault(value => value.Id == model.CurrencyId)?.ShortName ?? string.Empty;
-            return currency.Equals("THB", StringComparison.OrdinalIgnoreCase) && CultureInfo.CurrentUICulture.TwoLetterISOLanguageName == "th" ? "บาท" : currency;
-        }
-    }
+    private IReadOnlyList<QuotationOrderCandidate> VisibleOrders => page?.Orders.Where(order => string.IsNullOrWhiteSpace(orderSearch) || order.Id.ToString(CultureInfo.InvariantCulture).Contains(orderSearch.Trim(), StringComparison.OrdinalIgnoreCase) || (order.Name?.Contains(orderSearch.Trim(), StringComparison.CurrentCultureIgnoreCase) ?? false)).ToArray() ?? [];
+    private string CurrencyLabel { get { var currency = page?.Currencies.FirstOrDefault(value => value.Id == model.CurrencyId)?.ShortName ?? string.Empty; return currency.Equals("THB", StringComparison.OrdinalIgnoreCase) && CultureInfo.CurrentUICulture.TwoLetterISOLanguageName == "th" ? "บาท" : currency; } }
     private string FormatOrderMoney(decimal? value) => value is null ? "—" : $"{value.Value.ToString("N2", CultureInfo.CurrentCulture)} {CurrencyLabel}";
     private static string FormatDiscount(decimal? value) => $"{(value ?? 0m).ToString("N2", CultureInfo.CurrentCulture)}%";
     private void NavigateToLogin() => Navigation.NavigateTo($"/Login?returnUrl={Uri.EscapeDataString(Navigation.ToBaseRelativePath(Navigation.Uri))}");
-
-    private sealed class FormModel
-    {
-        public int CustomerId { get; set; }
-        public int EmployeeId { get; set; }
-        public int CurrencyId { get; set; }
-        public int Period { get; set; } = 30;
-        public string? ShippedVia { get; set; }
-        public string? Fob { get; set; }
-        public string? Terms { get; set; }
-        public string? Comment { get; set; }
-        public bool WithholdingTaxEnabled { get; set; }
-        public List<LineModel> Lines { get; } = [new()];
-    }
-
-    private sealed class LineModel
-    {
-        public int? OrderId { get; set; }
-        public string Description { get; set; } = string.Empty;
-        public int Quantity { get; set; } = 1;
-        public decimal UnitPrice { get; set; }
-        public decimal DiscountPercent { get; set; }
-    }
+    private sealed class FormModel { [Range(1,int.MaxValue)] public int CustomerId { get; set; } [Range(1,int.MaxValue)] public int EmployeeId { get; set; } [Range(1,int.MaxValue)] public int CurrencyId { get; set; } [Range(1,365)] public int Period { get; set; } = 30; public string? ShippedVia { get; set; } public string? Fob { get; set; } public string? Terms { get; set; } public string? Comment { get; set; } public bool WithholdingTaxEnabled { get; set; } public List<LineModel> Lines { get; } = [new()]; }
+    private sealed class LineModel { public int? OrderId { get; set; } public string Description { get; set; } = string.Empty; public int Quantity { get; set; } = 1; public decimal UnitPrice { get; set; } public decimal DiscountPercent { get; set; } }
 }

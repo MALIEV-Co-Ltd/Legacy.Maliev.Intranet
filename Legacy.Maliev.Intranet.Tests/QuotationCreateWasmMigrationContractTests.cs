@@ -52,7 +52,10 @@ public sealed class QuotationCreateWasmMigrationContractTests
         var page = File.ReadAllText(pagePath);
         Assert.Contains("@page \"/Quotations/Create\"", page, StringComparison.Ordinal);
         Assert.Contains("@attribute [Authorize]", page, StringComparison.Ordinal);
-        Assert.Contains("MudForm", page, StringComparison.Ordinal);
+        Assert.Contains("<EditForm", page, StringComparison.Ordinal);
+        Assert.Contains("<QuotationInputField", page, StringComparison.Ordinal);
+        Assert.Contains("<ShadcnTable", page, StringComparison.Ordinal);
+        Assert.DoesNotContain("<Mud", page, StringComparison.Ordinal);
         Assert.Contains("X-CSRF-TOKEN", page, StringComparison.Ordinal);
         Assert.Contains("Idempotency-Key", page, StringComparison.Ordinal);
         Assert.Contains("/bff/quotations/create", page, StringComparison.Ordinal);
@@ -71,7 +74,7 @@ public sealed class QuotationCreateWasmMigrationContractTests
     }
 
     [Fact]
-    public void CreatePage_UsesResponsiveOutlinedMudBlazorLineEditors()
+    public void CreatePage_UsesResponsiveNativeShadcnLineEditors()
     {
         var root = FindRoot();
         var pagePath = Path.Combine(root, "Legacy.Maliev.Intranet.Client.Features.Quotations", "Pages", "Quotations", "Create.razor");
@@ -81,18 +84,17 @@ public sealed class QuotationCreateWasmMigrationContractTests
 
         Assert.Contains("data-testid=\"quotation-line-editor\"", page, StringComparison.Ordinal);
         Assert.Contains("@key=\"line\"", page, StringComparison.Ordinal);
-        Assert.Contains("quotation-line-order", page, StringComparison.Ordinal);
-        Assert.Contains("quotation-line-description", page, StringComparison.Ordinal);
+        Assert.Contains("quotation-line-order-", page, StringComparison.Ordinal);
+        Assert.Contains("quotation-line-description-", page, StringComparison.Ordinal);
         Assert.Contains("quotation-line-numbers", page, StringComparison.Ordinal);
-        Assert.Contains("Variant=\"Variant.Outlined\"", page, StringComparison.Ordinal);
-        Assert.Contains("HideSpinButtons=\"true\"", page, StringComparison.Ordinal);
-        Assert.DoesNotContain("<MudGrid Class=\"mb-3\">", page, StringComparison.Ordinal);
+        Assert.Contains("Variant=\"ShadcnButtonVariant.Outline\"", page, StringComparison.Ordinal);
+        Assert.DoesNotContain("<Mud", page, StringComparison.Ordinal);
 
         Assert.Contains(".quotation-line-editor", styles, StringComparison.Ordinal);
         Assert.Contains("grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr)", styles, StringComparison.Ordinal);
         Assert.Contains("@media (max-width: 920px)", styles, StringComparison.Ordinal);
         Assert.Contains("@media (max-width: 620px)", styles, StringComparison.Ordinal);
-        Assert.Contains(".quotation-line-editor ::deep .quotation-line-description", styles, StringComparison.Ordinal);
+        Assert.Contains(".quotation-line-editor ::deep .shadcn-field", styles, StringComparison.Ordinal);
     }
 
     [Fact]
