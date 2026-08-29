@@ -7,26 +7,20 @@ public sealed class ShadcnStyleSystemContractTests
     {
         var index = Read("Legacy.Maliev.Intranet.Client", "wwwroot", "index.html");
         var packageBase = index.IndexOf("_content/Maliev.ShadcnBlazor/css/shadcn-base.css", StringComparison.Ordinal);
-        var packageAdapter = index.IndexOf("_content/Maliev.ShadcnBlazor/css/shadcn-mudblazor.css", StringComparison.Ordinal);
+        var packageForms = index.IndexOf("_content/Maliev.ShadcnBlazor/css/shadcn-forms.css", StringComparison.Ordinal);
         var productStyles = index.IndexOf("css/shadcn.css", StringComparison.Ordinal);
         var generatedStyles = index.IndexOf("Legacy.Maliev.Intranet.Client.styles.css", StringComparison.Ordinal);
 
         Assert.True(packageBase >= 0);
-        Assert.True(packageAdapter > packageBase);
-        Assert.True(productStyles > packageAdapter);
+        Assert.True(packageForms > packageBase);
+        Assert.True(productStyles > packageForms);
         Assert.True(generatedStyles > productStyles);
     }
 
     [Fact]
-    public void PackageOwnsCanonicalTokensAndReusableMudAppearance()
+    public void ProductTokensAliasReleasedPackageTokensWithoutRedefiningThem()
     {
         var tokens = Read("Legacy.Maliev.Intranet.Client", "wwwroot", "css", "design-tokens.css");
-        var packageBase = Read("Maliev.ShadcnBlazor", "wwwroot", "css", "shadcn-base.css");
-        var adapter = Read("Maliev.ShadcnBlazor", "wwwroot", "css", "shadcn-mudblazor.css");
-
-        Assert.Contains("--shadcn-background:", packageBase, StringComparison.Ordinal);
-        Assert.Contains("--shadcn-control-height: 2.25rem", packageBase, StringComparison.Ordinal);
-        Assert.Contains(".mud-button-root", adapter, StringComparison.Ordinal);
         Assert.DoesNotContain("--shadcn-background:", tokens, StringComparison.Ordinal);
         Assert.Contains("--legacy-primary: var(--shadcn-primary)", tokens, StringComparison.Ordinal);
         Assert.Contains("--maliev-surface-card: var(--shadcn-card)", tokens, StringComparison.Ordinal);
@@ -39,7 +33,7 @@ public sealed class ShadcnStyleSystemContractTests
         var toolbar = Read("Legacy.Maliev.Intranet.Client.Shared", "Components", "ListToolbar.razor.css");
 
         Assert.Contains(".legacy-page-container .operations-page-header", semantic, StringComparison.Ordinal);
-        Assert.Contains(".legacy-page-container .list-toolbar__grid > .mud-input-control", semantic, StringComparison.Ordinal);
+        Assert.Contains(".legacy-page-container .list-toolbar__grid > *", semantic, StringComparison.Ordinal);
         Assert.Contains("grid-template-columns: minmax(14rem, 1.8fr) minmax(10rem, 1fr) minmax(7rem, 0.5fr) auto", toolbar, StringComparison.Ordinal);
         Assert.Contains("background: var(--shadcn-muted)", toolbar, StringComparison.Ordinal);
         Assert.Contains("border-inline-start: 1px solid var(--shadcn-border)", toolbar, StringComparison.Ordinal);

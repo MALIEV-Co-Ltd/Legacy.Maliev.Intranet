@@ -5,12 +5,12 @@ namespace Legacy.Maliev.Intranet.Tests;
 public sealed class OperationsPageVisualSystemContractTests
 {
     [Fact]
-    public void OperationsStylesFollowThePackageAdapterAndRemainGeometryOnly()
+    public void OperationsStylesFollowTheNativePackageAndRemainGeometryOnly()
     {
         var index = Read("Legacy.Maliev.Intranet.Client", "wwwroot", "index.html");
         var operations = Read("Legacy.Maliev.Intranet.Client", "wwwroot", "css", "operations-pages.css");
 
-        Assert.True(index.IndexOf("_content/Maliev.ShadcnBlazor/css/shadcn-mudblazor.css", StringComparison.Ordinal) <
+        Assert.True(index.IndexOf("_content/Maliev.ShadcnBlazor/css/shadcn-forms.css", StringComparison.Ordinal) <
                     index.IndexOf("css/operations-pages.css", StringComparison.Ordinal));
         Assert.Contains("overflow-wrap: anywhere", operations, StringComparison.Ordinal);
         Assert.Contains("@media (max-width: 900px)", operations, StringComparison.Ordinal);
@@ -22,17 +22,14 @@ public sealed class OperationsPageVisualSystemContractTests
     }
 
     [Fact]
-    public void OperationsGeometryPreservesListFormAndResponsiveRecordLayout()
+    public void OperationsGeometryPreservesNativeFormAndResponsiveLayout()
     {
         var operations = Read("Legacy.Maliev.Intranet.Client", "wwwroot", "css", "operations-pages.css");
 
-        Assert.Contains(".legacy-page-container .mud-table-container", operations, StringComparison.Ordinal);
-        Assert.Contains(".legacy-page-container .mud-table-body .mud-table-row", operations, StringComparison.Ordinal);
-        Assert.Contains(".legacy-page-container .mud-form", operations, StringComparison.Ordinal);
-        Assert.Contains(".legacy-page-container .mud-grid", operations, StringComparison.Ordinal);
-        Assert.Contains(".legacy-page-container .mud-tabs-toolbar", operations, StringComparison.Ordinal);
-        Assert.DoesNotContain(".mud-button-root {\n        display: none", operations, StringComparison.Ordinal);
-        Assert.DoesNotContain(".mud-table-body {\n        display: none", operations, StringComparison.Ordinal);
+        Assert.Contains(".legacy-page-container :where(form, fieldset, table, section, article)", operations, StringComparison.Ordinal);
+        Assert.Contains(".legacy-page-container :where([role=\"tablist\"], .operational-table__scroll)", operations, StringComparison.Ordinal);
+        Assert.Contains(".legacy-page-container :where(button, [role=\"tab\"], a[data-link-role])", operations, StringComparison.Ordinal);
+        Assert.DoesNotContain(".mud-", operations, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]

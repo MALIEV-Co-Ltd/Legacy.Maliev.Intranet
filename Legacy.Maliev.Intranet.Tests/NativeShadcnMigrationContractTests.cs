@@ -94,11 +94,44 @@ public sealed partial class NativeShadcnMigrationContractTests
         var files = ledger.RootElement.GetProperty("files");
 
         Assert.Equal(current.GetProperty("renderSites").GetInt32(), matches.Length);
+        Assert.Equal(0, current.GetProperty("componentTypes").GetInt32());
         Assert.Equal(current.GetProperty("razorFiles").GetInt32(), files.EnumerateArray().Count(file =>
             file.GetProperty("remainingRenderSites").GetInt32() > 0));
         Assert.Equal(60, files.GetArrayLength());
         Assert.Equal(matches.Length, files.EnumerateArray().Sum(file =>
             file.GetProperty("remainingRenderSites").GetInt32()));
+        Assert.All(files.EnumerateArray(), file =>
+        {
+            Assert.Equal("migrated", file.GetProperty("status").GetString());
+            Assert.NotEmpty(file.GetProperty("replacementFamilies").EnumerateArray());
+        });
+    }
+
+    [Fact]
+    public void ConsumerSourcesDoNotLoadOrImportTheLegacyUiSurface()
+    {
+        var violations = ConsumerProjectDirectories
+            .SelectMany(directory => Directory.EnumerateFiles(
+                Path.Combine(FindRoot(), directory),
+                "*",
+                SearchOption.AllDirectories))
+            .Where(path => !path.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}", StringComparison.OrdinalIgnoreCase))
+            .Where(path => !path.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}", StringComparison.OrdinalIgnoreCase))
+            .Where(path => Path.GetExtension(path) is ".razor" or ".cs" or ".css" or ".html" or ".csproj")
+            .Where(path =>
+            {
+                var source = File.ReadAllText(path);
+                return MudComponentRegex().IsMatch(source)
+                    || source.Contains("@using " + "MudBlazor", StringComparison.Ordinal)
+                    || source.Contains("using " + "MudBlazor", StringComparison.Ordinal)
+                    || source.Contains("_content/" + "MudBlazor", StringComparison.Ordinal)
+                    || source.Contains(".mud-", StringComparison.OrdinalIgnoreCase);
+            })
+            .Select(path => Path.GetRelativePath(FindRoot(), path))
+            .Order(StringComparer.Ordinal)
+            .ToArray();
+
+        Assert.Empty(violations);
     }
 
     private static IEnumerable<string> ConsumerProjectPaths() =>

@@ -1,17 +1,7 @@
-/* Operations pages provide layout, wrapping, and responsive rearrangement only. */
-.legacy-page-container {
-    min-width: 0;
-}
-
-.legacy-page-container > .mud-container,
-.legacy-page-container .mud-input-control,
-.legacy-page-container .mud-input,
-.legacy-page-container .mud-input-control-input-container,
-.legacy-page-container .mud-form,
-.legacy-page-container .mud-grid,
-.legacy-page-container .mud-stack-row,
-.legacy-page-container .mud-list,
-.legacy-page-container .mud-table-pagination {
+/* Operations pages own application composition and responsive rearrangement only. */
+.legacy-page-container,
+.legacy-page-container > *,
+.legacy-page-container :where(form, fieldset, table, section, article) {
     min-width: 0;
 }
 
@@ -23,160 +13,59 @@
     margin-bottom: 1rem;
 }
 
-.legacy-page-container .operations-page-header > .mud-button-root,
-.legacy-page-container .operations-page-header > a.mud-button-root {
+.legacy-page-container .operations-page-header > :where(button, a) {
     flex: 0 0 auto;
     width: auto;
     max-width: 100%;
 }
 
-.legacy-page-container .mud-paper > .d-flex.flex-wrap,
-.legacy-page-container .mud-paper > .d-flex.align-center,
-.legacy-page-container .mud-form > .d-flex.flex-wrap {
+.legacy-page-container :where(.d-flex.flex-wrap, .d-flex.align-center) {
     display: flex;
     align-items: flex-end;
     flex-wrap: wrap;
     gap: 0.75rem;
 }
 
-.legacy-page-container .mud-paper > .d-flex.flex-wrap > .mud-input-control,
-.legacy-page-container .mud-form > .d-flex.flex-wrap > .mud-input-control {
-    flex: 1 1 13rem;
-    min-width: min(100%, 12rem);
-    max-width: 25rem;
+.legacy-page-container :where(td, th, label, .field-description, .field-error) {
+    overflow-wrap: anywhere;
 }
 
-.legacy-page-container .mud-grid > .mud-grid-item {
-    min-width: 0;
-}
-
-.legacy-page-container .mud-table-container {
+.legacy-page-container :where([role="tablist"], .operational-table__scroll) {
     max-width: 100%;
     overflow-x: auto;
     scrollbar-gutter: stable;
 }
 
-.legacy-page-container .mud-table-root {
-    min-width: 46rem;
-}
-
-.legacy-page-container .mud-table-cell,
-.legacy-page-container .mud-table-cell::before,
-.legacy-page-container .mud-input-label,
-.legacy-page-container .mud-input-helper-text {
-    overflow-wrap: anywhere;
-}
-
-.legacy-page-container .mud-tabs-toolbar {
-    overflow-x: auto;
-}
-
-.legacy-page-container .mud-picker .mud-icon-button-root,
-.legacy-page-container .mud-input-adornment-icon-button {
-    min-width: 2.75rem;
-}
-
 @media (max-width: 900px) {
     .legacy-page-container .operations-page-header,
-    .legacy-page-container .justify-space-between:has(> :where(h1, h2, .mud-typography-h4, .mud-typography-h5)) {
+    .legacy-page-container .justify-space-between:has(> :where(h1, h2, h3)) {
         flex-wrap: wrap;
     }
 }
 
 @media (max-width: 720px) {
     .legacy-page-container .operations-page-header,
-    .legacy-page-container .mud-paper > .d-flex.flex-wrap,
-    .legacy-page-container .mud-paper > .d-flex.align-center,
-    .legacy-page-container .mud-form > .d-flex.flex-wrap,
-    .legacy-page-container .mud-stack-row {
+    .legacy-page-container :where(.d-flex.flex-wrap, .d-flex.align-center) {
         align-items: stretch;
         flex-direction: column;
     }
 
-    .legacy-page-container .mud-paper > .d-flex.flex-wrap > *,
-    .legacy-page-container .mud-form > .d-flex.flex-wrap > *,
-    .legacy-page-container .mud-stack-row > .mud-button-root {
+    .legacy-page-container :where(.d-flex.flex-wrap, .d-flex.align-center) > * {
         width: 100%;
         max-width: none;
     }
 
-    .legacy-page-container .mud-table-container {
-        overflow: visible;
-    }
-
-    .legacy-page-container .mud-table-root,
-    .legacy-page-container .mud-table-body {
-        display: block;
-        min-width: 0;
-    }
-
-    .legacy-page-container .mud-table-head {
-        position: absolute;
-        width: 1px;
-        height: 1px;
-        overflow: hidden;
-        clip: rect(0, 0, 0, 0);
-    }
-
-    .legacy-page-container .mud-table-body .mud-table-row {
-        display: grid;
-        width: 100%;
-        margin-bottom: 0.75rem;
-        padding: 0.75rem 1rem;
-    }
-
-    .legacy-page-container .mud-table-body .mud-table-cell {
-        display: grid;
-        grid-template-columns: minmax(7.5rem, 38%) minmax(0, 1fr);
-        gap: 0.75rem;
-        padding-block: 0.45rem;
-        min-height: 2.5rem;
-    }
-
-    .legacy-page-container .mud-table-cell a {
-        min-height: 2.75rem;
-    }
-}
-
-@media (max-width: 600px) {
-    .purchase-order-addresses.mud-grid-spacing-xs-6,
-    .purchase-order-addresses.mud-grid-spacing-xs-6 > .mud-grid-item,
-    .legacy-page-container .finance-summary-grid.mud-grid-spacing-xs-6 {
-        width: 100% !important;
-        margin-inline: 0 !important;
-    }
-
-    .purchase-order-addresses.mud-grid-spacing-xs-6 {
-        margin: 0 !important;
-    }
-}
-
-@media (max-width: 720px) {
-    .legacy-page-container .orders-module-shell .orders-toolbar .mud-input-control,
-    .legacy-page-container .orders-module-shell .orders-toolbar .mud-button-root,
-    .legacy-page-container .orders-module-shell .orders-toolbar .mud-input-slot,
-    .orders-module-shell .orders-toolbar .mlv-search-box,
-    .orders-module-shell .orders-toolbar :where(input, button) {
+    .legacy-page-container .orders-module-shell .orders-toolbar :where(input, button, a) {
         min-height: 44px;
-    }
-}
-
-@media (max-width: 420px) {
-    .legacy-page-container .mud-table-body .mud-table-cell {
-        grid-template-columns: 1fr;
     }
 }
 
 @media (pointer: coarse) {
-    .legacy-page-container .mud-button-root,
-    .legacy-page-container .mud-icon-button-root,
-    .legacy-page-container .mud-tab,
-    .legacy-page-container .mud-list-item,
-    .legacy-page-container .mud-table-cell a {
+    .legacy-page-container :where(button, [role="tab"], a[data-link-role]) {
         min-height: 44px;
     }
 
-    .legacy-page-container .mud-icon-button-root {
+    .legacy-page-container button {
         min-width: 44px;
     }
 }

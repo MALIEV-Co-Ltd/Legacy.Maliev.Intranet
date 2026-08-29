@@ -105,7 +105,6 @@ public sealed class BreadcrumbAndMaterialIconContractTests : BunitContext
     private static readonly IReadOnlySet<string> ApprovedExtensionlessTextFiles = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
     {
         "Legacy.Maliev.Intranet/Dockerfile",
-        "Maliev.ShadcnBlazor/licenses/MudBlazor-LICENSE",
     };
 
     [Fact]
@@ -341,7 +340,7 @@ public sealed class BreadcrumbAndMaterialIconContractTests : BunitContext
 
         Assert.Contains("Legacy.Maliev.Intranet/Pages/Shared/_Layout.cshtml", files);
         Assert.Contains("Legacy.Maliev.Intranet/wwwroot/js/compat-shell.js", files);
-        Assert.Contains("Maliev.ShadcnBlazor/wwwroot/css/shadcn-mudblazor.css", files);
+        Assert.Contains("Legacy.Maliev.Intranet.Client/wwwroot/index.html", files);
         Assert.Contains("Directory.Build.props", files);
         Assert.Empty(FindUnclassifiedProductionFiles(EnumerateProductionFilePaths(FindRepositoryRoot())));
     }
@@ -370,8 +369,6 @@ public sealed class BreadcrumbAndMaterialIconContractTests : BunitContext
             .Where(path => Path.GetFileName(path) is "Legacy.Maliev.Intranet"
                 or "Legacy.Maliev.Intranet.Client"
                 or "Legacy.Maliev.Intranet.Client.Shared"
-                or "Maliev.ShadcnBlazor"
-                or "Maliev.ShadcnBlazor.Showcase"
                 || Path.GetFileName(path).StartsWith("Legacy.Maliev.Intranet.Client.Features.", StringComparison.Ordinal))
             .ToArray();
         var sourceFiles = productionRoots

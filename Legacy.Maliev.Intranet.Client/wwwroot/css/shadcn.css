@@ -1,4 +1,4 @@
-/* Product composition only. Maliev.ShadcnBlazor owns Mud appearance and states. */
+/* Product composition only. Maliev.ShadcnBlazor owns component appearance and states. */
 .legacy-workspace-shell,
 .legacy-main-content,
 .legacy-page-container,
@@ -6,10 +6,7 @@
     min-width: 0;
 }
 
-.legacy-page-container,
-.legacy-page-container .mud-container,
-.legacy-page-container .mud-grid,
-.legacy-page-container .mud-stack {
+.legacy-page-container {
     min-width: 0;
 }
 
@@ -20,12 +17,12 @@
     gap: 1rem;
 }
 
-.legacy-page-container .list-toolbar__grid > .mud-input-control,
+.legacy-page-container .list-toolbar__grid > *,
 .legacy-page-container .list-toolbar__actions {
     min-width: 0;
 }
 
-/* Named workspace composition consumes package tokens without styling Mud internals. */
+/* Named workspace composition consumes package tokens without styling package internals. */
 .legacy-workspace-shell .legacy-topbar {
     border-bottom: 1px solid var(--shadcn-border);
     background: color-mix(in srgb, var(--shadcn-background) 94%, transparent);
@@ -113,12 +110,7 @@
         padding-inline: 0.75rem;
     }
 
-    .legacy-page-container .operations-page-header,
-    .legacy-page-container .mud-stack-row {
+    .legacy-page-container .operations-page-header {
         flex-direction: column;
-    }
-
-    .legacy-page-container .mud-stack-row > .mud-button-root {
-        width: 100%;
     }
 }

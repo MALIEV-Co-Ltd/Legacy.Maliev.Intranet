@@ -19,11 +19,11 @@
 
 /* Section title — uppercase caption above panels or card sections */
 .section-title {
-    font-size: var(--mud-typography-caption-size);
+    font-size: var(--maliev-font-micro);
     text-transform: uppercase;
     font-weight: 600;
     letter-spacing: 0.5px;
-    color: var(--mud-palette-text-secondary);
+    color: var(--shadcn-muted-foreground);
 }
 
 /* Toolbar divider — vertical separator between icon groups */
@@ -79,12 +79,12 @@
     font-size: var(--maliev-font-small);
     font-weight: 400;
     background: var(--maliev-accent-soft);
-    color: var(--mud-palette-primary);
+    color: var(--shadcn-primary);
     border: 1px solid var(--maliev-accent-soft);
 }
 
 .maliev-badge--muted {
     background: color-mix(in oklch, var(--maliev-muted) 8%, transparent);
-    color: var(--mud-palette-text-secondary);
+    color: var(--shadcn-muted-foreground);
     border-color: color-mix(in oklch, var(--maliev-muted) 25%, transparent);
 }

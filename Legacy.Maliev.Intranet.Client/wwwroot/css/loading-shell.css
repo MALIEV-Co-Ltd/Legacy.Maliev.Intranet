@@ -1,4 +1,4 @@
-/* The loading/error shell is intentionally independent of MudBlazor and feature CSS. */
+/* The loading/error shell is intentionally independent of component-library and feature CSS. */
 
 .legacy-wasm-loading {
     min-height: 100dvh;

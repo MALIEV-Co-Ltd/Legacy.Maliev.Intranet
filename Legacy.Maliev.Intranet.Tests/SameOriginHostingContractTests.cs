@@ -76,8 +76,8 @@ public sealed class SameOriginHostingContractTests
         foreach (var asset in new[]
         {
             "/_framework/blazor.webassembly.js",
-            "/_content/MudBlazor/MudBlazor.min.css",
-            "/_content/MudBlazor/MudBlazor.min.js",
+            "/_content/Maliev.ShadcnBlazor/css/shadcn-base.css",
+            "/_content/Maliev.ShadcnBlazor/css/shadcn-forms.css",
             "/Legacy.Maliev.Intranet.Client.styles.css",
         })
         {

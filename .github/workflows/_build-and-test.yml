@@ -36,11 +36,11 @@ jobs:
       - name: Install Playwright Chromium
         shell: bash
         run: |
-          dotnet restore Maliev.ShadcnBlazor.BrowserTests/Maliev.ShadcnBlazor.BrowserTests.csproj
-          dotnet build Maliev.ShadcnBlazor.BrowserTests/Maliev.ShadcnBlazor.BrowserTests.csproj \
+          dotnet restore Legacy.Maliev.Intranet.BrowserTests/Legacy.Maliev.Intranet.BrowserTests.csproj
+          dotnet build Legacy.Maliev.Intranet.BrowserTests/Legacy.Maliev.Intranet.BrowserTests.csproj \
             --configuration Release \
             --no-restore
-          pwsh -NoProfile -File Maliev.ShadcnBlazor.BrowserTests/bin/Release/net10.0/playwright.ps1 \
+          pwsh -NoProfile -File Legacy.Maliev.Intranet.BrowserTests/bin/Release/net10.0/playwright.ps1 \
             install --with-deps chromium
       - name: Validate .NET solution
         uses: MALIEV-Co-Ltd/Legacy.Maliev.Workflows/actions/dotnet-validate@6017816fa67f369d785ed30794f002cfd6299af7

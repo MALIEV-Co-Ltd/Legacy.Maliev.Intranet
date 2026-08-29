@@ -12,7 +12,6 @@ public sealed class OrdersProcurementResponsiveContractTests
         var toolbar = Read(root, "Legacy.Maliev.Intranet.Client.Shared", "Components", "ListToolbar.razor");
         var toolbarStyles = Read(root, "Legacy.Maliev.Intranet.Client.Shared", "Components", "ListToolbar.razor.css");
         var operationalTableStyles = Read(root, "Legacy.Maliev.Intranet.Client.Shared", "Components", "OperationalTable.razor.css");
-        var adapterStyles = Read(root, "Maliev.ShadcnBlazor", "wwwroot", "css", "shadcn-mudblazor.css");
         var primaryButtonStyles = Read(root, "Legacy.Maliev.Intranet.Client.Features.Orders", "Components", "Shared", "PrimaryButton.razor.css");
         var secondaryButtonStyles = Read(root, "Legacy.Maliev.Intranet.Client.Features.Orders", "Components", "Shared", "SecondaryButton.razor.css");
 
@@ -32,11 +31,10 @@ public sealed class OrdersProcurementResponsiveContractTests
         Assert.Contains("width: 2.75rem", operationalTableStyles, StringComparison.Ordinal);
         Assert.Contains("height: 2.75rem", operationalTableStyles, StringComparison.Ordinal);
         Assert.Contains(".orders-module-shell .orders-toolbar", globalStyles, StringComparison.Ordinal);
-        Assert.Contains(".orders-module-shell .orders-toolbar .mud-input-slot", globalStyles, StringComparison.Ordinal);
+        Assert.Contains(".orders-module-shell .orders-toolbar :where(input, button, a)", globalStyles, StringComparison.Ordinal);
         Assert.Contains("role=\"search\"", toolbar, StringComparison.Ordinal);
         Assert.Contains("@media (max-width: 600px)", toolbarStyles, StringComparison.Ordinal);
         Assert.Contains("min-height: var(--shadcn-control-height) !important", toolbarStyles, StringComparison.Ordinal);
-        Assert.Contains("min-height: var(--shadcn-control-height)", adapterStyles, StringComparison.Ordinal);
         Assert.DoesNotContain("min-height:", primaryButtonStyles, StringComparison.Ordinal);
         Assert.DoesNotContain("min-height:", secondaryButtonStyles, StringComparison.Ordinal);
         Assert.Contains("LegacyPresentation.FormatCalendarDate", page, StringComparison.Ordinal);
@@ -75,7 +73,6 @@ public sealed class OrdersProcurementResponsiveContractTests
         var purchaseOrders = Read(root, "Legacy.Maliev.Intranet.Client.Features.Procurement", "Pages", "PurchaseOrders.razor");
         var suppliers = Read(root, "Legacy.Maliev.Intranet.Client.Features.Procurement", "Pages", "Suppliers.razor");
         var toolbarStyles = Read(root, "Legacy.Maliev.Intranet.Client.Shared", "Components", "ListToolbar.razor.css");
-        var adapterStyles = Read(root, "Maliev.ShadcnBlazor", "wwwroot", "css", "shadcn-mudblazor.css");
 
         Assert.Contains("<OperationalTable", purchaseOrders, StringComparison.Ordinal);
         Assert.Contains("<OperationalTable", suppliers, StringComparison.Ordinal);
@@ -88,7 +85,6 @@ public sealed class OrdersProcurementResponsiveContractTests
         Assert.Contains("grid-template-columns: minmax(0, 1fr)", toolbarStyles, StringComparison.Ordinal);
         Assert.Contains("@media (max-width: 420px)", toolbarStyles, StringComparison.Ordinal);
         Assert.Contains("min-height: var(--shadcn-control-height) !important", toolbarStyles, StringComparison.Ordinal);
-        Assert.Contains("min-height: var(--shadcn-control-height)", adapterStyles, StringComparison.Ordinal);
         Assert.Contains("LegacyPresentation.FormatUtcDateTime", purchaseOrders, StringComparison.Ordinal);
     }
 

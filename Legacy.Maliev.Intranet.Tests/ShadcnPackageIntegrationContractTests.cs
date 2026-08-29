@@ -18,7 +18,6 @@ public sealed class ShadcnPackageIntegrationContractTests
     [Theory]
     [InlineData("Legacy.Maliev.Intranet.Client", "Legacy.Maliev.Intranet.Client.csproj")]
     [InlineData("Legacy.Maliev.Intranet.Contracts", "Legacy.Maliev.Intranet.Contracts.csproj")]
-    [InlineData("Maliev.ShadcnBlazor", "Maliev.ShadcnBlazor.csproj")]
     public void ReleaseWasmProjectsDoNotPublishDebugSymbols(string directory, string projectFile)
     {
         var project = Read(directory, projectFile);
@@ -34,28 +33,22 @@ public sealed class ShadcnPackageIntegrationContractTests
     [Theory]
     [InlineData("MainLayout.razor")]
     [InlineData("EmptyLayout.razor")]
-    public void LayoutUsesOneShadcnProviderAndNoLocalMudTheme(string file)
+    public void LayoutUsesOneShadcnProvider(string file)
     {
         var layout = Read("Legacy.Maliev.Intranet.Client", "Layout", file);
 
         Assert.Equal(1, Count(layout, "<ShadcnThemeProvider"));
         Assert.Contains("IsDarkMode=\"@ThemeService.IsDarkMode\"", layout, StringComparison.Ordinal);
         Assert.Contains("Direction=\"ShadcnDirection.LeftToRight\"", layout, StringComparison.Ordinal);
-        Assert.DoesNotContain("<MudThemeProvider", layout, StringComparison.Ordinal);
-        Assert.DoesNotContain("<MudPopoverProvider", layout, StringComparison.Ordinal);
-        Assert.DoesNotContain("<MudDialogProvider", layout, StringComparison.Ordinal);
-        Assert.DoesNotContain("<MudSnackbarProvider", layout, StringComparison.Ordinal);
-        Assert.DoesNotContain("new MudTheme", layout, StringComparison.Ordinal);
     }
 
     [Fact]
-    public void BootstrapAndStylesSynchronizeBothThemeContractsInExactOrder()
+    public void BootstrapAndStylesLoadNativePackageAssetsInExactOrder()
     {
         var index = Read("Legacy.Maliev.Intranet.Client", "wwwroot", "index.html");
 
         Assert.Contains("root.dataset.shadcnTheme = theme", index, StringComparison.Ordinal);
         AssertOrder(index,
-            "_content/MudBlazor/MudBlazor.min.css",
             "css/ibm-plex-sans-thai.css",
             "_content/Maliev.ShadcnBlazor/css/shadcn-base.css",
             "_content/Maliev.ShadcnBlazor/css/shadcn-semantic-foundations.css",
@@ -68,11 +61,9 @@ public sealed class ShadcnPackageIntegrationContractTests
             "_content/Maliev.ShadcnBlazor/css/shadcn-overlays-menus.css",
             "_content/Maliev.ShadcnBlazor/css/shadcn-conversation.css",
             "css/design-tokens.css",
-            "_content/Maliev.ShadcnBlazor/css/shadcn-mudblazor.css",
             "css/app.css",
             "css/module-pages.css",
             "css/utilities.css",
-            "css/mudblazor-overrides.css",
             "css/operations-pages.css",
             "css/shadcn.css",
             "Legacy.Maliev.Intranet.Client.styles.css",
