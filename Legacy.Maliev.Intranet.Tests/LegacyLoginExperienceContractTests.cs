@@ -69,9 +69,9 @@ public sealed class LegacyLoginExperienceContractTests
         Assert.Contains(".legacy-login-card { width: min(100%, 26.25rem); min-width: 0; padding: 2rem;", css, StringComparison.Ordinal);
         Assert.Contains(".legacy-login-error { margin-bottom: 1rem; padding: .75rem 1rem;", css, StringComparison.Ordinal);
         Assert.Contains(".legacy-login-divider { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: .75rem; margin: 1.5rem 0;", css, StringComparison.Ordinal);
-        Assert.Contains(".legacy-login-email-summary { display: flex; min-height: 2.5rem;", css, StringComparison.Ordinal);
         Assert.Contains(".legacy-login-title { display: flex; align-items: center; flex-wrap: wrap; gap: .5rem;", css, StringComparison.Ordinal);
-        Assert.Contains(".legacy-login-email-summary { display: flex; min-height: 2.5rem; align-items: center; justify-content: space-between; gap: .75rem; padding-inline: .75rem;", css, StringComparison.Ordinal);
+        Assert.DoesNotContain(".legacy-login-email-summary", css, StringComparison.Ordinal);
+        Assert.DoesNotContain(".legacy-login-remember:focus-within", css, StringComparison.Ordinal);
         Assert.Contains(".legacy-login-main { padding: 1rem; }", css, StringComparison.Ordinal);
         Assert.Contains(".legacy-login-card { padding: 1.5rem; }", css, StringComparison.Ordinal);
         Assert.DoesNotContain("padding: 1.875rem", css, StringComparison.Ordinal);

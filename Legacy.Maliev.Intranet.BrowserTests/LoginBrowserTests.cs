@@ -104,6 +104,11 @@ public sealed class LoginBrowserTests(
 
         var password = page.Locator("#legacy-login-password");
         await password.WaitForAsync();
+        Assert.Equal("legacy-login-email", await page.Locator("label").Filter(new() { HasText = "Email" }).GetAttributeAsync("for"));
+        Assert.Equal("browser@maliev.test", await email.InputValueAsync());
+        Assert.False(await email.IsEditableAsync());
+        Assert.True(await email.EvaluateAsync<bool>(
+            "input => parseFloat(getComputedStyle(input).borderTopWidth) > 0"));
         Assert.Equal("password", await password.GetAttributeAsync("type"));
         Assert.Equal(1, await page.Locator("#legacy-login-remember[type='checkbox']").CountAsync());
 
@@ -113,6 +118,9 @@ public sealed class LoginBrowserTests(
         Assert.False(await signIn.IsDisabledAsync());
         await page.Locator("#legacy-login-remember").CheckAsync();
         Assert.True(await page.Locator("#legacy-login-remember").IsCheckedAsync());
+        await page.Locator("#legacy-login-remember").FocusAsync();
+        Assert.Equal("none", await page.Locator(".legacy-login-remember").EvaluateAsync<string>(
+            "field => getComputedStyle(field).outlineStyle"));
 
         foreach (var button in new[]
                  {

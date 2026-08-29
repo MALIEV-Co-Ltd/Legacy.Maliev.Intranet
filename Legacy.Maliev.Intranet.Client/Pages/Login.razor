@@ -117,9 +117,19 @@
                 else
                 {
                     <EditForm Model="@_formModel" OnSubmit="HandleCredentialsSubmit" Class="legacy-login-form">
-                        <div class="legacy-login-email-summary">
-                            <span>@_emailInput</span>
-                        </div>
+                        <ShadcnFormField Id="legacy-login-email"
+                                         Label="@Text["Email"]">
+                            <Control>
+                                <ShadcnInput TValue="string"
+                                             id="legacy-login-email"
+                                             Class="legacy-login-input"
+                                             Type="email"
+                                             Value="@_emailInput"
+                                             ValueExpression="@(() => _emailInput)"
+                                             ReadOnly="true"
+                                             autocomplete="username" />
+                            </Control>
+                        </ShadcnFormField>
                         <ShadcnFormField Id="legacy-login-password"
                                          Label="@Text["Password"]"
                                          Required="true">
