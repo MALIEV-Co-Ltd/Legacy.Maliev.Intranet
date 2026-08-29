@@ -153,6 +153,51 @@ public sealed class BffOrderDetailContractTests
         Assert.DoesNotContain("999", forwarded.Body, StringComparison.Ordinal);
     }
 
+    [Theory]
+    [InlineData(101, 1)]
+    [InlineData(1, 251)]
+    public async Task Update_RejectsOversizedOrderTextBeforeAnyDownstreamCall(int nameLength, int descriptionLength)
+    {
+        var downstream = new OrderDetailHandler();
+        await using var factory = new OrderDetailBffFactory(downstream, AllPermissions);
+        using var client = CreateClient(factory);
+        var csrf = await SignInAsync(client);
+        downstream.Requests.Clear();
+        using var request = new HttpRequestMessage(HttpMethod.Put, "/bff/orders/84")
+        {
+            Content = JsonContent.Create(new
+            {
+                employeeId = (int?)null,
+                name = new string('N', nameLength),
+                description = new string('D', descriptionLength),
+                processId = 3,
+                materialId = (int?)null,
+                surfaceFinishId = (int?)null,
+                colorId = (int?)null,
+                quantity = 1,
+                manufactured = 0,
+                unitPrice = (decimal?)null,
+                discountPercent = (decimal?)null,
+                currencyId = (int?)null,
+                leadTime = (int?)null,
+                promisedDate = (DateTime?)null,
+                finishedDate = (DateTime?)null,
+                comment = (string?)null,
+                allowSocialMedia = false,
+                allowCancellation = true,
+                allowPayment = false,
+                trackingNumber = (string?)null,
+                modifiedDate = "2030-07-15T08:30:00Z",
+            }),
+        };
+        request.Headers.Add("X-CSRF-TOKEN", csrf);
+
+        using var response = await client.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Empty(downstream.Requests);
+    }
+
     [Fact]
     public async Task StatusTransition_RequiresCsrfAndForwardsCallerIdempotencyKey()
     {

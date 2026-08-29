@@ -67,6 +67,34 @@ public sealed class BffOrderCreateContractTests
         Assert.Empty(downstream.Requests);
     }
 
+    [Theory]
+    [InlineData(101, 1)]
+    [InlineData(1, 251)]
+    public async Task OversizedOrderText_IsRejectedBeforeAnyDownstreamCall(int nameLength, int descriptionLength)
+    {
+        var downstream = new OrderCreateHandler();
+        await using var factory = new OrderCreateBffFactory(downstream, [LegacyEmployeePermissions.OrdersCreate]);
+        using var client = CreateClient(factory);
+        var csrf = await SignInAsync(client);
+        downstream.Requests.Clear();
+        var input = new OrderCreateRequest(
+            42,
+            new string('N', nameLength),
+            new string('D', descriptionLength),
+            3,
+            5,
+            6,
+            4,
+            1,
+            false,
+            false);
+
+        using var response = await SendCreateAsync(client, csrf, Guid.NewGuid().ToString("D"), input);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Empty(downstream.Requests);
+    }
+
     [Fact]
     public async Task EmployeeWithoutCreatePermission_IsForbiddenBeforeAnyDownstreamCall()
     {

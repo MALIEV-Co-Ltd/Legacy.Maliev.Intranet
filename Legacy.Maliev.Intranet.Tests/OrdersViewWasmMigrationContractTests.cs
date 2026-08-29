@@ -1,3 +1,5 @@
+using System.Reflection;
+
 namespace Legacy.Maliev.Intranet.Tests;
 
 public sealed class OrdersViewWasmMigrationContractTests
@@ -28,6 +30,8 @@ public sealed class OrdersViewWasmMigrationContractTests
                 "SurfaceFinishId", "TrackingNumber", "UnitPrice",
             ],
             update.GetProperties().Select(property => property.Name).Order(StringComparer.Ordinal).ToArray());
+        Assert.Equal(100, Assert.Single(update.GetProperty("Name")!.GetCustomAttributes<System.ComponentModel.DataAnnotations.StringLengthAttribute>()).MaximumLength);
+        Assert.Equal(250, Assert.Single(update.GetProperty("Description")!.GetCustomAttributes<System.ComponentModel.DataAnnotations.StringLengthAttribute>()).MaximumLength);
     }
 
     [Fact]
@@ -48,6 +52,8 @@ public sealed class OrdersViewWasmMigrationContractTests
         Assert.Contains("<ShadcnSpinner", page, StringComparison.Ordinal);
         Assert.Contains("<ShadcnAlert", page, StringComparison.Ordinal);
         Assert.Contains("<EditForm", page, StringComparison.Ordinal);
+        Assert.Contains("id=\"order-name\" Type=\"text\" Required=\"true\" @bind-Value=\"edit.Name\" maxlength=\"100\"", page, StringComparison.Ordinal);
+        Assert.Contains("id=\"order-description\" @bind-Value=\"edit.Description\" maxlength=\"250\"", page, StringComparison.Ordinal);
         Assert.Contains("<ShadcnAccordion", page, StringComparison.Ordinal);
         Assert.Contains("<ShadcnItemGroup", page, StringComparison.Ordinal);
         Assert.DoesNotContain("<Mud", page, StringComparison.Ordinal);

@@ -1,3 +1,5 @@
+using System.Reflection;
+
 namespace Legacy.Maliev.Intranet.Tests;
 
 public sealed class OrdersCreateWasmMigrationContractTests
@@ -18,6 +20,8 @@ public sealed class OrdersCreateWasmMigrationContractTests
             ],
             request.GetProperties().Select(property => property.Name).Order(StringComparer.Ordinal).ToArray());
         Assert.Equal(["Id", "Warning"], result.GetProperties().Select(property => property.Name).Order(StringComparer.Ordinal).ToArray());
+        Assert.Equal(100, Assert.Single(request.GetProperty("Name")!.GetCustomAttributes<System.ComponentModel.DataAnnotations.StringLengthAttribute>()).MaximumLength);
+        Assert.Equal(250, Assert.Single(request.GetProperty("Description")!.GetCustomAttributes<System.ComponentModel.DataAnnotations.StringLengthAttribute>()).MaximumLength);
     }
 
     [Fact]
@@ -39,6 +43,8 @@ public sealed class OrdersCreateWasmMigrationContractTests
         Assert.Contains("<ShadcnInput", page, StringComparison.Ordinal);
         Assert.Contains("<ShadcnSelect", page, StringComparison.Ordinal);
         Assert.Contains("<ShadcnCheckbox", page, StringComparison.Ordinal);
+        Assert.Contains("id=\"order-create-name\" @bind-Value=\"model.Name\" Required=\"true\" maxlength=\"100\"", page, StringComparison.Ordinal);
+        Assert.Contains("id=\"order-create-description\" @bind-Value=\"model.Description\" maxlength=\"250\"", page, StringComparison.Ordinal);
         Assert.DoesNotContain("<Mud", page, StringComparison.Ordinal);
         Assert.Contains("InputFile", page, StringComparison.Ordinal);
         Assert.Contains("MultipartFormDataContent", page, StringComparison.Ordinal);

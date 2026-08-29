@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using Legacy.Maliev.Intranet.Contracts;
 using Legacy.Maliev.Intranet.Server.Orders;
 using Microsoft.AspNetCore.Http;
@@ -9,6 +10,24 @@ namespace Legacy.Maliev.Intranet.Tests;
 public sealed class OrderCreationWorkflowTests
 {
     private static readonly OrderCreateRequest Input = new(42, "Thai fixture", "requirements", 3, 5, 6, 4, 2, true, false);
+
+    [Theory]
+    [InlineData(101, 1, nameof(OrderCreateRequest.Name))]
+    [InlineData(1, 251, nameof(OrderCreateRequest.Description))]
+    public void BrowserOwnedText_UsesThePersistedOrderLimits(int nameLength, int descriptionLength, string expectedMember)
+    {
+        var input = Input with
+        {
+            Name = new string('N', nameLength),
+            Description = new string('D', descriptionLength),
+        };
+        var failures = new List<ValidationResult>();
+
+        var valid = Validator.TryValidateObject(input, new ValidationContext(input), failures, true);
+
+        Assert.False(valid);
+        Assert.Contains(failures, failure => failure.MemberNames.Contains(expectedMember));
+    }
 
     [Fact]
     public async Task Create_CompletesRequiredBoundariesBeforeOptionalNotification()

@@ -37,7 +37,7 @@ else if (page is not null)
                     <ShadcnFormField Id="order-customer" Label="@Text["CustomerId"]"><Control><ShadcnInput TValue="string" id="order-customer" Value="@(page.Order.CustomerId?.ToString(CultureInfo.CurrentCulture) ?? "-")" ReadOnly="true" /></Control></ShadcnFormField>
                     @if (page.Order.CustomerId is int customerId) { <div class="order-customer-link"><ShadcnButton Href="@($"/Customers/View?id={customerId}")" Variant="ShadcnButtonVariant.Outline">@Text["CustomerInfo"]</ShadcnButton></div> }
                 <ShadcnFormField Id="order-employee" Label="@Text["Employee"]"><Control><ShadcnSelect TValue="int?" id="order-employee" @bind-Value="edit.EmployeeId" Options="@EmployeeOptions" Placeholder="@Text["Employee"]" Clearable="true" /></Control></ShadcnFormField>
-                <ShadcnFormField Id="order-name" Label="@Text["Name"]"><Control><ShadcnInput TValue="string" id="order-name" Type="text" Required="true" @bind-Value="edit.Name" /></Control></ShadcnFormField>
+                <ShadcnFormField Id="order-name" Label="@Text["Name"]"><Control><ShadcnInput TValue="string" id="order-name" Type="text" Required="true" @bind-Value="edit.Name" maxlength="100" /></Control></ShadcnFormField>
                 <ShadcnFormField Id="order-quantity" Label="@Text["Quantity"]"><Control><ShadcnInput TValue="int" id="order-quantity" Type="number" min="1" Required="true" @bind-Value="edit.Quantity" /></Control></ShadcnFormField>
                 <ShadcnFormField Id="order-manufactured" Label="@Text["Manufactured"]"><Control><ShadcnInput TValue="int" id="order-manufactured" Type="number" min="0" Required="true" @bind-Value="edit.Manufactured" /></Control></ShadcnFormField>
                     <ShadcnFormField Id="order-remaining" Label="@Text["Remaining"]"><Control><ShadcnInput TValue="string" id="order-remaining" Value="@(page.Order.Remaining?.ToString(CultureInfo.CurrentCulture) ?? "-")" ReadOnly="true" /></Control></ShadcnFormField>
@@ -66,7 +66,7 @@ else if (page is not null)
 
             <ShadcnAccordionItem Value="requirements"><ShadcnAccordionTrigger>@Text["Requirements"]</ShadcnAccordionTrigger><ShadcnAccordionContent>
                 <div class="order-edit-grid">
-                    <ShadcnFormField Id="order-description" Label="@Text["Requirements"]" Class="order-edit-wide"><Control><ShadcnTextarea TValue="string" id="order-description" @bind-Value="edit.Description" /></Control></ShadcnFormField>
+                    <ShadcnFormField Id="order-description" Label="@Text["Requirements"]" Class="order-edit-wide"><Control><ShadcnTextarea TValue="string" id="order-description" @bind-Value="edit.Description" maxlength="250" /></Control></ShadcnFormField>
                     <ShadcnFormField Id="order-comment" Label="@Text["Comment"]" Class="order-edit-wide"><Control><ShadcnTextarea TValue="string" id="order-comment" @bind-Value="edit.Comment" /></Control></ShadcnFormField>
                     <div class="order-edit-checks order-edit-wide">
                         <ShadcnField Orientation="ShadcnFieldOrientation.Horizontal"><ShadcnCheckbox id="order-social" Value="@edit.AllowSocialMedia" ValueChanged="@(value => edit.AllowSocialMedia = value.GetValueOrDefault())" /><ShadcnFieldLabel For="order-social">@Text["AllowSocialMedia"]</ShadcnFieldLabel></ShadcnField>

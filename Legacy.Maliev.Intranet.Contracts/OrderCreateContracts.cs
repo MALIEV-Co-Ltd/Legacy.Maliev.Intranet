@@ -5,8 +5,8 @@ namespace Legacy.Maliev.Intranet.Contracts;
 /// <summary>Validated browser-owned fields for creating a legacy order.</summary>
 public sealed record OrderCreateRequest(
     [property: Range(1, int.MaxValue)] int CustomerId,
-    [property: Required, StringLength(256)] string Name,
-    [property: StringLength(500)] string? Description,
+    [property: Required, StringLength(100)] string Name,
+    [property: StringLength(250)] string? Description,
     [property: Range(1, int.MaxValue)] int ProcessId,
     [property: Range(1, int.MaxValue)] int? MaterialId,
     [property: Range(1, int.MaxValue)] int? SurfaceFinishId,
