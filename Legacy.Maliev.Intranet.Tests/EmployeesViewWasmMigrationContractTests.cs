@@ -23,8 +23,9 @@ public sealed class EmployeesViewWasmMigrationContractTests
         Assert.Contains("[Authorize", page, StringComparison.Ordinal);
         Assert.Contains("SupplyParameterFromQuery(Name = \"id\")", page, StringComparison.Ordinal);
         Assert.Contains("/bff/employees/", page, StringComparison.Ordinal);
-        Assert.Contains("MudProgress", page, StringComparison.Ordinal);
-        Assert.Contains("MudAlert", page, StringComparison.Ordinal);
+        Assert.Contains("<ShadcnSpinner", page, StringComparison.Ordinal);
+        Assert.Contains("<ShadcnAlert", page, StringComparison.Ordinal);
+        Assert.DoesNotContain("<Mud", page, StringComparison.Ordinal);
         Assert.Contains("LegacyPresentation.FormatCalendarDate", page, StringComparison.Ordinal);
         Assert.DoesNotContain("yyyy-MM-dd", page, StringComparison.Ordinal);
         Assert.Contains("detail.Role?.Name", page, StringComparison.Ordinal);

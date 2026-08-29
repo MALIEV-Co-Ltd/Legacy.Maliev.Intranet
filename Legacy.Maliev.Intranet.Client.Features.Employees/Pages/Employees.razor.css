@@ -8,7 +8,12 @@
 .employee-quick-view { margin: 0; }
 .employee-quick-view dt { color: var(--shadcn-muted-foreground); font-size: 0.75rem; }
 .employee-quick-view dd { margin: 0.25rem 0 0; overflow-wrap: break-word; }
+.employees-page .operations-page-header p { margin: 0.25rem 0 0; color: var(--shadcn-muted-foreground); }
+.employees-page__loading { display: flex; align-items: center; gap: 0.625rem; color: var(--shadcn-muted-foreground); }
+.employees-page__pagination { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.75rem; margin-top: 1rem; }
 
 @media (max-width: 720px) {
     ::deep .operational-table { --operational-table-min-width: 34rem; }
+    .employees-page__pagination { align-items: stretch; flex-direction: column; text-align: center; }
+    .employees-page__pagination ::deep .shadcn-button { width: 100%; min-height: 44px; }
 }
