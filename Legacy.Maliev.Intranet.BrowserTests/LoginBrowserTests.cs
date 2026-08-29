@@ -8,6 +8,36 @@ public sealed class LoginBrowserTests(
     IntranetClientServerFixture server,
     PlaywrightFixture playwright)
 {
+    [Theory]
+    [InlineData("")]
+    [InlineData("Dashboard")]
+    public async Task AnonymousEntryPointsShowLoginWithoutTheAuthenticatedApplicationShell(string path)
+    {
+        await using var context = await playwright.Browser.NewContextAsync(new()
+        {
+            ViewportSize = new() { Width = 1440, Height = 900 },
+        });
+        var page = await context.NewPageAsync();
+        var errors = new List<string>();
+        page.PageError += (_, error) => errors.Add(error);
+
+        await page.RouteAsync("**/bff/session", route => route.FulfillAsync(new()
+        {
+            Status = 200,
+            ContentType = "application/json",
+            Body = "{\"isAuthenticated\":false,\"employeeId\":null,\"displayName\":null,\"roles\":[],\"csrfToken\":\"anonymous-browser-csrf\",\"legacyDatabaseId\":null,\"permissions\":[]}",
+        }));
+        await page.RouteAsync("https://accounts.google.com/**", route => route.AbortAsync());
+
+        await page.GotoAsync(new Uri(server.BaseUri, path).AbsoluteUri);
+
+        await page.Locator("#legacy-login-email").WaitForAsync();
+        Assert.Equal("/Login", new Uri(page.Url).AbsolutePath);
+        Assert.Equal(0, await page.Locator(".legacy-layout").CountAsync());
+        Assert.Equal(0, await page.Locator(".legacy-navigation").CountAsync());
+        Assert.Empty(errors);
+    }
+
     [Fact]
     public async Task LoginUsesAccessibleShadcnFormsAcrossEmailAndCredentialSteps()
     {

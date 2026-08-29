@@ -18,7 +18,6 @@ internal static class LegacyLinkSourceContracts
 
         ShadcnButton("Legacy.Maliev.Intranet.Client.Features.Orders/Components/Shared/PrimaryButton.razor", "Href=\"@Href\"", "Class=\"@CssClass\"", "Variant=\"ShadcnButtonVariant.Default\""),
         ShadcnButton("Legacy.Maliev.Intranet.Client.Features.Orders/Components/Shared/SecondaryButton.razor", "Href=\"@Href\"", "Class=\"@CssClass\"", "download=\"@Download\"", "Variant=\"ShadcnButtonVariant.Outline\""),
-        ShadcnButton("Legacy.Maliev.Intranet.Client/Pages/Home.razor", "Href=\"/Login\"", "Size=\"ShadcnButtonSize.Large\"", "@Text[\"SignIn\"]"),
         ShadcnButton("Legacy.Maliev.Intranet.Client/Pages/AccessDenied.razor", "Href=\"/Login\"", "@Text[\"ReturnToSignIn\"]"),
         ShadcnButton("Legacy.Maliev.Intranet.Client/Pages/NotFound.razor", "Href=\"/Dashboard\"", "@Text[\"Dashboard\"]"),
         ShadcnButton("Legacy.Maliev.Intranet.Client.Features.Customers/Pages/Customers.razor", "Href=\"/Customers/Create\"", "@Text[\"CreateCustomer\"]"),

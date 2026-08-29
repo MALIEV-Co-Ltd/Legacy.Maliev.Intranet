@@ -1,6 +1,7 @@
 @page "/"
 @page "/Index"
 @attribute [AllowAnonymous]
+@layout Layout.EmptyLayout
 @inject Microsoft.Extensions.Localization.IStringLocalizer<Home> Text
 @inject EmployeeSessionClient SessionClient
 @inject NavigationManager Navigation
@@ -15,16 +16,7 @@
 }
 else
 {
-    <div class="legacy-content-container py-8">
-        <ShadcnCard Class="pa-8 text-center">
-            <ShadcnCardContent>
-                <ShadcnTypography Variant="ShadcnTypographyVariant.Small">@Text["Eyebrow"]</ShadcnTypography>
-                <ShadcnTypography Variant="ShadcnTypographyVariant.H1" Class="mb-3">@Text["Heading"]</ShadcnTypography>
-                <ShadcnTypography Class="mb-6">@Text["Description"]</ShadcnTypography>
-                <ShadcnButton Href="/Login" Size="ShadcnButtonSize.Large">@Text["SignIn"]</ShadcnButton>
-            </ShadcnCardContent>
-        </ShadcnCard>
-    </div>
+    <LoginRedirect />
 }
 
 @code {
