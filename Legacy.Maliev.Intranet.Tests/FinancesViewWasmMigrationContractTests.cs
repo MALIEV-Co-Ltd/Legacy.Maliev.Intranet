@@ -19,6 +19,10 @@ public sealed class FinancesViewWasmMigrationContractTests
         Assert.Contains("@page \"/Finances/View\"", page, StringComparison.Ordinal);
         Assert.Contains("X-CSRF-TOKEN", page, StringComparison.Ordinal);
         Assert.Contains("uploadAttemptId", page, StringComparison.Ordinal);
+        Assert.Contains("<EditForm", page, StringComparison.Ordinal);
+        Assert.Contains("<ShadcnButton", page, StringComparison.Ordinal);
+        Assert.Contains("<AccountingSelectField", page, StringComparison.Ordinal);
+        Assert.DoesNotContain("<Mud", page, StringComparison.Ordinal);
         Assert.Contains("If-Unmodified-Since", proxy, StringComparison.Ordinal);
         Assert.Contains("Idempotency-Key", proxy, StringComparison.Ordinal);
         Assert.Contains("/uploads/SignedUrl", files, StringComparison.Ordinal);

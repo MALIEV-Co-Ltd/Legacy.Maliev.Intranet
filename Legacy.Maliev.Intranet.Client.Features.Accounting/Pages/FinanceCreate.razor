@@ -1,94 +1,59 @@
 @page "/Finances/Create"
+@using System.ComponentModel.DataAnnotations
 @attribute [Authorize]
 @inject HttpClient Http
 @inject NavigationManager Navigation
 @inject IStringLocalizer<FinanceCreate> Text
 
 <PageTitle>@Text["PageTitle"]</PageTitle>
-<MudContainer MaxWidth="MaxWidth.Large">
+<main class="finance-editor">
     <div class="operations-page-header">
-        <MudText Typo="Typo.h4" HtmlTag="h1" Class="mb-4">@Text["Heading"]</MudText>
+        <h1>@Text["Heading"]</h1>
     </div>
-    <div class="d-flex flex-wrap gap-2 mb-4" aria-label="@Text["QuickPresets"]">
-        <MudButton OnClick="ApplyJobIncome" Color="Color.Success">@Text["JobIncome"]</MudButton>
-        <MudButton OnClick="ApplyJobExpense" Color="Color.Error">@Text["JobExpense"]</MudButton>
-        <MudButton OnClick="ApplyProductExpense" Color="Color.Error">@Text["ProductExpense"]</MudButton>
-        <MudButton OnClick="ApplyGoogleExpense" Color="Color.Error">@Text["GoogleExpense"]</MudButton>
-        <MudButton OnClick="ApplySalary" Color="Color.Warning">@Text["Salary"]</MudButton>
+    <div class="finance-presets" role="group" aria-label="@Text["QuickPresets"]">
+        <ShadcnButton ButtonType="ShadcnButtonType.Button" OnClick="ApplyJobIncome">@Text["JobIncome"]</ShadcnButton>
+        <ShadcnButton ButtonType="ShadcnButtonType.Button" OnClick="ApplyJobExpense" Variant="ShadcnButtonVariant.Destructive">@Text["JobExpense"]</ShadcnButton>
+        <ShadcnButton ButtonType="ShadcnButtonType.Button" OnClick="ApplyProductExpense" Variant="ShadcnButtonVariant.Destructive">@Text["ProductExpense"]</ShadcnButton>
+        <ShadcnButton ButtonType="ShadcnButtonType.Button" OnClick="ApplyGoogleExpense" Variant="ShadcnButtonVariant.Destructive">@Text["GoogleExpense"]</ShadcnButton>
+        <ShadcnButton ButtonType="ShadcnButtonType.Button" OnClick="ApplySalary" Variant="ShadcnButtonVariant.Secondary">@Text["Salary"]</ShadcnButton>
     </div>
     @if (loading)
     {
         <div role="status" aria-live="polite">
-            <MudProgressLinear Indeterminate="true" aria-label="@Text["Loading"]" />
-            <span class="visually-hidden">@Text["Loading"]</span>
+            <ShadcnSpinner Label="@Text["Loading"]" Size="1.25rem" />
+            <span>@Text["Loading"]</span>
         </div>
     }
     else if (error is not null)
     {
-        <MudAlert Severity="Severity.Error" aria-live="assertive">@error</MudAlert>
+        <ShadcnAlert Variant="ShadcnAlertVariant.Destructive" AlertRole="ShadcnAlertRole.Alert"><ShadcnAlertDescription>@error</ShadcnAlertDescription></ShadcnAlert>
     }
     else if (lookups is not null)
     {
-        <MudForm @ref="form" Model="model">
-            <MudGrid>
-                <MudItem xs="12" md="6">
-                    <MudSelect T="int" Label="@Text["Employee"]" @bind-Value="model.EmployeeId" Required="true">
-                        @foreach (var item in lookups.Employees)
-                        {
-                            <MudSelectItem Value="item.Id">@item.Name</MudSelectItem>
-                        }
-                    </MudSelect>
-                </MudItem>
-                <MudItem xs="12" md="6">
-                    <MudSelect T="int" Label="@Text["Direction"]" @bind-Value="model.PaymentDirectionId" Required="true">
-                        @foreach (var item in lookups.Directions)
-                        {
-                            <MudSelectItem Value="item.Id">@item.Name</MudSelectItem>
-                        }
-                    </MudSelect>
-                </MudItem>
-                <MudItem xs="12" md="6">
-                    <MudSelect T="int" Label="@Text["Type"]" @bind-Value="model.PaymentTypeId" Required="true">
-                        @foreach (var item in lookups.Types)
-                        {
-                            <MudSelectItem Value="item.Id">@item.Name</MudSelectItem>
-                        }
-                    </MudSelect>
-                </MudItem>
-                <MudItem xs="12" md="6">
-                    <MudSelect T="int" Label="@Text["Method"]" @bind-Value="model.PaymentMethodId" Required="true">
-                        @foreach (var item in lookups.Methods)
-                        {
-                            <MudSelectItem Value="item.Id">@item.Name</MudSelectItem>
-                        }
-                    </MudSelect>
-                </MudItem>
-                <MudItem xs="12" md="6">
-                    <MudNumericField T="decimal" Label="@Text["Amount"]" @bind-Value="model.Amount" Min="0" Required="true" Adornment="Adornment.End" AdornmentText="@CurrencyName(model.CurrencyId)" />
-                </MudItem>
-                <MudItem xs="12" md="6">
-                    <MudSelect T="int" Label="@Text["Currency"]" @bind-Value="model.CurrencyId" Required="true">
-                        @foreach (var item in lookups.Currencies)
-                        {
-                            <MudSelectItem Value="item.Id">@item.ShortName</MudSelectItem>
-                        }
-                    </MudSelect>
-                </MudItem>
-                <MudItem xs="12" md="6"><MudTextField Label="@Text["Recipient"]" @bind-Value="model.Recipient" /></MudItem>
-                <MudItem xs="12" md="6"><MudTextField Label="@Text["TransactionNumber"]" @bind-Value="model.TransactionNumber" /></MudItem>
-                <MudItem xs="12" md="6"><MudDatePicker Label="@Text["PaymentDate"]" @bind-Date="model.PaymentDate" Required="true" /></MudItem>
-                <MudItem xs="12"><MudTextField Label="@Text["Description"]" @bind-Value="model.Description" Required="true" Lines="8" MaxLength="1000" /></MudItem>
-                <MudItem xs="12">
-                    <InputFile OnChange="SelectFiles" multiple />
-                    <MudText Typo="Typo.caption">@Text["SelectedFiles", uploads.Count]</MudText>
-                </MudItem>
-                <MudItem xs="12">
-                    <MudButton OnClick="CreateAsync" Disabled="submitting" Variant="Variant.Filled" Color="Color.Primary">@(submitting ? Text["Submitting"] : Text["Create"])</MudButton>
-                </MudItem>
-            </MudGrid>
-        </MudForm>
+        <EditForm EditContext="@editContext" OnValidSubmit="CreateAsync" class="finance-editor__form">
+            <DataAnnotationsValidator />
+            <div class="finance-editor__grid">
+                <AccountingSelectField TValue="int" Id="finance-employee" Label="@Text["Employee"]" @bind-Value="model.EmployeeId" Options="@EmployeeOptions" Placeholder="@Text["Employee"]" Required="true" Disabled="@submitting" />
+                <AccountingSelectField TValue="int" Id="finance-direction" Label="@Text["Direction"]" @bind-Value="model.PaymentDirectionId" Options="@DirectionOptions" Placeholder="@Text["Direction"]" Required="true" Disabled="@submitting" />
+                <AccountingSelectField TValue="int" Id="finance-type" Label="@Text["Type"]" @bind-Value="model.PaymentTypeId" Options="@TypeOptions" Placeholder="@Text["Type"]" Required="true" Disabled="@submitting" />
+                <AccountingSelectField TValue="int" Id="finance-method" Label="@Text["Method"]" @bind-Value="model.PaymentMethodId" Options="@MethodOptions" Placeholder="@Text["Method"]" Required="true" Disabled="@submitting" />
+                <AccountingInputField TValue="decimal" Id="finance-amount" Label="@AmountLabel" Type="number" InputMode="decimal" Min="0" @bind-Value="model.Amount" Required="true" Disabled="@submitting" />
+                <AccountingSelectField TValue="int" Id="finance-currency" Label="@Text["Currency"]" @bind-Value="model.CurrencyId" Options="@CurrencyOptions" Placeholder="@Text["Currency"]" Required="true" Disabled="@submitting" />
+                <AccountingInputField TValue="string" Id="finance-recipient" Label="@Text["Recipient"]" @bind-Value="model.Recipient" Disabled="@submitting" />
+                <AccountingInputField TValue="string" Id="finance-transaction" Label="@Text["TransactionNumber"]" @bind-Value="model.TransactionNumber" Disabled="@submitting" />
+                <AccountingInputField TValue="DateTime?" Id="finance-payment-date" Label="@Text["PaymentDate"]" Type="date" @bind-Value="model.PaymentDate" Required="true" Disabled="@submitting" />
+                <div class="finance-editor__wide"><ShadcnFormField Id="finance-description" Label="@Text["Description"]"><Control><ShadcnTextarea TValue="string" id="finance-description" @bind-Value="model.Description" Required="true" maxlength="1000" rows="8" Disabled="@submitting" /></Control></ShadcnFormField><ValidationMessage For="@(() => model.Description)" /></div>
+                <div class="finance-editor__wide finance-editor__files">
+                    <InputFile OnChange="SelectFiles" multiple disabled="@submitting" />
+                    <span aria-live="polite">@Text["SelectedFiles", uploads.Count]</span>
+                </div>
+            </div>
+            <div class="finance-editor__actions">
+                <ShadcnButton ButtonType="ShadcnButtonType.Submit" OperationFeedback="false" Disabled="@submitting">@(submitting ? Text["Submitting"] : Text["Create"])</ShadcnButton>
+            </div>
+        </EditForm>
     }
-</MudContainer>
+</main>
 
 @code {
     [SupplyParameterFromQuery] public int? paymentDirectionIdInput { get; set; }
@@ -97,12 +62,19 @@
     [SupplyParameterFromQuery] public int? currencyIdInput { get; set; }
     [SupplyParameterFromQuery] public string? recipientInput { get; set; }
     [SupplyParameterFromQuery] public string? paymentDescriptionInput { get; set; }
-    private FinanceCreatePage? lookups; private EmployeeSessionSummary? session; private MudForm? form;
+    private FinanceCreatePage? lookups; private EmployeeSessionSummary? session; private EditContext editContext = null!;
     private readonly List<IBrowserFile> uploads = []; private Model model = new(); private Guid workflowId = Guid.NewGuid();
     private bool loading = true, submitting; private string? error;
+    private IReadOnlyList<ShadcnSelectOption<int>> EmployeeOptions => lookups?.Employees.Select(item => new ShadcnSelectOption<int>(item.Id, item.Name)).ToArray() ?? [];
+    private IReadOnlyList<ShadcnSelectOption<int>> DirectionOptions => lookups?.Directions.Select(item => new ShadcnSelectOption<int>(item.Id, item.Name)).ToArray() ?? [];
+    private IReadOnlyList<ShadcnSelectOption<int>> TypeOptions => lookups?.Types.Select(item => new ShadcnSelectOption<int>(item.Id, item.Name)).ToArray() ?? [];
+    private IReadOnlyList<ShadcnSelectOption<int>> MethodOptions => lookups?.Methods.Select(item => new ShadcnSelectOption<int>(item.Id, item.Name)).ToArray() ?? [];
+    private IReadOnlyList<ShadcnSelectOption<int>> CurrencyOptions => lookups?.Currencies.Select(item => new ShadcnSelectOption<int>(item.Id, item.ShortName)).ToArray() ?? [];
+    private string AmountLabel => $"{Text["Amount"]} ({CurrencyName(model.CurrencyId)})";
     private const string JobIncome = "INVOICE No. XXXXXX-XXXXX-XXXXX\nRECEIPT No. XXXXX\nCUSTOMER No. XXXXX\nPAYMENT DATE XXXX-XX-XX";
     protected override async Task OnInitializedAsync()
     {
+        editContext = new EditContext(model);
         try { session = await Http.GetFromJsonForPresentationAsync<EmployeeSessionSummary>("/bff/session"); lookups = await Http.GetFromJsonForPresentationAsync<FinanceCreatePage>("/bff/finances/create"); model.EmployeeId = session?.LegacyDatabaseId ?? 0; ApplyPreset(paymentDirectionIdInput, paymentTypeIdInput, paymentMethodIdInput, currencyIdInput, recipientInput, paymentDescriptionInput); }
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException) { error = Text["Unavailable"]; }
         finally { loading = false; }
@@ -116,12 +88,12 @@
     private void SelectFiles(InputFileChangeEventArgs e) { uploads.Clear(); uploads.AddRange(e.GetMultipleFiles()); workflowId = Guid.NewGuid(); }
     private async Task CreateAsync()
     {
-        if (form is null || session?.CsrfToken is null || model.PaymentDate is null) return; await form.ValidateAsync(); if (!form.IsValid) return;
+        if (session?.CsrfToken is null || model.PaymentDate is null || submitting) return;
         submitting=true; error=null;
         try { using var content=new MultipartFormDataContent(); content.Add(new StringContent(System.Text.Json.JsonSerializer.Serialize(model.ToRequest(), new System.Text.Json.JsonSerializerOptions(System.Text.Json.JsonSerializerDefaults.Web))), "payment"); foreach(var upload in uploads){var file=new StreamContent(upload.OpenReadStream(200*1024*1024));file.Headers.ContentType=new(upload.ContentType);content.Add(file,"files",upload.Name);} using var request=new HttpRequestMessage(HttpMethod.Post,"/bff/finances"){Content=content};request.Headers.Add("X-CSRF-TOKEN",session.CsrfToken);request.Headers.Add("Idempotency-Key",workflowId.ToString("D"));using var response=await Http.SendAsync(request);if(!response.IsSuccessStatusCode){error=response.StatusCode==HttpStatusCode.Conflict?Text["Conflict"]:Text["CreateFailed"];return;}var result=await response.Content.ReadFromJsonAsync<FinancePaymentCreatedResult>();Navigation.NavigateTo($"/Finances/View?id={result?.Id}"); }
         catch(HttpRequestException){error=Text["OutcomeUnknown"];} finally{submitting=false;}
     }
     private static DateTime BangkokNow => TimeZoneInfo.ConvertTimeBySystemTimeZoneId(DateTimeOffset.UtcNow, "Asia/Bangkok").DateTime;
     private string CurrencyName(int id) => lookups?.Currencies.FirstOrDefault(item => item.Id == id)?.ShortName ?? Text["Currency"];
-    sealed class Model { public int EmployeeId{get;set;} public int PaymentDirectionId{get;set;} public int PaymentTypeId{get;set;} public int PaymentMethodId{get;set;} public decimal Amount{get;set;} public int CurrencyId{get;set;} public string? Recipient{get;set;} public string? TransactionNumber{get;set;} public DateTime? PaymentDate{get;set;}=TimeZoneInfo.ConvertTimeBySystemTimeZoneId(DateTimeOffset.UtcNow, "Asia/Bangkok").Date; public string Description{get;set;}=string.Empty; public FinancePaymentCreateRequest ToRequest()=>new(EmployeeId,PaymentDirectionId,PaymentTypeId,Description,PaymentMethodId,Amount,CurrencyId,Recipient,TransactionNumber,PaymentDate!.Value); }
+    sealed class Model { [Range(1,int.MaxValue)] public int EmployeeId{get;set;} [Range(1,int.MaxValue)] public int PaymentDirectionId{get;set;} [Range(1,int.MaxValue)] public int PaymentTypeId{get;set;} [Range(1,int.MaxValue)] public int PaymentMethodId{get;set;} [Range(typeof(decimal),"0.01","79228162514264337593543950335")] public decimal Amount{get;set;} [Range(1,int.MaxValue)] public int CurrencyId{get;set;} public string? Recipient{get;set;} public string? TransactionNumber{get;set;} [Required] public DateTime? PaymentDate{get;set;}=TimeZoneInfo.ConvertTimeBySystemTimeZoneId(DateTimeOffset.UtcNow, "Asia/Bangkok").Date; [Required,MaxLength(1000)] public string Description{get;set;}=string.Empty; public FinancePaymentCreateRequest ToRequest()=>new(EmployeeId,PaymentDirectionId,PaymentTypeId,Description,PaymentMethodId,Amount,CurrencyId,Recipient,TransactionNumber,PaymentDate!.Value); }
 }
