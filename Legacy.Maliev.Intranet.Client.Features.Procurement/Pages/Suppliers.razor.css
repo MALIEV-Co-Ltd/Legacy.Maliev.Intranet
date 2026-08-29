@@ -3,5 +3,7 @@
 .operational-quick-view > div { min-width: 0; }
 .operational-quick-view dt { color: var(--shadcn-muted-foreground); font-size: .75rem; font-weight: 600; }
 .operational-quick-view dd { margin: .25rem 0 0; overflow-wrap: break-word; }
-@media (max-width: 600px) { .supplier-list .procurement-pager { align-items: stretch; flex-direction: column; text-align: center; } .supplier-list .procurement-pager .mud-button-root { width: 100%; min-height: 44px; } }
+@media (max-width: 600px) { .supplier-list .procurement-pager { align-items: stretch; flex-direction: column; text-align: center; } .supplier-list .procurement-pager ::deep .shadcn-button { width: 100%; min-height: 44px; } }
 .mlv-mono { white-space: nowrap; }
+.procurement-list-page .operations-page-header p { margin: 0.25rem 0 0; color: var(--shadcn-muted-foreground); }
+.procurement-list-page__loading { display: flex; align-items: center; gap: 0.625rem; color: var(--shadcn-muted-foreground); }
