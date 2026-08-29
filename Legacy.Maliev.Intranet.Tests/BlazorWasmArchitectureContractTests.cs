@@ -15,7 +15,7 @@ public sealed class BlazorWasmArchitectureContractTests
     }
 
     [Fact]
-    public void Client_IsNet10BlazorWebAssemblyWithMudBlazorAndNoServerSecrets()
+    public void Client_IsNet10BlazorWebAssemblyWithReleasedShadcnPackageAndNoServerSecrets()
     {
         var root = FindRoot();
         var clientRoot = Path.Combine(root, "Legacy.Maliev.Intranet.Client");
@@ -24,7 +24,8 @@ public sealed class BlazorWasmArchitectureContractTests
 
         Assert.Contains("Microsoft.NET.Sdk.BlazorWebAssembly", project, StringComparison.Ordinal);
         Assert.Contains("<TargetFramework>net10.0</TargetFramework>", project, StringComparison.Ordinal);
-        Assert.Contains("PackageReference Include=\"MudBlazor\"", project, StringComparison.Ordinal);
+        Assert.Contains("PackageReference Include=\"Maliev.ShadcnBlazor\" Version=\"1.2.2\"", project, StringComparison.Ordinal);
+        Assert.DoesNotContain("PackageReference Include=\"MudBlazor\"", project, StringComparison.Ordinal);
         Assert.Contains("..\\Legacy.Maliev.Intranet.Contracts\\Legacy.Maliev.Intranet.Contracts.csproj", project, StringComparison.Ordinal);
         Assert.DoesNotContain("RefreshToken", source, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("ClientSecret", source, StringComparison.OrdinalIgnoreCase);

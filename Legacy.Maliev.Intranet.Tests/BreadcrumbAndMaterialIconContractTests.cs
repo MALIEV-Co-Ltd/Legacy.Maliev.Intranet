@@ -169,7 +169,7 @@ public sealed class BreadcrumbAndMaterialIconContractTests : BunitContext
     }
 
     [Fact]
-    public void Production_icon_inventory_uses_embedded_Material_paths_without_runtime_icon_fonts()
+    public void Production_icon_inventory_uses_approved_component_icons_without_runtime_icon_fonts()
     {
         var root = FindRepositoryRoot();
         var files = EnumerateProductionInventoryFiles(root);
@@ -195,6 +195,14 @@ public sealed class BreadcrumbAndMaterialIconContractTests : BunitContext
         string source)
     {
         Assert.NotEmpty(FindIconInventoryViolations([new(path, source)]));
+    }
+
+    [Fact]
+    public void Icon_inventory_allows_the_exact_released_Lucide_companion_namespace()
+    {
+        Assert.Empty(FindIconInventoryViolations([
+            new("Client/_Imports.razor", "@using global::Maliev.ShadcnBlazor.Icons.Lucide")
+        ]));
     }
 
     [Fact]
@@ -412,7 +420,10 @@ public sealed class BreadcrumbAndMaterialIconContractTests : BunitContext
                 || (!isSvg && HasUnapprovedSvgReference(file))
                 || (!isSvg && HasUnapprovedInlineOrDataSvg(file))
                 || HasMudIconAlias(file.Source)
-                || Regex.IsMatch(file.Source, @"Icons\.(?!Material\.)", RegexOptions.CultureInvariant)
+                || Regex.IsMatch(
+                    file.Source.Replace("Maliev.ShadcnBlazor.Icons.Lucide", string.Empty, StringComparison.Ordinal),
+                    @"Icons\.(?!Material\.)",
+                    RegexOptions.CultureInvariant)
                 || Regex.IsMatch(file.Source, @"Font[ -]?Awesome|\bfa-[a-z]", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)
                 || Regex.IsMatch(
                     file.Source,

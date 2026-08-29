@@ -8,7 +8,8 @@ public sealed class ShadcnPackageIntegrationContractTests
         var project = Read("Legacy.Maliev.Intranet.Client", "Legacy.Maliev.Intranet.Client.csproj");
         var program = Read("Legacy.Maliev.Intranet.Client", "Program.cs");
 
-        Assert.Contains("Maliev.ShadcnBlazor.csproj", project, StringComparison.Ordinal);
+        Assert.Contains("<PackageReference Include=\"Maliev.ShadcnBlazor\" Version=\"1.2.2\"", project, StringComparison.Ordinal);
+        Assert.DoesNotContain("Maliev.ShadcnBlazor.csproj", project, StringComparison.Ordinal);
         Assert.Contains("AddMalievShadcn", program, StringComparison.Ordinal);
         Assert.DoesNotContain("AddMudServices", program, StringComparison.Ordinal);
         Assert.Contains("IBM Plex Sans Thai", program, StringComparison.Ordinal);
@@ -57,6 +58,15 @@ public sealed class ShadcnPackageIntegrationContractTests
             "_content/MudBlazor/MudBlazor.min.css",
             "css/ibm-plex-sans-thai.css",
             "_content/Maliev.ShadcnBlazor/css/shadcn-base.css",
+            "_content/Maliev.ShadcnBlazor/css/shadcn-semantic-foundations.css",
+            "_content/Maliev.ShadcnBlazor/css/shadcn-layout.css",
+            "_content/Maliev.ShadcnBlazor/css/shadcn-actions.css",
+            "_content/Maliev.ShadcnBlazor/css/shadcn-data-display.css",
+            "_content/Maliev.ShadcnBlazor/css/shadcn-disclosure-navigation.css",
+            "_content/Maliev.ShadcnBlazor/css/shadcn-forms.css",
+            "_content/Maliev.ShadcnBlazor/css/shadcn-feedback-content.css",
+            "_content/Maliev.ShadcnBlazor/css/shadcn-overlays-menus.css",
+            "_content/Maliev.ShadcnBlazor/css/shadcn-conversation.css",
             "css/design-tokens.css",
             "_content/Maliev.ShadcnBlazor/css/shadcn-mudblazor.css",
             "css/app.css",
