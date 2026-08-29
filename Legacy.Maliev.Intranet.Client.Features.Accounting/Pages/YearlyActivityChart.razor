@@ -1,5 +1,4 @@
 @page "/Finances/YearlyActivityChart"
-@using global::Maliev.ShadcnBlazor.Adapters.MudBlazor
 @attribute [Authorize]
 @inject HttpClient Http
 @inject NavigationManager Navigation
@@ -7,55 +6,55 @@
 
 <PageTitle>@Text["PageTitle"]</PageTitle>
 
-<MudContainer MaxWidth="MaxWidth.ExtraLarge">
-    <div class="operations-page-header d-flex flex-wrap align-center justify-space-between gap-3 mb-4">
-        <MudText Typo="Typo.h4" HtmlTag="h1">@Text["Title", BangkokYear]</MudText>
-        <LegacyLink Href="/Finances/Index" Role="LegacyLinkRole.Navigation" StartIcon="@Icons.Material.Filled.ArrowBack" AriaLabel="@Text["Back"]">@Text["Back"]</LegacyLink>
+<main class="finance-chart-page">
+    <div class="operations-page-header">
+        <h1>@Text["Title", BangkokYear]</h1>
+        <LegacyLink Href="/Finances/Index" Role="LegacyLinkRole.Navigation" AriaLabel="@Text["Back"]">@Text["Back"]</LegacyLink>
     </div>
 
     @if (loading)
     {
         <div role="status" aria-live="polite">
-            <MudProgressLinear Indeterminate="true" Color="Color.Primary" aria-label="@Text["Loading"]" />
-            <span class="visually-hidden">@Text["Loading"]</span>
+            <ShadcnSpinner Label="@Text["Loading"]" Size="1.25rem" />
+            <span>@Text["Loading"]</span>
         </div>
     }
     else if (!string.IsNullOrWhiteSpace(error))
     {
-        <MudAlert Severity="Severity.Error" aria-live="assertive">@error</MudAlert>
+        <ShadcnAlert Variant="ShadcnAlertVariant.Destructive" AlertRole="ShadcnAlertRole.Alert"><ShadcnAlertDescription>@error</ShadcnAlertDescription></ShadcnAlert>
     }
     else if (chartData is null || chartData.Labels.Length == 0)
     {
-        <MudAlert Severity="Severity.Info" aria-live="polite">@Text["NoData"]</MudAlert>
+        <ShadcnAlert AlertRole="ShadcnAlertRole.Status"><ShadcnAlertDescription>@Text["NoData"]</ShadcnAlertDescription></ShadcnAlert>
     }
     else
     {
-        <section aria-labelledby="yearly-activity-heading">
-            <MudPaper Class="pa-4" Elevation="1">
-                <MudText id="yearly-activity-heading" Typo="Typo.h5" HtmlTag="h2">@Text["ChartHeading", BangkokYear]</MudText>
-                <div aria-hidden="true">
-                    <MudChart T="double" ChartType="ChartType.Bar" ChartSeries="@series" ChartLabels="@chartLabels" ChartOptions="@ShadcnMudChartOptions.Create()" Width="100%" Height="520px" />
-                </div>
-                <MudTable Items="ActivityRows" Breakpoint="Breakpoint.Sm" Elevation="0" aria-label="@Text["TableLabel", BangkokYear]">
-                    <HeaderContent>
-                        <MudTh>@Text["Date"]</MudTh>
-                        <MudTh>@Text["IncomeThb"]</MudTh>
-                        <MudTh>@Text["ExpenseThb"]</MudTh>
-                    </HeaderContent>
-                    <RowTemplate>
-                        <MudTd DataLabel="@Text["Date"]">@context.Date</MudTd>
-                        <MudTd DataLabel="@Text["IncomeThb"]">@FormatThb(context.Income)</MudTd>
-                        <MudTd DataLabel="@Text["ExpenseThb"]">@FormatThb(context.Expense)</MudTd>
-                    </RowTemplate>
-                </MudTable>
-            </MudPaper>
+        <section class="finance-chart-card">
+            <ShadcnChart Id="yearly-activity" Type="ShadcnChartType.Bar" Title="@Text["ChartHeading", BangkokYear]" CategoryLabel="@Text["Date"]" Config="@chartConfig" Categories="@chartLabels" Series="@series" ShowGrid="true" ShowMajorGrid="true" ShowLegend="true" LegendInteractive="true" InitialWidth="1200" InitialHeight="520" ValueFormatter="@FormatThb" />
+        </section>
+        <section class="finance-chart-card finance-chart-table" aria-labelledby="activity-table-heading">
+            <h2 id="activity-table-heading">@Text["ChartHeading", BangkokYear]</h2>
+            <ShadcnTable ExpectedColumnCount="3" aria-label="@Text["TableLabel", BangkokYear]">
+                <ShadcnTableHeader><ShadcnTableRow><ShadcnTableHead>@Text["Date"]</ShadcnTableHead><ShadcnTableHead>@Text["IncomeThb"]</ShadcnTableHead><ShadcnTableHead>@Text["ExpenseThb"]</ShadcnTableHead></ShadcnTableRow></ShadcnTableHeader>
+                <ShadcnTableBody>
+                    @foreach (var row in ActivityRows)
+                    {
+                        <ShadcnTableRow><ShadcnTableCell data-label="@Text["Date"]">@row.Date</ShadcnTableCell><ShadcnTableCell data-label="@Text["IncomeThb"]">@FormatThb(row.Income)</ShadcnTableCell><ShadcnTableCell data-label="@Text["ExpenseThb"]">@FormatThb(row.Expense)</ShadcnTableCell></ShadcnTableRow>
+                    }
+                </ShadcnTableBody>
+            </ShadcnTable>
         </section>
     }
-</MudContainer>
+</main>
 
 @code {
     private FinanceActivityChartData? chartData;
-    private List<ChartSeries<double>> series = [];
+    private IReadOnlyList<ShadcnChartSeries> series = [];
+    private ShadcnChartConfig chartConfig => new()
+    {
+        ["income"] = new(Text["Income"]) { Color = "var(--shadcn-chart-2)" },
+        ["expense"] = new(Text["Expense"]) { Color = "var(--shadcn-chart-5)" },
+    };
     private bool loading;
     private string? error;
 
@@ -68,8 +67,7 @@
             Math.Abs(chartData.Expense[index]))).ToArray();
 
     // Keep the full dd/MM values in the table while using compact d/M labels
-    // for the chart.  MudChart does not rotate labels consistently at every
-    // responsive width, so shortening the axis labels avoids collisions while
+    // in the chart to avoid collisions at narrow responsive widths while
     // preserving the same date index for every bar and tooltip.
     private string[] chartLabels => chartData is null
         ? []
@@ -86,14 +84,14 @@
         {
             // The activity report is scoped to the current Bangkok calendar
             // year. Passing an empty year query makes the migrated Accounting
-            // endpoint reject the request, leaving the MudChart family in a
-            // permanent "temporarily unavailable" state.
+            // endpoint reject the request, leaving the chart in a permanent
+            // "temporarily unavailable" state.
             var trend = await FinanceChartDataClient.LoadAsync(Http, BangkokYear, includeExpense: true);
             chartData = FinanceChartSeries.BuildActivity(trend.Income, trend.Expense);
             series =
             [
-                new ChartSeries<double> { Name = Text["Income"], Data = chartData.Income },
-                new ChartSeries<double> { Name = Text["Expense"], Data = chartData.Expense },
+                new ShadcnChartSeries("income", NullableValues(chartData.Income)),
+                new ShadcnChartSeries("expense", NullableValues(chartData.Expense)),
             ];
         }
         catch (FinanceChartDataException exception)
@@ -109,6 +107,8 @@
             loading = false;
         }
     }
+
+    private static double?[] NullableValues(IEnumerable<double> values) => values.Select(value => (double?)value).ToArray();
 
     private void HandleFailure(HttpStatusCode? statusCode)
     {
