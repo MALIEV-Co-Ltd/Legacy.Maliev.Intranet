@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "packageVersion": "1.2.2",
   "baseline": { "renderSites": 1485, "componentTypes": 36, "razorFiles": 60 },
-  "current": { "renderSites": 1120, "razorFiles": 25 },
+  "current": { "renderSites": 1110, "razorFiles": 24 },
   "files": [
     { "path": "Legacy.Maliev.Intranet.Client/LoginRedirect.razor", "baselineRenderSites": 3, "remainingRenderSites": 0, "status": "migrated" },
     { "path": "Legacy.Maliev.Intranet.Client/Components/Dashboard/DashboardMetricCard.razor", "baselineRenderSites": 1, "remainingRenderSites": 0, "status": "migrated" },
@@ -32,7 +32,7 @@
     { "path": "Legacy.Maliev.Intranet.Client.Features.Accounting/Pages/YearlyActivityChart.razor", "baselineRenderSites": 15, "remainingRenderSites": 15, "status": "pending" },
     { "path": "Legacy.Maliev.Intranet.Client.Features.Catalog/Pages/MaterialCreate.razor", "baselineRenderSites": 87, "remainingRenderSites": 87, "status": "pending" },
     { "path": "Legacy.Maliev.Intranet.Client.Features.Catalog/Pages/MaterialDetail.razor", "baselineRenderSites": 128, "remainingRenderSites": 128, "status": "pending" },
-    { "path": "Legacy.Maliev.Intranet.Client.Features.Catalog/Pages/Materials.razor", "baselineRenderSites": 10, "remainingRenderSites": 10, "status": "pending" },
+    { "path": "Legacy.Maliev.Intranet.Client.Features.Catalog/Pages/Materials.razor", "baselineRenderSites": 10, "remainingRenderSites": 0, "status": "migrated" },
     { "path": "Legacy.Maliev.Intranet.Client.Features.Customers/Components/CustomerActivity.razor", "baselineRenderSites": 9, "remainingRenderSites": 0, "status": "migrated" },
     { "path": "Legacy.Maliev.Intranet.Client.Features.Customers/Components/CustomerHistoryTable.razor", "baselineRenderSites": 52, "remainingRenderSites": 0, "status": "migrated", "upstreamIssueUrls": ["https://github.com/MALIEV-Co-Ltd/Maliev.ShadcnBlazor/issues/243"] },
     { "path": "Legacy.Maliev.Intranet.Client.Features.Customers/Components/CustomerOverview.razor", "baselineRenderSites": 16, "remainingRenderSites": 0, "status": "migrated" },
