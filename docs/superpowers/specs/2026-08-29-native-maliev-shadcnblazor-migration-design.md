@@ -39,8 +39,10 @@ documentation are authoritative; similarly named React or MudBlazor APIs must
 not be inferred.
 
 The unchanged baseline solution builds in Release with zero warnings and zero
-errors. Baseline test results are recorded separately in the implementation
-plan because the test process was still running while this design was written.
+errors. The complete `Legacy.Maliev.Intranet.Tests` baseline passes 1,053 of
+1,053 tests in 9.54 minutes with `DOTNET_PROCESSOR_COUNT=1`. The suite is quiet
+under minimal logging for long intervals because its BFF and container-backed
+integration cases run sequentially; this is baseline duration, not a hang.
 
 ## Completion Boundary
 
