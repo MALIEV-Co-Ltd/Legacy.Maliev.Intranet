@@ -3,6 +3,7 @@
 @layout Layout.EmptyLayout
 @using Legacy.Maliev.Intranet.Client.Components.Shell
 @using Legacy.Maliev.Intranet.Client.Shared.Components
+@using Microsoft.AspNetCore.Components.Forms
 @inject EmployeeAuthenticationClient AuthenticationClient
 @inject NavigationManager Navigation
 @inject AuthenticationStateProvider AuthenticationStateProvider
@@ -28,17 +29,21 @@
         <section class="legacy-login-auth-panel">
             <header class="legacy-login-utilities">
                 <LegacyLanguageSelector />
-                <MudIconButton ButtonType="ButtonType.Button" Class="legacy-login-theme-toggle"
-                               Icon="@(ThemeService.IsDarkMode ? Icons.Material.Outlined.LightMode : Icons.Material.Outlined.DarkMode)"
-                               Size="Size.Small" OnClick="ToggleThemeAsync"
-                               aria-label="@ThemeToggleLabel" title="@ThemeToggleLabel" />
+                <ShadcnButton ButtonType="ShadcnButtonType.Button"
+                              Variant="ShadcnButtonVariant.Ghost"
+                              Size="ShadcnButtonSize.Icon"
+                              Class="legacy-login-theme-toggle"
+                              OnClick="ToggleThemeAsync"
+                              aria-label="@ThemeToggleLabel" title="@ThemeToggleLabel">
+                    <ShadcnIcon Icon="@(ThemeService.IsDarkMode ? SunIcon : MoonIcon)" Size="20" />
+                </ShadcnButton>
             </header>
 
             <div class="legacy-login-main" id="legacy-login-content">
                 @if (_isCheckingAuth)
                 {
                     <section class="legacy-login-card legacy-login-loading" role="status" aria-live="polite" aria-busy="true">
-                        <MudProgressCircular Size="Size.Small" Color="Color.Primary" Indeterminate="true" />
+                        <ShadcnSpinner Label="@Text["Checking your employee session..."]" Size="1.25rem" />
                         <span>@Text["Checking your employee session..."]</span>
                     </section>
                 }
@@ -55,8 +60,11 @@
 
                 @if (!string.IsNullOrWhiteSpace(_errorMessage))
                 {
-                    <MudAlert Severity="Severity.Error" Variant="Variant.Outlined" Class="legacy-login-error"
-                              role="alert" aria-live="assertive">@_errorMessage</MudAlert>
+                    <ShadcnAlert Variant="ShadcnAlertVariant.Destructive"
+                                 AlertRole="ShadcnAlertRole.Alert"
+                                 Class="legacy-login-error">
+                        <ShadcnAlertDescription>@_errorMessage</ShadcnAlertDescription>
+                    </ShadcnAlert>
                 }
 
                 <div class="legacy-google-signin-section" data-google-signin-section data-google-signin-state="loading">
@@ -80,47 +88,69 @@
 
                 @if (IsEmailStep)
                 {
-                    <MudForm Class="legacy-login-form">
-                        <MudTextField T="string" InputId="legacy-login-email" Class="legacy-login-input"
-                                      Label="@Text["Email"]" Placeholder="@("name@maliev.com")"
-                                      InputType="InputType.Email" Variant="Variant.Outlined" Margin="Margin.Dense"
-                                      Value="@_emailInput" ValueChanged="@(value => _emailInput = value ?? string.Empty)"
-                                      Immediate="true" Required="true" HelperText="@Text["Use your MALIEV work email."]"
-                                      pattern="@EmailPattern" autocomplete="username" OnKeyDown="HandleEmailKeyDown" />
-                        <MudButton ButtonType="ButtonType.Button" Class="legacy-login-primary" FullWidth="true"
-                                   Variant="Variant.Filled" Color="Color.Primary" Disabled="@(!EmailLooksValid)"
-                                   OnClick="ContinueWithEmail">@Text["Continue with email"]</MudButton>
-                    </MudForm>
+                    <EditForm Model="@_formModel" OnSubmit="HandleEmailSubmit" Class="legacy-login-form">
+                        <ShadcnFormField Id="legacy-login-email"
+                                         Label="@Text["Email"]"
+                                         Description="@Text["Use your MALIEV work email."]"
+                                         Error="@_emailError"
+                                         Required="true">
+                            <Control>
+                                <ShadcnInput TValue="string"
+                                             id="legacy-login-email"
+                                             Class="legacy-login-input"
+                                             Type="email"
+                                             Placeholder="name@maliev.com"
+                                             Value="@_emailInput"
+                                             ValueChanged="@(value => _emailInput = value ?? string.Empty)"
+                                             ValueExpression="@(() => _emailInput)"
+                                             Required="true"
+                                             pattern="@EmailPattern"
+                                             autocomplete="username" />
+                            </Control>
+                        </ShadcnFormField>
+                        <ShadcnButton ButtonType="ShadcnButtonType.Submit"
+                                      OperationFeedback="false"
+                                      Class="legacy-login-primary"
+                                      Disabled="@(!EmailLooksValid)">
+                            @Text["Continue with email"]
+                        </ShadcnButton>
+                    </EditForm>
                 }
                 else
                 {
-                    <MudForm Class="legacy-login-form">
+                    <EditForm Model="@_formModel" OnSubmit="HandleCredentialsSubmit" Class="legacy-login-form">
                         <div class="legacy-login-email-summary">
                             <span>@_emailInput</span>
-                            <MudButton ButtonType="ButtonType.Button" Class="legacy-login-change" Variant="Variant.Text"
-                                       OnClick="BackToEmailStep">@Text["Change"]</MudButton>
                         </div>
-                        <MudTextField T="string" InputId="legacy-login-password" Class="legacy-login-input"
-                                      Label="@Text["Password"]" InputType="InputType.Password"
-                                      Variant="Variant.Outlined" Margin="Margin.Dense" Required="true"
-                                      Value="@_password" ValueChanged="@(value => _password = value ?? string.Empty)"
-                                      Immediate="true" autocomplete="current-password" OnKeyDown="HandlePasswordKeyDown" />
-                        <MudCheckBox T="bool" Class="legacy-login-remember" @bind-Value="_rememberMe"
-                                     Label="@Text["Remember me"]" />
-                        <MudButton ButtonType="ButtonType.Button" Class="legacy-login-primary" FullWidth="true"
-                                   Variant="Variant.Filled" Color="Color.Primary"
-                                   Disabled="@(_isProcessing || !CredentialsReady)" OnClick="HandleLogin">
-                            @if (_isProcessing)
-                            {
-                                <MudProgressCircular Size="Size.Small" Color="Color.Inherit" Indeterminate="true" />
-                                <span>@Text["Signing in..."]</span>
-                            }
-                            else
-                            {
-                                <span>@Text["Sign in with email"]</span>
-                            }
-                        </MudButton>
-                    </MudForm>
+                        <ShadcnFormField Id="legacy-login-password"
+                                         Label="@Text["Password"]"
+                                         Required="true">
+                            <Control>
+                                <ShadcnInput TValue="string"
+                                             id="legacy-login-password"
+                                             Class="legacy-login-input"
+                                             Type="password"
+                                             Value="@_password"
+                                             ValueChanged="@(value => _password = value ?? string.Empty)"
+                                             ValueExpression="@(() => _password)"
+                                             Required="true"
+                                             autocomplete="current-password" />
+                            </Control>
+                        </ShadcnFormField>
+                        <ShadcnField Orientation="ShadcnFieldOrientation.Horizontal" Class="legacy-login-remember">
+                            <ShadcnCheckbox id="legacy-login-remember"
+                                            Value="@_rememberMe"
+                                            ValueChanged="@(value => _rememberMe = value.GetValueOrDefault())" />
+                            <ShadcnFieldLabel For="legacy-login-remember">@Text["Remember me"]</ShadcnFieldLabel>
+                        </ShadcnField>
+                        <ShadcnFormActions Class="legacy-login-actions"
+                                           SubmitText="@Text["Sign in with email"]"
+                                           CancelText="@Text["Change"]"
+                                           BusyText="@Text["Signing in..."]"
+                                           IsBusy="@_isProcessing"
+                                           SubmitDisabled="@(!CredentialsReady)"
+                                           OnCancel="BackToEmailStep" />
+                    </EditForm>
                 }
 
                 <div class="legacy-login-recovery">
@@ -152,9 +182,14 @@
     private string _emailInput = string.Empty;
     private string _password = string.Empty;
     private string? _errorMessage;
+    private string? _emailError;
+    private readonly object _formModel = new();
     private LoginStep _step = LoginStep.Email;
     private ElementReference _googleIdentityHost;
     private bool _googleIdentityInitialized;
+
+    private static readonly ShadcnIconData SunIcon = LucideIconCatalog.Instance.Get(LucideIconNames.Sun);
+    private static readonly ShadcnIconData MoonIcon = LucideIconCatalog.Instance.Get(LucideIconNames.Moon);
 
     private bool IsEmailStep => _step == LoginStep.Email;
 
@@ -234,29 +269,18 @@
         _emailInput = _emailInput.Trim();
         if (!EmailLooksValid)
         {
-            _errorMessage = Text["Use your MALIEV work email."].Value;
+            _emailError = Text["Use your MALIEV work email."].Value;
             return;
         }
 
+        _emailError = null;
         _errorMessage = null;
         _step = LoginStep.Credentials;
     }
 
-    private void HandleEmailKeyDown(KeyboardEventArgs args)
-    {
-        if (args.Key == "Enter")
-        {
-            ContinueWithEmail();
-        }
-    }
+    private void HandleEmailSubmit(EditContext _) => ContinueWithEmail();
 
-    private async Task HandlePasswordKeyDown(KeyboardEventArgs args)
-    {
-        if (args.Key == "Enter")
-        {
-            await HandleLogin();
-        }
-    }
+    private Task HandleCredentialsSubmit(EditContext _) => HandleLogin();
 
     private void BackToEmailStep()
     {

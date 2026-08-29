@@ -22,6 +22,13 @@ public sealed class LoginFormContractTests
             StringComparison.Ordinal);
         Assert.DoesNotContain("[^@@\\\\s]", source, StringComparison.Ordinal);
         Assert.DoesNotContain("@@(maliev", source, StringComparison.Ordinal);
+        Assert.Contains("<EditForm", source, StringComparison.Ordinal);
+        Assert.Contains("<ShadcnFormField", source, StringComparison.Ordinal);
+        Assert.Contains("<ShadcnInput TValue=\"string\"", source, StringComparison.Ordinal);
+        Assert.Contains("<ShadcnCheckbox", source, StringComparison.Ordinal);
+        Assert.Contains("<ShadcnButton", source, StringComparison.Ordinal);
+        Assert.Contains("<ShadcnAlert", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("<Mud", source, StringComparison.Ordinal);
     }
 
     private static string FindRoot()

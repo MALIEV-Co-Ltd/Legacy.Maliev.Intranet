@@ -1,0 +1,37 @@
+<ShadcnField Invalid="@HasError"
+             Disabled="@Disabled"
+             DescriptionId="@EffectiveDescriptionId"
+             ErrorId="@EffectiveErrorId"
+             Class="@Class">
+    <ShadcnFieldLabel For="@Id">
+        @Label
+        @if (Required)
+        {
+            <span data-required="true" aria-hidden="true">*</span>
+        }
+    </ShadcnFieldLabel>
+    @Control
+    @if (EffectiveDescriptionId is not null)
+    {
+        <ShadcnFieldDescription Id="@EffectiveDescriptionId">@Description</ShadcnFieldDescription>
+    }
+    @if (EffectiveErrorId is not null)
+    {
+        <ShadcnFieldError Id="@EffectiveErrorId">@Error</ShadcnFieldError>
+    }
+</ShadcnField>
+
+@code {
+    [Parameter, EditorRequired] public string Id { get; set; } = default!;
+    [Parameter, EditorRequired] public string Label { get; set; } = default!;
+    [Parameter, EditorRequired] public RenderFragment Control { get; set; } = default!;
+    [Parameter] public string? Description { get; set; }
+    [Parameter] public string? Error { get; set; }
+    [Parameter] public bool Required { get; set; }
+    [Parameter] public bool Disabled { get; set; }
+    [Parameter] public string? Class { get; set; }
+
+    private bool HasError => !string.IsNullOrWhiteSpace(Error);
+    private string? EffectiveDescriptionId => string.IsNullOrWhiteSpace(Description) ? null : $"{Id}-description";
+    private string? EffectiveErrorId => HasError ? $"{Id}-error" : null;
+}
