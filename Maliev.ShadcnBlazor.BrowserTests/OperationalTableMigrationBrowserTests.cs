@@ -469,6 +469,81 @@ public sealed class OperationalTableMigrationBrowserTests(
         Assert.Empty(errors);
     }
 
+    [Fact]
+    public async Task SupplierEditorsUseNativeFieldsAndFocusManagedDeleteConfirmation()
+    {
+        await using var context = await playwright.Browser.NewContextAsync(new()
+        {
+            ViewportSize = new() { Width = 390, Height = 844 },
+            HasTouch = true,
+            ReducedMotion = ReducedMotion.Reduce,
+        });
+        var page = await context.NewPageAsync();
+        var errors = CaptureErrors(page);
+        await page.RouteAsync("**/bff/session", route => route.FulfillAsync(new()
+        {
+            Status = 200,
+            ContentType = "application/json",
+            Body = JsonSerializer.Serialize(new
+            {
+                isAuthenticated = true,
+                employeeId = "supplier-editor-browser",
+                displayName = "Supplier Editor Browser",
+                roles = new[] { "Employee" },
+                csrfToken = "supplier-editor-csrf",
+                legacyDatabaseId = 1,
+                permissions = new[] { "legacy-procurement.suppliers.read", "legacy-procurement.suppliers.create", "legacy-procurement.suppliers.update", "legacy-procurement.suppliers.delete" },
+            }),
+        }));
+        await page.RouteAsync("**/bff/suppliers/42", route => route.FulfillAsync(new()
+        {
+            Status = 200,
+            ContentType = "application/json",
+            Body = JsonSerializer.Serialize(new
+            {
+                id = 42,
+                name = "Thai Precision Supplier",
+                website = "https://supplier.example",
+                taxNumber = "0100000000000",
+                email = "contact@supplier.example",
+                note = "Approved supplier",
+                telephone = "02-123-4567",
+                mobile = "081-234-5678",
+                fax = "02-123-4568",
+                building = "MALIEV Industrial Park",
+                address1 = "1 Manufacturing Road",
+                address2 = (string?)null,
+                city = "Bangkok",
+                state = "Bangkok",
+                postalCode = "10110",
+                countryId = 66,
+            }),
+        }));
+
+        await page.GotoAsync(new Uri(server.BaseUri, "Suppliers/Create").AbsoluteUri);
+        await page.Locator("#supplier-name").WaitForAsync();
+        Assert.Equal("url", await page.Locator("#supplier-website").GetAttributeAsync("type"));
+        Assert.Equal("email", await page.Locator("#supplier-email").GetAttributeAsync("type"));
+        Assert.Equal("tel", await page.Locator("#supplier-mobile").GetAttributeAsync("type"));
+        Assert.Equal("number", await page.Locator("#supplier-country-id").GetAttributeAsync("type"));
+        Assert.Equal(
+            await page.EvaluateAsync<int>("() => document.documentElement.clientWidth"),
+            await page.EvaluateAsync<int>("() => document.documentElement.scrollWidth"));
+
+        await page.GotoAsync(new Uri(server.BaseUri, "Suppliers/View?id=42").AbsoluteUri);
+        await page.Locator("#supplier-edit-name").WaitForAsync();
+        Assert.Equal("Thai Precision Supplier", await page.Locator("#supplier-edit-name").InputValueAsync());
+        var deleteTrigger = page.Locator("[data-slot='alert-dialog-trigger']");
+        await deleteTrigger.ClickAsync();
+        var dialog = page.GetByRole(AriaRole.Alertdialog);
+        await dialog.WaitForAsync();
+        Assert.Contains("Delete this supplier?", await dialog.InnerTextAsync());
+        await dialog.GetByRole(AriaRole.Button, new() { Name = "Cancel", Exact = true }).ClickAsync();
+        await Assertions.Expect(dialog).ToBeHiddenAsync();
+        Assert.True(await deleteTrigger.EvaluateAsync<bool>("node => document.activeElement === node"));
+        Assert.Empty(errors);
+    }
+
     private static List<string> CaptureErrors(IPage page)
     {
         var errors = new List<string>();

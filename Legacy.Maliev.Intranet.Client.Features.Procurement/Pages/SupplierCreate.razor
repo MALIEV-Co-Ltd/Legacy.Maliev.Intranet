@@ -6,70 +6,62 @@
 
 <PageTitle>@Text["PageTitle"]</PageTitle>
 
-<MudContainer MaxWidth="MaxWidth.Medium" Class="supplier-editor-page">
-    <header class="operations-page-header"><div><MudText Typo="Typo.h4" HtmlTag="h1">@Text["CreateSupplier"]</MudText><MudText Typo="Typo.body2">@Text["Procurement"]</MudText></div></header>
+<main class="supplier-editor-page">
+    <header class="operations-page-header"><div><h1>@Text["CreateSupplier"]</h1><p>@Text["Procurement"]</p></div></header>
     @if (!string.IsNullOrWhiteSpace(error))
     {
-        <MudAlert Severity="Severity.Error" Class="mb-4" aria-live="assertive">@error</MudAlert>
+        <ShadcnAlert Variant="ShadcnAlertVariant.Destructive" AlertRole="ShadcnAlertRole.Alert"><ShadcnAlertDescription>@error</ShadcnAlertDescription></ShadcnAlert>
     }
-    <MudForm @ref="form" Model="@model" @bind-IsValid="formValid" Class="supplier-editor-form">
-        <MudPaper Class="pa-4 mb-4" Elevation="1">
-            <MudText Typo="Typo.h6" HtmlTag="h2" id="supplier-details-heading">@Text["Supplier"]</MudText>
-            <MudGrid Spacing="3" aria-labelledby="supplier-details-heading">
-                <MudItem xs="12"><MudTextField @bind-Value="model.Name" For="@(() => model.Name)" Label="@Text["Name"]" Required="true" /></MudItem>
-                <MudItem xs="12" md="6"><MudTextField @bind-Value="model.Website" For="@(() => model.Website)" Label="@Text["Website"]" InputType="InputType.Url" /></MudItem>
-                <MudItem xs="12" md="6"><MudTextField @bind-Value="model.TaxNumber" For="@(() => model.TaxNumber)" Label="@Text["TaxNumber"]" /></MudItem>
-                <MudItem xs="12" md="6"><MudTextField @bind-Value="model.Email" For="@(() => model.Email)" Label="@Text["Email"]" InputType="InputType.Email" /></MudItem>
-                <MudItem xs="12" md="6"><MudTextField @bind-Value="model.Telephone" For="@(() => model.Telephone)" Label="@Text["Telephone"]" InputType="InputType.Telephone" /></MudItem>
-                <MudItem xs="12" md="6"><MudTextField @bind-Value="model.Mobile" For="@(() => model.Mobile)" Label="@Text["Mobile"]" InputType="InputType.Telephone" /></MudItem>
-                <MudItem xs="12" md="6"><MudTextField @bind-Value="model.Fax" For="@(() => model.Fax)" Label="@Text["Fax"]" /></MudItem>
-                <MudItem xs="12"><MudTextField @bind-Value="model.Note" For="@(() => model.Note)" Label="@Text["Note"]" Lines="3" /></MudItem>
-            </MudGrid>
-        </MudPaper>
+    <EditForm EditContext="@editContext" OnValidSubmit="SubmitAsync" OnInvalidSubmit="HandleInvalidSubmit" class="supplier-editor-form">
+        <DataAnnotationsValidator />
+        <section class="supplier-editor-section" aria-labelledby="supplier-details-heading">
+            <h2 id="supplier-details-heading">@Text["Supplier"]</h2>
+            <div class="supplier-editor-grid">
+                <ProcurementInputField TValue="string" Id="supplier-name" Label="@Text["Name"]" @bind-Value="model.Name" Required="true" MaxLength="256" />
+                <ProcurementInputField TValue="string" Id="supplier-website" Label="@Text["Website"]" Type="url" @bind-Value="model.Website" />
+                <ProcurementInputField TValue="string" Id="supplier-tax-number" Label="@Text["TaxNumber"]" @bind-Value="model.TaxNumber" />
+                <ProcurementInputField TValue="string" Id="supplier-email" Label="@Text["Email"]" Type="email" @bind-Value="model.Email" />
+                <ProcurementInputField TValue="string" Id="supplier-telephone" Label="@Text["Telephone"]" Type="tel" @bind-Value="model.Telephone" />
+                <ProcurementInputField TValue="string" Id="supplier-mobile" Label="@Text["Mobile"]" Type="tel" @bind-Value="model.Mobile" />
+                <ProcurementInputField TValue="string" Id="supplier-fax" Label="@Text["Fax"]" @bind-Value="model.Fax" />
+                <ShadcnFormField Id="supplier-note" Label="@Text["Note"]" Class="supplier-editor-wide"><Control><ShadcnTextarea TValue="string" id="supplier-note" @bind-Value="model.Note" /></Control></ShadcnFormField>
+            </div>
+        </section>
 
-        <MudPaper Class="pa-4 mb-4" Elevation="1">
-            <MudText Typo="Typo.h6" HtmlTag="h2" id="supplier-address-heading">@Text["Address"]</MudText>
-            <MudGrid Spacing="3" aria-labelledby="supplier-address-heading">
-                <MudItem xs="12" md="6"><MudTextField @bind-Value="model.Building" For="@(() => model.Building)" Label="@Text["Building"]" /></MudItem>
-                <MudItem xs="12"><MudTextField @bind-Value="model.Address1" For="@(() => model.Address1)" Label="@Text["Address1"]" Required="true" /></MudItem>
-                <MudItem xs="12"><MudTextField @bind-Value="model.Address2" For="@(() => model.Address2)" Label="@Text["Address2"]" /></MudItem>
-                <MudItem xs="12" md="6"><MudTextField @bind-Value="model.City" For="@(() => model.City)" Label="@Text["City"]" /></MudItem>
-                <MudItem xs="12" md="6"><MudTextField @bind-Value="model.State" For="@(() => model.State)" Label="@Text["State"]" /></MudItem>
-                <MudItem xs="12" md="6"><MudTextField @bind-Value="model.PostalCode" For="@(() => model.PostalCode)" Label="@Text["PostalCode"]" /></MudItem>
-                <MudItem xs="12" md="6"><MudNumericField T="int?" @bind-Value="countryId" Label="@Text["CountryId"]" Min="1" Required="true" /></MudItem>
-            </MudGrid>
-        </MudPaper>
+        <section class="supplier-editor-section" aria-labelledby="supplier-address-heading">
+            <h2 id="supplier-address-heading">@Text["Address"]</h2>
+            <div class="supplier-editor-grid">
+                <ProcurementInputField TValue="string" Id="supplier-building" Label="@Text["Building"]" @bind-Value="model.Building" />
+                <ProcurementInputField TValue="string" Id="supplier-address-1" Label="@Text["Address1"]" @bind-Value="model.Address1" Required="true" />
+                <ProcurementInputField TValue="string" Id="supplier-address-2" Label="@Text["Address2"]" @bind-Value="model.Address2" />
+                <ProcurementInputField TValue="string" Id="supplier-city" Label="@Text["City"]" @bind-Value="model.City" />
+                <ProcurementInputField TValue="string" Id="supplier-state" Label="@Text["State"]" @bind-Value="model.State" />
+                <ProcurementInputField TValue="string" Id="supplier-postal-code" Label="@Text["PostalCode"]" @bind-Value="model.PostalCode" />
+                <ProcurementInputField TValue="int" Id="supplier-country-id" Label="@Text["CountryId"]" Type="number" Min="1" @bind-Value="model.CountryId" Required="true" />
+            </div>
+        </section>
 
-        <MudStack Row="true" Spacing="2" Class="mt-4 supplier-editor-actions">
-            <MudButton ButtonType="ButtonType.Button" Variant="Variant.Filled" Color="Color.Primary" Disabled="@submitting" OnClick="SubmitAsync">
-                @(submitting ? Text["Submitting"] : Text["CreateSupplier"])
-            </MudButton>
+        <div class="supplier-editor-actions">
+            <ShadcnButton ButtonType="ShadcnButtonType.Submit" OperationFeedback="false" Disabled="@submitting">@(submitting ? Text["Submitting"] : Text["CreateSupplier"])</ShadcnButton>
             <LegacyLink Href="/Suppliers/Index" Role="LegacyLinkRole.Navigation" Disabled="@submitting" AriaLabel="@Text["Cancel"]">@Text["Cancel"]</LegacyLink>
-        </MudStack>
-    </MudForm>
-</MudContainer>
+        </div>
+    </EditForm>
+</main>
 
 @code {
     private readonly SupplierCreateRequest model = new();
-    private MudForm? form;
-    private bool formValid;
+    private EditContext editContext = null!;
     private bool submitting;
     private string? error;
-    private int? countryId;
+
+    protected override void OnInitialized() => editContext = new EditContext(model);
+    private void HandleInvalidSubmit(EditContext _) => error = Text["ValidationFailed"];
 
     private async Task SubmitAsync()
     {
-        if (submitting || form is null) return;
-        await form.ValidateAsync();
-        if (!formValid || countryId is not > 0)
-        {
-            error = Text["ValidationFailed"];
-            return;
-        }
-
+        if (submitting) return;
         submitting = true;
         error = null;
-        model.CountryId = countryId.Value;
         try
         {
             using var sessionResponse = await Http.GetForPresentationAsync("/bff/session");
@@ -96,10 +88,7 @@
         {
             error = Text["CreateFailed"];
         }
-        finally
-        {
-            submitting = false;
-        }
+        finally { submitting = false; }
     }
 
     private void NavigateToLogin() => Navigation.NavigateTo($"/Login?returnUrl={Uri.EscapeDataString(Navigation.ToBaseRelativePath(Navigation.Uri))}");

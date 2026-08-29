@@ -117,8 +117,9 @@ public sealed class OrdersProcurementResponsiveContractTests
         Assert.Contains("margin: 0 !important", globalStyles, StringComparison.Ordinal);
         Assert.Contains("> .mud-grid-item", globalStyles, StringComparison.Ordinal);
 
-        Assert.Contains("MudNumericField T=\"int?\" @bind-Value=\"countryId\"", supplierCreate, StringComparison.Ordinal);
-        Assert.Contains("model.CountryId = countryId.Value", supplierCreate, StringComparison.Ordinal);
+        Assert.Contains("ProcurementInputField TValue=\"int\"", supplierCreate, StringComparison.Ordinal);
+        Assert.Contains("@bind-Value=\"model.CountryId\"", supplierCreate, StringComparison.Ordinal);
+        Assert.Contains("Min=\"1\"", supplierCreate, StringComparison.Ordinal);
         Assert.Contains("supplier-danger-zone", supplierView, StringComparison.Ordinal);
         Assert.Contains("purchase-order-danger-zone", purchaseView, StringComparison.Ordinal);
         Assert.Contains("else if (!string.IsNullOrWhiteSpace(error) && detail is null)", purchaseView, StringComparison.Ordinal);

@@ -2,65 +2,92 @@
 @attribute [Authorize]
 @inject HttpClient Http
 @inject NavigationManager Navigation
-@inject IDialogService Dialogs
 @inject IStringLocalizer<SupplierView> Text
 @inject IStringLocalizer<SupplierCreate> Fields
 
 <PageTitle>@Text["PageTitle", Id]</PageTitle>
-<MudContainer MaxWidth="MaxWidth.Medium" Class="supplier-editor-page">
-    <header class="operations-page-header"><div><MudText Typo="Typo.h4" HtmlTag="h1">@(detail?.Name ?? Text["Supplier"])</MudText><MudText Typo="Typo.body2">@Text["SupplierNumber", Id]</MudText></div></header>
-    @if (loading) { <div role="status" aria-live="polite"><MudProgressLinear Indeterminate="true" aria-label="@Text["Loading"]" /><span class="visually-hidden">@Text["Loading"]</span></div> }
-    else if (!string.IsNullOrWhiteSpace(error)) { <MudAlert Severity="Severity.Error" Class="mb-4" aria-live="assertive">@error</MudAlert> }
+<main class="supplier-editor-page">
+    <header class="operations-page-header"><div><h1>@(detail?.Name ?? Text["Supplier"])</h1><p>@Text["SupplierNumber", Id]</p></div></header>
+    @if (loading)
+    {
+        <div class="supplier-editor-loading" role="status" aria-live="polite"><ShadcnSpinner Label="@Text["Loading"]" Size="1.25rem" /><span>@Text["Loading"]</span></div>
+    }
+    else if (!string.IsNullOrWhiteSpace(error) && detail is null)
+    {
+        <ShadcnAlert Variant="ShadcnAlertVariant.Destructive" AlertRole="ShadcnAlertRole.Alert"><ShadcnAlertDescription>@error</ShadcnAlertDescription></ShadcnAlert>
+    }
     @if (detail is not null)
     {
-        @if (!string.IsNullOrWhiteSpace(notification)) { <MudAlert Severity="Severity.Success" Class="mb-4" aria-live="polite">@notification</MudAlert> }
-        <MudForm @ref="form" Model="@model" @bind-IsValid="formValid" Class="supplier-editor-form">
-            <MudPaper Class="pa-4 mb-4" Elevation="1">
-            <MudText Typo="Typo.h6" HtmlTag="h2" id="supplier-edit-heading">@Fields["Supplier"]</MudText>
-            <MudTextField @bind-Value="model.Name" For="@(() => model.Name)" Label="@Fields["Name"]" Required="true" />
-            <MudTextField @bind-Value="model.Website" For="@(() => model.Website)" Label="@Fields["Website"]" InputType="InputType.Url" />
-            <MudTextField @bind-Value="model.TaxNumber" Label="@Fields["TaxNumber"]" />
-            <MudTextField @bind-Value="model.Email" For="@(() => model.Email)" Label="@Fields["Email"]" InputType="InputType.Email" />
-            <MudTextField @bind-Value="model.Telephone" Label="@Fields["Telephone"]" InputType="InputType.Telephone" />
-            <MudTextField @bind-Value="model.Mobile" Label="@Fields["Mobile"]" InputType="InputType.Telephone" />
-            <MudTextField @bind-Value="model.Fax" Label="@Fields["Fax"]" />
-            <MudTextField @bind-Value="model.Note" Label="@Fields["Note"]" Lines="3" />
-            </MudPaper>
+        @if (!string.IsNullOrWhiteSpace(error)) { <ShadcnAlert Variant="ShadcnAlertVariant.Destructive" AlertRole="ShadcnAlertRole.Alert"><ShadcnAlertDescription>@error</ShadcnAlertDescription></ShadcnAlert> }
+        @if (!string.IsNullOrWhiteSpace(notification)) { <ShadcnAlert AlertRole="ShadcnAlertRole.Status"><ShadcnAlertDescription>@notification</ShadcnAlertDescription></ShadcnAlert> }
+        <EditForm EditContext="@editContext" OnValidSubmit="SaveAsync" OnInvalidSubmit="HandleInvalidSubmit" class="supplier-editor-form">
+            <DataAnnotationsValidator />
+            <section class="supplier-editor-section" aria-labelledby="supplier-edit-heading">
+                <h2 id="supplier-edit-heading">@Fields["Supplier"]</h2>
+                <div class="supplier-editor-grid">
+                    <ProcurementInputField TValue="string" Id="supplier-edit-name" Label="@Fields["Name"]" @bind-Value="model.Name" Required="true" MaxLength="256" Disabled="@submitting" />
+                    <ProcurementInputField TValue="string" Id="supplier-edit-website" Label="@Fields["Website"]" Type="url" @bind-Value="model.Website" Disabled="@submitting" />
+                    <ProcurementInputField TValue="string" Id="supplier-edit-tax-number" Label="@Fields["TaxNumber"]" @bind-Value="model.TaxNumber" Disabled="@submitting" />
+                    <ProcurementInputField TValue="string" Id="supplier-edit-email" Label="@Fields["Email"]" Type="email" @bind-Value="model.Email" Disabled="@submitting" />
+                    <ProcurementInputField TValue="string" Id="supplier-edit-telephone" Label="@Fields["Telephone"]" Type="tel" @bind-Value="model.Telephone" Disabled="@submitting" />
+                    <ProcurementInputField TValue="string" Id="supplier-edit-mobile" Label="@Fields["Mobile"]" Type="tel" @bind-Value="model.Mobile" Disabled="@submitting" />
+                    <ProcurementInputField TValue="string" Id="supplier-edit-fax" Label="@Fields["Fax"]" @bind-Value="model.Fax" Disabled="@submitting" />
+                    <ShadcnFormField Id="supplier-edit-note" Label="@Fields["Note"]" Class="supplier-editor-wide"><Control><ShadcnTextarea TValue="string" id="supplier-edit-note" @bind-Value="model.Note" Disabled="@submitting" /></Control></ShadcnFormField>
+                </div>
+            </section>
 
-            <MudPaper Class="pa-4 mb-4" Elevation="1">
-            <MudText Typo="Typo.h6" HtmlTag="h2">@Fields["Address"]</MudText>
-            <MudTextField @bind-Value="model.Building" Label="@Fields["Building"]" />
-            <MudTextField @bind-Value="model.Address1" For="@(() => model.Address1)" Label="@Fields["Address1"]" Required="true" />
-            <MudTextField @bind-Value="model.Address2" Label="@Fields["Address2"]" />
-            <MudTextField @bind-Value="model.City" Label="@Fields["City"]" />
-            <MudTextField @bind-Value="model.State" Label="@Fields["State"]" />
-            <MudTextField @bind-Value="model.PostalCode" Label="@Fields["PostalCode"]" />
-            <MudNumericField @bind-Value="model.CountryId" For="@(() => model.CountryId)" Label="@Fields["CountryId"]" Min="1" Required="true" />
-            </MudPaper>
-            <MudStack Row="true" Spacing="2" Class="mt-4 supplier-editor-actions">
-                <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="@submitting" OnClick="SaveAsync">@Text["Save"]</MudButton>
-                <LegacyLink Href="/Suppliers/Index" Role="LegacyLinkRole.Navigation" StartIcon="@Icons.Material.Filled.ArrowBack" AriaLabel="@Text["Back"]">@Text["Back"]</LegacyLink>
-            </MudStack>
-        </MudForm>
+            <section class="supplier-editor-section" aria-labelledby="supplier-edit-address-heading">
+                <h2 id="supplier-edit-address-heading">@Fields["Address"]</h2>
+                <div class="supplier-editor-grid">
+                    <ProcurementInputField TValue="string" Id="supplier-edit-building" Label="@Fields["Building"]" @bind-Value="model.Building" Disabled="@submitting" />
+                    <ProcurementInputField TValue="string" Id="supplier-edit-address-1" Label="@Fields["Address1"]" @bind-Value="model.Address1" Required="true" Disabled="@submitting" />
+                    <ProcurementInputField TValue="string" Id="supplier-edit-address-2" Label="@Fields["Address2"]" @bind-Value="model.Address2" Disabled="@submitting" />
+                    <ProcurementInputField TValue="string" Id="supplier-edit-city" Label="@Fields["City"]" @bind-Value="model.City" Disabled="@submitting" />
+                    <ProcurementInputField TValue="string" Id="supplier-edit-state" Label="@Fields["State"]" @bind-Value="model.State" Disabled="@submitting" />
+                    <ProcurementInputField TValue="string" Id="supplier-edit-postal-code" Label="@Fields["PostalCode"]" @bind-Value="model.PostalCode" Disabled="@submitting" />
+                    <ProcurementInputField TValue="int" Id="supplier-edit-country-id" Label="@Fields["CountryId"]" Type="number" Min="1" @bind-Value="model.CountryId" Required="true" Disabled="@submitting" />
+                </div>
+            </section>
+            <div class="supplier-editor-actions">
+                <ShadcnButton ButtonType="ShadcnButtonType.Submit" OperationFeedback="false" Disabled="@submitting">@Text["Save"]</ShadcnButton>
+                <LegacyLink Href="/Suppliers/Index" Role="LegacyLinkRole.Navigation" AriaLabel="@Text["Back"]">@Text["Back"]</LegacyLink>
+            </div>
+        </EditForm>
 
-        <MudPaper Class="pa-4 mt-6 supplier-danger-zone" Elevation="0">
-            <MudButton Variant="Variant.Filled" Color="Color.Error" Disabled="@submitting" OnClick="ConfirmDeleteAsync">@Text["Delete"]</MudButton>
-        </MudPaper>
+        <section class="supplier-danger-zone" aria-labelledby="supplier-danger-heading">
+            <h2 id="supplier-danger-heading">@Text["ConfirmDeleteTitle"]</h2>
+            <ShadcnAlertDialog>
+                <ShadcnAlertDialogTrigger Disabled="@submitting">@Text["Delete"]</ShadcnAlertDialogTrigger>
+                <ShadcnAlertDialogContent>
+                    <ShadcnAlertDialogHeader>
+                        <ShadcnAlertDialogTitle>@Text["ConfirmDeleteTitle"]</ShadcnAlertDialogTitle>
+                        <ShadcnAlertDialogDescription>@Text["ConfirmDeleteBody"]</ShadcnAlertDialogDescription>
+                    </ShadcnAlertDialogHeader>
+                    <ShadcnAlertDialogFooter>
+                        <ShadcnAlertDialogCancel Disabled="@submitting">@Text["Cancel"]</ShadcnAlertDialogCancel>
+                        <ShadcnAlertDialogAction Disabled="@submitting" OnClick="@(_ => DeleteAsync())">@Text["Delete"]</ShadcnAlertDialogAction>
+                    </ShadcnAlertDialogFooter>
+                </ShadcnAlertDialogContent>
+            </ShadcnAlertDialog>
+        </section>
     }
-</MudContainer>
+</main>
 
 @code {
     [SupplyParameterFromQuery(Name = "id")] public int Id { get; set; }
     private readonly SupplierCreateRequest model = new();
     private SupplierDetail? detail;
-    private MudForm? form;
-    private bool formValid, loading, submitting;
+    private EditContext editContext = null!;
+    private bool loading, submitting;
     private string? error, notification;
 
-    protected override async Task OnParametersSetAsync()
+    protected override void OnInitialized() => editContext = new EditContext(model);
+    protected override async Task OnParametersSetAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
     {
-        if (Id <= 0) { error = Text["NotFound"]; return; }
-        loading = true; error = null; detail = null;
+        if (Id <= 0) { error = Text["NotFound"]; detail = null; return; }
+        loading = true; error = null; notification = null; detail = null;
         try
         {
             using var response = await Http.GetForPresentationAsync($"/bff/suppliers/{Id}");
@@ -72,15 +99,17 @@
             detail = await response.Content.ReadFromJsonAsync<SupplierDetail>();
             if (detail is null || detail.Id != Id) { detail = null; error = Text["InvalidResponse"]; return; }
             Copy(detail);
+            editContext = new EditContext(model);
         }
         catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException) { error = Text["Unavailable"]; }
         finally { loading = false; }
     }
 
+    private void HandleInvalidSubmit(EditContext _) => error = Text["ValidationFailed"];
+
     private async Task SaveAsync()
     {
-        if (submitting || form is null) return;
-        await form.ValidateAsync(); if (!formValid) { error = Text["ValidationFailed"]; return; }
+        if (submitting) return;
         using var response = await SendWriteAsync(HttpMethod.Put);
         if (response is null || !HandleWrite(response)) return;
         notification = Text["Saved"];
@@ -94,28 +123,13 @@
         Navigation.NavigateTo("/Suppliers/Index");
     }
 
-    private async Task ConfirmDeleteAsync()
-    {
-        var confirmed = await Dialogs.ShowMessageBoxAsync(
-            Text["ConfirmDeleteTitle"],
-            Text["ConfirmDeleteBody"],
-            yesText: Text["Delete"],
-            cancelText: Text["Cancel"]);
-        if (confirmed is true)
-        {
-            await DeleteAsync();
-        }
-    }
-
     private async Task<HttpResponseMessage?> SendWriteAsync(HttpMethod method)
     {
         submitting = true; error = null; notification = null;
         try
         {
             using var sessionResponse = await Http.GetForPresentationAsync("/bff/session");
-            var session = sessionResponse.IsSuccessStatusCode
-                ? await sessionResponse.Content.ReadFromJsonAsync<EmployeeSessionSummary>()
-                : null;
+            var session = sessionResponse.IsSuccessStatusCode ? await sessionResponse.Content.ReadFromJsonAsync<EmployeeSessionSummary>() : null;
             if (string.IsNullOrWhiteSpace(session?.CsrfToken)) { error = Text["Unavailable"]; return null; }
             using var request = new HttpRequestMessage(method, $"/bff/suppliers/{Id}");
             if (method == HttpMethod.Put) request.Content = JsonContent.Create(model);
