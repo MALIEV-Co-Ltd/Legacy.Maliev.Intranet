@@ -1,5 +1,6 @@
 @page "/Materials/View"
 @attribute [Authorize]
+@using Microsoft.AspNetCore.Components.Forms
 @inject HttpClient Http
 @inject NavigationManager Navigation
 @inject IStringLocalizer<MaterialDetail> Text
@@ -7,173 +8,139 @@
 
 <PageTitle>@Text["PageTitle", Id]</PageTitle>
 
-<MudContainer MaxWidth="MaxWidth.Large">
-    <header class="operations-page-header"><div><MudText Typo="Typo.h4" HtmlTag="h1">@Text["Material", Id]</MudText><MudText Typo="Typo.body2">@Text["Catalog"]</MudText></div></header>
+<main class="material-detail">
+    <header class="operations-page-header"><div><h1>@Text["Material", Id]</h1><p>@Text["Catalog"]</p></div></header>
 
     @if (loading)
     {
-        <div role="status" aria-live="polite"><MudProgressLinear Indeterminate="true" Color="Color.Primary" aria-label="@Text["Loading"]" /><span class="visually-hidden">@Text["Loading"]</span></div>
+        <div class="material-detail__loading" role="status" aria-live="polite"><ShadcnSpinner Label="@Text["Loading"]" Size="1.25rem" /><span>@Text["Loading"]</span></div>
     }
     else if (notFound)
     {
-        <MudAlert Severity="Severity.Info" aria-live="polite">@error</MudAlert>
-        <LegacyLink Href="/Materials/Index" Role="LegacyLinkRole.Navigation" StartIcon="@Icons.Material.Filled.ArrowBack" AriaLabel="@Text["Back"]" Class="mt-4">@Text["Back"]</LegacyLink>
+        <ShadcnAlert AlertRole="ShadcnAlertRole.Status"><ShadcnAlertDescription>@error</ShadcnAlertDescription></ShadcnAlert>
+        <LegacyLink Href="/Materials/Index" Role="LegacyLinkRole.Navigation" AriaLabel="@Text["Back"]" Class="material-detail__back">@Text["Back"]</LegacyLink>
     }
     else if (!string.IsNullOrWhiteSpace(error))
     {
-        <MudAlert Severity="Severity.Error" aria-live="assertive">@error</MudAlert>
-        <div class="d-flex flex-wrap gap-2 mt-4">
-            <MudButton OnClick="LoadAsync" Variant="Variant.Filled" Color="Color.Primary">@Text["Retry"]</MudButton>
-            <LegacyLink Href="/Materials/Index" Role="LegacyLinkRole.Navigation" StartIcon="@Icons.Material.Filled.ArrowBack" AriaLabel="@Text["Back"]">@Text["Back"]</LegacyLink>
-        </div>
+        <ShadcnAlert Variant="ShadcnAlertVariant.Destructive" AlertRole="ShadcnAlertRole.Alert"><ShadcnAlertDescription>@error</ShadcnAlertDescription></ShadcnAlert>
+        <div class="material-detail__actions"><ShadcnButton OnClick="LoadAsync">@Text["Retry"]</ShadcnButton><LegacyLink Href="/Materials/Index" Role="LegacyLinkRole.Navigation" AriaLabel="@Text["Back"]">@Text["Back"]</LegacyLink></div>
     }
     else if (material is not null)
     {
-        @if (!string.IsNullOrWhiteSpace(error))
-        {
-            <MudAlert Severity="Severity.Error" Class="mb-4">@error</MudAlert>
-        }
         @if (!string.IsNullOrWhiteSpace(notification))
         {
-            <MudAlert Severity="Severity.Success" Class="mb-4" aria-live="polite">@notification</MudAlert>
+            <ShadcnAlert AlertRole="ShadcnAlertRole.Status"><ShadcnAlertDescription>@notification</ShadcnAlertDescription></ShadcnAlert>
         }
 
-        <MudPaper Class="pa-4 mb-4" Elevation="1">
-            <MudGrid Spacing="3">
-                <MudItem xs="12" sm="6"><MudText Typo="Typo.caption">@Text["Id"]</MudText><MudText>@material.Id</MudText></MudItem>
-                <MudItem xs="12" sm="6"><MudText Typo="Typo.caption">@Text["Group"]</MudText><MudText>@ValueOrUnavailable(material.MaterialGroup?.Name)</MudText></MudItem>
-                <MudItem xs="12" sm="6"><MudText Typo="Typo.caption">@Text["Name"]</MudText><MudText>@material.Name</MudText></MudItem>
-                <MudItem xs="12" sm="6"><MudText Typo="Typo.caption">@Text["Number"]</MudText><MudText>@ValueOrUnavailable(material.MaterialNumber)</MudText></MudItem>
-                <MudItem xs="12" sm="6"><MudText Typo="Typo.caption">@Text["Density"]</MudText><MudText>@DensityOrUnavailable()</MudText></MudItem>
-                <MudItem xs="12" sm="6"><MudText Typo="Typo.caption">@Text["Machinable"]</MudText><MudText>@Text[material.Machinable ? "Yes" : "No"]</MudText></MudItem>
-                <MudItem xs="12" sm="6"><MudText Typo="Typo.caption">@Text["Printable"]</MudText><MudText>@Text[material.Printable ? "Yes" : "No"]</MudText></MudItem>
-            </MudGrid>
-        </MudPaper>
+        <section class="material-detail__summary" aria-label="@Text["Material", Id]">
+            <dl>
+                <div><dt>@Text["Id"]</dt><dd>@material.Id</dd></div>
+                <div><dt>@Text["Group"]</dt><dd>@ValueOrUnavailable(material.MaterialGroup?.Name)</dd></div>
+                <div><dt>@Text["Name"]</dt><dd>@material.Name</dd></div>
+                <div><dt>@Text["Number"]</dt><dd>@ValueOrUnavailable(material.MaterialNumber)</dd></div>
+                <div><dt>@Text["Density"]</dt><dd>@DensityOrUnavailable()</dd></div>
+                <div><dt>@Text["Machinable"]</dt><dd>@Text[material.Machinable ? "Yes" : "No"]</dd></div>
+                <div><dt>@Text["Printable"]</dt><dd>@Text[material.Printable ? "Yes" : "No"]</dd></div>
+            </dl>
+        </section>
 
-        <MudForm @ref="form" Model="@model" @bind-IsValid="formValid">
-            <MudPaper Class="pa-4 mb-4" Elevation="1">
-                <MudText Typo="Typo.h6" HtmlTag="h2" Class="mb-3">@Fields["BasicInformation"]</MudText>
-                <MudGrid Spacing="3">
-                    <MudItem xs="12" md="6"><MudTextField @bind-Value="model.Name" For="@(() => model.Name)" Label="@Fields["Name"]" Required="true" MaxLength="50" /></MudItem>
-                    <MudItem xs="12" md="6">
-                        <MudSelect T="int" @bind-Value="model.MaterialGroupId" For="@(() => model.MaterialGroupId)" Label="@Fields["MaterialGroup"]" Required="true">
-                            @foreach (var group in materialGroups)
-                            {
-                                <MudSelectItem T="int" Value="@group.Id">@group.Name</MudSelectItem>
-                            }
-                        </MudSelect>
-                    </MudItem>
-                    <MudItem xs="12" md="6"><MudTextField @bind-Value="model.MaterialNumber" Label="@Fields["MaterialNumber"]" /></MudItem>
-                    <MudItem xs="12" md="6"><MudTextField @bind-Value="model.ManufacturerReference" Label="@Fields["ManufacturerReference"]" /></MudItem>
-                    <MudItem xs="12" md="6"><MudNumericField T="decimal?" @bind-Value="model.PricePerKilogram" Label="@Fields["PricePerKilogram"]" /></MudItem>
-                    <MudItem xs="12" md="6">
-                        <MudSelect T="int?" @bind-Value="model.CurrencyId" For="@(() => model.CurrencyId)" Label="@Fields["Currency"]" Clearable="true">
-                            @foreach (var currency in currencies)
-                            {
-                                <MudSelectItem T="int?" Value="@((int?)currency.Id)">@currency.ShortName</MudSelectItem>
-                            }
-                        </MudSelect>
-                    </MudItem>
-                    <MudItem xs="12"><MudTextField @bind-Value="model.Url" For="@(() => model.Url)" Label="@Fields["DatasheetUrl"]" InputType="InputType.Url" /></MudItem>
-                    <MudItem xs="12"><MudTextField @bind-Value="model.Comment" Label="@Fields["Comment"]" Lines="3" /></MudItem>
-                </MudGrid>
-            </MudPaper>
+        <EditForm EditContext="@editContext" OnValidSubmit="SubmitAsync" OnInvalidSubmit="@(_ => error = Text["ValidationFailed"])" class="material-detail__form">
+            <DataAnnotationsValidator />
+            <section class="material-detail__section">
+                <h2>@Fields["BasicInformation"]</h2>
+                <div class="material-detail__grid">
+                    <CatalogInputField TValue="string" Id="material-detail-name" Label="@Fields["Name"]" Required="true" MaxLength="50" @bind-Value="model.Name" />
+                    <CatalogSelectField TValue="int" Id="material-detail-group" Label="@Fields["MaterialGroup"]" @bind-Value="model.MaterialGroupId" Options="@MaterialGroupOptions" Placeholder="@Fields["MaterialGroup"]" Required="true" />
+                    <CatalogInputField TValue="string" Id="material-detail-number" Label="@Fields["MaterialNumber"]" @bind-Value="model.MaterialNumber" />
+                    <CatalogInputField TValue="string" Id="material-detail-manufacturer" Label="@Fields["ManufacturerReference"]" @bind-Value="model.ManufacturerReference" />
+                    <CatalogInputField TValue="decimal?" Id="material-detail-price" Label="@Fields["PricePerKilogram"]" Type="number" InputMode="decimal" @bind-Value="model.PricePerKilogram" />
+                    <CatalogSelectField TValue="int?" Id="material-detail-currency" Label="@Fields["Currency"]" @bind-Value="model.CurrencyId" Options="@CurrencyOptions" Placeholder="@Fields["Currency"]" Clearable="true" />
+                    <CatalogInputField TValue="string" Id="material-detail-url" Label="@Fields["DatasheetUrl"]" Type="url" @bind-Value="model.Url" />
+                    <ShadcnFormField Id="material-detail-comment" Label="@Fields["Comment"]" Class="material-detail__wide"><Control><ShadcnTextarea TValue="string" id="material-detail-comment" @bind-Value="model.Comment" /></Control></ShadcnFormField>
+                </div>
+            </section>
 
-            <MudPaper Class="pa-4 mb-4" Elevation="1">
-                <MudText Typo="Typo.h6" HtmlTag="h2" Class="mb-3">@Fields["MechanicalProperties"]</MudText>
-                <MudGrid Spacing="3">
-                    <MudItem xs="12" md="6"><MudNumericField T="decimal?" @bind-Value="model.DensityKilogramPerCubicMeter" Label="@Fields["Density"]" /></MudItem>
-                    <MudItem xs="12" md="6"><MudNumericField T="decimal?" @bind-Value="model.ThermalConductivityWattPerMeterKelvin" Label="@Fields["ThermalConductivity"]" /></MudItem>
-                    <MudItem xs="12" md="6"><MudNumericField T="decimal?" @bind-Value="model.TensileStrengthUltimateGigaPascal" Label="@Fields["UltimateTensileStrength"]" /></MudItem>
-                    <MudItem xs="12" md="6"><MudNumericField T="decimal?" @bind-Value="model.TensileStrengthYieldMegaPascal" Label="@Fields["YieldTensileStrength"]" /></MudItem>
-                    <MudItem xs="12" md="6"><MudNumericField T="decimal?" @bind-Value="model.ShearModulusGigaPascal" Label="@Fields["ShearModulus"]" /></MudItem>
-                    <MudItem xs="12" md="6"><MudNumericField T="decimal?" @bind-Value="model.MachinabilityPercent" Label="@Fields["MachinabilityPercent"]" /></MudItem>
-                    <MudItem xs="12" md="6"><MudNumericField T="decimal?" @bind-Value="model.HardnessBrinell" Label="@Fields["HardnessBrinell"]" /></MudItem>
-                    <MudItem xs="12" md="6"><MudNumericField T="decimal?" @bind-Value="model.HardnessKnoop" Label="@Fields["HardnessKnoop"]" /></MudItem>
-                    <MudItem xs="12" md="6"><MudNumericField T="decimal?" @bind-Value="model.HardnessRockwellA" Label="@Fields["HardnessRockwellA"]" /></MudItem>
-                    <MudItem xs="12" md="6"><MudNumericField T="decimal?" @bind-Value="model.HardnessRockwellB" Label="@Fields["HardnessRockwellB"]" /></MudItem>
-                    <MudItem xs="12" md="6"><MudNumericField T="decimal?" @bind-Value="model.HardnessRockwellC" Label="@Fields["HardnessRockwellC"]" /></MudItem>
-                    <MudItem xs="12" md="6"><MudNumericField T="decimal?" @bind-Value="model.HardnessVickers" Label="@Fields["HardnessVickers"]" /></MudItem>
-                </MudGrid>
-            </MudPaper>
+            <section class="material-detail__section">
+                <h2>@Fields["MechanicalProperties"]</h2>
+                <div class="material-detail__grid">
+                    <CatalogInputField TValue="decimal?" Id="material-detail-density" Label="@Fields["Density"]" Type="number" InputMode="decimal" @bind-Value="model.DensityKilogramPerCubicMeter" />
+                    <CatalogInputField TValue="decimal?" Id="material-detail-thermal" Label="@Fields["ThermalConductivity"]" Type="number" InputMode="decimal" @bind-Value="model.ThermalConductivityWattPerMeterKelvin" />
+                    <CatalogInputField TValue="decimal?" Id="material-detail-ultimate" Label="@Fields["UltimateTensileStrength"]" Type="number" InputMode="decimal" @bind-Value="model.TensileStrengthUltimateGigaPascal" />
+                    <CatalogInputField TValue="decimal?" Id="material-detail-yield" Label="@Fields["YieldTensileStrength"]" Type="number" InputMode="decimal" @bind-Value="model.TensileStrengthYieldMegaPascal" />
+                    <CatalogInputField TValue="decimal?" Id="material-detail-shear" Label="@Fields["ShearModulus"]" Type="number" InputMode="decimal" @bind-Value="model.ShearModulusGigaPascal" />
+                    <CatalogInputField TValue="decimal?" Id="material-detail-machinability" Label="@Fields["MachinabilityPercent"]" Type="number" InputMode="decimal" @bind-Value="model.MachinabilityPercent" />
+                    <CatalogInputField TValue="decimal?" Id="material-detail-brinell" Label="@Fields["HardnessBrinell"]" Type="number" InputMode="decimal" @bind-Value="model.HardnessBrinell" />
+                    <CatalogInputField TValue="decimal?" Id="material-detail-knoop" Label="@Fields["HardnessKnoop"]" Type="number" InputMode="decimal" @bind-Value="model.HardnessKnoop" />
+                    <CatalogInputField TValue="decimal?" Id="material-detail-rockwell-a" Label="@Fields["HardnessRockwellA"]" Type="number" InputMode="decimal" @bind-Value="model.HardnessRockwellA" />
+                    <CatalogInputField TValue="decimal?" Id="material-detail-rockwell-b" Label="@Fields["HardnessRockwellB"]" Type="number" InputMode="decimal" @bind-Value="model.HardnessRockwellB" />
+                    <CatalogInputField TValue="decimal?" Id="material-detail-rockwell-c" Label="@Fields["HardnessRockwellC"]" Type="number" InputMode="decimal" @bind-Value="model.HardnessRockwellC" />
+                    <CatalogInputField TValue="decimal?" Id="material-detail-vickers" Label="@Fields["HardnessVickers"]" Type="number" InputMode="decimal" @bind-Value="model.HardnessVickers" />
+                </div>
+            </section>
 
-            <MudPaper Class="pa-4 mb-4" Elevation="1">
-                <MudText Typo="Typo.h6" HtmlTag="h2" Class="mb-3">@Fields["MaterialIdentification"]</MudText>
-                <MudGrid Spacing="3">
-                    <MudItem xs="12" sm="6" md="4"><MudTextField @bind-Value="model.Aisi" Label="@Fields["Aisi"]" /></MudItem>
-                    <MudItem xs="12" sm="6" md="4"><MudTextField @bind-Value="model.Din" Label="@Fields["Din"]" /></MudItem>
-                    <MudItem xs="12" sm="6" md="4"><MudTextField @bind-Value="model.Bts" Label="@Fields["Bts"]" /></MudItem>
-                    <MudItem xs="12" sm="6" md="4"><MudTextField @bind-Value="model.Jis" Label="@Fields["Jis"]" /></MudItem>
-                    <MudItem xs="12" sm="6" md="4"><MudTextField @bind-Value="model.Uns" Label="@Fields["Uns"]" /></MudItem>
-                    <MudItem xs="12" sm="6" md="4"><MudTextField @bind-Value="model.En" Label="@Fields["En"]" /></MudItem>
-                    <MudItem xs="12" sm="6" md="4"><MudTextField @bind-Value="model.Afnor" Label="@Fields["Afnor"]" /></MudItem>
-                    <MudItem xs="12" sm="6" md="4"><MudTextField @bind-Value="model.Uni" Label="@Fields["Uni"]" /></MudItem>
-                    <MudItem xs="12" sm="6" md="4"><MudTextField @bind-Value="model.Sis" Label="@Fields["Sis"]" /></MudItem>
-                    <MudItem xs="12" sm="6" md="4"><MudTextField @bind-Value="model.Sae" Label="@Fields["Sae"]" /></MudItem>
-                    <MudItem xs="12" sm="6" md="4"><MudTextField @bind-Value="model.Astm" Label="@Fields["Astm"]" /></MudItem>
-                    <MudItem xs="12" sm="6" md="4"><MudTextField @bind-Value="model.Ams" Label="@Fields["Ams"]" /></MudItem>
-                </MudGrid>
-            </MudPaper>
+            <section class="material-detail__section">
+                <h2>@Fields["MaterialIdentification"]</h2>
+                <div class="material-detail__grid material-detail__grid--three">
+                    <CatalogInputField TValue="string" Id="material-detail-aisi" Label="@Fields["Aisi"]" @bind-Value="model.Aisi" />
+                    <CatalogInputField TValue="string" Id="material-detail-din" Label="@Fields["Din"]" @bind-Value="model.Din" />
+                    <CatalogInputField TValue="string" Id="material-detail-bts" Label="@Fields["Bts"]" @bind-Value="model.Bts" />
+                    <CatalogInputField TValue="string" Id="material-detail-jis" Label="@Fields["Jis"]" @bind-Value="model.Jis" />
+                    <CatalogInputField TValue="string" Id="material-detail-uns" Label="@Fields["Uns"]" @bind-Value="model.Uns" />
+                    <CatalogInputField TValue="string" Id="material-detail-en" Label="@Fields["En"]" @bind-Value="model.En" />
+                    <CatalogInputField TValue="string" Id="material-detail-afnor" Label="@Fields["Afnor"]" @bind-Value="model.Afnor" />
+                    <CatalogInputField TValue="string" Id="material-detail-uni" Label="@Fields["Uni"]" @bind-Value="model.Uni" />
+                    <CatalogInputField TValue="string" Id="material-detail-sis" Label="@Fields["Sis"]" @bind-Value="model.Sis" />
+                    <CatalogInputField TValue="string" Id="material-detail-sae" Label="@Fields["Sae"]" @bind-Value="model.Sae" />
+                    <CatalogInputField TValue="string" Id="material-detail-astm" Label="@Fields["Astm"]" @bind-Value="model.Astm" />
+                    <CatalogInputField TValue="string" Id="material-detail-ams" Label="@Fields["Ams"]" @bind-Value="model.Ams" />
+                </div>
+            </section>
 
-            <MudPaper Class="pa-4 mb-4" Elevation="1">
-                <MudText Typo="Typo.h6" HtmlTag="h2" Class="mb-3">@Fields["ProcessCompatibility"]</MudText>
-                <MudCheckBox T="bool" @bind-Value="model.Machinable" Label="@Fields["Machinable"]" />
-                <MudCheckBox T="bool" @bind-Value="model.Printable" Label="@Fields["Printable"]" />
-            </MudPaper>
-            <MudPaper Class="pa-4 mb-4" Elevation="1">
-                <MudText Typo="Typo.h6" HtmlTag="h2" Class="mb-3">@Fields["AvailableColors"]</MudText>
-                @if (loadingAssociations)
-                {
-                    <MudText Color="Color.Secondary">@Text["Loading"]</MudText>
-                }
-                else if (colors.Count == 0)
-                {
-                    <MudText Color="Color.Secondary">@Text["NotAvailable"]</MudText>
-                }
+            <section class="material-detail__section">
+                <h2>@Fields["ProcessCompatibility"]</h2>
+                <div class="material-detail__checks">
+                    <CatalogCheckboxField Id="material-detail-machinable" Label="@Fields["Machinable"]" @bind-Value="model.Machinable" Disabled="@submitting" />
+                    <CatalogCheckboxField Id="material-detail-printable" Label="@Fields["Printable"]" @bind-Value="model.Printable" Disabled="@submitting" />
+                </div>
+            </section>
+
+            <section class="material-detail__section">
+                <h2>@Fields["AvailableColors"]</h2>
+                @if (loadingAssociations) { <p class="material-detail__muted">@Text["Loading"]</p> }
+                else if (colors.Count == 0) { <p class="material-detail__muted">@Text["NotAvailable"]</p> }
                 else
                 {
-                    <MudGrid Spacing="1">
+                    <div class="material-detail__association-grid">
                         @foreach (var color in colors)
                         {
-                            <MudItem xs="12" sm="6" md="4">
-                                <MudCheckBox T="bool" Value="@selectedColorIds.Contains(color.Id)" ValueChanged="value => SetColorSelection(color.Id, value)" Label="@color.Name" />
-                            </MudItem>
+                            <CatalogCheckboxField Id="@($"material-color-{color.Id}")" Label="@color.Name" Value="@selectedColorIds.Contains(color.Id)" ValueChanged="@(value => SetColorSelection(color.Id, value))" Disabled="@submitting" />
                         }
-                    </MudGrid>
+                    </div>
                 }
-            </MudPaper>
-            <MudPaper Class="pa-4 mb-4" Elevation="1">
-                <MudText Typo="Typo.h6" HtmlTag="h2" Class="mb-3">@Fields["AvailableSurfaceFinishes"]</MudText>
-                @if (loadingAssociations)
-                {
-                    <MudText Color="Color.Secondary">@Text["Loading"]</MudText>
-                }
-                else if (surfaceFinishes.Count == 0)
-                {
-                    <MudText Color="Color.Secondary">@Text["NotAvailable"]</MudText>
-                }
+            </section>
+
+            <section class="material-detail__section">
+                <h2>@Fields["AvailableSurfaceFinishes"]</h2>
+                @if (loadingAssociations) { <p class="material-detail__muted">@Text["Loading"]</p> }
+                else if (surfaceFinishes.Count == 0) { <p class="material-detail__muted">@Text["NotAvailable"]</p> }
                 else
                 {
-                    <MudGrid Spacing="1">
+                    <div class="material-detail__association-grid">
                         @foreach (var finish in surfaceFinishes)
                         {
-                            <MudItem xs="12" sm="6" md="4">
-                                <MudCheckBox T="bool" Value="@selectedSurfaceFinishIds.Contains(finish.Id)" ValueChanged="value => SetSurfaceFinishSelection(finish.Id, value)" Label="@finish.Name" />
-                            </MudItem>
+                            <CatalogCheckboxField Id="@($"material-finish-{finish.Id}")" Label="@finish.Name" Value="@selectedSurfaceFinishIds.Contains(finish.Id)" ValueChanged="@(value => SetSurfaceFinishSelection(finish.Id, value))" Disabled="@submitting" />
                         }
-                    </MudGrid>
+                    </div>
                 }
-            </MudPaper>
+            </section>
 
-            <MudStack Row="true" Spacing="2">
-                <MudButton ButtonType="ButtonType.Button" Variant="Variant.Filled" Color="Color.Primary" Disabled="@submitting" OnClick="SubmitAsync">
-                    @(submitting ? Text["Saving"] : Text["SaveMaterial"])
-                </MudButton>
-                <LegacyLink Href="/Materials/Index" Role="LegacyLinkRole.Navigation" StartIcon="@Icons.Material.Filled.ArrowBack" Disabled="@submitting" AriaLabel="@Text["BackToMaterials"]">@Text["BackToMaterials"]</LegacyLink>
-            </MudStack>
-        </MudForm>
+            <div class="material-detail__actions">
+                <ShadcnButton ButtonType="ShadcnButtonType.Submit" OperationFeedback="false" Disabled="@submitting">@(submitting ? Text["Saving"] : Text["SaveMaterial"])</ShadcnButton>
+                <LegacyLink Href="/Materials/Index" Role="LegacyLinkRole.Navigation" Disabled="@submitting" AriaLabel="@Text["BackToMaterials"]">@Text["BackToMaterials"]</LegacyLink>
+            </div>
+        </EditForm>
     }
-</MudContainer>
+</main>
 
 @code {
     [SupplyParameterFromQuery(Name = "id")] public int Id { get; set; }
@@ -182,10 +149,9 @@
     private CatalogMaterialDetail? material;
     private IReadOnlyList<CatalogMaterialGroup> materialGroups = [];
     private IReadOnlyList<CatalogCurrency> currencies = [];
-    private MudForm? form;
+    private EditContext editContext = null!;
     private string? error;
     private string? notification;
-    private bool formValid;
     private bool loading;
     private bool loadingAssociations;
     private bool notFound;
@@ -196,6 +162,11 @@
     private HashSet<int> persistedColorIds = [];
     private HashSet<int> selectedSurfaceFinishIds = [];
     private HashSet<int> persistedSurfaceFinishIds = [];
+
+    private IReadOnlyList<ShadcnSelectOption<int>> MaterialGroupOptions => materialGroups.Select(group => new ShadcnSelectOption<int>(group.Id, group.Name)).ToArray();
+    private IReadOnlyList<ShadcnSelectOption<int?>> CurrencyOptions => currencies.Select(currency => new ShadcnSelectOption<int?>(currency.Id, currency.ShortName)).ToArray();
+
+    protected override void OnInitialized() => editContext = new EditContext(model);
 
     protected override Task OnParametersSetAsync() => LoadAsync();
 
@@ -302,9 +273,8 @@
 
     private async Task SubmitAsync()
     {
-        if (submitting || form is null) return;
-        await form.ValidateAsync();
-        if (!formValid)
+        if (submitting) return;
+        if (!editContext.Validate())
         {
             error = Text["ValidationFailed"];
             return;
@@ -383,6 +353,7 @@
         model.MachinabilityPercent = value.MachinabilityPercent; model.ShearModulusGigaPascal = value.ShearModulusGigaPascal;
         model.ThermalConductivityWattPerMeterKelvin = value.ThermalConductivityWattPerMeterKelvin; model.Url = value.Url;
         model.PricePerKilogram = value.PricePerKilogram; model.CurrencyId = value.CurrencyId; model.Comment = value.Comment;
+        editContext = new EditContext(model);
     }
 
     private async Task SyncAssociationSetAsync(
