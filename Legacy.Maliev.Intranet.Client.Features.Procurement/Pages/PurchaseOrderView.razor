@@ -1,7 +1,9 @@
 @page "/PurchaseOrders/View"
 @attribute [Authorize]
+@using Microsoft.JSInterop
 @inject HttpClient Http
 @inject NavigationManager Navigation
+@inject IJSRuntime JavaScript
 @inject IStringLocalizer<PurchaseOrderView> Text
 
 <PageTitle>@(detail is null ? Text["PageTitle"] : Text["PageTitleWithId", detail.Id])</PageTitle>
@@ -71,8 +73,8 @@
 
         <section class="purchase-order-danger-zone" aria-labelledby="purchase-order-danger-heading">
             <h2 id="purchase-order-danger-heading">@Text["ConfirmDeleteTitle"]</h2>
-            <ShadcnAlertDialog>
-                <ShadcnAlertDialogTrigger Disabled="@deleting">@Text["Delete"]</ShadcnAlertDialogTrigger>
+            <ShadcnAlertDialog Open="@deleteDialogOpen" OpenChanged="HandleDeleteDialogChangedAsync">
+                <ShadcnAlertDialogTrigger id="purchase-order-delete-trigger" Disabled="@deleting">@Text["Delete"]</ShadcnAlertDialogTrigger>
                 <ShadcnAlertDialogContent>
                     <ShadcnAlertDialogHeader>
                         <ShadcnAlertDialogTitle>@Text["ConfirmDeleteTitle"]</ShadcnAlertDialogTitle>
@@ -92,6 +94,7 @@
     [SupplyParameterFromQuery(Name = "id")] public int Id { get; set; }
     private PurchaseOrderDetail? detail;
     private bool loading = true;
+    private bool deleteDialogOpen, restoreDeleteTriggerFocus;
     private bool notFound;
     private bool deleting;
     private bool forbidden;
@@ -147,4 +150,22 @@
     private static string Money(decimal value) => $"{value:N2} THB";
     private static string FormatDate(DateTime? value) => LegacyPresentation.FormatUtcDateTime(value, CultureInfo.CurrentCulture, "-");
     private void NavigateToLogin() => Navigation.NavigateTo($"/Login?returnUrl={Uri.EscapeDataString(Navigation.ToBaseRelativePath(Navigation.Uri))}");
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!restoreDeleteTriggerFocus)
+        {
+            return;
+        }
+
+        restoreDeleteTriggerFocus = false;
+        await JavaScript.InvokeVoidAsync("malievFocus.byId", "purchase-order-delete-trigger");
+    }
+
+    private Task HandleDeleteDialogChangedAsync(bool open)
+    {
+        deleteDialogOpen = open;
+        restoreDeleteTriggerFocus = !open;
+        return Task.CompletedTask;
+    }
 }

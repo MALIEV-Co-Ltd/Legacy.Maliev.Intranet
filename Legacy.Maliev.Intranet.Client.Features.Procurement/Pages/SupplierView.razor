@@ -1,7 +1,9 @@
 @page "/Suppliers/View"
 @attribute [Authorize]
+@using Microsoft.JSInterop
 @inject HttpClient Http
 @inject NavigationManager Navigation
+@inject IJSRuntime JavaScript
 @inject IStringLocalizer<SupplierView> Text
 @inject IStringLocalizer<SupplierCreate> Fields
 
@@ -56,8 +58,8 @@
 
         <section class="supplier-danger-zone" aria-labelledby="supplier-danger-heading">
             <h2 id="supplier-danger-heading">@Text["ConfirmDeleteTitle"]</h2>
-            <ShadcnAlertDialog>
-                <ShadcnAlertDialogTrigger Disabled="@submitting">@Text["Delete"]</ShadcnAlertDialogTrigger>
+            <ShadcnAlertDialog Open="@deleteDialogOpen" OpenChanged="HandleDeleteDialogChangedAsync">
+                <ShadcnAlertDialogTrigger id="supplier-delete-trigger" Disabled="@submitting">@Text["Delete"]</ShadcnAlertDialogTrigger>
                 <ShadcnAlertDialogContent>
                     <ShadcnAlertDialogHeader>
                         <ShadcnAlertDialogTitle>@Text["ConfirmDeleteTitle"]</ShadcnAlertDialogTitle>
@@ -79,10 +81,28 @@
     private SupplierDetail? detail;
     private EditContext editContext = null!;
     private bool loading, submitting;
+    private bool deleteDialogOpen, restoreDeleteTriggerFocus;
     private string? error, notification;
 
     protected override void OnInitialized() => editContext = new EditContext(model);
     protected override async Task OnParametersSetAsync() => await LoadAsync();
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!restoreDeleteTriggerFocus)
+        {
+            return;
+        }
+
+        restoreDeleteTriggerFocus = false;
+        await JavaScript.InvokeVoidAsync("malievFocus.byId", "supplier-delete-trigger");
+    }
+
+    private Task HandleDeleteDialogChangedAsync(bool open)
+    {
+        deleteDialogOpen = open;
+        restoreDeleteTriggerFocus = !open;
+        return Task.CompletedTask;
+    }
 
     private async Task LoadAsync()
     {
