@@ -171,12 +171,11 @@ public sealed class OrdersOperationalTableBrowserTests(
                 await page.GetByRole(AriaRole.Button, new() { Name = "Refresh" }).ClickAsync();
                 break;
             case "search":
-                await page.Locator(".list-toolbar input").First.FillAsync("fixture");
+                await page.Locator("#list-toolbar-search").FillAsync("fixture");
                 await page.WaitForTimeoutAsync(500);
                 break;
             case "sort":
-                await page.Locator(".list-toolbar .mud-select").First.ClickAsync();
-                await page.GetByRole(AriaRole.Option, new() { Name = "ID ascending" }).ClickAsync();
+                await page.Locator("#list-toolbar-sort").SelectOptionAsync("OrderId_Ascending");
                 break;
             case "page":
                 await page.GetByRole(AriaRole.Button, new() { Name = "Next" }).ClickAsync();

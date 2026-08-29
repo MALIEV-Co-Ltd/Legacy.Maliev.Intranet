@@ -45,9 +45,12 @@ public sealed class OrdersViewWasmMigrationContractTests
         Assert.Contains("@page \"/Orders/View\"", page, StringComparison.Ordinal);
         Assert.Contains("@attribute [Authorize]", page, StringComparison.Ordinal);
         Assert.Contains("[SupplyParameterFromQuery(Name = \"id\")]", page, StringComparison.Ordinal);
-        Assert.Contains("MudProgress", page, StringComparison.Ordinal);
-        Assert.Contains("MudAlert", page, StringComparison.Ordinal);
-        Assert.Contains("MudForm", page, StringComparison.Ordinal);
+        Assert.Contains("<ShadcnSpinner", page, StringComparison.Ordinal);
+        Assert.Contains("<ShadcnAlert", page, StringComparison.Ordinal);
+        Assert.Contains("<EditForm", page, StringComparison.Ordinal);
+        Assert.Contains("<ShadcnAccordion", page, StringComparison.Ordinal);
+        Assert.Contains("<ShadcnItemGroup", page, StringComparison.Ordinal);
+        Assert.DoesNotContain("<Mud", page, StringComparison.Ordinal);
         Assert.Contains("Label=\"@Text[\"CustomerId\"]\"", page, StringComparison.Ordinal);
         Assert.Contains("ReadOnly=\"true\"", page, StringComparison.Ordinal);
         Assert.DoesNotContain("@bind-Value=\"edit.CustomerId\"", page, StringComparison.Ordinal);
@@ -103,7 +106,7 @@ public sealed class OrdersViewWasmMigrationContractTests
         Assert.NotNull(pageType?.GetProperty("AvailableStatuses"));
         Assert.Null(pageType?.GetProperty("Statuses"));
         Assert.Contains("page.CurrentStatus", page, StringComparison.Ordinal);
-        Assert.Contains("page.AvailableStatuses", page, StringComparison.Ordinal);
+        Assert.Contains("page?.AvailableStatuses", page, StringComparison.Ordinal);
         Assert.Contains("selectedStatus = null", page, StringComparison.Ordinal);
     }
 

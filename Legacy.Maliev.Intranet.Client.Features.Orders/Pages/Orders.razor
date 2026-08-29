@@ -11,7 +11,7 @@
 <div class="mlv-module-shell orders-module-shell">
     <PageBreadcrumbs Items="@Breadcrumbs" />
     <ModuleHeader Title="@Text["Orders"]" Subtitle="@Text["PageSubtitle"]">
-        <PrimaryButton Icon="@Icons.Material.Outlined.Add" Href="/Orders/Create">
+        <PrimaryButton IconData="@AddIcon" Href="/Orders/Create">
             @Text["CreateOrder"]
         </PrimaryButton>
     </ModuleHeader>
@@ -137,6 +137,7 @@
 </div>
 
 @code {
+    private static readonly ShadcnIconData AddIcon = LucideIconCatalog.Instance.Get(LucideIconNames.Plus);
     private const int PendingWorkingSetSize = 1000;
     private static readonly int[] ToolbarPageSizes = [10, 25, 50, 100, 250];
 

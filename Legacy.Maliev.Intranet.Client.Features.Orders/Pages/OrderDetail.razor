@@ -6,161 +6,109 @@
 
 <PageTitle>@Text["PageTitle", Id ?? 0]</PageTitle>
 
+<main class="order-detail">
 @if (loading)
 {
-    <div role="status" aria-live="polite"><MudProgressLinear Indeterminate="true" Color="Color.Primary" aria-label="@Text["Loading"]" /><span class="visually-hidden">@Text["Loading"]</span></div>
+    <div class="order-detail__loading" role="status" aria-live="polite"><ShadcnSpinner Label="@Text["Loading"]" Size="1.25rem" /><span>@Text["Loading"]</span></div>
 }
 else if (!string.IsNullOrWhiteSpace(error))
 {
-    <MudAlert Severity="Severity.Error" aria-live="assertive">@error</MudAlert>
+    <ShadcnAlert Variant="ShadcnAlertVariant.Destructive" AlertRole="ShadcnAlertRole.Alert"><ShadcnAlertDescription>@error</ShadcnAlertDescription></ShadcnAlert>
 }
 else if (page is not null)
 {
     <header class="operations-page-header order-detail-header">
-        <div><MudText Typo="Typo.h4" HtmlTag="h1">@Text["OrderHeading", page.Order.Id]</MudText><MudText Typo="Typo.body2">@Text["OrderDetails"]</MudText></div>
+        <div><h1>@Text["OrderHeading", page.Order.Id]</h1><p>@Text["OrderDetails"]</p></div>
         <div class="order-header-actions">
-            <LegacyLink Href="/Orders/Index" Role="LegacyLinkRole.Navigation" StartIcon="@Icons.Material.Filled.ArrowBack" AriaLabel="@Text["BackToOrders"]">@Text["BackToOrders"]</LegacyLink>
-            <MudButton Href="@($"/bff/orders/{page.Order.Id}/label")" Target="_blank" Rel="noopener" Variant="Variant.Outlined">@Text["OrderLabel"]</MudButton>
+            <LegacyLink Href="/Orders/Index" Role="LegacyLinkRole.Navigation" AriaLabel="@Text["BackToOrders"]">@Text["BackToOrders"]</LegacyLink>
+            <ShadcnButton Href="@($"/bff/orders/{page.Order.Id}/label")" Target="_blank" Rel="noopener" Variant="ShadcnButtonVariant.Outline">@Text["OrderLabel"]</ShadcnButton>
         </div>
     </header>
 
     @if (!string.IsNullOrWhiteSpace(notice))
     {
-        <MudAlert Severity="Severity.Success" Class="mb-4" aria-live="polite">@notice</MudAlert>
+        <ShadcnAlert AlertRole="ShadcnAlertRole.Status"><ShadcnAlertDescription>@notice</ShadcnAlertDescription></ShadcnAlert>
     }
 
-    <MudForm @ref="form" Model="edit" Class="order-edit-form">
-        <MudExpansionPanels Class="order-edit-sections" MultiExpansion="true">
-        <MudExpansionPanel Class="order-edit-section" Expanded="true" Text="@Text["OrderDetails"]">
-            <div class="order-edit-section-body">
-            <MudGrid>
-            <MudItem xs="12" md="6">
-                <div class="order-customer-context">
-                    <MudTextField Label="@Text["CustomerId"]" Value="@(page.Order.CustomerId?.ToString(CultureInfo.CurrentCulture) ?? "-")" ReadOnly="true" />
-                    @if (page.Order.CustomerId is int customerId)
-                    {
-                        <MudButton Href="@($"/Customers/View?id={customerId}")" Variant="Variant.Outlined">@Text["CustomerInfo"]</MudButton>
-                    }
+    <EditForm Model="@edit" OnSubmit="SaveAsync" class="order-edit-form">
+        <ShadcnAccordion Values="@openSections" ValuesChanged="@(values => openSections = values)" Multiple="true" Label="@Text["OrderDetails"]" Class="order-edit-sections">
+            <ShadcnAccordionItem Value="details"><ShadcnAccordionTrigger>@Text["OrderDetails"]</ShadcnAccordionTrigger><ShadcnAccordionContent>
+                <div class="order-edit-grid">
+                    <ShadcnFormField Id="order-customer" Label="@Text["CustomerId"]"><Control><ShadcnInput TValue="string" id="order-customer" Value="@(page.Order.CustomerId?.ToString(CultureInfo.CurrentCulture) ?? "-")" ReadOnly="true" /></Control></ShadcnFormField>
+                    @if (page.Order.CustomerId is int customerId) { <div class="order-customer-link"><ShadcnButton Href="@($"/Customers/View?id={customerId}")" Variant="ShadcnButtonVariant.Outline">@Text["CustomerInfo"]</ShadcnButton></div> }
+                <ShadcnFormField Id="order-employee" Label="@Text["Employee"]"><Control><ShadcnSelect TValue="int?" id="order-employee" @bind-Value="edit.EmployeeId" Options="@EmployeeOptions" Placeholder="@Text["Employee"]" Clearable="true" /></Control></ShadcnFormField>
+                <ShadcnFormField Id="order-name" Label="@Text["Name"]"><Control><ShadcnInput TValue="string" id="order-name" Type="text" Required="true" @bind-Value="edit.Name" /></Control></ShadcnFormField>
+                <ShadcnFormField Id="order-quantity" Label="@Text["Quantity"]"><Control><ShadcnInput TValue="int" id="order-quantity" Type="number" min="1" Required="true" @bind-Value="edit.Quantity" /></Control></ShadcnFormField>
+                <ShadcnFormField Id="order-manufactured" Label="@Text["Manufactured"]"><Control><ShadcnInput TValue="int" id="order-manufactured" Type="number" min="0" Required="true" @bind-Value="edit.Manufactured" /></Control></ShadcnFormField>
+                    <ShadcnFormField Id="order-remaining" Label="@Text["Remaining"]"><Control><ShadcnInput TValue="string" id="order-remaining" Value="@(page.Order.Remaining?.ToString(CultureInfo.CurrentCulture) ?? "-")" ReadOnly="true" /></Control></ShadcnFormField>
                 </div>
-            </MudItem>
-            <MudItem xs="12" md="6">
-                <MudSelect T="int?" Label="@Text["Employee"]" @bind-Value="edit.EmployeeId" Clearable="true">
-                    @foreach (var item in page.Employees) { <MudSelectItem T="int?" Value="@((int?)item.Id)">@item.Name</MudSelectItem> }
-                </MudSelect>
-            </MudItem>
-            <MudItem xs="12"><MudTextField Label="@Text["Name"]" @bind-Value="edit.Name" Required="true" /></MudItem>
-            <MudItem xs="12" md="4"><MudNumericField T="int" Label="@Text["Quantity"]" @bind-Value="edit.Quantity" Min="1" Required="true" /></MudItem>
-            <MudItem xs="12" md="4"><MudNumericField T="int" Label="@Text["Manufactured"]" @bind-Value="edit.Manufactured" Min="0" Required="true" /></MudItem>
-            <MudItem xs="12" md="4"><MudTextField Label="@Text["Remaining"]" Value="@(page.Order.Remaining?.ToString(CultureInfo.CurrentCulture) ?? "-")" ReadOnly="true" /></MudItem>
-            </MudGrid>
-            </div>
-        </MudExpansionPanel>
+            </ShadcnAccordionContent></ShadcnAccordionItem>
 
-        <MudExpansionPanel Class="order-edit-section" Expanded="true" Text="@Text["Process"]">
-            <div class="order-edit-section-body">
-            <MudGrid>
-            <MudItem xs="12" md="6">
-                <MudSelect T="int" Label="@Text["Process"]" @bind-Value="edit.ProcessId" Required="true">
-                    @foreach (var item in page.Processes) { <MudSelectItem T="int" Value="@item.Id">@item.Name</MudSelectItem> }
-                </MudSelect>
-            </MudItem>
-            <MudItem xs="12" md="6">
-                <MudSelect T="int?" Label="@Text["Material"]" @bind-Value="edit.MaterialId" Clearable="true">
-                    @foreach (var item in page.Materials) { <MudSelectItem T="int?" Value="@((int?)item.Id)">@item.Name</MudSelectItem> }
-                </MudSelect>
-            </MudItem>
-            <MudItem xs="12" md="6">
-                <MudSelect T="int?" Label="@Text["Color"]" @bind-Value="edit.ColorId" Clearable="true">
-                    @foreach (var item in page.Colors) { <MudSelectItem T="int?" Value="@((int?)item.Id)">@item.Name</MudSelectItem> }
-                </MudSelect>
-            </MudItem>
-            <MudItem xs="12" md="6">
-                <MudSelect T="int?" Label="@Text["SurfaceFinish"]" @bind-Value="edit.SurfaceFinishId" Clearable="true">
-                    @foreach (var item in page.SurfaceFinishes) { <MudSelectItem T="int?" Value="@((int?)item.Id)">@item.Name</MudSelectItem> }
-                </MudSelect>
-            </MudItem>
-            </MudGrid>
-            </div>
-        </MudExpansionPanel>
+            <ShadcnAccordionItem Value="process"><ShadcnAccordionTrigger>@Text["Process"]</ShadcnAccordionTrigger><ShadcnAccordionContent><div class="order-edit-grid">
+                <ShadcnFormField Id="order-process" Label="@Text["Process"]"><Control><ShadcnSelect TValue="int" id="order-process" @bind-Value="edit.ProcessId" Options="@ProcessOptions" Placeholder="@Text["Process"]" Clearable="false" /></Control></ShadcnFormField>
+                <ShadcnFormField Id="order-material" Label="@Text["Material"]"><Control><ShadcnSelect TValue="int?" id="order-material" @bind-Value="edit.MaterialId" Options="@MaterialOptions" Placeholder="@Text["Material"]" Clearable="true" /></Control></ShadcnFormField>
+                <ShadcnFormField Id="order-color" Label="@Text["Color"]"><Control><ShadcnSelect TValue="int?" id="order-color" @bind-Value="edit.ColorId" Options="@ColorOptions" Placeholder="@Text["Color"]" Clearable="true" /></Control></ShadcnFormField>
+                <ShadcnFormField Id="order-finish" Label="@Text["SurfaceFinish"]"><Control><ShadcnSelect TValue="int?" id="order-finish" @bind-Value="edit.SurfaceFinishId" Options="@SurfaceFinishOptions" Placeholder="@Text["SurfaceFinish"]" Clearable="true" /></Control></ShadcnFormField>
+            </div></ShadcnAccordionContent></ShadcnAccordionItem>
 
-        <MudExpansionPanel Class="order-edit-section" Text="@Text["UnitPrice"]">
-            <div class="order-edit-section-body">
-            <MudGrid>
-            <MudItem xs="12" md="4"><MudNumericField T="decimal?" Label="@Text["UnitPrice"]" @bind-Value="edit.UnitPrice" Min="0" /></MudItem>
-            <MudItem xs="12" md="4"><MudNumericField T="decimal?" Label="@Text["Discount"]" @bind-Value="edit.DiscountPercent" Min="0" Max="100" /></MudItem>
-            <MudItem xs="12" md="4">
-                <MudSelect T="int?" Label="@Text["Currency"]" @bind-Value="edit.CurrencyId" Clearable="true">
-                    @foreach (var item in page.Currencies) { <MudSelectItem T="int?" Value="@((int?)item.Id)">@item.ShortName</MudSelectItem> }
-                </MudSelect>
-            </MudItem>
-            </MudGrid>
-            </div>
-        </MudExpansionPanel>
+            <ShadcnAccordionItem Value="price"><ShadcnAccordionTrigger>@Text["UnitPrice"]</ShadcnAccordionTrigger><ShadcnAccordionContent><div class="order-edit-grid">
+                <ShadcnFormField Id="order-unit-price" Label="@Text["UnitPrice"]"><Control><ShadcnInput TValue="decimal?" id="order-unit-price" Type="number" InputMode="decimal" min="0" @bind-Value="edit.UnitPrice" /></Control></ShadcnFormField>
+                <ShadcnFormField Id="order-discount" Label="@Text["Discount"]"><Control><ShadcnInput TValue="decimal?" id="order-discount" Type="number" InputMode="decimal" min="0" max="100" @bind-Value="edit.DiscountPercent" /></Control></ShadcnFormField>
+                <ShadcnFormField Id="order-currency" Label="@Text["Currency"]"><Control><ShadcnSelect TValue="int?" id="order-currency" @bind-Value="edit.CurrencyId" Options="@CurrencyOptions" Placeholder="@Text["Currency"]" Clearable="true" /></Control></ShadcnFormField>
+            </div></ShadcnAccordionContent></ShadcnAccordionItem>
 
-        <MudExpansionPanel Class="order-edit-section" Text="@Text["PromisedDate"]">
-            <div class="order-edit-section-body">
-            <MudGrid>
-            <MudItem xs="12" md="4"><MudNumericField T="int?" Label="@Text["LeadTime"]" @bind-Value="edit.LeadTime" Min="0" /></MudItem>
-            <MudItem xs="12" md="4"><MudDatePicker Label="@Text["PromisedDate"]" @bind-Date="edit.PromisedDate" /></MudItem>
-            <MudItem xs="12" md="4"><MudDatePicker Label="@Text["FinishedDate"]" @bind-Date="edit.FinishedDate" /></MudItem>
-            <MudItem xs="12"><MudTextField Label="@Text["TrackingNumber"]" @bind-Value="edit.TrackingNumber" /></MudItem>
-            </MudGrid>
-            </div>
-        </MudExpansionPanel>
+            <ShadcnAccordionItem Value="schedule"><ShadcnAccordionTrigger>@Text["PromisedDate"]</ShadcnAccordionTrigger><ShadcnAccordionContent><div class="order-edit-grid">
+                <ShadcnFormField Id="order-lead-time" Label="@Text["LeadTime"]"><Control><ShadcnInput TValue="int?" id="order-lead-time" Type="number" min="0" @bind-Value="edit.LeadTime" /></Control></ShadcnFormField>
+                <ShadcnFormField Id="order-promised-date" Label="@Text["PromisedDate"]"><Control><ShadcnDatePicker id="order-promised-date" @bind-Value="PromisedDate" Clearable="true" /></Control></ShadcnFormField>
+                <ShadcnFormField Id="order-finished-date" Label="@Text["FinishedDate"]"><Control><ShadcnDatePicker id="order-finished-date" @bind-Value="FinishedDate" Clearable="true" /></Control></ShadcnFormField>
+                <ShadcnFormField Id="order-tracking" Label="@Text["TrackingNumber"]"><Control><ShadcnInput TValue="string" id="order-tracking" Type="text" @bind-Value="edit.TrackingNumber" /></Control></ShadcnFormField>
+            </div></ShadcnAccordionContent></ShadcnAccordionItem>
 
-        <MudExpansionPanel Class="order-edit-section" Text="@Text["Requirements"]">
-            <div class="order-edit-section-body">
-            <MudGrid>
-            <MudItem xs="12"><MudTextField Label="@Text["Requirements"]" @bind-Value="edit.Description" Lines="5" /></MudItem>
-            <MudItem xs="12"><MudTextField Label="@Text["Comment"]" @bind-Value="edit.Comment" Lines="4" /></MudItem>
-            <MudItem xs="12" md="4"><MudCheckBox T="bool" Label="@Text["AllowSocialMedia"]" @bind-Value="edit.AllowSocialMedia" /></MudItem>
-            <MudItem xs="12" md="4"><MudCheckBox T="bool" Label="@Text["AllowCancellation"]" @bind-Value="edit.AllowCancellation" /></MudItem>
-            <MudItem xs="12" md="4"><MudCheckBox T="bool" Label="@Text["AllowPayment"]" @bind-Value="edit.AllowPayment" /></MudItem>
-            </MudGrid>
-            </div>
-        </MudExpansionPanel>
-        </MudExpansionPanels>
+            <ShadcnAccordionItem Value="requirements"><ShadcnAccordionTrigger>@Text["Requirements"]</ShadcnAccordionTrigger><ShadcnAccordionContent>
+                <div class="order-edit-grid">
+                    <ShadcnFormField Id="order-description" Label="@Text["Requirements"]" Class="order-edit-wide"><Control><ShadcnTextarea TValue="string" id="order-description" @bind-Value="edit.Description" /></Control></ShadcnFormField>
+                    <ShadcnFormField Id="order-comment" Label="@Text["Comment"]" Class="order-edit-wide"><Control><ShadcnTextarea TValue="string" id="order-comment" @bind-Value="edit.Comment" /></Control></ShadcnFormField>
+                    <div class="order-edit-checks order-edit-wide">
+                        <ShadcnField Orientation="ShadcnFieldOrientation.Horizontal"><ShadcnCheckbox id="order-social" Value="@edit.AllowSocialMedia" ValueChanged="@(value => edit.AllowSocialMedia = value.GetValueOrDefault())" /><ShadcnFieldLabel For="order-social">@Text["AllowSocialMedia"]</ShadcnFieldLabel></ShadcnField>
+                        <ShadcnField Orientation="ShadcnFieldOrientation.Horizontal"><ShadcnCheckbox id="order-cancellation" Value="@edit.AllowCancellation" ValueChanged="@(value => edit.AllowCancellation = value.GetValueOrDefault())" /><ShadcnFieldLabel For="order-cancellation">@Text["AllowCancellation"]</ShadcnFieldLabel></ShadcnField>
+                        <ShadcnField Orientation="ShadcnFieldOrientation.Horizontal"><ShadcnCheckbox id="order-payment" Value="@edit.AllowPayment" ValueChanged="@(value => edit.AllowPayment = value.GetValueOrDefault())" /><ShadcnFieldLabel For="order-payment">@Text["AllowPayment"]</ShadcnFieldLabel></ShadcnField>
+                    </div>
+                </div>
+            </ShadcnAccordionContent></ShadcnAccordionItem>
+        </ShadcnAccordion>
+        <div class="order-save-bar"><ShadcnButton ButtonType="ShadcnButtonType.Submit" OperationFeedback="false" Disabled="@submitting">@Text["Save"]</ShadcnButton></div>
+    </EditForm>
 
-        <div class="order-save-bar">
-            <MudButton OnClick="SaveAsync" Disabled="@submitting" Variant="Variant.Filled" Color="Color.Primary">@Text["Save"]</MudButton>
+    <section class="order-workflow-panel">
+        <h2>@Text["Status"]</h2>
+        <p>@Text["CurrentStatus"]: <span class="operations-status-pill">@StatusLabel(page.CurrentStatus?.Name)</span></p>
+        <div class="order-status-actions">
+            <ShadcnFormField Id="order-next-status" Label="@Text["NextStatus"]"><Control><ShadcnSelect TValue="int?" id="order-next-status" @bind-Value="selectedStatus" Options="@StatusOptions" Placeholder="@Text["NextStatus"]" Clearable="true" /></Control></ShadcnFormField>
+            <ShadcnButton OnClick="TransitionAsync" Disabled="@(submitting || selectedStatus is null)">@Text["ApplyStatus"]</ShadcnButton>
         </div>
-    </MudForm>
+        <div class="order-history" tabindex="0"><ShadcnItemGroup>
+            @foreach (var item in page.History.OrderByDescending(value => value.CreatedDate))
+            {
+                <ShadcnItem Size="ShadcnItemSize.Small"><ShadcnItemContent><ShadcnItemTitle>@StatusLabel(item.Name)</ShadcnItemTitle><ShadcnItemDescription>@LegacyPresentation.FormatUtcDateTime(item.CreatedDate, CultureInfo.CurrentCulture, "-")</ShadcnItemDescription></ShadcnItemContent></ShadcnItem>
+            }
+        </ShadcnItemGroup></div>
+    </section>
 
-    <MudPaper Class="pa-4 mt-4 order-workflow-panel">
-        <MudText Typo="Typo.h5" HtmlTag="h2">@Text["Status"]</MudText>
-        <MudText Class="mt-2">@Text["CurrentStatus"]: <span class="operations-status-pill">@StatusLabel(page.CurrentStatus?.Name)</span></MudText>
-        <div class="order-status-actions my-3">
-            <MudSelect T="int?" Label="@Text["NextStatus"]" @bind-Value="selectedStatus">
-                @foreach (var status in page.AvailableStatuses) { <MudSelectItem T="int?" Value="@((int?)status.Id)">@StatusLabel(status.Name)</MudSelectItem> }
-            </MudSelect>
-            <MudButton OnClick="TransitionAsync" Disabled="@(submitting || selectedStatus is null)" Variant="Variant.Filled">@Text["ApplyStatus"]</MudButton>
-        </div>
-        <div class="order-history" tabindex="0">
-            <MudList T="string">@foreach (var item in page.History.OrderByDescending(value => value.CreatedDate)) { <MudListItem T="string">@StatusLabel(item.Name) · @LegacyPresentation.FormatUtcDateTime(item.CreatedDate, CultureInfo.CurrentCulture, "-")</MudListItem> }</MudList>
-        </div>
-    </MudPaper>
-
-    <MudPaper Class="pa-4 mt-4 order-files-panel">
-        <MudText Typo="Typo.h5" HtmlTag="h2">@Text["Files"]</MudText>
-        <div class="order-upload-actions">
-            <InputFile OnChange="SelectFiles" multiple class="mt-3" />
-            <MudButton OnClick="UploadAsync" Disabled="@(submitting || uploads.Count == 0)" Class="my-3">@Text["Upload"]</MudButton>
-        </div>
-        <MudList T="OrderFileItem">
+    <section class="order-files-panel">
+        <h2>@Text["Files"]</h2>
+        <div class="order-upload-actions"><InputFile OnChange="SelectFiles" multiple /><ShadcnButton OnClick="UploadAsync" Disabled="@(submitting || uploads.Count == 0)">@Text["Upload"]</ShadcnButton></div>
+        <ShadcnItemGroup>
             @foreach (var file in page.Files)
             {
-                <MudListItem T="OrderFileItem" Value="file">
-                    <LegacyLink Href="@file.Uri?.ToString()" Role="LegacyLinkRole.External" Target="_blank" Rel="noopener">@file.ObjectName</LegacyLink>
-                    <MudIconButton Icon="@Icons.Material.Filled.Delete" OnClick="() => RemoveFileAsync(file.Id)" Disabled="@submitting" aria-label="@Text["RemoveFile", file.ObjectName]" />
-                </MudListItem>
+                <ShadcnItem><ShadcnItemContent><ShadcnItemTitle><LegacyLink Href="@file.Uri?.ToString()" Role="LegacyLinkRole.External" Target="_blank" Rel="noopener">@file.ObjectName</LegacyLink></ShadcnItemTitle></ShadcnItemContent><ShadcnItemActions><ShadcnButton ButtonType="ShadcnButtonType.Button" Variant="ShadcnButtonVariant.Destructive" Size="ShadcnButtonSize.Icon" OnClick="() => RemoveFileAsync(file.Id)" Disabled="@submitting" aria-label="@Text["RemoveFile", file.ObjectName]"><ShadcnIcon Icon="@DeleteIcon" Size="18" /></ShadcnButton></ShadcnItemActions></ShadcnItem>
             }
-        </MudList>
-    </MudPaper>
+        </ShadcnItemGroup>
+    </section>
 }
+</main>
 
 @code {
     [SupplyParameterFromQuery(Name = "id")] public int? Id { get; set; }
-    private MudForm? form;
     private OrderDetailPage? page;
     private OrderEditModel edit = new();
     private EmployeeSessionSummary? session;
@@ -170,6 +118,18 @@ else if (page is not null)
     private bool submitting;
     private string? error;
     private string? notice;
+    private IReadOnlyCollection<string> openSections = ["details", "process"];
+    private static readonly ShadcnIconData DeleteIcon = LucideIconCatalog.Instance.Get(LucideIconNames.Trash2);
+
+    private IReadOnlyList<ShadcnSelectOption<int?>> EmployeeOptions => (page?.Employees ?? []).Select(item => new ShadcnSelectOption<int?>(item.Id, item.Name)).ToArray();
+    private IReadOnlyList<ShadcnSelectOption<int>> ProcessOptions => (page?.Processes ?? []).Select(item => new ShadcnSelectOption<int>(item.Id, item.Name)).ToArray();
+    private IReadOnlyList<ShadcnSelectOption<int?>> MaterialOptions => (page?.Materials ?? []).Select(item => new ShadcnSelectOption<int?>(item.Id, item.Name)).ToArray();
+    private IReadOnlyList<ShadcnSelectOption<int?>> ColorOptions => (page?.Colors ?? []).Select(item => new ShadcnSelectOption<int?>(item.Id, item.Name)).ToArray();
+    private IReadOnlyList<ShadcnSelectOption<int?>> SurfaceFinishOptions => (page?.SurfaceFinishes ?? []).Select(item => new ShadcnSelectOption<int?>(item.Id, item.Name)).ToArray();
+    private IReadOnlyList<ShadcnSelectOption<int?>> CurrencyOptions => (page?.Currencies ?? []).Select(item => new ShadcnSelectOption<int?>(item.Id, item.ShortName)).ToArray();
+    private IReadOnlyList<ShadcnSelectOption<int?>> StatusOptions => (page?.AvailableStatuses ?? []).Select(item => new ShadcnSelectOption<int?>(item.Id, StatusLabel(item.Name))).ToArray();
+    private DateOnly? PromisedDate { get => edit.PromisedDate is DateTime date ? DateOnly.FromDateTime(date) : null; set => edit.PromisedDate = value?.ToDateTime(TimeOnly.MinValue); }
+    private DateOnly? FinishedDate { get => edit.FinishedDate is DateTime date ? DateOnly.FromDateTime(date) : null; set => edit.FinishedDate = value?.ToDateTime(TimeOnly.MinValue); }
 
     protected override async Task OnParametersSetAsync() => await LoadAsync();
 
@@ -198,8 +158,8 @@ else if (page is not null)
 
     private async Task SaveAsync()
     {
-        if (page is null || session?.CsrfToken is null || form is null) return;
-        await form.ValidateAsync(); if (!form.IsValid) return;
+        if (page is null || session?.CsrfToken is null) return;
+        if (edit.ProcessId <= 0 || edit.Quantity <= 0 || edit.Manufactured < 0 || string.IsNullOrWhiteSpace(edit.Name)) { error = Text["InvalidRequest"]; return; }
         await SendWriteAsync(HttpMethod.Put, $"/bff/orders/{page.Order.Id}", JsonContent.Create(edit.ToRequest()), Text["OrderSaved"]);
     }
 

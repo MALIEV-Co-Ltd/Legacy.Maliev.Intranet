@@ -34,7 +34,7 @@
 .orders-section-heading h2 {
     margin: 0;
     color: var(--maliev-ink);
-    font-size: var(--mud-typography-subtitle1-size);
+    font-size: 1rem;
     font-weight: 600;
 }
 
