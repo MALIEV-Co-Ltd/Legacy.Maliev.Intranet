@@ -86,6 +86,9 @@ public sealed class LoginBrowserTests(
                 return select.getBoundingClientRect().width - reservedWidth >= textWidth;
             }
             """));
+        await language.FocusAsync();
+        Assert.Equal("none", await page.Locator(".legacy-language-selector").EvaluateAsync<string>(
+            "wrapper => getComputedStyle(wrapper).outlineStyle"));
 
         var title = page.Locator("#legacy-login-title");
         Assert.Equal("Sign in to MALIEV", (await title.InnerTextAsync()).Trim());
