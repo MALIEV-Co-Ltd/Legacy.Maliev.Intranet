@@ -1,0 +1,12 @@
+<ShadcnField Orientation="ShadcnFieldOrientation.Horizontal" Disabled="@Disabled">
+    <ShadcnCheckbox id="@Id" Value="@Value" ValueChanged="@(value => ValueChanged.InvokeAsync(value.GetValueOrDefault()))" Disabled="@Disabled" />
+    <ShadcnFieldLabel For="@Id">@Label</ShadcnFieldLabel>
+</ShadcnField>
+
+@code {
+    [Parameter, EditorRequired] public string Id { get; set; } = default!;
+    [Parameter, EditorRequired] public string Label { get; set; } = default!;
+    [Parameter] public bool Value { get; set; }
+    [Parameter] public EventCallback<bool> ValueChanged { get; set; }
+    [Parameter] public bool Disabled { get; set; }
+}
