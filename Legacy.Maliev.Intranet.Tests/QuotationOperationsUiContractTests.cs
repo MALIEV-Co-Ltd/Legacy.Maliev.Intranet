@@ -21,7 +21,7 @@ public sealed class QuotationOperationsUiContractTests
         var quotationIndex = Read(feature, "Quotations", "Index.razor");
         Assert.Contains("operations-page-header", quotationIndex, StringComparison.Ordinal);
         Assert.Contains("quotation-decision-data", quotationIndex, StringComparison.Ordinal);
-        Assert.Contains("aria-hidden=\"true\"", quotationIndex, StringComparison.Ordinal);
+        Assert.Contains("<ShadcnChart", quotationIndex, StringComparison.Ordinal);
         Assert.Contains("aria-label=\"@Text[\"TableCaption\"]\"", quotationIndex, StringComparison.Ordinal);
         Assert.Contains("<nav", quotationIndex, StringComparison.Ordinal);
         Assert.Contains("aria-live=\"polite\"", quotationIndex, StringComparison.Ordinal);

@@ -23,7 +23,8 @@ public sealed class QuotationsIndexWasmMigrationContractTests
         Assert.Contains("ExpandQuotation", source, StringComparison.Ordinal);
         Assert.Contains("CollapseQuotation", source, StringComparison.Ordinal);
         Assert.Contains("data-priority=\"supporting\"", source, StringComparison.Ordinal);
-        Assert.Contains("MudChart", source, StringComparison.Ordinal);
+        Assert.Contains("<ShadcnChart", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("<Mud", source, StringComparison.Ordinal);
         Assert.Contains("Quotations/", app, StringComparison.Ordinal);
         Assert.Contains("MapGet(\"/bff/quotations\"", bff, StringComparison.Ordinal);
         Assert.Contains("LegacyEmployeePermissions.QuotationsRead", bff, StringComparison.Ordinal);
