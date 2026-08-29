@@ -10,7 +10,7 @@
 <ShadcnThemeProvider IsDarkMode="@ThemeService.IsDarkMode" Direction="ShadcnDirection.LeftToRight" Class="legacy-provider-root">
 <a class="legacy-skip-link" href="#main-content">@Text["Skip to content"]</a>
 
-<MudLayout Class="legacy-layout">
+<div class="legacy-layout">
     <LegacyNavigationRail Session="session" />
 
     @if (_navigationOpen)
@@ -26,14 +26,12 @@
                       OnCloseNavigation="CloseNavigationAsync"
                       OnSignOut="SignOutAsync" />
         <div class="legacy-workspace-shell">
-            <MudMainContent Class="legacy-main-content">
-                <main id="main-content" class="legacy-page-container" tabindex="-1">
-                    @Body
-                </main>
-            </MudMainContent>
+            <main id="main-content" class="legacy-main-content legacy-page-container" tabindex="-1">
+                @Body
+            </main>
         </div>
     </div>
-</MudLayout>
+</div>
 </ShadcnThemeProvider>
 
 @code {

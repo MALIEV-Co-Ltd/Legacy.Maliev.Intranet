@@ -83,7 +83,22 @@ public sealed class OperationalShellBrowserTests(
         await StubProductionBoundariesAsync(page);
 
         await page.GotoAsync(new Uri(server.BaseUri, "sales/orders").AbsoluteUri);
-        await page.Locator(".legacy-topbar__utilities").WaitForAsync();
+        try
+        {
+            await page.Locator(".legacy-topbar__utilities").WaitForAsync(new() { Timeout = 10_000 });
+        }
+        catch (TimeoutException exception)
+        {
+            var errorUi = await page.Locator("#blazor-error-ui").TextContentAsync();
+            throw new InvalidOperationException(
+                $"The production shell did not render. URL: {page.Url}; browser errors: {string.Join(" | ", errors)}; error UI: {errorUi}",
+                exception);
+        }
+
+        Assert.Equal(0, await page.Locator(".legacy-topbar .mud-button-root, .legacy-navigation-rail .mud-button-root").CountAsync());
+        Assert.True(await page.Locator(".legacy-topbar .shadcn-button").CountAsync() >= 4);
+        Assert.Equal(1, await page.Locator(".legacy-global-search input.shadcn-input").CountAsync());
+        Assert.Equal(1, await page.Locator(".legacy-language-selector select.shadcn-native-select").CountAsync());
 
         var desktopShell = await page.EvaluateAsync<JsonElement>("""
             () => {

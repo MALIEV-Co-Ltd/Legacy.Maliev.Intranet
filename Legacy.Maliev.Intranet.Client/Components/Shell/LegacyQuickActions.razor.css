@@ -1,14 +1,14 @@
 .legacy-quick-actions { display: flex; flex: 0 0 auto; align-items: center; gap: 8px; }
-.legacy-quick-action { display: inline-flex; min-height: 44px; align-items: center; justify-content: center; gap: 6px; padding: 8px 13px; border: 1px solid var(--legacy-border); border-radius: var(--legacy-radius-md); background: var(--legacy-surface); color: var(--legacy-primary); font-size: .78rem; font-weight: 400; text-decoration: none; white-space: nowrap; }
-.legacy-quick-action:hover { border-color: var(--legacy-primary); background: var(--legacy-primary-soft); }
-.legacy-quick-action.primary { border-color: var(--shadcn-primary); background: var(--shadcn-primary); color: var(--shadcn-primary-foreground); box-shadow: var(--shadcn-shadow-sm); }
-.legacy-quick-action.primary:hover { background: var(--legacy-primary-hover); }
-.legacy-quick-action:focus-visible { outline: none; box-shadow: var(--legacy-focus-ring); }
+.legacy-quick-actions ::deep .legacy-quick-action { display: inline-flex; min-height: 44px; align-items: center; justify-content: center; gap: 6px; padding: 8px 13px; border: 1px solid var(--legacy-border); border-radius: var(--legacy-radius-md); background: var(--legacy-surface); color: var(--legacy-primary); font-size: .78rem; font-weight: 400; text-decoration: none; white-space: nowrap; }
+.legacy-quick-actions ::deep .legacy-quick-action:hover { border-color: var(--legacy-primary); background: var(--legacy-primary-soft); }
+.legacy-quick-actions ::deep .legacy-quick-action.primary { border-color: var(--shadcn-primary); background: var(--shadcn-primary); color: var(--shadcn-primary-foreground); box-shadow: var(--shadcn-shadow-sm); }
+.legacy-quick-actions ::deep .legacy-quick-action.primary:hover { background: var(--legacy-primary-hover); }
+.legacy-quick-actions ::deep .legacy-quick-action:focus-visible { outline: none; box-shadow: var(--legacy-focus-ring); }
 
 @media (max-width: 900px) {
     .legacy-quick-actions { gap: 4px; }
-    .legacy-quick-action { width: 44px; min-width: 44px; padding: 8px; }
-    .legacy-quick-action span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+    .legacy-quick-actions ::deep .legacy-quick-action { width: 44px; min-width: 44px; padding: 8px; }
+    .legacy-quick-actions ::deep .legacy-quick-action span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 }
 
 @media (max-width: 520px) {

@@ -31,7 +31,9 @@ public sealed class LegacyThemeContractTests
         Assert.Contains("Direction=\"ShadcnDirection.LeftToRight\"", layout, StringComparison.Ordinal);
         Assert.DoesNotContain("new MudTheme", layout, StringComparison.Ordinal);
         Assert.Contains("ThemeLabel", topbar, StringComparison.Ordinal);
-        Assert.Contains("<MudIconButton Class=\"legacy-theme-toggle\"", topbar, StringComparison.Ordinal);
+        Assert.Contains("<ShadcnButton Class=\"legacy-theme-toggle\"", topbar, StringComparison.Ordinal);
+        Assert.Contains("Size=\"ShadcnButtonSize.Icon\"", topbar, StringComparison.Ordinal);
+        Assert.Contains("<ShadcnIcon Icon=\"@(ThemeService.IsDarkMode ? SunIcon : MoonIcon)\"", topbar, StringComparison.Ordinal);
         Assert.Contains("OnClick=\"ToggleThemeAsync\"", topbar, StringComparison.Ordinal);
         Assert.Contains(":root[data-maliev-theme=\"dark\"]", css, StringComparison.Ordinal);
         Assert.Contains("--legacy-background: var(--shadcn-background)", css, StringComparison.Ordinal);

@@ -2,6 +2,7 @@
 @using Legacy.Maliev.Intranet.Contracts
 @inject LegacyThemeService ThemeService
 @inject IStringLocalizer<LegacyTopBar> Text
+@inject IJSRuntime JS
 @implements IDisposable
 
 <header class="legacy-topbar" @onkeydown="HandleKeyDown">
@@ -11,10 +12,12 @@
             <img class="legacy-logo-image legacy-logo-image--dark" src="images/MALIEV_WHITE.svg" alt="" aria-hidden="true" />
         </a>
 
-        <MudIconButton Class="legacy-mobile-menu-button" ButtonType="ButtonType.Button"
-                       @ref="_navigationToggle" Icon="@Icons.Material.Filled.Menu" Size="Size.Small"
-                       aria-label="@Text["Open navigation"]" aria-expanded="@NavigationOpen"
-                       aria-controls="legacy-navigation-rail-drawer" OnClick="OnToggleNavigation" />
+        <ShadcnButton id="legacy-navigation-toggle" Class="legacy-mobile-menu-button"
+                      Variant="ShadcnButtonVariant.Ghost" Size="ShadcnButtonSize.Icon"
+                      aria-label="@Text["Open navigation"]" aria-expanded="@NavigationOpen"
+                      aria-controls="legacy-navigation-rail-drawer" OnClick="OnToggleNavigation">
+            <ShadcnIcon Icon="MenuIcon" Size="20" />
+        </ShadcnButton>
     </div>
 
     <div class="legacy-topbar__search">
@@ -26,37 +29,38 @@
     <div class="legacy-topbar__utilities legacy-topbar-utilities">
         <LegacyLanguageSelector />
 
-        <MudIconButton Class="legacy-theme-toggle" ButtonType="ButtonType.Button"
-                       Icon="@(ThemeService.IsDarkMode ? Icons.Material.Outlined.LightMode : Icons.Material.Outlined.DarkMode)"
-                       Size="Size.Small" aria-label="@ThemeLabel" title="@ThemeLabel" OnClick="ToggleThemeAsync" />
+        <ShadcnButton Class="legacy-theme-toggle" Variant="ShadcnButtonVariant.Ghost" Size="ShadcnButtonSize.Icon"
+                      aria-label="@ThemeLabel" title="@ThemeLabel" OnClick="ToggleThemeAsync">
+            <ShadcnIcon Icon="@(ThemeService.IsDarkMode ? SunIcon : MoonIcon)" Size="20" />
+        </ShadcnButton>
 
         <AuthorizeView>
             <Authorized Context="auth">
                 <div class="legacy-profile-menu">
-                <MudButton ButtonType="ButtonType.Button" Class="legacy-profile" Variant="Variant.Text"
-                           aria-haspopup="menu" aria-expanded="@_profileMenuOpen"
-                           aria-label="@Text["Employee menu"]" OnClick="ToggleProfileMenuAsync">
+                <ShadcnButton Class="legacy-profile" Variant="ShadcnButtonVariant.Ghost"
+                              aria-haspopup="menu" aria-expanded="@_profileMenuOpen"
+                              aria-label="@Text["Employee menu"]" OnClick="ToggleProfileMenuAsync">
                     <span class="legacy-session-avatar" aria-hidden="true">@GetInitials(auth.User.Identity?.Name)</span>
                     <span class="legacy-session-copy">
                         <strong>@(Session?.DisplayName ?? auth.User.Identity?.Name ?? Text["Employee"])</strong>
                         <small>@Text["Employee workspace"]</small>
                     </span>
-                    <MudIcon Icon="@Icons.Material.Filled.ExpandMore" Size="Size.Small" Class="legacy-profile-chevron" />
-                </MudButton>
+                    <ShadcnIcon Icon="ChevronDownIcon" Size="18" Class="legacy-profile-chevron" />
+                </ShadcnButton>
 
                 @if (_profileMenuOpen)
                 {
                     <div class="legacy-profile-popover" role="menu">
                         <a class="legacy-profile-action" role="menuitem" href="/hr/profile" @onclick="CloseProfileMenuAsync">
-                            <MudIcon Icon="@Icons.Material.Outlined.AccountCircle" Size="Size.Small" />
+                            <ShadcnIcon Icon="ProfileIcon" Size="20" />
                             <span>@Text["My profile"]</span>
                         </a>
                         <div class="legacy-profile-menu-divider"></div>
-                        <MudButton ButtonType="ButtonType.Button" Class="legacy-profile-action" Variant="Variant.Text"
-                                   role="menuitem" OnClick="SignOutFromProfileAsync">
-                            <MudIcon Icon="@Icons.Material.Outlined.Logout" Size="Size.Small" />
+                        <ShadcnButton Class="legacy-profile-action" Variant="ShadcnButtonVariant.Ghost"
+                                      role="menuitem" OnClick="SignOutFromProfileAsync">
+                            <ShadcnIcon Icon="SignOutIcon" Size="20" />
                             <span>@Text["Sign out"]</span>
-                        </MudButton>
+                        </ShadcnButton>
                     </div>
                 }
                 </div>
@@ -82,7 +86,12 @@
 
     private bool _profileMenuOpen;
     private bool _wasNavigationOpen;
-    private MudIconButton? _navigationToggle;
+    private static readonly ShadcnIconData MenuIcon = LucideIconCatalog.Instance.Get(LucideIconNames.Menu);
+    private static readonly ShadcnIconData SunIcon = LucideIconCatalog.Instance.Get(LucideIconNames.Sun);
+    private static readonly ShadcnIconData MoonIcon = LucideIconCatalog.Instance.Get(LucideIconNames.Moon);
+    private static readonly ShadcnIconData ChevronDownIcon = LucideIconCatalog.Instance.Get(LucideIconNames.ChevronDown);
+    private static readonly ShadcnIconData ProfileIcon = LucideIconCatalog.Instance.Get(LucideIconNames.CircleUserRound);
+    private static readonly ShadcnIconData SignOutIcon = LucideIconCatalog.Instance.Get(LucideIconNames.LogOut);
 
     protected override void OnInitialized() => ThemeService.Changed += OnThemeChanged;
 
@@ -90,10 +99,7 @@
     {
         if (!firstRender && _wasNavigationOpen && !NavigationOpen)
         {
-            if (_navigationToggle is not null)
-            {
-                await _navigationToggle.FocusAsync();
-            }
+            await JS.InvokeVoidAsync("malievFocus.byId", "legacy-navigation-toggle");
         }
 
         _wasNavigationOpen = NavigationOpen;

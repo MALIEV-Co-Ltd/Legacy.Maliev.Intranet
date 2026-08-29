@@ -52,6 +52,9 @@ public sealed class OperationalTableBehaviorTests : BunitContext
         Assert.Contains("DetailAriaLabel(item)", markup, StringComparison.Ordinal);
         Assert.Contains("ExpandAriaLabel(item)", markup, StringComparison.Ordinal);
         Assert.Contains("CollapseAriaLabel(item)", markup, StringComparison.Ordinal);
+        Assert.Contains("<ShadcnButton", markup, StringComparison.Ordinal);
+        Assert.Contains("<ShadcnIcon", markup, StringComparison.Ordinal);
+        Assert.DoesNotContain("<Mud", markup, StringComparison.Ordinal);
         Assert.Contains("ColumnCount < 1", markup, StringComparison.Ordinal);
         Assert.Contains("overscroll-behavior-inline: contain", styles, StringComparison.Ordinal);
         Assert.Contains("@media (prefers-reduced-motion: reduce)", styles, StringComparison.Ordinal);

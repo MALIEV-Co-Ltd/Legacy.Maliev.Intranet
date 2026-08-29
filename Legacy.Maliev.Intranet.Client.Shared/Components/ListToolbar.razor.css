@@ -15,14 +15,40 @@
     gap: 0.625rem;
 }
 
-.list-toolbar__grid ::deep > .mud-input-control {
+.list-toolbar__field {
+    display: grid;
     min-width: 0;
-    width: 100%;
-    margin: 0 !important;
+    gap: 0.25rem;
 }
 
-.list-toolbar__grid ::deep .mud-input-control-input-container {
-    gap: 0.25rem;
+.list-toolbar__field > label {
+    color: var(--shadcn-muted-foreground);
+    font-size: 0.75rem;
+    font-weight: 500;
+}
+
+.list-toolbar__field ::deep .shadcn-native-select-wrapper,
+.list-toolbar__field ::deep input {
+    min-width: 0;
+    width: 100%;
+}
+
+.list-toolbar__input-wrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.list-toolbar__input-wrap > ::deep svg {
+    position: absolute;
+    left: 0.75rem;
+    z-index: 1;
+    color: var(--shadcn-muted-foreground);
+    pointer-events: none;
+}
+
+.list-toolbar__input-wrap ::deep input {
+    padding-inline-start: 2.25rem;
 }
 
 .list-toolbar__actions {
@@ -65,12 +91,13 @@
         --shadcn-control-height: 2.75rem;
     }
 
-    .list-toolbar__grid ::deep .mud-input {
+    .list-toolbar__grid ::deep input,
+    .list-toolbar__grid ::deep select {
         height: var(--shadcn-control-height) !important;
         min-height: var(--shadcn-control-height) !important;
     }
 
-    .list-toolbar__actions ::deep .mud-button-root {
+    .list-toolbar__actions ::deep button {
         min-height: 2.75rem;
     }
 
@@ -93,7 +120,7 @@
         --shadcn-control-height: 2.75rem;
     }
 
-    .list-toolbar__grid ::deep > .mud-input-control:first-child {
+    .list-toolbar__search-field {
         grid-column: auto;
     }
 
@@ -104,7 +131,7 @@
         border-inline-start: 0;
     }
 
-    .list-toolbar__actions ::deep .mud-button-root:not(.list-toolbar__refresh) {
+    .list-toolbar__actions ::deep button:not(.list-toolbar__refresh) {
         flex: 1 1 auto;
     }
 
@@ -116,7 +143,8 @@
         min-height: 2.75rem;
     }
 
-    .list-toolbar__grid ::deep .mud-input {
+    .list-toolbar__grid ::deep input,
+    .list-toolbar__grid ::deep select {
         height: var(--shadcn-control-height) !important;
         min-height: var(--shadcn-control-height) !important;
     }
@@ -127,7 +155,7 @@
         grid-template-columns: minmax(0, 1fr);
     }
 
-    .list-toolbar__grid ::deep > .mud-input-control:first-child,
+    .list-toolbar__search-field,
     .list-toolbar__actions {
         grid-column: auto;
     }
@@ -138,7 +166,7 @@
         grid-template-columns: minmax(0, 1fr);
     }
 
-    .list-toolbar__grid ::deep > .mud-input-control:first-child,
+    .list-toolbar__search-field,
     .list-toolbar__actions {
         grid-column: auto;
     }

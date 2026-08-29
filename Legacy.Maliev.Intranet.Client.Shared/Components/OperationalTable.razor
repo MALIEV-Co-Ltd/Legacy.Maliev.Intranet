@@ -36,21 +36,22 @@
                                     <LegacyLink Href="@detailHref"
                                                 Role="LegacyLinkRole.Inline"
                                                 Class="operational-table__detail"
-                                                StartIcon="@Icons.Material.Outlined.OpenInNew"
+                                                StartIconData="ExternalLinkIcon"
                                                 AriaLabel="@DetailAriaLabel(item)">
                                         <span class="visually-hidden">@DetailAriaLabel(item)</span>
                                     </LegacyLink>
                                 </span>
                             }
                             <span class="operational-table__toggle-wrap">
-                                <MudIconButton ButtonType="ButtonType.Button"
-                                               Class="operational-table__toggle"
-                                               Icon="@(isExpanded ? Icons.Material.Outlined.ExpandLess : Icons.Material.Outlined.ExpandMore)"
-                                               aria-label="@(isExpanded ? CollapseAriaLabel(item) : ExpandAriaLabel(item))"
-                                               aria-expanded="@isExpanded.ToString().ToLowerInvariant()"
-                                               aria-controls="@quickViewId"
-                                               title="@(isExpanded ? CollapseAriaLabel(item) : ExpandAriaLabel(item))"
-                                               OnClick="@(() => State.Toggle(key))" />
+                                <ShadcnButton Class="operational-table__toggle"
+                                              Variant="ShadcnButtonVariant.Ghost" Size="ShadcnButtonSize.Icon"
+                                              aria-label="@(isExpanded ? CollapseAriaLabel(item) : ExpandAriaLabel(item))"
+                                              aria-expanded="@isExpanded.ToString().ToLowerInvariant()"
+                                              aria-controls="@quickViewId"
+                                              title="@(isExpanded ? CollapseAriaLabel(item) : ExpandAriaLabel(item))"
+                                              OnClick="@(() => State.Toggle(key))">
+                                    <ShadcnIcon Icon="@(isExpanded ? CollapseIcon : ExpandIcon)" Size="20" />
+                                </ShadcnButton>
                             </span>
                         </td>
                     </tr>
@@ -81,6 +82,10 @@
     [Parameter] public RenderFragment? EmptyContent { get; set; }
     [Parameter, EditorRequired] public int ColumnCount { get; set; }
     [Parameter, EditorRequired] public OperationalTableState<TKey> State { get; set; } = default!;
+
+    private static readonly ShadcnIconData ExternalLinkIcon = LucideIconCatalog.Instance.Get(LucideIconNames.ExternalLink);
+    private static readonly ShadcnIconData CollapseIcon = LucideIconCatalog.Instance.Get(LucideIconNames.ChevronUp);
+    private static readonly ShadcnIconData ExpandIcon = LucideIconCatalog.Instance.Get(LucideIconNames.ChevronDown);
 
     private readonly string quickViewIdPrefix = OperationalTableIdNamespace.Allocate();
     private readonly Dictionary<TKey, string> quickViewIds = new(EqualityComparer<TKey>.Default);

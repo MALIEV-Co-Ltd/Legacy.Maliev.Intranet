@@ -4,52 +4,50 @@
 
 <section class="list-toolbar" role="search" aria-label="@Text["FilterLabel"]" aria-busy="@IsBusy.ToString().ToLowerInvariant()">
     <div class="list-toolbar__grid">
-        <MudTextField T="string"
-                      Value="@controller!.Current.Search"
-                      ValueChanged="ChangeSearchAsync"
-                      Label="@(SearchLabel ?? Text["Search"])"
-                      Variant="Variant.Outlined"
-                      Immediate="true"
-                      Clearable="true"
-                      Adornment="Adornment.Start"
-                      AdornmentIcon="@Icons.Material.Outlined.Search"
-                      aria-controls="@ResultsId" />
-        <MudSelect T="TSort"
-                   Value="@controller.Current.Sort"
-                   ValueChanged="ChangeSortAsync"
-                   Label="@Text["Sort"]"
-                   Variant="Variant.Outlined"
-                   aria-controls="@ResultsId">
-            @foreach (var option in SortOptions)
-            {
-                <MudSelectItem T="TSort" Value="option.Value">@option.Label</MudSelectItem>
-            }
-        </MudSelect>
-        <MudSelect T="int"
-                   Value="@controller.Current.PageSize"
-                   ValueChanged="ChangePageSizeAsync"
-                   Label="@Text["PerPage"]"
-                   Variant="Variant.Outlined"
-                   aria-controls="@ResultsId">
-            @foreach (var pageSize in PageSizeOptions)
-            {
-                <MudSelectItem T="int" Value="pageSize">@pageSize</MudSelectItem>
-            }
-        </MudSelect>
+        <div class="list-toolbar__field list-toolbar__search-field">
+            <label for="list-toolbar-search">@(SearchLabel ?? Text["Search"])</label>
+            <span class="list-toolbar__input-wrap">
+                <ShadcnIcon Icon="SearchIcon" Size="18" />
+                <ShadcnInput TValue="string" id="list-toolbar-search" Type="search"
+                             Value="@controller!.Current.Search" ValueChanged="ChangeSearchAsync"
+                             aria-controls="@ResultsId" />
+            </span>
+        </div>
+        <div class="list-toolbar__field">
+            <label for="list-toolbar-sort">@Text["Sort"]</label>
+            <ShadcnNativeSelect TValue="TSort" id="list-toolbar-sort"
+                                Value="@controller.Current.Sort" ValueChanged="ChangeSortAsync"
+                                aria-controls="@ResultsId">
+                @foreach (var option in SortOptions)
+                {
+                    <ShadcnNativeSelectOption TValue="TSort" Value="@option.Value">@option.Label</ShadcnNativeSelectOption>
+                }
+            </ShadcnNativeSelect>
+        </div>
+        <div class="list-toolbar__field">
+            <label for="list-toolbar-page-size">@Text["PerPage"]</label>
+            <ShadcnNativeSelect TValue="int" id="list-toolbar-page-size"
+                                Value="@controller.Current.PageSize" ValueChanged="ChangePageSizeAsync"
+                                aria-controls="@ResultsId">
+                @foreach (var pageSize in PageSizeOptions)
+                {
+                    <ShadcnNativeSelectOption TValue="int" Value="@pageSize">@pageSize</ShadcnNativeSelectOption>
+                }
+            </ShadcnNativeSelect>
+        </div>
         <div class="list-toolbar__actions">
             @if (controller.CanClear)
             {
-                <MudButton Variant="Variant.Text" Color="Color.Default" OnClick="ClearAsync" StartIcon="@Icons.Material.Outlined.FilterAltOff">
+                <ShadcnButton Variant="ShadcnButtonVariant.Ghost" OnClick="ClearAsync">
+                    <ShadcnIcon Icon="ClearIcon" Size="18" />
                     @Text["Clear"]
-                </MudButton>
+                </ShadcnButton>
             }
-            <MudIconButton ButtonType="ButtonType.Button"
-                           Class="list-toolbar__refresh"
-                           Icon="@Icons.Material.Outlined.Refresh"
-                           Disabled="@IsBusy"
-                           aria-label="@Text["Refresh"]"
-                           title="@Text["Refresh"]"
-                           OnClick="RefreshAsync" />
+            <ShadcnButton Class="list-toolbar__refresh" Variant="ShadcnButtonVariant.Ghost" Size="ShadcnButtonSize.Icon"
+                          Disabled="@IsBusy" aria-label="@Text["Refresh"]" title="@Text["Refresh"]"
+                          OnClick="RefreshAsync">
+                <ShadcnIcon Icon="RefreshIcon" Size="20" />
+            </ShadcnButton>
         </div>
     </div>
     <span class="visually-hidden" role="status" aria-live="polite">
@@ -72,6 +70,9 @@
     private DebouncedListToolbarController<TSort>? controller;
     private ListToolbarState<TSort>? observedValue;
     private ListToolbarState<TSort>? observedDefaults;
+    private static readonly ShadcnIconData SearchIcon = LucideIconCatalog.Instance.Get(LucideIconNames.Search);
+    private static readonly ShadcnIconData ClearIcon = LucideIconCatalog.Instance.Get(LucideIconNames.ListFilterPlus);
+    private static readonly ShadcnIconData RefreshIcon = LucideIconCatalog.Instance.Get(LucideIconNames.RefreshCw);
 
     protected override void OnParametersSet()
     {

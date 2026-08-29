@@ -16,6 +16,8 @@ public sealed class LegacyLinkSystemContractTests
         Assert.Contains("[Parameter] public LegacyLinkRole Role", source);
         Assert.Contains("[Parameter] public bool Disabled", source);
         Assert.Contains("aria-disabled", source);
+        Assert.Contains("ShadcnIcon", source);
+        Assert.DoesNotContain("MudIcon", source);
     }
 
     [Fact]
