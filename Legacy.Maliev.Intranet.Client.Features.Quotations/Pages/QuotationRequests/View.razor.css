@@ -28,3 +28,16 @@
     color: var(--legacy-warning, #8a5b00);
     background: color-mix(in srgb, currentColor 10%, transparent);
 }
+@media (max-width: 700px) { .quotation-request-layout, .quotation-request-grid { grid-template-columns: 1fr; } .operations-page-header, .quotation-request-actions { align-items: stretch; flex-direction: column; } .operations-page-header ::deep .shadcn-button, .quotation-request-actions ::deep .shadcn-button { width: 100%; min-height: 44px; } }
+.quotation-request-detail { width: min(100%, 72rem); margin-inline: auto; }
+.operations-page-header, .quotation-request-actions { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: .75rem; }
+.operations-page-header { margin-bottom: 1rem; }
+.quotation-request-actions { justify-content: flex-start; margin-top: 1rem; }
+.quotation-request-form, .quotation-request-layout, .quotation-request-textareas { display: grid; gap: 1rem; }
+.quotation-request-layout { grid-template-columns: minmax(0, 2fr) minmax(16rem, 1fr); }
+.quotation-request-card { min-width: 0; padding: 1rem; border: 1px solid var(--shadcn-border); border-radius: var(--shadcn-radius); background: var(--shadcn-card); }
+.quotation-request-card h2 { margin: 0 0 .75rem; font-size: 1.125rem; }
+.quotation-request-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
+.quotation-request-wide { grid-column: 1 / -1; }
+.quotation-request-files { margin-top: 1rem; }
+.quotation-request-files ul { display: grid; gap: .5rem; margin: 0; padding-left: 1.25rem; }
