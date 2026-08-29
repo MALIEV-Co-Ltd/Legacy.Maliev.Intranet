@@ -1,0 +1,22 @@
+@typeparam TValue
+@using System.Linq.Expressions
+@using Microsoft.AspNetCore.Components.Forms
+
+<ShadcnField Disabled="@Disabled">
+    <ShadcnFieldLabel For="@Id">@Label@if (Required) { <span data-required="true" aria-hidden="true">*</span> }</ShadcnFieldLabel>
+    <ShadcnSelect TValue="TValue" id="@Id" Value="@Value" ValueChanged="@ValueChanged" ValueExpression="@ValueExpression" Options="@Options" Placeholder="@Placeholder" Required="@Required" Clearable="@Clearable" Disabled="@Disabled" />
+    @if (ValueExpression is not null) { <ValidationMessage For="@ValueExpression" /> }
+</ShadcnField>
+
+@code {
+    [Parameter, EditorRequired] public string Id { get; set; } = default!;
+    [Parameter, EditorRequired] public string Label { get; set; } = default!;
+    [Parameter] public TValue Value { get; set; } = default!;
+    [Parameter] public EventCallback<TValue> ValueChanged { get; set; }
+    [Parameter] public Expression<Func<TValue>>? ValueExpression { get; set; }
+    [Parameter] public IReadOnlyList<ShadcnSelectOption<TValue>> Options { get; set; } = [];
+    [Parameter] public string Placeholder { get; set; } = "Select an option";
+    [Parameter] public bool Required { get; set; }
+    [Parameter] public bool Clearable { get; set; }
+    [Parameter] public bool Disabled { get; set; }
+}

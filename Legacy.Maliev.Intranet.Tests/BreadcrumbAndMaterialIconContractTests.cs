@@ -32,8 +32,6 @@ public sealed class BreadcrumbAndMaterialIconContractTests : BunitContext
         new("Legacy.Maliev.Intranet.Client/Layout/LegacyTopBar.razor", "images/MALIEV_BLACK.svg", "<img class=\"legacy-logo-image legacy-logo-image--light\" src=\"images/MALIEV_BLACK.svg\" alt=\"MALIEV\" />", "Light-theme top-bar wordmark"),
         new("Legacy.Maliev.Intranet.Client/Layout/LegacyTopBar.razor", "images/MALIEV_WHITE.svg", "<img class=\"legacy-logo-image legacy-logo-image--dark\" src=\"images/MALIEV_WHITE.svg\" alt=\"\" aria-hidden=\"true\" />", "Dark-theme top-bar wordmark"),
         new("Legacy.Maliev.Intranet.Client/Pages/Login.razor", "images/MALIEV_WHITE.svg", "<img src=\"images/MALIEV_WHITE.svg\" alt=\"MALIEV\" class=\"legacy-login-brand-image\" />", "Visible login brand wordmark"),
-        new("Legacy.Maliev.Intranet.Client/Pages/Login.razor", "images/MALIEV_BLACK.svg", "<img src=\"images/MALIEV_BLACK.svg\" alt=\"\" aria-hidden=\"true\" class=\"legacy-login-title-logo legacy-logo-image--light\" />", "Decorative light-theme login title wordmark"),
-        new("Legacy.Maliev.Intranet.Client/Pages/Login.razor", "images/MALIEV_WHITE.svg", "<img src=\"images/MALIEV_WHITE.svg\" alt=\"\" aria-hidden=\"true\" class=\"legacy-login-title-logo legacy-logo-image--dark\" />", "Decorative dark-theme login title wordmark"),
         new("Legacy.Maliev.Intranet.Client/Components/Shell/LegacyNavigationRail.razor", "images/MALIEV_BLACK.svg", "<img class=\"legacy-logo-image legacy-logo-image--light\" src=\"images/MALIEV_BLACK.svg\" alt=\"MALIEV\" />", "Light-theme navigation wordmark"),
         new("Legacy.Maliev.Intranet.Client/Components/Shell/LegacyNavigationRail.razor", "images/MALIEV_WHITE.svg", "<img class=\"legacy-logo-image legacy-logo-image--dark\" src=\"images/MALIEV_WHITE.svg\" alt=\"\" aria-hidden=\"true\" />", "Dark-theme navigation wordmark"),
     ];
@@ -105,7 +103,6 @@ public sealed class BreadcrumbAndMaterialIconContractTests : BunitContext
     private static readonly IReadOnlySet<string> ApprovedExtensionlessTextFiles = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
     {
         "Legacy.Maliev.Intranet/Dockerfile",
-        "Maliev.ShadcnBlazor/licenses/MudBlazor-LICENSE",
     };
 
     [Fact]
@@ -169,7 +166,7 @@ public sealed class BreadcrumbAndMaterialIconContractTests : BunitContext
     }
 
     [Fact]
-    public void Production_icon_inventory_uses_embedded_Material_paths_without_runtime_icon_fonts()
+    public void Production_icon_inventory_uses_approved_component_icons_without_runtime_icon_fonts()
     {
         var root = FindRepositoryRoot();
         var files = EnumerateProductionInventoryFiles(root);
@@ -195,6 +192,14 @@ public sealed class BreadcrumbAndMaterialIconContractTests : BunitContext
         string source)
     {
         Assert.NotEmpty(FindIconInventoryViolations([new(path, source)]));
+    }
+
+    [Fact]
+    public void Icon_inventory_allows_the_exact_released_Lucide_companion_namespace()
+    {
+        Assert.Empty(FindIconInventoryViolations([
+            new("Client/_Imports.razor", "@using global::Maliev.ShadcnBlazor.Icons.Lucide")
+        ]));
     }
 
     [Fact]
@@ -333,7 +338,7 @@ public sealed class BreadcrumbAndMaterialIconContractTests : BunitContext
 
         Assert.Contains("Legacy.Maliev.Intranet/Pages/Shared/_Layout.cshtml", files);
         Assert.Contains("Legacy.Maliev.Intranet/wwwroot/js/compat-shell.js", files);
-        Assert.Contains("Maliev.ShadcnBlazor/wwwroot/css/shadcn-mudblazor.css", files);
+        Assert.Contains("Legacy.Maliev.Intranet.Client/wwwroot/index.html", files);
         Assert.Contains("Directory.Build.props", files);
         Assert.Empty(FindUnclassifiedProductionFiles(EnumerateProductionFilePaths(FindRepositoryRoot())));
     }
@@ -362,8 +367,6 @@ public sealed class BreadcrumbAndMaterialIconContractTests : BunitContext
             .Where(path => Path.GetFileName(path) is "Legacy.Maliev.Intranet"
                 or "Legacy.Maliev.Intranet.Client"
                 or "Legacy.Maliev.Intranet.Client.Shared"
-                or "Maliev.ShadcnBlazor"
-                or "Maliev.ShadcnBlazor.Showcase"
                 || Path.GetFileName(path).StartsWith("Legacy.Maliev.Intranet.Client.Features.", StringComparison.Ordinal))
             .ToArray();
         var sourceFiles = productionRoots
@@ -412,7 +415,10 @@ public sealed class BreadcrumbAndMaterialIconContractTests : BunitContext
                 || (!isSvg && HasUnapprovedSvgReference(file))
                 || (!isSvg && HasUnapprovedInlineOrDataSvg(file))
                 || HasMudIconAlias(file.Source)
-                || Regex.IsMatch(file.Source, @"Icons\.(?!Material\.)", RegexOptions.CultureInvariant)
+                || Regex.IsMatch(
+                    file.Source.Replace("Maliev.ShadcnBlazor.Icons.Lucide", string.Empty, StringComparison.Ordinal),
+                    @"Icons\.(?!Material\.)",
+                    RegexOptions.CultureInvariant)
                 || Regex.IsMatch(file.Source, @"Font[ -]?Awesome|\bfa-[a-z]", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)
                 || Regex.IsMatch(
                     file.Source,

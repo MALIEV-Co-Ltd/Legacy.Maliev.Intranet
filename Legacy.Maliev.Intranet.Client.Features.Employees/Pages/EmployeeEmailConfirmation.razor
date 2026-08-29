@@ -5,36 +5,36 @@
 
 <PageTitle>@Text["PageTitle"]</PageTitle>
 
-<MudContainer MaxWidth="MaxWidth.Small" Class="employee-recovery">
-    <MudPaper Class="pa-6" Elevation="1">
-        <MudText Typo="Typo.h4" HtmlTag="h1" Class="mb-2">@Text["Heading"]</MudText>
-        <MudText Typo="Typo.body1" Class="mb-6">@Text["Introduction"]</MudText>
+<main class="employee-recovery">
+    <section class="employee-recovery__card" aria-labelledby="employee-confirmation-heading">
+        <h1 id="employee-confirmation-heading">@Text["Heading"]</h1>
+        <p class="employee-recovery__introduction">@Text["Introduction"]</p>
         @if (!HasValidAction)
         {
-            <MudAlert Severity="Severity.Error" aria-live="assertive">@Text["InvalidLink"]</MudAlert>
+            <ShadcnAlert Variant="ShadcnAlertVariant.Destructive" AlertRole="ShadcnAlertRole.Alert"><ShadcnAlertDescription>@Text["InvalidLink"]</ShadcnAlertDescription></ShadcnAlert>
         }
         else
         {
             @if (!string.IsNullOrWhiteSpace(notice))
             {
-                <MudAlert Severity="@noticeSeverity" Class="mb-4" aria-live="polite">@notice</MudAlert>
+                <ShadcnAlert Variant="@noticeVariant" AlertRole="@NoticeRole"><ShadcnAlertDescription>@notice</ShadcnAlertDescription></ShadcnAlert>
             }
             @if (submitting)
             {
-                <div role="status" aria-live="polite"><MudProgressLinear Indeterminate="true" Color="Color.Primary" Class="mb-4" aria-label="@Text["Processing"]" /><span class="visually-hidden">@Text["Processing"]</span></div>
+                <div class="employee-recovery__progress" role="status" aria-live="polite"><ShadcnSpinner Label="@Text["Processing"]" Size="1.25rem" /><span>@Text["Processing"]</span></div>
             }
-            <MudButton Variant="Variant.Filled" Color="Color.Primary" ButtonType="ButtonType.Button"
-                       OnClick="ConfirmAsync" Disabled="@(submitting || completed)" FullWidth="true">@Text["Confirm"]</MudButton>
+            <ShadcnButton ButtonType="ShadcnButtonType.Button" OnClick="ConfirmAsync" Disabled="@(submitting || completed)" Class="employee-recovery__primary">@Text["Confirm"]</ShadcnButton>
         }
-        <LegacyLink Href="/Login" Role="LegacyLinkRole.Navigation" StartIcon="@Icons.Material.Filled.ArrowBack" AriaLabel="@Text["BackToLogin"]" Class="mt-3">@Text["BackToLogin"]</LegacyLink>
-    </MudPaper>
-</MudContainer>
+        <LegacyLink Href="/Login" Role="LegacyLinkRole.Navigation" AriaLabel="@Text["BackToLogin"]" Class="employee-recovery__link">@Text["BackToLogin"]</LegacyLink>
+    </section>
+</main>
 
 @code {
     private bool submitting;
     private bool completed;
     private string? notice;
-    private Severity noticeSeverity = Severity.Info;
+    private ShadcnAlertVariant noticeVariant = ShadcnAlertVariant.Default;
+    private ShadcnAlertRole NoticeRole => noticeVariant == ShadcnAlertVariant.Destructive ? ShadcnAlertRole.Alert : ShadcnAlertRole.Status;
 
     [SupplyParameterFromQuery(Name = "email")] public string? Email { get; set; }
     [SupplyParameterFromQuery(Name = "token")] public string? Token { get; set; }
@@ -58,7 +58,7 @@
             if (response.StatusCode == HttpStatusCode.NoContent)
             {
                 completed = true;
-                noticeSeverity = Severity.Success;
+                noticeVariant = ShadcnAlertVariant.Default;
                 notice = Text["Completed"];
                 return;
             }
@@ -87,7 +87,7 @@
 
     private void ShowError(string message)
     {
-        noticeSeverity = Severity.Error;
+        noticeVariant = ShadcnAlertVariant.Destructive;
         notice = message;
     }
 }

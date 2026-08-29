@@ -66,7 +66,7 @@ public sealed class OperationalTableAdoptionContractTests
         var actual = ProductionRazorFiles()
             .Where(file => System.Text.RegularExpressions.Regex.IsMatch(
                 File.ReadAllText(file),
-                "<(?:MudTable|MudSimpleTable|table)(?:\\s|>)",
+                "<(?:MudTable|MudSimpleTable|ShadcnTable|table)(?:\\s|>)",
                 System.Text.RegularExpressions.RegexOptions.CultureInvariant))
             .Select(NormalizePath)
             .Order(StringComparer.Ordinal)

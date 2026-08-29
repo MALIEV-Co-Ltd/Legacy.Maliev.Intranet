@@ -19,7 +19,10 @@ public sealed class QuotationEstimateWasmMigrationContractTests
         Assert.Contains("SetMachineCostPerHour", page, StringComparison.Ordinal);
         Assert.Contains("SetMaterialCostPerPart", page, StringComparison.Ordinal);
         Assert.Contains("ApplyCalculatedValues", page, StringComparison.Ordinal);
-        Assert.Contains("MudTabs", page, StringComparison.Ordinal);
+        Assert.Contains("<ShadcnTabs", page, StringComparison.Ordinal);
+        Assert.Contains("<QuotationInputField", page, StringComparison.Ordinal);
+        Assert.Contains("<ShadcnTable", page, StringComparison.Ordinal);
+        Assert.DoesNotContain("<Mud", page, StringComparison.Ordinal);
         Assert.Contains("aria-live=\"polite\"", page, StringComparison.Ordinal);
         Assert.DoesNotContain("jquery", page, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("IJSRuntime", page, StringComparison.Ordinal);

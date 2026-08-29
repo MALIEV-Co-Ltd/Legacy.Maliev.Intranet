@@ -18,6 +18,19 @@ public sealed class EmployeeRecoveryWasmMigrationContractTests
         Assert.Contains("@page \"/Employees/EmailConfirmation\"", confirm, StringComparison.Ordinal);
         Assert.All(new[] { forgot, reset, confirm }, page =>
             Assert.Contains("[AllowAnonymous]", page, StringComparison.Ordinal));
+        Assert.All(new[] { forgot, reset, confirm }, page =>
+        {
+            Assert.Contains("<ShadcnAlert", page, StringComparison.Ordinal);
+            Assert.Contains("<ShadcnButton", page, StringComparison.Ordinal);
+            Assert.Contains("<ShadcnSpinner", page, StringComparison.Ordinal);
+            Assert.DoesNotContain("<Mud", page, StringComparison.Ordinal);
+        });
+        Assert.Contains("<EditForm", forgot, StringComparison.Ordinal);
+        Assert.Contains("Type=\"email\"", forgot, StringComparison.Ordinal);
+        Assert.Contains("<EditForm", reset, StringComparison.Ordinal);
+        Assert.Contains("Type=\"password\"", reset, StringComparison.Ordinal);
+        Assert.Contains("formModel.Password = string.Empty", reset, StringComparison.Ordinal);
+        Assert.Contains("formModel.ConfirmPassword = string.Empty", reset, StringComparison.Ordinal);
         Assert.Contains("Legacy.Maliev.Intranet.Client.Features.Employees.wasm", app, StringComparison.Ordinal);
         Assert.Contains("/bff/employee-recovery/password-reset/request", bff, StringComparison.Ordinal);
         Assert.Contains("/bff/employee-recovery/password-reset/complete", bff, StringComparison.Ordinal);

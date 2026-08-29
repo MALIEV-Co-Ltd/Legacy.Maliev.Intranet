@@ -4,6 +4,11 @@
     align-items: center;
     gap: 1.5rem;
 }
+.quotation-actions, .quotation-pager { display: flex; align-items: center; flex-wrap: wrap; gap: .75rem; }
+.quotation-pager { justify-content: space-between; }
+.quotation-decision-summary { margin-bottom: 1rem; padding: 1rem; border: 1px solid var(--shadcn-border); border-radius: var(--shadcn-radius); background: var(--shadcn-card); }
+.quotation-decision-summary h2 { margin: 0 0 .75rem; font-size: 1rem; }
+.quotation-table-caption { margin-bottom: .75rem; color: var(--shadcn-muted-foreground); font-size: .8rem; }
 
 .quotation-decision-data {
     display: grid;
@@ -80,3 +85,4 @@
     ::deep .operational-table { --operational-table-min-width: 50rem; }
     .quotation-quick-view { grid-template-columns: 1fr; }
 }
+@media (max-width: 600px) { .quotation-actions, .quotation-pager { align-items: stretch; flex-direction: column; text-align: center; } .quotation-actions ::deep .shadcn-button, .quotation-pager ::deep .shadcn-button { width: 100%; min-height: 44px; } }

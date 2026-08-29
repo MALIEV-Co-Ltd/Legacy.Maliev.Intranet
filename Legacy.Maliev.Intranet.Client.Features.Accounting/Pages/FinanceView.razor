@@ -1,4 +1,5 @@
 @page "/Finances/View"
+@using System.ComponentModel.DataAnnotations
 @attribute [Authorize]
 @inject HttpClient Http
 @inject NavigationManager Navigation
@@ -6,102 +7,98 @@
 
 <PageTitle>@Text["PageTitle", Id ?? 0]</PageTitle>
 
-<MudContainer MaxWidth="MaxWidth.Large">
+<main class="finance-editor">
     @if (loading)
     {
         <div role="status" aria-live="polite">
-            <MudProgressLinear Indeterminate="true" Color="Color.Primary" aria-label="@Text["Loading"]" />
-            <span class="visually-hidden">@Text["Loading"]</span>
+            <ShadcnSpinner Label="@Text["Loading"]" Size="1.25rem" />
+            <span>@Text["Loading"]</span>
         </div>
     }
     else if (!string.IsNullOrWhiteSpace(error))
     {
-        <MudAlert Severity="Severity.Error" aria-live="assertive">@error</MudAlert>
-        <div class="d-flex flex-wrap gap-2 mt-4">
-            <MudButton OnClick="LoadAsync" Variant="Variant.Filled" Color="Color.Primary">@Text["Retry"]</MudButton>
-            <LegacyLink Href="/Finances/Index" Role="LegacyLinkRole.Navigation" StartIcon="@Icons.Material.Filled.ArrowBack" AriaLabel="@Text["Back"]">@Text["Back"]</LegacyLink>
+        <ShadcnAlert Variant="ShadcnAlertVariant.Destructive" AlertRole="ShadcnAlertRole.Alert"><ShadcnAlertDescription>@error</ShadcnAlertDescription></ShadcnAlert>
+        <div class="finance-editor__actions">
+            <ShadcnButton OnClick="LoadAsync">@Text["Retry"]</ShadcnButton>
+            <LegacyLink Href="/Finances/Index" Role="LegacyLinkRole.Navigation" AriaLabel="@Text["Back"]">@Text["Back"]</LegacyLink>
         </div>
     }
     else if (page is not null)
     {
-        <div class="operations-page-header d-flex flex-wrap align-center justify-space-between gap-3 mb-4">
-            <MudText Typo="Typo.h4" HtmlTag="h1">@Text["Heading", page.Payment.Id]</MudText>
-            <LegacyLink Href="/Finances/Index" Role="LegacyLinkRole.Navigation" StartIcon="@Icons.Material.Filled.ArrowBack" AriaLabel="@Text["Back"]">@Text["Back"]</LegacyLink>
+        <div class="operations-page-header">
+            <h1>@Text["Heading", page.Payment.Id]</h1>
+            <LegacyLink Href="/Finances/Index" Role="LegacyLinkRole.Navigation" AriaLabel="@Text["Back"]">@Text["Back"]</LegacyLink>
         </div>
         @if (!string.IsNullOrWhiteSpace(notice))
         {
-            <MudAlert Severity="Severity.Success" Class="mb-4" aria-live="polite">@notice</MudAlert>
+            <ShadcnAlert AlertRole="ShadcnAlertRole.Status"><ShadcnAlertDescription>@notice</ShadcnAlertDescription></ShadcnAlert>
         }
 
-        <MudForm @ref="form" Model="edit">
-            <MudGrid>
-                <MudItem xs="12" md="6"><MudSelect T="int?" Label="@Text["Employee"]" @bind-Value="edit.EmployeeId" Clearable="true">@foreach (var item in page.Employees) { <MudSelectItem T="int?" Value="@((int?)item.Id)">@item.Name</MudSelectItem> }</MudSelect></MudItem>
-                <MudItem xs="12" md="6"><MudSelect T="int" Label="@Text["Direction"]" @bind-Value="edit.PaymentDirectionId" Required="true">@foreach (var item in page.Directions) { <MudSelectItem T="int" Value="@item.Id">@item.Name</MudSelectItem> }</MudSelect></MudItem>
-                <MudItem xs="12" md="6"><MudSelect T="int" Label="@Text["Type"]" @bind-Value="edit.PaymentTypeId" Required="true">@foreach (var item in page.Types) { <MudSelectItem T="int" Value="@item.Id">@item.Name</MudSelectItem> }</MudSelect></MudItem>
-                <MudItem xs="12" md="6"><MudSelect T="int" Label="@Text["Method"]" @bind-Value="edit.PaymentMethodId" Required="true">@foreach (var item in page.Methods) { <MudSelectItem T="int" Value="@item.Id">@item.Name</MudSelectItem> }</MudSelect></MudItem>
-                <MudItem xs="12" md="6">
-                    <MudNumericField T="decimal" Label="@Text["AmountThbOrCurrency"]" @bind-Value="edit.Amount" Min="0" Required="true" Adornment="Adornment.End" AdornmentText="@CurrencyName(edit.CurrencyId)" />
-                </MudItem>
-                <MudItem xs="12" md="6"><MudSelect T="int?" Label="@Text["Currency"]" @bind-Value="edit.CurrencyId" Clearable="true">@foreach (var item in page.Currencies) { <MudSelectItem T="int?" Value="@((int?)item.Id)">@item.ShortName</MudSelectItem> }</MudSelect></MudItem>
-                <MudItem xs="12" md="6"><MudTextField Label="@Text["Recipient"]" @bind-Value="edit.Recipient" /></MudItem>
-                <MudItem xs="12" md="6"><MudTextField Label="@Text["TransactionNumber"]" @bind-Value="edit.TransactionNumber" /></MudItem>
-                <MudItem xs="12" md="6"><MudDatePicker Label="@Text["PaymentDate"]" @bind-Date="edit.PaymentDate" /></MudItem>
-                <MudItem xs="12"><MudTextField Label="@Text["Description"]" @bind-Value="edit.Description" Lines="4" /></MudItem>
-                <MudItem xs="12">
-                    <div class="d-flex flex-wrap gap-2" role="group" aria-label="@Text["PaymentActions"]">
-                        <MudButton OnClick="SaveAsync" Disabled="@submitting" Variant="Variant.Filled" Color="Color.Primary">@Text["Save"]</MudButton>
-                        <MudButton OnClick="ArmDelete" Disabled="@submitting" Variant="Variant.Outlined" Color="Color.Error" aria-expanded="@deleteArmed">@Text["Delete"]</MudButton>
+        <EditForm EditContext="@editContext" OnValidSubmit="SaveAsync" class="finance-editor__form">
+            <DataAnnotationsValidator />
+            <div class="finance-editor__grid">
+                <AccountingSelectField TValue="int?" Id="finance-employee" Label="@Text["Employee"]" @bind-Value="edit.EmployeeId" Options="@EmployeeOptions" Placeholder="@Text["Employee"]" Clearable="true" Disabled="@submitting" />
+                <AccountingSelectField TValue="int" Id="finance-direction" Label="@Text["Direction"]" @bind-Value="edit.PaymentDirectionId" Options="@DirectionOptions" Placeholder="@Text["Direction"]" Required="true" Disabled="@submitting" />
+                <AccountingSelectField TValue="int" Id="finance-type" Label="@Text["Type"]" @bind-Value="edit.PaymentTypeId" Options="@TypeOptions" Placeholder="@Text["Type"]" Required="true" Disabled="@submitting" />
+                <AccountingSelectField TValue="int" Id="finance-method" Label="@Text["Method"]" @bind-Value="edit.PaymentMethodId" Options="@MethodOptions" Placeholder="@Text["Method"]" Required="true" Disabled="@submitting" />
+                <AccountingInputField TValue="decimal" Id="finance-amount" Label="@AmountLabel" Type="number" InputMode="decimal" Min="0" @bind-Value="edit.Amount" Required="true" Disabled="@submitting" />
+                <AccountingSelectField TValue="int?" Id="finance-currency" Label="@Text["Currency"]" @bind-Value="edit.CurrencyId" Options="@CurrencyOptions" Placeholder="@Text["Currency"]" Clearable="true" Disabled="@submitting" />
+                <AccountingInputField TValue="string" Id="finance-recipient" Label="@Text["Recipient"]" @bind-Value="edit.Recipient" Disabled="@submitting" />
+                <AccountingInputField TValue="string" Id="finance-transaction" Label="@Text["TransactionNumber"]" @bind-Value="edit.TransactionNumber" Disabled="@submitting" />
+                <AccountingInputField TValue="DateTime?" Id="finance-payment-date" Label="@Text["PaymentDate"]" Type="date" @bind-Value="edit.PaymentDate" Disabled="@submitting" />
+                <div class="finance-editor__wide"><ShadcnFormField Id="finance-description" Label="@Text["Description"]"><Control><ShadcnTextarea TValue="string" id="finance-description" @bind-Value="edit.Description" rows="4" Disabled="@submitting" /></Control></ShadcnFormField></div>
+                <div class="finance-editor__wide finance-editor__actions" role="group" aria-label="@Text["PaymentActions"]">
+                        <ShadcnButton ButtonType="ShadcnButtonType.Submit" OperationFeedback="false" Disabled="@submitting">@Text["Save"]</ShadcnButton>
+                        <ShadcnButton ButtonType="ShadcnButtonType.Button" OnClick="ArmDelete" Disabled="@submitting" Variant="ShadcnButtonVariant.Destructive" aria-expanded="@deleteArmed">@Text["Delete"]</ShadcnButton>
                         @if (deleteArmed)
                         {
-                            <span role="group" aria-label="@Text["DeleteConfirmation"]">
-                                <MudButton OnClick="DeleteAsync" Disabled="@submitting" Variant="Variant.Filled" Color="Color.Error">@Text["ConfirmDelete"]</MudButton>
-                                <MudButton OnClick="CancelDelete" Disabled="@submitting" Variant="Variant.Text">@Text["Cancel"]</MudButton>
+                            <span class="finance-editor__confirmation" role="group" aria-label="@Text["DeleteConfirmation"]">
+                                <ShadcnButton ButtonType="ShadcnButtonType.Button" OnClick="DeleteAsync" Disabled="@submitting" Variant="ShadcnButtonVariant.Destructive">@Text["ConfirmDelete"]</ShadcnButton>
+                                <ShadcnButton ButtonType="ShadcnButtonType.Button" OnClick="CancelDelete" Disabled="@submitting" Variant="ShadcnButtonVariant.Ghost">@Text["Cancel"]</ShadcnButton>
                             </span>
                         }
-                    </div>
-                </MudItem>
-            </MudGrid>
-        </MudForm>
+                </div>
+            </div>
+        </EditForm>
 
-        <MudPaper Class="pa-4 mt-4">
-            <MudText Typo="Typo.h5" HtmlTag="h2">@Text["Files"]</MudText>
-            <InputFile OnChange="SelectFiles" multiple class="mt-3" />
-            <MudButton OnClick="UploadAsync" Disabled="@(submitting || uploads.Count == 0)" Class="my-3">@Text["Upload"]</MudButton>
+        <section class="finance-files" aria-labelledby="finance-files-heading">
+            <h2 id="finance-files-heading">@Text["Files"]</h2>
+            <div class="finance-files__upload"><InputFile OnChange="SelectFiles" multiple disabled="@submitting" /><ShadcnButton OnClick="UploadAsync" Disabled="@(submitting || uploads.Count == 0)">@Text["Upload"]</ShadcnButton></div>
             @if (page.Files.Count == 0)
             {
-                <MudText>@Text["NoFiles"]</MudText>
+                <p>@Text["NoFiles"]</p>
             }
             else
             {
-                <MudList T="FinanceFileItem">
+                <ul class="finance-files__list">
                     @foreach (var file in page.Files)
                     {
-                        <MudListItem T="FinanceFileItem" Value="file">
+                        <li>
                             <LegacyLink Href="@file.Uri?.ToString()" Role="LegacyLinkRole.External" Target="_blank" Rel="noopener">@file.ObjectName</LegacyLink>
-                            <div class="d-flex flex-wrap gap-2" role="group" aria-label="@Text["FileActions", file.ObjectName]">
-                                <MudIconButton Icon="@Icons.Material.Filled.Delete" OnClick="() => ArmFileRemove(file.Id)" Disabled="@submitting" aria-label="@Text["RemoveFile", file.ObjectName]" aria-expanded="@(fileRemoveArmedId == file.Id)" />
+                            <div class="finance-editor__actions" role="group" aria-label="@Text["FileActions", file.ObjectName]">
+                                <ShadcnButton OnClick="() => ArmFileRemove(file.Id)" Disabled="@submitting" Variant="ShadcnButtonVariant.Destructive" Size="ShadcnButtonSize.Small" aria-label="@Text["RemoveFile", file.ObjectName]" aria-expanded="@(fileRemoveArmedId == file.Id)">@Text["RemoveFile", file.ObjectName]</ShadcnButton>
                                 @if (fileRemoveArmedId == file.Id)
                                 {
-                                    <div class="d-flex flex-wrap gap-2" role="group" aria-label="@Text["RemoveFileConfirmation", file.ObjectName]">
-                                        <MudButton OnClick="() => RemoveFileAsync(file.Id)" Disabled="@submitting" Color="Color.Error" Variant="Variant.Filled">@Text["ConfirmRemoveFile"]</MudButton>
-                                        <MudButton OnClick="CancelFileRemove" Disabled="@submitting">@Text["Cancel"]</MudButton>
+                                    <div class="finance-editor__confirmation" role="group" aria-label="@Text["RemoveFileConfirmation", file.ObjectName]">
+                                        <ShadcnButton OnClick="() => RemoveFileAsync(file.Id)" Disabled="@submitting" Variant="ShadcnButtonVariant.Destructive" Size="ShadcnButtonSize.Small">@Text["ConfirmRemoveFile"]</ShadcnButton>
+                                        <ShadcnButton OnClick="CancelFileRemove" Disabled="@submitting" Variant="ShadcnButtonVariant.Ghost" Size="ShadcnButtonSize.Small">@Text["Cancel"]</ShadcnButton>
                                     </div>
                                 }
                             </div>
-                        </MudListItem>
+                        </li>
                     }
-                </MudList>
+                </ul>
             }
-        </MudPaper>
+        </section>
     }
-</MudContainer>
+</main>
 
 @code {
     [SupplyParameterFromQuery(Name = "id")] public int? Id { get; set; }
-    private MudForm? form;
     private FinanceDetailPage? page;
     private EmployeeSessionSummary? session;
     private FinanceEditModel edit = new();
+    private EditContext editContext = null!;
     private readonly List<IBrowserFile> uploads = [];
     private Guid? uploadAttemptId;
     private bool loading = true;
@@ -110,6 +107,12 @@
     private int? fileRemoveArmedId;
     private string? error;
     private string? notice;
+    private IReadOnlyList<ShadcnSelectOption<int?>> EmployeeOptions => page?.Employees.Select(item => new ShadcnSelectOption<int?>(item.Id, item.Name)).ToArray() ?? [];
+    private IReadOnlyList<ShadcnSelectOption<int>> DirectionOptions => page?.Directions.Select(item => new ShadcnSelectOption<int>(item.Id, item.Name)).ToArray() ?? [];
+    private IReadOnlyList<ShadcnSelectOption<int>> TypeOptions => page?.Types.Select(item => new ShadcnSelectOption<int>(item.Id, item.Name)).ToArray() ?? [];
+    private IReadOnlyList<ShadcnSelectOption<int>> MethodOptions => page?.Methods.Select(item => new ShadcnSelectOption<int>(item.Id, item.Name)).ToArray() ?? [];
+    private IReadOnlyList<ShadcnSelectOption<int?>> CurrencyOptions => page?.Currencies.Select(item => new ShadcnSelectOption<int?>(item.Id, item.ShortName)).ToArray() ?? [];
+    private string AmountLabel => $"{Text["AmountThbOrCurrency"]} ({CurrencyName(edit.CurrencyId)})";
 
     protected override async Task OnParametersSetAsync() => await LoadAsync();
 
@@ -127,6 +130,7 @@
             page = await response.Content.ReadFromJsonAsync<FinanceDetailPage>();
             if (page is null) { error = Text["InvalidResponse"]; return; }
             edit = FinanceEditModel.From(page.Payment);
+            editContext = new EditContext(edit);
         }
         catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException) { error = Text["Unavailable"]; }
         finally { loading = false; }
@@ -134,8 +138,7 @@
 
     private async Task SaveAsync()
     {
-        if (page is null || form is null) return;
-        await form.ValidateAsync(); if (!form.IsValid) return;
+        if (page is null || submitting) return;
         using var request = WriteRequest(HttpMethod.Put, $"/bff/finances/{page.Payment.Id}");
         request.Content = JsonContent.Create(edit.ToRequest());
         await SendAsync(request, Text["Saved"]);
@@ -213,11 +216,11 @@
     private sealed class FinanceEditModel
     {
         public int? EmployeeId { get; set; }
-        public int PaymentDirectionId { get; set; }
-        public int PaymentTypeId { get; set; }
+        [Range(1, int.MaxValue)] public int PaymentDirectionId { get; set; }
+        [Range(1, int.MaxValue)] public int PaymentTypeId { get; set; }
         public string? Description { get; set; }
-        public int PaymentMethodId { get; set; }
-        public decimal Amount { get; set; }
+        [Range(1, int.MaxValue)] public int PaymentMethodId { get; set; }
+        [Range(typeof(decimal), "0.01", "79228162514264337593543950335")] public decimal Amount { get; set; }
         public int? CurrencyId { get; set; }
         public string? Recipient { get; set; }
         public string? TransactionNumber { get; set; }

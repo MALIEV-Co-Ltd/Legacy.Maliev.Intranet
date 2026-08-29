@@ -1,5 +1,4 @@
 @page "/Finances/NetProfitChart"
-@using global::Maliev.ShadcnBlazor.Adapters.MudBlazor
 @attribute [Authorize]
 @inject HttpClient Http
 @inject NavigationManager Navigation
@@ -7,78 +6,61 @@
 
 <PageTitle>@Text["PageTitle"]</PageTitle>
 
-<MudContainer MaxWidth="MaxWidth.ExtraLarge">
-    <div class="operations-page-header d-flex flex-wrap align-center justify-space-between gap-3 mb-4">
-        <MudText Typo="Typo.h4" HtmlTag="h1">@Text["Title", Year]</MudText>
-        <LegacyLink Href="/Finances/Index" Role="LegacyLinkRole.Navigation" StartIcon="@Icons.Material.Filled.ArrowBack" AriaLabel="@Text["Back"]">@Text["Back"]</LegacyLink>
+<main class="finance-chart-page">
+    <div class="operations-page-header">
+        <h1>@Text["Title", Year]</h1>
+        <LegacyLink Href="/Finances/Index" Role="LegacyLinkRole.Navigation" AriaLabel="@Text["Back"]">@Text["Back"]</LegacyLink>
     </div>
 
     @if (loading)
     {
         <div role="status" aria-live="polite">
-            <MudProgressLinear Indeterminate="true" Color="Color.Primary" aria-label="@Text["Loading"]" />
-            <span class="visually-hidden">@Text["Loading"]</span>
+            <ShadcnSpinner Label="@Text["Loading"]" Size="1.25rem" />
+            <span>@Text["Loading"]</span>
         </div>
     }
     else if (!string.IsNullOrWhiteSpace(error))
     {
-        <MudAlert Severity="Severity.Error" aria-live="assertive">@error</MudAlert>
+        <ShadcnAlert Variant="ShadcnAlertVariant.Destructive" AlertRole="ShadcnAlertRole.Alert"><ShadcnAlertDescription>@error</ShadcnAlertDescription></ShadcnAlert>
     }
     else if (chartData is null || chartData.Labels.Length == 0)
     {
-        <MudAlert Severity="Severity.Info" aria-live="polite">@Text["NoData", Year]</MudAlert>
+        <ShadcnAlert AlertRole="ShadcnAlertRole.Status"><ShadcnAlertDescription>@Text["NoData", Year]</ShadcnAlertDescription></ShadcnAlert>
     }
     else
     {
-        <MudGrid>
-            <MudItem xs="12">
-                <section aria-labelledby="cumulative-income-heading">
-                    <MudPaper Class="pa-4" Elevation="1">
-                        <MudText id="cumulative-income-heading" Typo="Typo.h6" HtmlTag="h2" Class="mb-3">@Text["Cumulative"]</MudText>
-                        <div aria-hidden="true">
-                            <MudChart T="double" ChartType="ChartType.Line" ChartSeries="@cumulativeSeries" ChartLabels="@chartData.Labels" ChartOptions="@ShadcnMudChartOptions.Create()" Width="100%" Height="360px" />
-                        </div>
-                    </MudPaper>
-                </section>
-            </MudItem>
-            <MudItem xs="12">
-                <section aria-labelledby="daily-income-heading">
-                    <MudPaper Class="pa-4" Elevation="1">
-                        <MudText id="daily-income-heading" Typo="Typo.h6" HtmlTag="h2" Class="mb-3">@Text["Daily"]</MudText>
-                        <div aria-hidden="true">
-                            <MudChart T="double" ChartType="ChartType.Bar" ChartSeries="@dailySeries" ChartLabels="@chartData.Labels" ChartOptions="@ShadcnMudChartOptions.Create()" Width="100%" Height="360px" />
-                        </div>
-                    </MudPaper>
-                </section>
-            </MudItem>
-            <MudItem xs="12">
-                <MudPaper Class="pa-4" Elevation="1">
-                    <MudText Typo="Typo.h6" HtmlTag="h2" Class="mb-3">@Text["TableHeading", Year]</MudText>
-                    <MudTable Items="IncomeRows" Breakpoint="Breakpoint.Sm" Elevation="0" aria-label="@Text["TableLabel", Year]">
-                        <HeaderContent>
-                            <MudTh>@Text["Date"]</MudTh>
-                            <MudTh>@Text["DailyThb"]</MudTh>
-                            <MudTh>@Text["CumulativeThb"]</MudTh>
-                        </HeaderContent>
-                        <RowTemplate>
-                            <MudTd DataLabel="@Text["Date"]">@context.Date</MudTd>
-                            <MudTd DataLabel="@Text["DailyThb"]">@FormatThb(context.Daily)</MudTd>
-                            <MudTd DataLabel="@Text["CumulativeThb"]">@FormatThb(context.Cumulative)</MudTd>
-                        </RowTemplate>
-                    </MudTable>
-                </MudPaper>
-            </MudItem>
-        </MudGrid>
+        <div class="finance-chart-grid">
+            <section class="finance-chart-card">
+                <ShadcnChart Id="cumulative-income" Type="ShadcnChartType.Line" Title="@Text["Cumulative"]" CategoryLabel="@Text["Date"]" Config="@cumulativeConfig" Categories="@chartData.Labels" Series="@cumulativeSeries" ShowGrid="true" ShowMajorGrid="true" ShowLegend="true" InitialWidth="960" InitialHeight="360" ValueFormatter="@FormatThb" />
+            </section>
+            <section class="finance-chart-card">
+                <ShadcnChart Id="daily-income" Type="ShadcnChartType.Bar" Title="@Text["Daily"]" CategoryLabel="@Text["Date"]" Config="@dailyConfig" Categories="@chartData.Labels" Series="@dailySeries" ShowGrid="true" ShowMajorGrid="true" ShowLegend="true" InitialWidth="960" InitialHeight="360" ValueFormatter="@FormatThb" />
+            </section>
+            <section class="finance-chart-card finance-chart-table" aria-labelledby="income-table-heading">
+                <h2 id="income-table-heading">@Text["TableHeading", Year]</h2>
+                <ShadcnTable ExpectedColumnCount="3" aria-label="@Text["TableLabel", Year]">
+                    <ShadcnTableHeader><ShadcnTableRow><ShadcnTableHead>@Text["Date"]</ShadcnTableHead><ShadcnTableHead>@Text["DailyThb"]</ShadcnTableHead><ShadcnTableHead>@Text["CumulativeThb"]</ShadcnTableHead></ShadcnTableRow></ShadcnTableHeader>
+                    <ShadcnTableBody>
+                        @foreach (var row in IncomeRows)
+                        {
+                            <ShadcnTableRow><ShadcnTableCell data-label="@Text["Date"]">@row.Date</ShadcnTableCell><ShadcnTableCell data-label="@Text["DailyThb"]">@FormatThb(row.Daily)</ShadcnTableCell><ShadcnTableCell data-label="@Text["CumulativeThb"]">@FormatThb(row.Cumulative)</ShadcnTableCell></ShadcnTableRow>
+                        }
+                    </ShadcnTableBody>
+                </ShadcnTable>
+            </section>
+        </div>
     }
-</MudContainer>
+</main>
 
 @code {
     [SupplyParameterFromQuery(Name = "year")] public int? RequestedYear { get; set; }
 
     private int Year { get; set; }
     private FinanceNetIncomeChartData? chartData;
-    private List<ChartSeries<double>> cumulativeSeries = [];
-    private List<ChartSeries<double>> dailySeries = [];
+    private IReadOnlyList<ShadcnChartSeries> cumulativeSeries = [];
+    private IReadOnlyList<ShadcnChartSeries> dailySeries = [];
+    private ShadcnChartConfig cumulativeConfig => new() { ["net-income"] = new(Text["NetIncome"]) { Color = "var(--shadcn-chart-2)" } };
+    private ShadcnChartConfig dailyConfig => new() { ["amount"] = new(Text["Amount"]) { Color = "var(--shadcn-chart-1)" } };
     private bool loading;
     private string? error;
 
@@ -101,8 +83,8 @@
         {
             var trend = await FinanceChartDataClient.LoadAsync(Http, Year, includeExpense: false);
             chartData = FinanceChartSeries.BuildNetIncome(trend.Income);
-            cumulativeSeries = [new ChartSeries<double> { Name = Text["NetIncome"], Data = chartData.CumulativeAmounts }];
-            dailySeries = [new ChartSeries<double> { Name = Text["Amount"], Data = chartData.DailyAmounts }];
+            cumulativeSeries = [new ShadcnChartSeries("net-income", NullableValues(chartData.CumulativeAmounts))];
+            dailySeries = [new ShadcnChartSeries("amount", NullableValues(chartData.DailyAmounts))];
         }
         catch (FinanceChartDataException exception)
         {
@@ -117,6 +99,8 @@
             loading = false;
         }
     }
+
+    private static double?[] NullableValues(IEnumerable<double> values) => values.Select(value => (double?)value).ToArray();
 
     private void HandleFailure(HttpStatusCode? statusCode)
     {

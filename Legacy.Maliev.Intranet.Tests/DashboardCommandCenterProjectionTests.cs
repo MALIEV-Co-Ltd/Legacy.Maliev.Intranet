@@ -137,8 +137,15 @@ public sealed class DashboardCommandCenterProjectionTests
         Assert.Contains("Text[\"RecentQuotations\"]", dashboard, StringComparison.Ordinal);
         Assert.Contains("Text[\"FinancialSnapshot\"]", dashboard, StringComparison.Ordinal);
         Assert.Contains("Text[\"QuotationDecisions\"]", dashboard, StringComparison.Ordinal);
-        Assert.Contains("aria-live=\"assertive\"", dashboard, StringComparison.Ordinal);
-        Assert.Contains("<caption class=\"sr-only\">", dashboard, StringComparison.Ordinal);
+        Assert.Contains("AlertRole=\"ShadcnAlertRole.Alert\"", dashboard, StringComparison.Ordinal);
+        Assert.Equal(4, System.Text.RegularExpressions.Regex.Matches(dashboard, "<ShadcnTable\\b").Count);
+        Assert.Contains("<ShadcnAlert", dashboard, StringComparison.Ordinal);
+        Assert.Contains("<ShadcnProgress", dashboard, StringComparison.Ordinal);
+        Assert.Contains("<ShadcnSkeleton", dashboard, StringComparison.Ordinal);
+        Assert.Contains("<ShadcnButton", dashboard, StringComparison.Ordinal);
+        Assert.Contains("<ShadcnIcon", dashboard, StringComparison.Ordinal);
+        Assert.DoesNotContain("<Mud", dashboard, StringComparison.Ordinal);
+        Assert.Contains("<ShadcnTableCaption Class=\"sr-only\">", dashboard, StringComparison.Ordinal);
         Assert.Contains("data-label=", dashboard, StringComparison.Ordinal);
         Assert.DoesNotContain("content: attr(data-label)", styles, StringComparison.Ordinal);
         Assert.DoesNotContain(".dashboard-table thead { display: none; }", styles, StringComparison.Ordinal);

@@ -26,17 +26,19 @@ public sealed class AccountingUiAccessibilityContractTests
     }
 
     [Fact]
-    public void FinanceCharts_ExposeLocalizedThbTablesAndHideGraphicalDuplicates()
+    public void FinanceCharts_ExposeLocalizedThbTablesAndNativeAccessibleCharts()
     {
         var root = FindRoot();
         var activity = ReadPage(root, "YearlyActivityChart.razor");
         var netProfit = ReadPage(root, "NetProfitChart.razor");
 
-        Assert.Contains("aria-hidden=\"true\"", activity, StringComparison.Ordinal);
+        Assert.Contains("<ShadcnChart", activity, StringComparison.Ordinal);
+        Assert.Contains("CategoryLabel=", activity, StringComparison.Ordinal);
         Assert.Contains("ActivityRows", activity, StringComparison.Ordinal);
         Assert.Contains("IncomeThb", activity, StringComparison.Ordinal);
         Assert.Contains("ExpenseThb", activity, StringComparison.Ordinal);
-        Assert.Contains("aria-hidden=\"true\"", netProfit, StringComparison.Ordinal);
+        Assert.Contains("<ShadcnChart", netProfit, StringComparison.Ordinal);
+        Assert.Contains("CategoryLabel=", netProfit, StringComparison.Ordinal);
         Assert.Contains("IncomeRows", netProfit, StringComparison.Ordinal);
         Assert.Contains("DailyThb", netProfit, StringComparison.Ordinal);
         Assert.Contains("CumulativeThb", netProfit, StringComparison.Ordinal);
@@ -44,6 +46,8 @@ public sealed class AccountingUiAccessibilityContractTests
         Assert.Contains("Asia/Bangkok", netProfit, StringComparison.Ordinal);
         Assert.Contains("THB", activity, StringComparison.Ordinal);
         Assert.Contains("THB", netProfit, StringComparison.Ordinal);
+        Assert.DoesNotContain("aria-hidden=\"true\"", activity, StringComparison.Ordinal);
+        Assert.DoesNotContain("aria-hidden=\"true\"", netProfit, StringComparison.Ordinal);
     }
 
     [Fact]

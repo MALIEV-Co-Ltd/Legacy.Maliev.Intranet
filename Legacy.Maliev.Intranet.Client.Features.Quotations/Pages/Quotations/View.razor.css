@@ -78,6 +78,8 @@
 }
 
 @media (max-width: 800px) {
+    .quotation-view__grid { grid-template-columns: 1fr; }
+    .quotation-view__wide { grid-column: auto; }
     .quotation-price-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
@@ -89,3 +91,15 @@
         grid-template-columns: 1fr;
     }
 }
+@media (max-width: 600px) { .operations-page-header, .quotation-view__actions { align-items: stretch; flex-direction: column; } .operations-page-header ::deep .shadcn-button, .quotation-view__actions ::deep .shadcn-button { width: 100%; min-height: 44px; } }
+.quotation-view { width: min(100%, 90rem); margin-inline: auto; }
+.operations-page-header, .quotation-view__actions { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: .75rem; }
+.operations-page-header { margin-bottom: 1rem; }
+.quotation-view__actions { justify-content: flex-start; }
+.quotation-view__decision { margin-bottom: 1rem; }
+.quotation-view__grid { display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: 1rem; }
+.quotation-view__card { min-width: 0; padding: 1rem; border: 1px solid var(--shadcn-border); border-radius: var(--shadcn-radius); background: var(--shadcn-card); }
+.quotation-view__card h2 { margin: 0 0 .75rem; font-size: 1.125rem; }
+.quotation-view__card h3 { margin: 1rem 0 .5rem; font-size: 1rem; }
+.quotation-view__wide { grid-column: 1 / -1; }
+.quotation-view__list { display: grid; gap: .5rem; margin: 0; padding-left: 1.25rem; }

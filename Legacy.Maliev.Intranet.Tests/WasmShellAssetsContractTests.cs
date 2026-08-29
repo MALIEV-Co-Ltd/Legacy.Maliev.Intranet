@@ -64,25 +64,17 @@ public sealed class WasmShellAssetsContractTests
     }
 
     [Fact]
-    public void MobileNumericSteppersMeetTheWorkspaceTouchTarget()
+    public void NativeOperationControlsMeetTheWorkspaceTouchTarget()
     {
         var css = File.ReadAllText(Path.Combine(
             FindRoot(),
             "Legacy.Maliev.Intranet.Client",
             "wwwroot",
             "css",
-            "mudblazor-overrides.css"));
+            "operations-pages.css"));
 
-        Assert.Contains("@media (max-width: 1024px)", css, StringComparison.Ordinal);
-        Assert.Contains(
-            ".mud-input-control.mud-input-number-control .mud-input-numeric-spin",
-            css,
-            StringComparison.Ordinal);
-        Assert.Contains("display: none", css, StringComparison.Ordinal);
-        Assert.Contains(
-            ".mud-input-control.mud-input-number-control .mud-input-slot",
-            css,
-            StringComparison.Ordinal);
+        Assert.Contains("@media (max-width: 720px)", css, StringComparison.Ordinal);
+        Assert.Contains(":where(input, button, a)", css, StringComparison.Ordinal);
         Assert.Contains("min-height: 44px", css, StringComparison.Ordinal);
     }
 

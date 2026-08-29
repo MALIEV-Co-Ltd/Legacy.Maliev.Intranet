@@ -1,0 +1,49 @@
+<div class="shadcn-form-actions @Class">
+    @LeadingAction
+    <ShadcnButton ButtonType="ShadcnButtonType.Button"
+                  Variant="ShadcnButtonVariant.Outline"
+                  Disabled="@IsBusy"
+                  OnClick="@OnCancel">
+        @CancelText
+    </ShadcnButton>
+    <ShadcnButton ButtonType="ShadcnButtonType.Submit"
+                  Disabled="@(IsBusy || SubmitDisabled)"
+                  OperationFeedback="false">
+        @if (IsBusy)
+        {
+            <ShadcnSpinner Label="@null" Size="1rem" />
+            <span>@EffectiveBusyText</span>
+        }
+        else
+        {
+            <span>@SubmitText</span>
+        }
+    </ShadcnButton>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public string SubmitText { get; set; } = default!;
+    [Parameter, EditorRequired] public string CancelText { get; set; } = default!;
+    [Parameter] public string? BusyText { get; set; }
+    [Parameter] public bool IsBusy { get; set; }
+    [Parameter] public bool SubmitDisabled { get; set; }
+    [Parameter] public EventCallback<MouseEventArgs> OnCancel { get; set; }
+    [Parameter] public RenderFragment? LeadingAction { get; set; }
+    [Parameter] public string? Class { get; set; }
+
+    protected override void OnParametersSet()
+    {
+        if (string.IsNullOrWhiteSpace(SubmitText))
+        {
+            throw new ArgumentException("Submit text is required.", nameof(SubmitText));
+        }
+
+        if (string.IsNullOrWhiteSpace(CancelText))
+        {
+            throw new ArgumentException("Cancel text is required.", nameof(CancelText));
+        }
+
+    }
+
+    private string EffectiveBusyText => string.IsNullOrWhiteSpace(BusyText) ? SubmitText : BusyText;
+}

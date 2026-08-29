@@ -7,10 +7,10 @@
 
 <PageTitle>@Text["PageTitle"]</PageTitle>
 
-<MudContainer MaxWidth="MaxWidth.ExtraLarge">
+<div class="legacy-content-container legacy-content-container--wide">
     <PageBreadcrumbs Items="@Breadcrumbs" />
-    <header class="operations-page-header"><div><MudText Typo="Typo.h4" HtmlTag="h1">@Text["Title"]</MudText><MudText Typo="Typo.body2">@Text["Operations"]</MudText></div></header>
-    <MudAlert Severity="Severity.Info" Class="mb-4">@Text["PrivacyNote"]</MudAlert>
+    <header class="operations-page-header"><div><ShadcnTypography Variant="ShadcnTypographyVariant.H1">@Text["Title"]</ShadcnTypography><ShadcnTypography Variant="ShadcnTypographyVariant.Muted">@Text["Operations"]</ShadcnTypography></div></header>
+    <ShadcnAlert AlertRole="ShadcnAlertRole.Status" Class="mb-4"><ShadcnAlertDescription>@Text["PrivacyNote"]</ShadcnAlertDescription></ShadcnAlert>
 
     <ListToolbar TSort="DiagnosticEventSort"
                  Value="@ToolbarState"
@@ -23,15 +23,15 @@
 
     @if (loading)
     {
-        <div role="status" aria-live="polite"><MudProgressLinear Indeterminate="true" Color="Color.Primary" aria-label="@Text["Loading"]" /><span class="visually-hidden">@Text["Loading"]</span></div>
+        <div role="status" aria-live="polite"><ShadcnProgress Label="@Text["Loading"]" /><span class="visually-hidden">@Text["Loading"]</span></div>
     }
     else if (!string.IsNullOrWhiteSpace(error))
     {
-        <MudAlert Severity="Severity.Error" aria-live="assertive">@error</MudAlert>
+        <ShadcnAlert Variant="ShadcnAlertVariant.Destructive" AlertRole="ShadcnAlertRole.Alert"><ShadcnAlertDescription>@error</ShadcnAlertDescription></ShadcnAlert>
     }
     else if (page is null || page.Items.Count == 0)
     {
-        <MudAlert Severity="Severity.Success">@Text["Empty"]</MudAlert>
+        <ShadcnAlert AlertRole="ShadcnAlertRole.Status"><ShadcnAlertDescription>@Text["Empty"]</ShadcnAlertDescription></ShadcnAlert>
     }
     else
     {
@@ -61,12 +61,12 @@
             </dl></QuickViewContent>
         </OperationalTable>
         <nav class="d-flex flex-wrap align-center justify-space-between gap-3 mt-4" aria-label="@Text["Pages"]">
-            <MudButton Disabled="@(!page.HasPreviousPage)" OnClick="PreviousPageAsync">@Text["Previous"]</MudButton>
-            <MudText aria-live="polite">@Text["PageSummary", page.PageIndex, page.TotalPages, page.TotalRecords]</MudText>
-            <MudButton Disabled="@(!page.HasNextPage)" OnClick="NextPageAsync">@Text["Next"]</MudButton>
+            <ShadcnButton Variant="ShadcnButtonVariant.Outline" Disabled="@(!page.HasPreviousPage)" OnClick="PreviousPageAsync">@Text["Previous"]</ShadcnButton>
+            <ShadcnTypography aria-live="polite">@Text["PageSummary", page.PageIndex, page.TotalPages, page.TotalRecords]</ShadcnTypography>
+            <ShadcnButton Variant="ShadcnButtonVariant.Outline" Disabled="@(!page.HasNextPage)" OnClick="NextPageAsync">@Text["Next"]</ShadcnButton>
         </nav>
     }
-</MudContainer>
+</div>
 
 @code {
     [SupplyParameterFromQuery(Name = "search")] public string? Search { get; set; }

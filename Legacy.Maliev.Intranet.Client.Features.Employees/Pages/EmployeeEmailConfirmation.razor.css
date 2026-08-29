@@ -1,0 +1,6 @@
+.employee-recovery { width: min(100%, 34rem); margin-inline: auto; }
+.employee-recovery__card { display: grid; gap: 1rem; padding: clamp(1.25rem, 4vw, 2rem); border: 1px solid var(--shadcn-border); border-radius: var(--shadcn-radius-lg); background: var(--shadcn-card); color: var(--shadcn-card-foreground); box-shadow: var(--shadcn-shadow-sm); }
+.employee-recovery__card h1, .employee-recovery__introduction { margin: 0; }
+.employee-recovery__introduction { color: var(--shadcn-muted-foreground); }
+.employee-recovery__progress { display: flex; align-items: center; gap: 0.625rem; color: var(--shadcn-muted-foreground); }
+.employee-recovery__primary, .employee-recovery__link { width: 100%; min-height: 44px; justify-content: center; }

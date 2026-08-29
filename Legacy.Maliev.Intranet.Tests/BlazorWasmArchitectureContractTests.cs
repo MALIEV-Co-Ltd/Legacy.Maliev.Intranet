@@ -15,7 +15,7 @@ public sealed class BlazorWasmArchitectureContractTests
     }
 
     [Fact]
-    public void Client_IsNet10BlazorWebAssemblyWithMudBlazorAndNoServerSecrets()
+    public void Client_IsNet10BlazorWebAssemblyWithReleasedShadcnPackageAndNoServerSecrets()
     {
         var root = FindRoot();
         var clientRoot = Path.Combine(root, "Legacy.Maliev.Intranet.Client");
@@ -24,7 +24,8 @@ public sealed class BlazorWasmArchitectureContractTests
 
         Assert.Contains("Microsoft.NET.Sdk.BlazorWebAssembly", project, StringComparison.Ordinal);
         Assert.Contains("<TargetFramework>net10.0</TargetFramework>", project, StringComparison.Ordinal);
-        Assert.Contains("PackageReference Include=\"MudBlazor\"", project, StringComparison.Ordinal);
+        Assert.Contains("PackageReference Include=\"Maliev.ShadcnBlazor\" Version=\"1.2.2\"", project, StringComparison.Ordinal);
+        Assert.DoesNotContain("PackageReference Include=\"MudBlazor\"", project, StringComparison.Ordinal);
         Assert.Contains("..\\Legacy.Maliev.Intranet.Contracts\\Legacy.Maliev.Intranet.Contracts.csproj", project, StringComparison.Ordinal);
         Assert.DoesNotContain("RefreshToken", source, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("ClientSecret", source, StringComparison.OrdinalIgnoreCase);
@@ -35,7 +36,7 @@ public sealed class BlazorWasmArchitectureContractTests
     }
 
     [Fact]
-    public void Client_LoginUsesMudBlazorAndOnlyTheSameOriginCsrfProtectedBff()
+    public void Client_LoginUsesShadcnFormsAndOnlyTheSameOriginCsrfProtectedBff()
     {
         var root = FindRoot();
         var clientRoot = Path.Combine(root, "Legacy.Maliev.Intranet.Client");
@@ -49,14 +50,15 @@ public sealed class BlazorWasmArchitectureContractTests
 
         Assert.Contains("@page \"/Login\"", login, StringComparison.Ordinal);
         Assert.Contains("<PageTitle>", login, StringComparison.Ordinal);
-        Assert.Contains("<MudForm", login, StringComparison.Ordinal);
-        Assert.Contains("InputType=\"InputType.Email\"", login, StringComparison.Ordinal);
-        Assert.Contains("InputType=\"InputType.Password\"", login, StringComparison.Ordinal);
+        Assert.Contains("<EditForm", login, StringComparison.Ordinal);
+        Assert.Contains("<ShadcnFormField", login, StringComparison.Ordinal);
+        Assert.Contains("Type=\"email\"", login, StringComparison.Ordinal);
+        Assert.Contains("Type=\"password\"", login, StringComparison.Ordinal);
         Assert.Contains("Required=\"true\"", login, StringComparison.Ordinal);
         Assert.Contains("legacy-login-error", login, StringComparison.Ordinal);
-        Assert.Contains("MudProgressCircular", login, StringComparison.Ordinal);
-        Assert.Contains("OnKeyDown=\"HandleEmailKeyDown\"", login, StringComparison.Ordinal);
-        Assert.Contains("OnKeyDown=\"HandlePasswordKeyDown\"", login, StringComparison.Ordinal);
+        Assert.Contains("<ShadcnSpinner", login, StringComparison.Ordinal);
+        Assert.Contains("ButtonType=\"ShadcnButtonType.Submit\"", login, StringComparison.Ordinal);
+        Assert.DoesNotContain("<Mud", login, StringComparison.Ordinal);
         Assert.Contains("_password = string.Empty", login, StringComparison.Ordinal);
         Assert.Contains("forceLoad: true", login, StringComparison.Ordinal);
         Assert.Contains("GetAsync", authenticationClient, StringComparison.Ordinal);

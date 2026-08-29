@@ -1,50 +1,96 @@
 @page "/Quotations/View"
 @attribute [Authorize]
+@using Microsoft.AspNetCore.Components.Authorization
 @inject HttpClient Http
 @inject NavigationManager Navigation
 @inject IStringLocalizer<View> Text
+@inject AuthenticationStateProvider AuthenticationStateProvider
 
 <PageTitle>@Text["PageTitle", Id ?? 0]</PageTitle>
 
-<MudContainer MaxWidth="MaxWidth.Large">
+<main class="quotation-view">
     @if (loading)
     {
         <div role="status" aria-live="polite">
-            <MudProgressLinear Indeterminate="true" Color="Color.Primary" aria-label="@Text["Loading"]" />
-            <span class="sr-only">@Text["Loading"]</span>
+            <ShadcnSpinner Label="@Text["Loading"]" Size="1.25rem" />
+            <span>@Text["Loading"]</span>
         </div>
     }
     else if (!string.IsNullOrWhiteSpace(error))
     {
-        <MudAlert Severity="Severity.Error" aria-live="assertive">@error</MudAlert>
-        <div class="d-flex flex-wrap gap-2 mt-4">
-            <MudButton OnClick="LoadAsync" Variant="Variant.Filled" Color="Color.Primary">@Text["Retry"]</MudButton>
-            <LegacyLink Href="/Quotations/Index" Role="LegacyLinkRole.Navigation" StartIcon="@Icons.Material.Filled.ArrowBack" AriaLabel="@Text["Back"]">@Text["Back"]</LegacyLink>
+        <ShadcnAlert Variant="ShadcnAlertVariant.Destructive" AlertRole="ShadcnAlertRole.Alert"><ShadcnAlertDescription>@error</ShadcnAlertDescription></ShadcnAlert>
+        <div class="quotation-view__actions">
+            <ShadcnButton OnClick="LoadAsync">@Text["Retry"]</ShadcnButton>
+            <LegacyLink Href="/Quotations/Index" Role="LegacyLinkRole.Navigation" AriaLabel="@Text["Back"]">@Text["Back"]</LegacyLink>
         </div>
     }
     else if (page is not null)
     {
         <header class="operations-page-header">
             <div>
-                <MudText Typo="Typo.h4" HtmlTag="h1">@Text["Heading", page.Quotation.Id]</MudText>
-                <MudText Typo="Typo.body1">@Text["Description"]</MudText>
+                <h1>@Text["Heading", page.Quotation.Id]</h1>
+                <p>@Text["Description"]</p>
             </div>
-            <div class="d-flex flex-wrap gap-2" aria-label="@Text["Actions"]">
+            <div class="quotation-view__actions" role="group" aria-label="@Text["Actions"]">
                 @if (page.Files.LastOrDefault()?.Uri is Uri quotationUri)
                 {
-                    <MudButton Href="@quotationUri.ToString()" Target="_blank" Rel="noopener" Variant="Variant.Filled" Color="Color.Primary">@Text["ViewPdf"]</MudButton>
+                    <ShadcnButton Href="@quotationUri.ToString()" Target="_blank" Rel="noopener">@Text["ViewPdf"]</ShadcnButton>
                 }
-                <LegacyLink Href="/Quotations/Index" Role="LegacyLinkRole.Navigation" StartIcon="@Icons.Material.Filled.ArrowBack" AriaLabel="@Text["Back"]">@Text["Back"]</LegacyLink>
+                <LegacyLink Href="/Quotations/Index" Role="LegacyLinkRole.Navigation" AriaLabel="@Text["Back"]">@Text["Back"]</LegacyLink>
             </div>
         </header>
 
-        <MudAlert Severity="Severity.Info" Class="mb-4" aria-live="polite">@Text["ReadOnlyNotice"]</MudAlert>
+        @if (canDecide)
+        {
+            <section class="quotation-view__card quotation-view__decision" aria-busy="@decisionBusy.ToString().ToLowerInvariant()">
+                <h2>@Text["DecisionActions"]</h2>
+                <p>@Text["DecisionHelp"]</p>
+                @if (!string.IsNullOrWhiteSpace(decisionMessage))
+                {
+                    <ShadcnAlert AlertRole="ShadcnAlertRole.Status"><ShadcnAlertDescription>@Text[decisionMessage]</ShadcnAlertDescription></ShadcnAlert>
+                }
+                @if (!string.IsNullOrWhiteSpace(decisionError))
+                {
+                    <ShadcnAlert Variant="ShadcnAlertVariant.Destructive" AlertRole="ShadcnAlertRole.Alert"><ShadcnAlertDescription>
+                        @if (decisionError == "DecisionPartial" && decisionResult is not null)
+                        {
+                            @Text[decisionError, decisionResult.CompletedOrders, decisionResult.TotalOrders]
+                        }
+                        else if (decisionError == "DecisionRateLimited")
+                        {
+                            @Text[decisionError, retryAfterSeconds]
+                        }
+                        else
+                        {
+                            @Text[decisionError]
+                        }
+                    </ShadcnAlertDescription></ShadcnAlert>
+                }
+                @if (pendingDecision is bool decision)
+                {
+                    <ShadcnAlert AlertRole="ShadcnAlertRole.Status"><ShadcnAlertTitle>@Text["ConfirmDecision"]</ShadcnAlertTitle><ShadcnAlertDescription>@Text[decision ? "ConfirmAccept" : "ConfirmDecline"]</ShadcnAlertDescription></ShadcnAlert>
+                    <div class="quotation-view__actions">
+                        <ShadcnButton OnClick="SubmitDecisionAsync" Disabled="decisionBusy" Variant="@(decision ? ShadcnButtonVariant.Default : ShadcnButtonVariant.Destructive)">@Text[string.IsNullOrWhiteSpace(decisionError) ? "ConfirmDecision" : "RetryDecision"]</ShadcnButton>
+                        <ShadcnButton OnClick="CancelDecision" Disabled="decisionBusy" Variant="ShadcnButtonVariant.Outline">@Text["Cancel"]</ShadcnButton>
+                        @if (!string.IsNullOrWhiteSpace(decisionError))
+                        {
+                            <ShadcnButton OnClick="LoadAsync" Disabled="decisionBusy" Variant="ShadcnButtonVariant.Ghost">@Text["ReloadQuotation"]</ShadcnButton>
+                        }
+                    </div>
+                }
+                else
+                {
+                    <div class="quotation-view__actions">
+                        <ShadcnButton OnClick="@(() => BeginDecision(true))" Disabled="decisionBusy">@Text["AcceptQuotation"]</ShadcnButton>
+                        <ShadcnButton OnClick="@(() => BeginDecision(false))" Disabled="decisionBusy" Variant="ShadcnButtonVariant.Destructive">@Text["DeclineQuotation"]</ShadcnButton>
+                    </div>
+                }
+            </section>
+        }
 
-        <MudGrid>
-            <MudItem xs="12" md="7">
-                <section aria-labelledby="quotation-information-heading" class="h-100">
-                    <MudPaper Class="pa-4 h-100">
-                        <MudText id="quotation-information-heading" Typo="Typo.h6" HtmlTag="h2">@Text["Quotation"]</MudText>
+        <div class="quotation-view__grid">
+                <section aria-labelledby="quotation-information-heading" class="quotation-view__card quotation-view__information">
+                        <h2 id="quotation-information-heading">@Text["Quotation"]</h2>
                         <dl class="quotation-detail-list">
                             <div><dt>@Text["CreatedLabel"]</dt><dd>@FormatTimestamp(page.Quotation.CreatedDate)</dd></div>
                             <div><dt>@Text["ModifiedLabel"]</dt><dd>@FormatTimestamp(page.Quotation.ModifiedDate)</dd></div>
@@ -53,19 +99,14 @@
                             <div><dt>@Text["ExpirationLabel"]</dt><dd>@FormatDate(page.Quotation.ExpirationDate)</dd></div>
                             <div><dt>@Text["DecisionLabel"]</dt><dd><span class="@DecisionClass(page.Quotation.Accepted)">@Decision(page.Quotation.Accepted)</span></dd></div>
                         </dl>
-                        <MudText Typo="Typo.subtitle2" HtmlTag="h3" Class="mt-4">@Text["CommentLabel"]</MudText>
-                        <MudText Typo="Typo.body2">@Value(page.Quotation.Comment)</MudText>
-                    </MudPaper>
+                        <h3>@Text["CommentLabel"]</h3>
+                        <p>@Value(page.Quotation.Comment)</p>
                 </section>
-            </MudItem>
-
-            <MudItem xs="12" md="5">
-                <section aria-labelledby="quotation-customer-heading" class="h-100">
-                    <MudPaper Class="pa-4 h-100">
-                        <MudText id="quotation-customer-heading" Typo="Typo.h6" HtmlTag="h2">@Text["Customer"]</MudText>
+                <section aria-labelledby="quotation-customer-heading" class="quotation-view__card quotation-view__customer">
+                        <h2 id="quotation-customer-heading">@Text["Customer"]</h2>
                         @if (page.Customer is null)
                         {
-                            <MudText>@Text["NoCustomer"]</MudText>
+                            <p>@Text["NoCustomer"]</p>
                         }
                         else
                         {
@@ -77,14 +118,9 @@
                                 <div><dt>@Text["FaxLabel"]</dt><dd>@Value(page.Customer.Fax)</dd></div>
                             </dl>
                         }
-                    </MudPaper>
                 </section>
-            </MudItem>
-
-            <MudItem xs="12">
-                <section aria-labelledby="quotation-pricing-heading">
-                    <MudPaper Class="pa-4">
-                        <MudText id="quotation-pricing-heading" Typo="Typo.h6" HtmlTag="h2">@Text["Pricing"]</MudText>
+                <section aria-labelledby="quotation-pricing-heading" class="quotation-view__card quotation-view__wide">
+                        <h2 id="quotation-pricing-heading">@Text["Pricing"]</h2>
                         <dl class="quotation-price-grid">
                             <div><dt>@Text["Subtotal"]</dt><dd>@Money(page.Quotation.Subtotal)</dd></div>
                             <div><dt>@Text["Vat"]</dt><dd>@Money(page.Quotation.Vat)</dd></div>
@@ -93,71 +129,66 @@
                         </dl>
                         @if (page.Invoice is not null)
                         {
-                            <MudText Class="mt-3">@Text["Invoice"] <LegacyLink Href="@($"/Invoices/View?id={page.Invoice.Id}")" Role="LegacyLinkRole.Record" AriaLabel="@($"{Text["Invoice"]} {page.Invoice.Number}")">@(page.Invoice.Number)</LegacyLink></MudText>
+                            <p>@Text["Invoice"] <LegacyLink Href="@($"/Invoices/View?id={page.Invoice.Id}")" Role="LegacyLinkRole.Record" AriaLabel="@($"{Text["Invoice"]} {page.Invoice.Number}")">@(page.Invoice.Number)</LegacyLink></p>
                         }
-                    </MudPaper>
                 </section>
-            </MudItem>
-
-            <MudItem xs="12" md="6">
-                <section aria-labelledby="quotation-orders-heading" class="h-100">
-                    <MudPaper Class="pa-4 h-100">
-                        <MudText id="quotation-orders-heading" Typo="Typo.h6" HtmlTag="h2">@Text["Orders"]</MudText>
+                <section aria-labelledby="quotation-orders-heading" class="quotation-view__card">
+                        <h2 id="quotation-orders-heading">@Text["Orders"]</h2>
                         @if (page.Orders.Count == 0)
                         {
-                            <MudText>@Text["NoOrders"]</MudText>
+                            <p>@Text["NoOrders"]</p>
                         }
                         else
                         {
-                            <MudList T="QuotationOrderLink">
+                            <ul class="quotation-view__list">
                                 @foreach (var order in page.Orders)
                                 {
-                                    <MudListItem T="QuotationOrderLink" Value="order"><LegacyLink Href="@($"/Orders/View?id={order.OrderId}")" Role="LegacyLinkRole.Record" AriaLabel="@Text["Order", order.OrderId]">@Text["Order", order.OrderId]</LegacyLink></MudListItem>
+                                    <li><LegacyLink Href="@($"/Orders/View?id={order.OrderId}")" Role="LegacyLinkRole.Record" AriaLabel="@Text["Order", order.OrderId]">@Text["Order", order.OrderId]</LegacyLink></li>
                                 }
-                            </MudList>
+                            </ul>
                         }
-                    </MudPaper>
                 </section>
-            </MudItem>
-
-            <MudItem xs="12" md="6">
-                <section aria-labelledby="quotation-files-heading" class="h-100">
-                    <MudPaper Class="pa-4 h-100">
-                        <MudText id="quotation-files-heading" Typo="Typo.h6" HtmlTag="h2">@Text["Files"]</MudText>
+                <section aria-labelledby="quotation-files-heading" class="quotation-view__card">
+                        <h2 id="quotation-files-heading">@Text["Files"]</h2>
                         @if (page.Files.Count == 0)
                         {
-                            <MudText>@Text["NoFiles"]</MudText>
+                            <p>@Text["NoFiles"]</p>
                         }
                         else
                         {
-                            <MudList T="QuotationFile">
+                            <ul class="quotation-view__list">
                                 @foreach (var file in page.Files)
                                 {
-                                    <MudListItem T="QuotationFile" Value="file">
+                                    <li>
                                         @if (file.Uri is null)
                                         {
-                                            <MudText>@file.ObjectName</MudText>
+                                            <span>@file.ObjectName</span>
                                         }
                                         else
                                         {
                                             <LegacyLink Href="@file.Uri.ToString()" Role="LegacyLinkRole.External" Target="_blank" Rel="noopener">@file.ObjectName</LegacyLink>
                                         }
-                                    </MudListItem>
+                                    </li>
                                 }
-                            </MudList>
+                            </ul>
                         }
-                    </MudPaper>
                 </section>
-            </MudItem>
-        </MudGrid>
+        </div>
     }
-</MudContainer>
+</main>
 
 @code {
     [SupplyParameterFromQuery(Name = "id")] public int? Id { get; set; }
     private QuotationDetailPage? page;
     private bool loading = true;
     private string? error;
+    private bool canDecide;
+    private bool? pendingDecision;
+    private bool decisionBusy;
+    private string? decisionMessage;
+    private string? decisionError;
+    private int retryAfterSeconds;
+    private QuotationDecisionResult? decisionResult;
 
     protected override Task OnParametersSetAsync() => LoadAsync();
 
@@ -165,6 +196,14 @@
     {
         loading = true;
         error = null;
+        pendingDecision = null;
+        decisionMessage = null;
+        decisionError = null;
+        decisionResult = null;
+        retryAfterSeconds = 0;
+        var authenticationState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        canDecide = authenticationState.User.Claims.Any(claim =>
+            claim.Type == "permissions" && claim.Value == LegacyQuotationPermissions.Update);
         if (Id is not > 0)
         {
             error = Text["InvalidId"];
@@ -203,6 +242,161 @@
         {
             loading = false;
         }
+    }
+
+    private void BeginDecision(bool accepted)
+    {
+        if (!canDecide || decisionBusy) return;
+        pendingDecision = accepted;
+        decisionMessage = null;
+        decisionError = null;
+        decisionResult = null;
+        retryAfterSeconds = 0;
+    }
+
+    private void CancelDecision()
+    {
+        if (decisionBusy) return;
+        pendingDecision = null;
+        decisionError = null;
+        decisionResult = null;
+        retryAfterSeconds = 0;
+    }
+
+    private async Task SubmitDecisionAsync()
+    {
+        if (!canDecide || decisionBusy || pendingDecision is not bool accepted || Id is not > 0 || page is null) return;
+
+        decisionBusy = true;
+        decisionMessage = null;
+        decisionError = null;
+        decisionResult = null;
+        retryAfterSeconds = 0;
+        try
+        {
+            using var sessionResponse = await Http.GetForPresentationAsync("/bff/session");
+            if (sessionResponse.StatusCode == HttpStatusCode.Unauthorized)
+            {
+                NavigateToLogin();
+                return;
+            }
+            if (!sessionResponse.IsSuccessStatusCode)
+            {
+                decisionError = "DecisionUnavailable";
+                return;
+            }
+
+            var session = await sessionResponse.Content.ReadFromJsonAsync<EmployeeSessionSummary>();
+            if (session is null || !session.IsAuthenticated || string.IsNullOrWhiteSpace(session.CsrfToken))
+            {
+                decisionError = "DecisionInvalidResponse";
+                return;
+            }
+            if (session.Permissions?.Contains(LegacyQuotationPermissions.Update, StringComparer.Ordinal) != true)
+            {
+                canDecide = false;
+                decisionError = "DecisionForbidden";
+                return;
+            }
+
+            using var request = new HttpRequestMessage(HttpMethod.Put, $"/bff/quotations/{Id.Value}/decision")
+            {
+                Content = JsonContent.Create(new QuotationDecisionInput(accepted, page.Quotation.ModifiedDate)),
+            };
+            request.Headers.Add("X-CSRF-TOKEN", session.CsrfToken);
+            using var response = await Http.SendAsync(request);
+            if (response.StatusCode == HttpStatusCode.Unauthorized)
+            {
+                NavigateToLogin();
+                return;
+            }
+            if (response.StatusCode == HttpStatusCode.Forbidden)
+            {
+                canDecide = false;
+                decisionError = "DecisionForbidden";
+                return;
+            }
+            if (response.StatusCode == HttpStatusCode.NotFound)
+            {
+                decisionError = "NotFound";
+                return;
+            }
+            if (response.StatusCode == HttpStatusCode.TooManyRequests)
+            {
+                retryAfterSeconds = BoundedRetryAfter(response.Headers.RetryAfter);
+                decisionError = "DecisionRateLimited";
+                return;
+            }
+            if (response.StatusCode == HttpStatusCode.Conflict)
+            {
+                decisionResult = await ReadDecisionResultAsync(response);
+                decisionError = decisionResult?.Status == "DependencyConflict" ? "DecisionPartial" : "DecisionConflict";
+                return;
+            }
+            if (response.StatusCode == HttpStatusCode.BadGateway)
+            {
+                decisionError = "DecisionInvalidResponse";
+                return;
+            }
+            if (!response.IsSuccessStatusCode)
+            {
+                decisionError = "DecisionUnavailable";
+                return;
+            }
+
+            decisionResult = await ReadDecisionResultAsync(response);
+            if (decisionResult is null || decisionResult.Status != "Completed" ||
+                decisionResult.CompletedOrders < 0 || decisionResult.TotalOrders < 0 ||
+                decisionResult.CompletedOrders > decisionResult.TotalOrders)
+            {
+                decisionError = "DecisionInvalidResponse";
+                return;
+            }
+
+            page = page with
+            {
+                Quotation = page.Quotation with
+                {
+                    Accepted = accepted,
+                    ModifiedDate = decisionResult.ModifiedDate ?? page.Quotation.ModifiedDate,
+                },
+            };
+            pendingDecision = null;
+            decisionMessage = "DecisionSucceeded";
+        }
+        catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException)
+        {
+            decisionError = "DecisionUnavailable";
+        }
+        finally
+        {
+            decisionBusy = false;
+        }
+    }
+
+    private async Task<QuotationDecisionResult?> ReadDecisionResultAsync(HttpResponseMessage response)
+    {
+        try
+        {
+            return await response.Content.ReadFromJsonAsync<QuotationDecisionResult>();
+        }
+        catch (System.Text.Json.JsonException)
+        {
+            return null;
+        }
+    }
+
+    private void NavigateToLogin() =>
+        Navigation.NavigateTo($"/Login?returnUrl={Uri.EscapeDataString(Navigation.ToBaseRelativePath(Navigation.Uri))}");
+
+    private static int BoundedRetryAfter(System.Net.Http.Headers.RetryConditionHeaderValue? retryAfter)
+    {
+        var seconds = retryAfter?.Delta is TimeSpan delta
+            ? (int)Math.Ceiling(delta.TotalSeconds)
+            : retryAfter?.Date is DateTimeOffset date
+                ? (int)Math.Ceiling((date - DateTimeOffset.UtcNow).TotalSeconds)
+                : 0;
+        return Math.Clamp(seconds, 0, 3600);
     }
 
     private string Money(decimal value)

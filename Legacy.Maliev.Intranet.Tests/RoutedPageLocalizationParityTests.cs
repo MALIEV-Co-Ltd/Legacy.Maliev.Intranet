@@ -58,8 +58,9 @@ public sealed partial class RoutedPageLocalizationParityTests
         foreach (var relativePath in relativePaths)
         {
             var source = File.ReadAllText(Path.Combine(root, relativePath));
-            Assert.DoesNotMatch(VisibleEnglishElement(), source);
-            Assert.DoesNotMatch(HardcodedVisibleAttribute(), source);
+            var markup = MarkupBeforeCodeBlock(source);
+            Assert.DoesNotMatch(VisibleEnglishElement(), markup);
+            Assert.DoesNotMatch(HardcodedVisibleAttribute(), markup);
         }
     }
 
@@ -182,7 +183,13 @@ public sealed partial class RoutedPageLocalizationParityTests
 
     private static bool ContainsThai(string value) => value.Any(character => character is >= '\u0E00' and <= '\u0E7F');
 
-    [GeneratedRegex(@">[ \t]*[A-Za-z][^<@{}\r\n]*<", RegexOptions.CultureInvariant)]
+    private static string MarkupBeforeCodeBlock(string source)
+    {
+        var codeBlock = source.IndexOf("@code", StringComparison.Ordinal);
+        return codeBlock >= 0 ? source[..codeBlock] : source;
+    }
+
+    [GeneratedRegex(@"(?<!=)>[ \t]*[A-Za-z][^<@{}\r\n]*<", RegexOptions.CultureInvariant)]
     private static partial Regex VisibleEnglishElement();
 
     [GeneratedRegex(@"(?:Label|Placeholder|HelperText|aria-label)=""[A-Za-z]", RegexOptions.CultureInvariant)]

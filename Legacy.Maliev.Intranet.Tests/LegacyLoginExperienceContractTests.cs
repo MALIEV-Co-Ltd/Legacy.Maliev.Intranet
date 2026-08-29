@@ -69,9 +69,9 @@ public sealed class LegacyLoginExperienceContractTests
         Assert.Contains(".legacy-login-card { width: min(100%, 26.25rem); min-width: 0; padding: 2rem;", css, StringComparison.Ordinal);
         Assert.Contains(".legacy-login-error { margin-bottom: 1rem; padding: .75rem 1rem;", css, StringComparison.Ordinal);
         Assert.Contains(".legacy-login-divider { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: .75rem; margin: 1.5rem 0;", css, StringComparison.Ordinal);
-        Assert.Contains(".legacy-login-email-summary { display: flex; min-height: 2.5rem;", css, StringComparison.Ordinal);
         Assert.Contains(".legacy-login-title { display: flex; align-items: center; flex-wrap: wrap; gap: .5rem;", css, StringComparison.Ordinal);
-        Assert.Contains(".legacy-login-email-summary { display: flex; min-height: 2.5rem; align-items: center; justify-content: space-between; gap: .75rem; padding-inline: .75rem;", css, StringComparison.Ordinal);
+        Assert.DoesNotContain(".legacy-login-email-summary", css, StringComparison.Ordinal);
+        Assert.DoesNotContain(".legacy-login-remember:focus-within", css, StringComparison.Ordinal);
         Assert.Contains(".legacy-login-main { padding: 1rem; }", css, StringComparison.Ordinal);
         Assert.Contains(".legacy-login-card { padding: 1.5rem; }", css, StringComparison.Ordinal);
         Assert.DoesNotContain("padding: 1.875rem", css, StringComparison.Ordinal);
@@ -155,10 +155,11 @@ public sealed class LegacyLoginExperienceContractTests
         Assert.Contains("WorkspaceIdentityRules.IsAllowedEmployeeEmail", login, StringComparison.Ordinal);
         Assert.Contains("IsLocalAspireHost", login, StringComparison.Ordinal);
         Assert.Contains("maliev\\\\.test", login, StringComparison.Ordinal);
-        Assert.Contains("<MudForm Class=\"legacy-login-form\">", login, StringComparison.Ordinal);
-        Assert.Contains("ButtonType=\"ButtonType.Button\"", login, StringComparison.Ordinal);
-        Assert.Contains("OnKeyDown=\"HandleEmailKeyDown\"", login, StringComparison.Ordinal);
-        Assert.Contains("OnKeyDown=\"HandlePasswordKeyDown\"", login, StringComparison.Ordinal);
+        Assert.Contains("<EditForm Model=\"@_formModel\"", login, StringComparison.Ordinal);
+        Assert.Contains("ButtonType=\"ShadcnButtonType.Submit\"", login, StringComparison.Ordinal);
+        Assert.Contains("OnSubmit=\"HandleEmailSubmit\"", login, StringComparison.Ordinal);
+        Assert.Contains("OnSubmit=\"HandleCredentialsSubmit\"", login, StringComparison.Ordinal);
+        Assert.DoesNotContain("<Mud", login, StringComparison.Ordinal);
         Assert.DoesNotContain("access_token", login, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("refresh_token", login, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("client_secret", login, StringComparison.OrdinalIgnoreCase);
@@ -208,7 +209,7 @@ public sealed class LegacyLoginExperienceContractTests
         Assert.Contains("@media (max-width: 640px)", css, StringComparison.Ordinal);
         Assert.Contains("@media (prefers-reduced-motion: reduce)", css, StringComparison.Ordinal);
         Assert.Contains("@media (forced-colors: active)", css, StringComparison.Ordinal);
-        Assert.Contains("role=\"alert\"", File.ReadAllText(Path.Combine(
+        Assert.Contains("AlertRole=\"ShadcnAlertRole.Alert\"", File.ReadAllText(Path.Combine(
             root,
             "Legacy.Maliev.Intranet.Client",
             "Pages",
@@ -228,10 +229,10 @@ public sealed class LegacyLoginExperienceContractTests
         Assert.Contains("min-height: 2.75rem", css, StringComparison.Ordinal);
         Assert.Contains("text-decoration: underline", css, StringComparison.Ordinal);
         Assert.Contains("color: var(--shadcn-muted-foreground)", css, StringComparison.Ordinal);
-        Assert.Contains(".legacy-login-input { --shadcn-input: var(--shadcn-muted-foreground); --shadcn-ring: var(--shadcn-foreground); --mud-palette-lines-inputs: var(--shadcn-muted-foreground); --mud-palette-primary: var(--shadcn-muted-foreground); }", css, StringComparison.Ordinal);
+        Assert.Contains(".legacy-login-input { width: 100%; --shadcn-input: var(--shadcn-muted-foreground); --shadcn-ring: var(--shadcn-foreground); }", css, StringComparison.Ordinal);
         Assert.Contains(".legacy-login-page .legacy-login-brand:focus-visible,", css, StringComparison.Ordinal);
         Assert.Contains("outline: 3px solid var(--shadcn-muted-foreground);", css, StringComparison.Ordinal);
-        Assert.Contains(".legacy-login-primary, .legacy-login-change, .legacy-login-recovery a, .legacy-login-footer a { min-height: 2.75rem; }", css, StringComparison.Ordinal);
+        Assert.Contains(".legacy-login-actions .shadcn-button, .legacy-login-recovery a, .legacy-login-footer a { min-height: 2.75rem; }", css, StringComparison.Ordinal);
         Assert.DoesNotContain("opacity: .5", ExtractLoginCss(css), StringComparison.Ordinal);
     }
 

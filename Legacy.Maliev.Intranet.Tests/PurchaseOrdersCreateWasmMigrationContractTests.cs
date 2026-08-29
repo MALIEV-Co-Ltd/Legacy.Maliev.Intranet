@@ -49,9 +49,13 @@ public sealed class PurchaseOrdersCreateWasmMigrationContractTests
         Assert.Contains("HttpMethod.Post", page, StringComparison.Ordinal);
         Assert.Contains("/bff/purchase-orders", page, StringComparison.Ordinal);
         Assert.Contains("X-CSRF-TOKEN", page, StringComparison.Ordinal);
-        Assert.Contains("MudForm", page, StringComparison.Ordinal);
-        Assert.Contains("MudSelect", page, StringComparison.Ordinal);
-        Assert.Contains("MudNumericField", page, StringComparison.Ordinal);
+        Assert.Contains("<EditForm", page, StringComparison.Ordinal);
+        Assert.Contains("<DataAnnotationsValidator", page, StringComparison.Ordinal);
+        Assert.Contains("<ProcurementSelectField", page, StringComparison.Ordinal);
+        Assert.Contains("<ProcurementInputField", page, StringComparison.Ordinal);
+        Assert.Contains("<ShadcnButton", page, StringComparison.Ordinal);
+        Assert.Contains("<ShadcnAlert", page, StringComparison.Ordinal);
+        Assert.DoesNotContain("<Mud", page, StringComparison.Ordinal);
         Assert.Contains("AddLineItem", page, StringComparison.Ordinal);
         Assert.Contains("RemoveLineItem", page, StringComparison.Ordinal);
         Assert.Contains("HttpStatusCode.Unauthorized", page, StringComparison.Ordinal);

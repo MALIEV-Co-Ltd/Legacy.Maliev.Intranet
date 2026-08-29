@@ -21,6 +21,8 @@
 }
 
 .quotation-request-table-region { min-width: 0; }
+.quotation-request-table-summary { margin-bottom: .75rem; color: var(--shadcn-muted-foreground); font-size: .8rem; }
+.quotation-request-pager { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: .75rem; margin-top: 1rem; }
 ::deep .operational-table { --operational-table-min-width: 50rem; table-layout: fixed; }
 ::deep .quotation-request-id { width: 6rem; white-space: nowrap; font-variant-numeric: tabular-nums; }
 ::deep .quotation-request-customer { width: 30%; }
@@ -34,4 +36,6 @@
 
 @media (max-width: 720px) {
     ::deep .operational-table { --operational-table-min-width: 41rem; }
+    .quotation-request-pager { align-items: stretch; flex-direction: column; text-align: center; }
+    .quotation-request-pager ::deep .shadcn-button { width: 100%; min-height: 44px; }
 }

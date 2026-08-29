@@ -18,6 +18,10 @@ public sealed class FinancesCreateWasmMigrationContractTests
         Assert.Contains("paymentDirectionIdInput", page, StringComparison.Ordinal);
         Assert.Contains("Google Asia Pacific Pte. Ltd.", page, StringComparison.Ordinal);
         Assert.Contains("workflowId", page, StringComparison.Ordinal);
+        Assert.Contains("<EditForm", page, StringComparison.Ordinal);
+        Assert.Contains("<ShadcnButton", page, StringComparison.Ordinal);
+        Assert.Contains("<AccountingSelectField", page, StringComparison.Ordinal);
+        Assert.DoesNotContain("<Mud", page, StringComparison.Ordinal);
         Assert.Contains("X-CSRF-TOKEN", page, StringComparison.Ordinal);
         Assert.Contains("Idempotency-Key", proxy, StringComparison.Ordinal);
         Assert.Contains("AddEndpointFilter<AntiforgeryValidationFilter>()", bff, StringComparison.Ordinal);

@@ -13,27 +13,26 @@ internal static class LegacyLinkSourceContracts
         Raw("Legacy.Maliev.Intranet.Client/Components/Shell/LegacyNavigationRail.razor", "href=\"/Dashboard\"", "class=\"legacy-rail-logo legacy-logo-link\"", "@Text[\"MALIEV dashboard\"]"),
         Raw("Legacy.Maliev.Intranet.Client/Components/Shell/LegacyNavigationRail.razor", "href=\"@item.Href\"", "legacy-rail-link", "aria-current=", "@onclick=\"CloseAsync\""),
         Raw("Legacy.Maliev.Intranet.Client/Components/Shell/LegacyNavigationRail.razor", "href=\"@child.Href\"", "legacy-rail-link--child", "aria-current=", "@onclick=\"CloseAsync\""),
-        Raw("Legacy.Maliev.Intranet.Client/Components/Shell/LegacyQuickActions.razor", "href=\"@item.Href\"", "legacy-quick-action", "aria-label=\"@Text[item.Label]\"", "@Text[item.Label]"),
+        ShadcnButton("Legacy.Maliev.Intranet.Client/Components/Shell/LegacyQuickActions.razor", "Href=\"@item.Href\"", "Class=\"@QuickActionClass(item)\"", "aria-label=\"@Text[item.Label]\"", "@Text[item.Label]"),
         Raw("Legacy.Maliev.Intranet.Client/Pages/Login.razor", "href=\"/\"", "class=\"legacy-login-brand\"", "aria-label=\"@Text[\"HomeLabel\"]\""),
 
-        Button("Legacy.Maliev.Intranet.Client.Features.Orders/Components/Shared/PrimaryButton.razor", "Href=\"@Href\"", "mlv-button primary", "Variant=\"Variant.Filled\"", "Color=\"Color.Primary\""),
-        Button("Legacy.Maliev.Intranet.Client.Features.Orders/Components/Shared/SecondaryButton.razor", "Href=\"@Href\"", "mlv-button secondary", "download=\"@Download\"", "Variant=\"Variant.Outlined\""),
-        Button("Legacy.Maliev.Intranet.Client/Pages/Home.razor", "Href=\"/Login\"", "Variant=\"Variant.Filled\"", "@Text[\"SignIn\"]"),
-        Button("Legacy.Maliev.Intranet.Client/Pages/AccessDenied.razor", "Href=\"/Login\"", "Variant=\"Variant.Filled\"", "@Text[\"ReturnToSignIn\"]"),
-        Button("Legacy.Maliev.Intranet.Client/Pages/NotFound.razor", "Href=\"/Dashboard\"", "Variant=\"Variant.Filled\"", "@Text[\"Dashboard\"]"),
-        Button("Legacy.Maliev.Intranet.Client.Features.Customers/Pages/Customers.razor", "Href=\"/Customers/Create\"", "Variant=\"Variant.Filled\"", "@Text[\"CreateCustomer\"]"),
-        Button("Legacy.Maliev.Intranet.Client.Features.Employees/Pages/Employees.razor", "Href=\"/Employees/Create\"", "Variant=\"Variant.Filled\"", "@Text[\"CreateEmployee\"]"),
-        Button("Legacy.Maliev.Intranet.Client.Features.Catalog/Pages/Materials.razor", "Href=\"/Materials/Create\"", "Variant=\"Variant.Filled\"", "@Text[\"CreateMaterial\"]"),
-        Button("Legacy.Maliev.Intranet.Client.Features.Accounting/Pages/Invoices.razor", "Href=\"/Invoices/Create\"", "Variant=\"Variant.Filled\"", "@Text[\"Create\"]"),
-        Button("Legacy.Maliev.Intranet.Client.Features.Accounting/Pages/Finances.razor", "Href=\"/Finances/Create\"", "Variant=\"Variant.Filled\"", "@Text[\"Create\"]"),
-        Button("Legacy.Maliev.Intranet.Client.Features.Accounting/Pages/Finances.razor", "Href=\"/Finances/YearlyActivityChart\"", "Variant=\"Variant.Outlined\"", "@Text[\"YearlyActivity\"]"),
-        Button("Legacy.Maliev.Intranet.Client.Features.Accounting/Pages/Finances.razor", "/Finances/NetProfitChart?year={BangkokYear}", "Variant=\"Variant.Outlined\"", "@Text[\"NetProfit\"]"),
-        Button("Legacy.Maliev.Intranet.Client.Features.Quotations/Pages/Quotations/Index.razor", "Href=\"/Quotations/Create\"", "Variant=\"Variant.Filled\"", "@Text[\"Create\"]"),
-        Button("Legacy.Maliev.Intranet.Client.Features.Quotations/Pages/Quotations/Index.razor", "Href=\"/Quotations/Estimate\"", "Variant=\"Variant.Outlined\"", "@Text[\"Estimate\"]"),
-        Button("Legacy.Maliev.Intranet.Client.Features.Quotations/Pages/Quotations/View.razor", "Href=\"@quotationUri.ToString()\"", "Target=\"_blank\"", "Rel=\"noopener\"", "@Text[\"ViewPdf\"]"),
-        Button("Legacy.Maliev.Intranet.Client.Features.Orders/Pages/OrderDetail.razor", "/bff/orders/{page.Order.Id}/label", "Target=\"_blank\"", "Rel=\"noopener\"", "@Text[\"OrderLabel\"]"),
-        Button("Legacy.Maliev.Intranet.Client.Features.Orders/Pages/OrderDetail.razor", "/Customers/View?id={customerId}", "Variant=\"Variant.Outlined\"", "@Text[\"CustomerInfo\"]"),
-        Button("Legacy.Maliev.Intranet.Client.Features.Procurement/Pages/PurchaseOrderView.razor", "Href=\"@download.Url.AbsoluteUri\"", "Target=\"_blank\"", "Rel=\"noopener\"", "StartIcon=\"@Icons.Material.Filled.Download\"", "@Text[\"DownloadPdf\"]"),
+        ShadcnButton("Legacy.Maliev.Intranet.Client.Features.Orders/Components/Shared/PrimaryButton.razor", "Href=\"@Href\"", "Class=\"@CssClass\"", "Variant=\"ShadcnButtonVariant.Default\""),
+        ShadcnButton("Legacy.Maliev.Intranet.Client.Features.Orders/Components/Shared/SecondaryButton.razor", "Href=\"@Href\"", "Class=\"@CssClass\"", "download=\"@Download\"", "Variant=\"ShadcnButtonVariant.Outline\""),
+        ShadcnButton("Legacy.Maliev.Intranet.Client/Pages/AccessDenied.razor", "Href=\"/Login\"", "@Text[\"ReturnToSignIn\"]"),
+        ShadcnButton("Legacy.Maliev.Intranet.Client/Pages/NotFound.razor", "Href=\"/Dashboard\"", "@Text[\"Dashboard\"]"),
+        ShadcnButton("Legacy.Maliev.Intranet.Client.Features.Customers/Pages/Customers.razor", "Href=\"/Customers/Create\"", "@Text[\"CreateCustomer\"]"),
+        ShadcnButton("Legacy.Maliev.Intranet.Client.Features.Employees/Pages/Employees.razor", "Href=\"/Employees/Create\"", "@Text[\"CreateEmployee\"]"),
+        ShadcnButton("Legacy.Maliev.Intranet.Client.Features.Catalog/Pages/Materials.razor", "Href=\"/Materials/Create\"", "@Text[\"CreateMaterial\"]"),
+        ShadcnButton("Legacy.Maliev.Intranet.Client.Features.Accounting/Pages/Invoices.razor", "Href=\"/Invoices/Create\"", "@Text[\"Create\"]"),
+        ShadcnButton("Legacy.Maliev.Intranet.Client.Features.Accounting/Pages/Finances.razor", "Href=\"/Finances/Create\"", "@Text[\"Create\"]"),
+        ShadcnButton("Legacy.Maliev.Intranet.Client.Features.Accounting/Pages/Finances.razor", "Href=\"/Finances/YearlyActivityChart\"", "Variant=\"ShadcnButtonVariant.Outline\"", "@Text[\"YearlyActivity\"]"),
+        ShadcnButton("Legacy.Maliev.Intranet.Client.Features.Accounting/Pages/Finances.razor", "/Finances/NetProfitChart?year={BangkokYear}", "Variant=\"ShadcnButtonVariant.Outline\"", "@Text[\"NetProfit\"]"),
+        ShadcnButton("Legacy.Maliev.Intranet.Client.Features.Quotations/Pages/Quotations/Index.razor", "Href=\"/Quotations/Create\"", "@Text[\"Create\"]"),
+        ShadcnButton("Legacy.Maliev.Intranet.Client.Features.Quotations/Pages/Quotations/Index.razor", "Href=\"/Quotations/Estimate\"", "Variant=\"ShadcnButtonVariant.Outline\"", "@Text[\"Estimate\"]"),
+        ShadcnButton("Legacy.Maliev.Intranet.Client.Features.Quotations/Pages/Quotations/View.razor", "Href=\"@quotationUri.ToString()\"", "Target=\"_blank\"", "Rel=\"noopener\"", "@Text[\"ViewPdf\"]"),
+        ShadcnButton("Legacy.Maliev.Intranet.Client.Features.Orders/Pages/OrderDetail.razor", "/bff/orders/{page.Order.Id}/label", "Target=\"_blank\"", "Rel=\"noopener\"", "@Text[\"OrderLabel\"]"),
+        ShadcnButton("Legacy.Maliev.Intranet.Client.Features.Orders/Pages/OrderDetail.razor", "/Customers/View?id={customerId}", "Variant=\"ShadcnButtonVariant.Outline\"", "@Text[\"CustomerInfo\"]"),
+        ShadcnButton("Legacy.Maliev.Intranet.Client.Features.Procurement/Pages/PurchaseOrderView.razor", "Href=\"@download.Url.AbsoluteUri\"", "Target=\"_blank\"", "Rel=\"noopener\"", "Variant=\"ShadcnButtonVariant.Outline\"", "@Text[\"DownloadPdf\"]"),
     ];
 
     internal static bool IsSpecializedOwner(string relativePath, string kind, string markup) =>
@@ -62,6 +61,7 @@ internal static class LegacyLinkSourceContracts
             }
 
             AuditElements(document, "MudButton", "MudButton", requireHref: true, ownerCounts, violations);
+            AuditElements(document, "ShadcnButton", "ShadcnButton", requireHref: true, ownerCounts, violations);
         }
 
         for (var index = 0; index < SpecializedOwners.Length; index++)
@@ -187,7 +187,7 @@ internal static class LegacyLinkSourceContracts
             .Select(match => match.Value)
             .ToArray();
 
-    private static readonly string[] LinkOwnerTags = ["LegacyLink", "MudButton", "PrimaryButton", "SecondaryButton", "a"];
+    private static readonly string[] LinkOwnerTags = ["LegacyLink", "MudButton", "ShadcnButton", "PrimaryButton", "SecondaryButton", "a"];
 
     private static void AuditElements(
         SourceDocument document,
@@ -286,6 +286,9 @@ internal static class LegacyLinkSourceContracts
 
     private static SpecializedOwner Button(string path, params string[] fragments) =>
         new(path, "MudButton", fragments, 1);
+
+    private static SpecializedOwner ShadcnButton(string path, params string[] fragments) =>
+        new(path, "ShadcnButton", fragments, 1);
 
     private static string SingleLine(string value) => Regex.Replace(value, @"\s+", " ").Trim();
 

@@ -7,126 +7,108 @@
 
 <PageTitle>@Text["PageTitle"]</PageTitle>
 
-<MudContainer MaxWidth="MaxWidth.Large" Class="purchase-order-create-page">
-    <header class="operations-page-header"><div><MudText Typo="Typo.h4" HtmlTag="h1">@Text["CreatePurchaseOrder"]</MudText><MudText Typo="Typo.body2">@Text["Procurement"]</MudText></div></header>
+<main class="purchase-order-create-page">
+    <header class="operations-page-header"><div><h1>@Text["CreatePurchaseOrder"]</h1><p>@Text["Procurement"]</p></div></header>
     @if (loading)
     {
-        <div role="status" aria-live="polite"><MudProgressLinear Indeterminate="true" Color="Color.Primary" aria-label="@Text["Loading"]" /><span class="visually-hidden">@Text["Loading"]</span></div>
+        <div class="purchase-order-loading" role="status" aria-live="polite"><ShadcnSpinner Label="@Text["Loading"]" Size="1.25rem" /><span>@Text["Loading"]</span></div>
     }
     else
     {
         @if (!string.IsNullOrWhiteSpace(error))
         {
-            <MudAlert Severity="Severity.Error" Class="mb-4" aria-live="assertive">@error</MudAlert>
+            <ShadcnAlert Variant="ShadcnAlertVariant.Destructive" AlertRole="ShadcnAlertRole.Alert"><ShadcnAlertDescription>@error</ShadcnAlertDescription></ShadcnAlert>
         }
-        <MudForm @ref="form" Model="@model" @bind-IsValid="formValid" Class="purchase-order-form">
-            <MudPaper Class="pa-4 mb-4 purchase-order-section">
-                <MudText Typo="Typo.h6" HtmlTag="h2">@Text["Supplier"]</MudText>
-                <MudGrid>
-                    <MudItem xs="12" md="6">
-                        <MudSelect T="int" @bind-Value="model.SupplierId" Label="@Text["Supplier"]" Required="true">
-                            @foreach (var supplier in options?.Suppliers ?? [])
-                            {
-                                <MudSelectItem T="int" Value="supplier.Id">@supplier.Name</MudSelectItem>
-                            }
-                        </MudSelect>
-                    </MudItem>
-                    <MudItem xs="12" md="6"><MudTextField @bind-Value="model.SupplierContactPerson" Label="@Text["ContactPerson"]" /></MudItem>
-                </MudGrid>
-            </MudPaper>
-
-            <MudGrid Class="mb-4 purchase-order-addresses">
-                <MudItem xs="12" lg="6">
-                    <MudPaper Class="pa-4 h-100 purchase-order-section">
-                        <MudText Typo="Typo.h6" HtmlTag="h2">@Text["Shipping"]</MudText>
-                        <MudSelect T="int" @bind-Value="model.ShippingAddressId" Label="@Text["Address"]" Required="true">
-                            @foreach (var address in options?.Addresses ?? [])
-                            {
-                                <MudSelectItem T="int" Value="address.Id">@AddressLabel(address)</MudSelectItem>
-                            }
-                        </MudSelect>
-                        <MudTextField @bind-Value="model.ShippingCompanyName" Label="@Text["CompanyName"]" Required="true" />
-                        <MudTextField @bind-Value="model.ShippingContactPerson" Label="@Text["ContactPerson"]" />
-                        <MudTextField @bind-Value="model.ShippingTelephone" Label="@Text["Telephone"]" InputType="InputType.Telephone" />
-                        <MudTextField @bind-Value="model.ShippingMobile" Label="@Text["Mobile"]" InputType="InputType.Telephone" />
-                        <MudTextField @bind-Value="model.ShippingFax" Label="@Text["Fax"]" />
-                    </MudPaper>
-                </MudItem>
-                <MudItem xs="12" lg="6">
-                    <MudPaper Class="pa-4 h-100 purchase-order-section">
-                        <MudText Typo="Typo.h6" HtmlTag="h2">@Text["Billing"]</MudText>
-                        <MudSelect T="int" @bind-Value="model.BillingAddressId" Label="@Text["Address"]" Required="true">
-                            @foreach (var address in options?.Addresses ?? [])
-                            {
-                                <MudSelectItem T="int" Value="address.Id">@AddressLabel(address)</MudSelectItem>
-                            }
-                        </MudSelect>
-                        <MudTextField @bind-Value="model.BillingCompanyName" Label="@Text["CompanyName"]" Required="true" />
-                        <MudTextField @bind-Value="model.BillingContactPerson" Label="@Text["ContactPerson"]" />
-                        <MudTextField @bind-Value="model.BillingTelephone" Label="@Text["Telephone"]" InputType="InputType.Telephone" />
-                        <MudTextField @bind-Value="model.BillingMobile" Label="@Text["Mobile"]" InputType="InputType.Telephone" />
-                        <MudTextField @bind-Value="model.BillingFax" Label="@Text["Fax"]" />
-                    </MudPaper>
-                </MudItem>
-            </MudGrid>
-
-            <MudPaper Class="pa-4 mb-4 purchase-order-section">
-                <MudText Typo="Typo.h6" HtmlTag="h2">@Text["OrderDetails"]</MudText>
-                <MudGrid>
-                    <MudItem xs="12" md="6">
-                        <MudSelect T="int" @bind-Value="model.EmployeeId" Label="@Text["OrderedBy"]" Required="true">
-                            @foreach (var employee in options?.Employees ?? [])
-                            {
-                                <MudSelectItem T="int" Value="employee.Id">@employee.FullName</MudSelectItem>
-                            }
-                        </MudSelect>
-                    </MudItem>
-                    <MudItem xs="12" md="6"><MudTextField @bind-Value="model.Fob" Label="@Text["Fob"]" /></MudItem>
-                    <MudItem xs="12" md="6"><MudTextField @bind-Value="model.Terms" Label="@Text["Terms"]" /></MudItem>
-                    <MudItem xs="12" md="6"><MudTextField @bind-Value="model.ShippingMethod" Label="@Text["ShippingMethod"]" /></MudItem>
-                    <MudItem xs="12"><MudTextField @bind-Value="model.Notes" Label="@Text["Notes"]" Lines="3" /></MudItem>
-                </MudGrid>
-            </MudPaper>
-
-            <MudPaper Class="pa-4 mb-4 purchase-order-section purchase-order-lines">
-                <div class="purchase-order-lines-header mb-3">
-                    <MudText Typo="Typo.h6" HtmlTag="h2">@Text["LineItems"]</MudText>
-                    <MudButton ButtonType="ButtonType.Button" Variant="Variant.Outlined" OnClick="AddLineItem">@Text["AddLineItem"]</MudButton>
+        <EditForm EditContext="@editContext" OnValidSubmit="SubmitAsync" OnInvalidSubmit="HandleInvalidSubmit" class="purchase-order-form">
+            <DataAnnotationsValidator />
+            <section class="purchase-order-section" aria-labelledby="purchase-order-supplier-heading">
+                <h2 id="purchase-order-supplier-heading">@Text["Supplier"]</h2>
+                <div class="purchase-order-grid">
+                    <ProcurementSelectField TValue="int" Id="purchase-order-supplier" Label="@Text["Supplier"]" @bind-Value="model.SupplierId" Options="@SupplierOptions" Placeholder="@Text["Supplier"]" Required="true" Disabled="@submitting" />
+                    <ProcurementInputField TValue="string" Id="purchase-order-supplier-contact" Label="@Text["ContactPerson"]" @bind-Value="model.SupplierContactPerson" Disabled="@submitting" />
                 </div>
-                @foreach (var item in model.Items)
-                {
-                    <MudGrid Class="mb-3 purchase-order-line">
-                        <MudItem xs="12" md="3"><MudTextField @bind-Value="item.PartNumber" Label="@Text["PartNumber"]" /></MudItem>
-                        <MudItem xs="12" md="4"><MudTextField @bind-Value="item.Description" Label="@Text["Description"]" Required="true" /></MudItem>
-                        <MudItem xs="6" md="2"><MudNumericField T="int" @bind-Value="item.Quantity" Label="@Text["Quantity"]" Min="1" Required="true" /></MudItem>
-                        <MudItem xs="6" md="2"><MudNumericField T="decimal" @bind-Value="item.UnitPrice" Label="@Text["UnitPrice"]" Min="0" Required="true" /></MudItem>
-                        <MudItem xs="12" md="1"><MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" Disabled="@(model.Items.Count == 1)" OnClick="@(() => RemoveLineItem(item))" aria-label="@Text["RemoveLineItem"]" /></MudItem>
-                    </MudGrid>
-                }
-            </MudPaper>
+            </section>
 
-            <MudStack Row="true" Spacing="2" Class="purchase-order-form-actions">
-                <MudButton ButtonType="ButtonType.Button" Variant="Variant.Filled" Color="Color.Primary" Disabled="@submitting" OnClick="SubmitAsync">
-                    @(submitting ? Text["Submitting"] : Text["CreatePurchaseOrder"])
-                </MudButton>
+            <div class="purchase-order-addresses">
+                <section class="purchase-order-section" aria-labelledby="purchase-order-shipping-heading">
+                    <h2 id="purchase-order-shipping-heading">@Text["Shipping"]</h2>
+                    <div class="purchase-order-address-grid">
+                        <ProcurementSelectField TValue="int" Id="purchase-order-shipping-address" Label="@Text["Address"]" @bind-Value="model.ShippingAddressId" Options="@AddressOptions" Placeholder="@Text["Address"]" Required="true" Disabled="@submitting" />
+                        <ProcurementInputField TValue="string" Id="purchase-order-shipping-company" Label="@Text["CompanyName"]" @bind-Value="model.ShippingCompanyName" Required="true" Disabled="@submitting" />
+                        <ProcurementInputField TValue="string" Id="purchase-order-shipping-contact" Label="@Text["ContactPerson"]" @bind-Value="model.ShippingContactPerson" Disabled="@submitting" />
+                        <ProcurementInputField TValue="string" Id="purchase-order-shipping-telephone" Label="@Text["Telephone"]" Type="tel" @bind-Value="model.ShippingTelephone" Disabled="@submitting" />
+                        <ProcurementInputField TValue="string" Id="purchase-order-shipping-mobile" Label="@Text["Mobile"]" Type="tel" @bind-Value="model.ShippingMobile" Disabled="@submitting" />
+                        <ProcurementInputField TValue="string" Id="purchase-order-shipping-fax" Label="@Text["Fax"]" @bind-Value="model.ShippingFax" Disabled="@submitting" />
+                    </div>
+                </section>
+                <section class="purchase-order-section" aria-labelledby="purchase-order-billing-heading">
+                    <h2 id="purchase-order-billing-heading">@Text["Billing"]</h2>
+                    <div class="purchase-order-address-grid">
+                        <ProcurementSelectField TValue="int" Id="purchase-order-billing-address" Label="@Text["Address"]" @bind-Value="model.BillingAddressId" Options="@AddressOptions" Placeholder="@Text["Address"]" Required="true" Disabled="@submitting" />
+                        <ProcurementInputField TValue="string" Id="purchase-order-billing-company" Label="@Text["CompanyName"]" @bind-Value="model.BillingCompanyName" Required="true" Disabled="@submitting" />
+                        <ProcurementInputField TValue="string" Id="purchase-order-billing-contact" Label="@Text["ContactPerson"]" @bind-Value="model.BillingContactPerson" Disabled="@submitting" />
+                        <ProcurementInputField TValue="string" Id="purchase-order-billing-telephone" Label="@Text["Telephone"]" Type="tel" @bind-Value="model.BillingTelephone" Disabled="@submitting" />
+                        <ProcurementInputField TValue="string" Id="purchase-order-billing-mobile" Label="@Text["Mobile"]" Type="tel" @bind-Value="model.BillingMobile" Disabled="@submitting" />
+                        <ProcurementInputField TValue="string" Id="purchase-order-billing-fax" Label="@Text["Fax"]" @bind-Value="model.BillingFax" Disabled="@submitting" />
+                    </div>
+                </section>
+            </div>
+
+            <section class="purchase-order-section" aria-labelledby="purchase-order-details-heading">
+                <h2 id="purchase-order-details-heading">@Text["OrderDetails"]</h2>
+                <div class="purchase-order-grid">
+                    <ProcurementSelectField TValue="int" Id="purchase-order-employee" Label="@Text["OrderedBy"]" @bind-Value="model.EmployeeId" Options="@EmployeeOptions" Placeholder="@Text["OrderedBy"]" Required="true" Disabled="@submitting" />
+                    <ProcurementInputField TValue="string" Id="purchase-order-fob" Label="@Text["Fob"]" @bind-Value="model.Fob" Disabled="@submitting" />
+                    <ProcurementInputField TValue="string" Id="purchase-order-terms" Label="@Text["Terms"]" @bind-Value="model.Terms" Disabled="@submitting" />
+                    <ProcurementInputField TValue="string" Id="purchase-order-shipping-method" Label="@Text["ShippingMethod"]" @bind-Value="model.ShippingMethod" Disabled="@submitting" />
+                    <ShadcnFormField Id="purchase-order-notes" Label="@Text["Notes"]" Class="purchase-order-wide"><Control><ShadcnTextarea TValue="string" id="purchase-order-notes" @bind-Value="model.Notes" Disabled="@submitting" /></Control></ShadcnFormField>
+                </div>
+            </section>
+
+            <section class="purchase-order-section purchase-order-lines" aria-labelledby="purchase-order-lines-heading">
+                <div class="purchase-order-lines-header">
+                    <h2 id="purchase-order-lines-heading">@Text["LineItems"]</h2>
+                    <ShadcnButton ButtonType="ShadcnButtonType.Button" Variant="ShadcnButtonVariant.Outline" OnClick="AddLineItem" Disabled="@submitting">@Text["AddLineItem"]</ShadcnButton>
+                </div>
+                @for (var index = 0; index < model.Items.Count; index++)
+                {
+                    var lineIndex = index;
+                    var item = model.Items[lineIndex];
+                    <div class="purchase-order-line" @key="item">
+                        <ProcurementInputField TValue="string" Id="@($"purchase-order-line-{lineIndex}-part")" Label="@Text["PartNumber"]" @bind-Value="item.PartNumber" Disabled="@submitting" />
+                        <ProcurementInputField TValue="string" Id="@($"purchase-order-line-{lineIndex}-description")" Label="@Text["Description"]" @bind-Value="item.Description" Required="true" Disabled="@submitting" />
+                        <ProcurementInputField TValue="int" Id="@($"purchase-order-line-{lineIndex}-quantity")" Label="@Text["Quantity"]" Type="number" Min="1" @bind-Value="item.Quantity" Required="true" Disabled="@submitting" />
+                        <ProcurementInputField TValue="decimal" Id="@($"purchase-order-line-{lineIndex}-price")" Label="@Text["UnitPrice"]" Type="number" InputMode="decimal" Min="0" @bind-Value="item.UnitPrice" Required="true" Disabled="@submitting" />
+                        <ShadcnButton ButtonType="ShadcnButtonType.Button" Variant="ShadcnButtonVariant.Destructive" Size="ShadcnButtonSize.Icon" Disabled="@(submitting || model.Items.Count == 1)" OnClick="@(() => RemoveLineItem(item))" aria-label="@Text["RemoveLineItem"]"><ShadcnIcon Icon="@DeleteIcon" Size="18" /></ShadcnButton>
+                    </div>
+                }
+            </section>
+
+            <div class="purchase-order-form-actions">
+                <ShadcnButton ButtonType="ShadcnButtonType.Submit" OperationFeedback="false" Disabled="@submitting">@(submitting ? Text["Submitting"] : Text["CreatePurchaseOrder"])</ShadcnButton>
                 <LegacyLink Href="/PurchaseOrders/Index" Role="LegacyLinkRole.Navigation" Disabled="@submitting" AriaLabel="@Text["Cancel"]">@Text["Cancel"]</LegacyLink>
-            </MudStack>
-        </MudForm>
+            </div>
+        </EditForm>
     }
-</MudContainer>
+</main>
 
 @code {
+    private static readonly ShadcnIconData DeleteIcon = LucideIconCatalog.Instance.Get(LucideIconNames.Trash2);
     private readonly PurchaseOrderCreateRequest model = new();
     private readonly string attemptId = Guid.NewGuid().ToString("D");
     private PurchaseOrderCreateOptions? options;
-    private MudForm? form;
-    private bool formValid;
+    private EditContext editContext = null!;
     private bool loading = true;
     private bool submitting;
     private string? error;
 
+    private IReadOnlyList<ShadcnSelectOption<int>> SupplierOptions => options?.Suppliers.Select(value => new ShadcnSelectOption<int>(value.Id, value.Name)).ToArray() ?? [];
+    private IReadOnlyList<ShadcnSelectOption<int>> AddressOptions => options?.Addresses.Select(value => new ShadcnSelectOption<int>(value.Id, AddressLabel(value))).ToArray() ?? [];
+    private IReadOnlyList<ShadcnSelectOption<int>> EmployeeOptions => options?.Employees.Select(value => new ShadcnSelectOption<int>(value.Id, value.FullName)).ToArray() ?? [];
+
     protected override async Task OnInitializedAsync()
     {
+        editContext = new EditContext(model);
         try
         {
             using var response = await Http.GetForPresentationAsync("/bff/purchase-orders/create-options");
@@ -138,18 +120,11 @@
             if (options is null) error = Text["InvalidResponse"];
             else ApplyInitialSelections();
         }
-        catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException)
-        {
-            error = Text["Unavailable"];
-        }
-        finally
-        {
-            loading = false;
-        }
+        catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException) { error = Text["Unavailable"]; }
+        finally { loading = false; }
     }
 
     private void AddLineItem() => model.Items.Add(new());
-
     private void ApplyInitialSelections()
     {
         if (model.SupplierId <= 0) model.SupplierId = options?.Suppliers.FirstOrDefault()?.Id ?? 0;
@@ -157,16 +132,13 @@
         if (model.BillingAddressId <= 0) model.BillingAddressId = options?.Addresses.FirstOrDefault()?.Id ?? 0;
         if (model.EmployeeId <= 0) model.EmployeeId = options?.Employees.FirstOrDefault()?.Id ?? 0;
     }
-    private void RemoveLineItem(PurchaseOrderCreateItem item)
-    {
-        if (model.Items.Count > 1) model.Items.Remove(item);
-    }
+    private void RemoveLineItem(PurchaseOrderCreateItem item) { if (model.Items.Count > 1) model.Items.Remove(item); }
+    private void HandleInvalidSubmit(EditContext _) => error = Text["ValidationFailed"];
 
     private async Task SubmitAsync()
     {
-        if (submitting || form is null) return;
-        await form.ValidateAsync();
-        if (!formValid) { error = Text["ValidationFailed"]; return; }
+        if (submitting) return;
+        if (model.Items.Count == 0 || model.Items.Any(item => string.IsNullOrWhiteSpace(item.Description) || item.Quantity < 1 || item.UnitPrice < 0)) { error = Text["ValidationFailed"]; return; }
         submitting = true;
         error = null;
         try
@@ -193,14 +165,8 @@
             if (created is null || created.Id <= 0) { error = Text["InvalidResponse"]; return; }
             Navigation.NavigateTo($"/PurchaseOrders/View?id={created.Id}");
         }
-        catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException)
-        {
-            error = Text["CreateFailed"];
-        }
-        finally
-        {
-            submitting = false;
-        }
+        catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException) { error = Text["CreateFailed"]; }
+        finally { submitting = false; }
     }
 
     private string AddressLabel(PurchaseOrderAddressOption value) => string.IsNullOrWhiteSpace(value.City) ? value.AddressLine1 : $"{value.AddressLine1}, {value.City}";

@@ -1,3 +1,5 @@
+.customer-detail-page { width: min(100%, 90rem); margin-inline: auto; }
+
 .customer-detail {
     display: grid;
     gap: 1rem;
@@ -19,8 +21,11 @@
 }
 
 .customer-detail__number {
+    margin: 0;
     color: var(--shadcn-muted-foreground);
 }
+
+.customer-detail__loading { display: flex; align-items: center; gap: 0.75rem; min-height: 2.75rem; }
 
 .customer-detail__recovery {
     display: flex;
@@ -37,19 +42,17 @@
     color: var(--shadcn-card-foreground);
 }
 
-.customer-detail__tabs ::deep .mud-tabs-tabbar {
+.customer-detail__tabs ::deep .shadcn-tabs-list {
     min-width: 0;
+    max-width: 100%;
+    justify-content: flex-start;
     overflow-x: auto;
     overflow-y: hidden;
     scrollbar-width: thin;
     overscroll-behavior-inline: contain;
 }
 
-.customer-detail__tabs ::deep .mud-tabs-tabbar-content {
-    min-width: max-content;
-}
-
-.customer-detail__tabs ::deep .mud-tab {
+.customer-detail__tabs ::deep .shadcn-tabs-trigger {
     min-width: max-content;
     min-height: 2.5rem;
     padding-inline: 1rem;
@@ -57,13 +60,11 @@
     white-space: nowrap;
 }
 
-.customer-detail__tabs ::deep .mud-tabs-panels {
+.customer-detail__tabs ::deep .shadcn-tabs-trigger:focus-visible { outline: 2px solid var(--shadcn-ring); outline-offset: 2px; }
+
+.customer-detail__tabs ::deep .shadcn-tabs-content {
     min-width: 0;
     padding: 1rem;
-}
-
-.customer-detail__tabs ::deep .mud-tab-panel {
-    min-width: 0;
 }
 
 .customer-detail__tabs ::deep a[href^="mailto:"] {
@@ -76,14 +77,16 @@
 }
 
 @media (pointer: coarse), (max-width: 760px) {
-    .customer-detail__tabs ::deep .mud-tab {
+    .customer-detail__tabs ::deep .shadcn-tabs-trigger {
         min-height: 44px;
         padding-inline: 0.875rem;
     }
 
-    .customer-detail__tabs ::deep .mud-tabs-panels {
+    .customer-detail__tabs ::deep .shadcn-tabs-content {
         padding: 0.75rem;
     }
+
+    .customer-detail__tabs ::deep .shadcn-date-picker-trigger { min-height: 44px; }
 
     .customer-detail__tabs ::deep a[href^="mailto:"] {
         display: inline-flex;
@@ -98,14 +101,14 @@
     }
 
     .customer-detail__header ::deep [data-link-role="navigation"],
-    .customer-detail__recovery ::deep .mud-button-root,
+    .customer-detail__recovery ::deep .shadcn-button,
     .customer-detail__recovery ::deep [data-link-role="navigation"] {
         width: 100%;
     }
 }
 
 @media (prefers-reduced-motion: reduce) {
-    .customer-detail__tabs ::deep .mud-tab {
+    .customer-detail__tabs ::deep .shadcn-tabs-trigger {
         transition-duration: 0.01ms !important;
     }
 }

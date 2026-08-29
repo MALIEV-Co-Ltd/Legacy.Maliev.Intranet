@@ -1,0 +1,14 @@
+.employee-detail { width: min(100%, 64rem); margin-inline: auto; }
+.employee-detail .operations-page-header p { margin: 0.25rem 0 0; color: var(--shadcn-muted-foreground); }
+.employee-detail__loading { display: flex; align-items: center; gap: 0.625rem; color: var(--shadcn-muted-foreground); }
+.employee-detail__actions { display: flex; flex-wrap: wrap; gap: 0.75rem; margin-top: 1rem; }
+.employee-detail__card { padding: 1rem; border: 1px solid var(--shadcn-border); border-radius: var(--shadcn-radius-lg); background: var(--shadcn-card); color: var(--shadcn-card-foreground); }
+.employee-detail__card .details { display: grid; grid-template-columns: minmax(10rem, 0.4fr) minmax(0, 1fr); gap: 0.75rem 1rem; margin: 0; }
+.employee-detail__card dt { color: var(--shadcn-muted-foreground); font-weight: 600; }
+.employee-detail__card dd { margin: 0; overflow-wrap: anywhere; }
+.employee-detail__back { margin-top: 1rem; }
+
+@media (max-width: 640px) {
+    .employee-detail__card .details { grid-template-columns: minmax(0, 1fr); gap: 0.25rem; }
+    .employee-detail__card dd { margin-bottom: 0.75rem; }
+}

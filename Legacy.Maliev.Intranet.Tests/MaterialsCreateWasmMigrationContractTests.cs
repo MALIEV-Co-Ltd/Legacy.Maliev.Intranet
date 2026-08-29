@@ -62,7 +62,11 @@ public sealed class MaterialsCreateWasmMigrationContractTests
 
         Assert.Contains("@page \"/Materials/Create\"", page, StringComparison.Ordinal);
         Assert.Contains("@attribute [Authorize]", page, StringComparison.Ordinal);
-        Assert.Contains("MudForm", page, StringComparison.Ordinal);
+        Assert.Contains("<EditForm", page, StringComparison.Ordinal);
+        Assert.Contains("<CatalogInputField", page, StringComparison.Ordinal);
+        Assert.Contains("<CatalogSelectField", page, StringComparison.Ordinal);
+        Assert.Contains("<CatalogCheckboxField", page, StringComparison.Ordinal);
+        Assert.DoesNotContain("<Mud", page, StringComparison.Ordinal);
         Assert.Contains("/bff/catalog/material-groups", page, StringComparison.Ordinal);
         Assert.Contains("/bff/catalog/currencies", page, StringComparison.Ordinal);
         Assert.Contains("HttpMethod.Post", page, StringComparison.Ordinal);
@@ -70,7 +74,7 @@ public sealed class MaterialsCreateWasmMigrationContractTests
         Assert.Contains("X-CSRF-TOKEN", page, StringComparison.Ordinal);
         Assert.Contains("submitting", page, StringComparison.Ordinal);
         Assert.Contains("Disabled=\"@submitting\"", page, StringComparison.Ordinal);
-        Assert.Contains("MudAlert", page, StringComparison.Ordinal);
+        Assert.Contains("<ShadcnAlert", page, StringComparison.Ordinal);
         Assert.Contains("Text[\"CreateMaterial\"]", page, StringComparison.Ordinal);
         Assert.Contains("CreateMaterial", resource, StringComparison.Ordinal);
         Assert.Contains("CreateFailed", resource, StringComparison.Ordinal);

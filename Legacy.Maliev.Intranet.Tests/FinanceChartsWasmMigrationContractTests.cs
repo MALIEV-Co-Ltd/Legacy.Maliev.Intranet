@@ -5,7 +5,7 @@ namespace Legacy.Maliev.Intranet.Tests;
 public sealed class FinanceChartsWasmMigrationContractTests
 {
     [Fact]
-    public void ChartRoutes_AreLocalizedMudBlazorAndUseReadOnlyBffTrends()
+    public void ChartRoutes_AreLocalizedNativeShadcnAndUseReadOnlyBffTrends()
     {
         var root = FindRoot();
         var pages = Path.Combine(root, "Legacy.Maliev.Intranet.Client.Features.Accounting", "Pages");
@@ -25,13 +25,19 @@ public sealed class FinanceChartsWasmMigrationContractTests
         Assert.Contains("FinanceChartDataClient.LoadAsync", activity, StringComparison.Ordinal);
         Assert.Contains("FinanceChartDataClient.LoadAsync", profit, StringComparison.Ordinal);
         Assert.Contains("FinanceChartDataClient.LoadAsync(Http, BangkokYear, includeExpense: true)", activity, StringComparison.Ordinal);
-        Assert.Contains("ChartLabels=\"@chartLabels\"", activity, StringComparison.Ordinal);
+        Assert.Contains("Categories=\"@chartLabels\"", activity, StringComparison.Ordinal);
         Assert.Contains("private static string ShortChartLabel", activity, StringComparison.Ordinal);
         Assert.Contains("/bff/finances/trends/yearly-income", dataClient, StringComparison.Ordinal);
         Assert.Contains("/bff/finances/trends/yearly-expense", dataClient, StringComparison.Ordinal);
         Assert.Contains("SupplyParameterFromQuery(Name = \"year\")", profit, StringComparison.Ordinal);
-        Assert.Contains("MudChart", activity, StringComparison.Ordinal);
-        Assert.Contains("MudChart", profit, StringComparison.Ordinal);
+        Assert.Contains("<ShadcnChart", activity, StringComparison.Ordinal);
+        Assert.Contains("<ShadcnChart", profit, StringComparison.Ordinal);
+        Assert.Contains("ShadcnChartType.Bar", activity, StringComparison.Ordinal);
+        Assert.Contains("ShadcnChartType.Line", profit, StringComparison.Ordinal);
+        Assert.DoesNotContain("MudChart", activity, StringComparison.Ordinal);
+        Assert.DoesNotContain("MudChart", profit, StringComparison.Ordinal);
+        Assert.DoesNotContain("Adapters.MudBlazor", activity, StringComparison.Ordinal);
+        Assert.DoesNotContain("Adapters.MudBlazor", profit, StringComparison.Ordinal);
         Assert.DoesNotContain("<canvas", activity, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("new Chart(", activity, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("new Chart(", profit, StringComparison.OrdinalIgnoreCase);

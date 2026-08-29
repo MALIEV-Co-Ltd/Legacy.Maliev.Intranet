@@ -16,6 +16,8 @@ public sealed class LegacyLinkSystemContractTests
         Assert.Contains("[Parameter] public LegacyLinkRole Role", source);
         Assert.Contains("[Parameter] public bool Disabled", source);
         Assert.Contains("aria-disabled", source);
+        Assert.Contains("ShadcnIcon", source);
+        Assert.DoesNotContain("MudIcon", source);
     }
 
     [Fact]
@@ -82,13 +84,13 @@ public sealed class LegacyLinkSystemContractTests
 
             E("Legacy.Maliev.Intranet.Client.Features.Employees/Pages/EmployeeView.razor", authorize, "Href=\"/Employees/Index\"", 2, "Role=\"LegacyLinkRole.Navigation\"", "AriaLabel=\"@Text[\"BackToEmployees\"]\"", "@Text[\"BackToEmployees\"]</LegacyLink>"),
             E("Legacy.Maliev.Intranet.Client.Features.Employees/Pages/EmployeeCreate.razor", authorize, "Href=\"/Employees/Index\"", 1, "Role=\"LegacyLinkRole.Navigation\"", "Disabled=\"@submitting\"", "AriaLabel=\"@Text[\"Cancel\"]\"", "@Text[\"Cancel\"]</LegacyLink>"),
-            E("Legacy.Maliev.Intranet.Client.Features.Employees/Pages/EmployeeForgotPassword.razor", anonymous, "Href=\"/Login\"", 1, "Role=\"LegacyLinkRole.Navigation\"", "StartIcon=\"@Icons.Material.Filled.ArrowBack\"", "AriaLabel=\"@Text[\"BackToLogin\"]\"", "@Text[\"BackToLogin\"]</LegacyLink>"),
-            E("Legacy.Maliev.Intranet.Client.Features.Employees/Pages/EmployeeEmailConfirmation.razor", anonymous, "Href=\"/Login\"", 1, "Role=\"LegacyLinkRole.Navigation\"", "StartIcon=\"@Icons.Material.Filled.ArrowBack\"", "AriaLabel=\"@Text[\"BackToLogin\"]\"", "@Text[\"BackToLogin\"]</LegacyLink>"),
+            E("Legacy.Maliev.Intranet.Client.Features.Employees/Pages/EmployeeForgotPassword.razor", anonymous, "Href=\"/Login\"", 1, "Role=\"LegacyLinkRole.Navigation\"", "AriaLabel=\"@Text[\"BackToLogin\"]\"", "@Text[\"BackToLogin\"]</LegacyLink>"),
+            E("Legacy.Maliev.Intranet.Client.Features.Employees/Pages/EmployeeEmailConfirmation.razor", anonymous, "Href=\"/Login\"", 1, "Role=\"LegacyLinkRole.Navigation\"", "AriaLabel=\"@Text[\"BackToLogin\"]\"", "@Text[\"BackToLogin\"]</LegacyLink>"),
             E("Legacy.Maliev.Intranet.Client.Features.Employees/Pages/EmployeeResetPassword.razor", anonymous, "Href=\"/Employees/ForgotPassword\"", 1, "Role=\"LegacyLinkRole.Navigation\"", "AriaLabel=\"@Text[\"RequestNewLink\"]\"", "@Text[\"RequestNewLink\"]</LegacyLink>"),
             E("Legacy.Maliev.Intranet.Client.Features.Employees/Pages/EmployeeResetPassword.razor", anonymous, "Href=\"/Login\"", 1, "Role=\"LegacyLinkRole.Navigation\"", "AriaLabel=\"@Text[\"SignIn\"]\"", "@Text[\"SignIn\"]</LegacyLink>"),
 
             E("Legacy.Maliev.Intranet.Client.Features.Catalog/Pages/MaterialCreate.razor", authorize, "Href=\"/Materials/Index\"", 1, "Role=\"LegacyLinkRole.Navigation\"", "Disabled=\"@submitting\"", "AriaLabel=\"@Text[\"Cancel\"]\"", "@Text[\"Cancel\"]</LegacyLink>"),
-            E("Legacy.Maliev.Intranet.Client.Features.Catalog/Pages/MaterialDetail.razor", authorize, "Href=\"/Materials/Index\"", 2, "Role=\"LegacyLinkRole.Navigation\"", "StartIcon=\"@Icons.Material.Filled.ArrowBack\"", "AriaLabel=\"@Text[\"Back\"]\"", "@Text[\"Back\"]</LegacyLink>"),
+            E("Legacy.Maliev.Intranet.Client.Features.Catalog/Pages/MaterialDetail.razor", authorize, "Href=\"/Materials/Index\"", 2, "Role=\"LegacyLinkRole.Navigation\"", "AriaLabel=\"@Text[\"Back\"]\"", "@Text[\"Back\"]</LegacyLink>"),
             E("Legacy.Maliev.Intranet.Client.Features.Catalog/Pages/MaterialDetail.razor", authorize, "Href=\"/Materials/Index\"", 1, "Role=\"LegacyLinkRole.Navigation\"", "Disabled=\"@submitting\"", "AriaLabel=\"@Text[\"BackToMaterials\"]\"", "@Text[\"BackToMaterials\"]</LegacyLink>"),
 
             E("Legacy.Maliev.Intranet.Client.Features.Orders/Pages/OrderCreate.razor", authorize, "Href=\"/Orders/Index\"", 1, "Role=\"LegacyLinkRole.Navigation\"", "AriaLabel=\"@Text[\"BackToOrders\"]\"", "@Text[\"BackToOrders\"]</LegacyLink>"),

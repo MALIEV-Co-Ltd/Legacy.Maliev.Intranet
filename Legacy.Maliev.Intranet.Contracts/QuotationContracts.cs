@@ -85,6 +85,22 @@ public sealed record QuotationDetailPage(
     IReadOnlyList<QuotationOrderLink> Orders,
     IReadOnlyList<QuotationFile> Files);
 
+/// <summary>Exact browser-owned quotation decision input.</summary>
+[System.Text.Json.Serialization.JsonUnmappedMemberHandling(System.Text.Json.Serialization.JsonUnmappedMemberHandling.Disallow)]
+public sealed record QuotationDecisionInput(bool Accepted, DateTime? ExpectedModifiedDate);
+
+/// <summary>Browser-safe result of a persisted quotation decision and linked-order propagation.</summary>
+public sealed record QuotationDecisionResult(
+    string Status,
+    int CompletedOrders,
+    int TotalOrders,
+    DateTime? ModifiedDate);
+
+public static class LegacyQuotationPermissions
+{
+    public const string Update = "legacy.quotations.update";
+}
+
 /// <summary>One browser-edited quotation line; authoritative totals are calculated server-side.</summary>
 public sealed record QuotationCreateLine(
     [property: System.ComponentModel.DataAnnotations.Range(1, int.MaxValue)] int? OrderId,

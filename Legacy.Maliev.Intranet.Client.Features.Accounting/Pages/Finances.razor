@@ -7,75 +7,68 @@
 
 <PageTitle>@Text["PageTitle"]</PageTitle>
 
-<MudContainer MaxWidth="MaxWidth.ExtraLarge">
+<main class="finance-index-page">
     <PageBreadcrumbs Items="@Breadcrumbs" />
-    <div class="operations-page-header d-flex flex-wrap align-center justify-space-between gap-3 mb-4">
-        <MudText Typo="Typo.h4" HtmlTag="h1">@Text["Finance"]</MudText>
-        <div class="d-flex flex-wrap gap-2" role="group" aria-label="@Text["FinanceActions"]">
-            <MudButton Href="/Finances/Create" Variant="Variant.Filled" Color="Color.Primary">@Text["Create"]</MudButton>
-            <MudButton Href="/Finances/YearlyActivityChart" Variant="Variant.Outlined">@Text["YearlyActivity"]</MudButton>
-            <MudButton Href="@($"/Finances/NetProfitChart?year={BangkokYear}")" Variant="Variant.Outlined">@Text["NetProfit"]</MudButton>
+    <div class="operations-page-header">
+        <h1>@Text["Finance"]</h1>
+        <div class="finance-actions" role="group" aria-label="@Text["FinanceActions"]">
+            <ShadcnButton Href="/Finances/Create">@Text["Create"]</ShadcnButton>
+            <ShadcnButton Href="/Finances/YearlyActivityChart" Variant="ShadcnButtonVariant.Outline">@Text["YearlyActivity"]</ShadcnButton>
+            <ShadcnButton Href="@($"/Finances/NetProfitChart?year={BangkokYear}")" Variant="ShadcnButtonVariant.Outline">@Text["NetProfit"]</ShadcnButton>
         </div>
     </div>
 
     @if (loading)
     {
         <div role="status" aria-live="polite">
-            <MudProgressLinear Indeterminate="true" Color="Color.Primary" aria-label="@Text["Loading"]" />
-            <span class="visually-hidden">@Text["Loading"]</span>
+            <ShadcnSpinner Label="@Text["Loading"]" Size="1.25rem" />
+            <span>@Text["Loading"]</span>
         </div>
     }
     else if (!string.IsNullOrWhiteSpace(error))
     {
-        <MudAlert Severity="Severity.Error" aria-live="assertive">@error</MudAlert>
+        <ShadcnAlert Variant="ShadcnAlertVariant.Destructive" AlertRole="ShadcnAlertRole.Alert"><ShadcnAlertDescription>@error</ShadcnAlertDescription></ShadcnAlert>
     }
     else
     {
-        <MudGrid Class="finance-summary-grid mb-4">
+        <div class="finance-summary-grid">
             @foreach (var summary in SummaryCards)
             {
-                <MudItem xs="12" sm="6" lg="3">
-                    <MudPaper Class="pa-4 h-100" Elevation="1">
-                        <MudText Typo="Typo.h6" HtmlTag="h2">@summary.Title</MudText>
+                <section class="finance-summary-card">
+                        <h2>@summary.Title</h2>
                         @if (summary.Value.Details.Count == 0)
                         {
-                            <MudText Color="Color.Secondary">@Text["NoData"]</MudText>
+                            <p class="finance-muted">@Text["NoData"]</p>
                         }
                         else
                         {
                             @foreach (var detail in summary.Value.Details.Where(value => value.CurrentAmount != 0m))
                             {
-                                <div class="d-flex flex-wrap justify-space-between gap-2 mt-2">
-                                    <MudText>@FormatAmount(detail.CurrentAmount, detail.CurrencyId)</MudText>
-                                    <MudText Color="@DeltaColor(detail.DeltaAmount)">@FormatDelta(detail)</MudText>
+                                <div class="finance-summary-detail">
+                                    <span>@FormatAmount(detail.CurrentAmount, detail.CurrencyId)</span>
+                                    <span class="@DeltaClass(detail.DeltaAmount)">@FormatDelta(detail)</span>
                                 </div>
                             }
                         }
-                    </MudPaper>
-                </MudItem>
+                </section>
             }
-        </MudGrid>
+        </div>
 
         @if (TrendRows.Count > 0)
         {
-            <MudPaper Class="pa-4 mb-4" Elevation="1" role="region" aria-labelledby="yearly-trend-heading">
-                <MudText id="yearly-trend-heading" Typo="Typo.h6" HtmlTag="h2" Class="mb-3">@Text["YearlyTrend"]</MudText>
+            <section class="finance-trend" role="region" aria-labelledby="yearly-trend-heading">
+                <h2 id="yearly-trend-heading">@Text["YearlyTrend"]</h2>
                 @* OperationalTable exception: AnalyticalMonthlySummary. Comparison-oriented aggregate, not a record list. *@
-                <MudTable Items="TrendRows" Hover="true" Breakpoint="Breakpoint.Sm" Elevation="0" aria-label="@Text["YearlyTrendTable"]">
-                    <HeaderContent>
-                        <MudTh>@Text["Month"]</MudTh>
-                        <MudTh>@Text["Income"]</MudTh>
-                        <MudTh>@Text["Expense"]</MudTh>
-                        <MudTh>@Text["Net"]</MudTh>
-                    </HeaderContent>
-                    <RowTemplate>
-                        <MudTd DataLabel="@Text["Month"]">@context.Month.ToString("Y", CultureInfo.CurrentCulture)</MudTd>
-                        <MudTd DataLabel="@Text["Income"]">@FormatAmount(context.Income, thbCurrencyId?.ToString(CultureInfo.InvariantCulture))</MudTd>
-                        <MudTd DataLabel="@Text["Expense"]">@FormatAmount(context.Expense, thbCurrencyId?.ToString(CultureInfo.InvariantCulture))</MudTd>
-                        <MudTd DataLabel="@Text["Net"]">@FormatAmount(context.Income - context.Expense, thbCurrencyId?.ToString(CultureInfo.InvariantCulture))</MudTd>
-                    </RowTemplate>
-                </MudTable>
-            </MudPaper>
+                <ShadcnTable ExpectedColumnCount="4" aria-label="@Text["YearlyTrendTable"]">
+                    <ShadcnTableHeader><ShadcnTableRow><ShadcnTableHead>@Text["Month"]</ShadcnTableHead><ShadcnTableHead>@Text["Income"]</ShadcnTableHead><ShadcnTableHead>@Text["Expense"]</ShadcnTableHead><ShadcnTableHead>@Text["Net"]</ShadcnTableHead></ShadcnTableRow></ShadcnTableHeader>
+                    <ShadcnTableBody>
+                        @foreach (var row in TrendRows)
+                        {
+                            <ShadcnTableRow><ShadcnTableCell data-label="@Text["Month"]">@row.Month.ToString("Y", CultureInfo.CurrentCulture)</ShadcnTableCell><ShadcnTableCell data-label="@Text["Income"]">@FormatAmount(row.Income, thbCurrencyId?.ToString(CultureInfo.InvariantCulture))</ShadcnTableCell><ShadcnTableCell data-label="@Text["Expense"]">@FormatAmount(row.Expense, thbCurrencyId?.ToString(CultureInfo.InvariantCulture))</ShadcnTableCell><ShadcnTableCell data-label="@Text["Net"]">@FormatAmount(row.Income - row.Expense, thbCurrencyId?.ToString(CultureInfo.InvariantCulture))</ShadcnTableCell></ShadcnTableRow>
+                        }
+                    </ShadcnTableBody>
+                </ShadcnTable>
+            </section>
         }
 
         <ListToolbar TSort="FinancePaymentSort"
@@ -89,7 +82,7 @@
 
         @if (Page is null || Page.Items.Count == 0)
         {
-            <MudAlert Severity="Severity.Info" aria-live="polite">@Text["NoPayments"]</MudAlert>
+            <ShadcnAlert AlertRole="ShadcnAlertRole.Status"><ShadcnAlertDescription>@Text["NoPayments"]</ShadcnAlertDescription></ShadcnAlert>
         }
         else
         {
@@ -127,14 +120,14 @@
 
         @if (Page is not null)
         {
-            <nav class="d-flex flex-wrap align-center justify-space-between gap-3 mt-4" aria-label="@Text["PaymentPages"]">
-                <MudButton Disabled="@(!Page.HasPreviousPage)" OnClick="PreviousPageAsync">@Text["Previous"]</MudButton>
-                <MudText aria-live="polite">@Text["PageSummary", Page.PageIndex, Page.TotalPages, Page.TotalRecords]</MudText>
-                <MudButton Disabled="@(!Page.HasNextPage)" OnClick="NextPageAsync">@Text["Next"]</MudButton>
+            <nav class="finance-pager" aria-label="@Text["PaymentPages"]">
+                <ShadcnButton Variant="ShadcnButtonVariant.Outline" Disabled="@(!Page.HasPreviousPage)" OnClick="PreviousPageAsync">@Text["Previous"]</ShadcnButton>
+                <span aria-live="polite">@Text["PageSummary", Page.PageIndex, Page.TotalPages, Page.TotalRecords]</span>
+                <ShadcnButton Variant="ShadcnButtonVariant.Outline" Disabled="@(!Page.HasNextPage)" OnClick="NextPageAsync">@Text["Next"]</ShadcnButton>
             </nav>
         }
     }
-</MudContainer>
+</main>
 
 @code {
     [SupplyParameterFromQuery(Name = "search")] public string? Search { get; set; }
@@ -344,7 +337,7 @@
     private string FormatAmount(decimal amount, string? currencyId) => $"{amount:N2} {CurrencyName(currencyId)}";
     private static string FormatDate(DateTime? value) => LegacyPresentation.FormatCalendarDate(value, CultureInfo.CurrentCulture, "-");
     private static string ValueOrFallback(string? value) => string.IsNullOrWhiteSpace(value) ? "-" : value;
-    private static Color DeltaColor(decimal value) => value > 0 ? Color.Success : value < 0 ? Color.Error : Color.Secondary;
+    private static string DeltaClass(decimal value) => value > 0 ? "finance-delta--positive" : value < 0 ? "finance-delta--negative" : "finance-muted";
     private static string FormatDelta(FinanceSummaryDetail detail) => $"{detail.DeltaAmount:+#,##0.00;-#,##0.00;0.00} ({detail.DeltaPercent:N2}%)";
     private sealed record FinanceTrendRow(DateTime Month, decimal Income, decimal Expense);
 }

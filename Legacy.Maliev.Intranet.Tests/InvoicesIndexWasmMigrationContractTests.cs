@@ -20,6 +20,11 @@ public sealed class InvoicesIndexWasmMigrationContractTests
         Assert.Contains("paid=true", page, StringComparison.Ordinal);
         Assert.Contains("paid=false", page, StringComparison.Ordinal);
         Assert.Contains("OperationalTable", page, StringComparison.Ordinal);
+        Assert.Contains("<ShadcnButton", page, StringComparison.Ordinal);
+        Assert.Contains("<ShadcnSpinner", page, StringComparison.Ordinal);
+        Assert.Contains("<ShadcnAlert", page, StringComparison.Ordinal);
+        Assert.Contains("<ShadcnBadge", page, StringComparison.Ordinal);
+        Assert.DoesNotContain("<Mud", page, StringComparison.Ordinal);
         Assert.Contains("/Invoices/View?id=", page, StringComparison.Ordinal);
         Assert.Contains("ViewInvoice", page, StringComparison.Ordinal);
         Assert.Contains("Invoices/", app, StringComparison.Ordinal);

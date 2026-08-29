@@ -18,8 +18,9 @@ public sealed class StaticShellWasmMigrationContractTests
         Assert.Contains("@page \"/\"", home, StringComparison.Ordinal);
         Assert.Contains("@page \"/Index\"", home, StringComparison.Ordinal);
         Assert.Contains("@attribute [AllowAnonymous]", home, StringComparison.Ordinal);
+        Assert.Contains("@layout Layout.EmptyLayout", home, StringComparison.Ordinal);
         Assert.Contains("IStringLocalizer<Home>", home, StringComparison.Ordinal);
-        Assert.Contains("Href=\"/Login\"", home, StringComparison.Ordinal);
+        Assert.Contains("<LoginRedirect />", home, StringComparison.Ordinal);
         Assert.Contains("EmployeeSessionClient SessionClient", home, StringComparison.Ordinal);
         Assert.Contains("session?.IsAuthenticated == true", home, StringComparison.Ordinal);
         Assert.Contains("Navigation.NavigateTo(\"/Dashboard\", replace: true)", home, StringComparison.Ordinal);

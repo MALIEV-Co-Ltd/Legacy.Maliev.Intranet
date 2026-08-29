@@ -28,13 +28,13 @@
     color: var(--shadcn-muted-foreground);
 }
 
+.customer-history__empty { margin: 0; }
+.customer-history__loading { display: flex; align-items: center; gap: 0.75rem; min-height: 2.75rem; }
+.customer-history__table-scroll { min-width: 0; max-width: 100%; overflow: visible; }
+.customer-history__table-scroll ::deep .shadcn-table-container { max-width: 100%; overflow-x: auto; }
+
 .customer-history ::deep .customer-history__table {
     min-width: 0;
-}
-
-.customer-history ::deep .customer-history__table .mud-table-container {
-    max-width: 100%;
-    overflow-x: auto;
 }
 
 .customer-history ::deep .customer-history__table th,
@@ -46,7 +46,7 @@
     content: none;
 }
 
-.customer-history ::deep .customer-history__table table {
+.customer-history ::deep .customer-history__table {
     min-width: 36rem;
 }
 
@@ -83,44 +83,8 @@
         flex-direction: column;
     }
 
-    .customer-history ::deep .customer-history__table .mud-table-container {
-        overflow-x: auto;
-    }
-
-    .customer-history ::deep .customer-history__table .mud-table-root {
-        display: table;
-        min-width: 36rem;
-    }
-
-    .customer-history ::deep .customer-history__table .mud-table-head {
-        position: static;
-        display: table-header-group;
-        width: auto;
-        height: auto;
-        overflow: visible;
-        clip: auto;
-    }
-
-    .customer-history ::deep .customer-history__table .mud-table-body {
-        display: table-row-group;
-        min-width: 36rem;
-    }
-
-    .customer-history ::deep .customer-history__table .mud-table-row {
-        display: table-row;
-        width: auto;
-        margin-bottom: 0;
-        padding: 0;
-    }
-
-    .customer-history ::deep .customer-history__table .mud-table-cell {
-        display: table-cell;
-        min-height: 0;
-        padding: 0.75rem 1rem;
-    }
-
     .customer-history ::deep .customer-history__table .legacy-link--record,
-    .customer-history__pager ::deep .mud-button-root {
+    .customer-history__pager ::deep .shadcn-button {
         min-height: 44px;
     }
 
@@ -128,7 +92,7 @@
         min-width: 44px;
     }
 
-    .customer-history__pager ::deep .mud-button-root {
+    .customer-history__pager ::deep .shadcn-button {
         width: 100%;
     }
 }

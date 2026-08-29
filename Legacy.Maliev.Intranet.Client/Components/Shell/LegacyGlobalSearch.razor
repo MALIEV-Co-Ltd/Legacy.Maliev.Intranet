@@ -3,14 +3,13 @@
 @inject IStringLocalizer<LegacyTopBar> Text
 
 <div class="legacy-global-search" @onkeydown="HandleKeyDown" @onfocusout="Close">
-    <MudTextField T="string" InputId="legacy-global-search-input" Class="legacy-global-search-input"
-                  Value="@_query" ValueChanged="OnInput" Immediate="true" InputType="InputType.Search"
-                  Placeholder="@Text["Search customers, orders, quotations and more"]"
-                  Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Outlined.Search"
-                  Variant="Variant.Outlined" Margin="Margin.Dense" @onfocus="Open"
-                  aria-label="@Text["Search workspace"]" aria-expanded="@_open"
-                  aria-controls="legacy-global-search-results" aria-activedescendant="@ActiveDescendantId"
-                  aria-autocomplete="list" role="combobox" />
+    <span class="legacy-global-search__icon"><ShadcnIcon Icon="SearchIcon" Size="20" /></span>
+    <ShadcnInput TValue="string" id="legacy-global-search-input" Class="legacy-global-search-input"
+                 Value="@_query" ValueChanged="OnInput" Type="search"
+                 Placeholder="@Text["Search customers, orders, quotations and more"]"
+                 @onfocus="Open" aria-label="@Text["Search workspace"]" aria-expanded="@_open"
+                 aria-controls="legacy-global-search-results" aria-activedescendant="@ActiveDescendantId"
+                 aria-autocomplete="list" role="combobox" />
     @if (_open)
     {
         <div id="legacy-global-search-results" class="legacy-search-results" role="listbox" aria-label="@Text["Search results"]">
@@ -23,17 +22,16 @@
                 @for (var index = 0; index < Results.Count; index++)
                 {
                     var result = Results[index];
-                    <MudButton ButtonType="ButtonType.Button"
-                               id="@OptionId(index)"
-                               role="option"
-                               aria-selected="@(index == _activeIndex)"
-                               Class="@($"legacy-search-result {(index == _activeIndex ? "active" : string.Empty)}")"
-                               @onmousedown:preventDefault="true"
-                               OnClick="() => NavigateTo(result.Item.Href)"
-                               Variant="Variant.Text" FullWidth="true">
-                        <MudIcon Icon="@result.Item.Icon" Size="Size.Small" />
+                    <ShadcnButton id="@OptionId(index)"
+                                  role="option"
+                                  aria-selected="@(index == _activeIndex)"
+                                  Class="@($"legacy-search-result {(index == _activeIndex ? "active" : string.Empty)}")"
+                                  @onmousedown:preventDefault="true"
+                                  OnClick="() => NavigateTo(result.Item.Href)"
+                                  Variant="ShadcnButtonVariant.Ghost">
+                        <ShadcnIcon Icon="@result.Item.Icon" Size="20" />
                         <span><strong>@Text[result.Item.Label]</strong><small>@Text[result.Group.Label] · @Text[result.Item.Description ?? result.Item.Label]</small></span>
-                    </MudButton>
+                    </ShadcnButton>
                 }
             }
         </div>
@@ -42,6 +40,8 @@
 
 @code {
     [Parameter] public EmployeeSessionSummary? Session { get; set; }
+
+    private static readonly ShadcnIconData SearchIcon = LucideIconCatalog.Instance.Get(LucideIconNames.Search);
 
     private string _query = string.Empty;
     private bool _open;

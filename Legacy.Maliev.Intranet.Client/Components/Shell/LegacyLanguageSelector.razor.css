@@ -1,4 +1,1 @@
-.legacy-language-selector { display: inline-flex; width: 5.5rem; align-items: center; }
-.legacy-language-selector ::deep .mud-input-control,
-.legacy-language-selector ::deep .mud-input { width: 100%; margin: 0; }
-.legacy-language-selector ::deep .mud-input-slot { padding-inline-start: 0.5rem; }
+.legacy-language-selector { display: inline-flex; align-items: center; }

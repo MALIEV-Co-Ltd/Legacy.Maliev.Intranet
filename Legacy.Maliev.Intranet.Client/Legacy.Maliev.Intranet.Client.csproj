@@ -13,10 +13,10 @@
     <PackageReference Include="Microsoft.AspNetCore.Components.Authorization" Version="10.0.3" />
     <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" Version="10.0.3" />
     <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer" Version="10.0.3" PrivateAssets="all" />
-    <PackageReference Include="MudBlazor" Version="9.7.0" />
+    <PackageReference Include="Maliev.ShadcnBlazor" Version="1.2.2" />
+    <PackageReference Include="Maliev.ShadcnBlazor.Icons.Lucide" Version="1.2.2" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\Maliev.ShadcnBlazor\Maliev.ShadcnBlazor.csproj" />
     <ProjectReference Include="..\Legacy.Maliev.Intranet.Contracts\Legacy.Maliev.Intranet.Contracts.csproj" />
     <ProjectReference Include="..\Legacy.Maliev.Intranet.Client.Shared\Legacy.Maliev.Intranet.Client.Shared.csproj" />
     <ProjectReference Include="..\Legacy.Maliev.Intranet.Client.Features.Accounting\Legacy.Maliev.Intranet.Client.Features.Accounting.csproj" />

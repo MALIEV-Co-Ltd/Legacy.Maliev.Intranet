@@ -21,7 +21,7 @@ public sealed class QuotationOperationsUiContractTests
         var quotationIndex = Read(feature, "Quotations", "Index.razor");
         Assert.Contains("operations-page-header", quotationIndex, StringComparison.Ordinal);
         Assert.Contains("quotation-decision-data", quotationIndex, StringComparison.Ordinal);
-        Assert.Contains("aria-hidden=\"true\"", quotationIndex, StringComparison.Ordinal);
+        Assert.Contains("<ShadcnChart", quotationIndex, StringComparison.Ordinal);
         Assert.Contains("aria-label=\"@Text[\"TableCaption\"]\"", quotationIndex, StringComparison.Ordinal);
         Assert.Contains("<nav", quotationIndex, StringComparison.Ordinal);
         Assert.Contains("aria-live=\"polite\"", quotationIndex, StringComparison.Ordinal);
@@ -58,19 +58,27 @@ public sealed class QuotationOperationsUiContractTests
         var estimateCss = File.ReadAllText(Path.Combine(feature, "Estimate.razor.css"));
         var view = File.ReadAllText(Path.Combine(feature, "View.razor"));
 
-        Assert.Contains("new(Text[\"Quotations\"], href: \"/Quotations/Index\")", estimate, StringComparison.Ordinal);
-        Assert.Contains("HtmlTag=\"h1\"", estimate, StringComparison.Ordinal);
-        Assert.Contains("HtmlTag=\"h2\"", estimate, StringComparison.Ordinal);
+        Assert.Contains("new(Text[\"Quotations\"], \"/Quotations/Index\")", estimate, StringComparison.Ordinal);
+        Assert.Contains("<h1>", estimate, StringComparison.Ordinal);
+        Assert.Contains("<h2>", estimate, StringComparison.Ordinal);
         Assert.Contains("SummaryCaption", estimate, StringComparison.Ordinal);
         Assert.Contains("THB", estimate, StringComparison.Ordinal);
         Assert.Contains("aria-atomic=\"true\"", estimate, StringComparison.Ordinal);
         Assert.Contains("@media (min-width: 1280px)", estimateCss, StringComparison.Ordinal);
         Assert.Contains("position: sticky", estimateCss, StringComparison.Ordinal);
+        Assert.DoesNotContain("<Mud", estimate, StringComparison.Ordinal);
 
         Assert.Contains("@page \"/Quotations/View\"", view, StringComparison.Ordinal);
         Assert.Contains("/bff/quotations/{Id.Value}", view, StringComparison.Ordinal);
         Assert.Contains("quotation-price-grid", view, StringComparison.Ordinal);
         Assert.Contains("DecisionClass", view, StringComparison.Ordinal);
+        Assert.Contains("AuthenticationStateProvider", view, StringComparison.Ordinal);
+        Assert.Contains("LegacyQuotationPermissions.Update", view, StringComparison.Ordinal);
+        Assert.Contains("/bff/quotations/{Id.Value}/decision", view, StringComparison.Ordinal);
+        Assert.Contains("/bff/session", view, StringComparison.Ordinal);
+        Assert.Contains("X-CSRF-TOKEN", view, StringComparison.Ordinal);
+        Assert.Contains("aria-busy", view, StringComparison.Ordinal);
+        Assert.DoesNotContain("ReadOnlyNotice", view, StringComparison.Ordinal);
         var externalLinks = Count(view, "Target=\"_blank\"");
         Assert.True(externalLinks > 0);
         Assert.Equal(externalLinks, Count(view, "rel=\"noopener\"") + Count(view, "Rel=\"noopener\""));

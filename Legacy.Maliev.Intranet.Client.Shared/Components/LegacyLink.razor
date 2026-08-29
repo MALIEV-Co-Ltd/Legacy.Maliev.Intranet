@@ -1,6 +1,4 @@
 @namespace Legacy.Maliev.Intranet.Client.Shared.Components
-@using MudBlazor
-
 @if (Disabled)
 {
     <span class="@CssClass" aria-disabled="true" aria-label="@AriaLabel" @attributes="AdditionalAttributes">
@@ -21,6 +19,7 @@ else
     [Parameter, EditorRequired] public string Href { get; set; } = string.Empty;
     [Parameter] public LegacyLinkRole Role { get; set; } = LegacyLinkRole.Inline;
     [Parameter] public string? StartIcon { get; set; }
+    [Parameter] public ShadcnIconData? StartIconData { get; set; }
     [Parameter] public string? Target { get; set; }
     [Parameter] public string? Rel { get; set; }
     [Parameter] public string? AriaLabel { get; set; }
@@ -37,12 +36,17 @@ else
             .SelectMany(value => value!.Split(' '))
             .Distinct())
         : Rel;
-    private RenderFragment? IconMarkup => string.IsNullOrWhiteSpace(StartIcon) ? null : builder =>
+    private ShadcnIconData? EffectiveIcon => StartIconData ?? CreateLegacyIcon(StartIcon);
+    private RenderFragment? IconMarkup => EffectiveIcon is null ? null : builder =>
     {
-        builder.OpenComponent<MudIcon>(0);
-        builder.AddAttribute(1, nameof(MudIcon.Icon), StartIcon);
-        builder.AddAttribute(2, nameof(MudIcon.Size), Size.Small);
+        builder.OpenComponent<ShadcnIcon>(0);
+        builder.AddAttribute(1, nameof(ShadcnIcon.Icon), EffectiveIcon);
+        builder.AddAttribute(2, nameof(ShadcnIcon.Size), 18d);
         builder.AddAttribute(3, "aria-hidden", "true");
         builder.CloseComponent();
     };
+
+    private static ShadcnIconData? CreateLegacyIcon(string? path) => string.IsNullOrWhiteSpace(path)
+        ? null
+        : new("material-path", "legacy", "0 0 24 24", $"<path d=\"{System.Security.SecurityElement.Escape(path)}\" />");
 }

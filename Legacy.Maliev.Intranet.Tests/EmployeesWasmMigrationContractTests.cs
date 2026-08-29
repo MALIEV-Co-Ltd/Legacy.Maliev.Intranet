@@ -30,8 +30,10 @@ public sealed class EmployeesWasmMigrationContractTests
         Assert.Contains("ExpandEmployee", page, StringComparison.Ordinal);
         Assert.Contains("CollapseEmployee", page, StringComparison.Ordinal);
         Assert.Contains("data-priority=\"supporting\"", page, StringComparison.Ordinal);
-        Assert.Contains("MudProgress", page, StringComparison.Ordinal);
-        Assert.Contains("MudAlert", page, StringComparison.Ordinal);
+        Assert.Contains("<ShadcnSpinner", page, StringComparison.Ordinal);
+        Assert.Contains("<ShadcnAlert", page, StringComparison.Ordinal);
+        Assert.Contains("<ShadcnButton", page, StringComparison.Ordinal);
+        Assert.DoesNotContain("<Mud", page, StringComparison.Ordinal);
         Assert.Contains("/Employees/Create", page, StringComparison.Ordinal);
         Assert.Contains("SupplyParameterFromQuery", page, StringComparison.Ordinal);
         Assert.Contains("HttpStatusCode.Unauthorized", page, StringComparison.Ordinal);

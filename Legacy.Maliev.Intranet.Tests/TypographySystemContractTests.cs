@@ -49,17 +49,15 @@ public sealed class TypographySystemContractTests
     }
 
     [Fact]
-    public void TypographyTokens_ExposeCompatibilityAliasesWhilePackageOwnsComponentTypography()
+    public void TypographyTokensExposeApplicationAliasesWhilePackageOwnsComponentTypography()
     {
         var root = FindRoot();
         var tokens = Read(root, "Legacy.Maliev.Intranet.Client", "wwwroot", "css", "design-tokens.css");
-        var adapter = Read(root, "Maliev.ShadcnBlazor", "wwwroot", "css", "shadcn-mudblazor.css");
 
         Assert.Contains("--maliev-font-sans: 'IBM Plex Sans Thai', sans-serif", tokens, StringComparison.Ordinal);
         Assert.Contains("--maliev-font-weight-body: 400", tokens, StringComparison.Ordinal);
         Assert.Contains("--maliev-font-weight-heading: 600", tokens, StringComparison.Ordinal);
         Assert.DoesNotContain("--shadcn-font-sans:", tokens, StringComparison.Ordinal);
-        Assert.Contains(".mud-typography", adapter, StringComparison.Ordinal);
     }
 
     [Fact]

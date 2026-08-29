@@ -9,6 +9,23 @@ public sealed class ListToolbarBehaviorTests
     private static readonly ListToolbarState<TestSort> Defaults = new(null, TestSort.Newest, 25);
 
     [Fact]
+    public void SharedToolbarUsesNativeShadcnControls()
+    {
+        var root = FindRoot();
+        var source = File.ReadAllText(Path.Combine(
+            root,
+            "Legacy.Maliev.Intranet.Client.Shared",
+            "Components",
+            "ListToolbar.razor"));
+
+        Assert.Contains("<ShadcnInput", source, StringComparison.Ordinal);
+        Assert.Contains("<ShadcnNativeSelect", source, StringComparison.Ordinal);
+        Assert.Contains("<ShadcnButton", source, StringComparison.Ordinal);
+        Assert.Contains("<ShadcnIcon", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("<Mud", source, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task Search_waits_for_debounce_and_emits_only_the_latest_value()
     {
         var time = new FakeTimeProvider();
@@ -133,6 +150,17 @@ public sealed class ListToolbarBehaviorTests
         Assert.False(first.IsCurrent);
         Assert.True(second.IsCurrent);
         Assert.False(second.CancellationToken.IsCancellationRequested);
+    }
+
+    private static string FindRoot()
+    {
+        var directory = new DirectoryInfo(AppContext.BaseDirectory);
+        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "Legacy.Maliev.Intranet.slnx")))
+        {
+            directory = directory.Parent;
+        }
+
+        return directory?.FullName ?? throw new DirectoryNotFoundException("Could not find repository root.");
     }
 
     private enum TestSort

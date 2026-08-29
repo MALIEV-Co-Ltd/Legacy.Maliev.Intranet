@@ -1,0 +1,6 @@
+.finance-chart-page { width: min(100%, 90rem); margin-inline: auto; }
+.operations-page-header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: .75rem; margin-bottom: 1rem; }
+.finance-chart-card { min-width: 0; margin-bottom: 1rem; padding: 1rem; border: 1px solid var(--shadcn-border); border-radius: var(--shadcn-radius); background: var(--shadcn-card); }
+.finance-chart-table h2 { margin: 0 0 .75rem; font-size: 1rem; }
+::deep .shadcn-chart { width: 100%; }
+@media (max-width: 600px) { .operations-page-header { align-items: stretch; flex-direction: column; } .operations-page-header ::deep .shadcn-button { width: 100%; min-height: 44px; } .finance-chart-card { padding: .75rem; } }

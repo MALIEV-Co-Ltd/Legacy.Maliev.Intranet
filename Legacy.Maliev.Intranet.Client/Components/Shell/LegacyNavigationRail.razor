@@ -1,6 +1,7 @@
 @using Legacy.Maliev.Intranet.Client.Layout
 @inject NavigationManager Navigation
 @inject IStringLocalizer<LegacyTopBar> Text
+@inject IJSRuntime JS
 
 <aside id="@(IsDrawer ? "legacy-navigation-rail-drawer" : "legacy-navigation-rail")"
        class="legacy-navigation-rail @(IsDrawer ? "drawer" : string.Empty)"
@@ -16,8 +17,11 @@
                 <img class="legacy-logo-image legacy-logo-image--light" src="images/MALIEV_BLACK.svg" alt="MALIEV" />
                 <img class="legacy-logo-image legacy-logo-image--dark" src="images/MALIEV_WHITE.svg" alt="" aria-hidden="true" />
             </a>
-            <MudIconButton ButtonType="ButtonType.Button" Class="legacy-rail-close" Icon="@Icons.Material.Filled.Close"
-                           Size="Size.Small" aria-label="@Text["Close navigation"]" @ref="_closeButton" OnClick="CloseAsync" />
+            <ShadcnButton id="legacy-navigation-close" Class="legacy-rail-close"
+                          Variant="ShadcnButtonVariant.Ghost" Size="ShadcnButtonSize.Icon"
+                          aria-label="@Text["Close navigation"]" OnClick="CloseAsync">
+                <ShadcnIcon Icon="CloseIcon" Size="20" />
+            </ShadcnButton>
         </div>
     }
 
@@ -42,7 +46,7 @@
                                    aria-current="@(IsItemPageCurrent(item) ? "page" : null)"
                                    title="@Text[item.Description ?? item.Label]"
                                    @onclick="CloseAsync">
-                                    <MudIcon Icon="@item.Icon" Size="Size.Small" />
+                                    <ShadcnIcon Icon="@item.Icon" Size="20" />
                                     <span>@Text[item.Label]</span>
                                 </a>
                             }
@@ -60,7 +64,7 @@
                                            aria-current="@(IsItemPageCurrent(child) ? "page" : null)"
                                            title="@Text[child.Description ?? child.Label]"
                                            @onclick="CloseAsync">
-                                            <MudIcon Icon="@child.Icon" Size="Size.Small" />
+                                            <ShadcnIcon Icon="@child.Icon" Size="20" />
                                             <span>@Text[child.Label]</span>
                                         </a>
                                     </li>
@@ -85,17 +89,14 @@
     [Parameter] public bool IsDrawer { get; set; }
     [Parameter] public EventCallback OnClose { get; set; }
 
-    private MudIconButton? _closeButton;
+    private static readonly ShadcnIconData CloseIcon = LucideIconCatalog.Instance.Get(LucideIconNames.X);
     private ElementReference _lastNavigationLink;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (IsDrawer && firstRender)
         {
-            if (_closeButton is not null)
-            {
-                await _closeButton.FocusAsync();
-            }
+            await FocusCloseButtonAsync();
         }
     }
 
@@ -145,10 +146,7 @@
 
     private async Task FocusFirstAsync(FocusEventArgs _)
     {
-        if (_closeButton is not null)
-        {
-            await _closeButton.FocusAsync();
-        }
+        await FocusCloseButtonAsync();
     }
 
     private async Task FocusLastAsync(FocusEventArgs _)
@@ -159,9 +157,8 @@
             return;
         }
 
-        if (_closeButton is not null)
-        {
-            await _closeButton.FocusAsync();
-        }
+        await FocusCloseButtonAsync();
     }
+
+    private ValueTask FocusCloseButtonAsync() => JS.InvokeVoidAsync("malievFocus.byId", "legacy-navigation-close");
 }

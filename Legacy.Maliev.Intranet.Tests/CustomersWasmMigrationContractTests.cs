@@ -21,8 +21,9 @@ public sealed class CustomersWasmMigrationContractTests
         Assert.Contains("CustomerCreatedDate_Descending", page, StringComparison.Ordinal);
         Assert.Contains("/bff/customers", page, StringComparison.Ordinal);
         Assert.Contains("<OperationalTable", page, StringComparison.Ordinal);
-        Assert.Contains("MudProgress", page, StringComparison.Ordinal);
-        Assert.Contains("MudAlert", page, StringComparison.Ordinal);
+        Assert.Contains("<ShadcnSpinner", page, StringComparison.Ordinal);
+        Assert.Contains("<ShadcnAlert", page, StringComparison.Ordinal);
+        Assert.DoesNotContain("<Mud", page, StringComparison.Ordinal);
         Assert.Contains("/Customers/View?id=", page, StringComparison.Ordinal);
         Assert.Contains("SupplyParameterFromQuery", page, StringComparison.Ordinal);
         Assert.Contains("HttpStatusCode.Unauthorized", page, StringComparison.Ordinal);

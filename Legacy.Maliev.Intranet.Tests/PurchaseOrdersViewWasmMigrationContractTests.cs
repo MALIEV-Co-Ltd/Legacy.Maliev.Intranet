@@ -35,9 +35,11 @@ public sealed class PurchaseOrdersViewWasmMigrationContractTests
         Assert.Contains("/bff/purchase-orders/{Id}", page, StringComparison.Ordinal);
         Assert.Contains("HttpMethod.Delete", page, StringComparison.Ordinal);
         Assert.Contains("X-CSRF-TOKEN", page, StringComparison.Ordinal);
-        Assert.Contains("MudTable", page, StringComparison.Ordinal);
-        Assert.Contains("IDialogService Dialogs", page, StringComparison.Ordinal);
-        Assert.Contains("ShowMessageBoxAsync", page, StringComparison.Ordinal);
+        Assert.Contains("<ShadcnTable", page, StringComparison.Ordinal);
+        Assert.Contains("<ShadcnAlertDialog", page, StringComparison.Ordinal);
+        Assert.Contains("<ShadcnAlertDialogAction", page, StringComparison.Ordinal);
+        Assert.Contains("<ShadcnButton", page, StringComparison.Ordinal);
+        Assert.DoesNotContain("<Mud", page, StringComparison.Ordinal);
         Assert.DoesNotContain("forceLoad: true", page, StringComparison.Ordinal);
         Assert.DoesNotContain("jquery", page, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("MapGet(\"/bff/purchase-orders/{id:int}\"", program, StringComparison.Ordinal);

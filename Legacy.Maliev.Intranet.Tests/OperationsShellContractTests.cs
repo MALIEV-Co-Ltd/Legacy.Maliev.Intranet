@@ -28,6 +28,12 @@ public sealed class OperationsShellContractTests
         Assert.Contains("LegacyNavigationAuthorization.IsEnabled", actions, StringComparison.Ordinal);
         Assert.Contains("/Quotations/Create", actions, StringComparison.Ordinal);
         Assert.Contains("/Orders/Create", actions, StringComparison.Ordinal);
+        Assert.Contains("<ShadcnThemeProvider", layout, StringComparison.Ordinal);
+        Assert.Contains("<div class=\"legacy-layout\">", layout, StringComparison.Ordinal);
+        Assert.Contains("<main id=\"main-content\" class=\"legacy-main-content legacy-page-container\"", layout, StringComparison.Ordinal);
+        Assert.Contains("<ShadcnInput TValue=\"string\"", search, StringComparison.Ordinal);
+        Assert.Contains("LucideIconCatalog.Instance.Get", search, StringComparison.Ordinal);
+        Assert.DoesNotContain("<Mud", string.Concat(layout, topBar, navigation, search, actions), StringComparison.Ordinal);
         Assert.DoesNotContain("AccessToken", search, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("RefreshToken", search, StringComparison.OrdinalIgnoreCase);
     }
@@ -69,14 +75,15 @@ public sealed class OperationsShellContractTests
         Assert.Contains("class=\"legacy-workspace-frame\" @attributes=\"WorkspaceAccessibilityAttributes\"", layout, StringComparison.Ordinal);
         Assert.Contains("[\"inert\"] = string.Empty", layout, StringComparison.Ordinal);
         Assert.Contains("[\"aria-hidden\"] = \"true\"", layout, StringComparison.Ordinal);
-        Assert.Contains("@ref=\"_navigationToggle\"", topBar, StringComparison.Ordinal);
-        Assert.Contains("await _navigationToggle.FocusAsync()", topBar, StringComparison.Ordinal);
+        Assert.Contains("id=\"legacy-navigation-toggle\"", topBar, StringComparison.Ordinal);
+        Assert.Contains("malievFocus.byId", topBar, StringComparison.Ordinal);
         Assert.Contains("role=\"@(IsDrawer ? \"dialog\" : null)\"", navigation, StringComparison.Ordinal);
         Assert.Contains("aria-modal=\"@(IsDrawer ? \"true\" : null)\"", navigation, StringComparison.Ordinal);
         Assert.Contains("legacy-drawer-focus-sentinel", navigation, StringComparison.Ordinal);
         Assert.Contains("FocusFirstAsync", navigation, StringComparison.Ordinal);
         Assert.Contains("FocusLastAsync", navigation, StringComparison.Ordinal);
-        Assert.Contains("await _closeButton.FocusAsync()", navigation, StringComparison.Ordinal);
+        Assert.Contains("id=\"legacy-navigation-close\"", navigation, StringComparison.Ordinal);
+        Assert.Contains("malievFocus.byId", navigation, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -138,12 +145,12 @@ public sealed class OperationsShellContractTests
         var script = Read(root, "Legacy.Maliev.Intranet.Client", "wwwroot", "js", "workspace-culture.js");
         var index = Read(root, "Legacy.Maliev.Intranet.Client", "wwwroot", "index.html");
 
-        Assert.Equal(2, System.Text.RegularExpressions.Regex.Matches(selector, "<MudSelectItem").Count);
-        Assert.Contains(@"<MudSelectItem T=""string"" Value=""@(""en-TH"")"">English", selector, StringComparison.Ordinal);
-        Assert.Contains(@"<MudSelectItem T=""string"" Value=""@(""th-TH"")"">ไทย", selector, StringComparison.Ordinal);
+        Assert.Equal(2, System.Text.RegularExpressions.Regex.Matches(selector, "<ShadcnNativeSelectOption").Count);
+        Assert.Contains(@"<ShadcnNativeSelectOption TValue=""string"" Value=""@EnglishCulture"">English", selector, StringComparison.Ordinal);
+        Assert.Contains(@"<ShadcnNativeSelectOption TValue=""string"" Value=""@ThaiCulture"">ไทย", selector, StringComparison.Ordinal);
         Assert.DoesNotContain("en-US", selector, StringComparison.Ordinal);
-        Assert.Contains("<MudSelect", selector, StringComparison.Ordinal);
-        Assert.DoesNotContain("<MudIcon", selector, StringComparison.Ordinal);
+        Assert.Contains("<ShadcnNativeSelect TValue=\"string\"", selector, StringComparison.Ordinal);
+        Assert.DoesNotContain("<Mud", selector, StringComparison.Ordinal);
         Assert.Contains("malievCulture.set", selector, StringComparison.Ordinal);
         Assert.Contains("malievCulture.get", program, StringComparison.Ordinal);
         Assert.Contains("WorkspaceCulture.Apply(selectedCulture)", program, StringComparison.Ordinal);
@@ -174,6 +181,33 @@ public sealed class OperationsShellContractTests
         Assert.Contains("@if (IsDrawer)", navigation, StringComparison.Ordinal);
         Assert.Contains("inset: var(--legacy-utility-height) auto 0 0", railCss, StringComparison.Ordinal);
         Assert.Contains("height: calc(100dvh - var(--legacy-utility-height))", railCss, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void SharedShellAndReusableComponentsContainNoMudMarkupOrImports()
+    {
+        var root = FindRoot();
+        var paths = new[]
+        {
+            Path.Combine(root, "Legacy.Maliev.Intranet.Client.Shared"),
+            Path.Combine(root, "Legacy.Maliev.Intranet.Client", "Layout"),
+            Path.Combine(root, "Legacy.Maliev.Intranet.Client", "Components", "Shell")
+        };
+
+        var violations = paths
+            .SelectMany(path => Directory.EnumerateFiles(path, "*", SearchOption.AllDirectories))
+            .Where(path => Path.GetExtension(path) is ".razor" or ".cs")
+            .Where(path =>
+            {
+                var source = File.ReadAllText(path);
+                return source.Contains("<Mud", StringComparison.Ordinal)
+                    || source.Contains("@using MudBlazor", StringComparison.Ordinal)
+                    || source.Contains("using MudBlazor", StringComparison.Ordinal);
+            })
+            .Select(path => Path.GetRelativePath(root, path))
+            .ToArray();
+
+        Assert.Empty(violations);
     }
 
     [Fact]

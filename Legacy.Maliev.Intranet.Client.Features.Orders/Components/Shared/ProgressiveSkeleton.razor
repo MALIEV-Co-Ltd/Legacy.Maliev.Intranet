@@ -2,8 +2,8 @@
     @if (ShowHeader)
     {
         <div class="mlv-progressive-skeleton-header">
-            <MudSkeleton SkeletonType="SkeletonType.Text" Width="170px" Height="22px" Animation="Animation.Wave" />
-            <MudSkeleton SkeletonType="SkeletonType.Rectangle" Width="112px" Height="34px" Animation="Animation.Wave" />
+            <ShadcnSkeleton Style="@SkeletonStyle("170px", "22px")" />
+            <ShadcnSkeleton Style="@SkeletonStyle("112px", "34px")" />
         </div>
     }
 
@@ -14,26 +14,26 @@
                 @for (var index = 0; index < 4; index++)
                 {
                     <div class="mlv-progressive-skeleton-stat">
-                        <MudSkeleton SkeletonType="SkeletonType.Text" Width="74px" Height="13px" Animation="Animation.Wave" />
-                        <MudSkeleton SkeletonType="SkeletonType.Text" Width="96px" Height="28px" Animation="Animation.Wave" />
+                        <ShadcnSkeleton Style="@SkeletonStyle("74px", "13px")" />
+                        <ShadcnSkeleton Style="@SkeletonStyle("96px", "28px")" />
                     </div>
                 }
             </div>
             <div class="mlv-progressive-skeleton-grid">
                 <div class="mlv-progressive-skeleton-panel">
-                    <MudSkeleton SkeletonType="SkeletonType.Text" Width="142px" Height="16px" Animation="Animation.Wave" />
+                    <ShadcnSkeleton Style="@SkeletonStyle("142px", "16px")" />
                     <div class="mlv-progressive-skeleton-fields">
                         @for (var index = 0; index < Math.Max(4, Rows); index++)
                         {
-                            <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="38px" Animation="Animation.Wave" />
+                            <ShadcnSkeleton Style="@SkeletonStyle(null, "38px")" />
                         }
                     </div>
                 </div>
                 <div class="mlv-progressive-skeleton-panel">
-                    <MudSkeleton SkeletonType="SkeletonType.Text" Width="118px" Height="16px" Animation="Animation.Wave" />
+                    <ShadcnSkeleton Style="@SkeletonStyle("118px", "16px")" />
                     @for (var index = 0; index < 3; index++)
                     {
-                        <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="58px" Animation="Animation.Wave" />
+                        <ShadcnSkeleton Style="@SkeletonStyle(null, "58px")" />
                     }
                 </div>
             </div>
@@ -41,11 +41,11 @@
 
         case "form":
             <div class="mlv-progressive-skeleton-panel">
-                <MudSkeleton SkeletonType="SkeletonType.Text" Width="138px" Height="16px" Animation="Animation.Wave" />
+                <ShadcnSkeleton Style="@SkeletonStyle("138px", "16px")" />
                 <div class="mlv-progressive-skeleton-fields">
                     @for (var index = 0; index < Math.Max(4, Rows); index++)
                     {
-                        <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="38px" Animation="Animation.Wave" />
+                        <ShadcnSkeleton Style="@SkeletonStyle(null, "38px")" />
                     }
                 </div>
             </div>
@@ -56,12 +56,12 @@
                 @for (var index = 0; index < Rows; index++)
                 {
                     <div class="mlv-progressive-skeleton-row">
-                        <MudSkeleton SkeletonType="SkeletonType.Circle" Width="28px" Height="28px" Animation="Animation.Wave" />
+                        <ShadcnSkeleton Shape="ShadcnSkeletonShape.Circle" Style="@SkeletonStyle("28px", "28px")" />
                         <div class="mlv-progressive-skeleton-copy">
-                            <MudSkeleton SkeletonType="SkeletonType.Text" Width="72%" Height="16px" Animation="Animation.Wave" />
-                            <MudSkeleton SkeletonType="SkeletonType.Text" Width="42%" Height="12px" Animation="Animation.Wave" />
+                            <ShadcnSkeleton Style="@SkeletonStyle("72%", "16px")" />
+                            <ShadcnSkeleton Style="@SkeletonStyle("42%", "12px")" />
                         </div>
-                        <MudSkeleton SkeletonType="SkeletonType.Text" Width="54px" Height="16px" Animation="Animation.Wave" />
+                        <ShadcnSkeleton Style="@SkeletonStyle("54px", "16px")" />
                     </div>
                 }
             </div>
@@ -71,7 +71,7 @@
             <div class="mlv-progressive-skeleton-compact">
                 @for (var index = 0; index < Rows; index++)
                 {
-                    <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="32px" Animation="Animation.Wave" />
+                    <ShadcnSkeleton Style="@SkeletonStyle(null, "32px")" />
                 }
             </div>
             break;
@@ -81,15 +81,15 @@
                 @if (ShowFilters)
                 {
                     <div class="mlv-progressive-skeleton-filters">
-                        <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="36px" Animation="Animation.Wave" />
-                        <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="36px" Animation="Animation.Wave" />
-                        <MudSkeleton SkeletonType="SkeletonType.Rectangle" Width="96px" Height="36px" Animation="Animation.Wave" />
+                        <ShadcnSkeleton Style="@SkeletonStyle(null, "36px")" />
+                        <ShadcnSkeleton Style="@SkeletonStyle(null, "36px")" />
+                        <ShadcnSkeleton Style="@SkeletonStyle("96px", "36px")" />
                     </div>
                 }
                 <div class="mlv-progressive-skeleton-head">
                     @for (var index = 0; index < Columns; index++)
                     {
-                        <MudSkeleton SkeletonType="SkeletonType.Text" Width="80px" Height="13px" Animation="Animation.Wave" />
+                        <ShadcnSkeleton Style="@SkeletonStyle("80px", "13px")" />
                     }
                 </div>
                 @for (var row = 0; row < Rows; row++)
@@ -97,7 +97,7 @@
                     <div class="mlv-progressive-skeleton-table-row">
                         @for (var column = 0; column < Columns; column++)
                         {
-                            <MudSkeleton SkeletonType="SkeletonType.Text" Width="@ResolveColumnWidth(column)" Height="16px" Animation="Animation.Wave" />
+                            <ShadcnSkeleton Style="@SkeletonStyle(ResolveColumnWidth(column), "16px")" />
                         }
                     </div>
                 }
@@ -125,6 +125,9 @@
             .Where(value => !string.IsNullOrWhiteSpace(value)));
 
     private string RootStyle => $"--mlv-skeleton-columns: {Math.Clamp(Columns, 1, 8)};";
+
+    private static string SkeletonStyle(string? width, string height) =>
+        $"{(width is null ? string.Empty : $"width: {width}; ")}height: {height};";
 
     private static string ResolveColumnWidth(int column) => (column % 4) switch
     {

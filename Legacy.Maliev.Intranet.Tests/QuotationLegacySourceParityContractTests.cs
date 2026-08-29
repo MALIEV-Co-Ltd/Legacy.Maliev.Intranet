@@ -20,23 +20,24 @@ public sealed class QuotationLegacySourceParityContractTests
         Assert.Contains("GetCustomerAsync", mapper, StringComparison.Ordinal);
         Assert.Contains("X-CSRF-TOKEN", source, StringComparison.Ordinal);
         Assert.Contains("Idempotency-Key", source, StringComparison.Ordinal);
-        Assert.Contains("<MudForm", source, StringComparison.Ordinal);
+        Assert.Contains("<EditForm", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("<Mud", source, StringComparison.Ordinal);
         Assert.DoesNotContain("access_token", source, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
-    public void Estimate_PreservesLegacyTabsAndResponsiveColumns()
+    public void Estimate_PreservesWorkflowTabsAndResponsiveColumns()
     {
         var root = FindRoot();
         var source = File.ReadAllText(Path.Combine(root, "Legacy.Maliev.Intranet.Client.Features.Quotations", "Pages", "Quotations", "Estimate.razor"));
 
-        Assert.Contains("MudTabPanel", source, StringComparison.Ordinal);
+        Assert.Contains("<ShadcnTabsContent", source, StringComparison.Ordinal);
         Assert.Contains("Text[\"Printing\"]", source, StringComparison.Ordinal);
         Assert.Contains("Text[\"CncMachining\"]", source, StringComparison.Ordinal);
         Assert.Contains("Text[\"Scanning\"]", source, StringComparison.Ordinal);
         Assert.Contains("Text[\"Designing\"]", source, StringComparison.Ordinal);
-        Assert.Contains("xs=\"12\" lg=\"8\"", source, StringComparison.Ordinal);
-        Assert.Contains("xs=\"12\" lg=\"4\"", source, StringComparison.Ordinal);
+        Assert.Contains("quotation-estimate-inputs", source, StringComparison.Ordinal);
+        Assert.Contains("quotation-estimate-summary", source, StringComparison.Ordinal);
         Assert.Contains("@Text[\"GrandTotal\"]", source, StringComparison.Ordinal);
         Assert.Contains("CncEstimateCalculator", source, StringComparison.Ordinal);
     }
@@ -48,14 +49,15 @@ public sealed class QuotationLegacySourceParityContractTests
         var source = File.ReadAllText(Path.Combine(root, "Legacy.Maliev.Intranet.Client.Features.Quotations", "Pages", "QuotationRequests", "View.razor"));
         var contracts = File.ReadAllText(Path.Combine(root, "Legacy.Maliev.Intranet.Contracts", "QuotationRequestContracts.cs"));
 
-        Assert.Contains("<MudSelect T=\"bool?\"", source, StringComparison.Ordinal);
-        Assert.Contains("@Text[\"Open\"]", source, StringComparison.Ordinal);
-        Assert.Contains("@Text[\"Done\"]", source, StringComparison.Ordinal);
+        Assert.Contains("<QuotationSelectField TValue=\"bool?\"", source, StringComparison.Ordinal);
+        Assert.Contains("Text[\"Open\"]", source, StringComparison.Ordinal);
+        Assert.Contains("Text[\"Done\"]", source, StringComparison.Ordinal);
         Assert.Contains("detail.Files", source, StringComparison.Ordinal);
         Assert.Contains("QuotationRequestDetail", source, StringComparison.Ordinal);
         Assert.Contains("QuotationRequestFileItem", contracts, StringComparison.Ordinal);
         Assert.Contains("X-CSRF-TOKEN", source, StringComparison.Ordinal);
-        Assert.Contains("<MudForm", source, StringComparison.Ordinal);
+        Assert.Contains("<EditForm", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("<Mud", source, StringComparison.Ordinal);
     }
 
     [Fact]

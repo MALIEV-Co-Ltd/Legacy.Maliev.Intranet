@@ -1,0 +1,18 @@
+.material-editor { width: min(100%, 72rem); margin-inline: auto; }
+.material-editor .operations-page-header p { margin: 0.25rem 0 0; color: var(--shadcn-muted-foreground); }
+.material-editor__loading { display: flex; align-items: center; gap: 0.625rem; color: var(--shadcn-muted-foreground); }
+.material-editor__form { display: grid; gap: 1rem; margin-top: 1rem; }
+.material-editor__section { padding: 1rem; border: 1px solid var(--shadcn-border); border-radius: var(--shadcn-radius-lg); background: var(--shadcn-card); color: var(--shadcn-card-foreground); }
+.material-editor__section h2 { margin: 0 0 1rem; font-size: 1rem; }
+.material-editor__grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
+.material-editor__grid--three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.material-editor__wide { grid-column: 1 / -1; }
+.material-editor__checks, .material-editor__actions { display: flex; flex-wrap: wrap; align-items: center; gap: 1rem; }
+.material-editor__actions ::deep .shadcn-button, .material-editor__actions ::deep .legacy-link { min-height: 44px; }
+
+@media (max-width: 720px) {
+    .material-editor__grid, .material-editor__grid--three { grid-template-columns: minmax(0, 1fr); }
+    .material-editor__wide { grid-column: auto; }
+    .material-editor__checks, .material-editor__actions { align-items: stretch; flex-direction: column; }
+    .material-editor__actions ::deep .shadcn-button, .material-editor__actions ::deep .legacy-link { width: 100%; justify-content: center; }
+}

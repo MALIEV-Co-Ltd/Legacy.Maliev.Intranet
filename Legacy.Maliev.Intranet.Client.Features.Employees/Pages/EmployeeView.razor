@@ -6,26 +6,26 @@
 
 <PageTitle>@(detail is null ? Text["PageTitle"] : Text["EmployeePageTitle", detail.FullName])</PageTitle>
 
-<MudContainer MaxWidth="MaxWidth.Medium">
+<main class="employee-detail">
     @if (loading)
     {
-        <div role="status" aria-live="polite"><MudProgressLinear Indeterminate="true" Color="Color.Primary" aria-label="@Text["Loading"]" /><span class="visually-hidden">@Text["Loading"]</span></div>
+        <div class="employee-detail__loading" role="status" aria-live="polite"><ShadcnSpinner Label="@Text["Loading"]" Size="1.25rem" /><span>@Text["Loading"]</span></div>
     }
     else if (!string.IsNullOrWhiteSpace(error))
     {
-        <MudAlert Severity="@(notFound ? Severity.Warning : Severity.Error)" aria-live="assertive">@error</MudAlert>
-        <div class="d-flex flex-wrap gap-2 mt-4">
+        <ShadcnAlert Variant="@(notFound ? ShadcnAlertVariant.Default : ShadcnAlertVariant.Destructive)" AlertRole="ShadcnAlertRole.Alert"><ShadcnAlertDescription>@error</ShadcnAlertDescription></ShadcnAlert>
+        <div class="employee-detail__actions">
             @if (!notFound)
             {
-                <MudButton OnClick="LoadAsync" Variant="Variant.Filled" Color="Color.Primary">@Text["Retry"]</MudButton>
+                <ShadcnButton OnClick="LoadAsync">@Text["Retry"]</ShadcnButton>
             }
-            <LegacyLink Href="/Employees/Index" Role="LegacyLinkRole.Navigation" StartIcon="@Icons.Material.Filled.ArrowBack" AriaLabel="@Text["BackToEmployees"]">@Text["BackToEmployees"]</LegacyLink>
+            <LegacyLink Href="/Employees/Index" Role="LegacyLinkRole.Navigation" AriaLabel="@Text["BackToEmployees"]">@Text["BackToEmployees"]</LegacyLink>
         </div>
     }
     else if (detail is not null)
     {
-        <header class="operations-page-header"><div><MudText Typo="Typo.h4" HtmlTag="h1">@detail.FullName</MudText><MudText Typo="Typo.body2">@Text["EmployeeNumber", detail.Id]</MudText></div></header>
-        <MudPaper Class="pa-4" Elevation="1">
+        <header class="operations-page-header"><div><h1>@detail.FullName</h1><p>@Text["EmployeeNumber", detail.Id]</p></div></header>
+        <section class="employee-detail__card" aria-label="@Text["EmployeePageTitle", detail.FullName]">
             <dl class="details">
                 <dt>@Text["Email"]</dt>
                 <dd>@detail.Email</dd>
@@ -38,10 +38,10 @@
                 <dt>@Text["Address"]</dt>
                 <dd>@ValueOrFallback(detail.HomeAddress?.AddressLine1)</dd>
             </dl>
-        </MudPaper>
-        <LegacyLink Href="/Employees/Index" Role="LegacyLinkRole.Navigation" StartIcon="@Icons.Material.Filled.ArrowBack" AriaLabel="@Text["BackToEmployees"]" Class="mt-4">@Text["BackToEmployees"]</LegacyLink>
+        </section>
+        <LegacyLink Href="/Employees/Index" Role="LegacyLinkRole.Navigation" AriaLabel="@Text["BackToEmployees"]" Class="employee-detail__back">@Text["BackToEmployees"]</LegacyLink>
     }
-</MudContainer>
+</main>
 
 @code {
     [SupplyParameterFromQuery(Name = "id")]

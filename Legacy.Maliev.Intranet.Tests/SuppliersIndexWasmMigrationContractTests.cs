@@ -28,6 +28,10 @@ public sealed class SuppliersIndexWasmMigrationContractTests
         Assert.Contains("[SupplyParameterFromQuery", page, StringComparison.Ordinal);
         Assert.Contains("/bff/suppliers", page, StringComparison.Ordinal);
         Assert.Contains("OperationalTable", page, StringComparison.Ordinal);
+        Assert.Contains("<ShadcnButton", page, StringComparison.Ordinal);
+        Assert.Contains("<ShadcnSpinner", page, StringComparison.Ordinal);
+        Assert.Contains("<ShadcnAlert", page, StringComparison.Ordinal);
+        Assert.DoesNotContain("<Mud", page, StringComparison.Ordinal);
         Assert.Contains("/Suppliers/Create", page, StringComparison.Ordinal);
         Assert.Contains("/Suppliers/View?id=", page, StringComparison.Ordinal);
         Assert.Contains("Navigation.NavigateTo(\"/Suppliers/Create\")", page, StringComparison.Ordinal);

@@ -8,7 +8,7 @@ public sealed class CustomersViewWasmMigrationContractTests
         var source = ReadCustomerComponent("CustomerOverview.razor");
 
         Assert.Contains("<section", source, StringComparison.Ordinal);
-        Assert.Contains("HtmlTag=\"h2\"", source, StringComparison.Ordinal);
+        Assert.Contains("<h2", source, StringComparison.Ordinal);
         Assert.Contains("[Parameter, EditorRequired] public CustomerDetail Customer", source, StringComparison.Ordinal);
         Assert.Contains("[Parameter, EditorRequired] public CustomerUpdateRequest EditModel", source, StringComparison.Ordinal);
         Assert.Contains("[Parameter] public bool CanEdit", source, StringComparison.Ordinal);
@@ -33,13 +33,13 @@ public sealed class CustomersViewWasmMigrationContractTests
         var source = ReadCustomerComponent("CustomerActivity.razor");
 
         Assert.Contains("<section", source, StringComparison.Ordinal);
-        Assert.Contains("HtmlTag=\"h2\"", source, StringComparison.Ordinal);
+        Assert.Contains("<h2", source, StringComparison.Ordinal);
         Assert.Contains("[Parameter] public CustomerActivityPage? Page", source, StringComparison.Ordinal);
         Assert.Contains("[Parameter] public bool Loading", source, StringComparison.Ordinal);
         Assert.Contains("[Parameter] public string? Error", source, StringComparison.Ordinal);
         Assert.Contains("[Parameter] public EventCallback Retry", source, StringComparison.Ordinal);
-        Assert.Contains("<MudProgressLinear", source, StringComparison.Ordinal);
-        Assert.Contains("<MudAlert", source, StringComparison.Ordinal);
+        Assert.Contains("<ShadcnSpinner", source, StringComparison.Ordinal);
+        Assert.Contains("<ShadcnAlert", source, StringComparison.Ordinal);
         Assert.Contains("Page.Items.Count == 0", source, StringComparison.Ordinal);
         Assert.Contains("Page.Orders", source, StringComparison.Ordinal);
         Assert.Contains("Page.Quotations", source, StringComparison.Ordinal);
@@ -60,7 +60,7 @@ public sealed class CustomersViewWasmMigrationContractTests
         var source = ReadCustomerComponent("CustomerHistoryTable.razor");
 
         Assert.Contains("<section", source, StringComparison.Ordinal);
-        Assert.Contains("HtmlTag=\"h2\"", source, StringComparison.Ordinal);
+        Assert.Contains("<h2", source, StringComparison.Ordinal);
         Assert.Contains("[Parameter, EditorRequired] public CustomerHistoryKind Kind", source, StringComparison.Ordinal);
         Assert.Contains("[Parameter] public OrderListPage? Orders", source, StringComparison.Ordinal);
         Assert.Contains("[Parameter] public QuotationListPage? Quotations", source, StringComparison.Ordinal);
@@ -72,8 +72,9 @@ public sealed class CustomersViewWasmMigrationContractTests
         Assert.Contains("protected override void OnParametersSet()", source, StringComparison.Ordinal);
         Assert.Contains("ValidatePageContract", source, StringComparison.Ordinal);
         Assert.Contains("Math.Clamp", source, StringComparison.Ordinal);
-        Assert.Contains("<MudProgressLinear", source, StringComparison.Ordinal);
-        Assert.Contains("<MudAlert", source, StringComparison.Ordinal);
+        Assert.Contains("<ShadcnSpinner", source, StringComparison.Ordinal);
+        Assert.Contains("<ShadcnAlert", source, StringComparison.Ordinal);
+        Assert.Equal(3, System.Text.RegularExpressions.Regex.Matches(source, "<ShadcnTable ").Count);
         Assert.Contains("Items.Count == 0", source, StringComparison.Ordinal);
         Assert.Contains("Href=\"@($\"/Orders/View?id={order.Id}\")\"", source, StringComparison.Ordinal);
         Assert.Contains("Href=\"@($\"/Quotations/View?id={quotation.Id}\")\"", source, StringComparison.Ordinal);
@@ -163,7 +164,9 @@ public sealed class CustomersViewWasmMigrationContractTests
 
         Assert.Contains("[SupplyParameterFromQuery(Name = \"tab\")]", page, StringComparison.Ordinal);
         Assert.Contains("Navigation.GetUriWithQueryParameter(\"tab\"", page, StringComparison.Ordinal);
-        Assert.Contains("<MudTabs", page, StringComparison.Ordinal);
+        Assert.Contains("<ShadcnTabs Value=\"@selectedTab\"", page, StringComparison.Ordinal);
+        Assert.Contains("<ShadcnTabsList", page, StringComparison.Ordinal);
+        Assert.Contains("<ShadcnTabsContent Value=\"overview\" ForceMount=\"true\"", page, StringComparison.Ordinal);
         Assert.Contains("<CustomerOverview", page, StringComparison.Ordinal);
         Assert.Contains("<CustomerActivity", page, StringComparison.Ordinal);
         Assert.Contains("<CustomerHistoryTable", page, StringComparison.Ordinal);
@@ -179,7 +182,8 @@ public sealed class CustomersViewWasmMigrationContractTests
         Assert.Contains("CancellationTokenSource", page, StringComparison.Ordinal);
         Assert.Contains("customerLoadGate.Begin", page, StringComparison.Ordinal);
         Assert.Contains("customerLoadGate.IsCurrent", page, StringComparison.Ordinal);
-        Assert.Contains("<MudForm", page, StringComparison.Ordinal);
+        Assert.Contains("<EditForm EditContext=\"@editContext\"", page, StringComparison.Ordinal);
+        Assert.DoesNotContain("<Mud", page, StringComparison.Ordinal);
 
         Assert.Contains("overflow-x: auto", styles, StringComparison.Ordinal);
         Assert.Contains("min-height: 44px", styles, StringComparison.Ordinal);

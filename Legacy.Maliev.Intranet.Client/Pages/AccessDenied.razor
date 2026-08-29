@@ -4,10 +4,10 @@
 
 <PageTitle>@Text["PageTitle"]</PageTitle>
 
-<MudContainer MaxWidth="MaxWidth.Small" Class="py-8">
-    <MudAlert Severity="Severity.Error" Variant="Variant.Outlined">
-        <MudText Typo="Typo.h4" HtmlTag="h1" Class="mb-2">@Text["Heading"]</MudText>
-        <MudText Typo="Typo.body1" Class="mb-4">@Text["Description"]</MudText>
-        <MudButton Href="/Login" Variant="Variant.Filled" Color="Color.Primary">@Text["ReturnToSignIn"]</MudButton>
-    </MudAlert>
-</MudContainer>
+<div class="legacy-content-container legacy-content-container--small py-8">
+    <ShadcnAlert Variant="ShadcnAlertVariant.Destructive" AlertRole="ShadcnAlertRole.Alert">
+        <ShadcnAlertTitle><ShadcnTypography Variant="ShadcnTypographyVariant.H1" Class="mb-2">@Text["Heading"]</ShadcnTypography></ShadcnAlertTitle>
+        <ShadcnAlertDescription><ShadcnTypography Class="mb-4">@Text["Description"]</ShadcnTypography></ShadcnAlertDescription>
+        <ShadcnAlertAction><ShadcnButton Href="/Login">@Text["ReturnToSignIn"]</ShadcnButton></ShadcnAlertAction>
+    </ShadcnAlert>
+</div>

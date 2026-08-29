@@ -11,7 +11,23 @@
   <data name="Description" xml:space="preserve"><value>Review the customer, pricing, linked orders, and generated documents for this quotation.</value></data>
   <data name="Actions" xml:space="preserve"><value>Quotation actions</value></data>
   <data name="Back" xml:space="preserve"><value>Back to quotations</value></data>
-  <data name="ReadOnlyNotice" xml:space="preserve"><value>This quotation is read-only. Decision changes remain disabled until the owning service supports them.</value></data>
+  <data name="DecisionActions" xml:space="preserve"><value>Quotation decision</value></data>
+  <data name="DecisionHelp" xml:space="preserve"><value>Record the customer's accepted or declined decision. Changes are checked against the latest saved quotation before they are applied.</value></data>
+  <data name="AcceptQuotation" xml:space="preserve"><value>Accept quotation</value></data>
+  <data name="DeclineQuotation" xml:space="preserve"><value>Decline quotation</value></data>
+  <data name="ConfirmDecision" xml:space="preserve"><value>Confirm decision</value></data>
+  <data name="ConfirmAccept" xml:space="preserve"><value>Confirm that this quotation should be accepted?</value></data>
+  <data name="ConfirmDecline" xml:space="preserve"><value>Confirm that this quotation should be declined?</value></data>
+  <data name="Cancel" xml:space="preserve"><value>Cancel</value></data>
+  <data name="DecisionSucceeded" xml:space="preserve"><value>The quotation decision was saved.</value></data>
+  <data name="DecisionConflict" xml:space="preserve"><value>This quotation changed after it was loaded. Reload the latest details before trying again.</value></data>
+  <data name="DecisionPartial" xml:space="preserve"><value>The decision was saved, but {0} of {1} linked orders were updated. Try again to complete the remaining work.</value></data>
+  <data name="DecisionRateLimited" xml:space="preserve"><value>Too many decision requests were submitted. Try again in {0} seconds.</value></data>
+  <data name="DecisionForbidden" xml:space="preserve"><value>You do not have permission to change this quotation decision.</value></data>
+  <data name="DecisionInvalidResponse" xml:space="preserve"><value>The service returned an invalid decision response.</value></data>
+  <data name="DecisionUnavailable" xml:space="preserve"><value>The quotation decision cannot be saved right now.</value></data>
+  <data name="RetryDecision" xml:space="preserve"><value>Try saving again</value></data>
+  <data name="ReloadQuotation" xml:space="preserve"><value>Reload quotation</value></data>
   <data name="Quotation" xml:space="preserve"><value>Quotation information</value></data>
   <data name="Created" xml:space="preserve"><value>Created: {0}</value></data>
   <data name="Modified" xml:space="preserve"><value>Modified: {0}</value></data>

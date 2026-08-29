@@ -25,45 +25,42 @@
                 </span>
                 <time datetime="@_snapshot.GeneratedAt.ToString("O")">@Text["UpdatedAt", FormatTimestamp(_snapshot.GeneratedAt)]</time>
             }
-            <MudButton Variant="Variant.Outlined" Size="Size.Small" Disabled="_loading" OnClick="RefreshAsync" StartIcon="@Icons.Material.Outlined.Refresh">
+            <ShadcnButton Variant="ShadcnButtonVariant.Outline" Size="ShadcnButtonSize.Small" Disabled="_loading" OnClick="RefreshAsync">
+                <ShadcnIcon Icon="RefreshIcon" Size="18" />
                 @Text["Refresh"]
-            </MudButton>
+            </ShadcnButton>
         </div>
     </header>
 
     @if (_loading)
     {
         <div class="dashboard-loading" aria-label="@Text["LoadingDashboard"]" aria-busy="true">
-            <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+            <ShadcnProgress Label="@Text["LoadingDashboard"]" />
             <div class="dashboard-loading-grid">
                 @for (var index = 0; index < 4; index++)
                 {
-                    <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="140px" />
+                    <ShadcnSkeleton Style="height: 140px;" />
                 }
             </div>
-            <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="320px" />
+            <ShadcnSkeleton Style="height: 320px;" />
         </div>
     }
     else if (!string.IsNullOrWhiteSpace(_error))
     {
-        <MudAlert Severity="Severity.Error" Variant="Variant.Outlined" Class="dashboard-alert" aria-live="assertive">
-            @_error
-            <MudButton Variant="Variant.Text" Color="Color.Error" OnClick="RefreshAsync" Class="ml-2">@Text["TryAgain"]</MudButton>
-        </MudAlert>
+        <ShadcnAlert Variant="ShadcnAlertVariant.Destructive" AlertRole="ShadcnAlertRole.Alert" Class="dashboard-alert">
+            <ShadcnAlertDescription>@_error</ShadcnAlertDescription>
+            <ShadcnAlertAction><ShadcnButton Variant="ShadcnButtonVariant.Ghost" OnClick="RefreshAsync" Class="ml-2">@Text["TryAgain"]</ShadcnButton></ShadcnAlertAction>
+        </ShadcnAlert>
     }
     else if (_snapshot is { Cards.Count: 0 } && !HasOperationalContent)
     {
-        <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Class="dashboard-alert">
-            @Text["NoWorkspaces"]
-        </MudAlert>
+        <ShadcnAlert AlertRole="ShadcnAlertRole.Status" Class="dashboard-alert"><ShadcnAlertDescription>@Text["NoWorkspaces"]</ShadcnAlertDescription></ShadcnAlert>
     }
     else if (_snapshot is not null)
     {
         @if (_snapshot.DegradedSources.Count > 0)
         {
-            <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined" Class="dashboard-alert" aria-live="polite">
-                @Text["PartialDataWarning"]
-            </MudAlert>
+            <ShadcnAlert AlertRole="ShadcnAlertRole.Status" Class="dashboard-alert"><ShadcnAlertDescription>@Text["PartialDataWarning"]</ShadcnAlertDescription></ShadcnAlert>
         }
 
         <div class="dashboard-primary-grid">
@@ -75,24 +72,24 @@
                                 LinkText="@Text["ViewAll"]"
                                 Class="dashboard-wide-panel">
                     <div class="dashboard-table-scroll">
-                        <MudSimpleTable Class="dashboard-table" Dense="true" Hover="true" data-projection="dashboard-orders">
-                            <caption class="sr-only">@Text["RecentProductionOrders"]</caption>
-                            <thead><tr><th scope="col">@Text["Order"]</th><th scope="col">@Text["Part"]</th><th scope="col">@Text["Quantity"]</th><th scope="col">@Text["Manufactured"]</th><th scope="col">@Text["Remaining"]</th><th scope="col">@Text["Promised"]</th><th scope="col">@Text["Progress"]</th></tr></thead>
-                            <tbody>
+                        <ShadcnTable Class="dashboard-table" ExpectedColumnCount="7" data-projection="dashboard-orders">
+                            <ShadcnTableCaption Class="sr-only">@Text["RecentProductionOrders"]</ShadcnTableCaption>
+                            <ShadcnTableHeader><ShadcnTableRow><ShadcnTableHead>@Text["Order"]</ShadcnTableHead><ShadcnTableHead>@Text["Part"]</ShadcnTableHead><ShadcnTableHead>@Text["Quantity"]</ShadcnTableHead><ShadcnTableHead>@Text["Manufactured"]</ShadcnTableHead><ShadcnTableHead>@Text["Remaining"]</ShadcnTableHead><ShadcnTableHead>@Text["Promised"]</ShadcnTableHead><ShadcnTableHead>@Text["Progress"]</ShadcnTableHead></ShadcnTableRow></ShadcnTableHeader>
+                            <ShadcnTableBody>
                                 @foreach (var order in _snapshot.RecentOrders)
                                 {
-                                    <tr>
-                                        <td data-label="@Text["Order"]" data-field="Id NavigateTo" class="mlv-mono"><LegacyLink Href="@order.NavigateTo" Role="LegacyLinkRole.Record" AriaLabel="@Text["OrderNumber", order.Id]">#@order.Id</LegacyLink></td>
-                                        <td data-label="@Text["Part"]" data-field="Name" class="dashboard-table-primary">@(string.IsNullOrWhiteSpace(order.Name) ? Text["OrderNumber", order.Id] : order.Name)</td>
-                                        <td data-label="@Text["Quantity"]" data-field="Quantity" class="mlv-mono">@order.Quantity.ToString("N0")</td>
-                                        <td data-label="@Text["Manufactured"]" data-field="Manufactured" class="mlv-mono">@order.Manufactured.ToString("N0")</td>
-                                        <td data-label="@Text["Remaining"]" data-field="Remaining" class="mlv-mono">@Remaining(order).ToString("N0")</td>
-                                        <td data-label="@Text["Promised"]" data-field="PromisedDate" class="mlv-mono">@FormatDate(order.PromisedDate)</td>
-                                        <td data-label="@Text["Progress"]"><span class="dashboard-status @OrderStatusClass(order)">@OrderStatus(order)</span></td>
-                                    </tr>
+                                    <ShadcnTableRow>
+                                        <ShadcnTableCell data-label="@Text["Order"]" data-field="Id NavigateTo" class="mlv-mono"><LegacyLink Href="@order.NavigateTo" Role="LegacyLinkRole.Record" AriaLabel="@Text["OrderNumber", order.Id]">#@order.Id</LegacyLink></ShadcnTableCell>
+                                        <ShadcnTableCell data-label="@Text["Part"]" data-field="Name" class="dashboard-table-primary">@(string.IsNullOrWhiteSpace(order.Name) ? Text["OrderNumber", order.Id] : order.Name)</ShadcnTableCell>
+                                        <ShadcnTableCell data-label="@Text["Quantity"]" data-field="Quantity" class="mlv-mono">@order.Quantity.ToString("N0")</ShadcnTableCell>
+                                        <ShadcnTableCell data-label="@Text["Manufactured"]" data-field="Manufactured" class="mlv-mono">@order.Manufactured.ToString("N0")</ShadcnTableCell>
+                                        <ShadcnTableCell data-label="@Text["Remaining"]" data-field="Remaining" class="mlv-mono">@Remaining(order).ToString("N0")</ShadcnTableCell>
+                                        <ShadcnTableCell data-label="@Text["Promised"]" data-field="PromisedDate" class="mlv-mono">@FormatDate(order.PromisedDate)</ShadcnTableCell>
+                                        <ShadcnTableCell data-label="@Text["Progress"]"><span class="dashboard-status @OrderStatusClass(order)">@OrderStatus(order)</span></ShadcnTableCell>
+                                    </ShadcnTableRow>
                                 }
-                            </tbody>
-                        </MudSimpleTable>
+                            </ShadcnTableBody>
+                        </ShadcnTable>
                     </div>
                 </DashboardPanel>
             }
@@ -105,23 +102,23 @@
                                 LinkText="@Text["ViewAll"]"
                                 Class="dashboard-wide-panel">
                     <div class="dashboard-table-scroll">
-                        <MudSimpleTable Class="dashboard-table dashboard-table-compact" Dense="true" Hover="true" data-projection="dashboard-quotations">
-                            <caption class="sr-only">@Text["RecentQuotations"]</caption>
-                            <thead><tr><th scope="col">@Text["Quote"]</th><th scope="col">@Text["Total"]</th><th scope="col">@Text["QuotedAmount"]</th><th scope="col">@Text["Expires"]</th><th scope="col">@Text["CreatedDate"]</th><th scope="col">@Text["Decision"]</th></tr></thead>
-                            <tbody>
+                        <ShadcnTable Class="dashboard-table dashboard-table-compact" ExpectedColumnCount="6" data-projection="dashboard-quotations">
+                            <ShadcnTableCaption Class="sr-only">@Text["RecentQuotations"]</ShadcnTableCaption>
+                            <ShadcnTableHeader><ShadcnTableRow><ShadcnTableHead>@Text["Quote"]</ShadcnTableHead><ShadcnTableHead>@Text["Total"]</ShadcnTableHead><ShadcnTableHead>@Text["QuotedAmount"]</ShadcnTableHead><ShadcnTableHead>@Text["Expires"]</ShadcnTableHead><ShadcnTableHead>@Text["CreatedDate"]</ShadcnTableHead><ShadcnTableHead>@Text["Decision"]</ShadcnTableHead></ShadcnTableRow></ShadcnTableHeader>
+                            <ShadcnTableBody>
                                 @foreach (var quotation in _snapshot.RecentQuotations)
                                 {
-                                    <tr>
-                                        <td data-label="@Text["Quote"]" data-field="Id NavigateTo" class="mlv-mono"><LegacyLink Href="@quotation.NavigateTo" Role="LegacyLinkRole.Record" AriaLabel="@($"{Text["Quote"]} #{quotation.Id}")">#@quotation.Id</LegacyLink></td>
-                                        <td data-label="@Text["Total"]" data-field="Total CurrencyId" class="dashboard-money mlv-mono">@FormatMoney(quotation.Total, quotation.CurrencyId)</td>
-                                        <td data-label="@Text["QuotedAmount"]" data-field="QuotedAmount" class="dashboard-money mlv-mono">@(quotation.QuotedAmount is decimal quotedAmount ? FormatMoney(quotedAmount, quotation.CurrencyId) : "—")</td>
-                                        <td data-label="@Text["Expires"]" data-field="ExpirationDate" class="mlv-mono">@FormatDate(quotation.ExpirationDate)</td>
-                                        <td data-label="@Text["CreatedDate"]" data-field="CreatedDate" class="mlv-mono">@FormatDate(quotation.CreatedDate)</td>
-                                        <td data-label="@Text["Decision"]" data-field="Accepted"><span class="dashboard-status mlv-mono @DecisionClass(quotation.Accepted)">@Decision(quotation.Accepted)</span></td>
-                                    </tr>
+                                    <ShadcnTableRow>
+                                        <ShadcnTableCell data-label="@Text["Quote"]" data-field="Id NavigateTo" class="mlv-mono"><LegacyLink Href="@quotation.NavigateTo" Role="LegacyLinkRole.Record" AriaLabel="@($"{Text["Quote"]} #{quotation.Id}")">#@quotation.Id</LegacyLink></ShadcnTableCell>
+                                        <ShadcnTableCell data-label="@Text["Total"]" data-field="Total CurrencyId" class="dashboard-money mlv-mono">@FormatMoney(quotation.Total, quotation.CurrencyId)</ShadcnTableCell>
+                                        <ShadcnTableCell data-label="@Text["QuotedAmount"]" data-field="QuotedAmount" class="dashboard-money mlv-mono">@(quotation.QuotedAmount is decimal quotedAmount ? FormatMoney(quotedAmount, quotation.CurrencyId) : "—")</ShadcnTableCell>
+                                        <ShadcnTableCell data-label="@Text["Expires"]" data-field="ExpirationDate" class="mlv-mono">@FormatDate(quotation.ExpirationDate)</ShadcnTableCell>
+                                        <ShadcnTableCell data-label="@Text["CreatedDate"]" data-field="CreatedDate" class="mlv-mono">@FormatDate(quotation.CreatedDate)</ShadcnTableCell>
+                                        <ShadcnTableCell data-label="@Text["Decision"]" data-field="Accepted"><span class="dashboard-status mlv-mono @DecisionClass(quotation.Accepted)">@Decision(quotation.Accepted)</span></ShadcnTableCell>
+                                    </ShadcnTableRow>
                                 }
-                            </tbody>
-                        </MudSimpleTable>
+                            </ShadcnTableBody>
+                        </ShadcnTable>
                     </div>
                 </DashboardPanel>
             }
@@ -135,22 +132,22 @@
                                 NavigateTo="/Finances/Index"
                                 LinkText="@Text["ViewAll"]">
                     <div class="dashboard-table-scroll">
-                        <MudSimpleTable Class="dashboard-table dashboard-table-compact" Dense="true" Hover="true" data-projection="dashboard-payments">
-                            <caption class="sr-only">@Text["RecentPayments"]</caption>
-                            <thead><tr><th scope="col">@Text["Payment"]</th><th scope="col">@Text["Recipient"]</th><th scope="col">@Text["Amount"]</th><th scope="col">@Text["PaymentDate"]</th><th scope="col">@Text["CreatedDate"]</th></tr></thead>
-                            <tbody>
+                        <ShadcnTable Class="dashboard-table dashboard-table-compact" ExpectedColumnCount="5" data-projection="dashboard-payments">
+                            <ShadcnTableCaption Class="sr-only">@Text["RecentPayments"]</ShadcnTableCaption>
+                            <ShadcnTableHeader><ShadcnTableRow><ShadcnTableHead>@Text["Payment"]</ShadcnTableHead><ShadcnTableHead>@Text["Recipient"]</ShadcnTableHead><ShadcnTableHead>@Text["Amount"]</ShadcnTableHead><ShadcnTableHead>@Text["PaymentDate"]</ShadcnTableHead><ShadcnTableHead>@Text["CreatedDate"]</ShadcnTableHead></ShadcnTableRow></ShadcnTableHeader>
+                            <ShadcnTableBody>
                                 @foreach (var payment in _snapshot.RecentPayments)
                                 {
-                                    <tr>
-                                        <td data-label="@Text["Payment"]" data-field="Id NavigateTo" class="mlv-mono"><LegacyLink Href="@payment.NavigateTo" Role="LegacyLinkRole.Record" AriaLabel="@($"{Text["Payment"]} #{payment.Id}")">#@payment.Id</LegacyLink></td>
-                                        <td data-label="@Text["Recipient"]" data-field="Recipient" class="dashboard-table-primary">@(string.IsNullOrWhiteSpace(payment.Recipient) ? "—" : payment.Recipient)</td>
-                                        <td data-label="@Text["Amount"]" data-field="Amount CurrencyId" class="dashboard-money mlv-mono">@FormatMoney(payment.Amount, payment.CurrencyId)</td>
-                                        <td data-label="@Text["PaymentDate"]" data-field="PaymentDate" class="mlv-mono">@FormatDate(payment.PaymentDate)</td>
-                                        <td data-label="@Text["CreatedDate"]" data-field="CreatedDate" class="mlv-mono">@FormatDate(payment.CreatedDate)</td>
-                                    </tr>
+                                    <ShadcnTableRow>
+                                        <ShadcnTableCell data-label="@Text["Payment"]" data-field="Id NavigateTo" class="mlv-mono"><LegacyLink Href="@payment.NavigateTo" Role="LegacyLinkRole.Record" AriaLabel="@($"{Text["Payment"]} #{payment.Id}")">#@payment.Id</LegacyLink></ShadcnTableCell>
+                                        <ShadcnTableCell data-label="@Text["Recipient"]" data-field="Recipient" class="dashboard-table-primary">@(string.IsNullOrWhiteSpace(payment.Recipient) ? "—" : payment.Recipient)</ShadcnTableCell>
+                                        <ShadcnTableCell data-label="@Text["Amount"]" data-field="Amount CurrencyId" class="dashboard-money mlv-mono">@FormatMoney(payment.Amount, payment.CurrencyId)</ShadcnTableCell>
+                                        <ShadcnTableCell data-label="@Text["PaymentDate"]" data-field="PaymentDate" class="mlv-mono">@FormatDate(payment.PaymentDate)</ShadcnTableCell>
+                                        <ShadcnTableCell data-label="@Text["CreatedDate"]" data-field="CreatedDate" class="mlv-mono">@FormatDate(payment.CreatedDate)</ShadcnTableCell>
+                                    </ShadcnTableRow>
                                 }
-                            </tbody>
-                        </MudSimpleTable>
+                            </ShadcnTableBody>
+                        </ShadcnTable>
                     </div>
                 </DashboardPanel>
             }
@@ -162,20 +159,20 @@
                                 NavigateTo="/customers"
                                 LinkText="@Text["ViewAll"]">
                     <div class="dashboard-table-scroll">
-                        <MudSimpleTable Class="dashboard-table dashboard-table-compact" Dense="true" Hover="true" data-projection="dashboard-customers">
-                            <caption class="sr-only">@Text["RecentCustomers"]</caption>
-                            <thead><tr><th scope="col">@Text["Customer"]</th><th scope="col">@Text["Company"]</th><th scope="col">@Text["Email"]</th></tr></thead>
-                            <tbody>
+                        <ShadcnTable Class="dashboard-table dashboard-table-compact" ExpectedColumnCount="3" data-projection="dashboard-customers">
+                            <ShadcnTableCaption Class="sr-only">@Text["RecentCustomers"]</ShadcnTableCaption>
+                            <ShadcnTableHeader><ShadcnTableRow><ShadcnTableHead>@Text["Customer"]</ShadcnTableHead><ShadcnTableHead>@Text["Company"]</ShadcnTableHead><ShadcnTableHead>@Text["Email"]</ShadcnTableHead></ShadcnTableRow></ShadcnTableHeader>
+                            <ShadcnTableBody>
                                 @foreach (var customer in _snapshot.RecentCustomers)
                                 {
-                                    <tr>
-                                        <td data-label="@Text["Customer"]" data-field="Id FullName NavigateTo"><LegacyLink Href="@customer.NavigateTo" Role="LegacyLinkRole.Record" AriaLabel="@customer.FullName">@customer.FullName</LegacyLink></td>
-                                        <td data-label="@Text["Company"]" data-field="Company" class="dashboard-table-primary">@(string.IsNullOrWhiteSpace(customer.Company) ? "—" : customer.Company)</td>
-                                        <td data-label="@Text["Email"]" data-field="Email">@customer.Email</td>
-                                    </tr>
+                                    <ShadcnTableRow>
+                                        <ShadcnTableCell data-label="@Text["Customer"]" data-field="Id FullName NavigateTo"><LegacyLink Href="@customer.NavigateTo" Role="LegacyLinkRole.Record" AriaLabel="@customer.FullName">@customer.FullName</LegacyLink></ShadcnTableCell>
+                                        <ShadcnTableCell data-label="@Text["Company"]" data-field="Company" class="dashboard-table-primary">@(string.IsNullOrWhiteSpace(customer.Company) ? "—" : customer.Company)</ShadcnTableCell>
+                                        <ShadcnTableCell data-label="@Text["Email"]" data-field="Email">@customer.Email</ShadcnTableCell>
+                                    </ShadcnTableRow>
                                 }
-                            </tbody>
-                        </MudSimpleTable>
+                            </ShadcnTableBody>
+                        </ShadcnTable>
                     </div>
                 </DashboardPanel>
             }
@@ -189,7 +186,7 @@
                         @foreach (var activity in _snapshot.RecentActivity)
                         {
                             <li>
-                                <span class="dashboard-activity-icon" aria-hidden="true"><MudIcon Icon="@ActivityIcon(activity.Kind)" /></span>
+                                <span class="dashboard-activity-icon" aria-hidden="true"><ShadcnIcon Icon="@ActivityIcon(activity.Kind)" Size="20" /></span>
                                 <div>
                                     <LegacyLink Href="@activity.NavigateTo" Role="LegacyLinkRole.Record" AriaLabel="@ActivityTitle(activity)">@ActivityTitle(activity)</LegacyLink>
                                     <span>@ActivityDetail(activity)</span>
@@ -261,6 +258,10 @@
 
 @code {
     private static readonly TimeSpan BangkokOffset = TimeSpan.FromHours(7);
+    private static readonly ShadcnIconData RefreshIcon = LucideIconCatalog.Instance.Get(LucideIconNames.RefreshCw);
+    private static readonly ShadcnIconData InvoiceIcon = LucideIconCatalog.Instance.Get(LucideIconNames.ReceiptText);
+    private static readonly ShadcnIconData QuotationRequestIcon = LucideIconCatalog.Instance.Get(LucideIconNames.Mail);
+    private static readonly ShadcnIconData NotificationIcon = LucideIconCatalog.Instance.Get(LucideIconNames.Badge);
     private IReadOnlyList<PageBreadcrumbItem> Breadcrumbs => [new(Text["Dashboard"])];
     private LegacyDashboardSnapshot? _snapshot;
     private string? _error;
@@ -322,11 +323,11 @@
         }
     }
 
-    private static string ActivityIcon(string kind) => kind switch
+    private static ShadcnIconData ActivityIcon(string kind) => kind switch
     {
-        "invoice" => Icons.Material.Outlined.ReceiptLong,
-        "quotation-request" => Icons.Material.Outlined.MarkUnreadChatAlt,
-        _ => Icons.Material.Outlined.NotificationsNone,
+        "invoice" => InvoiceIcon,
+        "quotation-request" => QuotationRequestIcon,
+        _ => NotificationIcon,
     };
 
     private string ActivityTitle(LegacyDashboardActivity activity) => string.IsNullOrWhiteSpace(activity.Title)

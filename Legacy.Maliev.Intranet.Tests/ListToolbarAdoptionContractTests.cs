@@ -78,15 +78,16 @@ public sealed class ListToolbarAdoptionContractTests
         var styles = File.ReadAllText(Path.Combine(folder, "ListToolbar.razor.css"));
         var refresh = Regex.Match(
             markup,
-            @"<MudIconButton\b(?=[^>]*\bClass=\""list-toolbar__refresh\""\s)[^>]*/>",
+            @"<ShadcnButton\b(?=[^>]*\bClass=\""list-toolbar__refresh\"")[^>]*>(?<body>.*?)</ShadcnButton>",
             RegexOptions.Singleline | RegexOptions.CultureInvariant);
 
-        Assert.True(refresh.Success, "Refresh must render as one self-closing MudIconButton root.");
-        Assert.Single(Regex.Matches(markup, @"<MudIconButton\b", RegexOptions.CultureInvariant).Cast<Match>());
-        Assert.Contains("ButtonType=\"ButtonType.Button\"", refresh.Value, StringComparison.Ordinal);
-        Assert.Contains("Icon=\"@Icons.Material.Outlined.Refresh\"", refresh.Value, StringComparison.Ordinal);
+        Assert.True(refresh.Success, "Refresh must render as one native Shadcn icon button.");
+        Assert.Contains("Variant=\"ShadcnButtonVariant.Ghost\"", refresh.Value, StringComparison.Ordinal);
+        Assert.Contains("Size=\"ShadcnButtonSize.Icon\"", refresh.Value, StringComparison.Ordinal);
+        Assert.Contains("<ShadcnIcon Icon=\"RefreshIcon\"", refresh.Groups["body"].Value, StringComparison.Ordinal);
         Assert.Contains("aria-label=\"@Text[\"Refresh\"]\"", refresh.Value, StringComparison.Ordinal);
         Assert.Contains("title=\"@Text[\"Refresh\"]\"", refresh.Value, StringComparison.Ordinal);
+        Assert.DoesNotContain("<MudIconButton", markup, StringComparison.Ordinal);
         Assert.DoesNotContain(">@Text[\"Refresh\"]<", markup, StringComparison.Ordinal);
         Assert.Contains(".list-toolbar__refresh", styles, StringComparison.Ordinal);
         Assert.Contains("min-width: 2.25rem", styles, StringComparison.Ordinal);

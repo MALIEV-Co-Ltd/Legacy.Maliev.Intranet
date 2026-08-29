@@ -21,8 +21,10 @@ public sealed class MaterialsWasmMigrationContractTests
         Assert.Contains("/bff/catalog/materials", page, StringComparison.Ordinal);
         Assert.Contains("OperationalTable", page, StringComparison.Ordinal);
         Assert.Contains("/Materials/View?id=", page, StringComparison.Ordinal);
-        Assert.Contains("MudProgress", page, StringComparison.Ordinal);
-        Assert.Contains("MudAlert", page, StringComparison.Ordinal);
+        Assert.Contains("<ShadcnSpinner", page, StringComparison.Ordinal);
+        Assert.Contains("<ShadcnAlert", page, StringComparison.Ordinal);
+        Assert.Contains("<ShadcnButton", page, StringComparison.Ordinal);
+        Assert.DoesNotContain("<Mud", page, StringComparison.Ordinal);
 
         Assert.Contains("legacy-catalog.materials.read", bffProgram, StringComparison.Ordinal);
         Assert.Contains("MapGet(\"/bff/catalog/materials\"", bffProgram, StringComparison.Ordinal);

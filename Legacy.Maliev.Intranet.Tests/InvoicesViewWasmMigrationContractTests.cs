@@ -22,6 +22,10 @@ public sealed class InvoicesViewWasmMigrationContractTests
         Assert.Contains("/receipt", page, StringComparison.Ordinal);
         Assert.Contains("Idempotency-Key", page, StringComparison.Ordinal);
         Assert.Contains("Guid.NewGuid", page, StringComparison.Ordinal);
+        Assert.Contains("<EditForm", page, StringComparison.Ordinal);
+        Assert.Contains("<ShadcnTable", page, StringComparison.Ordinal);
+        Assert.Contains("<ShadcnBadge", page, StringComparison.Ordinal);
+        Assert.DoesNotContain("<Mud", page, StringComparison.Ordinal);
         Assert.Contains("If-Unmodified-Since", proxy, StringComparison.Ordinal);
         Assert.Contains("/uploads/SignedUrl", files, StringComparison.Ordinal);
         Assert.Contains("AddEndpointFilter<AntiforgeryValidationFilter>()", program, StringComparison.Ordinal);

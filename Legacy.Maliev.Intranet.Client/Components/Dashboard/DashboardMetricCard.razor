@@ -2,7 +2,7 @@
 
 <article class="dashboard-metric-card">
     <div class="dashboard-metric-icon" aria-hidden="true">
-        <MudIcon Icon="@Icon" />
+        <ShadcnIcon Icon="@Icon" Size="24" />
     </div>
     <div class="dashboard-metric-copy">
         <span class="dashboard-metric-label">@Label</span>
@@ -16,5 +16,5 @@
     [Parameter, EditorRequired] public string Value { get; set; } = string.Empty;
     [Parameter, EditorRequired] public string NavigateTo { get; set; } = string.Empty;
     [Parameter, EditorRequired] public string LinkText { get; set; } = string.Empty;
-    [Parameter] public string Icon { get; set; } = Icons.Material.Outlined.Dashboard;
+    [Parameter] public ShadcnIconData Icon { get; set; } = LucideIconCatalog.Instance.Get(LucideIconNames.LayoutDashboard);
 }

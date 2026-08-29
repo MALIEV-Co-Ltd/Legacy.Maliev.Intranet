@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using Legacy.Maliev.Intranet.Contracts;
 
 namespace Legacy.Maliev.Intranet.Auth;
 
@@ -94,6 +95,8 @@ public static class LegacyEmployeePermissions
     public const string QuotationsRead = "legacy.quotations.read";
     /// <summary>Allows creating a legacy quotation root.</summary>
     public const string QuotationsCreate = "legacy.quotations.create";
+    /// <summary>Allows recording an employee decision on a legacy quotation.</summary>
+    public const string QuotationsUpdate = LegacyQuotationPermissions.Update;
     /// <summary>Allows creating server-priced legacy quotation lines.</summary>
     public const string QuotationLinesWrite = "legacy.quotation-lines.write";
     /// <summary>Allows linking customer-owned orders to a legacy quotation.</summary>

@@ -81,10 +81,11 @@ public sealed class ModuleOperationsHardeningContractTests
     public void DestructiveProcurementActions_RequireFocusManagedConfirmation(string file)
     {
         var source = Read(FindRoot(), "Legacy.Maliev.Intranet.Client.Features.Procurement", "Pages", file);
-        Assert.Contains("@inject IDialogService Dialogs", source, StringComparison.Ordinal);
-        Assert.Contains("Dialogs.ShowMessageBoxAsync", source, StringComparison.Ordinal);
-        Assert.Contains("cancelText: Text[\"Cancel\"]", source, StringComparison.Ordinal);
-        Assert.Contains("if (confirmed is true)", source, StringComparison.Ordinal);
+        Assert.Contains("<ShadcnAlertDialog", source, StringComparison.Ordinal);
+        Assert.Contains("<ShadcnAlertDialogTitle>", source, StringComparison.Ordinal);
+        Assert.Contains("<ShadcnAlertDialogDescription>", source, StringComparison.Ordinal);
+        Assert.Contains("<ShadcnAlertDialogCancel", source, StringComparison.Ordinal);
+        Assert.Contains("<ShadcnAlertDialogAction", source, StringComparison.Ordinal);
     }
 
     [Theory]
@@ -97,11 +98,13 @@ public sealed class ModuleOperationsHardeningContractTests
     {
         var source = Read(FindRoot(), project, "Pages", file);
         Assert.Contains("operations-page-header", source, StringComparison.Ordinal);
-        Assert.Contains("HtmlTag=\"h2\"", source, StringComparison.Ordinal);
+        Assert.True(
+            source.Contains("<h2", StringComparison.Ordinal) || source.Contains("HtmlTag=\"h2\"", StringComparison.Ordinal),
+            $"{file} must use a semantic level-two heading for each form section.");
         if (file == "OrderDetail.razor")
         {
-            Assert.Contains("<MudExpansionPanels", source, StringComparison.Ordinal);
-            Assert.Contains("Text=\"@Text[", source, StringComparison.Ordinal);
+            Assert.Contains("<ShadcnAccordion", source, StringComparison.Ordinal);
+            Assert.Contains("<ShadcnAccordionTrigger>@Text[", source, StringComparison.Ordinal);
         }
         else
         {

@@ -18,10 +18,15 @@ public sealed class SupplierViewWasmMigrationContractTests
         Assert.Contains("HttpMethod.Put", page, StringComparison.Ordinal);
         Assert.Contains("HttpMethod.Delete", page, StringComparison.Ordinal);
         Assert.Equal(1, Count(page, "X-CSRF-TOKEN"));
-        Assert.Contains("MudForm", page, StringComparison.Ordinal);
+        Assert.Contains("<EditForm", page, StringComparison.Ordinal);
+        Assert.Contains("<DataAnnotationsValidator", page, StringComparison.Ordinal);
+        Assert.Contains("<ProcurementInputField", page, StringComparison.Ordinal);
+        Assert.Contains("<ShadcnAlertDialog", page, StringComparison.Ordinal);
+        Assert.Contains("<ShadcnButton", page, StringComparison.Ordinal);
+        Assert.DoesNotContain("<Mud", page, StringComparison.Ordinal);
         Assert.Contains("Fields[\"Supplier\"]", page, StringComparison.Ordinal);
         Assert.Contains("Fields[\"Address\"]", page, StringComparison.Ordinal);
-        Assert.Contains("InputType.Telephone", page, StringComparison.Ordinal);
+        Assert.Contains("Type=\"tel\"", page, StringComparison.Ordinal);
         Assert.DoesNotContain("forceLoad: true", page, StringComparison.Ordinal);
         Assert.DoesNotContain("jquery", page, StringComparison.OrdinalIgnoreCase);
         Assert.True(File.Exists(Path.Combine(root, "Legacy.Maliev.Intranet", "Pages", "Suppliers", "View.cshtml")));

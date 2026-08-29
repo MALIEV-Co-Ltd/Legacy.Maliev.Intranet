@@ -9,11 +9,11 @@
 
 <PageTitle>@Text["PageTitle"]</PageTitle>
 
-<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="procurement-list-page purchase-order-list">
+<main class="procurement-list-page purchase-order-list">
     <PageBreadcrumbs Items="@Breadcrumbs" />
     <header class="operations-page-header">
-        <div><MudText Typo="Typo.h4" HtmlTag="h1">@Text["PurchaseOrders"]</MudText><MudText Typo="Typo.body2">@Text["Procurement"]</MudText></div>
-        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="OpenCreate">@Text["CreatePurchaseOrder"]</MudButton>
+        <div><h1>@Text["PurchaseOrders"]</h1><p>@Text["Procurement"]</p></div>
+        <ShadcnButton OnClick="OpenCreate">@Text["CreatePurchaseOrder"]</ShadcnButton>
     </header>
 
     <ListToolbar TSort="PurchaseOrderListSort"
@@ -29,15 +29,15 @@
 
     @if (loading)
     {
-        <div role="status" aria-live="polite"><MudProgressLinear Indeterminate="true" Color="Color.Primary" aria-label="@Text["Loading"]" /><span class="visually-hidden">@Text["Loading"]</span></div>
+        <div class="procurement-list-page__loading" role="status" aria-live="polite"><ShadcnSpinner Label="@Text["Loading"]" Size="1.25rem" /><span>@Text["Loading"]</span></div>
     }
     else if (!string.IsNullOrWhiteSpace(error))
     {
-        <MudAlert Severity="Severity.Error" aria-live="assertive">@error</MudAlert>
+        <ShadcnAlert Variant="ShadcnAlertVariant.Destructive" AlertRole="ShadcnAlertRole.Alert"><ShadcnAlertDescription>@error</ShadcnAlertDescription></ShadcnAlert>
     }
     else if (page is null || page.Items.Count == 0)
     {
-        <MudAlert Severity="Severity.Info">@Text["Empty"]</MudAlert>
+        <ShadcnAlert AlertRole="ShadcnAlertRole.Status"><ShadcnAlertDescription>@Text["Empty"]</ShadcnAlertDescription></ShadcnAlert>
     }
     else
     {
@@ -83,12 +83,12 @@
         </OperationalTable>
         </div>
         <nav class="procurement-pager" aria-label="@Text["PurchaseOrderPages"]">
-            <MudButton Disabled="@(!page.HasPreviousPage)" OnClick="PreviousPageAsync">@Text["Previous"]</MudButton>
-            <MudText aria-live="polite">@Text["PageSummary", page.PageIndex, page.TotalPages, page.TotalRecords]</MudText>
-            <MudButton Disabled="@(!page.HasNextPage)" OnClick="NextPageAsync">@Text["Next"]</MudButton>
+            <ShadcnButton Variant="ShadcnButtonVariant.Outline" Disabled="@(!page.HasPreviousPage)" OnClick="PreviousPageAsync">@Text["Previous"]</ShadcnButton>
+            <span aria-live="polite">@Text["PageSummary", page.PageIndex, page.TotalPages, page.TotalRecords]</span>
+            <ShadcnButton Variant="ShadcnButtonVariant.Outline" Disabled="@(!page.HasNextPage)" OnClick="NextPageAsync">@Text["Next"]</ShadcnButton>
         </nav>
     }
-</MudContainer>
+</main>
 
 @code {
     private static readonly int[] ToolbarPageSizes = [10, 25, 50, 100, 250];

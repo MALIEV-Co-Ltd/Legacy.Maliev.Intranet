@@ -320,6 +320,13 @@ builder.Services.AddHttpClient<QuotationsProxy>(client =>
                 (int)response.StatusCode >= StatusCodes.Status500InternalServerError),
     });
 });
+builder.Services.AddHttpClient<QuotationDecisionProxy>(client =>
+{
+    client.BaseAddress = new Uri(builder.Configuration["Services:Quotation"]
+        ?? "https+http://legacy-maliev-quotation-service");
+    client.Timeout = TimeSpan.FromSeconds(10);
+}).RemoveAllResilienceHandlers()
+    .AddHttpMessageHandler<LegacyServiceAuthenticationHandler>();
 builder.Services.AddHttpClient<QuotationFileProxy>(client =>
 {
     client.BaseAddress = new Uri(builder.Configuration["Services:File"]
@@ -719,6 +726,9 @@ builder.Services.AddAuthorizationBuilder()
         .RequireClaim("permissions", LegacyEmployeePermissions.QuotationsCreate)
         .RequireClaim("permissions", LegacyEmployeePermissions.QuotationLinesWrite)
         .RequireClaim("permissions", LegacyEmployeePermissions.QuotationOrdersWrite))
+    .AddPolicy(LegacyEmployeePermissions.QuotationsUpdate, policy => policy
+        .RequireAuthenticatedUser()
+        .RequireClaim("permissions", LegacyEmployeePermissions.QuotationsUpdate))
     .AddPolicy("legacy-catalog.materials.read", policy => policy
         .RequireAuthenticatedUser()
         .RequireClaim("permissions", "legacy-catalog.materials.read"))
@@ -1056,6 +1066,10 @@ app.MapGet("/bff/quotations/{id:int}", QuotationsEndpointMapper.MapDetailAsync)
         .RequireClaim("permissions", LegacyEmployeePermissions.QuotationOrdersRead)
         .RequireClaim("permissions", LegacyEmployeePermissions.QuotationFilesRead)
         .RequireClaim("permissions", LegacyEmployeePermissions.FileUploadsRead));
+
+app.MapPut("/bff/quotations/{id:int}/decision", QuotationDecisionEndpointMapper.DecideAsync)
+    .AddEndpointFilter<AntiforgeryValidationFilter>()
+    .RequireAuthorization(LegacyEmployeePermissions.QuotationsUpdate);
 
 app.MapGet("/bff/finances", (
     string? sort,

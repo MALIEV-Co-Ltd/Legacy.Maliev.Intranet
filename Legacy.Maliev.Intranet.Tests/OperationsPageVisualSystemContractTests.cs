@@ -5,12 +5,12 @@ namespace Legacy.Maliev.Intranet.Tests;
 public sealed class OperationsPageVisualSystemContractTests
 {
     [Fact]
-    public void OperationsStylesFollowThePackageAdapterAndRemainGeometryOnly()
+    public void OperationsStylesFollowTheNativePackageAndRemainGeometryOnly()
     {
         var index = Read("Legacy.Maliev.Intranet.Client", "wwwroot", "index.html");
         var operations = Read("Legacy.Maliev.Intranet.Client", "wwwroot", "css", "operations-pages.css");
 
-        Assert.True(index.IndexOf("_content/Maliev.ShadcnBlazor/css/shadcn-mudblazor.css", StringComparison.Ordinal) <
+        Assert.True(index.IndexOf("_content/Maliev.ShadcnBlazor/css/shadcn-forms.css", StringComparison.Ordinal) <
                     index.IndexOf("css/operations-pages.css", StringComparison.Ordinal));
         Assert.Contains("overflow-wrap: anywhere", operations, StringComparison.Ordinal);
         Assert.Contains("@media (max-width: 900px)", operations, StringComparison.Ordinal);
@@ -22,17 +22,14 @@ public sealed class OperationsPageVisualSystemContractTests
     }
 
     [Fact]
-    public void OperationsGeometryPreservesListFormAndResponsiveRecordLayout()
+    public void OperationsGeometryPreservesNativeFormAndResponsiveLayout()
     {
         var operations = Read("Legacy.Maliev.Intranet.Client", "wwwroot", "css", "operations-pages.css");
 
-        Assert.Contains(".legacy-page-container .mud-table-container", operations, StringComparison.Ordinal);
-        Assert.Contains(".legacy-page-container .mud-table-body .mud-table-row", operations, StringComparison.Ordinal);
-        Assert.Contains(".legacy-page-container .mud-form", operations, StringComparison.Ordinal);
-        Assert.Contains(".legacy-page-container .mud-grid", operations, StringComparison.Ordinal);
-        Assert.Contains(".legacy-page-container .mud-tabs-toolbar", operations, StringComparison.Ordinal);
-        Assert.DoesNotContain(".mud-button-root {\n        display: none", operations, StringComparison.Ordinal);
-        Assert.DoesNotContain(".mud-table-body {\n        display: none", operations, StringComparison.Ordinal);
+        Assert.Contains(".legacy-page-container :where(form, fieldset, table, section, article)", operations, StringComparison.Ordinal);
+        Assert.Contains(".legacy-page-container :where([role=\"tablist\"], .operational-table__scroll)", operations, StringComparison.Ordinal);
+        Assert.Contains(".legacy-page-container :where(button, [role=\"tab\"], a[data-link-role])", operations, StringComparison.Ordinal);
+        Assert.DoesNotContain(".mud-", operations, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
@@ -41,7 +38,8 @@ public sealed class OperationsPageVisualSystemContractTests
         var page = Read("Legacy.Maliev.Intranet.Client", "Pages", "Dashboard.razor");
         var styles = Read("Legacy.Maliev.Intranet.Client", "Pages", "Dashboard.razor.css");
 
-        Assert.Equal(4, System.Text.RegularExpressions.Regex.Matches(page, "<MudSimpleTable").Count);
+        Assert.Equal(4, System.Text.RegularExpressions.Regex.Matches(page, "<ShadcnTable\\b").Count);
+        Assert.DoesNotContain("<MudSimpleTable", page, StringComparison.Ordinal);
         Assert.True(System.Text.RegularExpressions.Regex.Matches(page, "<LegacyLink Href=\"@").Count >= 4);
         Assert.Contains("dashboard-table-scroll { overflow-x: auto; }", styles, StringComparison.Ordinal);
         Assert.DoesNotContain(".dashboard-table-scroll { overflow-x: visible; }", styles, StringComparison.Ordinal);
@@ -79,9 +77,9 @@ public sealed class OperationsPageVisualSystemContractTests
         var page = Read("Legacy.Maliev.Intranet.Client.Features.Customers", "Components", "CustomerHistoryTable.razor");
         var styles = Read("Legacy.Maliev.Intranet.Client.Features.Customers", "Components", "CustomerHistoryTable.razor.css");
 
-        Assert.Equal(3, System.Text.RegularExpressions.Regex.Matches(page, "<MudTable").Count);
-        Assert.Equal(3, System.Text.RegularExpressions.Regex.Matches(page, "Breakpoint=\"Breakpoint.None\"").Count);
-        Assert.DoesNotContain("Breakpoint=\"Breakpoint.Sm\"", page, StringComparison.Ordinal);
+        Assert.Equal(3, System.Text.RegularExpressions.Regex.Matches(page, "<ShadcnTable ").Count);
+        Assert.Equal(3, System.Text.RegularExpressions.Regex.Matches(page, "ExpectedColumnCount=\"").Count);
+        Assert.DoesNotContain("<MudTable", page, StringComparison.Ordinal);
         Assert.Contains("overflow-x: auto", styles, StringComparison.Ordinal);
         Assert.Contains("min-height: 44px", styles, StringComparison.Ordinal);
         Assert.DoesNotContain("<QuickViewContent", page, StringComparison.Ordinal);
@@ -133,7 +131,7 @@ public sealed class OperationsPageVisualSystemContractTests
         var page = Read("Legacy.Maliev.Intranet.Client.Features.Customers", "Components", "CustomerHistoryTable.razor");
         var styles = Read("Legacy.Maliev.Intranet.Client.Features.Customers", "Components", "CustomerHistoryTable.razor.css");
 
-        Assert.Contains("Class=\"history-status mlv-mono\"", page, StringComparison.Ordinal);
+        Assert.Contains("class=\"history-status mlv-mono\"", page, StringComparison.Ordinal);
         Assert.Contains("min-width: 44px", styles, StringComparison.Ordinal);
         Assert.Contains("white-space: nowrap", styles, StringComparison.Ordinal);
     }
@@ -151,7 +149,7 @@ public sealed class OperationsPageVisualSystemContractTests
     {
         var block = System.Text.RegularExpressions.Regex.Match(
             source,
-            $"data-projection=\"{System.Text.RegularExpressions.Regex.Escape(scope)}\"(?<body>[\\s\\S]*?)(?:data-projection=\"|</MudSimpleTable>|</MudTable>)").Groups["body"].Value;
+            $"data-projection=\"{System.Text.RegularExpressions.Regex.Escape(scope)}\"(?<body>[\\s\\S]*?)(?:data-projection=\"|</ShadcnTable>|</MudTable>)").Groups["body"].Value;
         Assert.False(string.IsNullOrWhiteSpace(block), $"Missing projection scope '{scope}'.");
         var mapped = System.Text.RegularExpressions.Regex.Matches(block, "data-field=\"([^\"]+)\"")
             .SelectMany(match => match.Groups[1].Value.Split(' ', StringSplitOptions.RemoveEmptyEntries))

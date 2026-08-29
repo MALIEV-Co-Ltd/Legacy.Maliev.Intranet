@@ -1,94 +1,65 @@
 @page "/Orders/Create"
 @attribute [Authorize]
+@using Microsoft.AspNetCore.Components.Forms
 @inject HttpClient Http
 @inject NavigationManager Navigation
 @inject IStringLocalizer<OrderCreate> Text
 
 <PageTitle>@Text["PageTitle"]</PageTitle>
 
+<main class="order-create">
 @if (loading)
 {
-    <div role="status" aria-live="polite"><MudProgressLinear Indeterminate="true" Color="Color.Primary" aria-label="@Text["Loading"]" /><span class="visually-hidden">@Text["Loading"]</span></div>
+    <div class="order-create__loading" role="status" aria-live="polite"><ShadcnSpinner Label="@Text["Loading"]" Size="1.25rem" /><span>@Text["Loading"]</span></div>
 }
 else
 {
     <header class="operations-page-header">
-        <div><MudText Typo="Typo.h4" HtmlTag="h1">@Text["Heading"]</MudText><MudText Typo="Typo.body2">@Text["OrderDetails"]</MudText></div>
-        <LegacyLink Href="/Orders/Index" Role="LegacyLinkRole.Navigation" StartIcon="@Icons.Material.Filled.ArrowBack" AriaLabel="@Text["BackToOrders"]">@Text["BackToOrders"]</LegacyLink>
+        <div><h1>@Text["Heading"]</h1><p>@Text["OrderDetails"]</p></div>
+        <LegacyLink Href="/Orders/Index" Role="LegacyLinkRole.Navigation" AriaLabel="@Text["BackToOrders"]">@Text["BackToOrders"]</LegacyLink>
     </header>
 
     @if (!string.IsNullOrWhiteSpace(error))
     {
-        <MudAlert Severity="Severity.Error" Class="mb-4" aria-live="assertive">@error</MudAlert>
+        <ShadcnAlert Variant="ShadcnAlertVariant.Destructive" AlertRole="ShadcnAlertRole.Alert"><ShadcnAlertDescription>@error</ShadcnAlertDescription></ShadcnAlert>
     }
     @if (!string.IsNullOrWhiteSpace(notice))
     {
-        <MudAlert Severity="Severity.Warning" Class="mb-4" aria-live="polite">
-            @notice
-            @if (createdOrderId is int orderId)
-            {
-                <LegacyLink Href="@($"/Orders/View?id={orderId}")" Role="LegacyLinkRole.Record" AriaLabel="@($"{Text["ViewOrder"]} {orderId}")" Class="ms-2">@Text["ViewOrder"]</LegacyLink>
-            }
-        </MudAlert>
+        <ShadcnAlert AlertRole="ShadcnAlertRole.Status"><ShadcnAlertDescription>@notice @if (createdOrderId is int orderId) { <LegacyLink Href="@($"/Orders/View?id={orderId}")" Role="LegacyLinkRole.Record" AriaLabel="@($"{Text["ViewOrder"]} {orderId}")">@Text["ViewOrder"]</LegacyLink> }</ShadcnAlertDescription></ShadcnAlert>
     }
 
-    <MudForm @ref="form" Model="model">
-        <MudPaper Class="pa-4" Elevation="1">
-        <MudText Typo="Typo.h6" HtmlTag="h2" id="order-create-details-heading">@Text["OrderDetails"]</MudText>
-        <MudGrid aria-labelledby="order-create-details-heading">
-            <MudItem xs="12" md="4">
-                <MudNumericField T="int" Label="@Text["CustomerId"]" @bind-Value="model.CustomerId" Min="1" Required="true" />
-            </MudItem>
-            <MudItem xs="12" md="8" Class="d-flex align-end gap-2">
-                <MudButton OnClick="LookupCustomerAsync" Disabled="@submitting" Variant="Variant.Outlined">@Text["FindCustomer"]</MudButton>
-                @if (createPage?.Customer is not null)
-                {
-                    <MudText>@createPage.Customer.FullName · @createPage.Customer.Email</MudText>
-                }
-                else if (customerLookupAttempted)
-                {
-                    <MudText Color="Color.Error">@Text["CustomerNotFound"]</MudText>
-                }
-            </MudItem>
-            <MudItem xs="12"><MudTextField Label="@Text["Name"]" @bind-Value="model.Name" Required="true" MaxLength="256" /></MudItem>
-            <MudItem xs="12" md="6">
-                <MudSelect T="int" Label="@Text["Process"]" @bind-Value="model.ProcessId" Required="true">
-                    @foreach (var item in createPage?.Processes ?? []) { <MudSelectItem T="int" Value="@item.Id">@item.Name</MudSelectItem> }
-                </MudSelect>
-            </MudItem>
-            <MudItem xs="12" md="6">
-                <MudSelect T="int?" Label="@Text["Material"]" @bind-Value="model.MaterialId" @bind-Value:after="LoadMaterialOptionsAsync" Clearable="true">
-                    @foreach (var item in createPage?.Materials ?? []) { <MudSelectItem T="int?" Value="@((int?)item.Id)">@item.Name</MudSelectItem> }
-                </MudSelect>
-            </MudItem>
-            <MudItem xs="12" md="6">
-                <MudSelect T="int?" Label="@Text["Color"]" @bind-Value="model.ColorId" Clearable="true" Disabled="@(model.MaterialId is null)">
-                    @foreach (var item in materialOptions.Colors) { <MudSelectItem T="int?" Value="@((int?)item.Id)">@item.Name</MudSelectItem> }
-                </MudSelect>
-            </MudItem>
-            <MudItem xs="12" md="6">
-                <MudSelect T="int?" Label="@Text["SurfaceFinish"]" @bind-Value="model.SurfaceFinishId" Clearable="true" Disabled="@(model.MaterialId is null)">
-                    @foreach (var item in materialOptions.SurfaceFinishes) { <MudSelectItem T="int?" Value="@((int?)item.Id)">@item.Name</MudSelectItem> }
-                </MudSelect>
-            </MudItem>
-            <MudItem xs="12" md="4"><MudNumericField T="int" Label="@Text["Quantity"]" @bind-Value="model.Quantity" Min="1" Required="true" /></MudItem>
-            <MudItem xs="12"><MudTextField Label="@Text["Requirements"]" @bind-Value="model.Description" Lines="5" MaxLength="500" /></MudItem>
-            <MudItem xs="12" md="6"><MudCheckBox T="bool" Label="@Text["SendConfirmationEmail"]" @bind-Value="model.SendConfirmationEmail" /></MudItem>
-            <MudItem xs="12" md="6"><MudCheckBox T="bool" Label="@Text["AllowSocialMedia"]" @bind-Value="model.AllowSocialMedia" /></MudItem>
-            <MudItem xs="12">
-                <MudText Typo="Typo.h6">@Text["Files"]</MudText>
-                <InputFile OnChange="SelectFiles" multiple />
-                @if (uploads.Count > 0) { <MudText Typo="Typo.caption">@Text["SelectedFiles", uploads.Count]</MudText> }
-            </MudItem>
-            <MudItem xs="12">
-                <MudButton OnClick="CreateAsync" Disabled="@submitting" Variant="Variant.Filled" Color="Color.Primary">
-                    @(submitting ? Text["Creating"] : Text["Create"])
-                </MudButton>
-            </MudItem>
-        </MudGrid>
-        </MudPaper>
-    </MudForm>
+    <EditForm Model="@model" OnSubmit="CreateAsync" class="order-create__form">
+        <section class="order-create__section" aria-labelledby="order-create-details-heading">
+            <h2 id="order-create-details-heading">@Text["OrderDetails"]</h2>
+            <div class="order-create__grid">
+                <ShadcnFormField Id="order-create-customer" Label="@Text["CustomerId"]" Required="true"><Control><ShadcnInput TValue="int" id="order-create-customer" Type="number" min="1" @bind-Value="model.CustomerId" Required="true" /></Control></ShadcnFormField>
+                <div class="order-create__lookup">
+                    <ShadcnButton ButtonType="ShadcnButtonType.Button" OnClick="LookupCustomerAsync" Disabled="@submitting" Variant="ShadcnButtonVariant.Outline">@Text["FindCustomer"]</ShadcnButton>
+                    @if (createPage?.Customer is not null) { <span>@createPage.Customer.FullName · @createPage.Customer.Email</span> }
+                    else if (customerLookupAttempted) { <span class="order-create__error">@Text["CustomerNotFound"]</span> }
+                </div>
+                <ShadcnFormField Id="order-create-name" Label="@Text["Name"]" Required="true" Class="order-create__wide"><Control><ShadcnInput TValue="string" id="order-create-name" @bind-Value="model.Name" Required="true" maxlength="100" /></Control></ShadcnFormField>
+                <ShadcnFormField Id="order-create-process" Label="@Text["Process"]" Required="true"><Control><ShadcnSelect TValue="int" id="order-create-process" @bind-Value="model.ProcessId" Options="@ProcessOptions" Placeholder="@Text["Process"]" Required="true" /></Control></ShadcnFormField>
+                <ShadcnFormField Id="order-create-material" Label="@Text["Material"]"><Control><ShadcnSelect TValue="int?" id="order-create-material" Value="@model.MaterialId" ValueChanged="OnMaterialChangedAsync" ValueExpression="@(() => model.MaterialId)" Options="@MaterialOptions" Placeholder="@Text["Material"]" Clearable="true" /></Control></ShadcnFormField>
+                <ShadcnFormField Id="order-create-color" Label="@Text["Color"]" Disabled="@(model.MaterialId is null)"><Control><ShadcnSelect TValue="int?" id="order-create-color" @bind-Value="model.ColorId" Options="@ColorOptions" Placeholder="@Text["Color"]" Clearable="true" Disabled="@(model.MaterialId is null)" /></Control></ShadcnFormField>
+                <ShadcnFormField Id="order-create-finish" Label="@Text["SurfaceFinish"]" Disabled="@(model.MaterialId is null)"><Control><ShadcnSelect TValue="int?" id="order-create-finish" @bind-Value="model.SurfaceFinishId" Options="@SurfaceFinishOptions" Placeholder="@Text["SurfaceFinish"]" Clearable="true" Disabled="@(model.MaterialId is null)" /></Control></ShadcnFormField>
+                <ShadcnFormField Id="order-create-quantity" Label="@Text["Quantity"]" Required="true"><Control><ShadcnInput TValue="int" id="order-create-quantity" Type="number" min="1" @bind-Value="model.Quantity" Required="true" /></Control></ShadcnFormField>
+                <ShadcnFormField Id="order-create-description" Label="@Text["Requirements"]" Class="order-create__wide"><Control><ShadcnTextarea TValue="string" id="order-create-description" @bind-Value="model.Description" maxlength="250" /></Control></ShadcnFormField>
+                <div class="order-create__checks order-create__wide">
+                    <ShadcnField Orientation="ShadcnFieldOrientation.Horizontal"><ShadcnCheckbox id="order-create-confirmation" Value="@model.SendConfirmationEmail" ValueChanged="@(value => model.SendConfirmationEmail = value.GetValueOrDefault())" /><ShadcnFieldLabel For="order-create-confirmation">@Text["SendConfirmationEmail"]</ShadcnFieldLabel></ShadcnField>
+                    <ShadcnField Orientation="ShadcnFieldOrientation.Horizontal"><ShadcnCheckbox id="order-create-social" Value="@model.AllowSocialMedia" ValueChanged="@(value => model.AllowSocialMedia = value.GetValueOrDefault())" /><ShadcnFieldLabel For="order-create-social">@Text["AllowSocialMedia"]</ShadcnFieldLabel></ShadcnField>
+                </div>
+                <section class="order-create__files order-create__wide" aria-labelledby="order-create-files-heading">
+                    <h3 id="order-create-files-heading">@Text["Files"]</h3>
+                    <InputFile OnChange="SelectFiles" multiple />
+                    @if (uploads.Count > 0) { <p>@Text["SelectedFiles", uploads.Count]</p> }
+                </section>
+            </div>
+        </section>
+        <ShadcnButton ButtonType="ShadcnButtonType.Submit" OperationFeedback="false" Disabled="@submitting">@(submitting ? Text["Creating"] : Text["Create"])</ShadcnButton>
+    </EditForm>
 }
+</main>
 
 @code {
     [SupplyParameterFromQuery(Name = "customerId")] public int? CustomerId { get; set; }
@@ -96,7 +67,6 @@ else
     private const long MaxUploadBytes = 200L * 1024 * 1024;
     private readonly Guid createAttemptId = Guid.NewGuid();
     private readonly List<IBrowserFile> uploads = [];
-    private MudForm? form;
     private OrderCreatePage? createPage;
     private OrderMaterialOptions materialOptions = new([], []);
     private EmployeeSessionSummary? session;
@@ -107,6 +77,11 @@ else
     private int? createdOrderId;
     private string? error;
     private string? notice;
+
+    private IReadOnlyList<ShadcnSelectOption<int>> ProcessOptions => (createPage?.Processes ?? []).Select(item => new ShadcnSelectOption<int>(item.Id, item.Name)).ToArray();
+    private IReadOnlyList<ShadcnSelectOption<int?>> MaterialOptions => (createPage?.Materials ?? []).Select(item => new ShadcnSelectOption<int?>(item.Id, item.Name)).ToArray();
+    private IReadOnlyList<ShadcnSelectOption<int?>> ColorOptions => materialOptions.Colors.Select(item => new ShadcnSelectOption<int?>(item.Id, item.Name)).ToArray();
+    private IReadOnlyList<ShadcnSelectOption<int?>> SurfaceFinishOptions => materialOptions.SurfaceFinishes.Select(item => new ShadcnSelectOption<int?>(item.Id, item.Name)).ToArray();
 
     protected override async Task OnParametersSetAsync()
     {
@@ -144,6 +119,12 @@ else
 
     private Task LookupCustomerAsync() => LoadAsync(model.CustomerId > 0 ? model.CustomerId : null);
 
+    private async Task OnMaterialChangedAsync(int? value)
+    {
+        model.MaterialId = value;
+        await LoadMaterialOptionsAsync();
+    }
+
     private async Task LoadMaterialOptionsAsync()
     {
         model.ColorId = null;
@@ -167,9 +148,8 @@ else
 
     private async Task CreateAsync()
     {
-        if (form is null || session?.CsrfToken is null) return;
-        await form.ValidateAsync();
-        if (!form.IsValid) return;
+        if (session?.CsrfToken is null) return;
+        if (model.CustomerId <= 0 || model.ProcessId <= 0 || model.Quantity <= 0 || string.IsNullOrWhiteSpace(model.Name)) { error = Text["InvalidRequest"]; return; }
         if (createPage?.Customer?.Id != model.CustomerId) { error = Text["ValidateCustomer"]; return; }
         if (uploads.Sum(file => file.Size) > MaxUploadBytes) { error = Text["FilesTooLarge"]; return; }
 

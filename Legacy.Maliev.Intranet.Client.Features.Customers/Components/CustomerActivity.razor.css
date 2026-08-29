@@ -21,6 +21,8 @@
     gap: 0.5rem;
 }
 
+.customer-activity__loading { display: flex; align-items: center; gap: 0.75rem; min-height: 2.75rem; }
+
 .customer-activity__timeline {
     display: grid;
     gap: 0;
@@ -68,6 +70,7 @@
 }
 
 .customer-activity__empty {
+    margin: 0;
     color: var(--shadcn-muted-foreground);
 }
 

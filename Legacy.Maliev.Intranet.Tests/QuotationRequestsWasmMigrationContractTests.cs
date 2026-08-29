@@ -31,6 +31,9 @@ public sealed class QuotationRequestsWasmMigrationContractTests
         Assert.Contains("data-priority=\"supporting\"", index, StringComparison.Ordinal);
         Assert.Contains("@page \"/QuotationRequests/View\"", view, StringComparison.Ordinal);
         Assert.Contains("X-CSRF-TOKEN", view, StringComparison.Ordinal);
+        Assert.Contains("<EditForm", view, StringComparison.Ordinal);
+        Assert.Contains("<QuotationInputField", view, StringComparison.Ordinal);
+        Assert.DoesNotContain("<Mud", view, StringComparison.Ordinal);
         Assert.Contains("X-Expected-Modified-Date", proxy, StringComparison.Ordinal);
         Assert.Contains("/uploads/SignedUrl", proxy, StringComparison.Ordinal);
         Assert.Contains("file.RequestId != id", mapper, StringComparison.Ordinal);

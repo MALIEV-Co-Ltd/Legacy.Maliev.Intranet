@@ -4,24 +4,30 @@
 <nav class="legacy-quick-actions" aria-label="@Text["Quick actions"]">
     @foreach (var item in _actions.Where(IsItemEnabled))
     {
-        <a href="@item.Href"
-           class="legacy-quick-action @(item.Href == "/Orders/Create" ? "primary" : string.Empty)"
-           aria-label="@Text[item.Label]"
-           title="@Text[item.Label]">
-            <MudIcon Icon="@Icons.Material.Filled.Add" Size="Size.Small" />
+        <ShadcnButton Href="@item.Href"
+                      Class="@QuickActionClass(item)"
+                      Variant="@(item.Href == "/Orders/Create" ? ShadcnButtonVariant.Default : ShadcnButtonVariant.Outline)"
+                      aria-label="@Text[item.Label]"
+                      title="@Text[item.Label]">
+            <ShadcnIcon Icon="AddIcon" Size="20" />
             <span>@Text[item.Label]</span>
-        </a>
+        </ShadcnButton>
     }
 </nav>
 
 @code {
     [Parameter] public EmployeeSessionSummary? Session { get; set; }
 
+    private static readonly ShadcnIconData AddIcon = LucideIconCatalog.Instance.Get(LucideIconNames.Plus);
+
     private static readonly LegacyNavItem[] _actions =
     [
         LegacyAppNavigation.FindByHref("/Quotations/Create"),
         LegacyAppNavigation.FindByHref("/Orders/Create"),
     ];
+
+    private static string QuickActionClass(LegacyNavItem item) =>
+        $"legacy-quick-action {(item.Href == "/Orders/Create" ? "primary" : string.Empty)}".Trim();
 
     private bool IsItemEnabled(LegacyNavItem item) => LegacyNavigationAuthorization.IsEnabled(
         Session?.IsAuthenticated == true,

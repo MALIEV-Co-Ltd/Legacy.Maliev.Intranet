@@ -1,5 +1,4 @@
 @page "/Quotations/Index"
-@using global::Maliev.ShadcnBlazor.Adapters.MudBlazor
 @attribute [Authorize]
 @implements IDisposable
 @inject HttpClient Http
@@ -13,41 +12,37 @@
     <PageBreadcrumbs Items="@Breadcrumbs" />
     <header class="operations-page-header">
         <div>
-            <MudText Typo="Typo.h4" HtmlTag="h1">@Text["Quotations"]</MudText>
-            <MudText Typo="Typo.body1">@Text["Description"]</MudText>
+            <h1>@Text["Quotations"]</h1>
+            <p>@Text["Description"]</p>
         </div>
-        <div class="d-flex flex-wrap gap-2" aria-label="@Text["Actions"]">
-            <MudButton Href="/Quotations/Create" Variant="Variant.Filled" Color="Color.Primary">@Text["Create"]</MudButton>
-            <MudButton Href="/Quotations/Estimate" Variant="Variant.Outlined">@Text["Estimate"]</MudButton>
+        <div class="quotation-actions" role="group" aria-label="@Text["Actions"]">
+            <ShadcnButton Href="/Quotations/Create">@Text["Create"]</ShadcnButton>
+            <ShadcnButton Href="/Quotations/Estimate" Variant="ShadcnButtonVariant.Outline">@Text["Estimate"]</ShadcnButton>
         </div>
     </header>
 
     @if (loading)
     {
-        <MudProgressLinear Indeterminate="true" Color="Color.Primary" aria-label="@Text["Loading"]" />
+        <div role="status" aria-live="polite"><ShadcnSpinner Label="@Text["Loading"]" Size="1.25rem" /><span>@Text["Loading"]</span></div>
     }
     else if (!string.IsNullOrWhiteSpace(error))
     {
-        <MudAlert Severity="Severity.Error" aria-live="assertive">@error</MudAlert>
+        <ShadcnAlert Variant="ShadcnAlertVariant.Destructive" AlertRole="ShadcnAlertRole.Alert"><ShadcnAlertDescription>@error</ShadcnAlertDescription></ShadcnAlert>
     }
     else
     {
         @if (stats.Accepted + stats.Declined + stats.Open > 0)
         {
-            <section aria-labelledby="quotation-decision-heading">
-                <MudPaper Class="pa-4 mb-4 quotation-decision-summary" Elevation="1">
-                    <MudText id="quotation-decision-heading" Typo="Typo.h6" HtmlTag="h2" Class="mb-3">@Text["DecisionSummary"]</MudText>
+            <section class="quotation-decision-summary" aria-labelledby="quotation-decision-heading">
+                    <h2 id="quotation-decision-heading">@Text["DecisionSummary"]</h2>
                     <div class="quotation-decision-layout">
-                        <div aria-hidden="true">
-                            <MudChart T="double" ChartType="ChartType.Donut" ChartSeries="decisionSeries" ChartLabels="decisionLabels" ChartOptions="@ShadcnMudChartOptions.Create()" Width="100%" Height="260px" />
-                        </div>
+                        <ShadcnChart Id="quotation-decisions" Type="ShadcnChartType.Donut" Title="@Text["DecisionSummary"]" CategoryLabel="@Text["Decision"]" Config="@decisionConfig" Categories="@decisionLabels" Series="@decisionSeries" ShowLegend="false" InitialWidth="420" InitialHeight="260" />
                         <dl class="quotation-decision-data" aria-label="@Text["DecisionData"]">
                             <div><dt><span class="quotation-status quotation-status--accepted">@Text["Accepted"]</span></dt><dd>@stats.Accepted</dd></div>
                             <div><dt><span class="quotation-status quotation-status--declined">@Text["Declined"]</span></dt><dd>@stats.Declined</dd></div>
                             <div><dt><span class="quotation-status quotation-status--open">@Text["Open"]</span></dt><dd>@stats.Open</dd></div>
                         </dl>
                     </div>
-                </MudPaper>
             </section>
         }
 
@@ -62,12 +57,12 @@
 
         @if (page.Items.Count == 0)
         {
-            <MudAlert Severity="Severity.Info" aria-live="polite">@Text["NoQuotations"]</MudAlert>
+            <ShadcnAlert AlertRole="ShadcnAlertRole.Status"><ShadcnAlertDescription>@Text["NoQuotations"]</ShadcnAlertDescription></ShadcnAlert>
         }
         else
         {
             <section class="quotation-table-section" aria-label="@Text["TableCaption"]">
-                <MudText id="quotation-table-caption" Typo="Typo.caption" Class="mb-3">@Text["RecordsSummary", page.TotalRecords, page.TotalPages]</MudText>
+                <p id="quotation-table-caption" class="quotation-table-caption">@Text["RecordsSummary", page.TotalRecords, page.TotalPages]</p>
                 <OperationalTable TItem="QuotationListItem"
                                   TKey="int"
                                   Items="@(page.Items)"
@@ -132,10 +127,10 @@
             </section>
         }
 
-        <nav class="d-flex flex-wrap align-center justify-space-between gap-3" aria-label="@Text["QuotationPages"]">
-            <MudButton Disabled="@(!page.HasPreviousPage)" OnClick="PreviousPageAsync">@Text["Previous"]</MudButton>
-            <MudText aria-live="polite">@Text["PageSummary", page.PageIndex, page.TotalPages, page.TotalRecords]</MudText>
-            <MudButton Disabled="@(!page.HasNextPage)" OnClick="NextPageAsync">@Text["Next"]</MudButton>
+        <nav class="quotation-pager" aria-label="@Text["QuotationPages"]">
+            <ShadcnButton Variant="ShadcnButtonVariant.Outline" Disabled="@(!page.HasPreviousPage)" OnClick="PreviousPageAsync">@Text["Previous"]</ShadcnButton>
+            <span aria-live="polite">@Text["PageSummary", page.PageIndex, page.TotalPages, page.TotalRecords]</span>
+            <ShadcnButton Variant="ShadcnButtonVariant.Outline" Disabled="@(!page.HasNextPage)" OnClick="NextPageAsync">@Text["Next"]</ShadcnButton>
         </nav>
     }
     </div>
@@ -155,8 +150,15 @@
     private QuotationStats stats = new(0, 0, 0);
     private IReadOnlyDictionary<int, string> employees = new Dictionary<int, string>();
     private IReadOnlyDictionary<int, string> currencies = new Dictionary<int, string>();
-    private List<ChartSeries<double>> decisionSeries = [];
+    private IReadOnlyList<ShadcnChartSeries> decisionSeries = [];
     private string[] decisionLabels = [];
+    private ShadcnChartConfig decisionConfig => new()
+    {
+        ["decision"] = new(Text["DecisionSummary"]) { Color = "var(--shadcn-chart-1)" },
+        ["decision-0"] = new(Text["Accepted"]) { Color = "var(--shadcn-chart-2)" },
+        ["decision-1"] = new(Text["Declined"]) { Color = "var(--shadcn-chart-5)" },
+        ["decision-2"] = new(Text["Open"]) { Color = "var(--shadcn-chart-4)" },
+    };
     private QuotationListSort currentSort = QuotationListSort.QuotationCreatedDate_Descending;
     private bool loading;
     private string? error;
@@ -229,7 +231,7 @@
             employees = loadedEmployees;
 
             decisionLabels = [Text["Accepted"], Text["Declined"], Text["Open"]];
-            decisionSeries = [new ChartSeries<double> { Name = Text["DecisionSummary"], Data = new double[] { stats.Accepted, stats.Declined, stats.Open } }];
+            decisionSeries = [new ShadcnChartSeries("decision", new double?[] { stats.Accepted, stats.Declined, stats.Open })];
         }
         catch (OperationCanceledException) when (!lease.IsCurrent)
         {
