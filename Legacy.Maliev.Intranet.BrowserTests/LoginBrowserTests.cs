@@ -69,6 +69,28 @@ public sealed class LoginBrowserTests(
         var email = page.Locator("#legacy-login-email");
         await email.WaitForAsync();
 
+        var language = page.GetByRole(AriaRole.Combobox, new() { Name = "Language" });
+        Assert.True(await language.EvaluateAsync<bool>(
+            """
+            select => {
+                const style = getComputedStyle(select);
+                const canvas = document.createElement('canvas');
+                const context = canvas.getContext('2d');
+                context.font = style.font;
+                const selectedText = select.options[select.selectedIndex].text;
+                const textWidth = context.measureText(selectedText).width;
+                const reservedWidth = parseFloat(style.paddingInlineStart) +
+                    parseFloat(style.paddingInlineEnd) +
+                    parseFloat(style.borderInlineStartWidth) +
+                    parseFloat(style.borderInlineEndWidth);
+                return select.getBoundingClientRect().width - reservedWidth >= textWidth;
+            }
+            """));
+
+        var title = page.Locator("#legacy-login-title");
+        Assert.Equal("Sign in to MALIEV", (await title.InnerTextAsync()).Trim());
+        Assert.Equal(0, await title.Locator("img").CountAsync());
+
         Assert.Equal(1, await page.Locator(".legacy-login-card .shadcn-input").CountAsync());
         Assert.Equal("legacy-login-email", await page.Locator("label").Filter(new() { HasText = "Email" }).GetAttributeAsync("for"));
         Assert.Contains("legacy-login-email-description", await email.GetAttributeAsync("aria-describedby"));
