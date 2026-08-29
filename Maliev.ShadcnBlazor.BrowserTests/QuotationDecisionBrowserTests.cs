@@ -62,7 +62,7 @@ public sealed class QuotationDecisionBrowserTests(
                     terms = (string?)null,
                     accepted = (bool?)null,
                     createdDate = "2030-07-18T08:30:00Z",
-                    modifiedDate = "2030-07-18T08:30:00Z",
+                    modifiedDate = "2030-07-18T08:30:00",
                 },
                 customer = (object?)null,
                 employee = (object?)null,
@@ -97,5 +97,6 @@ public sealed class QuotationDecisionBrowserTests(
             ["accepted", "expectedModifiedDate"],
             payload.RootElement.EnumerateObject().Select(property => property.Name).Order(StringComparer.Ordinal));
         Assert.True(payload.RootElement.GetProperty("accepted").GetBoolean());
+        Assert.Equal("2030-07-18T08:30:00", payload.RootElement.GetProperty("expectedModifiedDate").GetString());
     }
 }

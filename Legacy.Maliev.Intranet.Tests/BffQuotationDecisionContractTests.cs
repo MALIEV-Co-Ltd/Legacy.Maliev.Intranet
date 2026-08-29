@@ -85,6 +85,28 @@ public sealed class BffQuotationDecisionContractTests
     }
 
     [Theory]
+    [InlineData("{\"accepted\":true}")]
+    [InlineData("{\"accepted\":true,\"expectedModifiedDate\":null}")]
+    [InlineData("{\"accepted\":true,\"expectedModifiedDate\":\"not-a-date\"}")]
+    public async Task Decision_RejectsMissingNullOrInvalidConcurrencyTokenBeforeDownstream(string body)
+    {
+        var downstream = new DecisionHandler();
+        await using var factory = new Factory(downstream, [LegacyEmployeePermissions.QuotationsUpdate]);
+        using var client = CreateClient(factory);
+        var csrf = await SignInAsync(client);
+        using var request = new HttpRequestMessage(HttpMethod.Put, "/bff/quotations/84/decision")
+        {
+            Content = new StringContent(body, Encoding.UTF8, "application/json"),
+        };
+        request.Headers.Add("X-CSRF-TOKEN", csrf);
+
+        using var response = await client.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal(0, downstream.CallCount);
+    }
+
+    [Theory]
     [InlineData(HttpStatusCode.Unauthorized, HttpStatusCode.Unauthorized, null)]
     [InlineData(HttpStatusCode.Forbidden, HttpStatusCode.Forbidden, null)]
     [InlineData(HttpStatusCode.NotFound, HttpStatusCode.NotFound, null)]
@@ -144,7 +166,7 @@ public sealed class BffQuotationDecisionContractTests
     {
         var request = new HttpRequestMessage(HttpMethod.Put, "/bff/quotations/84/decision")
         {
-            Content = JsonContent.Create(new QuotationDecisionInput(true, new DateTime(2030, 7, 18, 8, 30, 0, DateTimeKind.Utc))),
+            Content = JsonContent.Create(new QuotationDecisionInput(true, new DateTime(2030, 7, 18, 8, 30, 0, DateTimeKind.Unspecified))),
         };
         if (csrf is not null) request.Headers.Add("X-CSRF-TOKEN", csrf);
         return await client.SendAsync(request);

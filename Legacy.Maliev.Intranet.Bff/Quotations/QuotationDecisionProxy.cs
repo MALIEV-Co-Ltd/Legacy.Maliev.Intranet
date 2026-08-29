@@ -10,19 +10,19 @@ public sealed class QuotationDecisionProxy(HttpClient httpClient)
     public async Task<HttpResponseMessage> DecideAsync(
         int id,
         bool accepted,
-        DateTime? expectedModifiedDate,
+        DateTime expectedModifiedDate,
         CancellationToken cancellationToken)
     {
         using var request = new HttpRequestMessage(HttpMethod.Put, $"/quotations/{id}/decision")
         {
             Content = JsonContent.Create(new QuotationDecisionServiceRequest(accepted, EmployeeInitiated: true)),
         };
-        if (expectedModifiedDate is { } expected)
-        {
-            request.Headers.TryAddWithoutValidation(
-                "X-Expected-Modified-Date",
-                expected.ToUniversalTime().ToString("O", CultureInfo.InvariantCulture));
-        }
+        var expectedUtc = expectedModifiedDate.Kind == DateTimeKind.Unspecified
+            ? DateTime.SpecifyKind(expectedModifiedDate, DateTimeKind.Utc)
+            : expectedModifiedDate.ToUniversalTime();
+        _ = request.Headers.TryAddWithoutValidation(
+            "X-Expected-Modified-Date",
+            expectedUtc.ToString("O", CultureInfo.InvariantCulture));
 
         return await httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
     }

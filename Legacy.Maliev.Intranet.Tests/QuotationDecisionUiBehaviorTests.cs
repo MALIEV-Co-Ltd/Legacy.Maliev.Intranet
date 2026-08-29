@@ -32,6 +32,7 @@ public sealed class QuotationDecisionUiBehaviorTests
         using var body = System.Text.Json.JsonDocument.Parse(Assert.IsType<string>(handler.DecisionBody));
         Assert.Equal(["accepted", "expectedModifiedDate"], body.RootElement.EnumerateObject().Select(value => value.Name).Order(StringComparer.Ordinal));
         Assert.True(body.RootElement.GetProperty("accepted").GetBoolean());
+        Assert.Equal("2030-07-18T08:30:00", body.RootElement.GetProperty("expectedModifiedDate").GetString());
         var page = Assert.IsType<QuotationDetailPage>(Field<object>(view, "page"));
         Assert.True(page.Quotation.Accepted);
         Assert.Equal("DecisionSucceeded", Field<string>(view, "decisionMessage"));
@@ -174,7 +175,7 @@ public sealed class QuotationDecisionUiBehaviorTests
         };
 
         private static QuotationDetailPage Page() => new(
-            new QuotationListItem(84, 42, 7, null, 30, new DateTime(2030, 8, 1), 100m, 7m, 107m, null, 107m, 1, null, null, null, null, null, new DateTime(2030, 7, 18, 8, 30, 0, DateTimeKind.Utc), new DateTime(2030, 7, 18, 8, 30, 0, DateTimeKind.Utc)),
+            new QuotationListItem(84, 42, 7, null, 30, new DateTime(2030, 8, 1), 100m, 7m, 107m, null, 107m, 1, null, null, null, null, null, new DateTime(2030, 7, 18, 8, 30, 0, DateTimeKind.Unspecified), new DateTime(2030, 7, 18, 8, 30, 0, DateTimeKind.Unspecified)),
             null,
             null,
             new QuotationCurrency(1, "THB", "Thai Baht"),

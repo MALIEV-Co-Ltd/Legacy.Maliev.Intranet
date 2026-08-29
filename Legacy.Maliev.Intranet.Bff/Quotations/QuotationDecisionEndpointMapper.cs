@@ -14,7 +14,7 @@ internal static class QuotationDecisionEndpointMapper
         QuotationDecisionProxy proxy,
         CancellationToken cancellationToken)
     {
-        if (id < 1)
+        if (id < 1 || input.ExpectedModifiedDate is not DateTime expectedModifiedDate)
         {
             return Results.BadRequest();
         }
@@ -25,7 +25,7 @@ internal static class QuotationDecisionEndpointMapper
             response = await proxy.DecideAsync(
                 id,
                 input.Accepted,
-                input.ExpectedModifiedDate,
+                expectedModifiedDate,
                 cancellationToken);
         }
         catch (Exception exception) when (
