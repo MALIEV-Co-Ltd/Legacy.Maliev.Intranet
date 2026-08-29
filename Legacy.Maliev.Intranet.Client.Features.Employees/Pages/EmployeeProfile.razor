@@ -1,115 +1,99 @@
 @page "/hr/profile"
 @attribute [Authorize]
 @using System.Globalization
+@using System.ComponentModel.DataAnnotations
 @using System.Net
 @using System.Net.Http.Json
 @using Legacy.Maliev.Intranet.Contracts
+@using Microsoft.AspNetCore.Components.Forms
 @inject HttpClient Http
 @inject NavigationManager Navigation
 @inject IStringLocalizer<EmployeeProfile> Text
 
 <PageTitle>@Text["PageTitle"]</PageTitle>
 
-<MudContainer MaxWidth="MaxWidth.Medium" Class="employee-profile-page">
+<main class="employee-profile-page">
     <header class="operations-page-header">
         <div>
-            <MudText Typo="Typo.h4" HtmlTag="h1">@Text["Heading"]</MudText>
-            <MudText Typo="Typo.body2" Class="text-secondary">@Text["Description"]</MudText>
+            <h1>@Text["Heading"]</h1>
+            <p>@Text["Description"]</p>
         </div>
-        <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Outlined.Refresh" OnClick="LoadAsync" Disabled="@(loading || submitting)">
+        <ShadcnButton Variant="ShadcnButtonVariant.Outline" OnClick="LoadAsync" Disabled="@(loading || submitting)">
             @Text["Refresh"]
-        </MudButton>
+        </ShadcnButton>
     </header>
 
     @if (loading)
     {
-        <div role="status" aria-live="polite">
-            <MudProgressLinear Indeterminate="true" Color="Color.Primary" aria-label="@Text["Loading"]" />
-            <span class="visually-hidden">@Text["Loading"]</span>
+        <div class="employee-profile__loading" role="status" aria-live="polite">
+            <ShadcnSpinner Label="@Text["Loading"]" Size="1.25rem" />
+            <span>@Text["Loading"]</span>
         </div>
     }
     else if (profile is null)
     {
-        <MudAlert Severity="@(string.IsNullOrWhiteSpace(error) ? Severity.Warning : Severity.Error)" aria-live="assertive">
-            @(string.IsNullOrWhiteSpace(error) ? Text["NotFound"] : error)
-        </MudAlert>
+        <ShadcnAlert Variant="@(string.IsNullOrWhiteSpace(error) ? ShadcnAlertVariant.Default : ShadcnAlertVariant.Destructive)" AlertRole="ShadcnAlertRole.Alert"><ShadcnAlertDescription>@(string.IsNullOrWhiteSpace(error) ? Text["NotFound"] : error)</ShadcnAlertDescription></ShadcnAlert>
     }
     else
     {
         @if (!string.IsNullOrWhiteSpace(error))
         {
-            <MudAlert Severity="Severity.Error" Class="mb-4" aria-live="assertive">@error</MudAlert>
+            <ShadcnAlert Variant="ShadcnAlertVariant.Destructive" AlertRole="ShadcnAlertRole.Alert"><ShadcnAlertDescription>@error</ShadcnAlertDescription></ShadcnAlert>
         }
         @if (!string.IsNullOrWhiteSpace(notice))
         {
-            <MudAlert Severity="Severity.Success" Class="mb-4" aria-live="polite">@notice</MudAlert>
+            <ShadcnAlert AlertRole="ShadcnAlertRole.Status"><ShadcnAlertDescription>@notice</ShadcnAlertDescription></ShadcnAlert>
         }
 
-        <MudPaper Class="pa-5 mb-4" Elevation="1">
-            <MudText Typo="Typo.h6" HtmlTag="h2" id="profile-editable-heading" Class="mb-1">@Text["EditableDetails"]</MudText>
-            <MudText Typo="Typo.body2" Class="text-secondary mb-4">@Text["EditableDetailsHelp"]</MudText>
-            <MudForm @ref="form" Model="@model" @bind-IsValid="formValid" aria-labelledby="profile-editable-heading">
-                <MudGrid Spacing="3">
-                    <MudItem xs="12" sm="6">
-                        <MudTextField @bind-Value="model.FirstName" For="@(() => model.FirstName)" Label="@Text["FirstName"]" Required="true" MaxLength="256" Disabled="@submitting" />
-                    </MudItem>
-                    <MudItem xs="12" sm="6">
-                        <MudTextField @bind-Value="model.LastName" For="@(() => model.LastName)" Label="@Text["LastName"]" Required="true" MaxLength="256" Disabled="@submitting" />
-                    </MudItem>
-                    <MudItem xs="12" sm="6">
-                        <MudTextField @bind-Value="model.PhoneNumber" For="@(() => model.PhoneNumber)" Label="@Text["Phone"]" InputType="InputType.Telephone" MaxLength="256" Disabled="@submitting" />
-                    </MudItem>
-                    <MudItem xs="12" sm="6">
-                        <MudDatePicker @bind-Date="model.DateOfBirth" For="@(() => model.DateOfBirth)" Label="@Text["DateOfBirth"]" DateFormat="@CultureInfo.CurrentCulture.DateTimeFormat.ShortDatePattern" Disabled="@submitting" />
-                    </MudItem>
-                </MudGrid>
-                <MudStack Row="true" Spacing="2" Class="mt-4">
-                    <MudButton ButtonType="ButtonType.Button" Variant="Variant.Filled" Color="Color.Primary" OnClick="SaveAsync" Disabled="@submitting">
+        <section class="employee-profile__card" aria-labelledby="profile-editable-heading">
+            <h2 id="profile-editable-heading">@Text["EditableDetails"]</h2>
+            <p class="employee-profile__help">@Text["EditableDetailsHelp"]</p>
+            <EditForm EditContext="@editContext" aria-labelledby="profile-editable-heading">
+                <DataAnnotationsValidator />
+                <div class="employee-profile__grid">
+                    <ShadcnFormField Id="employee-profile-first-name" Label="@Text["FirstName"]" Error="@ValidationFor(() => model.FirstName)" Required="true" Disabled="@submitting"><Control><ShadcnInput TValue="string" id="employee-profile-first-name" @bind-Value="model.FirstName" Required="true" maxlength="256" Disabled="@submitting" /></Control></ShadcnFormField>
+                    <ShadcnFormField Id="employee-profile-last-name" Label="@Text["LastName"]" Error="@ValidationFor(() => model.LastName)" Required="true" Disabled="@submitting"><Control><ShadcnInput TValue="string" id="employee-profile-last-name" @bind-Value="model.LastName" Required="true" maxlength="256" Disabled="@submitting" /></Control></ShadcnFormField>
+                    <ShadcnFormField Id="employee-profile-phone" Label="@Text["Phone"]" Error="@ValidationFor(() => model.PhoneNumber)" Disabled="@submitting"><Control><ShadcnInput TValue="string" id="employee-profile-phone" Type="tel" @bind-Value="model.PhoneNumber" maxlength="256" Disabled="@submitting" /></Control></ShadcnFormField>
+                    <ShadcnFormField Id="employee-profile-date-of-birth" Label="@Text["DateOfBirth"]" Disabled="@submitting"><Control><ShadcnDatePicker id="employee-profile-date-of-birth" @bind-Value="DateOfBirth" Clearable="true" CalendarLabel="@Text["DateOfBirth"]" Disabled="@submitting" data-date-format="@CultureInfo.CurrentCulture.DateTimeFormat.ShortDatePattern" /></Control></ShadcnFormField>
+                </div>
+                <div class="employee-profile__actions">
+                    <ShadcnButton ButtonType="ShadcnButtonType.Button" OnClick="SaveAsync" Disabled="@submitting">
                         @(submitting ? Text["Saving"] : Text["SaveChanges"])
-                    </MudButton>
-                    <MudButton ButtonType="ButtonType.Button" Variant="Variant.Text" OnClick="ResetEditableFields" Disabled="@submitting">
+                    </ShadcnButton>
+                    <ShadcnButton ButtonType="ShadcnButtonType.Button" Variant="ShadcnButtonVariant.Ghost" OnClick="ResetEditableFields" Disabled="@submitting">
                         @Text["Reset"]
-                    </MudButton>
-                </MudStack>
-            </MudForm>
-        </MudPaper>
+                    </ShadcnButton>
+                </div>
+            </EditForm>
+        </section>
 
-        <MudPaper Class="pa-5" Elevation="1">
-            <MudText Typo="Typo.h6" HtmlTag="h2" Class="mb-1">@Text["ManagedDetails"]</MudText>
-            <MudText Typo="Typo.body2" Class="text-secondary mb-4">@Text["ManagedDetailsHelp"]</MudText>
-            <MudGrid Spacing="3">
-                <MudItem xs="12" sm="6">
-                    <MudText Typo="Typo.caption">@Text["EmployeeNumber"]</MudText>
-                    <MudText>@profile.Id</MudText>
-                </MudItem>
-                <MudItem xs="12" sm="6">
-                    <MudText Typo="Typo.caption">@Text["Email"]</MudText>
-                    <MudText>@profile.Email</MudText>
-                </MudItem>
-                <MudItem xs="12" sm="6">
-                    <MudText Typo="Typo.caption">@Text["Role"]</MudText>
-                    <MudText>@Display(profile.Role?.Name)</MudText>
-                </MudItem>
-                <MudItem xs="12">
-                    <MudText Typo="Typo.caption">@Text["HomeAddress"]</MudText>
-                    <MudText>@Display(AddressLine(profile.HomeAddress))</MudText>
-                </MudItem>
-            </MudGrid>
-        </MudPaper>
+        <section class="employee-profile__card" aria-labelledby="profile-managed-heading">
+            <h2 id="profile-managed-heading">@Text["ManagedDetails"]</h2>
+            <p class="employee-profile__help">@Text["ManagedDetailsHelp"]</p>
+            <dl class="employee-profile__managed-grid">
+                <div><dt>@Text["EmployeeNumber"]</dt><dd>@profile.Id</dd></div>
+                <div><dt>@Text["Email"]</dt><dd>@profile.Email</dd></div>
+                <div><dt>@Text["Role"]</dt><dd>@Display(profile.Role?.Name)</dd></div>
+                <div class="employee-profile__wide"><dt>@Text["HomeAddress"]</dt><dd>@Display(AddressLine(profile.HomeAddress))</dd></div>
+            </dl>
+        </section>
     }
-</MudContainer>
+</main>
 
 @code {
     private readonly EditableProfileModel model = new();
     private EmployeeDetail? profile;
-    private MudForm? form;
-    private bool formValid;
+    private EditContext editContext = null!;
     private bool loading;
     private bool submitting;
     private string? error;
     private string? notice;
 
-    protected override Task OnInitializedAsync() => LoadAsync();
+    protected override Task OnInitializedAsync()
+    {
+        editContext = new EditContext(model);
+        return LoadAsync();
+    }
 
     private Task LoadAsync() => LoadAsync(clearNotice: true);
 
@@ -186,13 +170,12 @@
 
     private async Task SaveAsync()
     {
-        if (profile is null || form is null || submitting)
+        if (profile is null || submitting)
         {
             return;
         }
 
-        await form.ValidateAsync();
-        if (!formValid || string.IsNullOrWhiteSpace(model.FirstName) || string.IsNullOrWhiteSpace(model.LastName))
+        if (!editContext.Validate())
         {
             error = Text["ValidationFailed"];
             notice = null;
@@ -299,6 +282,7 @@
         model.LastName = profile.LastName;
         model.PhoneNumber = profile.PhoneNumber;
         model.DateOfBirth = profile.DateOfBirth;
+        editContext = new EditContext(model);
         error = null;
     }
 
@@ -306,6 +290,15 @@
         $"/Login?returnUrl={Uri.EscapeDataString(Navigation.ToBaseRelativePath(Navigation.Uri))}");
 
     private string Display(string? value) => string.IsNullOrWhiteSpace(value) ? Text["NotProvided"] : value;
+
+    private DateOnly? DateOfBirth
+    {
+        get => model.DateOfBirth is DateTime date ? DateOnly.FromDateTime(date) : null;
+        set => model.DateOfBirth = value?.ToDateTime(TimeOnly.MinValue);
+    }
+
+    private string? ValidationFor<TValue>(System.Linq.Expressions.Expression<Func<TValue>> expression) =>
+        editContext.GetValidationMessages(FieldIdentifier.Create(expression)).FirstOrDefault();
 
     private static string? AddressLine(EmployeeAddressDetail? address)
     {
@@ -321,10 +314,13 @@
 
     private sealed class EditableProfileModel
     {
+        [Required, StringLength(256)]
         public string FirstName { get; set; } = string.Empty;
 
+        [Required, StringLength(256)]
         public string LastName { get; set; } = string.Empty;
 
+        [Phone, StringLength(256)]
         public string? PhoneNumber { get; set; }
 
         public DateTime? DateOfBirth { get; set; }

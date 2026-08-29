@@ -15,7 +15,11 @@ public sealed class EmployeesCreateWasmMigrationContractTests
         var page = File.ReadAllText(featurePage);
         Assert.Contains("@page \"/Employees/Create\"", page, StringComparison.Ordinal);
         Assert.Contains("[Authorize", page, StringComparison.Ordinal);
-        Assert.Contains("MudForm", page, StringComparison.Ordinal);
+        Assert.Contains("<EditForm", page, StringComparison.Ordinal);
+        Assert.Contains("<ShadcnFormField", page, StringComparison.Ordinal);
+        Assert.Contains("<ShadcnInput", page, StringComparison.Ordinal);
+        Assert.Contains("<ShadcnDatePicker", page, StringComparison.Ordinal);
+        Assert.DoesNotContain("<Mud", page, StringComparison.Ordinal);
         Assert.Contains("model.Password", page, StringComparison.Ordinal);
         Assert.Contains("model.ConfirmPassword", page, StringComparison.Ordinal);
         Assert.Contains("submitting", page, StringComparison.Ordinal);
@@ -23,7 +27,7 @@ public sealed class EmployeesCreateWasmMigrationContractTests
         Assert.Contains("JsonContent.Create(model)", page, StringComparison.Ordinal);
         Assert.Contains("HttpMethod.Post, \"/bff/employees\"", page, StringComparison.Ordinal);
         Assert.Contains("NavigateToLogin", page, StringComparison.Ordinal);
-        Assert.Contains("aria-live=\"assertive\"", page, StringComparison.Ordinal);
+        Assert.Contains("AlertRole=\"ShadcnAlertRole.Alert\"", page, StringComparison.Ordinal);
 
         Assert.True(File.Exists(workflow), "The server-side profile/identity orchestration service is missing.");
         Assert.True(File.Exists(clients), "The server-only EmployeeService and AuthService clients are missing.");

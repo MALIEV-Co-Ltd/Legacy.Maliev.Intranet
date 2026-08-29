@@ -23,6 +23,11 @@ public sealed class EmployeeProfileWasmMigrationContractTests
         Assert.Contains("new EmployeeSelfProfileUpdateRequest(", page, StringComparison.Ordinal);
         Assert.Contains("new HttpRequestMessage(HttpMethod.Put, \"/bff/profile\")", page, StringComparison.Ordinal);
         Assert.Contains("X-CSRF-TOKEN", page, StringComparison.Ordinal);
+        Assert.Contains("<EditForm", page, StringComparison.Ordinal);
+        Assert.Contains("<ShadcnFormField", page, StringComparison.Ordinal);
+        Assert.Contains("<ShadcnDatePicker", page, StringComparison.Ordinal);
+        Assert.Contains("<ShadcnAlert", page, StringComparison.Ordinal);
+        Assert.DoesNotContain("<Mud", page, StringComparison.Ordinal);
         Assert.DoesNotContain("LegacyDatabaseId", page, StringComparison.Ordinal);
         Assert.DoesNotContain("/bff/employees/", page, StringComparison.Ordinal);
         Assert.DoesNotContain("AccessToken", page, StringComparison.OrdinalIgnoreCase);

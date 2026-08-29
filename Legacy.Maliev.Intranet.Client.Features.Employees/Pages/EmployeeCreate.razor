@@ -3,56 +3,69 @@
 @inject HttpClient Http
 @inject NavigationManager Navigation
 @inject IStringLocalizer<EmployeeCreate> Text
+@using System.Linq.Expressions
+@using Microsoft.AspNetCore.Components.Forms
 
 <PageTitle>@Text["PageTitle"]</PageTitle>
 
-<MudContainer MaxWidth="MaxWidth.Medium">
-    <header class="operations-page-header"><div><MudText Typo="Typo.h4" HtmlTag="h1">@Text["CreateEmployee"]</MudText><MudText Typo="Typo.body2">@Text["ProfileAndAccount"]</MudText></div></header>
+<main class="employee-create">
+    <header class="operations-page-header"><div><h1>@Text["CreateEmployee"]</h1><p>@Text["ProfileAndAccount"]</p></div></header>
     @if (!string.IsNullOrWhiteSpace(error))
     {
-        <MudAlert Severity="Severity.Error" Class="mb-4" aria-live="assertive">@error</MudAlert>
+        <ShadcnAlert Variant="ShadcnAlertVariant.Destructive" AlertRole="ShadcnAlertRole.Alert" Class="employee-create__alert"><ShadcnAlertDescription>@error</ShadcnAlertDescription></ShadcnAlert>
     }
-    <MudForm @ref="form" Model="@model" @bind-IsValid="formValid">
-        <MudPaper Class="pa-4 mb-4" Elevation="1">
-            <MudText Typo="Typo.h6" HtmlTag="h2" id="employee-account-heading">@Text["AccountDetails"]</MudText>
-            <MudGrid Spacing="3" aria-labelledby="employee-account-heading">
-                <MudItem xs="12" md="6"><MudTextField @bind-Value="model.FirstName" For="@(() => model.FirstName)" Label="@Text["FirstName"]" Required="true" /></MudItem>
-                <MudItem xs="12" md="6"><MudTextField @bind-Value="model.LastName" For="@(() => model.LastName)" Label="@Text["LastName"]" Required="true" /></MudItem>
-                <MudItem xs="12"><MudTextField @bind-Value="model.Email" For="@(() => model.Email)" Label="@Text["Email"]" InputType="InputType.Email" Required="true" /></MudItem>
-                <MudItem xs="12" md="6"><MudTextField @bind-Value="model.Password" For="@(() => model.Password)" Label="@Text["Password"]" InputType="InputType.Password" Required="true" /></MudItem>
-                <MudItem xs="12" md="6"><MudTextField @bind-Value="model.ConfirmPassword" For="@(() => model.ConfirmPassword)" Label="@Text["ConfirmPassword"]" InputType="InputType.Password" Required="true" /></MudItem>
-                <MudItem xs="12"><MudText Typo="Typo.caption" Color="Color.Secondary">@Text["PasswordPrivacy"]</MudText></MudItem>
-            </MudGrid>
-        </MudPaper>
-        <MudPaper Class="pa-4 mb-4" Elevation="1">
-            <MudText Typo="Typo.h6" HtmlTag="h2" id="employee-work-heading">@Text["EmploymentDetails"]</MudText>
-            <MudGrid Spacing="3" aria-labelledby="employee-work-heading">
-                <MudItem xs="12"><MudTextField @bind-Value="model.PhoneNumber" For="@(() => model.PhoneNumber)" Label="@Text["PhoneNumber"]" InputType="InputType.Telephone" /></MudItem>
-                <MudItem xs="12" md="6"><MudNumericField @bind-Value="model.RoleId" For="@(() => model.RoleId)" Label="@Text["RoleId"]" Min="1" /></MudItem>
-                <MudItem xs="12" md="6"><MudDatePicker @bind-Date="model.DateOfBirth" For="@(() => model.DateOfBirth)" Label="@Text["DateOfBirth"]" /></MudItem>
-            </MudGrid>
-        </MudPaper>
-        <MudStack Row="true" Spacing="2" Class="mt-4">
-            <MudButton ButtonType="ButtonType.Button" Variant="Variant.Filled" Color="Color.Primary" Disabled="@submitting" OnClick="SubmitAsync">
+    <EditForm EditContext="@editContext" OnValidSubmit="SubmitAsync" OnInvalidSubmit="HandleInvalidSubmit" Class="employee-create__form">
+        <DataAnnotationsValidator />
+        <section class="employee-create__section" aria-labelledby="employee-account-heading">
+            <h2 id="employee-account-heading">@Text["AccountDetails"]</h2>
+            <div class="employee-create__grid">
+                <ShadcnFormField Id="employee-create-first-name" Label="@Text["FirstName"]" Error="@ValidationFor(() => model.FirstName)" Required="true"><Control><ShadcnInput TValue="string" id="employee-create-first-name" @bind-Value="model.FirstName" Required="true" /></Control></ShadcnFormField>
+                <ShadcnFormField Id="employee-create-last-name" Label="@Text["LastName"]" Error="@ValidationFor(() => model.LastName)" Required="true"><Control><ShadcnInput TValue="string" id="employee-create-last-name" @bind-Value="model.LastName" Required="true" /></Control></ShadcnFormField>
+                <ShadcnFormField Id="employee-create-email" Label="@Text["Email"]" Error="@ValidationFor(() => model.Email)" Required="true" Class="employee-create__span"><Control><ShadcnInput TValue="string" id="employee-create-email" Type="email" @bind-Value="model.Email" Required="true" /></Control></ShadcnFormField>
+                <ShadcnFormField Id="employee-create-password" Label="@Text["Password"]" Error="@ValidationFor(() => model.Password)" Required="true"><Control><ShadcnInput TValue="string" id="employee-create-password" Type="password" autocomplete="new-password" @bind-Value="model.Password" Required="true" /></Control></ShadcnFormField>
+                <ShadcnFormField Id="employee-create-confirm-password" Label="@Text["ConfirmPassword"]" Error="@ValidationFor(() => model.ConfirmPassword)" Required="true"><Control><ShadcnInput TValue="string" id="employee-create-confirm-password" Type="password" autocomplete="new-password" @bind-Value="model.ConfirmPassword" Required="true" /></Control></ShadcnFormField>
+                <p class="employee-create__privacy employee-create__span">@Text["PasswordPrivacy"]</p>
+            </div>
+        </section>
+        <section class="employee-create__section" aria-labelledby="employee-work-heading">
+            <h2 id="employee-work-heading">@Text["EmploymentDetails"]</h2>
+            <div class="employee-create__grid">
+                <ShadcnFormField Id="employee-create-phone" Label="@Text["PhoneNumber"]" Error="@ValidationFor(() => model.PhoneNumber)" Class="employee-create__span"><Control><ShadcnInput TValue="string" id="employee-create-phone" Type="tel" @bind-Value="model.PhoneNumber" /></Control></ShadcnFormField>
+                <ShadcnFormField Id="employee-create-role" Label="@Text["RoleId"]" Error="@ValidationFor(() => model.RoleId)"><Control><ShadcnInput TValue="int?" id="employee-create-role" Type="number" min="1" @bind-Value="model.RoleId" /></Control></ShadcnFormField>
+                <ShadcnFormField Id="employee-create-date-of-birth" Label="@Text["DateOfBirth"]"><Control><ShadcnDatePicker id="employee-create-date-of-birth" @bind-Value="DateOfBirth" Clearable="true" CalendarLabel="@Text["DateOfBirth"]" /></Control></ShadcnFormField>
+            </div>
+        </section>
+        <div class="employee-create__actions">
+            <ShadcnButton ButtonType="ShadcnButtonType.Submit" OperationFeedback="false" Disabled="@submitting">
                 @(submitting ? Text["Submitting"] : Text["CreateEmployee"])
-            </MudButton>
+            </ShadcnButton>
             <LegacyLink Href="/Employees/Index" Role="LegacyLinkRole.Navigation" Disabled="@submitting" AriaLabel="@Text["Cancel"]">@Text["Cancel"]</LegacyLink>
-        </MudStack>
-    </MudForm>
-</MudContainer>
+        </div>
+    </EditForm>
+</main>
 
 @code {
     private readonly CreateEmployeeAccountRequest model = new();
-    private MudForm? form;
-    private bool formValid;
+    private EditContext editContext = null!;
     private bool submitting;
     private string? error;
 
+    protected override void OnInitialized() => editContext = new EditContext(model);
+
+    private DateOnly? DateOfBirth
+    {
+        get => model.DateOfBirth is DateTime date ? DateOnly.FromDateTime(date) : null;
+        set => model.DateOfBirth = value?.ToDateTime(TimeOnly.MinValue);
+    }
+
+    private string? ValidationFor<TValue>(Expression<Func<TValue>> expression) =>
+        editContext.GetValidationMessages(FieldIdentifier.Create(expression)).FirstOrDefault();
+
+    private void HandleInvalidSubmit(EditContext _) => error = Text["ValidationFailed"];
+
     private async Task SubmitAsync()
     {
-        if (submitting || form is null) return;
-        await form.ValidateAsync();
-        if (!formValid) { error = Text["ValidationFailed"]; return; }
+        if (submitting) return;
 
         submitting = true;
         error = null;
