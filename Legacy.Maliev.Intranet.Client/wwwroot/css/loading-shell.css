@@ -4,6 +4,7 @@
     min-height: 100dvh;
     display: grid;
     align-content: center;
+    justify-content: center;
     justify-items: center;
     grid-template-columns: minmax(0, 22rem);
     padding: 2rem 1.5rem;
