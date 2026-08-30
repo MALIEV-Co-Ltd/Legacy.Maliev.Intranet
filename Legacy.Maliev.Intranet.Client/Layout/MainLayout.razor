@@ -10,47 +10,31 @@
 <ShadcnThemeProvider IsDarkMode="@ThemeService.IsDarkMode" Direction="ShadcnDirection.LeftToRight" Class="legacy-provider-root">
 <a class="legacy-skip-link" href="#main-content">@Text["Skip to content"]</a>
 
-<div class="legacy-layout">
-    <LegacyNavigationRail Session="session" />
+<ShadcnSidebarProvider @bind-Open="_sidebarOpen"
+                       @bind-MobileOpen="_mobileNavigationOpen"
+                       Width="16rem"
+                       MobileWidth="18rem"
+                       IconWidth="3.5rem"
+                       ToggleLabel="@Text["Toggle navigation"]"
+                       CloseLabel="@Text["Close navigation"]"
+                       Class="legacy-layout">
+    <LegacyNavigationRail Session="session" OnNavigate="CloseNavigationAsync" />
 
-    @if (_navigationOpen)
-    {
-        <div class="legacy-navigation-backdrop" aria-hidden="true" @onclick="CloseNavigationAsync"></div>
-        <LegacyNavigationRail Session="session" IsDrawer="true" OnClose="CloseNavigationAsync" />
-    }
-
-    <div class="legacy-workspace-frame" @attributes="WorkspaceAccessibilityAttributes">
-        <LegacyTopBar Session="session"
-                      NavigationOpen="_navigationOpen"
-                      OnToggleNavigation="ToggleNavigationAsync"
-                      OnCloseNavigation="CloseNavigationAsync"
-                      OnSignOut="SignOutAsync" />
+    <ShadcnSidebarInset Role="none" Class="legacy-workspace-frame">
+        <LegacyTopBar Session="session" OnSignOut="SignOutAsync" />
         <div class="legacy-workspace-shell">
             <main id="main-content" class="legacy-main-content legacy-page-container" tabindex="-1">
                 @Body
             </main>
         </div>
-    </div>
-</div>
+    </ShadcnSidebarInset>
+</ShadcnSidebarProvider>
 </ShadcnThemeProvider>
 
 @code {
     private EmployeeSessionSummary? session;
-    private bool _navigationOpen;
-
-    private IReadOnlyDictionary<string, object> WorkspaceAccessibilityAttributes => _navigationOpen
-        ? DrawerOpenWorkspaceAttributes
-        : EmptyWorkspaceAttributes;
-
-    private static readonly IReadOnlyDictionary<string, object> DrawerOpenWorkspaceAttributes =
-        new Dictionary<string, object>
-        {
-            ["inert"] = string.Empty,
-            ["aria-hidden"] = "true",
-        };
-
-    private static readonly IReadOnlyDictionary<string, object> EmptyWorkspaceAttributes =
-        new Dictionary<string, object>();
+    private bool _sidebarOpen = true;
+    private bool _mobileNavigationOpen;
 
     protected override void OnInitialized()
     {
@@ -69,15 +53,9 @@
         }
     }
 
-    private Task ToggleNavigationAsync()
-    {
-        _navigationOpen = !_navigationOpen;
-        return Task.CompletedTask;
-    }
-
     private Task CloseNavigationAsync()
     {
-        _navigationOpen = false;
+        _mobileNavigationOpen = false;
         return Task.CompletedTask;
     }
 
@@ -89,7 +67,7 @@
 
     private void OnLocationChanged(object? sender, LocationChangedEventArgs args)
     {
-        _navigationOpen = false;
+        _mobileNavigationOpen = false;
         _ = InvokeAsync(StateHasChanged);
     }
 

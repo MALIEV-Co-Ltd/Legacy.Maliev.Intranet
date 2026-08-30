@@ -7,12 +7,11 @@ internal static class LegacyLinkSourceContracts
     private static readonly SpecializedOwner[] SpecializedOwners =
     [
         Raw("Legacy.Maliev.Intranet.Client/Layout/MainLayout.razor", "href=\"#main-content\"", "class=\"legacy-skip-link\"", "@Text[\"Skip to content\"]"),
-        Raw("Legacy.Maliev.Intranet.Client/Layout/LegacyTopBar.razor", "href=\"/Dashboard\"", "class=\"legacy-topbar-logo\"", "@Text[\"MALIEV dashboard\"]"),
         Raw("Legacy.Maliev.Intranet.Client/Layout/LegacyTopBar.razor", "href=\"/hr/profile\"", "class=\"legacy-profile-action\"", "role=\"menuitem\"", "@onclick=\"CloseProfileMenuAsync\""),
         Raw("Legacy.Maliev.Intranet.Client/Layout/LegacyTopBar.razor", "href=\"/Login\"", "class=\"legacy-signin-link\"", "@Text[\"Sign in\"]"),
         Raw("Legacy.Maliev.Intranet.Client/Components/Shell/LegacyNavigationRail.razor", "href=\"/Dashboard\"", "class=\"legacy-rail-logo legacy-logo-link\"", "@Text[\"MALIEV dashboard\"]"),
-        Raw("Legacy.Maliev.Intranet.Client/Components/Shell/LegacyNavigationRail.razor", "href=\"@item.Href\"", "legacy-rail-link", "aria-current=", "@onclick=\"CloseAsync\""),
-        Raw("Legacy.Maliev.Intranet.Client/Components/Shell/LegacyNavigationRail.razor", "href=\"@child.Href\"", "legacy-rail-link--child", "aria-current=", "@onclick=\"CloseAsync\""),
+        ShadcnSidebarMenuButton("Legacy.Maliev.Intranet.Client/Components/Shell/LegacyNavigationRail.razor", "Href=\"@item.Href\"", "Class=\"legacy-rail-link\"", "Active=\"@IsItemPageCurrent(item)\"", "OnClick=\"NavigateAsync\""),
+        ShadcnSidebarMenuSubButton("Legacy.Maliev.Intranet.Client/Components/Shell/LegacyNavigationRail.razor", "Href=\"@child.Href\"", "legacy-rail-link--child", "Active=\"@IsItemPageCurrent(child)\"", "@onclick=\"NavigateAsync\""),
         ShadcnButton("Legacy.Maliev.Intranet.Client/Components/Shell/LegacyQuickActions.razor", "Href=\"@item.Href\"", "Class=\"@QuickActionClass(item)\"", "aria-label=\"@Text[item.Label]\"", "@Text[item.Label]"),
         Raw("Legacy.Maliev.Intranet.Client/Pages/Login.razor", "href=\"/\"", "class=\"legacy-login-brand\"", "aria-label=\"@Text[\"HomeLabel\"]\""),
 
@@ -62,6 +61,8 @@ internal static class LegacyLinkSourceContracts
 
             AuditElements(document, "MudButton", "MudButton", requireHref: true, ownerCounts, violations);
             AuditElements(document, "ShadcnButton", "ShadcnButton", requireHref: true, ownerCounts, violations);
+            AuditElements(document, "ShadcnSidebarMenuButton", "ShadcnSidebarMenuButton", requireHref: true, ownerCounts, violations);
+            AuditElements(document, "ShadcnSidebarMenuSubButton", "ShadcnSidebarMenuSubButton", requireHref: true, ownerCounts, violations);
         }
 
         for (var index = 0; index < SpecializedOwners.Length; index++)
@@ -187,7 +188,7 @@ internal static class LegacyLinkSourceContracts
             .Select(match => match.Value)
             .ToArray();
 
-    private static readonly string[] LinkOwnerTags = ["LegacyLink", "MudButton", "ShadcnButton", "PrimaryButton", "SecondaryButton", "a"];
+    private static readonly string[] LinkOwnerTags = ["LegacyLink", "MudButton", "ShadcnButton", "ShadcnSidebarMenuButton", "ShadcnSidebarMenuSubButton", "PrimaryButton", "SecondaryButton", "a"];
 
     private static void AuditElements(
         SourceDocument document,
@@ -289,6 +290,12 @@ internal static class LegacyLinkSourceContracts
 
     private static SpecializedOwner ShadcnButton(string path, params string[] fragments) =>
         new(path, "ShadcnButton", fragments, 1);
+
+    private static SpecializedOwner ShadcnSidebarMenuButton(string path, params string[] fragments) =>
+        new(path, "ShadcnSidebarMenuButton", fragments, 1);
+
+    private static SpecializedOwner ShadcnSidebarMenuSubButton(string path, params string[] fragments) =>
+        new(path, "ShadcnSidebarMenuSubButton", fragments, 1);
 
     private static string SingleLine(string value) => Regex.Replace(value, @"\s+", " ").Trim();
 

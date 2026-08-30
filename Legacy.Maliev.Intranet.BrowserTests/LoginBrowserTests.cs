@@ -9,6 +9,38 @@ public sealed class LoginBrowserTests(
     PlaywrightFixture playwright)
 {
     [Theory]
+    [InlineData(1440, false)]
+    [InlineData(375, true)]
+    public async Task WasmBootShellShowsTheMalievWordmarkAndHorizontalProgress(int width, bool dark)
+    {
+        await using var context = await playwright.Browser.NewContextAsync(new()
+        {
+            ViewportSize = new() { Width = width, Height = 900 },
+            ReducedMotion = ReducedMotion.Reduce,
+        });
+        if (dark)
+            await context.AddInitScriptAsync("localStorage.setItem('maliev_theme', 'dark')");
+
+        var page = await context.NewPageAsync();
+        await page.RouteAsync("**/_framework/blazor.webassembly.js", route => route.AbortAsync());
+        await page.RouteAsync("https://accounts.google.com/**", route => route.AbortAsync());
+        await page.GotoAsync(server.BaseUri.AbsoluteUri);
+
+        var loading = page.Locator("#workspace-loading");
+        await loading.WaitForAsync();
+        Assert.Equal("Loading workspace", await loading.Locator(".legacy-loading-status").InnerTextAsync());
+        Assert.Equal(1, await loading.Locator(dark ? ".legacy-loading-logo--dark:visible" : ".legacy-loading-logo--light:visible").CountAsync());
+        Assert.Equal(0, await loading.Locator("svg.loading-progress").CountAsync());
+
+        var progress = loading.Locator(".loading-progress");
+        await progress.EvaluateAsync("element => element.style.setProperty('--blazor-load-percentage', '63%')");
+        var ratio = await progress.EvaluateAsync<double>(
+            "element => element.firstElementChild.getBoundingClientRect().width / element.getBoundingClientRect().width");
+        Assert.InRange(ratio, 0.62, 0.64);
+        Assert.True((await progress.BoundingBoxAsync())!.Width <= Math.Min(352, width - 48));
+    }
+
+    [Theory]
     [InlineData("")]
     [InlineData("Dashboard")]
     public async Task AnonymousEntryPointsShowLoginWithoutTheAuthenticatedApplicationShell(string path)
@@ -137,8 +169,9 @@ public sealed class LoginBrowserTests(
         }
 
         await signIn.ClickAsync();
-        await page.GetByRole(AriaRole.Alert).WaitForAsync();
-        Assert.Contains("invalid", await page.GetByRole(AriaRole.Alert).TextContentAsync(), StringComparison.OrdinalIgnoreCase);
+        var credentialError = page.Locator(".legacy-login-error[role='alert']");
+        await credentialError.WaitForAsync();
+        Assert.Contains("invalid", await credentialError.TextContentAsync(), StringComparison.OrdinalIgnoreCase);
         Assert.Equal(string.Empty, await password.InputValueAsync());
         Assert.Empty(errors);
     }

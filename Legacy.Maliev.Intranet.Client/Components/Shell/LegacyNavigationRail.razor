@@ -1,110 +1,92 @@
 @using Legacy.Maliev.Intranet.Client.Layout
 @inject NavigationManager Navigation
 @inject IStringLocalizer<LegacyTopBar> Text
-@inject IJSRuntime JS
 
-<aside id="@(IsDrawer ? "legacy-navigation-rail-drawer" : "legacy-navigation-rail")"
-       class="legacy-navigation-rail @(IsDrawer ? "drawer" : string.Empty)"
-       role="@(IsDrawer ? "dialog" : null)"
-       aria-modal="@(IsDrawer ? "true" : null)"
-       aria-label="@Text["Primary navigation"]"
-       @onkeydown="HandleKeyDown">
-    @if (IsDrawer)
-    {
-        <span class="legacy-drawer-focus-sentinel" tabindex="0" @onfocus="FocusLastAsync"></span>
-        <div class="legacy-rail-header">
+<div class="legacy-sidebar-host">
+<ShadcnSidebar Id="legacy-navigation-rail"
+               Collapsible="ShadcnSidebarCollapsible.Icon"
+               Label="@Text["Primary navigation"]" Class="legacy-navigation-rail">
+    <ShadcnSidebarHeader Class="legacy-rail-header">
+        <div class="legacy-rail-identity">
             <a class="legacy-rail-logo legacy-logo-link" href="/Dashboard" aria-label="@Text["MALIEV dashboard"]">
                 <img class="legacy-logo-image legacy-logo-image--light" src="images/MALIEV_BLACK.svg" alt="MALIEV" />
                 <img class="legacy-logo-image legacy-logo-image--dark" src="images/MALIEV_WHITE.svg" alt="" aria-hidden="true" />
+                <span class="legacy-rail-monogram" aria-hidden="true">M</span>
             </a>
-            <ShadcnButton id="legacy-navigation-close" Class="legacy-rail-close"
-                          Variant="ShadcnButtonVariant.Ghost" Size="ShadcnButtonSize.Icon"
-                          aria-label="@Text["Close navigation"]" OnClick="CloseAsync">
-                <ShadcnIcon Icon="CloseIcon" Size="20" />
-            </ShadcnButton>
+            <ShadcnSidebarTrigger id="legacy-sidebar-collapse" TargetId="legacy-navigation-rail"
+                                  Class="legacy-sidebar-collapse" />
         </div>
-    }
+    </ShadcnSidebarHeader>
 
-    <nav class="legacy-rail-groups">
+    <ShadcnSidebarContent Class="legacy-rail-groups">
         @foreach (var group in LegacyAppNavigation.Groups)
         {
-            <section class="legacy-rail-group" aria-labelledby="@GroupId(group)">
-                <h2 id="@GroupId(group)">@Text[group.Label]</h2>
-                <ul class="legacy-rail-items">
-                @foreach (var item in group.Items.Where(candidate => candidate.Kind == LegacyNavItemKind.Primary))
-                {
-                    var children = GetEnabledChildren(item);
-                    @if (IsItemEnabled(item) || children.Count > 0)
+            <ShadcnSidebarGroup Class="legacy-rail-group">
+                <ShadcnSidebarGroupLabel>@Text[group.Label]</ShadcnSidebarGroupLabel>
+                <ShadcnSidebarGroupContent>
+                    <ShadcnSidebarMenu Class="legacy-rail-items">
+                    @foreach (var item in group.Items.Where(candidate => candidate.Kind == LegacyNavItemKind.Primary))
                     {
-                        <li class="legacy-rail-item">
-                            @if (IsItemEnabled(item))
-                            {
-                                <a id="@ItemId(item)"
-                                   href="@item.Href"
-                                   @ref="_lastNavigationLink"
-                                   class="legacy-rail-link @(IsItemActive(item) ? "active" : string.Empty)"
-                                   aria-current="@(IsItemPageCurrent(item) ? "page" : null)"
-                                   title="@Text[item.Description ?? item.Label]"
-                                   @onclick="CloseAsync">
-                                    <ShadcnIcon Icon="@item.Icon" Size="20" />
-                                    <span>@Text[item.Label]</span>
-                                </a>
-                            }
-                            @if (children.Count > 0)
-                            {
-                                <ul class="legacy-rail-children"
-                                    aria-labelledby="@(IsItemEnabled(item) ? ItemId(item) : null)"
-                                    aria-label="@(!IsItemEnabled(item) ? Text[item.Label].Value : null)">
-                                @foreach (var child in children)
+                        var children = GetEnabledChildren(item);
+                        @if (IsItemEnabled(item) || children.Count > 0)
+                        {
+                            <ShadcnSidebarMenuItem Class="legacy-rail-item">
+                                @if (IsItemEnabled(item))
                                 {
-                                    <li>
-                                        <a href="@child.Href"
-                                           @ref="_lastNavigationLink"
-                                           class="legacy-rail-link legacy-rail-link--child @(IsItemActive(child) ? "active" : string.Empty)"
-                                           aria-current="@(IsItemPageCurrent(child) ? "page" : null)"
-                                           title="@Text[child.Description ?? child.Label]"
-                                           @onclick="CloseAsync">
-                                            <ShadcnIcon Icon="@child.Icon" Size="20" />
-                                            <span>@Text[child.Label]</span>
-                                        </a>
-                                    </li>
+                                    <ShadcnSidebarMenuButton id="@ItemId(item)" Href="@item.Href"
+                                       Active="@IsItemPageCurrent(item)" Class="legacy-rail-link"
+                                       Tooltip="@Text[item.Description ?? item.Label]" OnClick="NavigateAsync">
+                                        <ShadcnIcon Icon="@item.Icon" Size="20" />
+                                        <span>@Text[item.Label]</span>
+                                    </ShadcnSidebarMenuButton>
                                 }
-                                </ul>
-                            }
-                        </li>
+                                @if (children.Count > 0)
+                                {
+                                    <ShadcnSidebarMenuSub Class="legacy-rail-children"
+                                        aria-labelledby="@(IsItemEnabled(item) ? ItemId(item) : null)"
+                                        aria-label="@(!IsItemEnabled(item) ? Text[item.Label].Value : null)">
+                                    @foreach (var child in children)
+                                    {
+                                        <ShadcnSidebarMenuSubItem>
+                                            <ShadcnSidebarMenuSubButton id="@ItemId(child)" Href="@child.Href"
+                                               Active="@IsItemPageCurrent(child)" Class="legacy-rail-link legacy-rail-link--child"
+                                               title="@Text[child.Description ?? child.Label]" @onclick="NavigateAsync">
+                                                <ShadcnIcon Icon="@child.Icon" Size="20" />
+                                                <span>@Text[child.Label]</span>
+                                            </ShadcnSidebarMenuSubButton>
+                                        </ShadcnSidebarMenuSubItem>
+                                    }
+                                    </ShadcnSidebarMenuSub>
+                                }
+                            </ShadcnSidebarMenuItem>
+                        }
                     }
-                }
-                </ul>
-            </section>
+                    </ShadcnSidebarMenu>
+                </ShadcnSidebarGroupContent>
+            </ShadcnSidebarGroup>
         }
-    </nav>
-    @if (IsDrawer)
-    {
-        <span class="legacy-drawer-focus-sentinel" tabindex="0" @onfocus="FocusFirstAsync"></span>
-    }
-</aside>
+    </ShadcnSidebarContent>
+
+    <ShadcnSidebarFooter Class="legacy-rail-footer">
+        <div class="legacy-rail-user">
+            <ShadcnAvatar Class="legacy-rail-avatar" aria-hidden="true">
+                <ShadcnAvatarFallback>@GetInitials(Session?.DisplayName)</ShadcnAvatarFallback>
+            </ShadcnAvatar>
+            <span class="legacy-rail-user-copy">
+                <strong>@(Session?.DisplayName ?? Text["Employee"])</strong>
+                <small>@Text["Employee workspace"]</small>
+            </span>
+        </div>
+    </ShadcnSidebarFooter>
+</ShadcnSidebar>
+</div>
 
 @code {
     [Parameter] public EmployeeSessionSummary? Session { get; set; }
-    [Parameter] public bool IsDrawer { get; set; }
-    [Parameter] public EventCallback OnClose { get; set; }
-
-    private static readonly ShadcnIconData CloseIcon = LucideIconCatalog.Instance.Get(LucideIconNames.X);
-    private ElementReference _lastNavigationLink;
-
-    protected override async Task OnAfterRenderAsync(bool firstRender)
-    {
-        if (IsDrawer && firstRender)
-        {
-            await FocusCloseButtonAsync();
-        }
-    }
+    [Parameter] public EventCallback OnNavigate { get; set; }
 
     private bool IsItemEnabled(LegacyNavItem item) => LegacyNavigationAuthorization.IsEnabled(
-        Session?.IsAuthenticated == true,
-        item.RequiredPermission,
-        Session?.Permissions,
-        Session?.Roles);
+        Session?.IsAuthenticated == true, item.RequiredPermission, Session?.Permissions, Session?.Roles);
 
     private bool IsItemActive(LegacyNavItem item)
     {
@@ -117,48 +99,24 @@
     }
 
     private bool IsItemPageCurrent(LegacyNavItem item) => ReferenceEquals(FindCurrentItem(), item);
-
-    private LegacyNavItem? FindCurrentItem() => LegacyAppNavigation.Groups
-        .SelectMany(group => group.Items)
-        .Where(IsItemEnabled)
-        .Where(IsItemActive)
-        .OrderByDescending(item => NormalizeRoute(item.Href).Length)
-        .FirstOrDefault();
-
+    private LegacyNavItem? FindCurrentItem() => LegacyAppNavigation.Groups.SelectMany(group => group.Items)
+        .Where(IsItemEnabled).Where(IsItemActive)
+        .OrderByDescending(item => NormalizeRoute(item.Href).Length).FirstOrDefault();
     private IReadOnlyList<LegacyNavItem> GetEnabledChildren(LegacyNavItem parent) => LegacyAppNavigation.Groups
         .SelectMany(group => group.Items)
         .Where(item => item.Kind == LegacyNavItemKind.ChildAction &&
-                       string.Equals(item.ParentHref, parent.Href, StringComparison.OrdinalIgnoreCase) &&
-                       IsItemEnabled(item))
+                       string.Equals(item.ParentHref, parent.Href, StringComparison.OrdinalIgnoreCase) && IsItemEnabled(item))
         .ToArray();
-
     private string CurrentRoute() => Navigation.ToBaseRelativePath(Navigation.Uri).Split('?', '#')[0].Trim('/');
-
     private static string NormalizeRoute(string href) => href.Trim('/').Split('?', '#')[0];
-
     private static string ItemId(LegacyNavItem item) => $"legacy-rail-owner-{NormalizeRoute(item.Href).Replace('/', '-').ToLowerInvariant()}";
-
-    private static string GroupId(LegacyNavGroup group) => $"legacy-rail-{group.Label.ToLowerInvariant().Replace(' ', '-')}";
-
-    private Task CloseAsync() => IsDrawer ? OnClose.InvokeAsync() : Task.CompletedTask;
-
-    private Task HandleKeyDown(KeyboardEventArgs args) => args.Key == "Escape" ? CloseAsync() : Task.CompletedTask;
-
-    private async Task FocusFirstAsync(FocusEventArgs _)
+    private Task NavigateAsync() => OnNavigate.InvokeAsync();
+    private static string GetInitials(string? name)
     {
-        await FocusCloseButtonAsync();
+        if (string.IsNullOrWhiteSpace(name)) return "M";
+        var parts = name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        return parts.Length > 1
+            ? string.Concat(parts[0][0], parts[^1][0]).ToUpperInvariant()
+            : name[..Math.Min(2, name.Length)].ToUpperInvariant();
     }
-
-    private async Task FocusLastAsync(FocusEventArgs _)
-    {
-        if (LegacyAppNavigation.Groups.SelectMany(group => group.Items).Any(IsItemEnabled))
-        {
-            await _lastNavigationLink.FocusAsync();
-            return;
-        }
-
-        await FocusCloseButtonAsync();
-    }
-
-    private ValueTask FocusCloseButtonAsync() => JS.InvokeVoidAsync("malievFocus.byId", "legacy-navigation-close");
 }

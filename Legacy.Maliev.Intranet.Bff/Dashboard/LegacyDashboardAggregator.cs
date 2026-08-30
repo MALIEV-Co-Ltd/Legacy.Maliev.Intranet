@@ -207,6 +207,12 @@ public sealed class LegacyDashboardAggregator
             supplementalWork.Add(LoadMonthlyFinanceAsync(cancellationToken, state));
         }
 
+        if (allowed.Contains(LegacyEmployeePermissions.QuotationsRead) ||
+            allowed.Contains(LegacyEmployeePermissions.AccountingRead))
+        {
+            supplementalWork.Add(LoadCurrenciesAsync(cancellationToken, state));
+        }
+
         await Task.WhenAll(work.Cast<Task>().Concat(supplementalWork));
 
         var cards = (await Task.WhenAll(work))
@@ -223,7 +229,39 @@ public sealed class LegacyDashboardAggregator
             RecentActivity = state.RecentActivity,
             QuotationSummary = state.QuotationSummary,
             MonthlyFinance = state.MonthlyFinance,
+            CurrencyCodes = state.CurrencyCodes,
         };
+    }
+
+    private async Task LoadCurrenciesAsync(CancellationToken cancellationToken, DashboardState state)
+    {
+        try
+        {
+            using var response = await materials.GetCurrenciesAsync(cancellationToken);
+            if (response.StatusCode is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden)
+            {
+                return;
+            }
+
+            if (!response.IsSuccessStatusCode)
+            {
+                state.MarkDegraded("currencies");
+                return;
+            }
+
+            var currencies = await response.Content.ReadFromJsonAsync<IReadOnlyList<CatalogCurrency>>(cancellationToken);
+            if (currencies is null || currencies.Any(currency => currency.Id <= 0 || string.IsNullOrWhiteSpace(currency.ShortName)))
+            {
+                state.MarkDegraded("currencies");
+                return;
+            }
+
+            state.SetCurrencies(currencies);
+        }
+        catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException)
+        {
+            state.MarkDegraded("currencies");
+        }
     }
 
     private static async Task<DashboardCardResult?> CountAsync<TPage>(
@@ -353,6 +391,7 @@ public sealed class LegacyDashboardAggregator
         private readonly List<LegacyDashboardActivity> recentActivity = [];
         private QuotationStats? quotationSummary;
         private IReadOnlyList<FinanceSummaryDetail> monthlyFinance = [];
+        private IReadOnlyDictionary<int, string> currencyCodes = new Dictionary<int, string>();
 
         public IReadOnlySet<string> DegradedSources
         {
@@ -407,6 +446,11 @@ public sealed class LegacyDashboardAggregator
         public IReadOnlyList<FinanceSummaryDetail> MonthlyFinance
         {
             get { lock (gate) { return monthlyFinance.ToArray(); } }
+        }
+
+        public IReadOnlyDictionary<int, string> CurrencyCodes
+        {
+            get { lock (gate) { return new Dictionary<int, string>(currencyCodes); } }
         }
 
         public void MarkDegraded(string source)
@@ -514,6 +558,16 @@ public sealed class LegacyDashboardAggregator
         public void SetMonthlyFinance(IReadOnlyList<FinanceSummaryDetail> details)
         {
             lock (gate) { monthlyFinance = details.ToArray(); }
+        }
+
+        public void SetCurrencies(IReadOnlyList<CatalogCurrency> currencies)
+        {
+            lock (gate)
+            {
+                currencyCodes = currencies
+                    .GroupBy(currency => currency.Id)
+                    .ToDictionary(group => group.Key, group => group.First().ShortName.Trim());
+            }
         }
 
         private static string? ActivityTitle(QuotationRequestItem item)

@@ -3,42 +3,94 @@
 .legacy-wasm-loading {
     min-height: 100dvh;
     display: grid;
-    align-content: start;
+    align-content: center;
     justify-items: center;
-    gap: 0.75rem;
-    padding: 20vh 1rem 2rem;
-    background: #f6f8fb;
-    color: #172033;
+    grid-template-columns: minmax(0, 22rem);
+    padding: 2rem 1.5rem;
+    background: #fff;
+    color: #171717;
+}
+
+.legacy-loading-brand {
+    position: relative;
+    display: grid;
+    width: 10rem;
+    place-items: center;
+}
+
+.legacy-loading-logo {
+    display: block;
+    width: 100%;
+    height: auto;
+}
+
+.legacy-loading-logo--dark {
+    display: none;
+}
+
+.legacy-loading-status {
+    margin: 1.75rem 0 0;
+    color: inherit;
+    font: 500 0.875rem/1.4 "IBM Plex Sans Thai", sans-serif;
+    letter-spacing: 0.01em;
 }
 
 .loading-progress {
+    width: 100%;
+    height: 0.1875rem;
+    margin-top: 0.875rem;
+    overflow: hidden;
+    background: #e5e5e5;
+}
+
+.legacy-loading-progress-value {
     display: block;
-    width: 8rem;
-    height: 8rem;
+    inline-size: var(--blazor-load-percentage, 0%);
+    block-size: 100%;
+    background: #171717;
+    transition: inline-size 120ms ease-out;
 }
 
-.loading-progress circle {
-    fill: none;
-    stroke: #e2e8f0;
-    stroke-width: 0.6rem;
-    transform-origin: 50% 50%;
-    transform: rotate(-90deg);
-}
-
-.loading-progress circle:last-child {
-    stroke: #2f6fed;
-    stroke-dasharray: calc(3.141 * var(--blazor-load-percentage, 0%) * 0.8), 500%;
-    transition: stroke-dasharray 0.05s ease-in-out;
-}
-
-.loading-progress-text {
+.legacy-loading-meta {
+    display: flex;
+    width: 100%;
     min-height: 1.5rem;
-    text-align: center;
-    font-weight: 400;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-top: 0.625rem;
+    color: #737373;
+    font: 400 0.75rem/1.5 "IBM Plex Sans Thai", sans-serif;
 }
 
 .loading-progress-text::after {
-    content: var(--blazor-load-percentage-text, "Loading");
+    content: var(--blazor-load-percentage-text, "0%");
+    font-variant-numeric: tabular-nums;
+}
+
+:root[data-maliev-theme="dark"] .legacy-wasm-loading {
+    background: #0a0a0a;
+    color: #fafafa;
+}
+
+:root[data-maliev-theme="dark"] .legacy-loading-logo--light {
+    display: none;
+}
+
+:root[data-maliev-theme="dark"] .legacy-loading-logo--dark {
+    display: block;
+}
+
+:root[data-maliev-theme="dark"] .loading-progress {
+    background: #262626;
+}
+
+:root[data-maliev-theme="dark"] .legacy-loading-progress-value {
+    background: #fafafa;
+}
+
+:root[data-maliev-theme="dark"] .legacy-loading-meta {
+    color: #a3a3a3;
 }
 
 #blazor-error-ui {
@@ -80,7 +132,8 @@
 
 @media (max-width: 640px) {
     .legacy-wasm-loading {
-        padding-top: 15vh;
+        grid-template-columns: minmax(0, 18rem);
+        padding-inline: 1.5rem;
     }
 
     #blazor-error-ui {
@@ -94,14 +147,19 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-    .loading-progress circle:last-child {
+    .legacy-loading-progress-value {
         transition: none;
     }
 }
 
 @media (forced-colors: active) {
-    .loading-progress circle:last-child {
-        stroke: CanvasText;
+    .loading-progress {
+        border: 1px solid CanvasText;
+        background: Canvas;
+    }
+
+    .legacy-loading-progress-value {
+        background: CanvasText;
     }
 
     #blazor-error-ui {

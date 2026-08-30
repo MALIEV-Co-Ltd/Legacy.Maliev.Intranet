@@ -79,12 +79,19 @@
 </head>
 <body>
     <div id="app">
-        <div id="workspace-loading" class="legacy-wasm-loading" role="status" aria-live="polite" aria-label="Loading MALIEV Intranet">
-            <svg class="loading-progress" aria-hidden="true" focusable="false">
-                <circle r="40%" cx="50%" cy="50%" />
-                <circle r="40%" cx="50%" cy="50%" />
-            </svg>
-            <div class="loading-progress-text" aria-hidden="true"></div>
+        <div id="workspace-loading" class="legacy-wasm-loading" role="status" aria-live="polite" aria-atomic="true">
+            <div class="legacy-loading-brand" aria-hidden="true">
+                <img class="legacy-loading-logo legacy-loading-logo--light" src="images/MALIEV_BLACK.svg" alt="" />
+                <img class="legacy-loading-logo legacy-loading-logo--dark" src="images/MALIEV_WHITE.svg" alt="" />
+            </div>
+            <p class="legacy-loading-status">Loading workspace</p>
+            <div class="loading-progress" aria-hidden="true">
+                <span class="legacy-loading-progress-value"></span>
+            </div>
+            <div class="legacy-loading-meta" aria-hidden="true">
+                <span>Preparing secure access</span>
+                <span class="loading-progress-text"></span>
+            </div>
         </div>
     </div>
     <div id="blazor-error-ui" role="alert">
@@ -97,6 +104,7 @@
     <script src="js/workspace-culture.js"></script>
     <script src="js/workspace-focus.js"></script>
     <script src="js/customer-workspace.js"></script>
+    <script src="js/dashboard-refresh.js"></script>
     <script src="_framework/blazor.webassembly.js"></script>
 </body>
 </html>

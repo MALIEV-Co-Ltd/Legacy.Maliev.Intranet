@@ -128,7 +128,7 @@ public sealed class LegacyNavigationContractTests
         Assert.Contains("Description", navigation, StringComparison.Ordinal);
         Assert.Contains("LegacyAppNavigation.Groups", rail, StringComparison.Ordinal);
         Assert.Contains("legacy-rail-group", rail, StringComparison.Ordinal);
-        Assert.Contains("aria-current", rail, StringComparison.Ordinal);
+        Assert.Contains("Active=\"@IsItemPageCurrent", rail, StringComparison.Ordinal);
         Assert.DoesNotContain("legacy-nav-more-trigger", rail, StringComparison.Ordinal);
 
         // The primary desktop groups mirror current workspace ordering while

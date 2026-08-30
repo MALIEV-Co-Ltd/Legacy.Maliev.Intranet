@@ -41,25 +41,6 @@
     border-bottom: 1px solid var(--shadcn-border);
 }
 
-.legacy-navigation-rail .legacy-rail-link {
-    border: 1px solid transparent;
-    border-radius: var(--shadcn-radius-md);
-    color: var(--shadcn-sidebar-foreground);
-    transition: background-color 120ms ease, border-color 120ms ease, color 120ms ease;
-}
-
-.legacy-navigation-rail .legacy-rail-link:hover,
-.legacy-navigation-rail .legacy-rail-link:focus-visible {
-    border-color: var(--shadcn-border);
-    background: var(--shadcn-accent);
-    color: var(--shadcn-accent-foreground);
-}
-
-.legacy-navigation-rail .legacy-rail-link.active {
-    background: var(--shadcn-primary);
-    color: var(--shadcn-primary-foreground);
-}
-
 .legacy-workspace-shell .legacy-global-search,
 .legacy-workspace-shell .legacy-profile,
 .legacy-workspace-shell .legacy-quick-action {
