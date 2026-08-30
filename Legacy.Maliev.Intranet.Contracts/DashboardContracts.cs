@@ -36,6 +36,9 @@ public sealed record LegacyDashboardSnapshot(
 
     /// <summary>AccountingService-owned monthly amounts grouped by currency.</summary>
     public IReadOnlyList<FinanceSummaryDetail> MonthlyFinance { get; init; } = [];
+
+    /// <summary>CatalogService-owned ISO-style currency short names keyed by the legacy database identifier.</summary>
+    public IReadOnlyDictionary<int, string> CurrencyCodes { get; init; } = new Dictionary<int, string>();
 }
 
 /// <summary>Bounded order row used by the operations dashboard.</summary>

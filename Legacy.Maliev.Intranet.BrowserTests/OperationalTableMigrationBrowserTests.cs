@@ -9,6 +9,58 @@ public sealed class OperationalTableMigrationBrowserTests(
     IntranetClientServerFixture server,
     PlaywrightFixture playwright)
 {
+    [Fact]
+    public async Task DashboardRefreshesItsSnapshotWithoutManualInteraction()
+    {
+        await using var context = await playwright.Browser.NewContextAsync(new()
+        {
+            ViewportSize = new() { Width = 1280, Height = 900 },
+            ReducedMotion = ReducedMotion.Reduce,
+        });
+        var page = await context.NewPageAsync();
+        var refreshErrors = new List<string>();
+        page.Console += (_, message) => { if (message.Type == "error") refreshErrors.Add(message.Text); };
+        page.PageError += (_, error) => refreshErrors.Add(error);
+        await StubSpecializedTableBoundariesAsync(page);
+        await page.UnrouteAsync("**/bff/dashboard");
+        var requestCount = 0;
+        await page.RouteAsync("**/bff/dashboard", route =>
+        {
+            var generatedAt = Interlocked.Increment(ref requestCount) == 1
+                ? "2030-08-13T10:00:00+07:00"
+                : "2030-08-13T10:01:00+07:00";
+            return route.FulfillAsync(new()
+            {
+                Status = 200,
+                ContentType = "application/json",
+                Body = JsonSerializer.Serialize(new
+                {
+                    generatedAt,
+                    cards = Array.Empty<object>(),
+                    degradedSources = Array.Empty<string>(),
+                    recentOrders = Array.Empty<object>(),
+                    recentQuotations = Array.Empty<object>(),
+                    recentCustomers = Array.Empty<object>(),
+                    recentPayments = Array.Empty<object>(),
+                    recentActivity = Array.Empty<object>(),
+                    monthlyFinance = Array.Empty<object>(),
+                    quotationSummary = (object?)null,
+                    currencyCodes = new Dictionary<int, string>(),
+                }),
+            });
+        });
+
+        await page.GotoAsync(new Uri(server.BaseUri, "Dashboard").AbsoluteUri);
+        var timestamp = page.Locator(".dashboard-freshness time");
+        await timestamp.WaitForAsync();
+        Assert.Equal("2030-08-13T10:00:00.0000000+07:00", await timestamp.GetAttributeAsync("datetime"));
+
+        await page.WaitForTimeoutAsync(17_000);
+        Assert.True(requestCount >= 2, $"Dashboard requests: {requestCount}; browser errors: {string.Join(" | ", refreshErrors)}");
+        Assert.Equal("2030-08-13T10:01:00.0000000+07:00", await timestamp.GetAttributeAsync("datetime"));
+        Assert.Empty(refreshErrors);
+    }
+
     public static TheoryData<string, string, string, string> SalesPages => new()
     {
         { "customers", "View customer 101", "/Customers/View?id=101", "Expand customer 101" },
@@ -316,6 +368,9 @@ public sealed class OperationalTableMigrationBrowserTests(
         {
             Assert.Equal("nowrap", await atomic.EvaluateAsync<string>("node => getComputedStyle(node).whiteSpace"));
         }
+        var moneyValues = await page.Locator(".dashboard-money").AllInnerTextsAsync();
+        Assert.All(moneyValues, value => Assert.Contains("THB", value, StringComparison.Ordinal));
+        Assert.DoesNotContain(moneyValues, value => value.Contains("Currency ", StringComparison.Ordinal));
         foreach (var expected in expectedRecords)
         {
             var table = page.Locator($"[data-projection='{expected.Projection}']:is(table), [data-projection='{expected.Projection}'] table");
@@ -736,12 +791,13 @@ public sealed class OperationalTableMigrationBrowserTests(
                 cards = Array.Empty<object>(),
                 degradedSources = Array.Empty<string>(),
                 recentOrders = new[] { new { id = 901, name = "ชิ้นส่วนประกอบความเที่ยงตรงสูงสำหรับสายการผลิต", quantity = 4, manufactured = 1, remaining = 3, promisedDate = "2030-08-20T00:00:00Z", navigateTo = "/sales/orders/901" } },
-                recentQuotations = new[] { new { id = 902, total = 1200m, quotedAmount = 1100m, currencyId = 1, expirationDate = "2030-09-01T00:00:00Z", accepted = (bool?)null, createdDate = "2030-08-02T00:00:00Z", navigateTo = "/Quotations/View?id=902" } },
+                recentQuotations = new[] { new { id = 902, total = 1200m, quotedAmount = 1100m, currencyId = 764, expirationDate = "2030-09-01T00:00:00Z", accepted = (bool?)null, createdDate = "2030-08-02T00:00:00Z", navigateTo = "/Quotations/View?id=902" } },
                 recentCustomers = new[] { new { id = 69738, fullName = "Mali Dee", email = "mali@maliev.com", company = "บริษัท มาลีฟ พรีซิชั่น แมนูแฟคเจอริ่ง จำกัด", navigateTo = "/Customers/View?id=69738" } },
-                recentPayments = new[] { new { id = 903, amount = 900m, currencyId = (int?)1, recipient = "ผู้รับชำระเงินสำหรับโครงการอุตสาหกรรมระยะยาว", paymentDate = "2030-08-04T00:00:00Z", createdDate = "2030-08-03T00:00:00Z", navigateTo = "/Finances/View?id=903" } },
+                recentPayments = new[] { new { id = 903, amount = 900m, currencyId = (int?)764, recipient = "ผู้รับชำระเงินสำหรับโครงการอุตสาหกรรมระยะยาว", paymentDate = "2030-08-04T00:00:00Z", createdDate = "2030-08-03T00:00:00Z", navigateTo = "/Finances/View?id=903" } },
                 recentActivity = Array.Empty<object>(),
                 monthlyFinance = Array.Empty<object>(),
                 quotationSummary = (object?)null,
+                currencyCodes = new Dictionary<int, string> { [764] = "THB" },
             }),
         }));
         await page.RouteAsync("**/bff/customers/69738", route => route.FulfillAsync(new()

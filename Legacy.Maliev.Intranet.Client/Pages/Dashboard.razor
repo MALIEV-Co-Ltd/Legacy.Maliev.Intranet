@@ -5,6 +5,8 @@
 @inject HttpClient Http
 @inject NavigationManager Navigation
 @inject IStringLocalizer<Dashboard> Text
+@inject IJSRuntime JS
+@implements IAsyncDisposable
 
 <PageTitle>@Text["PageTitle"]</PageTitle>
 
@@ -258,6 +260,7 @@
 
 @code {
     private static readonly TimeSpan BangkokOffset = TimeSpan.FromHours(7);
+    private static readonly TimeSpan RefreshInterval = TimeSpan.FromSeconds(15);
     private static readonly ShadcnIconData RefreshIcon = LucideIconCatalog.Instance.Get(LucideIconNames.RefreshCw);
     private static readonly ShadcnIconData InvoiceIcon = LucideIconCatalog.Instance.Get(LucideIconNames.ReceiptText);
     private static readonly ShadcnIconData QuotationRequestIcon = LucideIconCatalog.Instance.Get(LucideIconNames.Mail);
@@ -266,6 +269,8 @@
     private LegacyDashboardSnapshot? _snapshot;
     private string? _error;
     private bool _loading = true;
+    private DotNetObjectReference<Dashboard>? _selfReference;
+    private int? _refreshHandle;
 
     private bool HasOperationalContent => _snapshot is not null &&
         (_snapshot.RecentOrders.Count > 0 || _snapshot.RecentQuotations.Count > 0 ||
@@ -287,13 +292,31 @@
         }
     }
 
-    protected override Task OnInitializedAsync() => LoadAsync();
-
-    private Task RefreshAsync() => LoadAsync();
-
-    private async Task LoadAsync()
+    protected override async Task OnInitializedAsync()
     {
-        _loading = true;
+        await LoadAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            _selfReference = DotNetObjectReference.Create(this);
+            _refreshHandle = await JS.InvokeAsync<int>(
+                "malievDashboardRefresh.start",
+                _selfReference,
+                RefreshInterval.TotalMilliseconds);
+        }
+    }
+
+    private Task RefreshAsync() => LoadAsync(showLoading: false);
+
+    private async Task LoadAsync(bool showLoading = true)
+    {
+        if (showLoading)
+        {
+            _loading = true;
+        }
         _error = null;
         try
         {
@@ -319,8 +342,28 @@
         }
         finally
         {
-            _loading = false;
+            if (showLoading)
+            {
+                _loading = false;
+            }
         }
+    }
+
+    [JSInvokable]
+    public async Task RefreshFromBrowserAsync()
+    {
+        await LoadAsync(showLoading: false);
+        await InvokeAsync(StateHasChanged);
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_refreshHandle is int refreshHandle)
+        {
+            await JS.InvokeVoidAsync("malievDashboardRefresh.stop", refreshHandle);
+        }
+
+        _selfReference?.Dispose();
     }
 
     private static ShadcnIconData ActivityIcon(string kind) => kind switch
@@ -355,20 +398,30 @@
     private string Decision(bool? accepted) => accepted switch { true => Text["Accepted"], false => Text["Declined"], null => Text["Open"] };
     private static string DecisionClass(bool? accepted) => accepted switch { true => "is-complete", false => "is-declined", null => "is-open" };
 
-    private string FormatMoney(decimal value, int currencyId) => Text["MoneyFormat", value.ToString("N2", System.Globalization.CultureInfo.CurrentCulture), CurrencyName(currencyId.ToString(System.Globalization.CultureInfo.InvariantCulture))];
+    private string FormatMoney(decimal value, int currencyId) => Text["MoneyFormat", value.ToString("N2", System.Globalization.CultureInfo.CurrentCulture), CurrencyName(currencyId)];
     private string FormatMoney(decimal value, int? currencyId) => currencyId is int valueId
         ? FormatMoney(value, valueId)
         : Text["MoneyFormat", value.ToString("N2", System.Globalization.CultureInfo.CurrentCulture), Text["CurrencyUnavailable"]];
     private string FormatMoney(decimal value, string currencyId) => Text["MoneyFormat", value.ToString("N2", System.Globalization.CultureInfo.CurrentCulture), CurrencyName(currencyId)];
-    private string CurrencyName(string currencyId)
+    private string CurrencyName(int currencyId)
     {
-        if (currencyId.Equals("THB", StringComparison.OrdinalIgnoreCase) || currencyId is "1" or "138")
+        if (_snapshot is null ||
+            !_snapshot.CurrencyCodes.TryGetValue(currencyId, out var currencyCode) ||
+            string.IsNullOrWhiteSpace(currencyCode))
         {
-            return System.Globalization.CultureInfo.CurrentUICulture.TwoLetterISOLanguageName == "th" ? "บาท" : "THB";
+            return Text["CurrencyUnavailable"];
         }
 
-        return int.TryParse(currencyId, out _) ? Text["CurrencyNumber", currencyId] : currencyId.ToUpperInvariant();
+        return LocalizeCurrencyCode(currencyCode);
     }
+    private string CurrencyName(string currencyId) => int.TryParse(currencyId, out var numericId)
+        ? CurrencyName(numericId)
+        : LocalizeCurrencyCode(currencyId);
+    private static string LocalizeCurrencyCode(string currencyCode) =>
+        currencyCode.Equals("THB", StringComparison.OrdinalIgnoreCase) &&
+        System.Globalization.CultureInfo.CurrentUICulture.TwoLetterISOLanguageName == "th"
+            ? "บาท"
+            : currencyCode.ToUpperInvariant();
     private static string Percent(int value, int total) => $"{(total == 0 ? 0m : value * 100m / total).ToString("N1", System.Globalization.CultureInfo.CurrentCulture)}%";
     private static string SignedPercent(decimal value) => $"{(value >= 0 ? "+" : string.Empty)}{value.ToString("N1", System.Globalization.CultureInfo.CurrentCulture)}%";
 

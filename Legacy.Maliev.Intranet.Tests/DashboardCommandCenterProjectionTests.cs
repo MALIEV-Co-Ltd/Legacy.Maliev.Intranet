@@ -51,6 +51,8 @@ public sealed class DashboardCommandCenterProjectionTests
         var quotation = Assert.Single(result.RecentQuotations);
         Assert.Equal(71, quotation.Id);
         Assert.Equal(1070.25m, quotation.Total);
+        Assert.Equal(764, quotation.CurrencyId);
+        Assert.Equal("THB", result.CurrencyCodes[764]);
         Assert.Equal("/Quotations/View?id=71", quotation.NavigateTo);
         var summary = Assert.IsType<QuotationStats>(result.QuotationSummary);
         Assert.Equal(4, summary.Accepted);
@@ -156,8 +158,8 @@ public sealed class DashboardCommandCenterProjectionTests
         Assert.DoesNotContain("DashboardMetricCard", dashboard, StringComparison.Ordinal);
         Assert.Contains("Class=\"dashboard-wide-panel\"", dashboard, StringComparison.Ordinal);
         Assert.Contains(".dashboard-secondary-grid { grid-template-columns: repeat(2", styles, StringComparison.Ordinal);
-        Assert.Contains("currencyId is \"1\" or \"138\"", dashboard, StringComparison.Ordinal);
-        Assert.Contains("? \"บาท\" : \"THB\"", dashboard, StringComparison.Ordinal);
+        Assert.Contains("_snapshot.CurrencyCodes.TryGetValue(currencyId", dashboard, StringComparison.Ordinal);
+        Assert.Contains("currencyCode.Equals(\"THB\"", dashboard, StringComparison.Ordinal);
         Assert.DoesNotContain("dashboard-eyebrow", dashboard, StringComparison.Ordinal);
         Assert.DoesNotContain("sparkline", dashboard, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("revenue", dashboard, StringComparison.OrdinalIgnoreCase);
@@ -272,8 +274,9 @@ public sealed class DashboardCommandCenterProjectionTests
                     [new(42, "สมชาย", "ทดสอบ", "สมชาย ทดสอบ", "customer@example.test", new CustomerCompanyListItem(8, "บริษัท ทดสอบ จำกัด"))],
                     1, 1, 1, false, false),
                 var value when value.StartsWith("/quotations?", StringComparison.OrdinalIgnoreCase) => new QuotationListPage(
-                    [new(71, 10, 3, null, 14, new DateTime(2030, 8, 14), 1000m, 70.25m, 1070.25m, null, null, 1, null, null, null, null, null, new DateTime(2030, 8, 1), null)],
+                    [new(71, 10, 3, null, 14, new DateTime(2030, 8, 14), 1000m, 70.25m, 1070.25m, null, null, 764, null, null, null, null, null, new DateTime(2030, 8, 1), null)],
                     1, 1, 1, false, false),
+                "/Currencies" => new[] { new CatalogCurrency(764, "THB") },
                 "/quotations/stats" => new QuotationStats(4, 2, 3),
                 var value when value.StartsWith("/invoices?", StringComparison.OrdinalIgnoreCase) => new InvoiceListPage(
                     [new(7, 10, "INV-2030-007", "THB", null, 1000m, 70m, 1070m, null, 1070m, false, null, null, new DateTime(2030, 8, 1))],
