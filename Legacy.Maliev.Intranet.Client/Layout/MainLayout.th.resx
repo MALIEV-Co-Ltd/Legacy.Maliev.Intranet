@@ -5,4 +5,6 @@
   <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
   <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
   <data name="Skip to content" xml:space="preserve"><value>ข้ามไปยังเนื้อหา</value></data>
+  <data name="Toggle navigation" xml:space="preserve"><value>สลับเมนูนำทาง</value></data>
+  <data name="Close navigation" xml:space="preserve"><value>ปิดเมนูนำทาง</value></data>
 </root>

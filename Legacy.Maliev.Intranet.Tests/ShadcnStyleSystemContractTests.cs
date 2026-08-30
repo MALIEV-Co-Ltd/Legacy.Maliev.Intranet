@@ -63,8 +63,8 @@ public sealed class ShadcnStyleSystemContractTests
         var rail = Read("Legacy.Maliev.Intranet.Client", "Components", "Shell", "LegacyNavigationRail.razor");
         var appCss = Read("Legacy.Maliev.Intranet.Client", "wwwroot", "css", "app.css");
 
-        Assert.Contains("images/MALIEV_BLACK.svg", topBar, StringComparison.Ordinal);
-        Assert.Contains("images/MALIEV_WHITE.svg", topBar, StringComparison.Ordinal);
+        Assert.DoesNotContain("images/MALIEV_BLACK.svg", topBar, StringComparison.Ordinal);
+        Assert.DoesNotContain("images/MALIEV_WHITE.svg", topBar, StringComparison.Ordinal);
         Assert.Contains("images/MALIEV_BLACK.svg", rail, StringComparison.Ordinal);
         Assert.Contains("images/MALIEV_WHITE.svg", rail, StringComparison.Ordinal);
         Assert.Contains(":root[data-maliev-theme=\"dark\"] .legacy-logo-image--dark", appCss, StringComparison.Ordinal);

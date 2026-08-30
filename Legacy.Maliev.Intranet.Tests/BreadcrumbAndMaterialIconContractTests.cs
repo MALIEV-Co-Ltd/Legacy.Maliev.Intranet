@@ -29,8 +29,8 @@ public sealed class BreadcrumbAndMaterialIconContractTests : BunitContext
     private static readonly IReadOnlyList<ApprovedSvgReference> ApprovedSvgReferences =
     [
         new("Legacy.Maliev.Intranet.Client/wwwroot/index.html", "images/favicon.svg", "<link rel=\"icon\" type=\"image/svg+xml\" href=\"images/favicon.svg\" />", "Browser favicon link"),
-        new("Legacy.Maliev.Intranet.Client/Layout/LegacyTopBar.razor", "images/MALIEV_BLACK.svg", "<img class=\"legacy-logo-image legacy-logo-image--light\" src=\"images/MALIEV_BLACK.svg\" alt=\"MALIEV\" />", "Light-theme top-bar wordmark"),
-        new("Legacy.Maliev.Intranet.Client/Layout/LegacyTopBar.razor", "images/MALIEV_WHITE.svg", "<img class=\"legacy-logo-image legacy-logo-image--dark\" src=\"images/MALIEV_WHITE.svg\" alt=\"\" aria-hidden=\"true\" />", "Dark-theme top-bar wordmark"),
+        new("Legacy.Maliev.Intranet.Client/wwwroot/index.html", "images/MALIEV_BLACK.svg", "<img class=\"legacy-loading-logo legacy-loading-logo--light\" src=\"images/MALIEV_BLACK.svg\" alt=\"\" />", "Light-theme WASM loading wordmark"),
+        new("Legacy.Maliev.Intranet.Client/wwwroot/index.html", "images/MALIEV_WHITE.svg", "<img class=\"legacy-loading-logo legacy-loading-logo--dark\" src=\"images/MALIEV_WHITE.svg\" alt=\"\" />", "Dark-theme WASM loading wordmark"),
         new("Legacy.Maliev.Intranet.Client/Pages/Login.razor", "images/MALIEV_WHITE.svg", "<img src=\"images/MALIEV_WHITE.svg\" alt=\"MALIEV\" class=\"legacy-login-brand-image\" />", "Visible login brand wordmark"),
         new("Legacy.Maliev.Intranet.Client/Components/Shell/LegacyNavigationRail.razor", "images/MALIEV_BLACK.svg", "<img class=\"legacy-logo-image legacy-logo-image--light\" src=\"images/MALIEV_BLACK.svg\" alt=\"MALIEV\" />", "Light-theme navigation wordmark"),
         new("Legacy.Maliev.Intranet.Client/Components/Shell/LegacyNavigationRail.razor", "images/MALIEV_WHITE.svg", "<img class=\"legacy-logo-image legacy-logo-image--dark\" src=\"images/MALIEV_WHITE.svg\" alt=\"\" aria-hidden=\"true\" />", "Dark-theme navigation wordmark"),
@@ -45,15 +45,6 @@ public sealed class BreadcrumbAndMaterialIconContractTests : BunitContext
             "Legacy.Maliev.Intranet/Pages/Shared/_Layout.cshtml",
             "<svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><circle cx=\"11\" cy=\"11\" r=\"6\" /><path d=\"m16 16 4 4\" /></svg>",
             "Decorative search indicator for the explicitly labelled search field"),
-        new(
-            "Legacy.Maliev.Intranet.Client/wwwroot/index.html",
-            """
-            <svg class="loading-progress" aria-hidden="true" focusable="false">
-                            <circle r="40%" cx="50%" cy="50%" />
-                            <circle r="40%" cx="50%" cy="50%" />
-                        </svg>
-            """,
-            "Structural loading-progress graphic inside the named live status region"),
         new(
             "Legacy.Maliev.Intranet.Client/wwwroot/css/module-pages.css",
             "data:image/svg+xml,%3Csvg width='16' height='16' viewBox='0 0 16 16' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M4 6L8 10L12 6' stroke='%23657380' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E",
@@ -214,7 +205,7 @@ public sealed class BreadcrumbAndMaterialIconContractTests : BunitContext
     }
 
     [Fact]
-    public void Approved_svg_asset_content_reference_source_and_inline_block_are_fail_closed()
+    public void Approved_svg_asset_content_and_reference_markup_are_fail_closed()
     {
         var root = FindRepositoryRoot();
         const string assetPath = "Legacy.Maliev.Intranet.Client/wwwroot/images/favicon.svg";
@@ -233,8 +224,8 @@ public sealed class BreadcrumbAndMaterialIconContractTests : BunitContext
         const string loadingPath = "Legacy.Maliev.Intranet.Client/wwwroot/index.html";
         var loading = File.ReadAllText(Path.Combine(root, loadingPath.Replace('/', Path.DirectorySeparatorChar)));
         var mutatedLoading = loading.Replace(
-            "</svg>",
-            "<path d=\"M0 0\" /></svg>",
+            "legacy-loading-logo--light",
+            "legacy-loading-logo--unapproved",
             StringComparison.Ordinal);
         Assert.NotEmpty(FindIconInventoryViolations([new(loadingPath, mutatedLoading)]));
     }

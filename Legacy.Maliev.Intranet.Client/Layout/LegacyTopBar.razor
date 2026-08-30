@@ -2,22 +2,14 @@
 @using Legacy.Maliev.Intranet.Contracts
 @inject LegacyThemeService ThemeService
 @inject IStringLocalizer<LegacyTopBar> Text
-@inject IJSRuntime JS
 @implements IDisposable
 
 <header class="legacy-topbar" @onkeydown="HandleKeyDown">
     <div class="legacy-topbar__brand">
-        <a class="legacy-topbar-logo" href="/Dashboard" aria-label="@Text["MALIEV dashboard"]">
-            <img class="legacy-logo-image legacy-logo-image--light" src="images/MALIEV_BLACK.svg" alt="MALIEV" />
-            <img class="legacy-logo-image legacy-logo-image--dark" src="images/MALIEV_WHITE.svg" alt="" aria-hidden="true" />
-        </a>
-
-        <ShadcnButton id="legacy-navigation-toggle" Class="legacy-mobile-menu-button"
-                      Variant="ShadcnButtonVariant.Ghost" Size="ShadcnButtonSize.Icon"
-                      aria-label="@Text["Open navigation"]" aria-expanded="@NavigationOpen"
-                      aria-controls="legacy-navigation-rail-drawer" OnClick="OnToggleNavigation">
-            <ShadcnIcon Icon="MenuIcon" Size="20" />
-        </ShadcnButton>
+        <ShadcnSidebarTrigger id="legacy-mobile-navigation-toggle"
+                              TargetId="legacy-navigation-rail"
+                              Class="legacy-mobile-menu-button"
+                              aria-label="@Text["Open navigation"]" />
     </div>
 
     <div class="legacy-topbar__search">
@@ -81,14 +73,9 @@
 
 @code {
     [Parameter] public EmployeeSessionSummary? Session { get; set; }
-    [Parameter] public bool NavigationOpen { get; set; }
-    [Parameter] public EventCallback OnToggleNavigation { get; set; }
-    [Parameter] public EventCallback OnCloseNavigation { get; set; }
     [Parameter] public EventCallback OnSignOut { get; set; }
 
     private bool _profileMenuOpen;
-    private bool _wasNavigationOpen;
-    private static readonly ShadcnIconData MenuIcon = LucideIconCatalog.Instance.Get(LucideIconNames.Menu);
     private static readonly ShadcnIconData SunIcon = LucideIconCatalog.Instance.Get(LucideIconNames.Sun);
     private static readonly ShadcnIconData MoonIcon = LucideIconCatalog.Instance.Get(LucideIconNames.Moon);
     private static readonly ShadcnIconData ChevronDownIcon = LucideIconCatalog.Instance.Get(LucideIconNames.ChevronDown);
@@ -96,16 +83,6 @@
     private static readonly ShadcnIconData SignOutIcon = LucideIconCatalog.Instance.Get(LucideIconNames.LogOut);
 
     protected override void OnInitialized() => ThemeService.Changed += OnThemeChanged;
-
-    protected override async Task OnAfterRenderAsync(bool firstRender)
-    {
-        if (!firstRender && _wasNavigationOpen && !NavigationOpen)
-        {
-            await JS.InvokeVoidAsync("malievFocus.byId", "legacy-navigation-toggle");
-        }
-
-        _wasNavigationOpen = NavigationOpen;
-    }
 
     private Task ToggleProfileMenuAsync()
     {
@@ -130,7 +107,6 @@
         if (args.Key == "Escape")
         {
             _profileMenuOpen = false;
-            await OnCloseNavigation.InvokeAsync();
         }
     }
 

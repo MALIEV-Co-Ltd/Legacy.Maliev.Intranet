@@ -29,12 +29,16 @@ public sealed class WasmShellAssetsContractTests
         Assert.Contains("rel=\"icon\" type=\"image/svg+xml\" href=\"images/favicon.svg\"", index, StringComparison.Ordinal);
         Assert.Contains("class=\"legacy-wasm-loading\"", index, StringComparison.Ordinal);
         Assert.Contains("role=\"status\" aria-live=\"polite\"", index, StringComparison.Ordinal);
-        Assert.Equal(2, CountOccurrences(index, "<circle "));
+        Assert.Contains("images/MALIEV_BLACK.svg", index, StringComparison.Ordinal);
+        Assert.Contains("images/MALIEV_WHITE.svg", index, StringComparison.Ordinal);
+        Assert.Contains("class=\"loading-progress\"", index, StringComparison.Ordinal);
+        Assert.DoesNotContain("<circle ", index, StringComparison.Ordinal);
         Assert.Contains("id=\"blazor-error-ui\" role=\"alert\"", index, StringComparison.Ordinal);
         Assert.Contains("class=\"reload\"", index, StringComparison.Ordinal);
         Assert.Contains("class=\"dismiss\"", index, StringComparison.Ordinal);
         Assert.Contains("_framework/blazor.webassembly.js", index, StringComparison.Ordinal);
         Assert.Contains("--blazor-load-percentage", css, StringComparison.Ordinal);
+        Assert.Contains("inline-size: var(--blazor-load-percentage, 0%)", css, StringComparison.Ordinal);
         Assert.Contains("@media (prefers-reduced-motion: reduce)", css, StringComparison.Ordinal);
         Assert.Contains("@media (forced-colors: active)", css, StringComparison.Ordinal);
         Assert.Contains("#blazor-error-ui", css, StringComparison.Ordinal);
@@ -57,7 +61,7 @@ public sealed class WasmShellAssetsContractTests
             "loading-shell.css"));
 
         Assert.Contains("@media (max-width: 640px)", css, StringComparison.Ordinal);
-        Assert.Contains("padding-top: 15vh", css, StringComparison.Ordinal);
+        Assert.Contains("grid-template-columns: minmax(0, 18rem)", css, StringComparison.Ordinal);
         Assert.Contains("padding-inline: 0.75rem 2.75rem", css, StringComparison.Ordinal);
         Assert.Contains("min-height: 1.5rem", css, StringComparison.Ordinal);
         Assert.Contains("focus-visible", css, StringComparison.Ordinal);
@@ -76,19 +80,6 @@ public sealed class WasmShellAssetsContractTests
         Assert.Contains("@media (max-width: 720px)", css, StringComparison.Ordinal);
         Assert.Contains(":where(input, button, a)", css, StringComparison.Ordinal);
         Assert.Contains("min-height: 44px", css, StringComparison.Ordinal);
-    }
-
-    private static int CountOccurrences(string value, string token)
-    {
-        var count = 0;
-        var offset = 0;
-        while ((offset = value.IndexOf(token, offset, StringComparison.Ordinal)) >= 0)
-        {
-            count++;
-            offset += token.Length;
-        }
-
-        return count;
     }
 
     private static string FindRoot()
