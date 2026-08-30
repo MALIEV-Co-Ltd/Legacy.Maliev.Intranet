@@ -22,6 +22,35 @@ public sealed class OperationalShellBrowserTests(
     ];
 
     [Fact]
+    public async Task NavigationAndProfileUseReleasedShadcnPrimitivesWithoutDefaultLinkDecoration()
+    {
+        await using var context = await playwright.Browser.NewContextAsync(new()
+        {
+            ViewportSize = new() { Width = 1280, Height = 900 },
+            ReducedMotion = ReducedMotion.Reduce,
+        });
+        var page = await context.NewPageAsync();
+        await StubProductionBoundariesAsync(page);
+        await page.GotoAsync(new Uri(server.BaseUri, "customers/new").AbsoluteUri);
+
+        var links = page.Locator("#legacy-navigation-rail .legacy-rail-link");
+        await links.First.WaitForAsync();
+        Assert.True(await links.CountAsync() > 1);
+        Assert.True(await links.EvaluateAllAsync<bool>(
+            "elements => elements.every(element => element.matches('.shadcn-sidebar-menu-button, .shadcn-sidebar-menu-sub-button') && getComputedStyle(element).textDecorationLine === 'none')"));
+
+        var activeChild = page.Locator("#legacy-navigation-rail a[href='/customers/new']");
+        Assert.Equal("page", await activeChild.GetAttributeAsync("aria-current"));
+        Assert.True(await activeChild.EvaluateAsync<bool>(
+            "element => { const style = getComputedStyle(element); return style.color !== style.backgroundColor; }"));
+
+        var avatar = page.Locator(".legacy-profile [data-slot='avatar']");
+        await avatar.WaitForAsync();
+        Assert.Equal("BE", (await avatar.Locator("[data-slot='avatar-fallback']").InnerTextAsync()).Trim());
+        Assert.Equal("1px", await avatar.EvaluateAsync<string>("element => getComputedStyle(element, '::after').borderTopWidth"));
+    }
+
+    [Fact]
     public async Task NarrowQuickCreateRoutesRemainVisibleFocusableAndTouchSized()
     {
         await using var context = await playwright.Browser.NewContextAsync(new()
@@ -218,7 +247,11 @@ public sealed class OperationalShellBrowserTests(
         await page.WaitForFunctionAsync("element => element === document.activeElement", await close.ElementHandleAsync());
         await page.Keyboard.PressAsync("Shift+Tab");
         await page.Keyboard.PressAsync("Shift+Tab");
-        Assert.True(await drawer.Locator(".legacy-rail-link").Last.EvaluateAsync<bool>("element => element === document.activeElement"));
+        var lastNavigationLink = drawer.Locator(".legacy-rail-link").Last;
+        await page.WaitForFunctionAsync(
+            "element => element === document.activeElement",
+            await lastNavigationLink.ElementHandleAsync());
+        Assert.True(await lastNavigationLink.EvaluateAsync<bool>("element => element === document.activeElement"));
         await page.Keyboard.PressAsync("Tab");
         await page.WaitForFunctionAsync("element => element === document.activeElement", await close.ElementHandleAsync());
         await page.Keyboard.PressAsync("Escape");

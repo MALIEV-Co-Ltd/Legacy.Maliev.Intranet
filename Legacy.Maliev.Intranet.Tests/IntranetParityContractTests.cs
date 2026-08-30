@@ -50,7 +50,7 @@ public sealed class IntranetParityContractTests
         Assert.DoesNotContain("legacy-workspace-label", topbar, StringComparison.Ordinal);
         Assert.Contains("aria-label", topbar, StringComparison.Ordinal);
         Assert.Contains("aria-controls=\"legacy-navigation-rail-drawer\"", topbar, StringComparison.Ordinal);
-        Assert.Contains("aria-current", rail, StringComparison.Ordinal);
+        Assert.Contains("Active=\"@IsItemPageCurrent", rail, StringComparison.Ordinal);
         Assert.Contains("Navigation.LocationChanged", layout, StringComparison.Ordinal);
         Assert.Contains("Escape", topbar, StringComparison.Ordinal);
         Assert.Contains("@media (max-width: 1180px)", railCss, StringComparison.Ordinal);

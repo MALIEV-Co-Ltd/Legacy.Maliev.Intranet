@@ -11,7 +11,8 @@
        @onkeydown="HandleKeyDown">
     @if (IsDrawer)
     {
-        <span class="legacy-drawer-focus-sentinel" tabindex="0" @onfocus="FocusLastAsync"></span>
+        <span class="legacy-drawer-focus-sentinel" tabindex="0"
+              onfocus="window.malievFocus.lastNavigationLink(this)"></span>
         <div class="legacy-rail-header">
             <a class="legacy-rail-logo legacy-logo-link" href="/Dashboard" aria-label="@Text["MALIEV dashboard"]">
                 <img class="legacy-logo-image legacy-logo-image--light" src="images/MALIEV_BLACK.svg" alt="MALIEV" />
@@ -30,57 +31,57 @@
         {
             <section class="legacy-rail-group" aria-labelledby="@GroupId(group)">
                 <h2 id="@GroupId(group)">@Text[group.Label]</h2>
-                <ul class="legacy-rail-items">
+                <ShadcnSidebarMenu Class="legacy-rail-items">
                 @foreach (var item in group.Items.Where(candidate => candidate.Kind == LegacyNavItemKind.Primary))
                 {
                     var children = GetEnabledChildren(item);
                     @if (IsItemEnabled(item) || children.Count > 0)
                     {
-                        <li class="legacy-rail-item">
+                        <ShadcnSidebarMenuItem Class="legacy-rail-item">
                             @if (IsItemEnabled(item))
                             {
-                                <a id="@ItemId(item)"
-                                   href="@item.Href"
-                                   @ref="_lastNavigationLink"
-                                   class="legacy-rail-link @(IsItemActive(item) ? "active" : string.Empty)"
-                                   aria-current="@(IsItemPageCurrent(item) ? "page" : null)"
-                                   title="@Text[item.Description ?? item.Label]"
-                                   @onclick="CloseAsync">
+                                <ShadcnSidebarMenuButton id="@ItemId(item)"
+                                   Href="@item.Href"
+                                   Active="@IsItemPageCurrent(item)"
+                                   Class="legacy-rail-link"
+                                   Tooltip="@Text[item.Description ?? item.Label]"
+                                   OnClick="CloseAsync">
                                     <ShadcnIcon Icon="@item.Icon" Size="20" />
                                     <span>@Text[item.Label]</span>
-                                </a>
+                                </ShadcnSidebarMenuButton>
                             }
                             @if (children.Count > 0)
                             {
-                                <ul class="legacy-rail-children"
+                                <ShadcnSidebarMenuSub Class="legacy-rail-children"
                                     aria-labelledby="@(IsItemEnabled(item) ? ItemId(item) : null)"
                                     aria-label="@(!IsItemEnabled(item) ? Text[item.Label].Value : null)">
                                 @foreach (var child in children)
                                 {
-                                    <li>
-                                        <a href="@child.Href"
-                                           @ref="_lastNavigationLink"
-                                           class="legacy-rail-link legacy-rail-link--child @(IsItemActive(child) ? "active" : string.Empty)"
-                                           aria-current="@(IsItemPageCurrent(child) ? "page" : null)"
+                                    <ShadcnSidebarMenuSubItem>
+                                        <ShadcnSidebarMenuSubButton id="@ItemId(child)"
+                                           Href="@child.Href"
+                                           Active="@IsItemPageCurrent(child)"
+                                           Class="legacy-rail-link legacy-rail-link--child"
                                            title="@Text[child.Description ?? child.Label]"
                                            @onclick="CloseAsync">
                                             <ShadcnIcon Icon="@child.Icon" Size="20" />
                                             <span>@Text[child.Label]</span>
-                                        </a>
-                                    </li>
+                                        </ShadcnSidebarMenuSubButton>
+                                    </ShadcnSidebarMenuSubItem>
                                 }
-                                </ul>
+                                </ShadcnSidebarMenuSub>
                             }
-                        </li>
+                        </ShadcnSidebarMenuItem>
                     }
                 }
-                </ul>
+                </ShadcnSidebarMenu>
             </section>
         }
     </nav>
     @if (IsDrawer)
     {
-        <span class="legacy-drawer-focus-sentinel" tabindex="0" @onfocus="FocusFirstAsync"></span>
+        <span class="legacy-drawer-focus-sentinel" tabindex="0"
+              onfocus="window.malievFocus.byId('legacy-navigation-close')"></span>
     }
 </aside>
 
@@ -90,7 +91,6 @@
     [Parameter] public EventCallback OnClose { get; set; }
 
     private static readonly ShadcnIconData CloseIcon = LucideIconCatalog.Instance.Get(LucideIconNames.X);
-    private ElementReference _lastNavigationLink;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -143,22 +143,6 @@
     private Task CloseAsync() => IsDrawer ? OnClose.InvokeAsync() : Task.CompletedTask;
 
     private Task HandleKeyDown(KeyboardEventArgs args) => args.Key == "Escape" ? CloseAsync() : Task.CompletedTask;
-
-    private async Task FocusFirstAsync(FocusEventArgs _)
-    {
-        await FocusCloseButtonAsync();
-    }
-
-    private async Task FocusLastAsync(FocusEventArgs _)
-    {
-        if (LegacyAppNavigation.Groups.SelectMany(group => group.Items).Any(IsItemEnabled))
-        {
-            await _lastNavigationLink.FocusAsync();
-            return;
-        }
-
-        await FocusCloseButtonAsync();
-    }
 
     private ValueTask FocusCloseButtonAsync() => JS.InvokeVoidAsync("malievFocus.byId", "legacy-navigation-close");
 }

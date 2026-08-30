@@ -10,7 +10,7 @@
 .legacy-mobile-menu-button, .legacy-theme-toggle { display: inline-flex; min-width: 44px; min-height: 2.75rem; align-items: center; justify-content: center; gap: 0.375rem; padding: 0.4375rem 0.5625rem; }
 .legacy-topbar__brand ::deep .legacy-mobile-menu-button, .legacy-topbar__utilities ::deep .legacy-theme-toggle { width: 2.75rem; min-width: 2.75rem; min-height: 2.75rem; }
 .legacy-mobile-menu-button { display: none; }
-.legacy-session-avatar { display: grid; width: 2.125rem; height: 2.125rem; flex: 0 0 auto; place-items: center; }
+.legacy-session-avatar { flex: 0 0 auto; }
 .legacy-topbar-utilities { gap: 0.375rem; }
 .legacy-session-copy { display: flex; min-width: 0; flex-direction: column; gap: 0.125rem; line-height: 1.1; }
 .legacy-session-copy strong { max-width: 9.6875rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

@@ -7,5 +7,17 @@ window.malievFocus = {
         }
 
         return false;
+    },
+
+    lastNavigationLink(sentinel) {
+        const drawer = sentinel instanceof HTMLElement ? sentinel.closest("aside") : null;
+        const links = drawer?.querySelectorAll(".legacy-rail-link");
+        const lastLink = links?.item(links.length - 1);
+        if (lastLink instanceof HTMLElement) {
+            lastLink.focus();
+            return true;
+        }
+
+        return window.malievFocus.byId("legacy-navigation-close");
     }
 };

@@ -40,7 +40,9 @@
                 <ShadcnButton Class="legacy-profile" Variant="ShadcnButtonVariant.Ghost"
                               aria-haspopup="menu" aria-expanded="@_profileMenuOpen"
                               aria-label="@Text["Employee menu"]" OnClick="ToggleProfileMenuAsync">
-                    <span class="legacy-session-avatar" aria-hidden="true">@GetInitials(auth.User.Identity?.Name)</span>
+                    <ShadcnAvatar Class="legacy-session-avatar" aria-hidden="true">
+                        <ShadcnAvatarFallback>@GetInitials(Session?.DisplayName ?? auth.User.Identity?.Name)</ShadcnAvatarFallback>
+                    </ShadcnAvatar>
                     <span class="legacy-session-copy">
                         <strong>@(Session?.DisplayName ?? auth.User.Identity?.Name ?? Text["Employee"])</strong>
                         <small>@Text["Employee workspace"]</small>

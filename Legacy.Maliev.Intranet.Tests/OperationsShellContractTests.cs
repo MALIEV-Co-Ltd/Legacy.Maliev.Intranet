@@ -255,9 +255,11 @@ public sealed class OperationsShellContractTests
         var root = FindRoot();
         var navigation = Read(root, "Legacy.Maliev.Intranet.Client", "Components", "Shell", "LegacyNavigationRail.razor");
 
-        Assert.Contains("<ul class=\"legacy-rail-items\">", navigation, StringComparison.Ordinal);
-        Assert.Contains("<li class=\"legacy-rail-item\">", navigation, StringComparison.Ordinal);
-        Assert.Contains("<ul class=\"legacy-rail-children\"", navigation, StringComparison.Ordinal);
+        Assert.Contains("<ShadcnSidebarMenu Class=\"legacy-rail-items\">", navigation, StringComparison.Ordinal);
+        Assert.Contains("<ShadcnSidebarMenuItem Class=\"legacy-rail-item\">", navigation, StringComparison.Ordinal);
+        Assert.Contains("<ShadcnSidebarMenuSub Class=\"legacy-rail-children\"", navigation, StringComparison.Ordinal);
+        Assert.Contains("<ShadcnSidebarMenuButton", navigation, StringComparison.Ordinal);
+        Assert.Contains("<ShadcnSidebarMenuSubButton", navigation, StringComparison.Ordinal);
         Assert.Contains("GetEnabledChildren(item)", navigation, StringComparison.Ordinal);
         Assert.Contains("IsItemPageCurrent(item)", navigation, StringComparison.Ordinal);
         Assert.Contains("FindCurrentItem()", navigation, StringComparison.Ordinal);
