@@ -159,7 +159,19 @@
         }
 
         restoreDeleteTriggerFocus = false;
-        await JavaScript.InvokeVoidAsync("malievFocus.byId", "purchase-order-delete-trigger");
+        try
+        {
+            await JavaScript.InvokeVoidAsync("malievFocus.byId", "purchase-order-delete-trigger");
+        }
+        catch (JSException)
+        {
+            // The browser can tear down the page between the close render and
+            // this best-effort focus restoration. The dialog is already closed.
+        }
+        catch (TaskCanceledException)
+        {
+            // Navigation or browser shutdown cancelled the render callback.
+        }
     }
 
     private Task HandleDeleteDialogChangedAsync(bool open)

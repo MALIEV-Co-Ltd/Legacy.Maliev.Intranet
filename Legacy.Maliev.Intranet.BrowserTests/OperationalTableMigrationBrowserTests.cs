@@ -541,7 +541,7 @@ public sealed class OperationalTableMigrationBrowserTests(
         await dialog.GetByRole(AriaRole.Button, new() { Name = "Cancel", Exact = true }).ClickAsync();
         await Assertions.Expect(dialog).ToBeHiddenAsync();
         await Assertions.Expect(deleteTrigger).ToBeFocusedAsync();
-        Assert.Empty(errors);
+        Assert.True(errors.Count == 0, string.Join(Environment.NewLine, errors));
     }
 
     [Fact]
