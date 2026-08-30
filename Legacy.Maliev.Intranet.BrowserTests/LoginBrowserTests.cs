@@ -37,7 +37,14 @@ public sealed class LoginBrowserTests(
         var ratio = await progress.EvaluateAsync<double>(
             "element => element.firstElementChild.getBoundingClientRect().width / element.getBoundingClientRect().width");
         Assert.InRange(ratio, 0.62, 0.64);
-        Assert.True((await progress.BoundingBoxAsync())!.Width <= Math.Min(352, width - 48));
+        var progressBox = (await progress.BoundingBoxAsync())!;
+        Assert.True(progressBox.Width <= Math.Min(352, width - 48));
+        Assert.InRange(Math.Abs(progressBox.X + (progressBox.Width / 2) - (width / 2d)), 0, 1);
+
+        var logoBox = (await loading.Locator(".legacy-loading-brand").BoundingBoxAsync())!;
+        var metaBox = (await loading.Locator(".legacy-loading-meta").BoundingBoxAsync())!;
+        var contentCenter = (logoBox.Y + metaBox.Y + metaBox.Height) / 2;
+        Assert.InRange(Math.Abs(contentCenter - 450), 0, 2);
     }
 
     [Theory]
