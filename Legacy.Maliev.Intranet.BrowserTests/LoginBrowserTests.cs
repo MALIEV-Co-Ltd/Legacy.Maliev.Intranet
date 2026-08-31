@@ -142,21 +142,38 @@ public sealed class LoginBrowserTests(
         Assert.True(await continueButton.IsDisabledAsync());
         await email.FillAsync("browser@maliev.test");
         Assert.False(await continueButton.IsDisabledAsync());
-        await email.PressAsync("Enter");
+        await continueButton.ClickAsync();
 
         var password = page.Locator("#legacy-login-password");
         await password.WaitForAsync();
+        Assert.True(await password.EvaluateAsync<bool>("input => input === document.activeElement"));
         Assert.Equal("legacy-login-email", await page.Locator("label").Filter(new() { HasText = "Email" }).GetAttributeAsync("for"));
         Assert.Equal("browser@maliev.test", await email.InputValueAsync());
         Assert.False(await email.IsEditableAsync());
         Assert.True(await email.EvaluateAsync<bool>(
             "input => parseFloat(getComputedStyle(input).borderTopWidth) > 0"));
         Assert.Equal("password", await password.GetAttributeAsync("type"));
-        Assert.Equal(1, await page.Locator("#legacy-login-remember[type='checkbox']").CountAsync());
-
+        var passwordVisibility = page.Locator("[data-slot='input-group-button']");
+        await passwordVisibility.WaitForAsync();
+        Assert.Equal("BUTTON", await passwordVisibility.EvaluateAsync<string>("button => button.tagName"));
+        Assert.Equal("Show password", await passwordVisibility.GetAttributeAsync("aria-label"));
+        Assert.Equal("false", await passwordVisibility.GetAttributeAsync("aria-pressed"));
+        Assert.True(await passwordVisibility.EvaluateAsync<bool>(
+            "button => button.getBoundingClientRect().width >= 44 && button.getBoundingClientRect().height >= 44"));
         var signIn = page.GetByRole(AriaRole.Button, new() { Name = "Sign in with email" });
         Assert.True(await signIn.IsDisabledAsync());
         await password.FillAsync("not-the-password");
+        await passwordVisibility.ClickAsync();
+        Assert.Equal("text", await password.GetAttributeAsync("type"));
+        Assert.Equal("not-the-password", await password.InputValueAsync());
+        Assert.True(await passwordVisibility.EvaluateAsync<bool>("button => button === document.activeElement"));
+        var hidePassword = page.Locator("[data-slot='input-group-button']");
+        Assert.Equal("Hide password", await hidePassword.GetAttributeAsync("aria-label"));
+        Assert.Equal("true", await hidePassword.GetAttributeAsync("aria-pressed"));
+        await hidePassword.ClickAsync();
+        Assert.Equal("password", await password.GetAttributeAsync("type"));
+        Assert.Equal(1, await page.Locator("#legacy-login-remember[type='checkbox']").CountAsync());
+
         Assert.False(await signIn.IsDisabledAsync());
         await page.Locator("#legacy-login-remember").CheckAsync();
         Assert.True(await page.Locator("#legacy-login-remember").IsCheckedAsync());
