@@ -32,6 +32,7 @@ public sealed class BreadcrumbAndMaterialIconContractTests : BunitContext
         new("Legacy.Maliev.Intranet.Client/wwwroot/index.html", "images/MALIEV_BLACK.svg", "<img class=\"legacy-loading-logo legacy-loading-logo--light\" src=\"images/MALIEV_BLACK.svg\" alt=\"\" />", "Light-theme WASM loading wordmark"),
         new("Legacy.Maliev.Intranet.Client/wwwroot/index.html", "images/MALIEV_WHITE.svg", "<img class=\"legacy-loading-logo legacy-loading-logo--dark\" src=\"images/MALIEV_WHITE.svg\" alt=\"\" />", "Dark-theme WASM loading wordmark"),
         new("Legacy.Maliev.Intranet.Client/Pages/Login.razor", "images/MALIEV_WHITE.svg", "<img src=\"images/MALIEV_WHITE.svg\" alt=\"MALIEV\" class=\"legacy-login-brand-image\" />", "Visible login brand wordmark"),
+        new("Legacy.Maliev.Intranet.Client/Components/Shell/LegacyNavigationRail.razor", "images/MALIEV_BLACK.svg", "<img src=\"images/MALIEV_BLACK.svg\" alt=\"MALIEV\" class=\"legacy-rail-brand-logo\" />", "Visible sidebar brand wordmark"),
     ];
     private static readonly IReadOnlyList<ApprovedInlineSvg> ApprovedInlineSvgs =
     [

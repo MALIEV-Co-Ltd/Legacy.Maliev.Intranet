@@ -102,8 +102,10 @@
     --legacy-radius-md: var(--shadcn-radius-md);
     --legacy-radius-lg: var(--shadcn-radius-lg);
     --legacy-focus-ring: var(--maliev-focus-ring);
+    --legacy-brand-logo-filter: none;
 }
 
 :root[data-maliev-theme="dark"] {
     --legacy-background: var(--shadcn-background);
+    --legacy-brand-logo-filter: invert(1);
 }

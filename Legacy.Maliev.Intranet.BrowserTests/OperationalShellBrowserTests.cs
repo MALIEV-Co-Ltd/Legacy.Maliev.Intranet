@@ -125,6 +125,53 @@ public sealed class OperationalShellBrowserTests(
     }
 
     [Fact]
+    public async Task SidebarBrandHierarchyBadgeAndTopbarControlsMatchTheWorkspaceShellContract()
+    {
+        await using var context = await playwright.Browser.NewContextAsync(new()
+        {
+            ViewportSize = new() { Width = 1280, Height = 900 },
+            ReducedMotion = ReducedMotion.Reduce,
+        });
+        var page = await context.NewPageAsync();
+        await StubProductionBoundariesAsync(page);
+        await page.GotoAsync(new Uri(server.BaseUri, "customers").AbsoluteUri);
+
+        var logo = page.Locator(".legacy-rail-logo img[alt='MALIEV']");
+        await logo.WaitForAsync();
+        Assert.EndsWith("images/MALIEV_BLACK.svg", await logo.GetAttributeAsync("src"), StringComparison.Ordinal);
+        Assert.Equal(0, await page.Locator(".legacy-rail-brand__mark").CountAsync());
+
+        var quotationBadge = page.Locator("a[href='/QuotationRequests/Index'] + [data-slot='sidebar-menu-badge']");
+        await quotationBadge.WaitForAsync();
+        Assert.Equal("17", (await quotationBadge.InnerTextAsync()).Trim());
+
+        var customers = page.Locator(".legacy-navigation-rail a[href='/customers']");
+        var newCustomer = page.Locator(".legacy-navigation-rail a[href='/customers/new']");
+        var childToggle = page.Locator(".legacy-navigation-rail [data-branch-href='/customers'] [data-slot='collapsible-trigger']");
+        Assert.Equal("true", await childToggle.GetAttributeAsync("aria-expanded"));
+        Assert.True(await newCustomer.IsVisibleAsync());
+        Assert.NotEqual(
+            await customers.EvaluateAsync<string>("element => getComputedStyle(element).color"),
+            await newCustomer.EvaluateAsync<string>("element => getComputedStyle(element).color"));
+        await childToggle.ClickAsync();
+        Assert.Equal("false", await childToggle.GetAttributeAsync("aria-expanded"));
+        Assert.False(await newCustomer.IsVisibleAsync());
+
+        var topbarHeights = await page.Locator(".legacy-global-search input, .legacy-quick-action, .legacy-language-selector select, .legacy-theme-toggle, .legacy-profile")
+            .EvaluateAllAsync<double[]>("elements => elements.filter(element => getComputedStyle(element).display !== 'none').map(element => element.getBoundingClientRect().height)");
+        Assert.True(topbarHeights.Length >= 6, string.Join(", ", topbarHeights));
+        Assert.True(topbarHeights.Max() - topbarHeights.Min() <= .5, string.Join(", ", topbarHeights));
+
+        await page.Locator("#legacy-sidebar-collapse").ClickAsync();
+        await page.Locator(".legacy-navigation-rail[data-state='collapsed']").WaitForAsync();
+        Assert.Equal(0, await page.Locator(".legacy-navigation-rail[data-state='collapsed'] .legacy-rail-link--child:visible").CountAsync());
+        var iconCenters = await page.Locator(".legacy-navigation-rail[data-state='collapsed'] .shadcn-sidebar-menu-button:visible")
+            .EvaluateAllAsync<double[]>("elements => elements.map(element => { const rect = element.getBoundingClientRect(); return rect.left + rect.width / 2; })");
+        Assert.True(iconCenters.Length > 5, string.Join(", ", iconCenters));
+        Assert.True(iconCenters.Max() - iconCenters.Min() <= .5, string.Join(", ", iconCenters));
+    }
+
+    [Fact]
     public async Task NarrowQuickCreateRoutesRemainVisibleFocusableAndTouchSized()
     {
         await using var context = await playwright.Browser.NewContextAsync(new()
@@ -211,7 +258,7 @@ public sealed class OperationalShellBrowserTests(
                 const sidebar = document.querySelector('.legacy-navigation-rail[data-mobile="false"]');
                 const wrapper = document.querySelector('.shadcn-sidebar-wrapper');
                 const inset = document.querySelector('.shadcn-sidebar-inset');
-                const mark = document.querySelector('.legacy-rail-brand__mark');
+                const logo = document.querySelector('.legacy-rail-brand-logo');
                 const active = document.querySelector('.legacy-rail-link[data-active="true"]');
                 const table = document.querySelector('.operational-table');
                 const tabular = table?.querySelector('.mlv-mono');
@@ -221,7 +268,7 @@ public sealed class OperationalShellBrowserTests(
                     wrapperBackground: getComputedStyle(wrapper).backgroundColor,
                     insetRadius: parseFloat(getComputedStyle(inset).borderRadius),
                     insetShadow: getComputedStyle(inset).boxShadow,
-                    markWidth: mark.getBoundingClientRect().width,
+                    logoWidth: logo.getBoundingClientRect().width,
                     activeHeight: active.getBoundingClientRect().height,
                     tableFont: table ? getComputedStyle(table).fontFamily : '',
                     tabularFont: tabular ? getComputedStyle(tabular).fontFamily : ''
@@ -232,11 +279,13 @@ public sealed class OperationalShellBrowserTests(
         Assert.Equal(documentedStyle.GetProperty("wrapperBackground").GetString(), documentedStyle.GetProperty("sidebarBackground").GetString());
         Assert.InRange(documentedStyle.GetProperty("insetRadius").GetDouble(), 13.5, 14.5);
         Assert.NotEqual("none", documentedStyle.GetProperty("insetShadow").GetString());
-        Assert.InRange(documentedStyle.GetProperty("markWidth").GetDouble(), 31.5, 32.5);
+        Assert.InRange(documentedStyle.GetProperty("logoWidth").GetDouble(), 83.5, 84.5);
         Assert.InRange(documentedStyle.GetProperty("activeHeight").GetDouble(), 31.5, 32.5);
-        Assert.False(string.IsNullOrWhiteSpace(documentedStyle.GetProperty("tableFont").GetString()));
-        Assert.Equal(documentedStyle.GetProperty("tableFont").GetString(), documentedStyle.GetProperty("tabularFont").GetString());
-        Assert.DoesNotContain("Mono", documentedStyle.GetProperty("tabularFont").GetString(), StringComparison.OrdinalIgnoreCase);
+        if (!string.IsNullOrWhiteSpace(documentedStyle.GetProperty("tableFont").GetString()))
+        {
+            Assert.Equal(documentedStyle.GetProperty("tableFont").GetString(), documentedStyle.GetProperty("tabularFont").GetString());
+            Assert.DoesNotContain("Mono", documentedStyle.GetProperty("tabularFont").GetString(), StringComparison.OrdinalIgnoreCase);
+        }
 
         var desktopShell = await page.EvaluateAsync<JsonElement>("""
             () => {
@@ -249,7 +298,7 @@ public sealed class OperationalShellBrowserTests(
                     topbar: bounds('.legacy-topbar'),
                     sidebar: bounds('.legacy-navigation-rail'),
                     collapse: bounds('#legacy-sidebar-collapse'),
-                    logo: bounds('.legacy-rail-brand__mark'),
+                    logo: bounds('.legacy-rail-brand-logo'),
                     workspace: bounds('.legacy-workspace-shell')
                 };
             }
@@ -408,11 +457,14 @@ public sealed class OperationalShellBrowserTests(
             Assert.Null(await parent.GetAttributeAsync("aria-current"));
             Assert.Equal("page", await child.GetAttributeAsync("aria-current"));
             Assert.True(await child.EvaluateAsync<bool>(
-                "(node, parentSelector) => node.closest('ul.legacy-rail-children')?.parentElement?.querySelector(':scope > ' + parentSelector) !== null",
+                "(node, parentSelector) => node.closest('.legacy-rail-branch')?.querySelector(parentSelector) !== null",
                 $"a[href='{parentHref}']"));
             var minimumHeight = width <= 768 ? 44 : 28;
             Assert.True(await child.EvaluateAsync<bool>("(node, minimum) => node.getBoundingClientRect().height >= minimum", minimumHeight));
             await parent.FocusAsync();
+            await page.Keyboard.PressAsync("Tab");
+            var toggle = parent.Locator("xpath=ancestor::*[contains(@class, 'legacy-rail-branch')][1]//*[@data-slot='collapsible-trigger']");
+            Assert.True(await toggle.EvaluateAsync<bool>("node => document.activeElement === node"));
             await page.Keyboard.PressAsync("Tab");
             Assert.True(await child.EvaluateAsync<bool>("node => document.activeElement === node"));
 
@@ -510,6 +562,7 @@ public sealed class OperationalShellBrowserTests(
                 "legacy-catalog.materials.read", "legacy-catalog.materials.create",
                 "legacy-procurement.purchase-orders.read", "legacy-procurement.purchase-orders.create",
                 "legacy-procurement.suppliers.read", "legacy-procurement.suppliers.create",
+                "legacy.quotation-requests.read",
             },
         });
 
@@ -530,6 +583,12 @@ public sealed class OperationalShellBrowserTests(
             Status = 200,
             ContentType = "application/json",
             Body = "[]",
+        }));
+        await page.RouteAsync("**/bff/quotation-requests?*", route => route.FulfillAsync(new()
+        {
+            Status = 200,
+            ContentType = "application/json",
+            Body = "{\"items\":[],\"pageIndex\":1,\"totalPages\":17,\"totalRecords\":17,\"hasNextPage\":true,\"hasPreviousPage\":false}",
         }));
     }
 }

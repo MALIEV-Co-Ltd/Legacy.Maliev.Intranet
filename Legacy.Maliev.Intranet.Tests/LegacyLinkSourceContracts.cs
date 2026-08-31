@@ -10,7 +10,7 @@ internal static class LegacyLinkSourceContracts
         Raw("Legacy.Maliev.Intranet.Client/Layout/LegacyTopBar.razor", "href=\"/hr/profile\"", "class=\"legacy-profile-action\"", "role=\"menuitem\"", "@onclick=\"CloseProfileMenuAsync\""),
         Raw("Legacy.Maliev.Intranet.Client/Layout/LegacyTopBar.razor", "href=\"/Login\"", "class=\"legacy-signin-link\"", "@Text[\"Sign in\"]"),
         Raw("Legacy.Maliev.Intranet.Client/Components/Shell/LegacyNavigationRail.razor", "href=\"/Dashboard\"", "class=\"legacy-rail-logo legacy-logo-link\"", "@Text[\"MALIEV dashboard\"]"),
-        ShadcnSidebarMenuButton("Legacy.Maliev.Intranet.Client/Components/Shell/LegacyNavigationRail.razor", "Href=\"@item.Href\"", "Class=\"legacy-rail-link\"", "Active=\"@IsItemPageCurrent(item)\"", "OnClick=\"NavigateAsync\""),
+        new("Legacy.Maliev.Intranet.Client/Components/Shell/LegacyNavigationRail.razor", "ShadcnSidebarMenuButton", ["Href=\"@item.Href\"", "Class=\"legacy-rail-link legacy-rail-link--primary\"", "Active=\"@IsItemPageCurrent(item)\"", "OnClick=\"NavigateAsync\""], 2),
         ShadcnSidebarMenuSubButton("Legacy.Maliev.Intranet.Client/Components/Shell/LegacyNavigationRail.razor", "Href=\"@child.Href\"", "legacy-rail-link--child", "Active=\"@IsItemPageCurrent(child)\"", "@onclick=\"NavigateAsync\""),
         ShadcnButton("Legacy.Maliev.Intranet.Client/Components/Shell/LegacyQuickActions.razor", "Href=\"@item.Href\"", "Class=\"@QuickActionClass(item)\"", "aria-label=\"@Text[item.Label]\"", "@Text[item.Label]"),
         Raw("Legacy.Maliev.Intranet.Client/Pages/Login.razor", "href=\"/\"", "class=\"legacy-login-brand\"", "aria-label=\"@Text[\"HomeLabel\"]\""),

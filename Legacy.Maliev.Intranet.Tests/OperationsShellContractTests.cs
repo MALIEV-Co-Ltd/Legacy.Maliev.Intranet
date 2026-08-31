@@ -13,9 +13,11 @@ public sealed class OperationsShellContractTests
         Assert.Contains("Width=\"15rem\"", layout, StringComparison.Ordinal);
         Assert.Contains("Variant=\"ShadcnSidebarVariant.Inset\"", navigation, StringComparison.Ordinal);
         Assert.Contains("<ShadcnSidebarRail TargetId=\"legacy-navigation-rail\" />", navigation, StringComparison.Ordinal);
-        Assert.Contains("legacy-rail-brand__mark", navigation, StringComparison.Ordinal);
+        Assert.Contains("images/MALIEV_BLACK.svg", navigation, StringComparison.Ordinal);
+        Assert.Contains("<ShadcnCollapsible Open=\"true\"", navigation, StringComparison.Ordinal);
+        Assert.Contains("<ShadcnSidebarMenuBadge", navigation, StringComparison.Ordinal);
         Assert.Contains("<ShadcnSidebarMenuButton Size=\"ShadcnSidebarMenuButtonSize.Large\"", navigation, StringComparison.Ordinal);
-        Assert.DoesNotContain("legacy-logo-image", navigation, StringComparison.Ordinal);
+        Assert.DoesNotContain("legacy-rail-brand__mark", navigation, StringComparison.Ordinal);
         Assert.DoesNotContain("::deep .legacy-rail-link { min-height: 2.75rem; }", railCss, StringComparison.Ordinal);
         Assert.Contains("[data-mobile=\"true\"] .legacy-rail-link { min-height: 2.75rem; }", railCss, StringComparison.Ordinal);
     }
@@ -90,7 +92,7 @@ public sealed class OperationsShellContractTests
 
         Assert.Contains("height: calc(100dvh - 1rem)", railCss, StringComparison.Ordinal);
         Assert.DoesNotContain("position: fixed", railCss, StringComparison.Ordinal);
-        Assert.Contains("min-height: 44px", searchCss, StringComparison.Ordinal);
+        Assert.Contains("height: 2.75rem", searchCss, StringComparison.Ordinal);
         Assert.Contains("@media (max-width: 720px)", searchCss, StringComparison.Ordinal);
         Assert.DoesNotContain(".legacy-quick-actions { display: none; }", actionsCss, StringComparison.Ordinal);
         Assert.Contains("min-width: 44px", topBarCss, StringComparison.Ordinal);

@@ -46,8 +46,8 @@ public sealed class IntranetParityContractTests
         Assert.True(File.Exists(whiteLogo));
         Assert.DoesNotContain("legacy-logo-image--light", topbar, StringComparison.Ordinal);
         Assert.DoesNotContain("legacy-logo-image--dark", topbar, StringComparison.Ordinal);
-        Assert.Contains("legacy-rail-brand__mark", rail, StringComparison.Ordinal);
-        Assert.DoesNotContain("legacy-logo-image", rail, StringComparison.Ordinal);
+        Assert.Contains("images/MALIEV_BLACK.svg", rail, StringComparison.Ordinal);
+        Assert.DoesNotContain("legacy-rail-brand__mark", rail, StringComparison.Ordinal);
         Assert.DoesNotContain("legacy-workspace-label", topbar, StringComparison.Ordinal);
         Assert.Contains("aria-label", topbar, StringComparison.Ordinal);
         Assert.Contains("TargetId=\"legacy-navigation-rail\"", topbar, StringComparison.Ordinal);

@@ -42,6 +42,8 @@
   <data name="Create an order" xml:space="preserve"><value>Create an order</value></data>
   <data name="Quotation requests" xml:space="preserve"><value>Quotation requests</value></data>
   <data name="Website quotation queue" xml:space="preserve"><value>Website quotation queue</value></data>
+  <data name="Quotation request count" xml:space="preserve"><value>{0} quotation requests</value></data>
+  <data name="Toggle navigation section" xml:space="preserve"><value>Toggle {0} shortcuts</value></data>
   <data name="Quotations" xml:space="preserve"><value>Quotations</value></data>
   <data name="Quotation lifecycle" xml:space="preserve"><value>Quotation lifecycle</value></data>
   <data name="New quotation" xml:space="preserve"><value>New quotation</value></data>

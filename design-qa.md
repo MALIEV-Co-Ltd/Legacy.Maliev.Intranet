@@ -1,26 +1,36 @@
-# Design QA: ShadcnBlazor inset workspace shell
+# Design QA: MALIEV workspace sidebar refinement
 
-- Source reference: `C:\Users\natth\AppData\Local\Temp\codex-clipboard-5eb92b79-71c5-494e-adc8-b6e98a6a60b7.png`
-- Source viewport: 1010 x 894 CSS pixels, density 1x, expanded light-theme sidebar example
-- Implementation route: `https://localhost:55848/Quotations/Index`
-- Implementation viewport: 1280 x 900 CSS pixels, density 1x, expanded light-theme authenticated shell
-- Implementation screenshot: unavailable because the selected in-app browser rejected the local HTTPS page under its URL security policy after the live resource reload
+- Source visual truth: the four annotated `https://localhost:56714/customers` browser captures supplied on 2026-08-31, plus `C:\Users\natth\AppData\Local\Temp\codex-clipboard-5eb92b79-71c5-494e-adc8-b6e98a6a60b7.png` for the Maliev.ShadcnBlazor production-workspace reference
+- Source viewport: 1569 x 1032 CSS pixels for the annotated application state; 1010 x 894 pixels for the package reference
+- Implementation route: `https://localhost:56714/customers`
+- Implementation viewport: automated checks at 1280 x 900, 768 x 844, 390 x 844, and 320 x 844 CSS pixels, density 1x
+- Implementation screenshot: unavailable because the selected in-app browser rejected local HTTPS capture under its URL security policy after the Aspire resource reload
+- State: authenticated, light theme, expanded and icon-collapsed desktop sidebar, with customer child navigation opened and closed
 
-## Comparison target
+## Full-view and focused evidence
 
-The reference is the Maliev.ShadcnBlazor production-workspace example. The application keeps its own navigation labels and operational content, while matching the example's component configuration and visual system: `Inset` sidebar variant, 15 rem rail, 3.5 rem icon rail, package-owned neutral sidebar surface, 32 px brand mark, 32 px desktop menu rows, inset content radius and shadow, compact footer identity, and package sans typography.
+The source annotations identify four focused regions: the collapsed icon rail, sidebar identity, navigation hierarchy, and topbar controls. The rendered implementation could not be captured into the same visual-comparison input. Automated browser evidence verifies the corresponding geometry and interaction behavior but does not substitute for a pixel comparison.
 
 ## Findings and correction history
 
-1. P0 - The application used the default sidebar variant rather than `Inset`. Corrected by setting `ShadcnSidebarVariant.Inset` and adding the package rail component.
-2. P1 - Application CSS replaced the package sidebar surface with the card surface and added a header divider. Removed those overrides so Maliev.ShadcnBlazor owns the sidebar color and state styling.
-3. P1 - The rail used a large SVG wordmark and 44 px desktop navigation rows. Replaced with the documented compact mark/copy anatomy and restored the package's 32 px desktop row metric. Mobile rows remain 44 px for touch access.
-4. P1 - The client replaced the package font with IBM Plex Sans Thai. Restored the `BaseVegaNeutral` preset typography and the package's self-hosted Geist and Noto Sans Thai assets.
-5. P1 - Table IDs and money values inherited the coding font. Table-scoped atomic values now inherit the table's sans font and retain tabular number alignment.
-6. Automated render evidence at 1280 x 900: sidebar width 240 px; brand mark 32 px; active row 32 px; sidebar and wrapper surfaces match; inset radius 14 px with package shadow; tabular cells resolve to the table font; no document-level horizontal overflow across 1280, 768, 390, and 320 px; mobile drawer focus remains contained.
+1. P1 - The sidebar identity rendered a text `M` approximation. Replaced it with the supplied `images/MALIEV_BLACK.svg` wordmark and a theme-aware contrast token; the placeholder mark no longer exists.
+2. P1 - Primary destinations and child create-actions were visually too similar. Primary rows now use the stronger foreground/weight while child rows use a smaller, muted foreground that returns to the package accent foreground for hover and active states.
+3. P1 - Child actions were permanently expanded. Each branch now uses the released `ShadcnCollapsible`, exposes a labelled disclosure trigger, preserves correct keyboard order, and hides its subtree in icon-collapse mode.
+4. P1 - Collapsed navigation and footer controls did not share a centerline. Automated geometry now reports no more than 0.5 px variance across all visible sidebar menu buttons, with child links absent from the collapsed rail.
+5. P1 - Search, quick actions, language select, theme button, and profile button resolved to mixed heights. All visible topbar controls now render at 44 px with at most 0.5 px variance.
+6. P2 - Quotation requests had no numeric context. The released `ShadcnSidebarMenuBadge` now shows the real BFF `TotalRecords` value after the authenticated session arrives. The read is background-only, permission-scoped, cancellable, and bounded by the shared presentation timeout. It is intentionally described as total requests because the current downstream contract has no unhandled-only filter.
+7. Automated regression evidence: 81 browser tests pass, including English/Thai hierarchy, desktop/mobile drawers, nested disclosure keyboard order, equal topbar heights, official logo asset, real badge projection, collapsed centerline, independent scrolling, responsive containment, and console-error checks.
+
+## Required fidelity surfaces
+
+- Fonts and typography: package Geist/Noto Sans Thai remains active; primary and child navigation hierarchy is differentiated without reintroducing monospace UI text.
+- Spacing and layout rhythm: package 32 px desktop navigation rows and 44 px topbar controls are preserved; collapsed controls share one centerline.
+- Colors and tokens: hierarchy uses package sidebar foreground/accent tokens; no replacement theme palette was introduced.
+- Image quality and asset fidelity: the canonical vector MALIEV wordmark is used directly; no CSS-drawn or text substitute remains.
+- Copy and content: existing localized labels remain; new English and Thai disclosure/count labels were added.
 
 ## Remaining visual check
 
-A same-input screenshot comparison could not be completed because the in-app browser blocked further access to the local HTTPS route. The source contract and computed render metrics pass, but a final pixel-level comparison still requires reopening the implementation page in an allowed browser session.
+A same-input screenshot comparison is blocked by the selected in-app browser's local HTTPS security rejection. Reopening the refreshed Aspire URL in an allowed in-app browser session is required for a final pixel-level pass.
 
 final result: blocked

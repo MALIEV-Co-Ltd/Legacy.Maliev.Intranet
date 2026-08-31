@@ -1,1 +1,2 @@
 .legacy-language-selector { display: inline-flex; align-items: center; }
+.legacy-language-selector ::deep .legacy-language-select { height: 2.75rem; min-height: 2.75rem; }
