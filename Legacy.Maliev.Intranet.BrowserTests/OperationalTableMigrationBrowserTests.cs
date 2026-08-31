@@ -201,6 +201,9 @@ public sealed class OperationalTableMigrationBrowserTests(
                 await page.EvaluateAsync<int>("() => document.documentElement.scrollWidth"));
             Assert.All(await page.Locator(".shadcn-data-table-frame .shadcn-table-container").AllAsync(), async table =>
                 Assert.Contains(await table.EvaluateAsync<string>("node => getComputedStyle(node).overflowX"), new[] { "auto", "scroll" }));
+            await AssertFocusDecorationIsNotClippedAsync(
+                page.Locator("[data-slot='data-table-filter']").First,
+                $"{route} at {width}px");
             if (width <= 720)
             {
                 foreach (var action in await page.Locator(".operational-data-table__actions a, .operational-data-table__actions button").AllAsync())
@@ -286,6 +289,10 @@ public sealed class OperationalTableMigrationBrowserTests(
             Assert.All(geometry.GetProperty("tableContainers").EnumerateArray(), container =>
                 Assert.Contains(container.GetProperty("overflowX").GetString(), new[] { "auto", "scroll" }));
 
+            await AssertFocusDecorationIsNotClippedAsync(
+                page.Locator("[data-slot='data-table-filter']"),
+                $"{route} at {width}px");
+
             if (width == 1280)
             {
                 var rowHeights = await page.Locator("[data-slot='data-table'] tbody tr")
@@ -310,6 +317,54 @@ public sealed class OperationalTableMigrationBrowserTests(
         await page.GetByRole(AriaRole.Button, new() { Name = expandName }).ClickAsync();
         Assert.Equal(1, await page.Locator("[data-slot='popover-content']").CountAsync());
         Assert.True(errors.Count == 0, string.Join(Environment.NewLine, errors));
+    }
+
+    private static async Task AssertFocusDecorationIsNotClippedAsync(ILocator control, string context)
+    {
+        await control.FocusAsync();
+        var evidence = await control.EvaluateAsync<JsonElement>("""
+            node => {
+                const style = getComputedStyle(node);
+                const outlineWidth = style.outlineStyle === 'none' ? 0 : Number.parseFloat(style.outlineWidth) || 0;
+                const outlineOffset = Number.parseFloat(style.outlineOffset) || 0;
+                const extent = outlineWidth + Math.max(0, outlineOffset);
+                const rect = node.getBoundingClientRect();
+                const decoration = {
+                    left: rect.left - extent,
+                    top: rect.top - extent,
+                    right: rect.right + extent,
+                    bottom: rect.bottom + extent
+                };
+                const clips = value => ['auto', 'scroll', 'hidden', 'clip'].includes(value);
+                const offenders = [];
+                for (let ancestor = node.parentElement; ancestor; ancestor = ancestor.parentElement) {
+                    const ancestorStyle = getComputedStyle(ancestor);
+                    const bounds = ancestor.getBoundingClientRect();
+                    const intersectsInline = rect.right > bounds.left && rect.left < bounds.right;
+                    const intersectsBlock = rect.bottom > bounds.top && rect.top < bounds.bottom;
+                    const clipsInline = intersectsInline && clips(ancestorStyle.overflowX)
+                        && (decoration.left < bounds.left - 0.5 || decoration.right > bounds.right + 0.5);
+                    const clipsBlock = intersectsBlock && clips(ancestorStyle.overflowY)
+                        && (decoration.top < bounds.top - 0.5 || decoration.bottom > bounds.bottom + 0.5);
+                    if (clipsInline || clipsBlock) {
+                        offenders.push({
+                            tag: ancestor.tagName,
+                            classes: ancestor.className?.baseVal ?? ancestor.className ?? '',
+                            overflowX: ancestorStyle.overflowX,
+                            overflowY: ancestorStyle.overflowY,
+                            bounds,
+                            clipsInline,
+                            clipsBlock
+                        });
+                    }
+                }
+                return { extent, rect, decoration, offenders };
+            }
+            """);
+
+        Assert.True(
+            evidence.GetProperty("offenders").GetArrayLength() == 0,
+            $"{context}: {evidence}");
     }
 
     [Fact]
