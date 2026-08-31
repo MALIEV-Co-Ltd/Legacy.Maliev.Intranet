@@ -12,60 +12,32 @@
     <header class="operations-page-header"><div><ShadcnTypography Variant="ShadcnTypographyVariant.H1">@Text["Title"]</ShadcnTypography><ShadcnTypography Variant="ShadcnTypographyVariant.Muted">@Text["Operations"]</ShadcnTypography></div></header>
     <ShadcnAlert AlertRole="ShadcnAlertRole.Status" Class="mb-4"><ShadcnAlertDescription>@Text["PrivacyNote"]</ShadcnAlertDescription></ShadcnAlert>
 
-    <ListToolbar TSort="DiagnosticEventSort"
-                 Value="@ToolbarState"
-                 Defaults="@DefaultToolbarState"
-                 SortOptions="@SortOptions"
-                 PageSizeOptions="@PageSizeOptions"
-                 SearchLabel="@Text["Search"]"
-                 IsBusy="@loading"
-                 OnRequest="HandleToolbarRequestAsync" />
-
-    @if (loading)
-    {
-        <div role="status" aria-live="polite"><ShadcnProgress Label="@Text["Loading"]" /><span class="visually-hidden">@Text["Loading"]</span></div>
-    }
-    else if (!string.IsNullOrWhiteSpace(error))
-    {
-        <ShadcnAlert Variant="ShadcnAlertVariant.Destructive" AlertRole="ShadcnAlertRole.Alert"><ShadcnAlertDescription>@error</ShadcnAlertDescription></ShadcnAlert>
-    }
-    else if (page is null || page.Items.Count == 0)
-    {
-        <ShadcnAlert AlertRole="ShadcnAlertRole.Status"><ShadcnAlertDescription>@Text["Empty"]</ShadcnAlertDescription></ShadcnAlert>
-    }
-    else
-    {
-        <OperationalTable TItem="DiagnosticEventItem" TKey="long" Items="@(page.Items)"
-                          KeySelector="@(diagnostic => diagnostic.Id)" TableLabel="@Text["DiagnosticsTable"]"
-                          ColumnCount="7" State="@tableState" DetailHref="@(_ => null)"
+    <section aria-label="@Text["DiagnosticsTable"]">
+    <OperationalDataTable TItem="DiagnosticEventItem"
+                          Items="@(page?.Items ?? [])"
+                          Columns="@Columns"
+                          RowKey="@(diagnostic => diagnostic.Id.ToString(CultureInfo.InvariantCulture))"
+                          State="@dataTableState"
+                          StateChanged="HandleDataTableStateChangedAsync"
+                          RequestChanged="HandleDataTableRequestAsync"
+                          TotalCount="@(page?.TotalRecords ?? 0)"
+                          Loading="@loading"
+                          Error="@error"
+                          FilterPlaceholder="@Text["Search"]"
+                          EmptyText="@Text["Empty"]"
+                          LoadingText="@Text["Loading"]"
+                          ActionsLabel="@Text["Actions"]"
+                          PageSizeOptions="@PageSizeOptions"
+                          DetailHref="@(_ => null)"
                           DetailAriaLabel="@(diagnostic => Text["ViewDiagnostic", diagnostic.Id])"
-                          ExpandAriaLabel="@(diagnostic => Text["ExpandDiagnostic", diagnostic.Id])"
-                          CollapseAriaLabel="@(diagnostic => Text["CollapseDiagnostic", diagnostic.Id])">
-            <HeaderContent>
-                <tr><th class="operational-table__identity" data-priority="essential">@Text["Timestamp"]</th>
-                    <th data-priority="essential">@Text["Level"]</th><th data-priority="essential">@Text["Code"]</th>
-                    <th data-priority="essential">@Text["Category"]</th><th data-priority="supporting">@Text["Path"]</th>
-                    <th data-priority="supporting">@Text["CorrelationId"]</th>
-                    <th class="operational-table__actions-heading"><span class="visually-hidden">@Text["Actions"]</span></th></tr>
-            </HeaderContent>
-            <RowContent Context="diagnostic">
-                <td class="operational-table__identity mlv-mono" data-priority="essential">@LegacyPresentation.FormatUtcDateTime(diagnostic.Timestamp, CultureInfo.CurrentCulture)</td>
-                <td data-priority="essential">@diagnostic.Level</td><td class="mlv-mono" data-priority="essential">@diagnostic.Code</td>
-                <td data-priority="essential">@diagnostic.Category</td><td class="mlv-mono" data-priority="supporting">@diagnostic.Path</td>
-                <td class="mlv-mono" data-priority="supporting">@diagnostic.CorrelationId</td>
-            </RowContent>
+                          DetailsAriaLabel="@(diagnostic => Text["ExpandDiagnostic", diagnostic.Id])">
             <QuickViewContent Context="diagnostic"><dl class="operational-quick-view">
                 <div><dt>@Text["Path"]</dt><dd class="mlv-mono">@diagnostic.Path</dd></div>
                 <div><dt>@Text["CorrelationId"]</dt><dd class="mlv-mono">@diagnostic.CorrelationId</dd></div>
                 <div><dt>@Text["Code"]</dt><dd class="mlv-mono">@diagnostic.Code</dd></div>
             </dl></QuickViewContent>
-        </OperationalTable>
-        <nav class="d-flex flex-wrap align-center justify-space-between gap-3 mt-4" aria-label="@Text["Pages"]">
-            <ShadcnButton Variant="ShadcnButtonVariant.Outline" Disabled="@(!page.HasPreviousPage)" OnClick="PreviousPageAsync">@Text["Previous"]</ShadcnButton>
-            <ShadcnTypography aria-live="polite">@Text["PageSummary", page.PageIndex, page.TotalPages, page.TotalRecords]</ShadcnTypography>
-            <ShadcnButton Variant="ShadcnButtonVariant.Outline" Disabled="@(!page.HasNextPage)" OnClick="NextPageAsync">@Text["Next"]</ShadcnButton>
-        </nav>
-    }
+    </OperationalDataTable>
+    </section>
 </div>
 
 @code {
@@ -79,20 +51,22 @@
     private bool loading;
     private DiagnosticEventSort currentSort = DiagnosticEventSort.LogTimestamp_Descending;
     private readonly LatestRequestGate requestGate = new();
-    private readonly OperationalTableState<long> tableState = new();
+    private ShadcnDataTableState dataTableState = new() { PageSize = 10 };
     private IReadOnlyList<PageBreadcrumbItem> Breadcrumbs =>
     [
         new(Text["Operations"], "/Dashboard"),
         new(Text["Title"]),
     ];
-    private static readonly ListToolbarState<DiagnosticEventSort> DefaultToolbarState =
-        new(null, DiagnosticEventSort.LogTimestamp_Descending, 10);
     private static readonly int[] PageSizeOptions = [10, 25, 50, 100];
-    private ListToolbarState<DiagnosticEventSort> ToolbarState => new(Search, currentSort, Size);
-    private IReadOnlyList<ListToolbarOption<DiagnosticEventSort>> SortOptions =>
-        Enum.GetValues<DiagnosticEventSort>()
-            .Select(option => new ListToolbarOption<DiagnosticEventSort>(option, Text[option.ToString()]))
-            .ToArray();
+    private IReadOnlyList<ShadcnDataTableColumn<DiagnosticEventItem>> Columns =>
+    [
+        new("timestamp", Text["Timestamp"], diagnostic => diagnostic.Timestamp) { Sortable = true, Hideable = false, MinWidth = "12rem", CellTemplate = diagnostic => builder => builder.AddContent(0, LegacyPresentation.FormatUtcDateTime(diagnostic.Timestamp, CultureInfo.CurrentCulture)) },
+        new("level", Text["Level"], diagnostic => diagnostic.Level) { Sortable = true, Filterable = true },
+        new("code", Text["Code"], diagnostic => diagnostic.Code) { Filterable = true },
+        new("category", Text["Category"], diagnostic => diagnostic.Category) { Filterable = true },
+        new("path", Text["Path"], diagnostic => diagnostic.Path) { Filterable = true, MinWidth = "14rem" },
+        new("correlation", Text["CorrelationId"], diagnostic => diagnostic.CorrelationId) { Filterable = true, MinWidth = "12rem" },
+    ];
 
     protected override async Task OnParametersSetAsync()
     {
@@ -101,6 +75,7 @@
         currentSort = Enum.TryParse<DiagnosticEventSort>(SortQuery, true, out var parsed)
             ? parsed
             : DiagnosticEventSort.LogTimestamp_Descending;
+        dataTableState = BuildDataTableState();
         await LoadAsync();
     }
 
@@ -109,8 +84,7 @@
         CancellationToken cancellationToken = default)
     {
         using var lease = requestGate.Begin(cancellationToken);
-        var state = (requestedState ?? ToolbarState).Normalize();
-        tableState.Clear();
+        var state = (requestedState ?? new ListToolbarState<DiagnosticEventSort>(Search, currentSort, Size)).Normalize();
         loading = true;
         error = null;
         try
@@ -166,26 +140,44 @@
         }
     }
 
-    private Task PreviousPageAsync() => NavigateAsync(Math.Max(1, Index - 1), Search, currentSort, Size);
-    private Task NextPageAsync() => NavigateAsync(Index + 1, Search, currentSort, Size);
-
-    private Task HandleToolbarRequestAsync(ListToolbarRequest<DiagnosticEventSort> request)
+    private Task HandleDataTableStateChangedAsync(ShadcnDataTableState state)
     {
-        var state = request.State.Normalize();
-        if (request.Reason == ListToolbarChangeReason.Refreshed && state == ToolbarState.Normalize())
-        {
-            return LoadAsync();
-        }
-
-        return NavigateAsync(1, state.Search, state.Sort, state.PageSize, replace: true);
+        dataTableState = state;
+        return Task.CompletedTask;
     }
+
+    private Task HandleDataTableRequestAsync(ShadcnDataTableRequest request) =>
+        NavigateAsync(request.PageIndex + 1, request.Query, MapSort(request.Sorts), request.PageSize, replace: true);
 
     private Task NavigateAsync(int index, string? search, DiagnosticEventSort sort, int size, bool replace = false)
     {
-        tableState.Clear();
         Navigation.NavigateTo($"/Server/ErrorReport?search={Uri.EscapeDataString(search ?? string.Empty)}&sort={sort}&index={index}&size={Math.Clamp(size, 1, 100)}", replace: replace);
         return Task.CompletedTask;
     }
 
     public void Dispose() => requestGate.Dispose();
+
+    private ShadcnDataTableState BuildDataTableState() => new()
+    {
+        Query = Search ?? string.Empty,
+        PageIndex = Math.Max(0, Index - 1),
+        PageSize = Size,
+        Sorts = currentSort switch
+        {
+            DiagnosticEventSort.LogTimestamp_Ascending => [new("timestamp", ShadcnSortDirection.Ascending)],
+            DiagnosticEventSort.LogTimestamp_Descending => [new("timestamp", ShadcnSortDirection.Descending)],
+            DiagnosticEventSort.LogLevel_Ascending => [new("level", ShadcnSortDirection.Ascending)],
+            DiagnosticEventSort.LogLevel_Descending => [new("level", ShadcnSortDirection.Descending)],
+            _ => [],
+        },
+    };
+
+    private DiagnosticEventSort MapSort(IReadOnlyList<ShadcnDataTableSort> sorts) => sorts.FirstOrDefault() switch
+    {
+        { ColumnKey: "timestamp", Direction: ShadcnSortDirection.Ascending } => DiagnosticEventSort.LogTimestamp_Ascending,
+        { ColumnKey: "timestamp", Direction: ShadcnSortDirection.Descending } => DiagnosticEventSort.LogTimestamp_Descending,
+        { ColumnKey: "level", Direction: ShadcnSortDirection.Ascending } => DiagnosticEventSort.LogLevel_Ascending,
+        { ColumnKey: "level", Direction: ShadcnSortDirection.Descending } => DiagnosticEventSort.LogLevel_Descending,
+        _ => currentSort,
+    };
 }

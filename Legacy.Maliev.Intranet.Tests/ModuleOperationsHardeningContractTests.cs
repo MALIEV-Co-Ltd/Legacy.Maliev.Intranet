@@ -51,9 +51,9 @@ public sealed class ModuleOperationsHardeningContractTests
     public void MaterialsPagination_IsSemanticAndAnnouncesChanges()
     {
         var source = Read(FindRoot(), "Legacy.Maliev.Intranet.Client.Features.Catalog", "Pages", "Materials.razor");
-        Assert.Contains("<nav class=", source, StringComparison.Ordinal);
-        Assert.Contains("aria-label=\"@Text[\"MaterialPages\"]\"", source, StringComparison.Ordinal);
-        Assert.Contains("aria-live=\"polite\">@Text[\"PageSummary\"", source, StringComparison.Ordinal);
+        Assert.Contains("<OperationalDataTable", source, StringComparison.Ordinal);
+        Assert.Contains("StateChanged=\"HandleDataTableStateChangedAsync\"", source, StringComparison.Ordinal);
+        Assert.Contains("RequestChanged=\"HandleDataTableRequestAsync\"", source, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -71,7 +71,8 @@ public sealed class ModuleOperationsHardeningContractTests
     {
         var source = Read(FindRoot(), "Legacy.Maliev.Intranet.Client.Features.Orders", "Pages", "Orders.razor");
         Assert.Contains("<ModuleHeader", source, StringComparison.Ordinal);
-        Assert.Contains("TableLabel=\"@section.Title\"", source, StringComparison.Ordinal);
+        Assert.Contains("<OperationalDataTable", source, StringComparison.Ordinal);
+        Assert.Contains("orders-working-set", source, StringComparison.Ordinal);
         Assert.Contains("operations-status-pill", Read(FindRoot(), "Legacy.Maliev.Intranet.Client.Features.Orders", "Pages", "OrderDetail.razor"), StringComparison.Ordinal);
     }
 

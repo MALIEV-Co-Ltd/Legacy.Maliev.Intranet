@@ -1,0 +1,80 @@
+@typeparam TItem
+@inject IStringLocalizer<OperationalDataTableResources> DataTableText
+
+<ShadcnDataTable TItem="TItem"
+                 Class="operational-data-table"
+                 Items="@Items"
+                 Columns="@Columns"
+                 RowKey="@RowKey"
+                 State="@State"
+                 StateChanged="@StateChanged"
+                 Manual="true"
+                 TotalCount="@TotalCount"
+                 Selectable="false"
+                 Loading="@Loading"
+                 Error="@Error"
+                 FilterPlaceholder="@FilterPlaceholder"
+                 ColumnsLabel="@DataTableText["Columns"]"
+                 ActionsLabel="@ActionsLabel"
+                 EmptyText="@EmptyText"
+                 LoadingText="@LoadingText"
+                 PreviousLabel="@DataTableText["Previous"]"
+                 NextLabel="@DataTableText["Next"]"
+                 FirstLabel="@DataTableText["First"]"
+                 LastLabel="@DataTableText["Last"]"
+                 PageSizeLabel="@DataTableText["RowsPerPage"]"
+                 PageSizeOptions="@PageSizeOptions"
+                 RequestChanged="@RequestChanged"
+                 SelectionSummary="@FormatTotalSummary"
+                 PageSummary="@FormatPageSummary">
+    <RowActionTemplate Context="item">
+        <span class="operational-data-table__actions">
+            @if (DetailHref(item) is { } detailHref)
+            {
+                <LegacyLink Href="@detailHref"
+                            Role="LegacyLinkRole.Inline"
+                            Class="operational-data-table__detail"
+                            StartIconData="ExternalLinkIcon"
+                            AriaLabel="@DetailAriaLabel(item)">
+                    <span class="visually-hidden">@DetailAriaLabel(item)</span>
+                </LegacyLink>
+            }
+            <ShadcnPopover>
+                <ShadcnPopoverTrigger Class="operational-data-table__details" aria-label="@DetailsAriaLabel(item)" title="@DetailsAriaLabel(item)">
+                    <ShadcnIcon Icon="DetailsIcon" Size="20" />
+                </ShadcnPopoverTrigger>
+                <ShadcnPopoverContent Class="operational-data-table__popover" Side="ShadcnOverlaySide.Left" Align="ShadcnOverlayAlign.Start">
+                    <ShadcnPopoverTitle>@DetailsAriaLabel(item)</ShadcnPopoverTitle>
+                    <ShadcnPopoverDescription Class="visually-hidden">@DetailsAriaLabel(item)</ShadcnPopoverDescription>
+                    @QuickViewContent(item)
+                </ShadcnPopoverContent>
+            </ShadcnPopover>
+        </span>
+    </RowActionTemplate>
+</ShadcnDataTable>
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<TItem> Items { get; set; } = [];
+    [Parameter, EditorRequired] public IReadOnlyList<ShadcnDataTableColumn<TItem>> Columns { get; set; } = [];
+    [Parameter, EditorRequired] public Func<TItem, string> RowKey { get; set; } = default!;
+    [Parameter, EditorRequired] public ShadcnDataTableState State { get; set; } = new();
+    [Parameter, EditorRequired] public EventCallback<ShadcnDataTableState> StateChanged { get; set; }
+    [Parameter, EditorRequired] public EventCallback<ShadcnDataTableRequest> RequestChanged { get; set; }
+    [Parameter, EditorRequired] public int TotalCount { get; set; }
+    [Parameter] public bool Loading { get; set; }
+    [Parameter] public string? Error { get; set; }
+    [Parameter, EditorRequired] public Func<TItem, string?> DetailHref { get; set; } = default!;
+    [Parameter, EditorRequired] public Func<TItem, string> DetailAriaLabel { get; set; } = default!;
+    [Parameter, EditorRequired] public Func<TItem, string> DetailsAriaLabel { get; set; } = default!;
+    [Parameter, EditorRequired] public RenderFragment<TItem> QuickViewContent { get; set; } = default!;
+    [Parameter] public string FilterPlaceholder { get; set; } = "Filter rows...";
+    [Parameter] public string ActionsLabel { get; set; } = "Actions";
+    [Parameter] public string EmptyText { get; set; } = "No results.";
+    [Parameter] public string LoadingText { get; set; } = "Loading...";
+    [Parameter] public IReadOnlyList<int> PageSizeOptions { get; set; } = [10, 25, 50, 100];
+
+    private static readonly ShadcnIconData ExternalLinkIcon = LucideIconCatalog.Instance.Get(LucideIconNames.ExternalLink);
+    private static readonly ShadcnIconData DetailsIcon = LucideIconCatalog.Instance.Get(LucideIconNames.ChevronDown);
+    private string FormatTotalSummary(int _, int total) => DataTableText["RecordCount", total];
+    private string FormatPageSummary(int page, int pages) => DataTableText["PageSummary", page, pages];
+}

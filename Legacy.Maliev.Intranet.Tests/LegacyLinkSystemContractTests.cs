@@ -103,7 +103,6 @@ public sealed class LegacyLinkSystemContractTests
             E("Legacy.Maliev.Intranet.Client.Features.Procurement/Pages/PurchaseOrderView.razor", authorize, "Href=\"/PurchaseOrders/Index\"", 2, "Role=\"LegacyLinkRole.Navigation\"", "AriaLabel=\"@Text[\"Back\"]\"", "@Text[\"Back\"]</LegacyLink>"),
             E("Legacy.Maliev.Intranet.Client.Features.Procurement/Pages/PurchaseOrderCreate.razor", authorize, "Href=\"/PurchaseOrders/Index\"", 1, "Role=\"LegacyLinkRole.Navigation\"", "Disabled=\"@submitting\"", "AriaLabel=\"@Text[\"Cancel\"]\"", "@Text[\"Cancel\"]</LegacyLink>"),
 
-            E("Legacy.Maliev.Intranet.Client.Features.Accounting/Pages/Invoices.razor", authorize, "/Customers/View?id={invoice.CustomerId}", 1, "Role=\"LegacyLinkRole.Record\"", "AriaLabel=\"@($\"{Text[\"CustomerId\"]} {invoice.CustomerId}\")\"", "@invoice.CustomerId</LegacyLink>"),
             E("Legacy.Maliev.Intranet.Client.Features.Accounting/Pages/InvoiceView.razor", authorize, "Href=\"/Invoices/Index\"", 2, "Role=\"LegacyLinkRole.Navigation\"", "AriaLabel=\"@Text[\"Back\"]\"", "@Text[\"Back\"]</LegacyLink>"),
             E("Legacy.Maliev.Intranet.Client.Features.Accounting/Pages/InvoiceView.razor", authorize, "/Customers/View?id={detailPage.Invoice.CustomerId}", 1, "Role=\"LegacyLinkRole.Record\"", "AriaLabel=\"@($\"{Text[\"CustomerId\"]} {detailPage.Invoice.CustomerId}\")\"", "@detailPage.Invoice.CustomerId</LegacyLink>"),
             E("Legacy.Maliev.Intranet.Client.Features.Accounting/Pages/InvoiceView.razor", authorize, "Href=\"@file.Uri?.ToString()\"", 1, "Role=\"LegacyLinkRole.External\"", "Target=\"_blank\"", "Rel=\"noopener\"", "@file.ObjectName"),
@@ -131,21 +130,21 @@ public sealed class LegacyLinkSystemContractTests
                 Assert.Contains(expectation.Authorization, source, StringComparison.Ordinal);
             }
 
-            Assert.Equal(
-                expectation.Count,
-                LegacyLinkSourceContracts.CountExpectedLinks(source, expectation.Href, expectation.LocalFragments));
+            var actualCount = LegacyLinkSourceContracts.CountExpectedLinks(source, expectation.Href, expectation.LocalFragments);
+            Assert.True(actualCount == expectation.Count,
+                $"{expectation.RelativePath}: expected {expectation.Count} matching link(s) for {expectation.Href}, found {actualCount}.");
         }
 
         var orders = ReadSource("Legacy.Maliev.Intranet.Client.Features.Orders/Pages/Orders.razor");
-        Assert.Contains("<OperationalTable", orders, StringComparison.Ordinal);
+        Assert.Contains("<OperationalDataTable", orders, StringComparison.Ordinal);
         Assert.Contains("DetailHref=\"@(order => $\"/Orders/View?id={order.Id}\")\"", orders, StringComparison.Ordinal);
         Assert.Contains("DetailAriaLabel=\"@(order => Text[\"ViewOrder\", order.Id])\"", orders, StringComparison.Ordinal);
 
         var extractedOperationalLinks = new[]
         {
-            ("Legacy.Maliev.Intranet.Client.Features.Customers/Pages/Customers.razor", "/Customers/View?id={context.Id}", "ViewCustomer"),
-            ("Legacy.Maliev.Intranet.Client.Features.Employees/Pages/Employees.razor", "/Employees/View?id={context.Id}", "ViewEmployee"),
-            ("Legacy.Maliev.Intranet.Client.Features.Quotations/Pages/QuotationRequests/Index.razor", "/QuotationRequests/View?id={context.Id}", "ViewQuotationRequest"),
+            ("Legacy.Maliev.Intranet.Client.Features.Customers/Pages/Customers.razor", "/Customers/View?id={customer.Id}", "ViewCustomer"),
+            ("Legacy.Maliev.Intranet.Client.Features.Employees/Pages/Employees.razor", "/Employees/View?id={employee.Id}", "ViewEmployee"),
+            ("Legacy.Maliev.Intranet.Client.Features.Quotations/Pages/QuotationRequests/Index.razor", "/QuotationRequests/View?id={request.Id}", "ViewQuotationRequest"),
             ("Legacy.Maliev.Intranet.Client.Features.Quotations/Pages/Quotations/Index.razor", "/Quotations/View?id={quotation.Id}", "ViewQuotation"),
             ("Legacy.Maliev.Intranet.Client.Features.Accounting/Pages/Invoices.razor", "/Invoices/View?id={invoice.Id}", "ViewInvoice"),
             ("Legacy.Maliev.Intranet.Client.Features.Accounting/Pages/Finances.razor", "/Finances/View?id={payment.Id}", "ViewFinance"),
@@ -156,11 +155,18 @@ public sealed class LegacyLinkSystemContractTests
         foreach (var (path, href, label) in extractedOperationalLinks)
         {
             var source = ReadSource(path);
-            Assert.Contains("<OperationalTable", source, StringComparison.Ordinal);
+            Assert.Contains("<OperationalDataTable", source, StringComparison.Ordinal);
             Assert.Contains(href, source, StringComparison.Ordinal);
             Assert.Contains($"DetailAriaLabel=\"@(", source, StringComparison.Ordinal);
             Assert.Contains($"Text[\"{label}\"", source, StringComparison.Ordinal);
         }
+
+        var invoices = ReadSource("Legacy.Maliev.Intranet.Client.Features.Accounting/Pages/Invoices.razor");
+        Assert.True(LegacyLinkSourceContracts.MatchesExpectedBuilderLink(
+            invoices,
+            "/Customers/View?id={customerId}",
+            "nameof(LegacyLink.Role), LegacyLinkRole.Record",
+            "nameof(LegacyLink.AriaLabel), $\"{Text[\"CustomerId\"]} {customerId}\""));
 
         var quotationIndex = ReadSource("Legacy.Maliev.Intranet.Client.Features.Quotations/Pages/Quotations/Index.razor");
         Assert.True(LegacyLinkSourceContracts.MatchesExpectedBuilderLink(

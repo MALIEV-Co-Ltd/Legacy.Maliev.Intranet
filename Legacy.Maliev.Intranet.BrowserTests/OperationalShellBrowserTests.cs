@@ -260,8 +260,8 @@ public sealed class OperationalShellBrowserTests(
                 const inset = document.querySelector('.shadcn-sidebar-inset');
                 const logo = document.querySelector('.legacy-rail-brand-logo');
                 const active = document.querySelector('.legacy-rail-link[data-active="true"]');
-                const table = document.querySelector('.operational-table');
-                const tabular = table?.querySelector('.mlv-mono');
+                const table = document.querySelector('[data-slot="data-table"] table');
+                const tabular = table?.querySelector('tbody td');
                 return {
                     sidebarWidth: sidebar.getBoundingClientRect().width,
                     sidebarBackground: getComputedStyle(sidebar).backgroundColor,

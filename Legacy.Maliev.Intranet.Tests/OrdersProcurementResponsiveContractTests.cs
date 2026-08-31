@@ -19,9 +19,8 @@ public sealed class OrdersProcurementResponsiveContractTests
         Assert.Contains("max-height:", styles, StringComparison.Ordinal);
         Assert.Contains("overflow: auto", styles, StringComparison.Ordinal);
         Assert.Contains("position: sticky", styles, StringComparison.Ordinal);
-        Assert.Contains("<OperationalTable", page, StringComparison.Ordinal);
-        Assert.Contains("data-priority=\"essential\"", page, StringComparison.Ordinal);
-        Assert.Contains("data-priority=\"supporting\"", page, StringComparison.Ordinal);
+        Assert.Contains("<OperationalDataTable", page, StringComparison.Ordinal);
+        Assert.Contains("ShadcnDataTableColumn", page, StringComparison.Ordinal);
         Assert.DoesNotContain("data-label=", page, StringComparison.Ordinal);
         Assert.Contains("@media (max-width: 720px)", styles, StringComparison.Ordinal);
         Assert.Contains("public int Size { get; set; } = 10", page, StringComparison.Ordinal);
@@ -74,8 +73,8 @@ public sealed class OrdersProcurementResponsiveContractTests
         var suppliers = Read(root, "Legacy.Maliev.Intranet.Client.Features.Procurement", "Pages", "Suppliers.razor");
         var toolbarStyles = Read(root, "Legacy.Maliev.Intranet.Client.Shared", "Components", "ListToolbar.razor.css");
 
-        Assert.Contains("<OperationalTable", purchaseOrders, StringComparison.Ordinal);
-        Assert.Contains("<OperationalTable", suppliers, StringComparison.Ordinal);
+        Assert.Contains("<OperationalDataTable", purchaseOrders, StringComparison.Ordinal);
+        Assert.Contains("<OperationalDataTable", suppliers, StringComparison.Ordinal);
         var operationalTableStyles = Read(root, "Legacy.Maliev.Intranet.Client.Shared", "Components", "OperationalTable.razor.css");
         Assert.Contains("@media (max-width: 720px)", operationalTableStyles, StringComparison.Ordinal);
         Assert.Contains("overflow-x: auto", operationalTableStyles, StringComparison.Ordinal);

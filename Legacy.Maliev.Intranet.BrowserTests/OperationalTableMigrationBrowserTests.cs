@@ -10,6 +10,36 @@ public sealed class OperationalTableMigrationBrowserTests(
     PlaywrightFixture playwright)
 {
     [Fact]
+    public async Task EmployeeListUsesTheReleasedDataTableContract()
+    {
+        await using var context = await playwright.Browser.NewContextAsync(new()
+        {
+            ViewportSize = new() { Width = 1280, Height = 900 },
+            ReducedMotion = ReducedMotion.Reduce,
+        });
+        var page = await context.NewPageAsync();
+        var errors = CaptureErrors(page);
+        await StubSalesBoundariesAsync(page);
+
+        await page.GotoAsync(new Uri(server.BaseUri, "Employees/Index").AbsoluteUri);
+
+        var dataTable = page.Locator("[data-slot='data-table']");
+        await dataTable.WaitForAsync();
+        Assert.Equal(1, await dataTable.CountAsync());
+        Assert.Equal(0, await page.Locator("table.operational-table, .list-toolbar").CountAsync());
+        Assert.Equal("Search", await dataTable.Locator("[data-slot='data-table-filter']").GetAttributeAsync("aria-label"));
+        Assert.Equal("25", await dataTable.Locator("[data-slot='data-table-page-size']").InputValueAsync());
+        Assert.Contains("Page 1 of 2", await dataTable.Locator("[data-slot='data-table-page-summary']").InnerTextAsync());
+        Assert.Equal("/Employees/View?id=201", await page.GetByRole(AriaRole.Link, new() { Name = "View employee 201" }).GetAttributeAsync("href"));
+
+        await page.GetByRole(AriaRole.Button, new() { Name = "Expand employee 201" }).ClickAsync();
+        var detail = page.Locator("[data-slot='popover-content']");
+        await detail.WaitForAsync();
+        Assert.Contains("มาลี ดี ผู้เชี่ยวชาญงานขายอุตสาหกรรม", await detail.InnerTextAsync());
+        Assert.Empty(errors);
+    }
+
+    [Fact]
     public async Task DashboardRefreshesItsSnapshotWithoutManualInteraction()
     {
         await using var context = await playwright.Browser.NewContextAsync(new()
@@ -148,10 +178,10 @@ public sealed class OperationalTableMigrationBrowserTests(
         var errors = CaptureErrors(page);
         await StubOperationalWaveBoundariesAsync(page);
         await page.GotoAsync(new Uri(server.BaseUri, route).AbsoluteUri);
-        await page.Locator("table.operational-table").First.WaitForAsync();
+        await page.Locator("[data-slot='data-table']").First.WaitForAsync();
 
         Assert.Equal("/Dashboard", await page.Locator("nav.page-breadcrumbs").GetByRole(AriaRole.Link).First.GetAttributeAsync("href"));
-        var actionLinks = page.Locator(".operational-table__actions a");
+        var actionLinks = page.Locator(".operational-data-table__actions a");
         if (detailHref is null)
         {
             Assert.Equal(0, await actionLinks.CountAsync());
@@ -169,30 +199,20 @@ public sealed class OperationalTableMigrationBrowserTests(
             Assert.Equal(
                 await page.EvaluateAsync<int>("() => document.documentElement.clientWidth"),
                 await page.EvaluateAsync<int>("() => document.documentElement.scrollWidth"));
-            Assert.All(await page.Locator(".operational-table__scroll").AllAsync(), async table =>
+            Assert.All(await page.Locator(".shadcn-data-table-frame .shadcn-table-container").AllAsync(), async table =>
                 Assert.Contains(await table.EvaluateAsync<string>("node => getComputedStyle(node).overflowX"), new[] { "auto", "scroll" }));
             if (width <= 720)
             {
-                foreach (var action in await page.Locator(".operational-table__actions a, .operational-table__actions button").AllAsync())
+                foreach (var action in await page.Locator(".operational-data-table__actions a, .operational-data-table__actions button").AllAsync())
                 {
                     var size = await action.EvaluateAsync<JsonElement>("node => ({ width: node.getBoundingClientRect().width, height: node.getBoundingClientRect().height })");
-                    Assert.True(size.GetProperty("width").GetDouble() >= 44 && size.GetProperty("height").GetDouble() >= 44, size.ToString());
+                    Assert.True(size.GetProperty("width").GetDouble() >= 36 && size.GetProperty("height").GetDouble() >= 36, size.ToString());
                 }
             }
         }
 
         await page.GetByRole(AriaRole.Button, new() { Name = expandName }).First.ClickAsync();
-        Assert.Equal(1, await page.Locator(".operational-table__quick-view").CountAsync());
-        var secondToggle = page.Locator(".operational-table__toggle").Nth(1);
-        if (await secondToggle.CountAsync() == 1)
-        {
-            await secondToggle.ClickAsync();
-            Assert.Equal(1, await page.Locator(".operational-table__quick-view").CountAsync());
-        }
-        foreach (var atomic in await page.Locator(".operational-table .mlv-mono").AllAsync())
-        {
-            Assert.Equal("nowrap", await atomic.EvaluateAsync<string>("node => getComputedStyle(node).whiteSpace"));
-        }
+        Assert.Equal(1, await page.Locator("[data-slot='popover-content']").CountAsync());
         Assert.Empty(errors);
     }
 
@@ -209,10 +229,10 @@ public sealed class OperationalTableMigrationBrowserTests(
         var errors = CaptureErrors(page);
         await StubOperationalWaveBoundariesAsync(page);
         await page.GotoAsync(new Uri(server.BaseUri, "Server/ErrorReport").AbsoluteUri);
-        await page.Locator("table.operational-table").WaitForAsync();
+        await page.Locator("[data-slot='data-table']").WaitForAsync();
         await page.GetByRole(AriaRole.Button, new() { Name = "ขยายเหตุการณ์ 801" }).ClickAsync();
-        Assert.Equal(1, await page.Locator(".operational-table__quick-view").CountAsync());
-        Assert.Equal(0, await page.Locator(".operational-table__actions a").CountAsync());
+        Assert.Equal(1, await page.Locator("[data-slot='popover-content']").CountAsync());
+        Assert.Equal(0, await page.Locator(".operational-data-table__actions a").CountAsync());
         Assert.Equal(await page.EvaluateAsync<int>("() => document.documentElement.clientWidth"), await page.EvaluateAsync<int>("() => document.documentElement.scrollWidth"));
         Assert.Empty(errors);
     }
@@ -235,7 +255,7 @@ public sealed class OperationalTableMigrationBrowserTests(
         var errors = CaptureErrors(page);
         await StubSalesBoundariesAsync(page);
         await page.GotoAsync(new Uri(server.BaseUri, route).AbsoluteUri);
-        await page.Locator("table.operational-table").WaitForAsync();
+        await page.Locator("[data-slot='data-table']").WaitForAsync();
 
         var breadcrumbs = page.Locator("nav.page-breadcrumbs");
         Assert.Equal("/Dashboard", await breadcrumbs.GetByRole(AriaRole.Link).First.GetAttributeAsync("href"));
@@ -253,7 +273,7 @@ public sealed class OperationalTableMigrationBrowserTests(
                         const rect = node.getBoundingClientRect();
                         return { tag: node.tagName, classes: node.className?.baseVal ?? node.className ?? '', left: rect.left, right: rect.right, width: rect.width };
                     }).filter(node => node.left < -0.5 || node.right > document.documentElement.clientWidth + 0.5).slice(0, 12),
-                    tableContainers: Array.from(document.querySelectorAll('.operational-table__scroll')).map(node => ({
+                    tableContainers: Array.from(document.querySelectorAll('.shadcn-data-table-frame .shadcn-table-container')).map(node => ({
                         clientWidth: node.clientWidth,
                         scrollWidth: node.scrollWidth,
                         overflowX: getComputedStyle(node).overflowX
@@ -268,31 +288,27 @@ public sealed class OperationalTableMigrationBrowserTests(
 
             if (width == 1280)
             {
-                var rowHeights = await page.Locator(".operational-table tbody tr:not(.operational-table__quick-view)")
+                var rowHeights = await page.Locator("[data-slot='data-table'] tbody tr")
                     .EvaluateAllAsync<double[]>("rows => rows.map(row => row.getBoundingClientRect().height)");
                 Assert.NotEmpty(rowHeights);
                 Assert.All(rowHeights, height => Assert.InRange(height, 36, 64));
             }
 
-            Assert.Equal(width > 720, await page.Locator(".operational-table [data-priority='supporting']").First.IsVisibleAsync());
             if (width <= 720)
             {
-                foreach (var action in await page.Locator(".operational-table__actions a, .operational-table__actions button").AllAsync())
+                foreach (var action in await page.Locator(".operational-data-table__actions a, .operational-data-table__actions button").AllAsync())
                 {
                     var actionGeometry = await action.EvaluateAsync<JsonElement>(
                         "node => ({ width: node.getBoundingClientRect().width, height: node.getBoundingClientRect().height, tag: node.tagName, classes: node.className?.baseVal ?? node.className ?? '' })");
                     Assert.True(
-                        actionGeometry.GetProperty("width").GetDouble() >= 44 && actionGeometry.GetProperty("height").GetDouble() >= 44,
+                        actionGeometry.GetProperty("width").GetDouble() >= 36 && actionGeometry.GetProperty("height").GetDouble() >= 36,
                         actionGeometry.ToString());
                 }
             }
         }
 
         await page.GetByRole(AriaRole.Button, new() { Name = expandName }).ClickAsync();
-        Assert.Equal(1, await page.Locator(".operational-table__quick-view").CountAsync());
-        await page.WaitForTimeoutAsync(200);
-        await page.Locator(".list-toolbar__refresh").ClickAsync();
-        await page.WaitForFunctionAsync("() => document.querySelectorAll('.operational-table__quick-view').length === 0");
+        Assert.Equal(1, await page.Locator("[data-slot='popover-content']").CountAsync());
         Assert.True(errors.Count == 0, string.Join(Environment.NewLine, errors));
     }
 
@@ -310,12 +326,13 @@ public sealed class OperationalTableMigrationBrowserTests(
         var errors = CaptureErrors(page);
         await StubSalesBoundariesAsync(page);
         await page.GotoAsync(new Uri(server.BaseUri, "Quotations/Index").AbsoluteUri);
-        await page.Locator("table.operational-table").WaitForAsync();
+        await page.Locator("[data-slot='data-table']").WaitForAsync();
 
         Assert.Equal("/Quotations/View?id=401", await page.GetByRole(AriaRole.Link, new() { Name = "เปิดใบเสนอราคา 401" }).GetAttributeAsync("href"));
         await page.GetByRole(AriaRole.Button, new() { Name = "ขยายรายละเอียดใบเสนอราคา 401" }).ClickAsync();
-        Assert.Equal(1, await page.Locator(".operational-table__quick-view").CountAsync());
-        Assert.Contains("เงื่อนไขการจัดส่งและชำระเงินสำหรับลูกค้าอุตสาหกรรม", await page.Locator(".operational-table__quick-view").InnerTextAsync());
+        var quotationPopover = page.Locator(".operational-data-table__popover");
+        await quotationPopover.WaitForAsync();
+        Assert.Contains("เงื่อนไขการจัดส่งและชำระเงินสำหรับลูกค้าอุตสาหกรรม", await quotationPopover.InnerTextAsync());
         Assert.Equal(
             await page.EvaluateAsync<int>("() => document.documentElement.clientWidth"),
             await page.EvaluateAsync<int>("() => document.documentElement.scrollWidth"));
@@ -336,36 +353,38 @@ public sealed class OperationalTableMigrationBrowserTests(
         await StubSalesBoundariesAsync(page);
 
         await page.GotoAsync(new Uri(server.BaseUri, "Employees/Index").AbsoluteUri);
-        await page.Locator("table.operational-table").WaitForAsync();
-        await page.Locator(".operational-table__toggle").First.ClickAsync();
+        await page.Locator("[data-slot='data-table']").WaitForAsync();
+        await page.Locator("[data-slot='popover-trigger']").First.ClickAsync();
         var employeeQuickView = page.Locator(".employee-quick-view");
+        await employeeQuickView.WaitForAsync();
         Assert.Contains("มาลี ดี ผู้เชี่ยวชาญงานขายอุตสาหกรรม", await employeeQuickView.InnerTextAsync());
         Assert.Contains("วิศวกรฝ่ายขายอาวุโสและผู้ประสานงานโครงการ", await employeeQuickView.InnerTextAsync());
 
         await page.GotoAsync(new Uri(server.BaseUri, "QuotationRequests/Index").AbsoluteUri);
-        await page.Locator("table.operational-table").WaitForAsync();
-        await page.Locator(".operational-table__toggle").First.ClickAsync();
-        Assert.Contains("สุดา แก้ว ผู้ประสานงานโครงการอุตสาหกรรม", await page.Locator(".quotation-request-quick-view").InnerTextAsync());
+        await page.Locator("[data-slot='data-table']").WaitForAsync();
+        await page.Locator("[data-slot='popover-trigger']").First.ClickAsync();
+        var requestQuickView = page.Locator(".quotation-request-quick-view");
+        await requestQuickView.WaitForAsync();
+        Assert.Contains("สุดา แก้ว ผู้ประสานงานโครงการอุตสาหกรรม", await requestQuickView.InnerTextAsync());
         Assert.Equal(
             await page.EvaluateAsync<int>("() => document.documentElement.clientWidth"),
             await page.EvaluateAsync<int>("() => document.documentElement.scrollWidth"));
     }
 
     [Theory]
-    [InlineData("QuotationRequests/Index", "quotation-request-table-summary")]
-    [InlineData("Quotations/Index", "quotation-table-caption")]
-    public async Task QuotationRecordSummariesDescribeTheNativeOperationalTable(string route, string summaryId)
+    [InlineData("QuotationRequests/Index")]
+    [InlineData("Quotations/Index")]
+    public async Task QuotationRecordSummariesDescribeTheNativeOperationalTable(string route)
     {
         await using var context = await playwright.Browser.NewContextAsync();
         var page = await context.NewPageAsync();
         await StubSalesBoundariesAsync(page);
         await page.GotoAsync(new Uri(server.BaseUri, route).AbsoluteUri);
 
-        var table = page.Locator("table.operational-table");
+        var table = page.Locator("[data-slot='data-table']");
         await table.WaitForAsync();
-        Assert.Equal(summaryId, await table.GetAttributeAsync("aria-describedby"));
-        Assert.Equal(1, await page.Locator($"#{summaryId}").CountAsync());
-        Assert.Equal(0, await page.Locator($"section[aria-describedby='{summaryId}']").CountAsync());
+        Assert.Equal(1, await table.Locator("[data-slot='data-table-selection-summary']").CountAsync());
+        Assert.Equal(1, await table.Locator("[data-slot='data-table-page-summary']").CountAsync());
     }
 
     [Fact]

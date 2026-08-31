@@ -1,5 +1,6 @@
 @page "/Materials/Index"
 @page "/mfg/materials"
+@using System.Globalization
 @attribute [Authorize]
 @implements IDisposable
 @inject HttpClient Http
@@ -20,63 +21,32 @@
         </ShadcnButton>
     </header>
 
-    <ListToolbar TSort="CatalogMaterialSort"
-                 Value="@ToolbarState"
-                 Defaults="@DefaultToolbarState"
-                 SortOptions="@SortOptions"
-                 PageSizeOptions="@PageSizeOptions"
-                 SearchLabel="@Text["Search"]"
-                 IsBusy="@loading"
-                 OnRequest="HandleToolbarRequestAsync" />
-
-    @if (loading)
-    {
-        <div class="materials-page__loading" role="status" aria-live="polite"><ShadcnSpinner Label="@Text["Loading"]" Size="1.25rem" /><span>@Text["Loading"]</span></div>
-    }
-    else if (!string.IsNullOrWhiteSpace(error))
-    {
-        <ShadcnAlert Variant="ShadcnAlertVariant.Destructive" AlertRole="ShadcnAlertRole.Alert"><ShadcnAlertDescription>@error</ShadcnAlertDescription></ShadcnAlert>
-    }
-    else if (page is null || page.Items.Count == 0)
-    {
-        <ShadcnAlert AlertRole="ShadcnAlertRole.Status"><ShadcnAlertDescription>@Text["Empty"]</ShadcnAlertDescription></ShadcnAlert>
-    }
-    else
-    {
-        <OperationalTable TItem="CatalogMaterialListItem" TKey="int" Items="@(page.Items)"
-                          KeySelector="@(material => material.Id)" TableLabel="@Text["MaterialsTable"]"
-                          ColumnCount="8" State="@tableState"
+    <section aria-label="@Text["MaterialsTable"]">
+    <OperationalDataTable TItem="CatalogMaterialListItem"
+                          Items="@(page?.Items ?? [])"
+                          Columns="@Columns"
+                          RowKey="@(material => material.Id.ToString(CultureInfo.InvariantCulture))"
+                          State="@dataTableState"
+                          StateChanged="HandleDataTableStateChangedAsync"
+                          RequestChanged="HandleDataTableRequestAsync"
+                          TotalCount="@(page?.TotalRecords ?? 0)"
+                          Loading="@loading"
+                          Error="@error"
+                          FilterPlaceholder="@Text["Search"]"
+                          EmptyText="@Text["Empty"]"
+                          LoadingText="@Text["Loading"]"
+                          ActionsLabel="@Text["Actions"]"
+                          PageSizeOptions="@PageSizeOptions"
                           DetailHref="@(material => $"/Materials/View?id={material.Id}")"
                           DetailAriaLabel="@(material => Text["ViewMaterial", material.Id])"
-                          ExpandAriaLabel="@(material => Text["ExpandMaterial", material.Id])"
-                          CollapseAriaLabel="@(material => Text["CollapseMaterial", material.Id])">
-            <HeaderContent>
-                <tr><th class="operational-table__identity" data-priority="essential">@Text["Id"]</th>
-                    <th data-priority="essential">@Text["Number"]</th><th data-priority="essential">@Text["Name"]</th>
-                    <th data-priority="essential">@Text["Group"]</th><th data-priority="supporting">@Text["Density"]</th>
-                    <th data-priority="supporting">@Text["Machinable"]</th><th data-priority="supporting">@Text["Printable"]</th>
-                    <th class="operational-table__actions-heading"><span class="visually-hidden">@Text["Actions"]</span></th></tr>
-            </HeaderContent>
-            <RowContent Context="material">
-                <td class="operational-table__identity mlv-mono" data-priority="essential">@material.Id</td>
-                <td class="mlv-mono" data-priority="essential">@material.MaterialNumber</td>
-                <td data-priority="essential">@material.Name</td><td data-priority="essential">@material.MaterialGroup?.Name</td>
-                <td class="mlv-mono" data-priority="supporting">@material.DensityKilogramPerCubicMeter</td>
-                <td data-priority="supporting">@Text[material.Machinable ? "Yes" : "No"]</td>
-                <td data-priority="supporting">@Text[material.Printable ? "Yes" : "No"]</td>
-            </RowContent>
+                          DetailsAriaLabel="@(material => Text["ExpandMaterial", material.Id])">
             <QuickViewContent Context="material"><dl class="operational-quick-view">
                 <div><dt>@Text["Density"]</dt><dd class="mlv-mono">@material.DensityKilogramPerCubicMeter</dd></div>
                 <div><dt>@Text["Machinable"]</dt><dd>@Text[material.Machinable ? "Yes" : "No"]</dd></div>
                 <div><dt>@Text["Printable"]</dt><dd>@Text[material.Printable ? "Yes" : "No"]</dd></div>
             </dl></QuickViewContent>
-        </OperationalTable>
-        <nav class="materials-page__pagination" aria-label="@Text["MaterialPages"]">
-            <ShadcnButton Variant="ShadcnButtonVariant.Outline" Disabled="@(!page.HasPreviousPage)" OnClick="PreviousPageAsync">@Text["Previous"]</ShadcnButton>
-            <span aria-live="polite">@Text["PageSummary", page.PageIndex, page.TotalPages, page.TotalRecords]</span>
-            <ShadcnButton Variant="ShadcnButtonVariant.Outline" Disabled="@(!page.HasNextPage)" OnClick="NextPageAsync">@Text["Next"]</ShadcnButton>
-        </nav>
-    }
+    </OperationalDataTable>
+    </section>
 </main>
 
 @code {
@@ -90,20 +60,23 @@
     private bool loading;
     private CatalogMaterialSort currentSort = CatalogMaterialSort.MaterialId_Descending;
     private readonly LatestRequestGate requestGate = new();
-    private readonly OperationalTableState<int> tableState = new();
+    private ShadcnDataTableState dataTableState = new() { PageSize = 10 };
     private IReadOnlyList<PageBreadcrumbItem> Breadcrumbs =>
     [
         new(Text["Operations"], "/Dashboard"),
         new(Text["Materials"]),
     ];
-    private static readonly ListToolbarState<CatalogMaterialSort> DefaultToolbarState =
-        new(null, CatalogMaterialSort.MaterialId_Descending, 10);
     private static readonly int[] PageSizeOptions = [10, 25, 50, 100, 250];
-    private ListToolbarState<CatalogMaterialSort> ToolbarState => new(Search, currentSort, Size);
-    private IReadOnlyList<ListToolbarOption<CatalogMaterialSort>> SortOptions =>
-        Enum.GetValues<CatalogMaterialSort>()
-            .Select(option => new ListToolbarOption<CatalogMaterialSort>(option, Text[option.ToString()]))
-            .ToArray();
+    private IReadOnlyList<ShadcnDataTableColumn<CatalogMaterialListItem>> Columns =>
+    [
+        new("id", Text["Id"], material => material.Id) { Sortable = true, Filterable = true, Hideable = false },
+        new("number", Text["Number"], material => material.MaterialNumber) { Sortable = true, Filterable = true },
+        new("name", Text["Name"], material => material.Name) { Sortable = true, Filterable = true, MinWidth = "12rem" },
+        new("group", Text["Group"], material => material.MaterialGroup?.Name ?? "-") { Sortable = true, Filterable = true },
+        new("density", Text["Density"], material => material.DensityKilogramPerCubicMeter) { Sortable = true },
+        new("machinable", Text["Machinable"], material => Text[material.Machinable ? "Yes" : "No"].Value) { Sortable = true, Filterable = true },
+        new("printable", Text["Printable"], material => Text[material.Printable ? "Yes" : "No"].Value) { Filterable = true },
+    ];
 
     protected override async Task OnParametersSetAsync()
     {
@@ -112,6 +85,7 @@
         currentSort = Enum.TryParse<CatalogMaterialSort>(SortQuery, ignoreCase: true, out var parsedSort)
             ? parsedSort
             : CatalogMaterialSort.MaterialId_Descending;
+        dataTableState = BuildDataTableState();
         await LoadAsync();
     }
 
@@ -120,8 +94,7 @@
         CancellationToken cancellationToken = default)
     {
         using var lease = requestGate.Begin(cancellationToken);
-        var state = (requestedState ?? ToolbarState).Normalize();
-        tableState.Clear();
+        var state = (requestedState ?? new ListToolbarState<CatalogMaterialSort>(Search, currentSort, Size)).Normalize();
         loading = true;
         error = null;
         try
@@ -189,27 +162,61 @@
         }
     }
 
-    private Task PreviousPageAsync() => NavigateAsync(Math.Max(1, Index - 1), Search, currentSort, Size);
-    private Task NextPageAsync() => NavigateAsync(Index + 1, Search, currentSort, Size);
-
-    private Task HandleToolbarRequestAsync(ListToolbarRequest<CatalogMaterialSort> request)
+    private Task HandleDataTableStateChangedAsync(ShadcnDataTableState state)
     {
-        var state = request.State.Normalize();
-        if (request.Reason == ListToolbarChangeReason.Refreshed && state == ToolbarState.Normalize())
-        {
-            return LoadAsync();
-        }
-
-        return NavigateAsync(1, state.Search, state.Sort, state.PageSize, replace: true);
+        dataTableState = state;
+        return Task.CompletedTask;
     }
+
+    private Task HandleDataTableRequestAsync(ShadcnDataTableRequest request) =>
+        NavigateAsync(request.PageIndex + 1, request.Query, MapSort(request.Sorts), request.PageSize, replace: true);
 
     private Task NavigateAsync(int index, string? search, CatalogMaterialSort sort, int size, bool replace = false)
     {
-        tableState.Clear();
         var uri = $"/Materials/Index?search={Uri.EscapeDataString(search ?? string.Empty)}&sort={sort}&index={index}&size={Math.Clamp(size, 1, 250)}";
         Navigation.NavigateTo(uri, replace: replace);
         return Task.CompletedTask;
     }
 
     public void Dispose() => requestGate.Dispose();
+
+    private ShadcnDataTableState BuildDataTableState() => new()
+    {
+        Query = Search ?? string.Empty,
+        PageIndex = Math.Max(0, Index - 1),
+        PageSize = Size,
+        Sorts = currentSort switch
+        {
+            CatalogMaterialSort.MaterialId_Ascending => [new("id", ShadcnSortDirection.Ascending)],
+            CatalogMaterialSort.MaterialId_Descending => [new("id", ShadcnSortDirection.Descending)],
+            CatalogMaterialSort.MaterialNumber_Ascending => [new("number", ShadcnSortDirection.Ascending)],
+            CatalogMaterialSort.MaterialNumber_Descending => [new("number", ShadcnSortDirection.Descending)],
+            CatalogMaterialSort.MaterialName_Ascending => [new("name", ShadcnSortDirection.Ascending)],
+            CatalogMaterialSort.MaterialName_Descending => [new("name", ShadcnSortDirection.Descending)],
+            CatalogMaterialSort.MaterialGroup_Ascending => [new("group", ShadcnSortDirection.Ascending)],
+            CatalogMaterialSort.MaterialGroup_Descending => [new("group", ShadcnSortDirection.Descending)],
+            CatalogMaterialSort.MaterialDensity_Ascending => [new("density", ShadcnSortDirection.Ascending)],
+            CatalogMaterialSort.MaterialDensity_Descending => [new("density", ShadcnSortDirection.Descending)],
+            CatalogMaterialSort.MaterialMachinability_Ascending => [new("machinable", ShadcnSortDirection.Ascending)],
+            CatalogMaterialSort.MaterialMachinability_Descending => [new("machinable", ShadcnSortDirection.Descending)],
+            _ => [],
+        },
+    };
+
+    private CatalogMaterialSort MapSort(IReadOnlyList<ShadcnDataTableSort> sorts) => sorts.FirstOrDefault() switch
+    {
+        { ColumnKey: "id", Direction: ShadcnSortDirection.Ascending } => CatalogMaterialSort.MaterialId_Ascending,
+        { ColumnKey: "id", Direction: ShadcnSortDirection.Descending } => CatalogMaterialSort.MaterialId_Descending,
+        { ColumnKey: "number", Direction: ShadcnSortDirection.Ascending } => CatalogMaterialSort.MaterialNumber_Ascending,
+        { ColumnKey: "number", Direction: ShadcnSortDirection.Descending } => CatalogMaterialSort.MaterialNumber_Descending,
+        { ColumnKey: "name", Direction: ShadcnSortDirection.Ascending } => CatalogMaterialSort.MaterialName_Ascending,
+        { ColumnKey: "name", Direction: ShadcnSortDirection.Descending } => CatalogMaterialSort.MaterialName_Descending,
+        { ColumnKey: "group", Direction: ShadcnSortDirection.Ascending } => CatalogMaterialSort.MaterialGroup_Ascending,
+        { ColumnKey: "group", Direction: ShadcnSortDirection.Descending } => CatalogMaterialSort.MaterialGroup_Descending,
+        { ColumnKey: "density", Direction: ShadcnSortDirection.Ascending } => CatalogMaterialSort.MaterialDensity_Ascending,
+        { ColumnKey: "density", Direction: ShadcnSortDirection.Descending } => CatalogMaterialSort.MaterialDensity_Descending,
+        { ColumnKey: "machinable", Direction: ShadcnSortDirection.Ascending } => CatalogMaterialSort.MaterialMachinability_Ascending,
+        { ColumnKey: "machinable", Direction: ShadcnSortDirection.Descending } => CatalogMaterialSort.MaterialMachinability_Descending,
+        _ => currentSort,
+    };
 }

@@ -1,5 +1,6 @@
 @page "/Suppliers/Index"
 @page "/purchasing/suppliers"
+@using System.Globalization
 @attribute [Authorize]
 @implements IDisposable
 @inject HttpClient Http
@@ -15,63 +16,31 @@
         <ShadcnButton OnClick="OpenCreate">@Text["CreateSupplier"]</ShadcnButton>
     </header>
 
-    <ListToolbar TSort="SupplierListSort"
-                 Value="@ToolbarValue"
-                 Defaults="@ToolbarDefaults"
-                 SortOptions="@ToolbarSortOptions"
-                 PageSizeOptions="@ToolbarPageSizes"
-                 SearchLabel="@Text["Search"]"
-                 ResultsId="suppliers-results"
-                 ResultsStatus="@ToolbarResultsStatus"
-                 IsBusy="@loading"
-                 OnRequest="HandleToolbarRequestAsync" />
-
-    @if (loading)
-    {
-        <div class="procurement-list-page__loading" role="status" aria-live="polite"><ShadcnSpinner Label="@Text["Loading"]" Size="1.25rem" /><span>@Text["Loading"]</span></div>
-    }
-    else if (!string.IsNullOrWhiteSpace(error))
-    {
-        <ShadcnAlert Variant="ShadcnAlertVariant.Destructive" AlertRole="ShadcnAlertRole.Alert"><ShadcnAlertDescription>@error</ShadcnAlertDescription></ShadcnAlert>
-    }
-    else if (page is null || page.Items.Count == 0)
-    {
-        <ShadcnAlert AlertRole="ShadcnAlertRole.Status"><ShadcnAlertDescription>@Text["Empty"]</ShadcnAlertDescription></ShadcnAlert>
-    }
-    else
-    {
-        <div id="suppliers-results" aria-busy="false">
-        <OperationalTable TItem="SupplierListItem" TKey="int" Items="@(page.Items)"
-                          KeySelector="@(supplier => supplier.Id)" TableLabel="@Text["SuppliersTable"]"
-                          ColumnCount="5" State="@tableState"
-                          DetailHref="@(supplier => $"/Suppliers/View?id={supplier.Id}")"
-                          DetailAriaLabel="@(supplier => Text["ViewSupplier", supplier.Id])"
-                          ExpandAriaLabel="@(supplier => Text["ExpandSupplier", supplier.Id])"
-                          CollapseAriaLabel="@(supplier => Text["CollapseSupplier", supplier.Id])">
-            <HeaderContent>
-                <tr><th class="operational-table__identity" data-priority="essential">@Text["Id"]</th>
-                    <th data-priority="essential">@Text["Name"]</th><th data-priority="essential">@Text["Email"]</th>
-                    <th data-priority="supporting">@Text["Telephone"]</th>
-                    <th class="operational-table__actions-heading"><span class="visually-hidden">@Text["Actions"]</span></th></tr>
-            </HeaderContent>
-            <RowContent Context="supplier">
-                <td class="operational-table__identity mlv-mono" data-priority="essential">@supplier.Id</td>
-                <td data-priority="essential">@ValueOrFallback(supplier.Name)</td>
-                <td data-priority="essential">@ValueOrFallback(supplier.Email)</td>
-                <td data-priority="supporting">@ValueOrFallback(supplier.Telephone)</td>
-            </RowContent>
+    <div id="suppliers-results" aria-label="@Text["SuppliersTable"]">
+        <OperationalDataTable TItem="SupplierListItem"
+                              Items="@(page?.Items ?? [])"
+                              Columns="@Columns"
+                              RowKey="@(supplier => supplier.Id.ToString(CultureInfo.InvariantCulture))"
+                              State="@dataTableState"
+                              StateChanged="HandleDataTableStateChangedAsync"
+                              RequestChanged="HandleDataTableRequestAsync"
+                              TotalCount="@(page?.TotalRecords ?? 0)"
+                              Loading="@loading"
+                              Error="@error"
+                              FilterPlaceholder="@Text["Search"]"
+                              EmptyText="@Text["Empty"]"
+                              LoadingText="@Text["Loading"]"
+                              ActionsLabel="@Text["Actions"]"
+                              PageSizeOptions="@ToolbarPageSizes"
+                              DetailHref="@(supplier => $"/Suppliers/View?id={supplier.Id}")"
+                              DetailAriaLabel="@(supplier => Text["ViewSupplier", supplier.Id])"
+                              DetailsAriaLabel="@(supplier => Text["ExpandSupplier", supplier.Id])">
             <QuickViewContent Context="supplier"><dl class="operational-quick-view">
                 <div><dt>@Text["Telephone"]</dt><dd>@ValueOrFallback(supplier.Telephone)</dd></div>
                 <div><dt>@Text["Email"]</dt><dd>@ValueOrFallback(supplier.Email)</dd></div>
             </dl></QuickViewContent>
-        </OperationalTable>
-        </div>
-        <nav class="procurement-pager" aria-label="@Text["SupplierPages"]">
-            <ShadcnButton Variant="ShadcnButtonVariant.Outline" Disabled="@(!page.HasPreviousPage)" OnClick="PreviousPageAsync">@Text["Previous"]</ShadcnButton>
-            <span aria-live="polite">@Text["PageSummary", page.PageIndex, page.TotalPages, page.TotalRecords]</span>
-            <ShadcnButton Variant="ShadcnButtonVariant.Outline" Disabled="@(!page.HasNextPage)" OnClick="NextPageAsync">@Text["Next"]</ShadcnButton>
-        </nav>
-    }
+        </OperationalDataTable>
+    </div>
 </main>
 
 @code {
@@ -87,7 +56,7 @@
     private bool loading;
     private SupplierListSort currentSort = SupplierListSort.SupplierId_Descending;
     private readonly LatestRequestGate loadGate = new();
-    private readonly OperationalTableState<int> tableState = new();
+    private ShadcnDataTableState dataTableState = new() { PageSize = 25 };
     private IReadOnlyList<PageBreadcrumbItem> Breadcrumbs =>
     [
         new(Text["Operations"], "/Dashboard"),
@@ -95,16 +64,13 @@
         new(Text["Suppliers"]),
     ];
 
-    private ListToolbarState<SupplierListSort> ToolbarValue => new(Search, currentSort, Size);
-    private static ListToolbarState<SupplierListSort> ToolbarDefaults =>
-        new(null, SupplierListSort.SupplierId_Descending, 25);
-    private IReadOnlyList<ListToolbarOption<SupplierListSort>> ToolbarSortOptions =>
-        Enum.GetValues<SupplierListSort>()
-            .Select(value => new ListToolbarOption<SupplierListSort>(value, Text[value.ToString()].Value))
-            .ToArray();
-    private string? ToolbarResultsStatus => page is null
-        ? null
-        : Text["PageSummary", page.PageIndex, page.TotalPages, page.TotalRecords].Value;
+    private IReadOnlyList<ShadcnDataTableColumn<SupplierListItem>> Columns =>
+    [
+        new("id", Text["Id"], supplier => supplier.Id) { Sortable = true, Filterable = true, Hideable = false },
+        new("name", Text["Name"], supplier => ValueOrFallback(supplier.Name)) { Sortable = true, Filterable = true, MinWidth = "12rem" },
+        new("email", Text["Email"], supplier => ValueOrFallback(supplier.Email)) { Filterable = true, MinWidth = "14rem" },
+        new("telephone", Text["Telephone"], supplier => ValueOrFallback(supplier.Telephone)) { Filterable = true, MinWidth = "10rem" },
+    ];
 
     protected override async Task OnParametersSetAsync()
     {
@@ -113,13 +79,13 @@
         currentSort = Enum.TryParse<SupplierListSort>(SortQuery, ignoreCase: true, out var parsedSort) && Enum.IsDefined(parsedSort)
             ? parsedSort
             : SupplierListSort.SupplierId_Descending;
+        dataTableState = BuildDataTableState();
         await LoadAsync();
     }
 
     private async Task LoadAsync()
     {
         using var lease = loadGate.Begin();
-        tableState.Clear();
         if (lease.IsCurrent)
         {
             loading = true;
@@ -195,29 +161,48 @@
         }
     }
 
-    private Task HandleToolbarRequestAsync(ListToolbarRequest<SupplierListSort> request)
+    private Task HandleDataTableStateChangedAsync(ShadcnDataTableState state)
     {
-        if (request.Reason == ListToolbarChangeReason.Refreshed && request.State == ToolbarValue)
-        {
-            return LoadAsync();
-        }
-
-        return NavigateAsync(1, request.State.Search, request.State.Sort, request.State.PageSize, replace: true);
+        dataTableState = state;
+        return Task.CompletedTask;
     }
 
-    private Task PreviousPageAsync() => NavigateAsync(Math.Max(1, Index - 1), Search, currentSort, Size);
-    private Task NextPageAsync() => NavigateAsync(Index + 1, Search, currentSort, Size);
+    private Task HandleDataTableRequestAsync(ShadcnDataTableRequest request) =>
+        NavigateAsync(request.PageIndex + 1, request.Query, MapSort(request.Sorts), request.PageSize, replace: true);
 
     private void OpenCreate() => Navigation.NavigateTo("/Suppliers/Create");
 
     private Task NavigateAsync(int index, string? search, SupplierListSort sort, int size, bool replace = false)
     {
-        tableState.Clear();
         Navigation.NavigateTo($"/Suppliers/Index?search={Uri.EscapeDataString(search ?? string.Empty)}&sort={sort}&index={index}&size={Math.Clamp(size, 1, 250)}", replace: replace);
         return Task.CompletedTask;
     }
 
     public void Dispose() => loadGate.Dispose();
+
+    private ShadcnDataTableState BuildDataTableState() => new()
+    {
+        Query = Search ?? string.Empty,
+        PageIndex = Math.Max(0, Index - 1),
+        PageSize = Size,
+        Sorts = currentSort switch
+        {
+            SupplierListSort.SupplierId_Ascending => [new("id", ShadcnSortDirection.Ascending)],
+            SupplierListSort.SupplierId_Descending => [new("id", ShadcnSortDirection.Descending)],
+            SupplierListSort.SupplierName_Ascending => [new("name", ShadcnSortDirection.Ascending)],
+            SupplierListSort.SupplierName_Descending => [new("name", ShadcnSortDirection.Descending)],
+            _ => [],
+        },
+    };
+
+    private SupplierListSort MapSort(IReadOnlyList<ShadcnDataTableSort> sorts) => sorts.FirstOrDefault() switch
+    {
+        { ColumnKey: "id", Direction: ShadcnSortDirection.Ascending } => SupplierListSort.SupplierId_Ascending,
+        { ColumnKey: "id", Direction: ShadcnSortDirection.Descending } => SupplierListSort.SupplierId_Descending,
+        { ColumnKey: "name", Direction: ShadcnSortDirection.Ascending } => SupplierListSort.SupplierName_Ascending,
+        { ColumnKey: "name", Direction: ShadcnSortDirection.Descending } => SupplierListSort.SupplierName_Descending,
+        _ => currentSort,
+    };
 
     private static string ValueOrFallback(string? value) => string.IsNullOrWhiteSpace(value) ? "-" : value;
 }

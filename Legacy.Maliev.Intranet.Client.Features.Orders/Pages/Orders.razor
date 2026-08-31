@@ -23,114 +23,51 @@
         }
 
         <PanelCard Title="@Text["Orders"]" Class="orders-results-panel">
-            <ListToolbar TSort="OrderListSort"
-                         Value="@ToolbarValue"
-                         Defaults="@ToolbarDefaults"
-                         SortOptions="@ToolbarSortOptions"
-                         PageSizeOptions="@ToolbarPageSizes"
-                         SearchLabel="@Text["Search"]"
-                         ResultsId="orders-results"
-                         ResultsStatus="@ToolbarResultsStatus"
-                         IsBusy="@loading"
-                         OnRequest="HandleToolbarRequestAsync" />
-
             @if (loading)
             {
                 <ProgressiveSkeleton Layout="table" Rows="8" Columns="10" ShowFilters="false" Label="@Text["Loading"]" />
             }
-            else
+            else if (Page is not null)
             {
                 <div id="orders-results" class="orders-sections" aria-busy="false">
-                    @foreach (var section in Sections)
-                    {
-                        <section class="orders-section" aria-labelledby="@SectionId(section.Title)">
-                            <div class="orders-section-heading">
-                                <h2 id="@SectionId(section.Title)">@section.Title</h2>
-                                @if (section.ShowCount)
-                                {
-                                    <span class="orders-section-count">@Text["OrderCount", section.Items.Count]</span>
-                                }
-                            </div>
-
-                            @if (section.Items.Count == 0)
-                            {
-                                <div class="mlv-empty">@Text["Empty"]</div>
-                            }
-                            else
-                            {
-                                <div class="@(section.ShowCount ? "orders-working-set" : null)">
-                                    <OperationalTable TItem="OrderListItem"
-                                                      TKey="int"
-                                                      Items="@section.Items"
-                                                      KeySelector="@(order => TableKey(section.Kind, order.Id))"
-                                                      TableLabel="@section.Title"
-                                                      ColumnCount="11"
-                                                      State="@tableState"
-                                                      DetailHref="@(order => $"/Orders/View?id={order.Id}")"
-                                                      DetailAriaLabel="@(order => Text["ViewOrder", order.Id])"
-                                                      ExpandAriaLabel="@(order => Text["ExpandOrder", order.Id])"
-                                                      CollapseAriaLabel="@(order => Text["CollapseOrder", order.Id])">
-                                        <HeaderContent>
-                                            <tr>
-                                                <th class="operational-table__identity" data-priority="essential">@Text["Id"]</th>
-                                                <th data-priority="essential">@Text["Customer"]</th>
-                                                <th data-priority="essential">@Text["Name"]</th>
-                                                <th data-priority="essential">@Text["Remaining"]</th>
-                                                <th data-priority="essential">@Text["Promised"]</th>
-                                                <th data-priority="supporting">@Text["Process"]</th>
-                                                <th data-priority="supporting">@Text["Quantity"]</th>
-                                                <th data-priority="supporting">@Text["Manufactured"]</th>
-                                                <th data-priority="supporting">@Text["Employee"]</th>
-                                                <th data-priority="supporting">@Text["Subtotal"]</th>
-                                                <th class="operational-table__actions-heading"><span class="visually-hidden">@Text["Actions"]</span></th>
-                                            </tr>
-                                        </HeaderContent>
-                                        <RowContent Context="order">
-                                            <td class="operational-table__identity orders-id mlv-mono" data-priority="essential">@order.Id</td>
-                                            <td class="orders-id" data-priority="essential">@ValueOrFallback(order.CustomerId)</td>
-                                            <td class="orders-name" data-priority="essential" title="@ValueOrFallback(order.Name)">
-                                                <span>@ValueOrFallback(order.Name)</span>
-                                                @if (!order.AllowSocialMedia)
-                                                {
-                                                    <span class="orders-confidential">@Text["Confidential"]</span>
-                                                }
-                                            </td>
-                                            <td class="orders-quantity" data-priority="essential">@ValueOrFallback(order.Remaining)</td>
-                                            <td class="orders-date" data-priority="essential">@FormatDate(order.PromisedDate)</td>
-                                            <td data-priority="supporting">@ProcessName(order.ProcessId)</td>
-                                            <td class="orders-quantity" data-priority="supporting">@order.Quantity</td>
-                                            <td class="orders-quantity" data-priority="supporting">@order.Manufactured</td>
-                                            <td data-priority="supporting">@EmployeeName(order.EmployeeId)</td>
-                                            <td class="orders-money mlv-mono" data-priority="supporting">@FormatAmount(order.Subtotal)</td>
-                                        </RowContent>
-                                        <QuickViewContent Context="order">
-                                            <dl class="orders-quick-view">
-                                                <div><dt>@Text["Name"]</dt><dd>@ValueOrFallback(order.Name)</dd></div>
-                                                <div><dt>@Text["Process"]</dt><dd>@ProcessName(order.ProcessId)</dd></div>
-                                                <div><dt>@Text["Quantity"]</dt><dd class="orders-quantity">@order.Quantity</dd></div>
-                                                <div><dt>@Text["Manufactured"]</dt><dd class="orders-quantity">@order.Manufactured</dd></div>
-                                                <div><dt>@Text["Employee"]</dt><dd>@EmployeeName(order.EmployeeId)</dd></div>
-                                                <div><dt>@Text["Subtotal"]</dt><dd class="orders-money mlv-mono">@FormatAmount(order.Subtotal)</dd></div>
-                                                <div><dt>@Text["SocialMedia"]</dt><dd>@(order.AllowSocialMedia ? Text["SocialMediaAllowed"] : Text["Confidential"])</dd></div>
-                                                <div><dt>@Text["Created"]</dt><dd class="orders-date">@FormatDate(order.CreatedDate)</dd></div>
-                                                <div><dt>@Text["Modified"]</dt><dd class="orders-date">@FormatDate(order.ModifiedDate)</dd></div>
-                                            </dl>
-                                        </QuickViewContent>
-                                    </OperationalTable>
-                                </div>
-                            }
-                        </section>
-                    }
+                    <div class="orders-working-sets">
+                        @WorkingSet(Text["AssignedToMe"], AssignedOrders)
+                        @WorkingSet(Text["AwaitingAssignment"], UnassignedOrders)
+                    </div>
+                    <section class="orders-section" aria-labelledby="all-orders-heading">
+                        <h2 id="all-orders-heading">@Text["AllOrders"]</h2>
+                        <OperationalDataTable TItem="OrderListItem"
+                                              Items="@(Page.Items)"
+                                              Columns="@Columns"
+                                              RowKey="@(order => order.Id.ToString(CultureInfo.InvariantCulture))"
+                                              State="@dataTableState"
+                                              StateChanged="HandleDataTableStateChangedAsync"
+                                              RequestChanged="HandleDataTableRequestAsync"
+                                              TotalCount="@(Page.TotalRecords)"
+                                              FilterPlaceholder="@Text["Search"]"
+                                              EmptyText="@Text["Empty"]"
+                                              LoadingText="@Text["Loading"]"
+                                              ActionsLabel="@Text["Actions"]"
+                                              PageSizeOptions="@ToolbarPageSizes"
+                                              DetailHref="@(order => $"/Orders/View?id={order.Id}")"
+                                              DetailAriaLabel="@(order => Text["ViewOrder", order.Id])"
+                                              DetailsAriaLabel="@(order => Text["ExpandOrder", order.Id])">
+                            <QuickViewContent Context="order">
+                                <dl class="orders-quick-view">
+                                    <div><dt>@Text["Name"]</dt><dd>@ValueOrFallback(order.Name)</dd></div>
+                                    <div><dt>@Text["Process"]</dt><dd>@ProcessName(order.ProcessId)</dd></div>
+                                    <div><dt>@Text["Quantity"]</dt><dd>@order.Quantity</dd></div>
+                                    <div><dt>@Text["Manufactured"]</dt><dd>@order.Manufactured</dd></div>
+                                    <div><dt>@Text["Employee"]</dt><dd>@EmployeeName(order.EmployeeId)</dd></div>
+                                    <div><dt>@Text["Subtotal"]</dt><dd>@FormatAmount(order.Subtotal)</dd></div>
+                                    <div><dt>@Text["SocialMedia"]</dt><dd>@(order.AllowSocialMedia ? Text["SocialMediaAllowed"] : Text["Confidential"])</dd></div>
+                                    <div><dt>@Text["Created"]</dt><dd>@FormatDate(order.CreatedDate)</dd></div>
+                                    <div><dt>@Text["Modified"]</dt><dd>@FormatDate(order.ModifiedDate)</dd></div>
+                                </dl>
+                            </QuickViewContent>
+                        </OperationalDataTable>
+                    </section>
                 </div>
-
-                @if (Page is not null)
-                {
-                    <nav class="orders-pager" aria-label="@Text["OrderPages"]">
-                        <SecondaryButton Disabled="@(!Page.HasPreviousPage)" OnClick="PreviousPageAsync">@Text["Previous"]</SecondaryButton>
-                        <span aria-live="polite">@Text["PageSummary", Page.PageIndex, Page.TotalPages, Page.TotalRecords]</span>
-                        <SecondaryButton Disabled="@(!Page.HasNextPage)" OnClick="NextPageAsync">@Text["Next"]</SecondaryButton>
-                    </nav>
-                }
             }
         </PanelCard>
     </PageBody>
@@ -155,9 +92,7 @@
     private bool loading;
     private OrderListSort currentSort = OrderListSort.OrderCreatedDate_Descending;
     private readonly LatestRequestGate loadGate = new();
-    private readonly OperationalTableState<int> tableState = new();
-    private readonly Dictionary<(OrderSectionKind Section, int OrderId), int> tableKeys = [];
-    private int nextTableKey;
+    private ShadcnDataTableState dataTableState = new() { PageSize = 10 };
 
     private IReadOnlyList<PageBreadcrumbItem> Breadcrumbs =>
     [
@@ -165,22 +100,20 @@
         new(Text["Orders"]),
     ];
 
-    private ListToolbarState<OrderListSort> ToolbarValue => new(Search, currentSort, Size);
-    private static ListToolbarState<OrderListSort> ToolbarDefaults =>
-        new(null, OrderListSort.OrderCreatedDate_Descending, 10);
-    private IReadOnlyList<ListToolbarOption<OrderListSort>> ToolbarSortOptions =>
-        Enum.GetValues<OrderListSort>()
-            .Select(value => new ListToolbarOption<OrderListSort>(value, Text[value.ToString()].Value))
-            .ToArray();
-    private string? ToolbarResultsStatus => Page is null
-        ? null
-        : Text["PageSummary", Page.PageIndex, Page.TotalPages, Page.TotalRecords].Value;
-
-    private IReadOnlyList<OrderSection> Sections =>
+    private IReadOnlyList<ShadcnDataTableColumn<OrderListItem>> Columns =>
     [
-        new(OrderSectionKind.Assigned, Text["AssignedToMe"], AssignedOrders, true),
-        new(OrderSectionKind.AwaitingAssignment, Text["AwaitingAssignment"], UnassignedOrders, true),
-        new(OrderSectionKind.All, Text["AllOrders"], Page?.Items ?? [], false),
+        new("id", Text["Id"], order => order.Id) { Sortable = true, Filterable = true, Hideable = false },
+        new("customer", Text["Customer"], order => ValueOrFallback(order.CustomerId)) { Filterable = true },
+        new("name", Text["Name"], order => ValueOrFallback(order.Name)) { Filterable = true, MinWidth = "14rem" },
+        new("remaining", Text["Remaining"], order => order.Remaining),
+        new("promised", Text["Promised"], order => order.PromisedDate) { CellTemplate = order => builder => builder.AddContent(0, FormatDate(order.PromisedDate)) },
+        new("process", Text["Process"], order => ProcessName(order.ProcessId)) { Filterable = true },
+        new("quantity", Text["Quantity"], order => order.Quantity) { Alignment = ShadcnTableAlignment.End },
+        new("manufactured", Text["Manufactured"], order => order.Manufactured) { Alignment = ShadcnTableAlignment.End },
+        new("employee", Text["Employee"], order => EmployeeName(order.EmployeeId)) { Filterable = true },
+        new("subtotal", Text["Subtotal"], order => order.Subtotal) { Alignment = ShadcnTableAlignment.End, CellTemplate = order => builder => builder.AddContent(0, FormatAmount(order.Subtotal)) },
+        new("created", Text["Created"], order => order.CreatedDate) { Sortable = true },
+        new("modified", Text["Modified"], order => order.ModifiedDate) { Sortable = true },
     ];
 
     protected override async Task OnParametersSetAsync()
@@ -190,6 +123,7 @@
         currentSort = Enum.TryParse<OrderListSort>(SortQuery, ignoreCase: true, out var parsedSort)
             ? parsedSort
             : OrderListSort.OrderCreatedDate_Descending;
+        dataTableState = BuildDataTableState();
         await LoadAsync();
     }
 
@@ -198,9 +132,6 @@
         using var lease = loadGate.Begin();
         if (lease.IsCurrent)
         {
-            tableState.Clear();
-            tableKeys.Clear();
-            nextTableKey = 0;
             loading = true;
             error = null;
             Page = null;
@@ -304,22 +235,17 @@
         return true;
     }
 
-    private Task HandleToolbarRequestAsync(ListToolbarRequest<OrderListSort> request)
+    private Task HandleDataTableStateChangedAsync(ShadcnDataTableState state)
     {
-        if (request.Reason == ListToolbarChangeReason.Refreshed && request.State == ToolbarValue)
-        {
-            return LoadAsync();
-        }
-
-        return NavigateAsync(1, request.State.Search, request.State.Sort, request.State.PageSize, replace: true);
+        dataTableState = state;
+        return Task.CompletedTask;
     }
 
-    private Task PreviousPageAsync() => NavigateAsync(Math.Max(1, Index - 1), Search, currentSort, Size);
-    private Task NextPageAsync() => NavigateAsync(Index + 1, Search, currentSort, Size);
+    private Task HandleDataTableRequestAsync(ShadcnDataTableRequest request) =>
+        NavigateAsync(request.PageIndex + 1, request.Query, MapSort(request.Sorts), request.PageSize, replace: true);
 
     private Task NavigateAsync(int index, string? search, OrderListSort sort, int size, bool replace = false)
     {
-        tableState.Clear();
         Navigation.NavigateTo($"/Orders/Index?search={Uri.EscapeDataString(search ?? string.Empty)}&sort={sort}&index={index}&size={Math.Clamp(size, 1, 250)}", replace: replace);
         return Task.CompletedTask;
     }
@@ -333,31 +259,55 @@
     private static string FormatAmount(decimal? value) => value?.ToString("N2", CultureInfo.CurrentCulture) ?? "-";
     private static string FormatDate(DateTime? value) =>
         LegacyPresentation.FormatCalendarDate(value, CultureInfo.CurrentCulture, "-");
-    private static string SectionId(string title) => $"orders-{title.Replace(' ', '-').ToLowerInvariant()}";
-
-    private int TableKey(OrderSectionKind section, int orderId)
+    private ShadcnDataTableState BuildDataTableState() => new()
     {
-        var identity = (section, orderId);
-        if (tableKeys.TryGetValue(identity, out var key))
+        Query = Search ?? string.Empty,
+        PageIndex = Math.Max(0, Index - 1),
+        PageSize = Size,
+        HiddenColumnKeys = new HashSet<string>(["created", "modified"], StringComparer.Ordinal),
+        Sorts = currentSort switch
         {
-            return key;
-        }
+            OrderListSort.OrderId_Ascending => [new("id", ShadcnSortDirection.Ascending)],
+            OrderListSort.OrderId_Descending => [new("id", ShadcnSortDirection.Descending)],
+            OrderListSort.OrderCreatedDate_Ascending => [new("created", ShadcnSortDirection.Ascending)],
+            OrderListSort.OrderCreatedDate_Descending => [new("created", ShadcnSortDirection.Descending)],
+            OrderListSort.OrderModifiedDate_Ascending => [new("modified", ShadcnSortDirection.Ascending)],
+            OrderListSort.OrderModifiedDate_Descending => [new("modified", ShadcnSortDirection.Descending)],
+            _ => [],
+        },
+    };
 
-        key = nextTableKey++;
-        tableKeys.Add(identity, key);
-        return key;
-    }
-
-    private enum OrderSectionKind
+    private OrderListSort MapSort(IReadOnlyList<ShadcnDataTableSort> sorts) => sorts.FirstOrDefault() switch
     {
-        Assigned,
-        AwaitingAssignment,
-        All,
-    }
+        { ColumnKey: "id", Direction: ShadcnSortDirection.Ascending } => OrderListSort.OrderId_Ascending,
+        { ColumnKey: "id", Direction: ShadcnSortDirection.Descending } => OrderListSort.OrderId_Descending,
+        { ColumnKey: "created", Direction: ShadcnSortDirection.Ascending } => OrderListSort.OrderCreatedDate_Ascending,
+        { ColumnKey: "created", Direction: ShadcnSortDirection.Descending } => OrderListSort.OrderCreatedDate_Descending,
+        { ColumnKey: "modified", Direction: ShadcnSortDirection.Ascending } => OrderListSort.OrderModifiedDate_Ascending,
+        { ColumnKey: "modified", Direction: ShadcnSortDirection.Descending } => OrderListSort.OrderModifiedDate_Descending,
+        _ => currentSort,
+    };
 
-    private sealed record OrderSection(
-        OrderSectionKind Kind,
-        string Title,
-        IReadOnlyList<OrderListItem> Items,
-        bool ShowCount);
+    private RenderFragment WorkingSet(string title, IReadOnlyList<OrderListItem> orders) => builder =>
+    {
+        builder.OpenElement(0, "section");
+        builder.AddAttribute(1, "class", "orders-section orders-working-set");
+        builder.OpenElement(2, "h2");
+        builder.AddContent(3, title);
+        builder.CloseElement();
+        builder.OpenElement(4, "p");
+        builder.AddAttribute(5, "class", "orders-section-count");
+        builder.AddContent(6, Text["OrderCount", orders.Count]);
+        builder.CloseElement();
+        foreach (var order in orders.Take(5))
+        {
+            builder.OpenComponent<LegacyLink>(7);
+            builder.AddAttribute(8, nameof(LegacyLink.Href), $"/Orders/View?id={order.Id}");
+            builder.AddAttribute(9, nameof(LegacyLink.Role), LegacyLinkRole.Record);
+            builder.AddAttribute(10, nameof(LegacyLink.AriaLabel), Text["ViewOrder", order.Id]);
+            builder.AddAttribute(11, nameof(LegacyLink.ChildContent), (RenderFragment)(content => content.AddContent(0, $"#{order.Id} · {ValueOrFallback(order.Name)}")));
+            builder.CloseComponent();
+        }
+        builder.CloseElement();
+    };
 }

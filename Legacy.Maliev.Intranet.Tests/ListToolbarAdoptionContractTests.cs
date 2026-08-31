@@ -22,14 +22,14 @@ public sealed class ListToolbarAdoptionContractTests
 
     [Theory]
     [MemberData(nameof(ListPages))]
-    public void Every_list_page_uses_the_shared_automatic_toolbar_and_latest_request_gate(
+    public void Every_list_page_uses_the_released_data_table_request_contract_and_latest_request_gate(
         string project,
         string relativePage)
     {
         var source = File.ReadAllText(Path.Combine(FindRepositoryRoot(), project, relativePage));
 
-        Assert.Contains("<ListToolbar", source, StringComparison.Ordinal);
-        Assert.Contains("ListToolbarRequest", source, StringComparison.Ordinal);
+        Assert.Contains("<OperationalDataTable", source, StringComparison.Ordinal);
+        Assert.Contains("ShadcnDataTableRequest", source, StringComparison.Ordinal);
         Assert.Contains("LatestRequestGate", source, StringComparison.Ordinal);
         Assert.Contains("lease.CancellationToken", source, StringComparison.Ordinal);
         Assert.Contains("replace: true", source, StringComparison.Ordinal);

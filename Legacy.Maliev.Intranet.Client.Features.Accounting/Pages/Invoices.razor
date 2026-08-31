@@ -16,15 +16,6 @@
         <ShadcnButton Href="/Invoices/Create">@Text["Create"]</ShadcnButton>
     </div>
 
-    <ListToolbar TSort="InvoiceListSort"
-                 Value="@ToolbarValue"
-                 Defaults="@ToolbarDefaults"
-                 SortOptions="@ToolbarSortOptions"
-                 PageSizeOptions="@InvoicePageSizes"
-                 SearchLabel="@Text["Search"]"
-                 IsBusy="@loading"
-                 OnRequest="HandleToolbarRequestAsync" />
-
     @if (loading)
     {
         <div role="status" aria-live="polite">
@@ -42,55 +33,26 @@
         {
             <section class="invoice-section">
                 <h2>@section.Title</h2>
-                <p class="invoice-section__summary">
-                    @Text["RecordsSummary", section.Page.TotalRecords, section.Page.TotalPages]
-                    @if (!section.Paid)
-                    {
-                        <span> · @Text["OutstandingSummary", FormatMoney(section.Page.Items.Sum(invoice => invoice.Outstanding), section.Page.Items.FirstOrDefault()?.Currency)]</span>
-                    }
-                </p>
-                @if (section.Page.Items.Count == 0)
+                @if (!section.Paid && section.Page.Items.Count > 0)
                 {
-                    <ShadcnAlert AlertRole="ShadcnAlertRole.Status"><ShadcnAlertDescription>@section.EmptyMessage</ShadcnAlertDescription></ShadcnAlert>
+                    <p class="invoice-section__summary">@Text["OutstandingSummary", FormatMoney(section.Page.Items.Sum(invoice => invoice.Outstanding), section.Page.Items.FirstOrDefault()?.Currency)]</p>
                 }
-                else
-                {
-                    <OperationalTable TItem="InvoiceListItem" TKey="int" Items="@section.Page.Items"
-                                      KeySelector="@(invoice => invoice.Id)" TableLabel="@Text["InvoiceTableLabel", section.Title]"
-                                      ColumnCount="14" State="@tableState"
+                <OperationalDataTable TItem="InvoiceListItem"
+                                      Items="@(section.Page.Items)"
+                                      Columns="@Columns"
+                                      RowKey="@(invoice => invoice.Id.ToString(CultureInfo.InvariantCulture))"
+                                      State="@dataTableState"
+                                      StateChanged="HandleDataTableStateChangedAsync"
+                                      RequestChanged="HandleDataTableRequestAsync"
+                                      TotalCount="@(section.Page.TotalRecords)"
+                                      FilterPlaceholder="@Text["Search"]"
+                                      EmptyText="@section.EmptyMessage"
+                                      LoadingText="@Text["Loading"]"
+                                      ActionsLabel="@Text["Actions"]"
+                                      PageSizeOptions="@InvoicePageSizes"
                                       DetailHref="@(invoice => $"/Invoices/View?id={invoice.Id}")"
                                       DetailAriaLabel="@(invoice => Text["ViewInvoice", invoice.Id])"
-                                      ExpandAriaLabel="@(invoice => Text["ExpandInvoice", invoice.Id])"
-                                      CollapseAriaLabel="@(invoice => Text["CollapseInvoice", invoice.Id])">
-                        <HeaderContent>
-                            <tr><th class="operational-table__identity" data-priority="essential">@Text["Id"]</th>
-                                <th data-priority="essential">@Text["Number"]</th><th data-priority="essential">@Text["CustomerId"]</th>
-                                <th data-priority="essential">@Text["Paid"]</th><th data-priority="essential">@Text["Outstanding"]</th>
-                                <th data-priority="essential">@Text["Total"]</th><th data-priority="supporting">@Text["ReceiptId"]</th>
-                                <th data-priority="supporting">@Text["PurchaseOrder"]</th><th data-priority="supporting">@Text["Subtotal"]</th>
-                                <th data-priority="supporting">@Text["Vat"]</th><th data-priority="supporting">@Text["WithholdingTax"]</th>
-                                <th data-priority="supporting">@Text["PaymentDate"]</th><th data-priority="supporting">@Text["CreatedDate"]</th>
-                                <th class="operational-table__actions-heading"><span class="visually-hidden">@Text["Actions"]</span></th></tr>
-                        </HeaderContent>
-                        <RowContent Context="invoice">
-                            <td class="operational-table__identity mlv-mono" data-priority="essential">@invoice.Id</td>
-                            <td class="mlv-mono" data-priority="essential">@invoice.Number</td>
-                            <td class="mlv-mono" data-priority="essential"><LegacyLink Href="@($"/Customers/View?id={invoice.CustomerId}")" Role="LegacyLinkRole.Record" AriaLabel="@($"{Text["CustomerId"]} {invoice.CustomerId}")">@invoice.CustomerId</LegacyLink></td>
-                            <td data-priority="essential">
-                                <ShadcnBadge Variant="ShadcnBadgeVariant.Outline" Class="@(invoice.IsPaid ? "invoice-status--paid" : "invoice-status--unpaid")">
-                                    @(invoice.IsPaid ? Text["PaidStatus"] : Text["UnpaidStatus"])
-                                </ShadcnBadge>
-                            </td>
-                            <td class="mlv-mono" data-priority="essential"><strong>@FormatMoney(invoice.Outstanding, invoice.Currency)</strong></td>
-                            <td class="mlv-mono" data-priority="essential">@FormatMoney(invoice.Total, invoice.Currency)</td>
-                            <td class="mlv-mono" data-priority="supporting">@(invoice.ReceiptId?.ToString(CultureInfo.InvariantCulture) ?? "-")</td>
-                            <td class="mlv-mono" data-priority="supporting">@ValueOrFallback(invoice.PurchaseOrderNumber)</td>
-                            <td class="mlv-mono" data-priority="supporting">@FormatMoney(invoice.Subtotal, invoice.Currency)</td>
-                            <td class="mlv-mono" data-priority="supporting">@FormatMoney(invoice.Vat, invoice.Currency)</td>
-                            <td class="mlv-mono" data-priority="supporting">@FormatMoney(invoice.WithholdingTax, invoice.Currency, negate: true)</td>
-                            <td class="mlv-mono" data-priority="supporting">@FormatCalendarDate(invoice.PaymentDate)</td>
-                            <td class="mlv-mono" data-priority="supporting">@FormatTimestamp(invoice.CreatedDate)</td>
-                        </RowContent>
+                                      DetailsAriaLabel="@(invoice => Text["ExpandInvoice", invoice.Id])">
                         <QuickViewContent Context="invoice"><dl class="operational-quick-view">
                             <div><dt>@Text["ReceiptId"]</dt><dd class="mlv-mono">@(invoice.ReceiptId?.ToString(CultureInfo.InvariantCulture) ?? "-")</dd></div>
                             <div><dt>@Text["PurchaseOrder"]</dt><dd class="mlv-mono">@ValueOrFallback(invoice.PurchaseOrderNumber)</dd></div>
@@ -100,16 +62,9 @@
                             <div><dt>@Text["PaymentDate"]</dt><dd class="mlv-mono">@FormatCalendarDate(invoice.PaymentDate)</dd></div>
                             <div><dt>@Text["CreatedDate"]</dt><dd class="mlv-mono">@FormatTimestamp(invoice.CreatedDate)</dd></div>
                         </dl></QuickViewContent>
-                    </OperationalTable>
-                }
+                    </OperationalDataTable>
             </section>
         }
-
-        <nav class="invoice-pager" aria-label="@Text["InvoicePages"]">
-            <ShadcnButton Variant="ShadcnButtonVariant.Outline" Disabled="@(!HasPreviousPage)" OnClick="PreviousPageAsync">@Text["Previous"]</ShadcnButton>
-            <span aria-live="polite">@Text["PageSummary", Index, TotalPages, TotalRecords]</span>
-            <ShadcnButton Variant="ShadcnButtonVariant.Outline" Disabled="@(!HasNextPage)" OnClick="NextPageAsync">@Text["Next"]</ShadcnButton>
-        </nav>
     }
 </main>
 
@@ -122,7 +77,7 @@
     private static readonly InvoiceListPage EmptyPage = new([], 1, 0, 0, false, false);
     private static readonly int[] InvoicePageSizes = [10, 25, 50, 100, 150];
     private readonly LatestRequestGate requestGate = new();
-    private readonly OperationalTableState<int> tableState = new();
+    private ShadcnDataTableState dataTableState = new() { PageSize = 10 };
     private IReadOnlyList<PageBreadcrumbItem> Breadcrumbs =>
     [
         new(Text["Operations"], "/Dashboard"),
@@ -133,22 +88,28 @@
     private InvoiceListSort currentSort = InvoiceListSort.InvoiceCreatedDate_Descending;
     private bool loading;
     private string? error;
-    private ListToolbarState<InvoiceListSort> ToolbarValue => new(Search, currentSort, Size);
-    private static ListToolbarState<InvoiceListSort> ToolbarDefaults =>
-        new(null, InvoiceListSort.InvoiceCreatedDate_Descending, 10);
-    private IReadOnlyList<ListToolbarOption<InvoiceListSort>> ToolbarSortOptions =>
-        Enum.GetValues<InvoiceListSort>().Select(option => new ListToolbarOption<InvoiceListSort>(option, Text[option.ToString()])).ToArray();
+    private IReadOnlyList<ShadcnDataTableColumn<InvoiceListItem>> Columns =>
+    [
+        new("id", Text["Id"], invoice => invoice.Id) { Sortable = true, Filterable = true, Hideable = false },
+        new("number", Text["Number"], invoice => invoice.Number) { Filterable = true },
+        new("customer", Text["CustomerId"], invoice => invoice.CustomerId) { Filterable = true, CellTemplate = invoice => CustomerLink(invoice.CustomerId) },
+        new("paid", Text["Paid"], invoice => invoice.IsPaid ? Text["PaidStatus"] : Text["UnpaidStatus"]),
+        new("outstanding", Text["Outstanding"], invoice => invoice.Outstanding) { Alignment = ShadcnTableAlignment.End, CellTemplate = invoice => builder => builder.AddContent(0, FormatMoney(invoice.Outstanding, invoice.Currency)) },
+        new("total", Text["Total"], invoice => invoice.Total) { Alignment = ShadcnTableAlignment.End, CellTemplate = invoice => builder => builder.AddContent(0, FormatMoney(invoice.Total, invoice.Currency)) },
+        new("receipt", Text["ReceiptId"], invoice => invoice.ReceiptId),
+        new("purchase-order", Text["PurchaseOrder"], invoice => ValueOrFallback(invoice.PurchaseOrderNumber)) { Filterable = true },
+        new("subtotal", Text["Subtotal"], invoice => invoice.Subtotal) { Alignment = ShadcnTableAlignment.End, CellTemplate = invoice => builder => builder.AddContent(0, FormatMoney(invoice.Subtotal, invoice.Currency)) },
+        new("vat", Text["Vat"], invoice => invoice.Vat) { Alignment = ShadcnTableAlignment.End, CellTemplate = invoice => builder => builder.AddContent(0, FormatMoney(invoice.Vat, invoice.Currency)) },
+        new("withholding", Text["WithholdingTax"], invoice => invoice.WithholdingTax) { Alignment = ShadcnTableAlignment.End, CellTemplate = invoice => builder => builder.AddContent(0, FormatMoney(invoice.WithholdingTax, invoice.Currency, negate: true)) },
+        new("payment-date", Text["PaymentDate"], invoice => invoice.PaymentDate) { Sortable = true, CellTemplate = invoice => builder => builder.AddContent(0, FormatCalendarDate(invoice.PaymentDate)) },
+        new("created", Text["CreatedDate"], invoice => invoice.CreatedDate) { Sortable = true, CellTemplate = invoice => builder => builder.AddContent(0, FormatTimestamp(invoice.CreatedDate)) },
+    ];
 
     private IReadOnlyList<(string Title, string EmptyMessage, bool Paid, InvoiceListPage Page)> Sections =>
     [
         (Text["UnpaidInvoices"], Text["NoUnpaidInvoices"], false, unpaidInvoices),
         (Text["PaidInvoices"], Text["NoPaidInvoices"], true, paidInvoices),
     ];
-    private int TotalPages => Math.Max(paidInvoices.TotalPages, unpaidInvoices.TotalPages);
-    private int TotalRecords => paidInvoices.TotalRecords + unpaidInvoices.TotalRecords;
-    private bool HasPreviousPage => paidInvoices.HasPreviousPage || unpaidInvoices.HasPreviousPage;
-    private bool HasNextPage => paidInvoices.HasNextPage || unpaidInvoices.HasNextPage;
-
     protected override async Task OnParametersSetAsync()
     {
         Index = Math.Max(1, Index);
@@ -156,13 +117,13 @@
         currentSort = Enum.TryParse<InvoiceListSort>(SortQuery, true, out var parsed)
             ? parsed
             : InvoiceListSort.InvoiceCreatedDate_Descending;
+        dataTableState = BuildDataTableState();
         await LoadAsync();
     }
 
     private async Task LoadAsync()
     {
         using var lease = requestGate.Begin();
-        tableState.Clear();
         loading = true;
         error = null;
         HttpResponseMessage[]? responses = null;
@@ -241,22 +202,60 @@
         return true;
     }
 
-    private Task PreviousPageAsync() => NavigateAsync(Math.Max(1, Index - 1), Search, currentSort, Size);
-    private Task NextPageAsync() => NavigateAsync(Index + 1, Search, currentSort, Size);
+    private Task HandleDataTableStateChangedAsync(ShadcnDataTableState state)
+    {
+        dataTableState = state;
+        return Task.CompletedTask;
+    }
 
-    private Task HandleToolbarRequestAsync(ListToolbarRequest<InvoiceListSort> request) =>
-        request.Reason == ListToolbarChangeReason.Refreshed && request.State.Normalize() == ToolbarValue.Normalize()
-            ? LoadAsync()
-            : NavigateAsync(1, request.State.Search, request.State.Sort, request.State.PageSize, replace: true);
+    private Task HandleDataTableRequestAsync(ShadcnDataTableRequest request) =>
+        NavigateAsync(request.PageIndex + 1, request.Query, MapSort(request.Sorts), request.PageSize, replace: true);
 
     private Task NavigateAsync(int index, string? search, InvoiceListSort sort, int size, bool replace = false)
     {
-        tableState.Clear();
         Navigation.NavigateTo($"/Invoices/Index?search={Uri.EscapeDataString(search ?? string.Empty)}&sort={sort}&index={index}&size={size}", replace: replace);
         return Task.CompletedTask;
     }
 
     public void Dispose() => requestGate.Dispose();
+
+    private ShadcnDataTableState BuildDataTableState() => new()
+    {
+        Query = Search ?? string.Empty,
+        PageIndex = Math.Max(0, Index - 1),
+        PageSize = Size,
+        Sorts = currentSort switch
+        {
+            InvoiceListSort.InvoiceId_Ascending => [new("id", ShadcnSortDirection.Ascending)],
+            InvoiceListSort.InvoiceId_Descending => [new("id", ShadcnSortDirection.Descending)],
+            InvoiceListSort.InvoiceCreatedDate_Ascending => [new("created", ShadcnSortDirection.Ascending)],
+            InvoiceListSort.InvoiceCreatedDate_Descending => [new("created", ShadcnSortDirection.Descending)],
+            InvoiceListSort.InvoicePaymentDate_Ascending => [new("payment-date", ShadcnSortDirection.Ascending)],
+            InvoiceListSort.InvoicePaymentDate_Descending => [new("payment-date", ShadcnSortDirection.Descending)],
+            _ => [],
+        },
+    };
+
+    private InvoiceListSort MapSort(IReadOnlyList<ShadcnDataTableSort> sorts) => sorts.FirstOrDefault() switch
+    {
+        { ColumnKey: "id", Direction: ShadcnSortDirection.Ascending } => InvoiceListSort.InvoiceId_Ascending,
+        { ColumnKey: "id", Direction: ShadcnSortDirection.Descending } => InvoiceListSort.InvoiceId_Descending,
+        { ColumnKey: "created", Direction: ShadcnSortDirection.Ascending } => InvoiceListSort.InvoiceCreatedDate_Ascending,
+        { ColumnKey: "created", Direction: ShadcnSortDirection.Descending } => InvoiceListSort.InvoiceCreatedDate_Descending,
+        { ColumnKey: "payment-date", Direction: ShadcnSortDirection.Ascending } => InvoiceListSort.InvoicePaymentDate_Ascending,
+        { ColumnKey: "payment-date", Direction: ShadcnSortDirection.Descending } => InvoiceListSort.InvoicePaymentDate_Descending,
+        _ => currentSort,
+    };
+
+    private RenderFragment CustomerLink(int customerId) => builder =>
+    {
+        builder.OpenComponent<LegacyLink>(0);
+        builder.AddAttribute(1, nameof(LegacyLink.Href), $"/Customers/View?id={customerId}");
+        builder.AddAttribute(2, nameof(LegacyLink.Role), LegacyLinkRole.Record);
+        builder.AddAttribute(3, nameof(LegacyLink.AriaLabel), $"{Text["CustomerId"]} {customerId}");
+        builder.AddAttribute(4, nameof(LegacyLink.ChildContent), (RenderFragment)(content => content.AddContent(0, customerId)));
+        builder.CloseComponent();
+    };
 
     private static string FormatMoney(decimal? value, string? currency, bool negate = false) =>
         value is null ? "-" : $"{(negate ? -value.Value : value.Value):N2} {ValueOrFallback(currency)}";

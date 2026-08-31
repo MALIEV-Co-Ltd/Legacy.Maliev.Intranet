@@ -24,14 +24,14 @@ public sealed class EmployeesWasmMigrationContractTests
         Assert.Contains("[Authorize", page, StringComparison.Ordinal);
         Assert.Contains("EmployeeId_Descending", page, StringComparison.Ordinal);
         Assert.Contains("/bff/employees", page, StringComparison.Ordinal);
-        Assert.Contains("<OperationalTable", page, StringComparison.Ordinal);
+        Assert.Contains("<OperationalDataTable", page, StringComparison.Ordinal);
         Assert.Contains("<PageBreadcrumbs", page, StringComparison.Ordinal);
         Assert.Contains("/Employees/View?id=", page, StringComparison.Ordinal);
         Assert.Contains("ExpandEmployee", page, StringComparison.Ordinal);
-        Assert.Contains("CollapseEmployee", page, StringComparison.Ordinal);
-        Assert.Contains("data-priority=\"supporting\"", page, StringComparison.Ordinal);
-        Assert.Contains("<ShadcnSpinner", page, StringComparison.Ordinal);
-        Assert.Contains("<ShadcnAlert", page, StringComparison.Ordinal);
+        Assert.Contains("DetailsAriaLabel", page, StringComparison.Ordinal);
+        Assert.Contains("ShadcnDataTableColumn", page, StringComparison.Ordinal);
+        Assert.Contains("LoadingText=", page, StringComparison.Ordinal);
+        Assert.Contains("EmptyText=", page, StringComparison.Ordinal);
         Assert.Contains("<ShadcnButton", page, StringComparison.Ordinal);
         Assert.DoesNotContain("<Mud", page, StringComparison.Ordinal);
         Assert.Contains("/Employees/Create", page, StringComparison.Ordinal);
@@ -41,7 +41,7 @@ public sealed class EmployeesWasmMigrationContractTests
         Assert.Contains("HttpStatusCode.TooManyRequests", page, StringComparison.Ordinal);
         Assert.Contains("Math.Clamp", page, StringComparison.Ordinal);
         Assert.Contains("Uri.EscapeDataString", page, StringComparison.Ordinal);
-        Assert.Contains("PageSummary", page, StringComparison.Ordinal);
+        Assert.Contains("TotalCount=", page, StringComparison.Ordinal);
         Assert.DoesNotContain("HubConnection", page, StringComparison.Ordinal);
 
         Assert.Contains("LegacyEmployeePermissions.EmployeesList", bffProgram, StringComparison.Ordinal);
