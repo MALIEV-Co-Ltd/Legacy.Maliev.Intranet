@@ -38,7 +38,12 @@ public sealed class OperationalTableBehaviorTests : BunitContext
         var styles = File.ReadAllText(Path.Combine(root, "Legacy.Maliev.Intranet.Client.Shared", "Components", "OperationalTable.razor.css"));
         var source = string.Concat(markup, styles);
 
-        Assert.Contains("<table", markup, StringComparison.Ordinal);
+        Assert.Contains("<ShadcnTable", markup, StringComparison.Ordinal);
+        Assert.Contains("<ShadcnTableHeader", markup, StringComparison.Ordinal);
+        Assert.Contains("<ShadcnTableBody", markup, StringComparison.Ordinal);
+        Assert.Contains("<ShadcnTableRow", markup, StringComparison.Ordinal);
+        Assert.Contains("<ShadcnTableCell", markup, StringComparison.Ordinal);
+        Assert.DoesNotContain("<table", markup, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("operational-table__scroll", source, StringComparison.Ordinal);
         Assert.Contains("operational-table__row", source, StringComparison.Ordinal);
         Assert.Contains("operational-table__identity", source, StringComparison.Ordinal);
@@ -46,7 +51,7 @@ public sealed class OperationalTableBehaviorTests : BunitContext
         Assert.Contains("operational-table__detail", source, StringComparison.Ordinal);
         Assert.Contains("operational-table__toggle", source, StringComparison.Ordinal);
         Assert.Contains("operational-table__quick-view", source, StringComparison.Ordinal);
-        Assert.Contains("colspan=\"@ColumnCount\"", markup, StringComparison.Ordinal);
+        Assert.Contains("ColSpan=\"@ColumnCount\"", markup, StringComparison.Ordinal);
         Assert.Contains("aria-expanded", markup, StringComparison.Ordinal);
         Assert.Contains("aria-controls", markup, StringComparison.Ordinal);
         Assert.Contains("DetailAriaLabel(item)", markup, StringComparison.Ordinal);

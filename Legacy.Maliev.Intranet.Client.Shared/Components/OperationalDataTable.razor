@@ -67,10 +67,10 @@
     [Parameter, EditorRequired] public Func<TItem, string> DetailAriaLabel { get; set; } = default!;
     [Parameter, EditorRequired] public Func<TItem, string> DetailsAriaLabel { get; set; } = default!;
     [Parameter, EditorRequired] public RenderFragment<TItem> QuickViewContent { get; set; } = default!;
-    [Parameter] public string FilterPlaceholder { get; set; } = "Filter rows...";
-    [Parameter] public string ActionsLabel { get; set; } = "Actions";
-    [Parameter] public string EmptyText { get; set; } = "No results.";
-    [Parameter] public string LoadingText { get; set; } = "Loading...";
+    [Parameter, EditorRequired] public string FilterPlaceholder { get; set; } = default!;
+    [Parameter, EditorRequired] public string ActionsLabel { get; set; } = default!;
+    [Parameter, EditorRequired] public string EmptyText { get; set; } = default!;
+    [Parameter, EditorRequired] public string LoadingText { get; set; } = default!;
     [Parameter] public IReadOnlyList<int> PageSizeOptions { get; set; } = [10, 25, 50, 100];
 
     private static readonly ShadcnIconData ExternalLinkIcon = LucideIconCatalog.Instance.Get(LucideIconNames.ExternalLink);

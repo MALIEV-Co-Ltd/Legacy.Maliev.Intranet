@@ -11,11 +11,21 @@ public sealed partial class NativeShadcnComponentConformanceTests
         var violations = Directory.EnumerateFiles(root, "*.razor", SearchOption.AllDirectories)
             .Where(path => !path.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}", StringComparison.OrdinalIgnoreCase))
             .Where(path => !path.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}", StringComparison.OrdinalIgnoreCase))
-            .Where(path => !path.EndsWith($"{Path.DirectorySeparatorChar}Components{Path.DirectorySeparatorChar}OperationalTable.razor", StringComparison.OrdinalIgnoreCase))
             .Select(path => new
             {
                 Path = Path.GetRelativePath(root, path),
-                Matches = NativeInteractiveElement().Matches(File.ReadAllText(path)).Select(match => match.Value).Distinct(StringComparer.OrdinalIgnoreCase).ToArray(),
+                Source = File.ReadAllText(path),
+            })
+            .Select(result => new
+            {
+                result.Path,
+                Matches = NativeInteractiveElement().Matches(result.Source)
+                    .Select(match => match.Value)
+                    .Concat(result.Source.Contains("<ShadcnNativeSelect", StringComparison.Ordinal)
+                        ? ["<ShadcnNativeSelect"]
+                        : [])
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .ToArray(),
             })
             .Where(result => result.Matches.Length > 0)
             .Select(result => $"{result.Path}: {string.Join(", ", result.Matches)}")
@@ -52,7 +62,7 @@ public sealed partial class NativeShadcnComponentConformanceTests
         Assert.True(violations.Length == 0, $"Core migration files still contain Mud components: {string.Join(", ", violations)}");
     }
 
-    [GeneratedRegex(@"<\s*(?:form|input|select|textarea|button|details|summary)\b", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
+    [GeneratedRegex(@"<\s*(?:form|input|select|textarea|button|details|summary|table)\b", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
     private static partial Regex NativeInteractiveElement();
 
     private static string FindRoot()
