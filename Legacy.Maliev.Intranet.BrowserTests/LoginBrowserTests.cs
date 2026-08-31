@@ -109,22 +109,35 @@ public sealed class LoginBrowserTests(
         await email.WaitForAsync();
 
         var language = page.GetByRole(AriaRole.Combobox, new() { Name = "Language" });
+        Assert.Equal("BUTTON", await language.EvaluateAsync<string>("element => element.tagName"));
+        Assert.Equal("select-trigger", await language.GetAttributeAsync("data-slot"));
+        Assert.Equal(0, await page.Locator(".legacy-language-selector select").CountAsync());
         Assert.True(await language.EvaluateAsync<bool>(
             """
-            select => {
-                const style = getComputedStyle(select);
+            trigger => {
+                const style = getComputedStyle(trigger);
                 const canvas = document.createElement('canvas');
                 const context = canvas.getContext('2d');
                 context.font = style.font;
-                const selectedText = select.options[select.selectedIndex].text;
+                const selectedText = trigger.querySelector('[data-slot="select-value"]').textContent;
                 const textWidth = context.measureText(selectedText).width;
                 const reservedWidth = parseFloat(style.paddingInlineStart) +
                     parseFloat(style.paddingInlineEnd) +
                     parseFloat(style.borderInlineStartWidth) +
                     parseFloat(style.borderInlineEndWidth);
-                return select.getBoundingClientRect().width - reservedWidth >= textWidth;
+                return trigger.getBoundingClientRect().width - reservedWidth >= textWidth;
             }
             """));
+        await language.ClickAsync();
+        await page.GetByRole(AriaRole.Listbox).WaitForAsync();
+        var languageOptions = page.GetByRole(AriaRole.Option);
+        Assert.Equal(2, await languageOptions.CountAsync());
+        Assert.Equal(
+            new[] { "English", "ไทย" },
+            await languageOptions.EvaluateAllAsync<string[]>(
+                "options => options.map(option => option.childNodes[0].textContent.trim())"));
+        await page.Keyboard.PressAsync("Escape");
+        Assert.Equal("false", await language.GetAttributeAsync("aria-expanded"));
         await language.FocusAsync();
         Assert.Equal("none", await page.Locator(".legacy-language-selector").EvaluateAsync<string>(
             "wrapper => getComputedStyle(wrapper).outlineStyle"));

@@ -831,7 +831,7 @@ public sealed class OperationalTableMigrationBrowserTests(
 
         await page.GotoAsync(new Uri(server.BaseUri, "PurchaseOrders/Create").AbsoluteUri);
         await page.Locator("#purchase-order-supplier").WaitForAsync();
-        Assert.Equal(4, await page.Locator("[data-slot='select-trigger']").CountAsync());
+        Assert.Equal(4, await page.Locator(".purchase-order-create-page [data-slot='select-trigger']").CountAsync());
         Assert.Equal(1, await page.Locator("[id$='-description']").CountAsync());
         await page.GetByRole(AriaRole.Button, new() { Name = "Add line item", Exact = true }).ClickAsync();
         Assert.Equal(2, await page.Locator("[id$='-description']").CountAsync());

@@ -49,8 +49,8 @@
       "remainingRenderSites": 0,
       "status": "migrated",
       "replacementFamilies": [
-        "ShadcnNativeSelect",
-        "ShadcnNativeSelectOption"
+        "ShadcnSelect",
+        "ShadcnSelectOption"
       ]
     },
     {

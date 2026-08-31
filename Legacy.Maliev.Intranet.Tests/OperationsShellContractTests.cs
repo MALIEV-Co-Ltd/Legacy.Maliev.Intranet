@@ -175,21 +175,13 @@ public sealed class OperationsShellContractTests
     }
 
     [Fact]
-    public void LanguageSelector_OffersOneEnglishAndOneThaiChoiceAndRestoresTheSavedCultureBeforeStartup()
+    public void CultureBootstrap_RestoresTheSavedCultureBeforeStartup()
     {
         var root = FindRoot();
-        var selector = Read(root, "Legacy.Maliev.Intranet.Client", "Components", "Shell", "LegacyLanguageSelector.razor");
         var program = Read(root, "Legacy.Maliev.Intranet.Client", "Program.cs");
         var script = Read(root, "Legacy.Maliev.Intranet.Client", "wwwroot", "js", "workspace-culture.js");
         var index = Read(root, "Legacy.Maliev.Intranet.Client", "wwwroot", "index.html");
 
-        Assert.Equal(2, System.Text.RegularExpressions.Regex.Matches(selector, "<ShadcnNativeSelectOption").Count);
-        Assert.Contains(@"<ShadcnNativeSelectOption TValue=""string"" Value=""@EnglishCulture"">English", selector, StringComparison.Ordinal);
-        Assert.Contains(@"<ShadcnNativeSelectOption TValue=""string"" Value=""@ThaiCulture"">ไทย", selector, StringComparison.Ordinal);
-        Assert.DoesNotContain("en-US", selector, StringComparison.Ordinal);
-        Assert.Contains("<ShadcnNativeSelect TValue=\"string\"", selector, StringComparison.Ordinal);
-        Assert.DoesNotContain("<Mud", selector, StringComparison.Ordinal);
-        Assert.Contains("malievCulture.set", selector, StringComparison.Ordinal);
         Assert.Contains("malievCulture.get", program, StringComparison.Ordinal);
         Assert.Contains("WorkspaceCulture.Apply(selectedCulture)", program, StringComparison.Ordinal);
         Assert.Contains("localStorage.setItem('maliev_culture'", script, StringComparison.Ordinal);

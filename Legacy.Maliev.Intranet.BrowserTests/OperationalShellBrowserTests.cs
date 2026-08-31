@@ -162,7 +162,7 @@ public sealed class OperationalShellBrowserTests(
         Assert.Equal("none", await childToggle.Locator("svg").EvaluateAsync<string>("element => getComputedStyle(element).transform"));
         Assert.False(await newCustomer.IsVisibleAsync());
 
-        var topbarHeights = await page.Locator(".legacy-global-search input, .legacy-quick-action, .legacy-language-selector select, .legacy-theme-toggle, .legacy-profile")
+        var topbarHeights = await page.Locator(".legacy-global-search input, .legacy-quick-action, .legacy-language-selector [data-slot='select-trigger'], .legacy-theme-toggle, .legacy-profile")
             .EvaluateAllAsync<double[]>("elements => elements.filter(element => getComputedStyle(element).display !== 'none').map(element => element.getBoundingClientRect().height)");
         Assert.True(topbarHeights.Length >= 6, string.Join(", ", topbarHeights));
         Assert.True(topbarHeights.Max() - topbarHeights.Min() <= .5, string.Join(", ", topbarHeights));
@@ -255,7 +255,8 @@ public sealed class OperationalShellBrowserTests(
         Assert.Equal(1, await page.Locator(".legacy-profile:is(button)").CountAsync());
         Assert.Equal(2, await page.Locator(".legacy-quick-action:is(a)").CountAsync());
         Assert.Equal(1, await page.Locator(".legacy-global-search input").CountAsync());
-        Assert.Equal(1, await page.Locator(".legacy-language-selector select").CountAsync());
+        Assert.Equal(1, await page.Locator(".legacy-language-selector [data-slot='select-trigger']").CountAsync());
+        Assert.Equal(0, await page.Locator(".legacy-language-selector select").CountAsync());
         Assert.Equal("inset", await page.Locator(".legacy-navigation-rail[data-mobile='false']").GetAttributeAsync("data-variant"));
 
         var documentedStyle = await page.EvaluateAsync<JsonElement>("""
