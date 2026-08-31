@@ -40,6 +40,60 @@ public sealed class OperationalTableMigrationBrowserTests(
     }
 
     [Fact]
+    public async Task EmployeeSortingUpdatesRowsWithoutRefreshingTheBlazorPage()
+    {
+        await using var context = await playwright.Browser.NewContextAsync(new()
+        {
+            ViewportSize = new() { Width = 1280, Height = 900 },
+            ReducedMotion = ReducedMotion.Reduce,
+        });
+        var page = await context.NewPageAsync();
+        await StubSalesBoundariesAsync(page);
+        await page.UnrouteAsync("**/bff/employees?*");
+        var sortedRequest = new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously);
+        await page.RouteAsync("**/bff/employees?*", route =>
+        {
+            var ascending = route.Request.Url.Contains("sort=EmployeeId_Ascending", StringComparison.Ordinal);
+            if (ascending)
+            {
+                sortedRequest.TrySetResult(route.Request.Url);
+            }
+            var items = ascending
+                ? "[{\"id\":201,\"firstName\":\"Mali\",\"lastName\":\"Dee\",\"fullName\":\"Mali Dee\",\"email\":\"mali@maliev.com\",\"role\":null},{\"id\":202,\"firstName\":\"Niran\",\"lastName\":\"Chai\",\"fullName\":\"Niran Chai\",\"email\":\"niran@maliev.com\",\"role\":null}]"
+                : "[{\"id\":202,\"firstName\":\"Niran\",\"lastName\":\"Chai\",\"fullName\":\"Niran Chai\",\"email\":\"niran@maliev.com\",\"role\":null},{\"id\":201,\"firstName\":\"Mali\",\"lastName\":\"Dee\",\"fullName\":\"Mali Dee\",\"email\":\"mali@maliev.com\",\"role\":null}]";
+            return route.FulfillAsync(new()
+            {
+                Status = 200,
+                ContentType = "application/json",
+                Body = $"{{\"items\":{items},\"pageIndex\":1,\"totalPages\":1,\"totalRecords\":2,\"hasNextPage\":false,\"hasPreviousPage\":false}}",
+            });
+        });
+
+        await page.GotoAsync(new Uri(server.BaseUri, "Employees/Index").AbsoluteUri);
+        var firstId = page.Locator("[data-slot='data-table'] tbody tr td").First;
+        await firstId.WaitForAsync();
+        Assert.Equal("202", (await firstId.InnerTextAsync()).Trim());
+
+        var documentRequests = 0;
+        page.Request += (_, request) =>
+        {
+            if (request.ResourceType == "document")
+            {
+                Interlocked.Increment(ref documentRequests);
+            }
+        };
+        var idSort = page.Locator(".shadcn-data-table-sort").First;
+        await idSort.ClickAsync();
+        var sortedUrl = await sortedRequest.Task.WaitAsync(TimeSpan.FromSeconds(5));
+
+        Assert.Contains("sort=EmployeeId_Ascending", sortedUrl, StringComparison.Ordinal);
+        await Assertions.Expect(firstId).ToHaveTextAsync("201", new() { Timeout = 5_000 });
+        Assert.Contains("sort=EmployeeId_Ascending", page.Url, StringComparison.Ordinal);
+        Assert.True(await idSort.EvaluateAsync<bool>("node => document.activeElement === node"));
+        Assert.Equal(0, documentRequests);
+    }
+
+    [Fact]
     public async Task DashboardRefreshesItsSnapshotWithoutManualInteraction()
     {
         await using var context = await playwright.Browser.NewContextAsync(new()

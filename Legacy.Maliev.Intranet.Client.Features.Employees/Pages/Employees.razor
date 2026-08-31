@@ -1,9 +1,11 @@
 @page "/Employees/Index"
 @using System.Globalization
+@using Microsoft.JSInterop
 @attribute [Authorize]
 @implements IDisposable
 @inject HttpClient Http
 @inject NavigationManager Navigation
+@inject IJSRuntime JavaScript
 @inject IStringLocalizer<Employees> Text
 
 <PageTitle>@Text["PageTitle"]</PageTitle>
@@ -165,14 +167,22 @@
         return Task.CompletedTask;
     }
 
-    private Task HandleDataTableRequestAsync(ShadcnDataTableRequest request) =>
-        NavigateAsync(request.PageIndex + 1, request.Query, MapSort(request.Sorts), request.PageSize, replace: true);
+    private async Task HandleDataTableRequestAsync(ShadcnDataTableRequest request)
+    {
+        Index = request.PageIndex + 1;
+        Search = request.Query;
+        currentSort = MapSort(request.Sorts);
+        Size = Math.Clamp(request.PageSize, 1, 250);
+        dataTableState = BuildDataTableState();
 
-    private Task NavigateAsync(int index, string? search, EmployeeListSort sort, int size, bool replace = false)
+        await ReplaceUrlAsync(Index, Search, currentSort, Size);
+        await LoadAsync(new ListToolbarState<EmployeeListSort>(Search, currentSort, Size));
+    }
+
+    private ValueTask ReplaceUrlAsync(int index, string? search, EmployeeListSort sort, int size)
     {
         var uri = $"/Employees/Index?search={Uri.EscapeDataString(search ?? string.Empty)}&sort={sort}&index={index}&size={Math.Clamp(size, 1, 250)}";
-        Navigation.NavigateTo(uri, replace: replace);
-        return Task.CompletedTask;
+        return JavaScript.InvokeVoidAsync("malievNavigation.replaceCurrentUrl", uri);
     }
 
     public void Dispose() => requestGate.Dispose();
@@ -197,7 +207,14 @@
         { ColumnKey: "email", Direction: ShadcnSortDirection.Ascending } => EmployeeListSort.EmployeeEmail_Ascending,
         { ColumnKey: "email", Direction: ShadcnSortDirection.Descending } => EmployeeListSort.EmployeeEmail_Descending,
         { ColumnKey: "id", Direction: ShadcnSortDirection.Descending } => EmployeeListSort.EmployeeId_Descending,
-        _ => currentSort,
+        _ => currentSort switch
+        {
+            EmployeeListSort.EmployeeId_Descending => EmployeeListSort.EmployeeId_Ascending,
+            EmployeeListSort.EmployeeId_Ascending => EmployeeListSort.EmployeeId_Descending,
+            EmployeeListSort.EmployeeEmail_Descending => EmployeeListSort.EmployeeEmail_Ascending,
+            EmployeeListSort.EmployeeEmail_Ascending => EmployeeListSort.EmployeeEmail_Descending,
+            _ => EmployeeListSort.EmployeeId_Descending,
+        },
     };
 
     private static string ValueOrFallback(string? value) => string.IsNullOrWhiteSpace(value) ? "-" : value;

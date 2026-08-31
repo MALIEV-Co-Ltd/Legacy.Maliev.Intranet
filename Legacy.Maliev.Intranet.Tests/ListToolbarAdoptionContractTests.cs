@@ -32,7 +32,10 @@ public sealed class ListToolbarAdoptionContractTests
         Assert.Contains("ShadcnDataTableRequest", source, StringComparison.Ordinal);
         Assert.Contains("LatestRequestGate", source, StringComparison.Ordinal);
         Assert.Contains("lease.CancellationToken", source, StringComparison.Ordinal);
-        Assert.Contains("replace: true", source, StringComparison.Ordinal);
+        Assert.True(
+            source.Contains("replace: true", StringComparison.Ordinal) ||
+            source.Contains("malievNavigation.replaceCurrentUrl", StringComparison.Ordinal),
+            "List pages must keep their URL state synchronized without adding a history entry.");
         Assert.DoesNotContain("ApplyFiltersAsync", source, StringComparison.Ordinal);
         Assert.DoesNotContain("Text[\"Apply\"]", source, StringComparison.Ordinal);
     }
