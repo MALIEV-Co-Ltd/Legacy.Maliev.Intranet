@@ -12,7 +12,8 @@ public sealed class ShadcnPackageIntegrationContractTests
         Assert.DoesNotContain("Maliev.ShadcnBlazor.csproj", project, StringComparison.Ordinal);
         Assert.Contains("AddMalievShadcn", program, StringComparison.Ordinal);
         Assert.DoesNotContain("AddMudServices", program, StringComparison.Ordinal);
-        Assert.Contains("IBM Plex Sans Thai", program, StringComparison.Ordinal);
+        Assert.Contains("ShadcnThemePresets.BaseVegaNeutral.CreateTheme()", program, StringComparison.Ordinal);
+        Assert.DoesNotContain("options.FontFamily", program, StringComparison.Ordinal);
     }
 
     [Theory]
@@ -49,7 +50,6 @@ public sealed class ShadcnPackageIntegrationContractTests
 
         Assert.Contains("root.dataset.shadcnTheme = theme", index, StringComparison.Ordinal);
         AssertOrder(index,
-            "css/ibm-plex-sans-thai.css",
             "_content/Maliev.ShadcnBlazor/css/shadcn-base.css",
             "_content/Maliev.ShadcnBlazor/css/shadcn-semantic-foundations.css",
             "_content/Maliev.ShadcnBlazor/css/shadcn-layout.css",

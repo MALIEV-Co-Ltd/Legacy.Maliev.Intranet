@@ -12,7 +12,7 @@ public sealed class LegacyThemeContractTests
 
         Assert.Contains("AddScoped<LegacyThemeService>()", program, StringComparison.Ordinal);
         Assert.Contains("ShadcnThemePresets.BaseVegaNeutral.CreateTheme()", program, StringComparison.Ordinal);
-        Assert.Contains("options.Theme = precisionTheme", program, StringComparison.Ordinal);
+        Assert.Contains("options.Theme = ShadcnThemePresets.BaseVegaNeutral.CreateTheme()", program, StringComparison.Ordinal);
         Assert.Contains("malievTheme.isDark", service, StringComparison.Ordinal);
         Assert.Contains("malievTheme.toggle", service, StringComparison.Ordinal);
         Assert.Contains("localStorage", index, StringComparison.Ordinal);

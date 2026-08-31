@@ -77,7 +77,7 @@
     --maliev-font-small: 0.75rem;
     --maliev-font-base: 0.8125rem;
     --maliev-font-large: 0.875rem;
-    --maliev-font-sans: 'IBM Plex Sans Thai', sans-serif;
+    --maliev-font-sans: var(--shadcn-font-sans);
     --maliev-font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, 'Courier New', monospace;
     --maliev-font-weight-body: 400;
     --maliev-font-weight-heading: 600;

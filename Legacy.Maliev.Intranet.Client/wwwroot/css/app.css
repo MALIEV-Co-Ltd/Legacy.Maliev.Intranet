@@ -25,9 +25,6 @@ html, body { width: 100%; height: 100%; min-height: 100%; margin: 0; overflow: h
 .employee-login { padding-block: clamp(1.5rem, 8vh, 5rem); }
 .login-card { overflow: hidden; }
 .brand-logo { display: block; width: auto; height: 1.375rem; }
-.legacy-logo-image--dark { display: none !important; }
-:root[data-maliev-theme="dark"] .legacy-logo-image--light { display: none !important; }
-:root[data-maliev-theme="dark"] .legacy-logo-image--dark { display: block !important; }
 .legacy-login-page { width: 100%; min-height: 100dvh; background: var(--shadcn-background); color: var(--shadcn-foreground); }
 .legacy-login-shell { display: grid; min-height: 100dvh; grid-template-columns: minmax(0, 44%) minmax(0, 56%); }
 :root { --legacy-login-brand-background: var(--shadcn-foreground); --legacy-login-brand-foreground: var(--shadcn-background); }

@@ -25,20 +25,7 @@
 /* Named workspace composition consumes package tokens without styling package internals. */
 .legacy-workspace-frame .legacy-topbar {
     border-bottom: 1px solid var(--shadcn-border);
-    background: color-mix(in srgb, var(--shadcn-background) 94%, transparent);
-    box-shadow: var(--shadcn-shadow-xs);
-    backdrop-filter: blur(10px);
-}
-
-.legacy-navigation-rail,
-.legacy-navigation-rail.drawer {
-    border-right: 1px solid var(--shadcn-border);
-    background: var(--shadcn-card);
-    color: var(--shadcn-sidebar-foreground);
-}
-
-.legacy-navigation-rail .legacy-rail-header {
-    border-bottom: 1px solid var(--shadcn-border);
+    background: var(--shadcn-background);
 }
 
 .legacy-workspace-frame .legacy-global-search,

@@ -4,14 +4,17 @@
 
 <div class="legacy-sidebar-host">
 <ShadcnSidebar Id="legacy-navigation-rail"
+               Variant="ShadcnSidebarVariant.Inset"
                Collapsible="ShadcnSidebarCollapsible.Icon"
                Label="@Text["Primary navigation"]" Class="legacy-navigation-rail">
     <ShadcnSidebarHeader Class="legacy-rail-header">
         <div class="legacy-rail-identity">
             <a class="legacy-rail-logo legacy-logo-link" href="/Dashboard" aria-label="@Text["MALIEV dashboard"]">
-                <img class="legacy-logo-image legacy-logo-image--light" src="images/MALIEV_BLACK.svg" alt="MALIEV" />
-                <img class="legacy-logo-image legacy-logo-image--dark" src="images/MALIEV_WHITE.svg" alt="" aria-hidden="true" />
-                <span class="legacy-rail-monogram" aria-hidden="true">M</span>
+                <span class="legacy-rail-brand__mark" aria-hidden="true">M</span>
+                <span class="legacy-rail-brand__copy">
+                    <strong>MALIEV</strong>
+                    <small>@Text["Employee workspace"]</small>
+                </span>
             </a>
             <ShadcnSidebarTrigger id="legacy-sidebar-collapse" TargetId="legacy-navigation-rail"
                                   Class="legacy-sidebar-collapse" />
@@ -68,22 +71,30 @@
     </ShadcnSidebarContent>
 
     <ShadcnSidebarFooter Class="legacy-rail-footer">
-        <div class="legacy-rail-user">
-            <ShadcnAvatar Class="legacy-rail-avatar" aria-hidden="true">
-                <ShadcnAvatarFallback>@GetInitials(Session?.DisplayName)</ShadcnAvatarFallback>
-            </ShadcnAvatar>
-            <span class="legacy-rail-user-copy">
-                <strong>@(Session?.DisplayName ?? Text["Employee"])</strong>
-                <small>@Text["Employee workspace"]</small>
-            </span>
-        </div>
+        <ShadcnSidebarMenu>
+            <ShadcnSidebarMenuItem>
+                <ShadcnSidebarMenuButton Size="ShadcnSidebarMenuButtonSize.Large"
+                                         Class="legacy-rail-user"
+                                         Tooltip="@EmployeeLabel">
+                    <ShadcnAvatar Class="legacy-rail-avatar" aria-hidden="true">
+                        <ShadcnAvatarFallback>@GetInitials(Session?.DisplayName)</ShadcnAvatarFallback>
+                    </ShadcnAvatar>
+                    <span class="legacy-rail-user-copy">
+                        <strong>@EmployeeLabel</strong>
+                        <small>@Text["Employee workspace"]</small>
+                    </span>
+                </ShadcnSidebarMenuButton>
+            </ShadcnSidebarMenuItem>
+        </ShadcnSidebarMenu>
     </ShadcnSidebarFooter>
+    <ShadcnSidebarRail TargetId="legacy-navigation-rail" />
 </ShadcnSidebar>
 </div>
 
 @code {
     [Parameter] public EmployeeSessionSummary? Session { get; set; }
     [Parameter] public EventCallback OnNavigate { get; set; }
+    private string EmployeeLabel => Session?.DisplayName ?? Text["Employee"];
 
     private bool IsItemEnabled(LegacyNavItem item) => LegacyNavigationAuthorization.IsEnabled(
         Session?.IsAuthenticated == true, item.RequiredPermission, Session?.Permissions, Session?.Roles);

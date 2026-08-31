@@ -58,7 +58,7 @@ public sealed class ShadcnStyleSystemContractTests
     }
 
     [Fact]
-    public void ShellLogosUseOfficialLightAndDarkSvgAssetsWithoutFilters()
+    public void ShellUsesTheDocumentedCompactBrandMarkWithoutImageFilters()
     {
         var topBar = Read("Legacy.Maliev.Intranet.Client", "Layout", "LegacyTopBar.razor");
         var rail = Read("Legacy.Maliev.Intranet.Client", "Components", "Shell", "LegacyNavigationRail.razor");
@@ -66,9 +66,8 @@ public sealed class ShadcnStyleSystemContractTests
 
         Assert.DoesNotContain("images/MALIEV_BLACK.svg", topBar, StringComparison.Ordinal);
         Assert.DoesNotContain("images/MALIEV_WHITE.svg", topBar, StringComparison.Ordinal);
-        Assert.Contains("images/MALIEV_BLACK.svg", rail, StringComparison.Ordinal);
-        Assert.Contains("images/MALIEV_WHITE.svg", rail, StringComparison.Ordinal);
-        Assert.Contains(":root[data-maliev-theme=\"dark\"] .legacy-logo-image--dark", appCss, StringComparison.Ordinal);
+        Assert.Contains("legacy-rail-brand__mark", rail, StringComparison.Ordinal);
+        Assert.DoesNotContain("<img", rail, StringComparison.Ordinal);
         Assert.DoesNotContain("filter: invert", appCss, StringComparison.OrdinalIgnoreCase);
     }
 

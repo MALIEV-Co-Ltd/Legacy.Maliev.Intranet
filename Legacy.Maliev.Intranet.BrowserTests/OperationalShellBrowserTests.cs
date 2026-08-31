@@ -204,6 +204,39 @@ public sealed class OperationalShellBrowserTests(
         Assert.Equal(2, await page.Locator(".legacy-quick-action:is(a)").CountAsync());
         Assert.Equal(1, await page.Locator(".legacy-global-search input").CountAsync());
         Assert.Equal(1, await page.Locator(".legacy-language-selector select").CountAsync());
+        Assert.Equal("inset", await page.Locator(".legacy-navigation-rail[data-mobile='false']").GetAttributeAsync("data-variant"));
+
+        var documentedStyle = await page.EvaluateAsync<JsonElement>("""
+            () => {
+                const sidebar = document.querySelector('.legacy-navigation-rail[data-mobile="false"]');
+                const wrapper = document.querySelector('.shadcn-sidebar-wrapper');
+                const inset = document.querySelector('.shadcn-sidebar-inset');
+                const mark = document.querySelector('.legacy-rail-brand__mark');
+                const active = document.querySelector('.legacy-rail-link[data-active="true"]');
+                const table = document.querySelector('.operational-table');
+                const tabular = table?.querySelector('.mlv-mono');
+                return {
+                    sidebarWidth: sidebar.getBoundingClientRect().width,
+                    sidebarBackground: getComputedStyle(sidebar).backgroundColor,
+                    wrapperBackground: getComputedStyle(wrapper).backgroundColor,
+                    insetRadius: parseFloat(getComputedStyle(inset).borderRadius),
+                    insetShadow: getComputedStyle(inset).boxShadow,
+                    markWidth: mark.getBoundingClientRect().width,
+                    activeHeight: active.getBoundingClientRect().height,
+                    tableFont: table ? getComputedStyle(table).fontFamily : '',
+                    tabularFont: tabular ? getComputedStyle(tabular).fontFamily : ''
+                };
+            }
+            """);
+        Assert.InRange(documentedStyle.GetProperty("sidebarWidth").GetDouble(), 239.5, 240.5);
+        Assert.Equal(documentedStyle.GetProperty("wrapperBackground").GetString(), documentedStyle.GetProperty("sidebarBackground").GetString());
+        Assert.InRange(documentedStyle.GetProperty("insetRadius").GetDouble(), 13.5, 14.5);
+        Assert.NotEqual("none", documentedStyle.GetProperty("insetShadow").GetString());
+        Assert.InRange(documentedStyle.GetProperty("markWidth").GetDouble(), 31.5, 32.5);
+        Assert.InRange(documentedStyle.GetProperty("activeHeight").GetDouble(), 31.5, 32.5);
+        Assert.False(string.IsNullOrWhiteSpace(documentedStyle.GetProperty("tableFont").GetString()));
+        Assert.Equal(documentedStyle.GetProperty("tableFont").GetString(), documentedStyle.GetProperty("tabularFont").GetString());
+        Assert.DoesNotContain("Mono", documentedStyle.GetProperty("tabularFont").GetString(), StringComparison.OrdinalIgnoreCase);
 
         var desktopShell = await page.EvaluateAsync<JsonElement>("""
             () => {
@@ -216,7 +249,7 @@ public sealed class OperationalShellBrowserTests(
                     topbar: bounds('.legacy-topbar'),
                     sidebar: bounds('.legacy-navigation-rail'),
                     collapse: bounds('#legacy-sidebar-collapse'),
-                    logo: bounds('.legacy-rail-logo img:not([aria-hidden=true])'),
+                    logo: bounds('.legacy-rail-brand__mark'),
                     workspace: bounds('.legacy-workspace-shell')
                 };
             }
@@ -228,16 +261,16 @@ public sealed class OperationalShellBrowserTests(
         var desktopWorkspace = desktopShell.GetProperty("workspace");
         Assert.InRange(
             Math.Abs(desktopTopbar.GetProperty("left").GetDouble() - desktopSidebar.GetProperty("right").GetDouble()),
-            0,
-            2);
+            7,
+            9);
         Assert.InRange(
             desktopTopbar.GetProperty("right").GetDouble(),
-            desktopShell.GetProperty("viewportWidth").GetInt32() - 0.5,
-            desktopShell.GetProperty("viewportWidth").GetInt32() + 0.5);
+            desktopShell.GetProperty("viewportWidth").GetInt32() - 8.5,
+            desktopShell.GetProperty("viewportWidth").GetInt32() - 7.5);
         Assert.InRange(
             Math.Abs(desktopSidebar.GetProperty("right").GetDouble() - desktopWorkspace.GetProperty("left").GetDouble()),
-            0,
-            2);
+            7,
+            9);
         Assert.True(desktopLogo.GetProperty("left").GetDouble() < desktopWorkspace.GetProperty("left").GetDouble(), desktopShell.ToString());
         Assert.InRange(desktopCollapse.GetProperty("left").GetDouble(), desktopSidebar.GetProperty("left").GetDouble(), desktopSidebar.GetProperty("right").GetDouble());
         Assert.InRange(desktopCollapse.GetProperty("right").GetDouble(), desktopSidebar.GetProperty("left").GetDouble(), desktopSidebar.GetProperty("right").GetDouble());
@@ -329,11 +362,11 @@ public sealed class OperationalShellBrowserTests(
         var firstFocusable = drawer.Locator(".legacy-rail-logo");
         await firstFocusable.FocusAsync();
         await page.Keyboard.PressAsync("Shift+Tab");
-        var lastNavigationLink = drawer.Locator(".legacy-rail-link").Last;
         await page.WaitForFunctionAsync(
-            "element => element === document.activeElement",
-            await lastNavigationLink.ElementHandleAsync());
-        Assert.True(await lastNavigationLink.EvaluateAsync<bool>("element => element === document.activeElement"));
+            "drawer => document.activeElement?.closest('.legacy-navigation-rail') === drawer",
+            await drawer.ElementHandleAsync());
+        Assert.True(await drawer.EvaluateAsync<bool>(
+            "element => document.activeElement?.closest('.legacy-navigation-rail') === element"));
         await page.Keyboard.PressAsync("Escape");
         await drawer.WaitForAsync(new() { State = WaitForSelectorState.Detached });
         Assert.True(await menu.EvaluateAsync<bool>("element => element === document.activeElement"));

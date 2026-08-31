@@ -10,15 +10,8 @@ using Microsoft.JSInterop;
 var builder = WebAssemblyHostBuilder.CreateDefault(args);
 builder.RootComponents.Add<App>("#app");
 builder.RootComponents.Add<HeadOutlet>("head::after");
-var precisionTheme = ShadcnThemePresets.BaseVegaNeutral.CreateTheme();
 builder.Services.AddMalievShadcn(options =>
-{
-    options.FontFamily = "'IBM Plex Sans Thai', sans-serif";
-    options.Theme = precisionTheme with
-    {
-        Metrics = precisionTheme.Metrics with { FontFamily = options.FontFamily },
-    };
-});
+    options.Theme = ShadcnThemePresets.BaseVegaNeutral.CreateTheme());
 builder.Services.AddLocalization();
 builder.Services.AddAuthorizationCore();
 builder.Services.AddScoped(_ => new HttpClient { BaseAddress = new Uri(builder.HostEnvironment.BaseAddress) });

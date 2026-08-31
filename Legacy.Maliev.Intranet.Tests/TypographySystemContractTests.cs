@@ -9,13 +9,14 @@ public sealed class TypographySystemContractTests
         RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
     [Fact]
-    public void RuntimeHosts_SelfHostIbmPlexSansThaiWithoutExternalFontRequests()
+    public void RuntimeHosts_UseSelfHostedTypographyWithoutExternalFontRequests()
     {
         var root = FindRoot();
         var clientIndex = Read(root, "Legacy.Maliev.Intranet.Client", "wwwroot", "index.html");
         var serverLayout = Read(root, "Legacy.Maliev.Intranet", "Pages", "Shared", "_Layout.cshtml");
 
-        Assert.Contains("css/ibm-plex-sans-thai.css", clientIndex, StringComparison.Ordinal);
+        Assert.Contains("_content/Maliev.ShadcnBlazor/fonts/geist-sans-variable.woff2", clientIndex, StringComparison.Ordinal);
+        Assert.Contains("_content/Maliev.ShadcnBlazor/fonts/noto-sans-thai.woff2", clientIndex, StringComparison.Ordinal);
         Assert.Contains("~/css/ibm-plex-sans-thai.css", serverLayout, StringComparison.Ordinal);
 
         foreach (var productionFile in ProductionTypographyFiles(root))
@@ -25,8 +26,6 @@ public sealed class TypographySystemContractTests
             Assert.DoesNotContain("fonts.gstatic.com", source, StringComparison.OrdinalIgnoreCase);
             Assert.DoesNotContain("'Inter'", source, StringComparison.Ordinal);
             Assert.DoesNotContain("family=Inter", source, StringComparison.Ordinal);
-            Assert.DoesNotContain("Noto Sans Thai", source, StringComparison.Ordinal);
-            Assert.DoesNotContain("Geist Mono", source, StringComparison.Ordinal);
         }
     }
 
@@ -54,7 +53,7 @@ public sealed class TypographySystemContractTests
         var root = FindRoot();
         var tokens = Read(root, "Legacy.Maliev.Intranet.Client", "wwwroot", "css", "design-tokens.css");
 
-        Assert.Contains("--maliev-font-sans: 'IBM Plex Sans Thai', sans-serif", tokens, StringComparison.Ordinal);
+        Assert.Contains("--maliev-font-sans: var(--shadcn-font-sans)", tokens, StringComparison.Ordinal);
         Assert.Contains("--maliev-font-weight-body: 400", tokens, StringComparison.Ordinal);
         Assert.Contains("--maliev-font-weight-heading: 600", tokens, StringComparison.Ordinal);
         Assert.DoesNotContain("--shadcn-font-sans:", tokens, StringComparison.Ordinal);
@@ -73,7 +72,7 @@ public sealed class TypographySystemContractTests
             foreach (Match match in FontWeightDeclaration.Matches(source))
             {
                 var value = match.Groups["value"].Value.Trim();
-                if (value is "400" or "600" or "var(--maliev-font-weight-body)" or "var(--maliev-font-weight-heading)")
+                if (value is "400" or "600" or "700" or "var(--maliev-font-weight-body)" or "var(--maliev-font-weight-heading)")
                 {
                     continue;
                 }
