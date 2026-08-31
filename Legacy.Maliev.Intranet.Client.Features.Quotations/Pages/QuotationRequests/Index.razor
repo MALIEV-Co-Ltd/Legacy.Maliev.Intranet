@@ -62,11 +62,11 @@
     private QuotationRequestSort sortInput;
     private IReadOnlyList<ShadcnDataTableColumn<QuotationRequestItem>> Columns =>
     [
-        new("id", Text["Id"], request => request.Id) { Sortable = true, Filterable = true, Hideable = false },
-        new("customer", Text["Customer"], request => Name(request)) { Filterable = true, MinWidth = "12rem" },
-        new("status", Text["Status"], request => request.Done == true ? Text["Done"].Value : Text["Open"].Value) { Filterable = true },
+        new("id", Text["Id"], request => request.Id) { Sortable = true, Hideable = false },
+        new("customer", Text["Customer"], request => Name(request)) { MinWidth = "12rem" },
+        new("status", Text["Status"], request => request.Done == true ? Text["Done"].Value : Text["Open"].Value),
         new("created", Text["Created"], request => request.CreatedDate) { Sortable = true, MinWidth = "10rem", CellTemplate = request => builder => builder.AddContent(0, Format(request.CreatedDate)) },
-        new("company", Text["Company"], request => Fallback(request.CompanyName)) { Filterable = true, MinWidth = "14rem" },
+        new("company", Text["Company"], request => Fallback(request.CompanyName)) { MinWidth = "14rem" },
     ];
     private IReadOnlyList<PageBreadcrumbItem> Breadcrumbs =>
     [

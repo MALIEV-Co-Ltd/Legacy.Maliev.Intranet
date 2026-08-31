@@ -354,6 +354,9 @@ public sealed class OperationalTableMigrationBrowserTests(
 
         await page.GotoAsync(new Uri(server.BaseUri, "Employees/Index").AbsoluteUri);
         await page.Locator("[data-slot='data-table']").WaitForAsync();
+        Assert.Equal(1, await page.Locator("[data-slot='data-table-toolbar'] input[type='search']").CountAsync());
+        Assert.Equal(0, await page.Locator("[data-slot='data-table-toolbar'] input[data-column-filter]").CountAsync());
+        Assert.Equal(2, await page.Locator(".operational-data-table__actions").First.Locator("svg").CountAsync());
         await page.Locator("[data-slot='popover-trigger']").First.ClickAsync();
         var employeeQuickView = page.Locator(".employee-quick-view");
         await employeeQuickView.WaitForAsync();

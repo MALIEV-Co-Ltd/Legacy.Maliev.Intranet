@@ -90,14 +90,14 @@
     private string? error;
     private IReadOnlyList<ShadcnDataTableColumn<InvoiceListItem>> Columns =>
     [
-        new("id", Text["Id"], invoice => invoice.Id) { Sortable = true, Filterable = true, Hideable = false },
-        new("number", Text["Number"], invoice => invoice.Number) { Filterable = true },
-        new("customer", Text["CustomerId"], invoice => invoice.CustomerId) { Filterable = true, CellTemplate = invoice => CustomerLink(invoice.CustomerId) },
+        new("id", Text["Id"], invoice => invoice.Id) { Sortable = true, Hideable = false },
+        new("number", Text["Number"], invoice => invoice.Number),
+        new("customer", Text["CustomerId"], invoice => invoice.CustomerId) { CellTemplate = invoice => CustomerLink(invoice.CustomerId) },
         new("paid", Text["Paid"], invoice => invoice.IsPaid ? Text["PaidStatus"] : Text["UnpaidStatus"]),
         new("outstanding", Text["Outstanding"], invoice => invoice.Outstanding) { Alignment = ShadcnTableAlignment.End, CellTemplate = invoice => builder => builder.AddContent(0, FormatMoney(invoice.Outstanding, invoice.Currency)) },
         new("total", Text["Total"], invoice => invoice.Total) { Alignment = ShadcnTableAlignment.End, CellTemplate = invoice => builder => builder.AddContent(0, FormatMoney(invoice.Total, invoice.Currency)) },
         new("receipt", Text["ReceiptId"], invoice => invoice.ReceiptId),
-        new("purchase-order", Text["PurchaseOrder"], invoice => ValueOrFallback(invoice.PurchaseOrderNumber)) { Filterable = true },
+        new("purchase-order", Text["PurchaseOrder"], invoice => ValueOrFallback(invoice.PurchaseOrderNumber)),
         new("subtotal", Text["Subtotal"], invoice => invoice.Subtotal) { Alignment = ShadcnTableAlignment.End, CellTemplate = invoice => builder => builder.AddContent(0, FormatMoney(invoice.Subtotal, invoice.Currency)) },
         new("vat", Text["Vat"], invoice => invoice.Vat) { Alignment = ShadcnTableAlignment.End, CellTemplate = invoice => builder => builder.AddContent(0, FormatMoney(invoice.Vat, invoice.Currency)) },
         new("withholding", Text["WithholdingTax"], invoice => invoice.WithholdingTax) { Alignment = ShadcnTableAlignment.End, CellTemplate = invoice => builder => builder.AddContent(0, FormatMoney(invoice.WithholdingTax, invoice.Currency, negate: true)) },

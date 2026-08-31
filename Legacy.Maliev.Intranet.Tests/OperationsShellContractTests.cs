@@ -219,6 +219,8 @@ public sealed class OperationsShellContractTests
         Assert.Contains("legacy-rail-logo legacy-logo-link", navigation, StringComparison.Ordinal);
         Assert.Contains("legacy-sidebar-collapse", navigation, StringComparison.Ordinal);
         Assert.Contains("max-height: calc(100dvh - 1rem)", railCss, StringComparison.Ordinal);
+        Assert.Contains(".legacy-sidebar-host ::deep .legacy-rail-branch-toggle[data-state=\"open\"] svg", railCss, StringComparison.Ordinal);
+        Assert.Contains("transform: rotate(90deg)", railCss, StringComparison.Ordinal);
     }
 
     [Fact]

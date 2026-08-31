@@ -66,10 +66,10 @@
     private static readonly int[] PageSizeOptions = [25, 50, 100, 250];
     private IReadOnlyList<ShadcnDataTableColumn<CustomerListItem>> Columns =>
     [
-        new("id", Text["Id"], customer => customer.Id) { Sortable = true, Filterable = true, Hideable = false },
-        new("name", Text["Name"], customer => customer.FullName) { Filterable = true, MinWidth = "12rem" },
-        new("email", Text["Email"], customer => customer.Email) { Sortable = true, Filterable = true, MinWidth = "14rem" },
-        new("company", Text["Company"], customer => ValueOrFallback(customer.Company?.Name)) { Sortable = true, Filterable = true, MinWidth = "14rem" },
+        new("id", Text["Id"], customer => customer.Id) { Sortable = true, Hideable = false },
+        new("name", Text["Name"], customer => customer.FullName) { MinWidth = "12rem" },
+        new("email", Text["Email"], customer => customer.Email) { Sortable = true, MinWidth = "14rem" },
+        new("company", Text["Company"], customer => ValueOrFallback(customer.Company?.Name)) { Sortable = true, MinWidth = "14rem" },
     ];
     private IReadOnlyList<PageBreadcrumbItem> Breadcrumbs =>
     [

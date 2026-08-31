@@ -110,20 +110,20 @@
     private string? error;
     private IReadOnlyList<ShadcnDataTableColumn<QuotationListItem>> Columns =>
     [
-        new("id", Text["Id"], quotation => quotation.Id) { Sortable = true, Filterable = true, Hideable = false },
-        new("customer", Text["CustomerId"], quotation => quotation.CustomerId) { Filterable = true, CellTemplate = quotation => CustomerLink(quotation.CustomerId) },
+        new("id", Text["Id"], quotation => quotation.Id) { Sortable = true, Hideable = false },
+        new("customer", Text["CustomerId"], quotation => quotation.CustomerId) { CellTemplate = quotation => CustomerLink(quotation.CustomerId) },
         new("total", Text["Total"], quotation => quotation.Total) { Alignment = ShadcnTableAlignment.End, CellTemplate = quotation => builder => builder.AddContent(0, FormatMoney(quotation.Total, quotation.CurrencyId)) },
         new("quoted", Text["QuotedAmount"], quotation => quotation.QuotedAmount ?? quotation.Total) { Alignment = ShadcnTableAlignment.End, CellTemplate = quotation => builder => builder.AddContent(0, FormatMoney(quotation.QuotedAmount ?? quotation.Total, quotation.CurrencyId)) },
-        new("decision", Text["Decision"], quotation => Decision(quotation.Accepted)) { Filterable = true },
-        new("employee", Text["Employee"], quotation => EmployeeName(quotation.EmployeeId)) { Filterable = true, MinWidth = "12rem" },
+        new("decision", Text["Decision"], quotation => Decision(quotation.Accepted)),
+        new("employee", Text["Employee"], quotation => EmployeeName(quotation.EmployeeId)) { MinWidth = "12rem" },
         new("period", Text["Period"], quotation => quotation.Period) { CellTemplate = quotation => builder => builder.AddContent(0, Text["Days", quotation.Period]) },
         new("expiration", Text["ExpirationDate"], quotation => quotation.ExpirationDate) { CellTemplate = quotation => builder => builder.AddContent(0, FormatDate(quotation.ExpirationDate)) },
         new("subtotal", Text["Subtotal"], quotation => quotation.Subtotal) { Alignment = ShadcnTableAlignment.End, CellTemplate = quotation => builder => builder.AddContent(0, FormatMoney(quotation.Subtotal, quotation.CurrencyId)) },
         new("vat", Text["Vat"], quotation => quotation.Vat) { Alignment = ShadcnTableAlignment.End, CellTemplate = quotation => builder => builder.AddContent(0, FormatMoney(quotation.Vat, quotation.CurrencyId)) },
         new("withholding", Text["WithholdingTax"], quotation => quotation.WithholdingTax) { Alignment = ShadcnTableAlignment.End, CellTemplate = quotation => builder => builder.AddContent(0, FormatMoney(-(quotation.WithholdingTax ?? 0m), quotation.CurrencyId)) },
-        new("fob", Text["Fob"], quotation => ValueOrFallback(quotation.Fob)) { Filterable = true },
-        new("shipped", Text["ShippedVia"], quotation => ValueOrFallback(quotation.ShippedVia)) { Filterable = true },
-        new("terms", Text["Terms"], quotation => ValueOrFallback(quotation.Terms)) { Filterable = true, MinWidth = "12rem" },
+        new("fob", Text["Fob"], quotation => ValueOrFallback(quotation.Fob)),
+        new("shipped", Text["ShippedVia"], quotation => ValueOrFallback(quotation.ShippedVia)),
+        new("terms", Text["Terms"], quotation => ValueOrFallback(quotation.Terms)) { MinWidth = "12rem" },
         new("created", Text["CreatedDate"], quotation => quotation.CreatedDate) { Sortable = true },
         new("modified", Text["ModifiedDate"], quotation => quotation.ModifiedDate) { Sortable = true },
     ];

@@ -69,13 +69,13 @@
     private static readonly int[] PageSizeOptions = [10, 25, 50, 100, 250];
     private IReadOnlyList<ShadcnDataTableColumn<CatalogMaterialListItem>> Columns =>
     [
-        new("id", Text["Id"], material => material.Id) { Sortable = true, Filterable = true, Hideable = false },
-        new("number", Text["Number"], material => material.MaterialNumber) { Sortable = true, Filterable = true },
-        new("name", Text["Name"], material => material.Name) { Sortable = true, Filterable = true, MinWidth = "12rem" },
-        new("group", Text["Group"], material => material.MaterialGroup?.Name ?? "-") { Sortable = true, Filterable = true },
+        new("id", Text["Id"], material => material.Id) { Sortable = true, Hideable = false },
+        new("number", Text["Number"], material => material.MaterialNumber) { Sortable = true },
+        new("name", Text["Name"], material => material.Name) { Sortable = true, MinWidth = "12rem" },
+        new("group", Text["Group"], material => material.MaterialGroup?.Name ?? "-") { Sortable = true },
         new("density", Text["Density"], material => material.DensityKilogramPerCubicMeter) { Sortable = true },
-        new("machinable", Text["Machinable"], material => Text[material.Machinable ? "Yes" : "No"].Value) { Sortable = true, Filterable = true },
-        new("printable", Text["Printable"], material => Text[material.Printable ? "Yes" : "No"].Value) { Filterable = true },
+        new("machinable", Text["Machinable"], material => Text[material.Machinable ? "Yes" : "No"].Value) { Sortable = true },
+        new("printable", Text["Printable"], material => Text[material.Printable ? "Yes" : "No"].Value),
     ];
 
     protected override async Task OnParametersSetAsync()

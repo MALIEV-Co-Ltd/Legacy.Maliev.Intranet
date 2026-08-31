@@ -134,15 +134,15 @@
     private static int BangkokYear => TimeZoneInfo.ConvertTimeBySystemTimeZoneId(DateTimeOffset.UtcNow, "Asia/Bangkok").Year;
     private IReadOnlyList<ShadcnDataTableColumn<FinancePaymentItem>> Columns =>
     [
-        new("id", Text["Id"], payment => payment.Id) { Sortable = true, Filterable = true, Hideable = false },
-        new("direction", Text["Direction"], payment => payment.PaymentDirectionId) { Sortable = true, Filterable = true },
-        new("type", Text["Type"], payment => payment.PaymentTypeId) { Sortable = true, Filterable = true },
+        new("id", Text["Id"], payment => payment.Id) { Sortable = true, Hideable = false },
+        new("direction", Text["Direction"], payment => payment.PaymentDirectionId) { Sortable = true },
+        new("type", Text["Type"], payment => payment.PaymentTypeId) { Sortable = true },
         new("amount", Text["Amount"], payment => payment.Amount) { Alignment = ShadcnTableAlignment.End, CellTemplate = payment => builder => builder.AddContent(0, FormatAmount(payment.Amount, payment.CurrencyId?.ToString(CultureInfo.InvariantCulture))) },
         new("payment-date", Text["PaymentDate"], payment => payment.PaymentDate) { Sortable = true, CellTemplate = payment => builder => builder.AddContent(0, FormatDate(payment.PaymentDate)) },
-        new("description", Text["Description"], payment => ValueOrFallback(payment.Description)) { Filterable = true, MinWidth = "14rem" },
-        new("method", Text["Method"], payment => payment.PaymentMethodId) { Sortable = true, Filterable = true },
-        new("recipient", Text["Recipient"], payment => ValueOrFallback(payment.Recipient)) { Sortable = true, Filterable = true },
-        new("transaction", Text["TransactionNumber"], payment => ValueOrFallback(payment.TransactionNumber)) { Filterable = true },
+        new("description", Text["Description"], payment => ValueOrFallback(payment.Description)) { MinWidth = "14rem" },
+        new("method", Text["Method"], payment => payment.PaymentMethodId) { Sortable = true },
+        new("recipient", Text["Recipient"], payment => ValueOrFallback(payment.Recipient)) { Sortable = true },
+        new("transaction", Text["TransactionNumber"], payment => ValueOrFallback(payment.TransactionNumber)),
         new("created", Text["PaymentCreatedDate_Descending"], payment => payment.CreatedDate) { Sortable = true },
     ];
 

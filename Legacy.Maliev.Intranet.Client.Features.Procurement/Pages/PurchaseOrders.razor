@@ -70,12 +70,12 @@
 
     private IReadOnlyList<ShadcnDataTableColumn<PurchaseOrderListItem>> Columns =>
     [
-        new("id", Text["Id"], order => order.Id) { Sortable = true, Filterable = true, Hideable = false },
-        new("employee", Text["Employee"], order => EmployeeName(order.EmployeeId)) { Filterable = true, MinWidth = "12rem" },
-        new("fob", Text["Fob"], order => ValueOrFallback(order.Fob)) { Filterable = true },
+        new("id", Text["Id"], order => order.Id) { Sortable = true, Hideable = false },
+        new("employee", Text["Employee"], order => EmployeeName(order.EmployeeId)) { MinWidth = "12rem" },
+        new("fob", Text["Fob"], order => ValueOrFallback(order.Fob)),
         new("created", Text["CreatedDate"], order => order.CreatedDate) { Sortable = true, MinWidth = "10rem", CellTemplate = order => builder => builder.AddContent(0, FormatDate(order.CreatedDate)) },
-        new("terms", Text["Terms"], order => ValueOrFallback(order.Terms)) { Filterable = true, MinWidth = "12rem" },
-        new("shipping", Text["ShippingMethod"], order => ValueOrFallback(order.ShippingMethod)) { Filterable = true, MinWidth = "10rem" },
+        new("terms", Text["Terms"], order => ValueOrFallback(order.Terms)) { MinWidth = "12rem" },
+        new("shipping", Text["ShippingMethod"], order => ValueOrFallback(order.ShippingMethod)) { MinWidth = "10rem" },
     ];
 
     protected override async Task OnParametersSetAsync()

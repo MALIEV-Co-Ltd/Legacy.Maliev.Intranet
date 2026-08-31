@@ -66,10 +66,10 @@
 
     private IReadOnlyList<ShadcnDataTableColumn<SupplierListItem>> Columns =>
     [
-        new("id", Text["Id"], supplier => supplier.Id) { Sortable = true, Filterable = true, Hideable = false },
-        new("name", Text["Name"], supplier => ValueOrFallback(supplier.Name)) { Sortable = true, Filterable = true, MinWidth = "12rem" },
-        new("email", Text["Email"], supplier => ValueOrFallback(supplier.Email)) { Filterable = true, MinWidth = "14rem" },
-        new("telephone", Text["Telephone"], supplier => ValueOrFallback(supplier.Telephone)) { Filterable = true, MinWidth = "10rem" },
+        new("id", Text["Id"], supplier => supplier.Id) { Sortable = true, Hideable = false },
+        new("name", Text["Name"], supplier => ValueOrFallback(supplier.Name)) { Sortable = true, MinWidth = "12rem" },
+        new("email", Text["Email"], supplier => ValueOrFallback(supplier.Email)) { MinWidth = "14rem" },
+        new("telephone", Text["Telephone"], supplier => ValueOrFallback(supplier.Telephone)) { MinWidth = "10rem" },
     ];
 
     protected override async Task OnParametersSetAsync()

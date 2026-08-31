@@ -102,15 +102,15 @@
 
     private IReadOnlyList<ShadcnDataTableColumn<OrderListItem>> Columns =>
     [
-        new("id", Text["Id"], order => order.Id) { Sortable = true, Filterable = true, Hideable = false },
-        new("customer", Text["Customer"], order => ValueOrFallback(order.CustomerId)) { Filterable = true },
-        new("name", Text["Name"], order => ValueOrFallback(order.Name)) { Filterable = true, MinWidth = "14rem" },
+        new("id", Text["Id"], order => order.Id) { Sortable = true, Hideable = false },
+        new("customer", Text["Customer"], order => ValueOrFallback(order.CustomerId)),
+        new("name", Text["Name"], order => ValueOrFallback(order.Name)) { MinWidth = "14rem" },
         new("remaining", Text["Remaining"], order => order.Remaining),
         new("promised", Text["Promised"], order => order.PromisedDate) { CellTemplate = order => builder => builder.AddContent(0, FormatDate(order.PromisedDate)) },
-        new("process", Text["Process"], order => ProcessName(order.ProcessId)) { Filterable = true },
+        new("process", Text["Process"], order => ProcessName(order.ProcessId)),
         new("quantity", Text["Quantity"], order => order.Quantity) { Alignment = ShadcnTableAlignment.End },
         new("manufactured", Text["Manufactured"], order => order.Manufactured) { Alignment = ShadcnTableAlignment.End },
-        new("employee", Text["Employee"], order => EmployeeName(order.EmployeeId)) { Filterable = true },
+        new("employee", Text["Employee"], order => EmployeeName(order.EmployeeId)),
         new("subtotal", Text["Subtotal"], order => order.Subtotal) { Alignment = ShadcnTableAlignment.End, CellTemplate = order => builder => builder.AddContent(0, FormatAmount(order.Subtotal)) },
         new("created", Text["Created"], order => order.CreatedDate) { Sortable = true },
         new("modified", Text["Modified"], order => order.ModifiedDate) { Sortable = true },

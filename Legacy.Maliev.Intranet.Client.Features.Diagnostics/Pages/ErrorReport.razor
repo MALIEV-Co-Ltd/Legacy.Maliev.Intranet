@@ -61,11 +61,11 @@
     private IReadOnlyList<ShadcnDataTableColumn<DiagnosticEventItem>> Columns =>
     [
         new("timestamp", Text["Timestamp"], diagnostic => diagnostic.Timestamp) { Sortable = true, Hideable = false, MinWidth = "12rem", CellTemplate = diagnostic => builder => builder.AddContent(0, LegacyPresentation.FormatUtcDateTime(diagnostic.Timestamp, CultureInfo.CurrentCulture)) },
-        new("level", Text["Level"], diagnostic => diagnostic.Level) { Sortable = true, Filterable = true },
-        new("code", Text["Code"], diagnostic => diagnostic.Code) { Filterable = true },
-        new("category", Text["Category"], diagnostic => diagnostic.Category) { Filterable = true },
-        new("path", Text["Path"], diagnostic => diagnostic.Path) { Filterable = true, MinWidth = "14rem" },
-        new("correlation", Text["CorrelationId"], diagnostic => diagnostic.CorrelationId) { Filterable = true, MinWidth = "12rem" },
+        new("level", Text["Level"], diagnostic => diagnostic.Level) { Sortable = true },
+        new("code", Text["Code"], diagnostic => diagnostic.Code),
+        new("category", Text["Category"], diagnostic => diagnostic.Category),
+        new("path", Text["Path"], diagnostic => diagnostic.Path) { MinWidth = "14rem" },
+        new("correlation", Text["CorrelationId"], diagnostic => diagnostic.CorrelationId) { MinWidth = "12rem" },
     ];
 
     protected override async Task OnParametersSetAsync()

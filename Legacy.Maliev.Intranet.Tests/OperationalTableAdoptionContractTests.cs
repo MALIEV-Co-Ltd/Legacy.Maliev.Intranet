@@ -33,6 +33,7 @@ public sealed class OperationalTableAdoptionContractTests
         Assert.Contains("ShadcnDataTableState", source, StringComparison.Ordinal);
         Assert.Contains("ShadcnDataTableColumn", source, StringComparison.Ordinal);
         Assert.Contains("<QuickViewContent", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("Filterable = true", source, StringComparison.Ordinal);
         Assert.DoesNotContain("<OperationalTable ", source, StringComparison.Ordinal);
         Assert.DoesNotContain("<ListToolbar ", source, StringComparison.Ordinal);
 
@@ -56,6 +57,8 @@ public sealed class OperationalTableAdoptionContractTests
         Assert.Contains("<RowActionTemplate", source, StringComparison.Ordinal);
         Assert.Contains("<ShadcnPopover", source, StringComparison.Ordinal);
         Assert.Contains("<LegacyLink", source, StringComparison.Ordinal);
+        Assert.Contains("LucideIconNames.ExternalLink", source, StringComparison.Ordinal);
+        Assert.Contains("LucideIconNames.ChevronDown", source, StringComparison.Ordinal);
     }
 
     [Fact]

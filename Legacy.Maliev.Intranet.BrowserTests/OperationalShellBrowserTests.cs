@@ -149,12 +149,17 @@ public sealed class OperationalShellBrowserTests(
         var newCustomer = page.Locator(".legacy-navigation-rail a[href='/customers/new']");
         var childToggle = page.Locator(".legacy-navigation-rail [data-branch-href='/customers'] [data-slot='collapsible-trigger']");
         Assert.Equal("true", await childToggle.GetAttributeAsync("aria-expanded"));
+        Assert.Equal("open", await childToggle.GetAttributeAsync("data-state"));
+        Assert.NotEqual("none", await childToggle.Locator("svg").EvaluateAsync<string>("element => getComputedStyle(element).transform"));
+        Assert.Equal("0px", await childToggle.EvaluateAsync<string>("element => getComputedStyle(element).borderTopWidth"));
         Assert.True(await newCustomer.IsVisibleAsync());
         Assert.NotEqual(
             await customers.EvaluateAsync<string>("element => getComputedStyle(element).color"),
             await newCustomer.EvaluateAsync<string>("element => getComputedStyle(element).color"));
         await childToggle.ClickAsync();
         Assert.Equal("false", await childToggle.GetAttributeAsync("aria-expanded"));
+        Assert.Equal("closed", await childToggle.GetAttributeAsync("data-state"));
+        Assert.Equal("none", await childToggle.Locator("svg").EvaluateAsync<string>("element => getComputedStyle(element).transform"));
         Assert.False(await newCustomer.IsVisibleAsync());
 
         var topbarHeights = await page.Locator(".legacy-global-search input, .legacy-quick-action, .legacy-language-selector select, .legacy-theme-toggle, .legacy-profile")
