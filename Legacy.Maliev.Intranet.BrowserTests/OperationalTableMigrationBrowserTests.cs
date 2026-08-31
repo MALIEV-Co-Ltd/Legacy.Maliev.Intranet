@@ -61,6 +61,40 @@ public sealed class OperationalTableMigrationBrowserTests(
         Assert.Empty(refreshErrors);
     }
 
+    [Fact]
+    public async Task QuotationDecisionChartRendersDistinctVisibleDonutSegments()
+    {
+        await using var context = await playwright.Browser.NewContextAsync(new()
+        {
+            ViewportSize = new() { Width = 1280, Height = 900 },
+            ReducedMotion = ReducedMotion.Reduce,
+        });
+        var page = await context.NewPageAsync();
+        await StubSalesBoundariesAsync(page);
+        await page.GotoAsync(new Uri(server.BaseUri, "Quotations/Index").AbsoluteUri);
+
+        var chart = page.Locator("[data-chart='chart-quotation-decisions']");
+        await chart.WaitForAsync();
+        var arcs = chart.Locator("[data-chart-shape='arc']");
+        Assert.Equal(2, await arcs.CountAsync());
+        var evidence = await arcs.EvaluateAllAsync<JsonElement>("""
+            elements => elements.map(element => ({
+                fill: getComputedStyle(element).fill,
+                path: element.getAttribute('d'),
+                width: element.getBoundingClientRect().width,
+                height: element.getBoundingClientRect().height
+            }))
+            """);
+        var segments = evidence.EnumerateArray().ToArray();
+        Assert.All(segments, segment =>
+        {
+            Assert.False(string.IsNullOrWhiteSpace(segment.GetProperty("path").GetString()));
+            Assert.True(segment.GetProperty("width").GetDouble() > 20, evidence.ToString());
+            Assert.True(segment.GetProperty("height").GetDouble() > 20, evidence.ToString());
+        });
+        Assert.NotEqual(segments[0].GetProperty("fill").GetString(), segments[1].GetProperty("fill").GetString());
+    }
+
     public static TheoryData<string, string, string, string> SalesPages => new()
     {
         { "customers", "View customer 101", "/Customers/View?id=101", "Expand customer 101" },
@@ -231,6 +265,14 @@ public sealed class OperationalTableMigrationBrowserTests(
                 geometry.ToString());
             Assert.All(geometry.GetProperty("tableContainers").EnumerateArray(), container =>
                 Assert.Contains(container.GetProperty("overflowX").GetString(), new[] { "auto", "scroll" }));
+
+            if (width == 1280)
+            {
+                var rowHeights = await page.Locator(".operational-table tbody tr:not(.operational-table__quick-view)")
+                    .EvaluateAllAsync<double[]>("rows => rows.map(row => row.getBoundingClientRect().height)");
+                Assert.NotEmpty(rowHeights);
+                Assert.All(rowHeights, height => Assert.InRange(height, 36, 64));
+            }
 
             Assert.Equal(width > 720, await page.Locator(".operational-table [data-priority='supporting']").First.IsVisibleAsync());
             if (width <= 720)

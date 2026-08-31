@@ -23,7 +23,7 @@
 }
 
 /* Named workspace composition consumes package tokens without styling package internals. */
-.legacy-workspace-shell .legacy-topbar {
+.legacy-workspace-frame .legacy-topbar {
     border-bottom: 1px solid var(--shadcn-border);
     background: color-mix(in srgb, var(--shadcn-background) 94%, transparent);
     box-shadow: var(--shadcn-shadow-xs);
@@ -41,24 +41,24 @@
     border-bottom: 1px solid var(--shadcn-border);
 }
 
-.legacy-workspace-shell .legacy-global-search,
-.legacy-workspace-shell .legacy-profile,
-.legacy-workspace-shell .legacy-quick-action {
+.legacy-workspace-frame .legacy-global-search,
+.legacy-workspace-frame .legacy-profile,
+.legacy-workspace-frame .legacy-quick-action {
     border: 1px solid var(--shadcn-border);
     border-radius: var(--shadcn-radius-md);
     background: var(--shadcn-background);
     color: var(--shadcn-foreground);
 }
 
-.legacy-workspace-shell .legacy-global-search:focus-within,
-.legacy-workspace-shell .legacy-profile:hover,
-.legacy-workspace-shell .legacy-quick-action:hover {
+.legacy-workspace-frame .legacy-global-search:focus-within,
+.legacy-workspace-frame .legacy-profile:hover,
+.legacy-workspace-frame .legacy-quick-action:hover {
     border-color: var(--shadcn-ring);
     background: var(--shadcn-accent);
 }
 
-.legacy-workspace-shell .legacy-profile-popover,
-.legacy-workspace-shell .legacy-search-results {
+.legacy-workspace-frame .legacy-profile-popover,
+.legacy-workspace-frame .legacy-search-results {
     border: 1px solid var(--shadcn-border);
     border-radius: var(--shadcn-radius-lg);
     background: var(--shadcn-popover);
@@ -66,16 +66,16 @@
     box-shadow: var(--shadcn-shadow-md);
 }
 
-.legacy-workspace-shell .legacy-profile-action,
-.legacy-workspace-shell .legacy-search-result {
+.legacy-workspace-frame .legacy-profile-action,
+.legacy-workspace-frame .legacy-search-result {
     border-radius: var(--shadcn-radius-sm);
     color: inherit;
 }
 
-.legacy-workspace-shell .legacy-profile-action:hover,
-.legacy-workspace-shell .legacy-profile-action:focus-visible,
-.legacy-workspace-shell .legacy-search-result:hover,
-.legacy-workspace-shell .legacy-search-result.active {
+.legacy-workspace-frame .legacy-profile-action:hover,
+.legacy-workspace-frame .legacy-profile-action:focus-visible,
+.legacy-workspace-frame .legacy-search-result:hover,
+.legacy-workspace-frame .legacy-search-result.active {
     background: var(--shadcn-accent);
     color: var(--shadcn-accent-foreground);
 }

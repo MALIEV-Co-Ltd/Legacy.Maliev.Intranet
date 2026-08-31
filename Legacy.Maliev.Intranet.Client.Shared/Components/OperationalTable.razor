@@ -30,28 +30,30 @@
                     <tr class="operational-table__row">
                         @RowContent(item)
                         <td class="operational-table__actions">
-                            @if (detailHref is not null)
-                            {
-                                <span class="operational-table__detail-wrap">
-                                    <LegacyLink Href="@detailHref"
-                                                Role="LegacyLinkRole.Inline"
-                                                Class="operational-table__detail"
-                                                StartIconData="ExternalLinkIcon"
-                                                AriaLabel="@DetailAriaLabel(item)">
-                                        <span class="visually-hidden">@DetailAriaLabel(item)</span>
-                                    </LegacyLink>
+                            <span class="operational-table__action-group">
+                                @if (detailHref is not null)
+                                {
+                                    <span class="operational-table__detail-wrap">
+                                        <LegacyLink Href="@detailHref"
+                                                    Role="LegacyLinkRole.Inline"
+                                                    Class="operational-table__detail"
+                                                    StartIconData="ExternalLinkIcon"
+                                                    AriaLabel="@DetailAriaLabel(item)">
+                                            <span class="visually-hidden">@DetailAriaLabel(item)</span>
+                                        </LegacyLink>
+                                    </span>
+                                }
+                                <span class="operational-table__toggle-wrap">
+                                    <ShadcnButton Class="operational-table__toggle"
+                                                  Variant="ShadcnButtonVariant.Ghost" Size="ShadcnButtonSize.Icon"
+                                                  aria-label="@(isExpanded ? CollapseAriaLabel(item) : ExpandAriaLabel(item))"
+                                                  aria-expanded="@isExpanded.ToString().ToLowerInvariant()"
+                                                  aria-controls="@quickViewId"
+                                                  title="@(isExpanded ? CollapseAriaLabel(item) : ExpandAriaLabel(item))"
+                                                  OnClick="@(() => State.Toggle(key))">
+                                        <ShadcnIcon Icon="@(isExpanded ? CollapseIcon : ExpandIcon)" Size="20" />
+                                    </ShadcnButton>
                                 </span>
-                            }
-                            <span class="operational-table__toggle-wrap">
-                                <ShadcnButton Class="operational-table__toggle"
-                                              Variant="ShadcnButtonVariant.Ghost" Size="ShadcnButtonSize.Icon"
-                                              aria-label="@(isExpanded ? CollapseAriaLabel(item) : ExpandAriaLabel(item))"
-                                              aria-expanded="@isExpanded.ToString().ToLowerInvariant()"
-                                              aria-controls="@quickViewId"
-                                              title="@(isExpanded ? CollapseAriaLabel(item) : ExpandAriaLabel(item))"
-                                              OnClick="@(() => State.Toggle(key))">
-                                    <ShadcnIcon Icon="@(isExpanded ? CollapseIcon : ExpandIcon)" Size="20" />
-                                </ShadcnButton>
                             </span>
                         </td>
                     </tr>

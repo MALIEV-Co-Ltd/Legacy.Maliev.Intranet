@@ -22,6 +22,80 @@ public sealed class OperationalShellBrowserTests(
     ];
 
     [Fact]
+    public async Task DesktopShellOwnsTheViewportAndKeepsNavigationAndWorkspaceScrollingIndependent()
+    {
+        await using var context = await playwright.Browser.NewContextAsync(new()
+        {
+            ViewportSize = new() { Width = 1280, Height = 900 },
+            ReducedMotion = ReducedMotion.Reduce,
+        });
+        var page = await context.NewPageAsync();
+        await StubProductionBoundariesAsync(page);
+        await page.GotoAsync(new Uri(server.BaseUri, "sales/orders").AbsoluteUri);
+        await page.Locator(".legacy-topbar").WaitForAsync();
+
+        var geometry = await page.EvaluateAsync<JsonElement>("""
+            () => {
+                const main = document.querySelector('#main-content');
+                const navigation = document.querySelector('.legacy-rail-groups');
+                const breadcrumbTopBeforeScroll = document.querySelector('.page-breadcrumbs').getBoundingClientRect().top;
+                main.insertAdjacentHTML('beforeend', '<div data-shell-test-filler style="height:1400px"></div>');
+                navigation.insertAdjacentHTML('beforeend', '<div data-shell-test-filler style="height:900px"></div>');
+                main.scrollTop = 240;
+                navigation.scrollTop = 180;
+                const bounds = element => {
+                    const rect = element.getBoundingClientRect();
+                    const style = getComputedStyle(element);
+                    return {
+                        top: rect.top,
+                        bottom: rect.bottom,
+                        clientWidth: element.clientWidth,
+                        scrollWidth: element.scrollWidth,
+                        clientHeight: element.clientHeight,
+                        scrollHeight: element.scrollHeight,
+                        scrollTop: element.scrollTop,
+                        overflowX: style.overflowX,
+                        overflowY: style.overflowY
+                    };
+                };
+                return {
+                    viewportHeight: innerHeight,
+                    documentScrollY: scrollY,
+                    body: bounds(document.body),
+                    topbar: bounds(document.querySelector('.legacy-topbar')),
+                    main: bounds(main),
+                    navigation: bounds(navigation),
+                    activeTag: document.activeElement?.tagName,
+                    activeId: document.activeElement?.id,
+                    headingFontSize: parseFloat(getComputedStyle(document.querySelector('h1')).fontSize),
+                    headingMarginTop: parseFloat(getComputedStyle(document.querySelector('h1')).marginTop),
+                    breadcrumbTopBeforeScroll
+                };
+            }
+            """);
+
+        Assert.Equal(900, geometry.GetProperty("body").GetProperty("clientHeight").GetInt32());
+        Assert.Equal(900, geometry.GetProperty("body").GetProperty("scrollHeight").GetInt32());
+        Assert.Equal(0, geometry.GetProperty("documentScrollY").GetDouble());
+        Assert.Equal("hidden", geometry.GetProperty("main").GetProperty("overflowX").GetString());
+        Assert.Contains(geometry.GetProperty("main").GetProperty("overflowY").GetString(), new[] { "auto", "scroll" });
+        Assert.True(geometry.GetProperty("main").GetProperty("scrollTop").GetDouble() > 0, geometry.ToString());
+        Assert.Equal("hidden", geometry.GetProperty("navigation").GetProperty("overflowX").GetString());
+        Assert.Contains(geometry.GetProperty("navigation").GetProperty("overflowY").GetString(), new[] { "auto", "scroll" });
+        Assert.True(geometry.GetProperty("navigation").GetProperty("scrollTop").GetDouble() > 0, geometry.ToString());
+        Assert.True(
+            geometry.GetProperty("main").GetProperty("top").GetDouble() >= geometry.GetProperty("topbar").GetProperty("bottom").GetDouble() - .5,
+            geometry.ToString());
+        Assert.Equal("MAIN", geometry.GetProperty("activeTag").GetString());
+        Assert.Equal("main-content", geometry.GetProperty("activeId").GetString());
+        Assert.InRange(geometry.GetProperty("headingFontSize").GetDouble(), 24, 30);
+        Assert.Equal(0, geometry.GetProperty("headingMarginTop").GetDouble());
+        Assert.True(
+            geometry.GetProperty("breadcrumbTopBeforeScroll").GetDouble() >= geometry.GetProperty("topbar").GetProperty("bottom").GetDouble(),
+            geometry.ToString());
+    }
+
+    [Fact]
     public async Task NavigationAndProfileUseReleasedShadcnPrimitivesWithoutDefaultLinkDecoration()
     {
         await using var context = await playwright.Browser.NewContextAsync(new()

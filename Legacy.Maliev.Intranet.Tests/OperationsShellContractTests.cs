@@ -32,7 +32,8 @@ public sealed class OperationsShellContractTests
         Assert.Contains("/Orders/Create", actions, StringComparison.Ordinal);
         Assert.Contains("<ShadcnThemeProvider", layout, StringComparison.Ordinal);
         Assert.Contains("Class=\"legacy-layout\"", layout, StringComparison.Ordinal);
-        Assert.Contains("<main id=\"main-content\" class=\"legacy-main-content legacy-page-container\"", layout, StringComparison.Ordinal);
+        Assert.Contains("<main id=\"main-content\" class=\"legacy-main-content\" tabindex=\"-1\">", layout, StringComparison.Ordinal);
+        Assert.Contains("<div class=\"legacy-page-container\">", layout, StringComparison.Ordinal);
         Assert.Contains("<ShadcnInput TValue=\"string\"", search, StringComparison.Ordinal);
         Assert.Contains("LucideIconCatalog.Instance.Get", search, StringComparison.Ordinal);
         Assert.DoesNotContain("<Mud", string.Concat(layout, topBar, navigation, search, actions), StringComparison.Ordinal);

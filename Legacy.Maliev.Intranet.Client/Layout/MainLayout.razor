@@ -23,8 +23,10 @@
     <ShadcnSidebarInset Role="none" Class="legacy-workspace-frame">
         <LegacyTopBar Session="session" OnSignOut="SignOutAsync" />
         <div class="legacy-workspace-shell">
-            <main id="main-content" class="legacy-main-content legacy-page-container" tabindex="-1">
-                @Body
+            <main id="main-content" class="legacy-main-content" tabindex="-1">
+                <div class="legacy-page-container">
+                    @Body
+                </div>
             </main>
         </div>
     </ShadcnSidebarInset>

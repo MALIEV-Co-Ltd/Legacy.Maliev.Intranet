@@ -1,10 +1,14 @@
-html, body { margin: 0; min-height: 100%; font-family: var(--maliev-font-sans); }
+html, body { width: 100%; height: 100%; min-height: 100%; margin: 0; overflow: hidden; font-family: var(--maliev-font-sans); }
+#app { width: 100%; height: 100%; min-height: 0; overflow: hidden; }
 *, *::before, *::after { box-sizing: border-box; }
-.legacy-provider-root, .legacy-layout { min-height: 100dvh; max-width: 100%; }
-.legacy-workspace-frame { width: 100%; max-width: 100%; min-width: 0; }
-.legacy-workspace-shell { width: 100%; max-width: 100%; min-width: 0; }
-.legacy-main-content { max-width: 100%; min-height: calc(100dvh - var(--legacy-utility-height)); min-width: 0; padding: 0 !important; }
-.legacy-page-container { width: min(92.5rem, 100%); max-width: 100%; min-width: 0; margin: 0 auto; padding: clamp(1rem, 2vw, 2rem); }
+.legacy-provider-root, .legacy-layout { width: 100%; height: 100dvh; min-height: 0; max-width: 100%; overflow: hidden; }
+.legacy-workspace-frame { display: grid; width: 100%; height: 100%; max-width: 100%; min-width: 0; min-height: 0; grid-template-rows: auto minmax(0, 1fr); overflow: hidden; }
+.legacy-workspace-shell { width: 100%; height: 100%; max-width: 100%; min-width: 0; min-height: 0; overflow: hidden; }
+.legacy-main-content { width: 100%; height: 100%; max-width: 100%; min-width: 0; min-height: 0; overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain; padding: 0; }
+.legacy-main-content:focus { outline: none; }
+.legacy-page-container { width: min(92.5rem, 100%); max-width: 100%; min-width: 0; min-height: 100%; margin: 0 auto; padding: clamp(0.875rem, 1.5vw, 1.5rem); }
+.legacy-page-container :where(h1) { margin-block: 0; font-size: clamp(1.5rem, 2vw, 1.875rem); line-height: 1.15; letter-spacing: -0.025em; }
+.legacy-page-container .operations-page-header h1 { margin: 0; font-size: clamp(1.5rem, 2vw, 1.875rem); }
 .visually-hidden { position: absolute !important; width: 1px !important; height: 1px !important; padding: 0 !important; margin: -1px !important; overflow: hidden !important; clip: rect(0,0,0,0) !important; white-space: nowrap !important; }
 .legacy-empty-layout { display: grid; min-height: 100dvh; place-items: stretch; padding: 0; }
 .legacy-skip-link { position: fixed; top: .5rem; left: .5rem; z-index: 100; padding: .5rem .75rem; transform: translateY(-180%); transition: transform .15s ease; }
