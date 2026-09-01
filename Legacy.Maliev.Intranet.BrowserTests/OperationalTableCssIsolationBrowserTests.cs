@@ -67,7 +67,7 @@ public sealed class OperationalTableCssIsolationBrowserTests(PlaywrightFixture p
         var page = await context.NewPageAsync();
         await SetTableAsync(page, stylesheet, scope);
 
-        var geometry = await page.Locator(".operational-table__scroll").EvaluateAsync<System.Text.Json.JsonElement>("""
+        var geometry = await page.Locator(".shadcn-table-container").EvaluateAsync<System.Text.Json.JsonElement>("""
             node => ({
                 documentClientWidth: document.documentElement.clientWidth,
                 documentScrollWidth: document.documentElement.scrollWidth,
@@ -80,7 +80,7 @@ public sealed class OperationalTableCssIsolationBrowserTests(PlaywrightFixture p
         Assert.Contains(geometry.GetProperty("overflowX").GetString(), new[] { "auto", "scroll" });
         Assert.Equal(width <= 768, geometry.GetProperty("scrollWidth").GetInt32() > geometry.GetProperty("clientWidth").GetInt32());
 
-        var container = page.Locator(".operational-table__scroll");
+        var container = page.Locator(".shadcn-table-container");
         await container.EvaluateAsync("node => node.scrollLeft = node.scrollWidth");
         Assert.True(await page.Locator(".operational-table__actions").IsVisibleAsync());
         if (width <= 720)
@@ -94,17 +94,19 @@ public sealed class OperationalTableCssIsolationBrowserTests(PlaywrightFixture p
         await page.SetContentAsync($"""
             <style>{stylesheet}</style>
             <div class="operational-table__scroll" b-{scope}="">
-              <table class="operational-table" b-{scope}="">
-                <tbody b-{scope}="">
-                  <tr class="operational-table__row" b-{scope}="">
-                    <td class="operational-table__identity" data-priority="supporting">Supporting cell</td>
-                    <td class="operational-table__actions" b-{scope}="">
-                      <span class="operational-table__detail-wrap" b-{scope}=""><a class="operational-table__detail" href="#detail">Detail</a></span>
-                      <span class="operational-table__toggle-wrap" b-{scope}=""><button type="button" class="operational-table__toggle">Toggle</button></span>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
+              <div class="shadcn-table-container">
+                <table class="operational-table" b-{scope}="">
+                  <tbody b-{scope}="">
+                    <tr class="operational-table__row" b-{scope}="">
+                      <td class="operational-table__identity" data-priority="supporting">Supporting cell</td>
+                      <td class="operational-table__actions" b-{scope}="">
+                        <span class="operational-table__detail-wrap" b-{scope}=""><a class="operational-table__detail" href="#detail">Detail</a></span>
+                        <span class="operational-table__toggle-wrap" b-{scope}=""><button type="button" class="operational-table__toggle">Toggle</button></span>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
             </div>
             """);
 
