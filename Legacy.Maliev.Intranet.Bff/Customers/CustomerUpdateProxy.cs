@@ -3,9 +3,16 @@ using Legacy.Maliev.Intranet.Contracts;
 
 namespace Legacy.Maliev.Intranet.Bff.Customers;
 
-/// <summary>Forwards one customer profile replacement through a non-retrying write client.</summary>
+/// <summary>Forwards employee customer-management requests through a non-retrying client.</summary>
 public sealed class CustomerUpdateProxy(HttpClient httpClient)
 {
+    /// <summary>Gets the employee-only remark through its dedicated CustomerService contract.</summary>
+    public Task<HttpResponseMessage> GetInternalRemarkAsync(int id, CancellationToken cancellationToken)
+    {
+        var request = new HttpRequestMessage(HttpMethod.Get, $"/customers/{id}/internal-remark");
+        return SendAsync(request, cancellationToken);
+    }
+
     /// <summary>
     /// Replaces only the editable profile fields while preserving existing company and address links.
     /// </summary>
@@ -29,6 +36,19 @@ public sealed class CustomerUpdateProxy(HttpClient httpClient)
         var request = new HttpRequestMessage(HttpMethod.Put, $"/customers/{id}")
         {
             Content = JsonContent.Create(payload),
+        };
+        return SendAsync(request, cancellationToken);
+    }
+
+    /// <summary>Replaces only the employee-only remark.</summary>
+    public Task<HttpResponseMessage> UpdateInternalRemarkAsync(
+        int id,
+        CustomerInternalRemarkUpdateRequest input,
+        CancellationToken cancellationToken)
+    {
+        var request = new HttpRequestMessage(HttpMethod.Put, $"/customers/{id}/internal-remark")
+        {
+            Content = JsonContent.Create(input),
         };
         return SendAsync(request, cancellationToken);
     }
