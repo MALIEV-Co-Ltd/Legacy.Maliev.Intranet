@@ -137,6 +137,24 @@ public sealed class BffCustomersProxyContractTests
         Assert.DoesNotContain("not-json", body, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public async Task List_StripsUnexpectedInternalRemarkFromDownstreamCustomerRows()
+    {
+        var downstream = new RecordingCustomerHandler(
+            HttpStatusCode.OK,
+            CustomerPageJson.Replace("\"Email\":\"ada@example.com\"", "\"Email\":\"ada@example.com\",\"InternalRemark\":\"private\"", StringComparison.Ordinal));
+        await using var factory = new CustomersBffFactory(downstream, hasPermission: true);
+        using var client = CreateClient(factory);
+        await SignInAsync(client);
+
+        using var response = await client.GetAsync("/bff/customers");
+        var body = await response.Content.ReadAsStringAsync();
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.DoesNotContain("remark", body, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("private", body, StringComparison.Ordinal);
+    }
+
     [Theory]
     [MemberData(nameof(TransportFailures))]
     public async Task TransportFailure_IsMappedToServiceUnavailable(Exception exception)
@@ -316,6 +334,27 @@ public sealed class BffCustomersProxyContractTests
         using var response = await client.GetAsync("/bff/customers/42");
 
         Assert.Equal(HttpStatusCode.BadGateway, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Detail_StripsUnexpectedInternalRemarkFromTheOrdinaryCustomerProjection()
+    {
+        var downstream = new RecordingCustomerHandler(
+            HttpStatusCode.OK,
+            CustomerDetailJson.Insert(CustomerDetailJson.Length - 1, ",\"InternalRemark\":\"private\""));
+        await using var factory = new CustomersBffFactory(
+            downstream,
+            hasPermission: true,
+            hasReadPermission: true);
+        using var client = CreateClient(factory);
+        await SignInAsync(client);
+
+        using var response = await client.GetAsync("/bff/customers/42");
+        var body = await response.Content.ReadAsStringAsync();
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.DoesNotContain("remark", body, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("private", body, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -682,6 +721,7 @@ public sealed class BffCustomersProxyContractTests
         Assert.Contains("\"companyId\":7", request.Body, StringComparison.Ordinal);
         Assert.Contains("\"billingAddressId\":13", request.Body, StringComparison.Ordinal);
         Assert.Contains("\"shippingAddressId\":14", request.Body, StringComparison.Ordinal);
+        Assert.DoesNotContain("remark", request.Body, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("server-only-access-token", request.Body, StringComparison.Ordinal);
     }
 
@@ -727,6 +767,153 @@ public sealed class BffCustomersProxyContractTests
 
         Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
         Assert.Single(update.Requests);
+    }
+
+    [Fact]
+    public async Task InternalRemark_AuthorizedEmployee_ReadsOnlyTheDedicatedPrivateContract()
+    {
+        var profile = new RecordingCustomerHandler(HttpStatusCode.OK, CustomerDetailJson);
+        var remarks = new RecordingWorkflowHandler((HttpStatusCode.OK, "{\"CustomerId\":42,\"InternalRemark\":\"Employee only\"}"));
+        await using var factory = new CustomersBffFactory(
+            profile,
+            hasPermission: true,
+            hasReadPermission: true,
+            hasUpdatePermission: true,
+            updateDownstream: remarks);
+        using var client = CreateClient(factory);
+        await SignInAsync(client);
+
+        using var response = await client.GetAsync("/bff/customers/42/internal-remark");
+        var body = await response.Content.ReadAsStringAsync();
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var request = Assert.Single(remarks.Requests);
+        Assert.Equal(HttpMethod.Get, request.Method);
+        Assert.Equal("/customers/42/internal-remark", request.PathAndQuery);
+        Assert.Equal("Bearer signed-service-token", request.Authorization);
+        Assert.Contains("\"internalRemark\":\"Employee only\"", body, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task InternalRemark_MissingCsrf_IsRejectedBeforeCustomerServiceWrite()
+    {
+        var remarks = new RecordingWorkflowHandler((HttpStatusCode.NoContent, string.Empty));
+        await using var factory = new CustomersBffFactory(
+            new RecordingCustomerHandler(HttpStatusCode.OK, CustomerDetailJson),
+            hasPermission: true,
+            hasReadPermission: true,
+            hasUpdatePermission: true,
+            updateDownstream: remarks);
+        using var client = CreateClient(factory);
+        await SignInAsync(client);
+
+        using var response = await client.PutAsJsonAsync(
+            "/bff/customers/42/internal-remark",
+            new { internalRemark = "Employee only" });
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Empty(remarks.Requests);
+    }
+
+    [Fact]
+    public async Task InternalRemark_EmployeeWithoutReadPermission_IsForbiddenBeforeCustomerServiceCall()
+    {
+        var remarks = new RecordingWorkflowHandler((HttpStatusCode.OK, "{\"CustomerId\":42,\"InternalRemark\":null}"));
+        await using var factory = new CustomersBffFactory(
+            new RecordingCustomerHandler(HttpStatusCode.OK, CustomerDetailJson),
+            hasPermission: true,
+            hasReadPermission: false,
+            hasUpdatePermission: true,
+            updateDownstream: remarks);
+        using var client = CreateClient(factory);
+        await SignInAsync(client);
+
+        using var response = await client.GetAsync("/bff/customers/42/internal-remark");
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+        Assert.Empty(remarks.Requests);
+    }
+
+    [Fact]
+    public async Task InternalRemark_EmployeeWithoutUpdatePermission_IsForbiddenBeforeCustomerServiceWrite()
+    {
+        var remarks = new RecordingWorkflowHandler((HttpStatusCode.NoContent, string.Empty));
+        await using var factory = new CustomersBffFactory(
+            new RecordingCustomerHandler(HttpStatusCode.OK, CustomerDetailJson),
+            hasPermission: true,
+            hasReadPermission: true,
+            hasUpdatePermission: false,
+            updateDownstream: remarks);
+        using var client = CreateClient(factory);
+        await SignInAsync(client);
+
+        using var request = new HttpRequestMessage(HttpMethod.Put, "/bff/customers/42/internal-remark")
+        {
+            Content = JsonContent.Create(new { internalRemark = "Employee only" }),
+        };
+        using var sessionResponse = await client.GetAsync("/bff/session");
+        var session = await sessionResponse.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>();
+        request.Headers.Add("X-CSRF-TOKEN", session.GetProperty("csrfToken").GetString());
+        using var response = await client.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+        Assert.Empty(remarks.Requests);
+    }
+
+    [Fact]
+    public async Task InternalRemark_OverLimitInput_IsRejectedBeforeCustomerServiceWrite()
+    {
+        var remarks = new RecordingWorkflowHandler((HttpStatusCode.NoContent, string.Empty));
+        await using var factory = new CustomersBffFactory(
+            new RecordingCustomerHandler(HttpStatusCode.OK, CustomerDetailJson),
+            hasPermission: true,
+            hasReadPermission: true,
+            hasUpdatePermission: true,
+            updateDownstream: remarks);
+        using var client = CreateClient(factory);
+        await SignInAsync(client);
+
+        using var request = new HttpRequestMessage(HttpMethod.Put, "/bff/customers/42/internal-remark")
+        {
+            Content = JsonContent.Create(new { internalRemark = new string('x', 4001) }),
+        };
+        using var sessionResponse = await client.GetAsync("/bff/session");
+        var session = await sessionResponse.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>();
+        request.Headers.Add("X-CSRF-TOKEN", session.GetProperty("csrfToken").GetString());
+        using var response = await client.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Empty(remarks.Requests);
+    }
+
+    [Fact]
+    public async Task InternalRemark_AuthorizedCsrfWrite_ForwardsBoundedPrivatePayloadWithoutRetry()
+    {
+        var remarks = new RecordingWorkflowHandler((HttpStatusCode.NoContent, string.Empty));
+        await using var factory = new CustomersBffFactory(
+            new RecordingCustomerHandler(HttpStatusCode.OK, CustomerDetailJson),
+            hasPermission: true,
+            hasReadPermission: true,
+            hasUpdatePermission: true,
+            updateDownstream: remarks);
+        using var client = CreateClient(factory);
+        await SignInAsync(client);
+
+        using var request = new HttpRequestMessage(HttpMethod.Put, "/bff/customers/42/internal-remark")
+        {
+            Content = JsonContent.Create(new { internalRemark = " Employee only " }),
+        };
+        using var sessionResponse = await client.GetAsync("/bff/session");
+        var session = await sessionResponse.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>();
+        request.Headers.Add("X-CSRF-TOKEN", session.GetProperty("csrfToken").GetString());
+        using var response = await client.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+        var downstream = Assert.Single(remarks.Requests);
+        Assert.Equal(HttpMethod.Put, downstream.Method);
+        Assert.Equal("/customers/42/internal-remark", downstream.PathAndQuery);
+        Assert.Equal("Bearer signed-service-token", downstream.Authorization);
+        Assert.Contains("\"internalRemark\":\" Employee only \"", downstream.Body, StringComparison.Ordinal);
     }
 
     public static TheoryData<Exception> TransportFailures => new()

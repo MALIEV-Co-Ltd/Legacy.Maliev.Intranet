@@ -1925,6 +1925,24 @@ app.MapPut("/bff/customers/{id:int}", (
     .AddEndpointFilter<AntiforgeryValidationFilter>()
     .RequireAuthorization(LegacyEmployeePermissions.CustomersUpdate);
 
+app.MapGet("/bff/customers/{id:int}/internal-remark", (
+    int id,
+    CustomerUpdateProxy remarks,
+    HttpContext context,
+    CancellationToken cancellationToken) =>
+    CustomerInternalRemarkEndpointMapper.GetAsync(id, remarks, context, cancellationToken))
+    .RequireAuthorization(LegacyEmployeePermissions.CustomersRead);
+
+app.MapPut("/bff/customers/{id:int}/internal-remark", (
+    int id,
+    CustomerInternalRemarkUpdateRequest input,
+    CustomerUpdateProxy remarks,
+    HttpContext context,
+    CancellationToken cancellationToken) =>
+    CustomerInternalRemarkEndpointMapper.UpdateAsync(id, input, remarks, context, cancellationToken))
+    .AddEndpointFilter<AntiforgeryValidationFilter>()
+    .RequireAuthorization(LegacyEmployeePermissions.CustomersUpdate);
+
 app.MapPost("/bff/customers", async (
     CreateCustomerAccountRequest request,
     HttpContext context,

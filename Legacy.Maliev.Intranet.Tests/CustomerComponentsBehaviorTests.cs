@@ -374,7 +374,14 @@ public sealed class CustomerComponentsBehaviorTests
             HttpRequestMessage request,
             CancellationToken cancellationToken)
         {
-            var id = request.RequestUri!.AbsolutePath.EndsWith("/41", StringComparison.Ordinal) ? 41 : 42;
+            var id = request.RequestUri!.AbsolutePath.Contains("/41", StringComparison.Ordinal) ? 41 : 42;
+            if (request.RequestUri.AbsolutePath.EndsWith("/internal-remark", StringComparison.Ordinal))
+            {
+                return new HttpResponseMessage(System.Net.HttpStatusCode.OK)
+                {
+                    Content = JsonContent.Create(new CustomerInternalRemarkResponse(id, $"Remark{id}")),
+                };
+            }
             if (id == 41)
             {
                 CustomerAStarted.TrySetResult();

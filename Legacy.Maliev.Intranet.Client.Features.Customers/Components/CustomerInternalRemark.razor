@@ -1,0 +1,82 @@
+@namespace Legacy.Maliev.Intranet.Client.Features.Customers.Components
+@using Microsoft.AspNetCore.Components.Forms
+
+<section class="customer-internal-remark" aria-labelledby="customer-internal-remark-heading">
+    <div class="customer-internal-remark__header">
+        <div>
+            <h2 id="customer-internal-remark-heading" class="customer-internal-remark__title">@Localize("InternalRemarks")</h2>
+            <p class="customer-internal-remark__description">@Localize("InternalRemarkPrivateDescription")</p>
+        </div>
+        @if (CanEdit && !Editing && !Loading && string.IsNullOrWhiteSpace(Error))
+        {
+            <ShadcnButton Variant="ShadcnButtonVariant.Outline"
+                          Disabled="@Submitting"
+                          OnClick="BeginEdit"
+                          aria-label="@Localize("EditInternalRemarks")">
+                @Localize("EditInternalRemarks")
+            </ShadcnButton>
+        }
+    </div>
+
+    @if (Loading)
+    {
+        <div class="customer-internal-remark__loading" role="status" aria-live="polite">
+            <ShadcnSpinner Label="@Localize("LoadingInternalRemarks")" Size="1.25rem" />
+            <span>@Localize("LoadingInternalRemarks")</span>
+        </div>
+    }
+    else if (Editing)
+    {
+        @if (!string.IsNullOrWhiteSpace(Error))
+        {
+            <ShadcnAlert Variant="ShadcnAlertVariant.Destructive" AlertRole="ShadcnAlertRole.Alert"><ShadcnAlertDescription>@Error</ShadcnAlertDescription></ShadcnAlert>
+        }
+        <EditForm EditContext="@EditContext" OnValidSubmit="Save">
+            <DataAnnotationsValidator />
+            <ShadcnFormField Id="customer-internal-remark" Label="@Localize("InternalRemarks")">
+                <Control>
+                    <ShadcnTextarea TValue="string" id="customer-internal-remark" @bind-Value="EditModel.InternalRemark" rows="6" maxlength="4000" Disabled="@Submitting" />
+                </Control>
+            </ShadcnFormField>
+            <ValidationMessage For="@(() => EditModel.InternalRemark)" />
+            <div class="customer-internal-remark__actions">
+                <ShadcnButton ButtonType="ShadcnButtonType.Submit" Disabled="@Submitting">
+                    @(Submitting ? Localize("SavingInternalRemarks") : Localize("SaveInternalRemarks"))
+                </ShadcnButton>
+                <ShadcnButton ButtonType="ShadcnButtonType.Button" Variant="ShadcnButtonVariant.Ghost" Disabled="@Submitting" OnClick="CancelEdit">
+                    @Localize("Cancel")
+                </ShadcnButton>
+            </div>
+        </EditForm>
+    }
+    else if (!string.IsNullOrWhiteSpace(Error))
+    {
+        <ShadcnAlert Variant="ShadcnAlertVariant.Destructive" AlertRole="ShadcnAlertRole.Alert"><ShadcnAlertDescription>@Error</ShadcnAlertDescription></ShadcnAlert>
+        <ShadcnButton Variant="ShadcnButtonVariant.Outline" OnClick="Retry">@Localize("RetryInternalRemarks")</ShadcnButton>
+    }
+    else
+    {
+        <p class="customer-internal-remark__value">@(string.IsNullOrWhiteSpace(Value) ? Localize("NoInternalRemarks") : Value)</p>
+        @if (Saved)
+        {
+            <p class="customer-internal-remark__saved" role="status" aria-live="polite">@Localize("InternalRemarksSaved")</p>
+        }
+    }
+</section>
+
+@code {
+    [Parameter] public string? Value { get; set; }
+    [Parameter, EditorRequired] public CustomerInternalRemarkUpdateRequest EditModel { get; set; } = null!;
+    [Parameter, EditorRequired] public EditContext EditContext { get; set; } = null!;
+    [Parameter] public bool CanEdit { get; set; }
+    [Parameter] public bool Editing { get; set; }
+    [Parameter] public bool Loading { get; set; }
+    [Parameter] public bool Submitting { get; set; }
+    [Parameter] public bool Saved { get; set; }
+    [Parameter] public string? Error { get; set; }
+    [Parameter] public EventCallback BeginEdit { get; set; }
+    [Parameter] public EventCallback Save { get; set; }
+    [Parameter] public EventCallback CancelEdit { get; set; }
+    [Parameter] public EventCallback Retry { get; set; }
+    [Parameter, EditorRequired] public Func<string, string> Localize { get; set; } = null!;
+}

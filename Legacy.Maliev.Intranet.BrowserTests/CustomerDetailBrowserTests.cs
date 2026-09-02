@@ -149,6 +149,34 @@ public sealed class CustomerDetailBrowserTests(
     }
 
     [Fact]
+    public async Task InternalRemark_IsClearlyPrivateAndSavesThroughTheCsrfProtectedEmployeeFlow()
+    {
+        await using var context = await playwright.Browser.NewContextAsync(new()
+        {
+            ViewportSize = new() { Width = 1280, Height = 900 },
+            ReducedMotion = ReducedMotion.Reduce
+        });
+        var page = await context.NewPageAsync();
+        var state = new CustomerBoundaryState { InternalRemark = "Call before releasing any quotation." };
+        await StubCustomerDetailBoundariesAsync(page, state: state);
+
+        await page.GotoAsync(new Uri(server.BaseUri, "Customers/View?id=69738").AbsoluteUri);
+        await page.GetByText("Call before releasing any quotation.", new() { Exact = true }).WaitForAsync();
+        await Assertions.Expect(page.GetByText("Visible only to employees. Never shared with customers.", new() { Exact = true })).ToBeVisibleAsync();
+
+        await page.GetByRole(AriaRole.Button, new() { Name = "Edit internal remarks", Exact = true }).ClickAsync();
+        var input = page.GetByRole(AriaRole.Textbox, new() { Name = "Internal remarks", Exact = true });
+        await input.FillAsync("Confirm tax invoice recipient before production.");
+        await page.GetByRole(AriaRole.Button, new() { Name = "Save internal remarks", Exact = true }).ClickAsync();
+
+        await page.GetByText("Confirm tax invoice recipient before production.", new() { Exact = true }).WaitForAsync();
+        await Assertions.Expect(page.GetByText("Internal remarks saved.", new() { Exact = true })).ToBeVisibleAsync();
+        Assert.Equal(1, state.RemarkWrites);
+        Assert.Equal("customer-detail-browser-csrf", state.RemarkCsrfToken);
+        Assert.Equal("Confirm tax invoice recipient before production.", state.InternalRemark);
+    }
+
+    [Fact]
     public async Task CustomerWorkspaceUsesUrlHistoryPermissionScopedTabsAndLazyLoadsEachFamilyOnce()
     {
         await using var context = await playwright.Browser.NewContextAsync(new()
@@ -665,6 +693,27 @@ public sealed class CustomerDetailBrowserTests(
             });
         });
 
+        await page.RouteAsync("**/bff/customers/69738/internal-remark", async route =>
+        {
+            if (string.Equals(route.Request.Method, "PUT", StringComparison.OrdinalIgnoreCase))
+            {
+                Interlocked.Increment(ref state.RemarkWrites);
+                state.RemarkCsrfToken = route.Request.Headers.TryGetValue("x-csrf-token", out var csrf) ? csrf : null;
+                using var payload = JsonDocument.Parse(route.Request.PostData ?? "{}");
+                state.InternalRemark = payload.RootElement.GetProperty("internalRemark").GetString();
+                await route.FulfillAsync(new() { Status = 204 });
+                return;
+            }
+
+            Interlocked.Increment(ref state.RemarkLoads);
+            await route.FulfillAsync(new()
+            {
+                Status = 200,
+                ContentType = "application/json",
+                Body = JsonSerializer.Serialize(new { customerId = 69738, internalRemark = state.InternalRemark })
+            });
+        });
+
         await page.RouteAsync("**/bff/customers/69738", route =>
         {
             Interlocked.Increment(ref state.CustomerLoads);
@@ -722,6 +771,10 @@ public sealed class CustomerDetailBrowserTests(
         public int OrderLoads;
         public int QuotationLoads;
         public int InvoiceLoads;
+        public int RemarkLoads;
+        public int RemarkWrites;
+        public string? RemarkCsrfToken;
+        public string? InternalRemark;
         public bool FailFirstOrders;
         public string? FailPageTwoFamily;
         public int? OrderStatusCode;

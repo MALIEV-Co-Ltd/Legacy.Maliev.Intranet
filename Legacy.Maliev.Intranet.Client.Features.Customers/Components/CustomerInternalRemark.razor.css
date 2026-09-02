@@ -1,0 +1,33 @@
+.customer-internal-remark {
+    display: grid;
+    gap: 1rem;
+    margin-top: 1rem;
+    padding: 1rem;
+    border: 1px solid var(--shadcn-border);
+    border-radius: var(--shadcn-radius-lg);
+    background: var(--shadcn-muted);
+}
+
+.customer-internal-remark__header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+.customer-internal-remark__title { margin: 0; font-size: 1rem; font-weight: 600; }
+.customer-internal-remark__description { margin: 0.25rem 0 0; color: var(--shadcn-muted-foreground); }
+.customer-internal-remark__loading { display: flex; align-items: center; gap: 0.75rem; min-height: 2.75rem; }
+.customer-internal-remark__value { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.customer-internal-remark__saved { margin: 0; color: var(--shadcn-success-foreground, var(--shadcn-foreground)); }
+.customer-internal-remark__actions { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 1rem; }
+
+@media (max-width: 520px) {
+    .customer-internal-remark__header { align-items: stretch; flex-direction: column; }
+    .customer-internal-remark__header ::deep .shadcn-button,
+    .customer-internal-remark__actions ::deep .shadcn-button { width: 100%; min-height: 44px; }
+}
+
+@media (forced-colors: active) {
+    .customer-internal-remark { border-color: CanvasText; }
+}

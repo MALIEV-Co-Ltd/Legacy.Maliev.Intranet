@@ -70,6 +70,20 @@
                                               DisplayDateTime="DisplayDateTime"
                                               DisplayAddress="DisplayAddress" />
                         </EditForm>
+                        <CustomerInternalRemark Value="@internalRemark"
+                                                EditModel="@internalRemarkEditModel"
+                                                EditContext="@internalRemarkEditContext"
+                                                CanEdit="@canEdit"
+                                                Editing="@internalRemarkEditing"
+                                                Loading="@internalRemarkLoading"
+                                                Submitting="@internalRemarkSubmitting"
+                                                Saved="@internalRemarkSaved"
+                                                Error="@internalRemarkError"
+                                                BeginEdit="BeginInternalRemarkEdit"
+                                                Save="SaveInternalRemarkAsync"
+                                                CancelEdit="CancelInternalRemarkEdit"
+                                                Retry="LoadInternalRemarkAsync"
+                                                Localize="Localize" />
                     </ShadcnTabsContent>
                     <ShadcnTabsContent Value="activity" ForceMount="true">
                         <CustomerActivity Page="@activityPage"
@@ -149,6 +163,15 @@
     private CustomerDetail? customer;
     private readonly CustomerUpdateRequest editModel = new();
     private EditContext editContext = null!;
+    private readonly CustomerInternalRemarkUpdateRequest internalRemarkEditModel = new();
+    private EditContext internalRemarkEditContext = null!;
+    private string? internalRemark;
+    private string? internalRemarkError;
+    private bool internalRemarkEditing;
+    private bool internalRemarkLoading;
+    private bool internalRemarkSubmitting;
+    private bool internalRemarkSaved;
+    private CancellationTokenSource? internalRemarkLoadCts;
     private bool canEdit;
     private bool canReadOrders;
     private bool canReadQuotations;
@@ -194,7 +217,11 @@
 
     private static readonly ShadcnIconData ArrowLeftIcon = LucideIconCatalog.Instance.Get(LucideIconNames.ArrowLeft);
 
-    protected override void OnInitialized() => editContext = new EditContext(editModel);
+    protected override void OnInitialized()
+    {
+        editContext = new EditContext(editModel);
+        internalRemarkEditContext = new EditContext(internalRemarkEditModel);
+    }
 
     protected override async Task OnParametersSetAsync()
     {
@@ -251,6 +278,7 @@
         notFound = false;
         editing = false;
         submitting = false;
+        ResetInternalRemarkState();
         loading = false;
         loadedCustomerId = request.CustomerId;
 
@@ -325,6 +353,7 @@
             else
             {
                 CopyToEditModel(customer);
+                await LoadInternalRemarkAsync();
             }
         }
         catch (OperationCanceledException) when (request.CancellationToken.IsCancellationRequested)
@@ -566,6 +595,112 @@
         operationError = null;
     }
 
+    private async Task LoadInternalRemarkAsync()
+    {
+        internalRemarkLoadCts?.Cancel();
+        internalRemarkLoadCts?.Dispose();
+        internalRemarkLoadCts = new();
+        var token = internalRemarkLoadCts.Token;
+        var customerId = Id;
+        internalRemarkLoading = true;
+        internalRemarkError = null;
+        internalRemarkSaved = false;
+        try
+        {
+            using var response = await Http.GetForPresentationAsync($"/bff/customers/{customerId}/internal-remark", token);
+            if (response.StatusCode == HttpStatusCode.Unauthorized) { NavigateToLogin(); return; }
+            if (response.StatusCode == HttpStatusCode.Forbidden) { internalRemarkError = Text["InternalRemarkForbidden"]; return; }
+            if (response.StatusCode == HttpStatusCode.TooManyRequests) { internalRemarkError = Text["InternalRemarkRateLimited"]; return; }
+            if (!response.IsSuccessStatusCode) { internalRemarkError = Text["InternalRemarkUnavailable"]; return; }
+
+            var loaded = await response.Content.ReadFromJsonAsync<CustomerInternalRemarkResponse>(cancellationToken: token);
+            if (token.IsCancellationRequested || customerId != Id) return;
+            if (loaded is null || loaded.CustomerId != customerId)
+            {
+                internalRemarkError = Text["InternalRemarkInvalidResponse"];
+                return;
+            }
+
+            internalRemark = loaded.InternalRemark;
+            internalRemarkEditModel.InternalRemark = internalRemark;
+            internalRemarkEditContext = new EditContext(internalRemarkEditModel);
+        }
+        catch (OperationCanceledException) when (token.IsCancellationRequested) { }
+        catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException)
+        {
+            if (!token.IsCancellationRequested) internalRemarkError = Text["InternalRemarkUnavailable"];
+        }
+        finally
+        {
+            if (!token.IsCancellationRequested) internalRemarkLoading = false;
+        }
+    }
+
+    private void BeginInternalRemarkEdit()
+    {
+        if (!canEdit || internalRemarkLoading || !string.IsNullOrWhiteSpace(internalRemarkError)) return;
+        internalRemarkEditModel.InternalRemark = internalRemark;
+        internalRemarkEditContext = new EditContext(internalRemarkEditModel);
+        internalRemarkSaved = false;
+        internalRemarkEditing = true;
+    }
+
+    private void CancelInternalRemarkEdit()
+    {
+        internalRemarkEditModel.InternalRemark = internalRemark;
+        internalRemarkEditing = false;
+        internalRemarkError = null;
+    }
+
+    private async Task SaveInternalRemarkAsync()
+    {
+        if (!canEdit || !internalRemarkEditing || internalRemarkSubmitting) return;
+        if (!internalRemarkEditContext.Validate())
+        {
+            internalRemarkError = Text["InternalRemarkValidationFailed"];
+            return;
+        }
+
+        internalRemarkSubmitting = true;
+        internalRemarkError = null;
+        try
+        {
+            using var sessionResponse = await Http.GetForPresentationAsync("/bff/session");
+            if (sessionResponse.StatusCode == HttpStatusCode.Unauthorized) { NavigateToLogin(); return; }
+            sessionResponse.EnsureSuccessStatusCode();
+            var session = await sessionResponse.Content.ReadFromJsonAsync<EmployeeSessionSummary>();
+            if (string.IsNullOrWhiteSpace(session?.CsrfToken)) { internalRemarkError = Text["InternalRemarkSaveFailed"]; return; }
+
+            using var request = new HttpRequestMessage(HttpMethod.Put, $"/bff/customers/{Id}/internal-remark")
+            {
+                Content = JsonContent.Create(internalRemarkEditModel),
+            };
+            request.Headers.Add("X-CSRF-TOKEN", session.CsrfToken);
+            using var response = await Http.SendAsync(request);
+            if (response.StatusCode == HttpStatusCode.Unauthorized) { NavigateToLogin(); return; }
+            if (response.StatusCode == HttpStatusCode.Forbidden) { internalRemarkError = Text["InternalRemarkForbiddenUpdate"]; return; }
+            if (response.StatusCode == HttpStatusCode.BadRequest) { internalRemarkError = Text["InternalRemarkValidationFailed"]; return; }
+            if (response.StatusCode == HttpStatusCode.NotFound) { internalRemarkError = Text["NotFound"]; return; }
+            if (response.StatusCode == HttpStatusCode.TooManyRequests) { internalRemarkError = Text["InternalRemarkRateLimited"]; return; }
+            if (!response.IsSuccessStatusCode) { internalRemarkError = Text["InternalRemarkSaveFailed"]; return; }
+
+            internalRemark = string.IsNullOrWhiteSpace(internalRemarkEditModel.InternalRemark)
+                ? null
+                : internalRemarkEditModel.InternalRemark.Trim();
+            internalRemarkEditModel.InternalRemark = internalRemark;
+            internalRemarkEditing = false;
+            internalRemarkSaved = true;
+        }
+        catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException)
+        {
+            internalRemarkError = Text["InternalRemarkSaveFailed"];
+        }
+        finally
+        {
+            internalRemarkSubmitting = false;
+        }
+    }
+
     private async Task SaveAsync()
     {
         if (!canEdit || !editing || submitting) return;
@@ -663,6 +798,21 @@
         invoicesLoading = false;
     }
 
+    private void ResetInternalRemarkState()
+    {
+        internalRemarkLoadCts?.Cancel();
+        internalRemarkLoadCts?.Dispose();
+        internalRemarkLoadCts = null;
+        internalRemark = null;
+        internalRemarkEditModel.InternalRemark = null;
+        internalRemarkEditContext = new EditContext(internalRemarkEditModel);
+        internalRemarkError = null;
+        internalRemarkEditing = false;
+        internalRemarkLoading = false;
+        internalRemarkSubmitting = false;
+        internalRemarkSaved = false;
+    }
+
     private void CancelHistoryLoads()
     {
         foreach (var source in new[] { activityLoadCts, ordersLoadCts, quotationsLoadCts, invoicesLoadCts })
@@ -711,6 +861,8 @@
     public void Dispose()
     {
         customerLoadGate.Dispose();
+        internalRemarkLoadCts?.Cancel();
+        internalRemarkLoadCts?.Dispose();
         CancelHistoryLoads();
     }
 }

@@ -15,6 +15,22 @@
   <data name="Loading" xml:space="preserve"><value>Loading customer profile</value></data>
   <data name="CustomerNumber" xml:space="preserve"><value>Customer #{0}</value></data>
   <data name="Contact" xml:space="preserve"><value>Contact</value></data>
+  <data name="InternalRemarks" xml:space="preserve"><value>Internal remarks</value></data>
+  <data name="InternalRemarkPrivateDescription" xml:space="preserve"><value>Visible only to employees. Never shared with customers.</value></data>
+  <data name="EditInternalRemarks" xml:space="preserve"><value>Edit internal remarks</value></data>
+  <data name="LoadingInternalRemarks" xml:space="preserve"><value>Loading internal remarks</value></data>
+  <data name="RetryInternalRemarks" xml:space="preserve"><value>Try loading internal remarks again</value></data>
+  <data name="SavingInternalRemarks" xml:space="preserve"><value>Saving internal remarks</value></data>
+  <data name="SaveInternalRemarks" xml:space="preserve"><value>Save internal remarks</value></data>
+  <data name="NoInternalRemarks" xml:space="preserve"><value>No internal remarks.</value></data>
+  <data name="InternalRemarksSaved" xml:space="preserve"><value>Internal remarks saved.</value></data>
+  <data name="InternalRemarkForbidden" xml:space="preserve"><value>You do not have permission to view internal remarks.</value></data>
+  <data name="InternalRemarkForbiddenUpdate" xml:space="preserve"><value>You do not have permission to update internal remarks.</value></data>
+  <data name="InternalRemarkRateLimited" xml:space="preserve"><value>Too many internal remark requests were submitted. Wait a moment and try again.</value></data>
+  <data name="InternalRemarkUnavailable" xml:space="preserve"><value>Internal remarks are temporarily unavailable.</value></data>
+  <data name="InternalRemarkInvalidResponse" xml:space="preserve"><value>CustomerService returned an invalid internal remark response.</value></data>
+  <data name="InternalRemarkValidationFailed" xml:space="preserve"><value>Internal remarks must be 4,000 characters or fewer.</value></data>
+  <data name="InternalRemarkSaveFailed" xml:space="preserve"><value>Internal remarks could not be saved.</value></data>
   <data name="Email" xml:space="preserve"><value>Email</value></data>
   <data name="Telephone" xml:space="preserve"><value>Telephone</value></data>
   <data name="Mobile" xml:space="preserve"><value>Mobile</value></data>
