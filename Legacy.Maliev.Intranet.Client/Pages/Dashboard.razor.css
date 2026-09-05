@@ -2,19 +2,19 @@
     color: var(--shadcn-foreground);
     margin: 0 auto;
     max-width: 96rem;
-    padding: clamp(1rem, 2.5vw, 2rem);
+    padding: clamp(0.9rem, 1.8vw, 1.5rem);
 }
 
 .dashboard-heading {
     align-items: flex-start;
     display: flex;
-    gap: 2rem;
+    gap: 1.25rem;
     justify-content: space-between;
-    margin-bottom: 1.25rem;
+    margin-bottom: 0.9rem;
 }
 
 .dashboard-heading h1 {
-    font-size: clamp(1.65rem, 3vw, 2.35rem);
+    font-size: clamp(1.55rem, 2.5vw, 2rem);
     letter-spacing: -0.035em;
     line-height: 1.08;
     margin: 0;
@@ -36,18 +36,40 @@
 
 .dashboard-freshness time { color: var(--shadcn-muted-foreground); }
 .dashboard-health { align-items: center; display: inline-flex; font-weight: 400; gap: 0.4rem; }
-.dashboard-health > span { background: var(--shadcn-primary); border-radius: 50%; height: 0.48rem; width: 0.48rem; }
+.dashboard-health > span { background: var(--shadcn-success, oklch(0.72 0.18 145)); border-radius: 50%; height: 0.48rem; width: 0.48rem; }
+.dashboard-health.is-healthy > span { animation: dashboard-live-pulse 1.8s ease-out infinite; }
 .dashboard-health.is-degraded > span { background: var(--shadcn-destructive); }
 
-.dashboard-alert { margin-bottom: 1rem; }
-.dashboard-loading { display: grid; gap: 1rem; }
-.dashboard-loading-grid { display: grid; gap: 0.8rem; grid-template-columns: repeat(4, minmax(0, 1fr)); }
+@keyframes dashboard-live-pulse {
+    0%, 35% { box-shadow: 0 0 0 0 color-mix(in oklch, var(--shadcn-success, oklch(0.72 0.18 145)) 42%, transparent); }
+    75%, 100% { box-shadow: 0 0 0 0.38rem transparent; }
+}
 
-.dashboard-primary-grid,
-.dashboard-secondary-grid { display: grid; gap: 0.9rem; grid-template-columns: repeat(2, minmax(0, 1fr)); margin-top: 0.9rem; }
-.dashboard-secondary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-.dashboard-secondary-grid ::deep > :last-child:nth-child(odd),
-.dashboard-primary-grid ::deep .dashboard-wide-panel { grid-column: 1 / -1; }
+.dashboard-alert { margin-bottom: 1rem; }
+.dashboard-alert--warning { border-color: color-mix(in oklch, var(--shadcn-chart-4) 62%, var(--shadcn-border)); background: color-mix(in oklch, var(--shadcn-chart-4) 16%, var(--shadcn-background)); color: var(--shadcn-foreground); }
+.dashboard-alert--warning ::deep svg { color: color-mix(in oklch, var(--shadcn-chart-4) 72%, var(--shadcn-foreground)); }
+.dashboard-loading { display: grid; gap: 1rem; }
+.dashboard-loading-grid { display: grid; gap: 0.75rem; grid-template-columns: repeat(4, minmax(0, 1fr)); }
+
+.dashboard-bento-grid {
+    display: grid;
+    gap: 0.75rem;
+    grid-auto-flow: dense;
+    grid-auto-rows: minmax(8rem, auto);
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+}
+
+.dashboard-bento-grid ::deep .dashboard-bento { grid-column: span 4; }
+.dashboard-bento-grid ::deep .dashboard-bento--wide,
+.dashboard-bento-grid ::deep .dashboard-bento--medium { grid-column: span 8; }
+.dashboard-bento-grid ::deep .dashboard-bento--full { grid-column: 1 / -1; }
+.dashboard-bento-grid ::deep .dashboard-bento--vertical { grid-column: span 4; }
+
+.dashboard-metric-grid {
+    display: grid;
+    gap: 0;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
 
 .dashboard-table-scroll { overflow-x: auto; }
 .dashboard-table { border-collapse: collapse; min-width: 38rem; width: 100%; }
@@ -89,8 +111,11 @@
 .is-positive { color: var(--shadcn-primary); }
 .is-negative { color: var(--shadcn-destructive); }
 
-.dashboard-decision-summary { align-items: center; display: grid; gap: 1rem; grid-template-columns: 6.5rem minmax(0, 1fr); padding: 1rem; }
-.dashboard-decision-total { align-items: center; aspect-ratio: 1; border: 0.75rem solid var(--shadcn-muted); border-radius: 50%; display: flex; flex-direction: column; justify-content: center; }
+.dashboard-decision-summary { position: relative; align-items: center; display: grid; gap: 1rem; grid-template-columns: 6.5rem minmax(0, 1fr); padding: 1rem; }
+.dashboard-decision-chart { grid-column: 1; min-height: 6.5rem; }
+.dashboard-decision-summary ::deep .shadcn-chart-title { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; }
+.dashboard-decision-chart ::deep svg { height: 6.5rem; }
+.dashboard-decision-total { position: absolute; top: 1rem; left: 3.5rem; z-index: 1; align-items: center; display: flex; width: 6.5rem; height: 6.5rem; flex-direction: column; justify-content: center; pointer-events: none; }
 .dashboard-decision-total strong { font-size: 1.45rem; }
 .dashboard-decision-total span { color: var(--shadcn-muted-foreground); font-size: 0.68rem; }
 .dashboard-decision-summary ul { display: grid; gap: 0.65rem; list-style: none; margin: 0; padding: 0; }
@@ -105,6 +130,9 @@
 .dashboard-dot.is-open,
 .dashboard-dot.is-queued { background: var(--shadcn-muted-foreground); }
 .dashboard-dot.is-progress { background: var(--shadcn-accent-foreground); }
+.dashboard-decision-legend .shadcn-chart-legend-icon.is-accepted { background: var(--shadcn-chart-2); }
+.dashboard-decision-legend .shadcn-chart-legend-icon.is-declined { background: var(--shadcn-destructive); }
+.dashboard-decision-legend .shadcn-chart-legend-icon.is-open { background: var(--shadcn-chart-4); }
 
 .dashboard-progress-summary { display: grid; padding: 0.65rem 1rem; }
 .dashboard-progress-summary > div { align-items: center; border-bottom: 1px solid var(--shadcn-border); display: flex; justify-content: space-between; padding: 0.65rem 0; }
@@ -118,13 +146,19 @@
     .dashboard-page { padding: 1rem 0.8rem 5.5rem; }
     .dashboard-heading { display: grid; gap: 0.8rem; }
     .dashboard-freshness { align-items: flex-start; text-align: left; }
-    .dashboard-primary-grid,
-    .dashboard-secondary-grid { grid-template-columns: minmax(0, 1fr); }
+    .dashboard-bento-grid { grid-template-columns: minmax(0, 1fr); }
+    .dashboard-bento-grid ::deep .dashboard-bento,
+    .dashboard-bento-grid ::deep .dashboard-bento--wide,
+    .dashboard-bento-grid ::deep .dashboard-bento--medium,
+    .dashboard-bento-grid ::deep .dashboard-bento--full,
+    .dashboard-bento-grid ::deep .dashboard-bento--vertical { grid-column: 1; grid-row: auto; }
+    .dashboard-freshness ::deep button { min-height: 44px; min-width: 44px; }
     .dashboard-table-scroll ::deep .dashboard-table a,
     .dashboard-activity-list a { align-items: center; min-height: 44px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
+    .dashboard-health.is-healthy > span { animation: none; }
     .dashboard-page *,
     .dashboard-page *::before,
     .dashboard-page *::after { scroll-behavior: auto !important; transition-duration: 0.01ms !important; }

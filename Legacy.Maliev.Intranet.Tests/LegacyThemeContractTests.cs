@@ -11,6 +11,8 @@ public sealed class LegacyThemeContractTests
         var index = File.ReadAllText(Path.Combine(root, "Legacy.Maliev.Intranet.Client", "wwwroot", "index.html"));
 
         Assert.Contains("AddScoped<LegacyThemeService>()", program, StringComparison.Ordinal);
+        Assert.Contains("ShadcnThemePresets.BaseVegaNeutral.CreateTheme()", program, StringComparison.Ordinal);
+        Assert.Contains("options.Theme = ShadcnThemePresets.BaseVegaNeutral.CreateTheme()", program, StringComparison.Ordinal);
         Assert.Contains("malievTheme.isDark", service, StringComparison.Ordinal);
         Assert.Contains("malievTheme.toggle", service, StringComparison.Ordinal);
         Assert.Contains("localStorage", index, StringComparison.Ordinal);
@@ -32,7 +34,10 @@ public sealed class LegacyThemeContractTests
         Assert.DoesNotContain("new MudTheme", layout, StringComparison.Ordinal);
         Assert.Contains("ThemeLabel", topbar, StringComparison.Ordinal);
         Assert.Contains("<ShadcnButton Class=\"legacy-theme-toggle\"", topbar, StringComparison.Ordinal);
-        Assert.Contains("Size=\"ShadcnButtonSize.Icon\"", topbar, StringComparison.Ordinal);
+        Assert.True(
+            topbar.IndexOf("legacy-profile-preferences", StringComparison.Ordinal)
+            < topbar.IndexOf("<ShadcnButton Class=\"legacy-theme-toggle\"", StringComparison.Ordinal),
+            "The workspace theme preference should live inside the employee profile preferences surface.");
         Assert.Contains("<ShadcnIcon Icon=\"@(ThemeService.IsDarkMode ? SunIcon : MoonIcon)\"", topbar, StringComparison.Ordinal);
         Assert.Contains("OnClick=\"ToggleThemeAsync\"", topbar, StringComparison.Ordinal);
         Assert.Contains(":root[data-maliev-theme=\"dark\"]", css, StringComparison.Ordinal);

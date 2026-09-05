@@ -46,17 +46,18 @@ public sealed class IntranetParityContractTests
         Assert.True(File.Exists(whiteLogo));
         Assert.DoesNotContain("legacy-logo-image--light", topbar, StringComparison.Ordinal);
         Assert.DoesNotContain("legacy-logo-image--dark", topbar, StringComparison.Ordinal);
-        Assert.Contains("legacy-logo-image--light", rail, StringComparison.Ordinal);
-        Assert.Contains("legacy-logo-image--dark", rail, StringComparison.Ordinal);
+        Assert.Contains("images/MALIEV_BLACK.svg", rail, StringComparison.Ordinal);
+        Assert.DoesNotContain("legacy-rail-brand__mark", rail, StringComparison.Ordinal);
         Assert.DoesNotContain("legacy-workspace-label", topbar, StringComparison.Ordinal);
         Assert.Contains("aria-label", topbar, StringComparison.Ordinal);
         Assert.Contains("TargetId=\"legacy-navigation-rail\"", topbar, StringComparison.Ordinal);
         Assert.Contains("Active=\"@IsItemPageCurrent", rail, StringComparison.Ordinal);
         Assert.Contains("Navigation.LocationChanged", layout, StringComparison.Ordinal);
         Assert.Contains("Escape", topbar, StringComparison.Ordinal);
+        Assert.Contains("max-height: 100dvh", railCss, StringComparison.Ordinal);
         Assert.Contains("@media (max-width: 48rem)", railCss, StringComparison.Ordinal);
         Assert.Contains("@media (max-width: 720px)", css, StringComparison.Ordinal);
-        Assert.Contains("@media (max-width: 420px)", css, StringComparison.Ordinal);
+        Assert.Contains(".legacy-profile-menu ::deep .legacy-profile-chevron", css, StringComparison.Ordinal);
         Assert.Contains("/customers", navigation, StringComparison.Ordinal);
         Assert.Contains("/sales/orders", navigation, StringComparison.Ordinal);
         Assert.Contains("/purchasing", navigation, StringComparison.Ordinal);
@@ -86,8 +87,8 @@ public sealed class IntranetParityContractTests
         var index = File.ReadAllText(Path.Combine(root, "Legacy.Maliev.Intranet.Client", "wwwroot", "index.html"));
         var css = File.ReadAllText(Path.Combine(root, "Legacy.Maliev.Intranet.Client", "wwwroot", "css", "app.css"));
 
-        Assert.Contains("css/ibm-plex-sans-thai.css", index, StringComparison.Ordinal);
-        Assert.Contains("'IBM Plex Sans Thai', sans-serif", index, StringComparison.Ordinal);
+        Assert.Contains("_content/Maliev.ShadcnBlazor/fonts/geist-sans-variable.woff2", index, StringComparison.Ordinal);
+        Assert.Contains("_content/Maliev.ShadcnBlazor/fonts/noto-sans-thai.woff2", index, StringComparison.Ordinal);
         Assert.Contains("var(--maliev-font-sans)", css, StringComparison.Ordinal);
         Assert.DoesNotContain("fonts.googleapis.com", index, StringComparison.OrdinalIgnoreCase);
     }

@@ -6,17 +6,19 @@
 @inject IStringLocalizer<LegacyTopBar> Text
 
 <div class="legacy-language-selector">
-    <ShadcnNativeSelect TValue="string" Class="legacy-language-select" Value="@SelectedCulture"
-                        ValueChanged="ChangeCultureAsync" Size="ShadcnControlSize.Small"
-                        aria-label="@Text["Language"]">
-        <ShadcnNativeSelectOption TValue="string" Value="@EnglishCulture">English</ShadcnNativeSelectOption>
-        <ShadcnNativeSelectOption TValue="string" Value="@ThaiCulture">ไทย</ShadcnNativeSelectOption>
-    </ShadcnNativeSelect>
+    <ShadcnSelect TValue="string" Class="legacy-language-select" Value="@SelectedCulture"
+                  ValueChanged="ChangeCultureAsync" Options="@CultureOptions"
+                  Size="ShadcnControlSize.Small" aria-label="@Text["Language"]" />
 </div>
 
 @code {
     private const string EnglishCulture = "en-TH";
     private const string ThaiCulture = "th-TH";
+    private static readonly IReadOnlyList<ShadcnSelectOption<string>> CultureOptions =
+    [
+        new(EnglishCulture, "English"),
+        new(ThaiCulture, "ไทย"),
+    ];
 
     private static string SelectedCulture =>
         CultureInfo.CurrentUICulture.Name.StartsWith("th", StringComparison.OrdinalIgnoreCase)

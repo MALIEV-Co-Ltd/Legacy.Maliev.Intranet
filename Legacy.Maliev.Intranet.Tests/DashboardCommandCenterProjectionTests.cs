@@ -155,9 +155,11 @@ public sealed class DashboardCommandCenterProjectionTests
         Assert.Contains(".dashboard-table-scroll ::deep .dashboard-table a,", styles, StringComparison.Ordinal);
         Assert.Contains("@media (max-width: 760px)", styles, StringComparison.Ordinal);
         Assert.Contains("@media (prefers-reduced-motion: reduce)", styles, StringComparison.Ordinal);
-        Assert.DoesNotContain("DashboardMetricCard", dashboard, StringComparison.Ordinal);
-        Assert.Contains("Class=\"dashboard-wide-panel\"", dashboard, StringComparison.Ordinal);
-        Assert.Contains(".dashboard-secondary-grid { grid-template-columns: repeat(2", styles, StringComparison.Ordinal);
+        Assert.Contains("<DashboardMetricCard", dashboard, StringComparison.Ordinal);
+        Assert.Contains("Class=\"dashboard-bento dashboard-bento--wide\"", dashboard, StringComparison.Ordinal);
+        Assert.Contains(".dashboard-bento-grid", styles, StringComparison.Ordinal);
+        Assert.Contains("grid-auto-flow: dense", styles, StringComparison.Ordinal);
+        Assert.Contains("grid-template-columns: repeat(12", styles, StringComparison.Ordinal);
         Assert.Contains("_snapshot.CurrencyCodes.TryGetValue(currencyId", dashboard, StringComparison.Ordinal);
         Assert.Contains("currencyCode.Equals(\"THB\"", dashboard, StringComparison.Ordinal);
         Assert.DoesNotContain("dashboard-eyebrow", dashboard, StringComparison.Ordinal);

@@ -6,7 +6,7 @@ namespace Legacy.Maliev.Intranet.Tests;
 
 public sealed partial class NativeShadcnMigrationContractTests
 {
-    private const string PackageVersion = "1.2.2";
+    private const string PackageVersion = "2.2.0";
 
     private static readonly string[] ConsumerProjectDirectories =
     [
@@ -70,6 +70,7 @@ public sealed partial class NativeShadcnMigrationContractTests
             "The native Shadcn migration ledger must exist and remain the fail-closed inventory source.");
 
         using var ledger = JsonDocument.Parse(File.ReadAllText(ledgerPath));
+        Assert.Equal(PackageVersion, ledger.RootElement.GetProperty("packageVersion").GetString());
         var baseline = ledger.RootElement.GetProperty("baseline");
 
         Assert.Equal(1_485, baseline.GetProperty("renderSites").GetInt32());

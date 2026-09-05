@@ -14,9 +14,12 @@ public sealed class LegacyMemberShellContractTests
 
         Assert.Contains("legacy-profile-menu", topbar, StringComparison.Ordinal);
         Assert.Contains("legacy-profile", topbar, StringComparison.Ordinal);
-        Assert.Contains("aria-haspopup=\"menu\"", topbar, StringComparison.Ordinal);
-        Assert.Contains("role=\"menu\"", topbar, StringComparison.Ordinal);
-        Assert.Contains("href=\"/hr/profile\"", topbar, StringComparison.Ordinal);
+        Assert.Contains("aria-haspopup=\"dialog\"", topbar, StringComparison.Ordinal);
+        Assert.Contains("role=\"dialog\"", topbar, StringComparison.Ordinal);
+        Assert.Contains("legacy-profile-preferences", topbar, StringComparison.Ordinal);
+        Assert.Contains("<LegacyLanguageSelector />", topbar, StringComparison.Ordinal);
+        Assert.Contains("Href=\"/hr/profile\"", topbar, StringComparison.Ordinal);
+        Assert.Contains("Role=\"LegacyLinkRole.Navigation\"", topbar, StringComparison.Ordinal);
         Assert.Contains("Sign out", topbar, StringComparison.Ordinal);
         Assert.DoesNotContain("signup", topbar, StringComparison.OrdinalIgnoreCase);
     }
@@ -41,7 +44,7 @@ public sealed class LegacyMemberShellContractTests
         Assert.Contains("legacy-profile-popover", css, StringComparison.Ordinal);
         Assert.DoesNotContain("legacy-signout-button", css, StringComparison.Ordinal);
         Assert.Contains("@media (max-width: 720px)", css, StringComparison.Ordinal);
-        Assert.Contains("@media (max-width: 420px)", css, StringComparison.Ordinal);
+        Assert.Contains("border-radius: 9999px", css, StringComparison.Ordinal);
     }
 
     private static string FindRoot()

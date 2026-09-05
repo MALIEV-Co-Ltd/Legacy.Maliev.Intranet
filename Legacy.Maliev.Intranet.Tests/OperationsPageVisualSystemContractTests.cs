@@ -142,7 +142,7 @@ public sealed class OperationsPageVisualSystemContractTests
         var source = Read("Legacy.Maliev.Intranet.Tests", "OperationalTableAdoptionContractTests.cs");
 
         Assert.DoesNotContain("OperationalTableExceptions => new()", source, StringComparison.Ordinal);
-        Assert.Contains("RepositoryTableLedger.Where", source, StringComparison.Ordinal);
+        Assert.Contains("RecordListPages", source, StringComparison.Ordinal);
     }
 
     private static void AssertCompletePropertyMapping<T>(string source, string scope)

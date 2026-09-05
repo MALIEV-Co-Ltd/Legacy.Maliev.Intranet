@@ -9,10 +9,13 @@
   <data name="MALIEV dashboard" xml:space="preserve"><value>MALIEV dashboard</value></data>
   <data name="Dashboard" xml:space="preserve"><value>Dashboard</value></data>
   <data name="Primary navigation" xml:space="preserve"><value>Primary navigation</value></data>
+  <data name="Expand or collapse {0}" xml:space="preserve"><value>Expand or collapse {0}</value></data>
   <data name="Navigation" xml:space="preserve"><value>navigation</value></data>
   <data name="More" xml:space="preserve"><value>More</value></data>
   <data name="More navigation" xml:space="preserve"><value>More navigation</value></data>
   <data name="Employee menu" xml:space="preserve"><value>Employee menu</value></data>
+  <data name="Employee preferences" xml:space="preserve"><value>Employee preferences</value></data>
+  <data name="Preferences" xml:space="preserve"><value>Preferences</value></data>
   <data name="Employee" xml:space="preserve"><value>Employee</value></data>
   <data name="Employee workspace" xml:space="preserve"><value>Employee workspace</value></data>
   <data name="My profile" xml:space="preserve"><value>My profile</value></data>
@@ -42,6 +45,8 @@
   <data name="Create an order" xml:space="preserve"><value>Create an order</value></data>
   <data name="Quotation requests" xml:space="preserve"><value>Quotation requests</value></data>
   <data name="Website quotation queue" xml:space="preserve"><value>Website quotation queue</value></data>
+  <data name="Quotation request count" xml:space="preserve"><value>{0} quotation requests</value></data>
+  <data name="Toggle navigation section" xml:space="preserve"><value>Toggle {0} shortcuts</value></data>
   <data name="Quotations" xml:space="preserve"><value>Quotations</value></data>
   <data name="Quotation lifecycle" xml:space="preserve"><value>Quotation lifecycle</value></data>
   <data name="New quotation" xml:space="preserve"><value>New quotation</value></data>

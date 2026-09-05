@@ -1,4 +1,5 @@
 @typeparam TSort where TSort : struct, Enum
+@using System.Globalization
 @implements IAsyncDisposable
 @inject IStringLocalizer<ListToolbarResources> Text
 
@@ -15,25 +16,17 @@
         </div>
         <div class="list-toolbar__field">
             <label for="list-toolbar-sort">@Text["Sort"]</label>
-            <ShadcnNativeSelect TValue="TSort" id="list-toolbar-sort"
-                                Value="@controller.Current.Sort" ValueChanged="ChangeSortAsync"
-                                aria-controls="@ResultsId">
-                @foreach (var option in SortOptions)
-                {
-                    <ShadcnNativeSelectOption TValue="TSort" Value="@option.Value">@option.Label</ShadcnNativeSelectOption>
-                }
-            </ShadcnNativeSelect>
+            <ShadcnSelect TValue="TSort" id="list-toolbar-sort"
+                          Value="@controller.Current.Sort" ValueChanged="ChangeSortAsync"
+                          Options="@SelectSortOptions" Placeholder="@Text["Sort"]"
+                          aria-controls="@ResultsId" />
         </div>
         <div class="list-toolbar__field">
             <label for="list-toolbar-page-size">@Text["PerPage"]</label>
-            <ShadcnNativeSelect TValue="int" id="list-toolbar-page-size"
-                                Value="@controller.Current.PageSize" ValueChanged="ChangePageSizeAsync"
-                                aria-controls="@ResultsId">
-                @foreach (var pageSize in PageSizeOptions)
-                {
-                    <ShadcnNativeSelectOption TValue="int" Value="@pageSize">@pageSize</ShadcnNativeSelectOption>
-                }
-            </ShadcnNativeSelect>
+            <ShadcnSelect TValue="int" id="list-toolbar-page-size"
+                          Value="@controller.Current.PageSize" ValueChanged="ChangePageSizeAsync"
+                          Options="@SelectPageSizeOptions" Placeholder="@Text["PerPage"]"
+                          aria-controls="@ResultsId" />
         </div>
         <div class="list-toolbar__actions">
             @if (controller.CanClear)
@@ -73,6 +66,10 @@
     private static readonly ShadcnIconData SearchIcon = LucideIconCatalog.Instance.Get(LucideIconNames.Search);
     private static readonly ShadcnIconData ClearIcon = LucideIconCatalog.Instance.Get(LucideIconNames.ListFilterPlus);
     private static readonly ShadcnIconData RefreshIcon = LucideIconCatalog.Instance.Get(LucideIconNames.RefreshCw);
+    private IReadOnlyList<ShadcnSelectOption<TSort>> SelectSortOptions =>
+        SortOptions.Select(option => new ShadcnSelectOption<TSort>(option.Value, option.Label)).ToArray();
+    private IReadOnlyList<ShadcnSelectOption<int>> SelectPageSizeOptions =>
+        PageSizeOptions.Select(pageSize => new ShadcnSelectOption<int>(pageSize, pageSize.ToString(CultureInfo.CurrentCulture))).ToArray();
 
     protected override void OnParametersSet()
     {

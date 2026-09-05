@@ -493,7 +493,7 @@ public sealed class CustomerDetailBrowserTests(
                 await page.ScreenshotAsync(new() { Path = Path.Combine(captureRoot, $"en-{width}-{tab}.png"), FullPage = true });
             }
 
-            Assert.Empty(errors);
+            Assert.True(errors.Count == 0, string.Join(Environment.NewLine, errors));
         }
 
         await CaptureModeAsync("dark", new() { ViewportSize = new() { Width = 1280, Height = 900 }, ColorScheme = ColorScheme.Dark });

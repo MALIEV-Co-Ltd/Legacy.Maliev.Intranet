@@ -21,7 +21,7 @@ public sealed class FinancesIndexWasmMigrationContractTests
         var page = File.ReadAllText(pagePath);
         Assert.Contains("@page \"/Finances/Index\"", page, StringComparison.Ordinal);
         Assert.Contains("/bff/finances", page, StringComparison.Ordinal);
-        Assert.Contains("OperationalTable", page, StringComparison.Ordinal);
+        Assert.Contains("OperationalDataTable", page, StringComparison.Ordinal);
         Assert.Contains("<ShadcnTable", page, StringComparison.Ordinal);
         Assert.Contains("<ShadcnButton", page, StringComparison.Ordinal);
         Assert.Contains("<ShadcnSpinner", page, StringComparison.Ordinal);

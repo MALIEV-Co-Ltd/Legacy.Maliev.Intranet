@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "packageVersion": "1.2.2",
+  "packageVersion": "2.2.0",
   "baseline": {
     "renderSites": 1485,
     "componentTypes": 36,
@@ -49,8 +49,8 @@
       "remainingRenderSites": 0,
       "status": "migrated",
       "replacementFamilies": [
-        "ShadcnNativeSelect",
-        "ShadcnNativeSelectOption"
+        "ShadcnSelect",
+        "ShadcnSelectOption"
       ]
     },
     {
@@ -215,8 +215,8 @@
         "ShadcnButton",
         "ShadcnIcon",
         "ShadcnInput",
-        "ShadcnNativeSelect",
-        "ShadcnNativeSelectOption"
+        "ShadcnSelect",
+        "ShadcnSelectOption"
       ]
     },
     {

@@ -1,6 +1,6 @@
 .legacy-global-search { position: relative; display: flex; min-width: 0; max-width: 32.5rem; flex: 1 1 13.75rem; align-items: center; }
 .legacy-global-search__icon { position: absolute; left: 0.75rem; z-index: 1; display: inline-flex; color: var(--shadcn-muted-foreground); pointer-events: none; }
-.legacy-global-search ::deep .legacy-global-search-input { width: 100%; min-height: 44px; padding-inline-start: 2.5rem; }
+.legacy-global-search ::deep .legacy-global-search-input { width: 100%; height: 2.75rem; min-height: 2.75rem; padding-inline-start: 2.5rem; }
 .legacy-search-results { position: absolute; top: calc(100% + 0.5rem); right: 0; left: 0; z-index: 60; display: grid; max-height: min(30rem, 70vh); gap: 0.1875rem; overflow-y: auto; padding: 0.4375rem; }
 .legacy-search-results { border: 1px solid var(--shadcn-border); border-radius: var(--shadcn-radius-lg); background: var(--shadcn-popover); color: var(--shadcn-popover-foreground); box-shadow: var(--shadcn-shadow-md); }
 .legacy-search-results > p { margin: 0; padding: 1.125rem 0.75rem; color: var(--shadcn-muted-foreground); text-align: center; }

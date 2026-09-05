@@ -96,6 +96,40 @@ public sealed class SameOriginHostingContractTests
     }
 
     [Fact]
+    public async Task BffFrameworkMisses_AreNeverCachedByTheBrowser()
+    {
+        await using var factory = new SameOriginBffFactory();
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            AllowAutoRedirect = false,
+            BaseAddress = new Uri("https://localhost"),
+        });
+
+        using var response = await client.GetAsync("/_framework/missing-client-assembly.wasm");
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        Assert.True(response.Headers.CacheControl?.NoStore);
+        Assert.True(response.Headers.CacheControl?.NoCache);
+    }
+
+    [Fact]
+    public async Task BffShell_ContentSecurityPolicyAllowsTheGoogleIdentityRuntime()
+    {
+        await using var factory = new SameOriginBffFactory();
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            AllowAutoRedirect = false,
+            BaseAddress = new Uri("https://localhost"),
+        });
+
+        using var response = await client.GetAsync("/Login");
+        var policy = Assert.Single(response.Headers.GetValues("Content-Security-Policy"));
+
+        Assert.Contains("script-src 'self' 'unsafe-inline' 'unsafe-eval' https://accounts.google.com", policy, StringComparison.Ordinal);
+        Assert.Contains("frame-src https://accounts.google.com", policy, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task BffDashboardEndpoint_IsNotClaimedByTheWasmFallbackForAnonymousUsers()
     {
         await using var factory = new SameOriginBffFactory();

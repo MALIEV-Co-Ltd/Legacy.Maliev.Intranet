@@ -27,7 +27,8 @@
     font-weight: 500;
 }
 
-.list-toolbar__field ::deep .shadcn-native-select-wrapper,
+.list-toolbar__field ::deep [data-slot="select"],
+.list-toolbar__field ::deep [data-slot="select-trigger"],
 .list-toolbar__field ::deep input {
     min-width: 0;
     width: 100%;
@@ -92,7 +93,7 @@
     }
 
     .list-toolbar__grid ::deep input,
-    .list-toolbar__grid ::deep select {
+    .list-toolbar__grid ::deep [data-slot="select-trigger"] {
         height: var(--shadcn-control-height) !important;
         min-height: var(--shadcn-control-height) !important;
     }
@@ -144,7 +145,7 @@
     }
 
     .list-toolbar__grid ::deep input,
-    .list-toolbar__grid ::deep select {
+    .list-toolbar__grid ::deep [data-slot="select-trigger"] {
         height: var(--shadcn-control-height) !important;
         min-height: var(--shadcn-control-height) !important;
     }

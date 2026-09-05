@@ -24,7 +24,7 @@ public sealed class ServerErrorReportWasmMigrationContractTests
         Assert.Contains("SupplyParameterFromQuery", page, StringComparison.Ordinal);
         Assert.Contains("LogTimestamp_Descending", page, StringComparison.Ordinal);
         Assert.Contains("Math.Clamp", page, StringComparison.Ordinal);
-        Assert.Contains("OperationalTable", page, StringComparison.Ordinal);
+        Assert.Contains("OperationalDataTable", page, StringComparison.Ordinal);
         Assert.Contains("DetailHref=\"@(_ => null)\"", page, StringComparison.Ordinal);
         Assert.DoesNotContain("/Server/ErrorReport/View", page, StringComparison.Ordinal);
         Assert.DoesNotContain("StackTrace", page, StringComparison.OrdinalIgnoreCase);

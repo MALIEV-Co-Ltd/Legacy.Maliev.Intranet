@@ -24,7 +24,7 @@ public sealed class BlazorWasmArchitectureContractTests
 
         Assert.Contains("Microsoft.NET.Sdk.BlazorWebAssembly", project, StringComparison.Ordinal);
         Assert.Contains("<TargetFramework>net10.0</TargetFramework>", project, StringComparison.Ordinal);
-        Assert.Contains("PackageReference Include=\"Maliev.ShadcnBlazor\" Version=\"1.2.2\"", project, StringComparison.Ordinal);
+        Assert.Contains("PackageReference Include=\"Maliev.ShadcnBlazor\" Version=\"2.2.0\"", project, StringComparison.Ordinal);
         Assert.DoesNotContain("PackageReference Include=\"MudBlazor\"", project, StringComparison.Ordinal);
         Assert.Contains("..\\Legacy.Maliev.Intranet.Contracts\\Legacy.Maliev.Intranet.Contracts.csproj", project, StringComparison.Ordinal);
         Assert.DoesNotContain("RefreshToken", source, StringComparison.OrdinalIgnoreCase);
@@ -53,7 +53,8 @@ public sealed class BlazorWasmArchitectureContractTests
         Assert.Contains("<EditForm", login, StringComparison.Ordinal);
         Assert.Contains("<ShadcnFormField", login, StringComparison.Ordinal);
         Assert.Contains("Type=\"email\"", login, StringComparison.Ordinal);
-        Assert.Contains("Type=\"password\"", login, StringComparison.Ordinal);
+        Assert.Contains("Type=\"@(_passwordVisible ? \"text\" : \"password\")\"", login, StringComparison.Ordinal);
+        Assert.Contains("<ShadcnInputGroup", login, StringComparison.Ordinal);
         Assert.Contains("Required=\"true\"", login, StringComparison.Ordinal);
         Assert.Contains("legacy-login-error", login, StringComparison.Ordinal);
         Assert.Contains("<ShadcnSpinner", login, StringComparison.Ordinal);

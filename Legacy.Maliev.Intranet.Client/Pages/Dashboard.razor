@@ -62,17 +62,20 @@
     {
         @if (_snapshot.DegradedSources.Count > 0)
         {
-            <ShadcnAlert AlertRole="ShadcnAlertRole.Status" Class="dashboard-alert"><ShadcnAlertDescription>@Text["PartialDataWarning"]</ShadcnAlertDescription></ShadcnAlert>
+            <ShadcnAlert AlertRole="ShadcnAlertRole.Status" Class="dashboard-alert dashboard-alert--warning">
+                <ShadcnIcon Icon="WarningIcon" Size="20" aria-hidden="true" />
+                <ShadcnAlertDescription>@Text["PartialDataWarning"]</ShadcnAlertDescription>
+            </ShadcnAlert>
         }
 
-        <div class="dashboard-primary-grid">
+        <div class="dashboard-bento-grid">
             @if (_snapshot.RecentOrders.Count > 0)
             {
                 <DashboardPanel Title="@Text["ProductionPipeline"]"
                                 Subtitle="@Text["ProductionPipelineSubtitle"]"
                                 NavigateTo="/sales/orders"
                                 LinkText="@Text["ViewAll"]"
-                                Class="dashboard-wide-panel">
+                                Class="dashboard-bento dashboard-bento--wide">
                     <div class="dashboard-table-scroll">
                         <ShadcnTable Class="dashboard-table" ExpectedColumnCount="7" data-projection="dashboard-orders">
                             <ShadcnTableCaption Class="sr-only">@Text["RecentProductionOrders"]</ShadcnTableCaption>
@@ -96,13 +99,29 @@
                 </DashboardPanel>
             }
 
+            @if (_snapshot.Cards.Count > 0)
+            {
+                <DashboardPanel Title="@Text["WorkspaceTotals"]"
+                                Class="dashboard-bento dashboard-bento--compact">
+                    <div class="dashboard-metric-grid">
+                        @foreach (var card in _snapshot.Cards)
+                        {
+                            <DashboardMetricCard Label="@Text[$"Metric_{card.Key}"]"
+                                                 Value="@card.Count.ToString("N0")"
+                                                 NavigateTo="@card.NavigateTo"
+                                                 LinkText="@Text["OpenWorkspace"]" />
+                        }
+                    </div>
+                </DashboardPanel>
+            }
+
             @if (_snapshot.RecentQuotations.Count > 0)
             {
                 <DashboardPanel Title="@Text["RecentQuotations"]"
                                 Subtitle="@Text["RecentQuotationsSubtitle"]"
                                 NavigateTo="/Quotations/Index"
                                 LinkText="@Text["ViewAll"]"
-                                Class="dashboard-wide-panel">
+                                Class="dashboard-bento dashboard-bento--wide">
                     <div class="dashboard-table-scroll">
                         <ShadcnTable Class="dashboard-table dashboard-table-compact" ExpectedColumnCount="6" data-projection="dashboard-quotations">
                             <ShadcnTableCaption Class="sr-only">@Text["RecentQuotations"]</ShadcnTableCaption>
@@ -124,15 +143,14 @@
                     </div>
                 </DashboardPanel>
             }
-        </div>
 
-        <div class="dashboard-primary-grid">
             @if (_snapshot.RecentPayments.Count > 0)
             {
                 <DashboardPanel Title="@Text["RecentPayments"]"
                                 Subtitle="@Text["RecentPaymentsSubtitle"]"
                                 NavigateTo="/Finances/Index"
-                                LinkText="@Text["ViewAll"]">
+                                LinkText="@Text["ViewAll"]"
+                                Class="dashboard-bento dashboard-bento--full">
                     <div class="dashboard-table-scroll">
                         <ShadcnTable Class="dashboard-table dashboard-table-compact" ExpectedColumnCount="5" data-projection="dashboard-payments">
                             <ShadcnTableCaption Class="sr-only">@Text["RecentPayments"]</ShadcnTableCaption>
@@ -159,7 +177,8 @@
                 <DashboardPanel Title="@Text["RecentCustomers"]"
                                 Subtitle="@Text["RecentCustomersSubtitle"]"
                                 NavigateTo="/customers"
-                                LinkText="@Text["ViewAll"]">
+                                LinkText="@Text["ViewAll"]"
+                                Class="dashboard-bento dashboard-bento--medium">
                     <div class="dashboard-table-scroll">
                         <ShadcnTable Class="dashboard-table dashboard-table-compact" ExpectedColumnCount="3" data-projection="dashboard-customers">
                             <ShadcnTableCaption Class="sr-only">@Text["RecentCustomers"]</ShadcnTableCaption>
@@ -178,12 +197,10 @@
                     </div>
                 </DashboardPanel>
             }
-        </div>
 
-        <div class="dashboard-secondary-grid">
             @if (_snapshot.RecentActivity.Count > 0)
             {
-                <DashboardPanel Title="@Text["RecentActivity"]" Subtitle="@Text["RecentActivitySubtitle"]">
+                <DashboardPanel Title="@Text["RecentActivity"]" Subtitle="@Text["RecentActivitySubtitle"]" Class="dashboard-bento dashboard-bento--vertical">
                     <ol class="dashboard-activity-list">
                         @foreach (var activity in _snapshot.RecentActivity)
                         {
@@ -202,7 +219,7 @@
 
             @if (_snapshot.MonthlyFinance.Count > 0)
             {
-                <DashboardPanel Title="@Text["FinancialSnapshot"]" Subtitle="@Text["FinancialSnapshotSubtitle"]" NavigateTo="/Finances/Index" LinkText="@Text["ViewAll"]">
+                <DashboardPanel Title="@Text["FinancialSnapshot"]" Subtitle="@Text["FinancialSnapshotSubtitle"]" NavigateTo="/Finances/Index" LinkText="@Text["ViewAll"]" Class="dashboard-bento dashboard-bento--compact">
                     <div class="dashboard-finance-grid">
                         @foreach (var detail in _snapshot.MonthlyFinance)
                         {
@@ -221,7 +238,7 @@
             @if (_snapshot.QuotationSummary is not null)
             {
                 var quotationTotal = _snapshot.QuotationSummary.Accepted + _snapshot.QuotationSummary.Declined + _snapshot.QuotationSummary.Open;
-                <DashboardPanel Title="@Text["QuotationDecisions"]" Subtitle="@Text["QuotationDecisionsSubtitle"]" NavigateTo="/Quotations/Index" LinkText="@Text["ViewAll"]">
+                <DashboardPanel Title="@Text["QuotationDecisions"]" Subtitle="@Text["QuotationDecisionsSubtitle"]" NavigateTo="/Quotations/Index" LinkText="@Text["ViewAll"]" Class="dashboard-bento dashboard-bento--compact">
                     @if (quotationTotal == 0)
                     {
                         <p class="dashboard-panel-empty">@Text["NoQuotationDecisions"]</p>
@@ -229,11 +246,25 @@
                     else
                     {
                         <div class="dashboard-decision-summary">
-                            <div class="dashboard-decision-total"><strong>@quotationTotal.ToString("N0")</strong><span>@Text["Total"]</span></div>
-                            <ul>
-                                <li><span class="dashboard-dot is-accepted"></span><span>@Text["Accepted"]</span><strong>@_snapshot.QuotationSummary.Accepted.ToString("N0")</strong><small>@Percent(_snapshot.QuotationSummary.Accepted, quotationTotal)</small></li>
-                                <li><span class="dashboard-dot is-declined"></span><span>@Text["Declined"]</span><strong>@_snapshot.QuotationSummary.Declined.ToString("N0")</strong><small>@Percent(_snapshot.QuotationSummary.Declined, quotationTotal)</small></li>
-                                <li><span class="dashboard-dot is-open"></span><span>@Text["Open"]</span><strong>@_snapshot.QuotationSummary.Open.ToString("N0")</strong><small>@Percent(_snapshot.QuotationSummary.Open, quotationTotal)</small></li>
+                            <ShadcnChart Id="quotation-decisions"
+                                         Class="dashboard-decision-chart"
+                                         Type="ShadcnChartType.Donut"
+                                         Config="@QuotationDecisionChartConfig"
+                                         Categories="@QuotationDecisionCategories"
+                                         Series="@QuotationDecisionSeries"
+                                         Title="@Text["QuotationDecisions"]"
+                                         ShowAxis="false"
+                                         ShowTicks="false"
+                                         ShowGrid="false"
+                                         ShowLegend="false"
+                                         Animated="false"
+                                         InitialWidth="104"
+                                         InitialHeight="104" />
+                            <div class="dashboard-decision-total" aria-hidden="true"><strong>@quotationTotal.ToString("N0")</strong><span>@Text["Total"]</span></div>
+                            <ul class="dashboard-decision-legend" data-slot="chart-legend">
+                                <li data-slot="chart-legend-item"><span class="shadcn-chart-legend-icon is-accepted"></span><span>@Text["Accepted"]</span><strong>@_snapshot.QuotationSummary.Accepted.ToString("N0")</strong><small>@Percent(_snapshot.QuotationSummary.Accepted, quotationTotal)</small></li>
+                                <li data-slot="chart-legend-item"><span class="shadcn-chart-legend-icon is-declined"></span><span>@Text["Declined"]</span><strong>@_snapshot.QuotationSummary.Declined.ToString("N0")</strong><small>@Percent(_snapshot.QuotationSummary.Declined, quotationTotal)</small></li>
+                                <li data-slot="chart-legend-item"><span class="shadcn-chart-legend-icon is-open"></span><span>@Text["Open"]</span><strong>@_snapshot.QuotationSummary.Open.ToString("N0")</strong><small>@Percent(_snapshot.QuotationSummary.Open, quotationTotal)</small></li>
                             </ul>
                         </div>
                     }
@@ -242,7 +273,7 @@
 
             @if (_snapshot.RecentOrders.Count > 0)
             {
-                <DashboardPanel Title="@Text["RecentOrderProgress"]" Subtitle="@Text["RecentOrderProgressSubtitle"]" NavigateTo="/sales/orders" LinkText="@Text["ViewAll"]">
+                <DashboardPanel Title="@Text["RecentOrderProgress"]" Subtitle="@Text["RecentOrderProgressSubtitle"]" NavigateTo="/sales/orders" LinkText="@Text["ViewAll"]" Class="dashboard-bento dashboard-bento--vertical">
                     <div class="dashboard-progress-summary">
                         @foreach (var status in OrderProgress)
                         {
@@ -265,12 +296,28 @@
     private static readonly ShadcnIconData InvoiceIcon = LucideIconCatalog.Instance.Get(LucideIconNames.ReceiptText);
     private static readonly ShadcnIconData QuotationRequestIcon = LucideIconCatalog.Instance.Get(LucideIconNames.Mail);
     private static readonly ShadcnIconData NotificationIcon = LucideIconCatalog.Instance.Get(LucideIconNames.Badge);
+    private static readonly ShadcnIconData WarningIcon = LucideIconCatalog.Instance.Get(LucideIconNames.TriangleAlert);
     private IReadOnlyList<PageBreadcrumbItem> Breadcrumbs => [new(Text["Dashboard"])];
     private LegacyDashboardSnapshot? _snapshot;
     private string? _error;
     private bool _loading = true;
     private DotNetObjectReference<Dashboard>? _selfReference;
     private int? _refreshHandle;
+
+    private ShadcnChartConfig QuotationDecisionChartConfig => new()
+    {
+        ["accepted"] = new(Text["Accepted"]) { Color = "var(--shadcn-chart-2)" },
+        ["declined"] = new(Text["Declined"]) { Color = "var(--shadcn-destructive)" },
+        ["open"] = new(Text["Open"]) { Color = "var(--shadcn-chart-4)" },
+    };
+
+    private static readonly string[] QuotationDecisionCategories = ["Total"];
+    private IReadOnlyList<ShadcnChartSeries> QuotationDecisionSeries =>
+    [
+        new("accepted", [(double)(_snapshot?.QuotationSummary?.Accepted ?? 0)]),
+        new("declined", [(double)(_snapshot?.QuotationSummary?.Declined ?? 0)]),
+        new("open", [(double)(_snapshot?.QuotationSummary?.Open ?? 0)]),
+    ];
 
     private bool HasOperationalContent => _snapshot is not null &&
         (_snapshot.RecentOrders.Count > 0 || _snapshot.RecentQuotations.Count > 0 ||

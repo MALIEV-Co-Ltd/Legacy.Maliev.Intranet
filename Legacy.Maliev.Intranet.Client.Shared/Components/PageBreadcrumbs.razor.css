@@ -1,8 +1,11 @@
 .page-breadcrumbs {
+    width: 100%;
     min-width: 0;
+    padding: 0.5rem clamp(1rem, 2vw, 2rem) 0;
     color: var(--shadcn-muted-foreground);
     font-size: 0.8125rem;
     line-height: 1.25rem;
+    margin-bottom: 0.5rem;
 }
 
 .page-breadcrumbs ol {
@@ -36,12 +39,16 @@
 }
 
 .page-breadcrumbs ::deep .legacy-link--navigation {
-    min-height: 2.25rem;
+    min-height: 1.5rem;
     padding-inline: 0.25rem;
     color: inherit;
 }
 
 @media (max-width: 720px), (pointer: coarse) {
+    .page-breadcrumbs {
+        padding-inline: 0.75rem;
+    }
+
     .page-breadcrumbs ::deep .legacy-link--navigation {
         min-height: 2.75rem;
         padding-inline: 0.5rem;

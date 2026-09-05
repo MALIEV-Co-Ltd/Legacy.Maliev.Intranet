@@ -3,7 +3,7 @@
     min-height: 0;
     display: flex;
     flex-direction: column;
-    overflow: hidden;
+    overflow: visible;
     color: var(--maliev-ink);
 }
 
@@ -199,6 +199,11 @@
 
 .mlv-mono {
     font-family: var(--maliev-font-mono);
+}
+
+:where(.operational-table, .shadcn-table) .mlv-mono {
+    font-family: inherit;
+    font-variant-numeric: tabular-nums;
 }
 
 .mlv-empty {

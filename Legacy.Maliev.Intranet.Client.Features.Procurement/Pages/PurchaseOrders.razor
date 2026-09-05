@@ -16,62 +16,25 @@
         <ShadcnButton OnClick="OpenCreate">@Text["CreatePurchaseOrder"]</ShadcnButton>
     </header>
 
-    <ListToolbar TSort="PurchaseOrderListSort"
-                 Value="@ToolbarValue"
-                 Defaults="@ToolbarDefaults"
-                 SortOptions="@ToolbarSortOptions"
-                 PageSizeOptions="@ToolbarPageSizes"
-                 SearchLabel="@Text["Search"]"
-                 ResultsId="purchase-orders-results"
-                 ResultsStatus="@ToolbarResultsStatus"
-                 IsBusy="@loading"
-                 OnRequest="HandleToolbarRequestAsync" />
-
-    @if (loading)
-    {
-        <div class="procurement-list-page__loading" role="status" aria-live="polite"><ShadcnSpinner Label="@Text["Loading"]" Size="1.25rem" /><span>@Text["Loading"]</span></div>
-    }
-    else if (!string.IsNullOrWhiteSpace(error))
-    {
-        <ShadcnAlert Variant="ShadcnAlertVariant.Destructive" AlertRole="ShadcnAlertRole.Alert"><ShadcnAlertDescription>@error</ShadcnAlertDescription></ShadcnAlert>
-    }
-    else if (page is null || page.Items.Count == 0)
-    {
-        <ShadcnAlert AlertRole="ShadcnAlertRole.Status"><ShadcnAlertDescription>@Text["Empty"]</ShadcnAlertDescription></ShadcnAlert>
-    }
-    else
-    {
-        <div id="purchase-orders-results" aria-busy="false">
-        <OperationalTable TItem="PurchaseOrderListItem"
-                          TKey="int"
-                          Items="@(page.Items)"
-                          KeySelector="@(order => order.Id)"
-                          TableLabel="@Text["PurchaseOrdersTable"]"
-                          ColumnCount="7"
-                          State="@tableState"
-                          DetailHref="@(order => $"/PurchaseOrders/View?id={order.Id}")"
-                          DetailAriaLabel="@(order => Text["ViewPurchaseOrder", order.Id])"
-                          ExpandAriaLabel="@(order => Text["ExpandPurchaseOrder", order.Id])"
-                          CollapseAriaLabel="@(order => Text["CollapsePurchaseOrder", order.Id])">
-            <HeaderContent>
-                <tr>
-                    <th class="operational-table__identity" data-priority="essential">@Text["Id"]</th>
-                    <th data-priority="essential">@Text["Employee"]</th>
-                    <th data-priority="essential">@Text["Fob"]</th>
-                    <th data-priority="essential">@Text["CreatedDate"]</th>
-                    <th data-priority="supporting">@Text["Terms"]</th>
-                    <th data-priority="supporting">@Text["ShippingMethod"]</th>
-                    <th class="operational-table__actions-heading"><span class="visually-hidden">@Text["Actions"]</span></th>
-                </tr>
-            </HeaderContent>
-            <RowContent Context="order">
-                <td class="operational-table__identity mlv-mono" data-priority="essential">@order.Id</td>
-                <td data-priority="essential">@EmployeeName(order.EmployeeId)</td>
-                <td data-priority="essential">@ValueOrFallback(order.Fob)</td>
-                <td class="mlv-mono" data-priority="essential">@FormatDate(order.CreatedDate)</td>
-                <td data-priority="supporting">@ValueOrFallback(order.Terms)</td>
-                <td data-priority="supporting">@ValueOrFallback(order.ShippingMethod)</td>
-            </RowContent>
+    <div id="purchase-orders-results" aria-label="@Text["PurchaseOrdersTable"]">
+        <OperationalDataTable TItem="PurchaseOrderListItem"
+                              Items="@(page?.Items ?? [])"
+                              Columns="@Columns"
+                              RowKey="@(order => order.Id.ToString(CultureInfo.InvariantCulture))"
+                              State="@dataTableState"
+                              StateChanged="HandleDataTableStateChangedAsync"
+                              RequestChanged="HandleDataTableRequestAsync"
+                              TotalCount="@(page?.TotalRecords ?? 0)"
+                              Loading="@loading"
+                              Error="@error"
+                              FilterPlaceholder="@Text["Search"]"
+                              EmptyText="@Text["Empty"]"
+                              LoadingText="@Text["Loading"]"
+                              ActionsLabel="@Text["Actions"]"
+                              PageSizeOptions="@ToolbarPageSizes"
+                              DetailHref="@(order => $"/PurchaseOrders/View?id={order.Id}")"
+                              DetailAriaLabel="@(order => Text["ViewPurchaseOrder", order.Id])"
+                              DetailsAriaLabel="@(order => Text["ExpandPurchaseOrder", order.Id])">
             <QuickViewContent Context="order">
                 <dl class="operational-quick-view">
                     <div><dt>@Text["Terms"]</dt><dd>@ValueOrFallback(order.Terms)</dd></div>
@@ -80,14 +43,8 @@
                     <div><dt>@Text["Fob"]</dt><dd>@ValueOrFallback(order.Fob)</dd></div>
                 </dl>
             </QuickViewContent>
-        </OperationalTable>
-        </div>
-        <nav class="procurement-pager" aria-label="@Text["PurchaseOrderPages"]">
-            <ShadcnButton Variant="ShadcnButtonVariant.Outline" Disabled="@(!page.HasPreviousPage)" OnClick="PreviousPageAsync">@Text["Previous"]</ShadcnButton>
-            <span aria-live="polite">@Text["PageSummary", page.PageIndex, page.TotalPages, page.TotalRecords]</span>
-            <ShadcnButton Variant="ShadcnButtonVariant.Outline" Disabled="@(!page.HasNextPage)" OnClick="NextPageAsync">@Text["Next"]</ShadcnButton>
-        </nav>
-    }
+        </OperationalDataTable>
+    </div>
 </main>
 
 @code {
@@ -104,23 +61,22 @@
     private bool loading;
     private PurchaseOrderListSort currentSort = PurchaseOrderListSort.PurchaseOrderId_Descending;
     private readonly LatestRequestGate loadGate = new();
-    private readonly OperationalTableState<int> tableState = new();
+    private ShadcnDataTableState dataTableState = new() { PageSize = 25 };
     private IReadOnlyList<PageBreadcrumbItem> Breadcrumbs =>
     [
         new(Text["Operations"], "/Dashboard"),
         new(Text["PurchaseOrders"]),
     ];
 
-    private ListToolbarState<PurchaseOrderListSort> ToolbarValue => new(Search, currentSort, Size);
-    private static ListToolbarState<PurchaseOrderListSort> ToolbarDefaults =>
-        new(null, PurchaseOrderListSort.PurchaseOrderId_Descending, 25);
-    private IReadOnlyList<ListToolbarOption<PurchaseOrderListSort>> ToolbarSortOptions =>
-        Enum.GetValues<PurchaseOrderListSort>()
-            .Select(value => new ListToolbarOption<PurchaseOrderListSort>(value, Text[value.ToString()].Value))
-            .ToArray();
-    private string? ToolbarResultsStatus => page is null
-        ? null
-        : Text["PageSummary", page.PageIndex, page.TotalPages, page.TotalRecords].Value;
+    private IReadOnlyList<ShadcnDataTableColumn<PurchaseOrderListItem>> Columns =>
+    [
+        new("id", Text["Id"], order => order.Id) { Sortable = true, Hideable = false },
+        new("employee", Text["Employee"], order => EmployeeName(order.EmployeeId)) { MinWidth = "12rem" },
+        new("fob", Text["Fob"], order => ValueOrFallback(order.Fob)),
+        new("created", Text["CreatedDate"], order => order.CreatedDate) { Sortable = true, MinWidth = "10rem", CellTemplate = order => builder => builder.AddContent(0, FormatDate(order.CreatedDate)) },
+        new("terms", Text["Terms"], order => ValueOrFallback(order.Terms)) { MinWidth = "12rem" },
+        new("shipping", Text["ShippingMethod"], order => ValueOrFallback(order.ShippingMethod)) { MinWidth = "10rem" },
+    ];
 
     protected override async Task OnParametersSetAsync()
     {
@@ -129,13 +85,13 @@
         currentSort = Enum.TryParse<PurchaseOrderListSort>(SortQuery, ignoreCase: true, out var parsedSort) && Enum.IsDefined(parsedSort)
             ? parsedSort
             : PurchaseOrderListSort.PurchaseOrderId_Descending;
+        dataTableState = BuildDataTableState();
         await LoadAsync();
     }
 
     private async Task LoadAsync()
     {
         using var lease = loadGate.Begin();
-        tableState.Clear();
         if (lease.IsCurrent)
         {
             loading = true;
@@ -228,27 +184,46 @@
         return true;
     }
 
-    private Task HandleToolbarRequestAsync(ListToolbarRequest<PurchaseOrderListSort> request)
+    private Task HandleDataTableStateChangedAsync(ShadcnDataTableState state)
     {
-        if (request.Reason == ListToolbarChangeReason.Refreshed && request.State == ToolbarValue)
-        {
-            return LoadAsync();
-        }
-
-        return NavigateAsync(1, request.State.Search, request.State.Sort, request.State.PageSize, replace: true);
+        dataTableState = state;
+        return Task.CompletedTask;
     }
 
-    private Task PreviousPageAsync() => NavigateAsync(Math.Max(1, Index - 1), Search, currentSort, Size);
-    private Task NextPageAsync() => NavigateAsync(Index + 1, Search, currentSort, Size);
+    private Task HandleDataTableRequestAsync(ShadcnDataTableRequest request) =>
+        NavigateAsync(request.PageIndex + 1, request.Query, MapSort(request.Sorts), request.PageSize, replace: true);
     private void OpenCreate() => Navigation.NavigateTo("/PurchaseOrders/Create");
     private Task NavigateAsync(int index, string? search, PurchaseOrderListSort sort, int size, bool replace = false)
     {
-        tableState.Clear();
         Navigation.NavigateTo($"/PurchaseOrders/Index?search={Uri.EscapeDataString(search ?? string.Empty)}&sort={sort}&index={index}&size={Math.Clamp(size, 1, 250)}", replace: replace);
         return Task.CompletedTask;
     }
 
     public void Dispose() => loadGate.Dispose();
+
+    private ShadcnDataTableState BuildDataTableState() => new()
+    {
+        Query = Search ?? string.Empty,
+        PageIndex = Math.Max(0, Index - 1),
+        PageSize = Size,
+        Sorts = currentSort switch
+        {
+            PurchaseOrderListSort.PurchaseOrderId_Ascending => [new("id", ShadcnSortDirection.Ascending)],
+            PurchaseOrderListSort.PurchaseOrderId_Descending => [new("id", ShadcnSortDirection.Descending)],
+            PurchaseOrderListSort.PurchaseOrderCreatedDate_Ascending => [new("created", ShadcnSortDirection.Ascending)],
+            PurchaseOrderListSort.PurchaseOrderCreatedDate_Descending => [new("created", ShadcnSortDirection.Descending)],
+            _ => [],
+        },
+    };
+
+    private PurchaseOrderListSort MapSort(IReadOnlyList<ShadcnDataTableSort> sorts) => sorts.FirstOrDefault() switch
+    {
+        { ColumnKey: "id", Direction: ShadcnSortDirection.Ascending } => PurchaseOrderListSort.PurchaseOrderId_Ascending,
+        { ColumnKey: "id", Direction: ShadcnSortDirection.Descending } => PurchaseOrderListSort.PurchaseOrderId_Descending,
+        { ColumnKey: "created", Direction: ShadcnSortDirection.Ascending } => PurchaseOrderListSort.PurchaseOrderCreatedDate_Ascending,
+        { ColumnKey: "created", Direction: ShadcnSortDirection.Descending } => PurchaseOrderListSort.PurchaseOrderCreatedDate_Descending,
+        _ => currentSort,
+    };
 
     private string EmployeeName(int? id) => id is int value && employeeNames.TryGetValue(value, out var name) ? name : "-";
     private static string ValueOrFallback(string? value) => string.IsNullOrWhiteSpace(value) ? "-" : value;

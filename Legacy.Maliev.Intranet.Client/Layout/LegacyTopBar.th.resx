@@ -9,10 +9,13 @@
   <data name="MALIEV dashboard" xml:space="preserve"><value>แดชบอร์ด MALIEV</value></data>
   <data name="Dashboard" xml:space="preserve"><value>ภาพรวม</value></data>
   <data name="Primary navigation" xml:space="preserve"><value>เมนูหลัก</value></data>
+  <data name="Expand or collapse {0}" xml:space="preserve"><value>ขยายหรือยุบ {0}</value></data>
   <data name="Navigation" xml:space="preserve"><value>เมนูนำทาง</value></data>
   <data name="More" xml:space="preserve"><value>เพิ่มเติม</value></data>
   <data name="More navigation" xml:space="preserve"><value>เมนูเพิ่มเติม</value></data>
   <data name="Employee menu" xml:space="preserve"><value>เมนูพนักงาน</value></data>
+  <data name="Employee preferences" xml:space="preserve"><value>การตั้งค่าพนักงาน</value></data>
+  <data name="Preferences" xml:space="preserve"><value>การตั้งค่า</value></data>
   <data name="Employee" xml:space="preserve"><value>พนักงาน</value></data>
   <data name="Employee workspace" xml:space="preserve"><value>พื้นที่ทำงานพนักงาน</value></data>
   <data name="My profile" xml:space="preserve"><value>ข้อมูลของฉัน</value></data>
@@ -42,6 +45,8 @@
   <data name="Create an order" xml:space="preserve"><value>สร้างใบสั่งผลิตใหม่</value></data>
   <data name="Quotation requests" xml:space="preserve"><value>คำขอใบเสนอราคา</value></data>
   <data name="Website quotation queue" xml:space="preserve"><value>รายการคำขอจากเว็บไซต์</value></data>
+  <data name="Quotation request count" xml:space="preserve"><value>คำขอใบเสนอราคา {0} รายการ</value></data>
+  <data name="Toggle navigation section" xml:space="preserve"><value>แสดงหรือซ่อนทางลัดของ {0}</value></data>
   <data name="Quotations" xml:space="preserve"><value>ใบเสนอราคา</value></data>
   <data name="Quotation lifecycle" xml:space="preserve"><value>การจัดการใบเสนอราคา</value></data>
   <data name="New quotation" xml:space="preserve"><value>สร้างใบเสนอราคา</value></data>

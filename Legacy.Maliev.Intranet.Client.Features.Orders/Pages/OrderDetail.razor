@@ -9,7 +9,13 @@
 <main class="order-detail">
 @if (loading)
 {
-    <div class="order-detail__loading" role="status" aria-live="polite"><ShadcnSpinner Label="@Text["Loading"]" Size="1.25rem" /><span>@Text["Loading"]</span></div>
+    <section class="order-detail__loading" role="status" aria-live="polite" aria-busy="true">
+        <div class="order-detail__loading-status">
+            <ShadcnSpinner Label="@Text["Loading"]" Size="1.25rem" />
+            <span>@Text["Loading"]</span>
+        </div>
+        <ProgressiveSkeleton Layout="detail" Rows="6" ShowHeader="true" Label="@Text["Loading"]" />
+    </section>
 }
 else if (!string.IsNullOrWhiteSpace(error))
 {

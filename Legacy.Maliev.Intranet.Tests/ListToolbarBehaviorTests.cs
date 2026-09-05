@@ -9,7 +9,7 @@ public sealed class ListToolbarBehaviorTests
     private static readonly ListToolbarState<TestSort> Defaults = new(null, TestSort.Newest, 25);
 
     [Fact]
-    public void SharedToolbarUsesNativeShadcnControls()
+    public void SharedToolbarUsesCustomizableShadcnControls()
     {
         var root = FindRoot();
         var source = File.ReadAllText(Path.Combine(
@@ -19,7 +19,8 @@ public sealed class ListToolbarBehaviorTests
             "ListToolbar.razor"));
 
         Assert.Contains("<ShadcnInput", source, StringComparison.Ordinal);
-        Assert.Contains("<ShadcnNativeSelect", source, StringComparison.Ordinal);
+        Assert.Contains("<ShadcnSelect", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("<ShadcnNativeSelect", source, StringComparison.Ordinal);
         Assert.Contains("<ShadcnButton", source, StringComparison.Ordinal);
         Assert.Contains("<ShadcnIcon", source, StringComparison.Ordinal);
         Assert.DoesNotContain("<Mud", source, StringComparison.Ordinal);

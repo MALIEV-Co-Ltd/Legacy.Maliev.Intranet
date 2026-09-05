@@ -1,4 +1,5 @@
 @using Legacy.Maliev.Intranet.Client.Components.Shell
+@using Legacy.Maliev.Intranet.Client.Shared.Components
 @using Legacy.Maliev.Intranet.Contracts
 @inject LegacyThemeService ThemeService
 @inject IStringLocalizer<LegacyTopBar> Text
@@ -19,18 +20,11 @@
         <LegacyQuickActions Session="Session" />
     </div>
     <div class="legacy-topbar__utilities legacy-topbar-utilities">
-        <LegacyLanguageSelector />
-
-        <ShadcnButton Class="legacy-theme-toggle" Variant="ShadcnButtonVariant.Ghost" Size="ShadcnButtonSize.Icon"
-                      aria-label="@ThemeLabel" title="@ThemeLabel" OnClick="ToggleThemeAsync">
-            <ShadcnIcon Icon="@(ThemeService.IsDarkMode ? SunIcon : MoonIcon)" Size="20" />
-        </ShadcnButton>
-
         <AuthorizeView>
             <Authorized Context="auth">
                 <div class="legacy-profile-menu">
                 <ShadcnButton Class="legacy-profile" Variant="ShadcnButtonVariant.Ghost"
-                              aria-haspopup="menu" aria-expanded="@_profileMenuOpen"
+                              aria-haspopup="dialog" aria-expanded="@_profileMenuOpen"
                               aria-label="@Text["Employee menu"]" OnClick="ToggleProfileMenuAsync">
                     <ShadcnAvatar Class="legacy-session-avatar" aria-hidden="true">
                         <ShadcnAvatarFallback>@GetInitials(Session?.DisplayName ?? auth.User.Identity?.Name)</ShadcnAvatarFallback>
@@ -44,14 +38,28 @@
 
                 @if (_profileMenuOpen)
                 {
-                    <div class="legacy-profile-popover" role="menu">
-                        <a class="legacy-profile-action" role="menuitem" href="/hr/profile" @onclick="CloseProfileMenuAsync">
-                            <ShadcnIcon Icon="ProfileIcon" Size="20" />
-                            <span>@Text["My profile"]</span>
-                        </a>
+                    <div class="legacy-profile-popover" role="dialog" aria-label="@Text["Employee preferences"]">
+                        <div class="legacy-profile-preferences" role="group" aria-labelledby="legacy-profile-preferences-title">
+                            <strong id="legacy-profile-preferences-title" class="legacy-profile-preferences-title">@Text["Preferences"]</strong>
+                            <span class="legacy-profile-preference-label">@Text["Language"]</span>
+                            <div class="legacy-profile-language">
+                                <LegacyLanguageSelector />
+                            </div>
+                            <ShadcnButton Class="legacy-theme-toggle" Variant="ShadcnButtonVariant.Ghost"
+                                          aria-label="@ThemeLabel" title="@ThemeLabel" OnClick="ToggleThemeAsync">
+                                <ShadcnIcon Icon="@(ThemeService.IsDarkMode ? SunIcon : MoonIcon)" Size="20" />
+                                <span>@ThemeLabel</span>
+                            </ShadcnButton>
+                        </div>
                         <div class="legacy-profile-menu-divider"></div>
-                        <ShadcnButton Class="legacy-profile-action" Variant="ShadcnButtonVariant.Ghost"
-                                      role="menuitem" OnClick="SignOutFromProfileAsync">
+                        <LegacyLink Href="/hr/profile" Role="LegacyLinkRole.Navigation"
+                                    Class="legacy-profile-action" StartIconData="ProfileIcon"
+                                    AriaLabel="@Text["My profile"]" @onclick="CloseProfileMenuAsync">
+                            @Text["My profile"]
+                        </LegacyLink>
+                        <div class="legacy-profile-menu-divider"></div>
+                        <ShadcnButton Class="legacy-profile-action legacy-profile-signout" Variant="ShadcnButtonVariant.Destructive"
+                                      OnClick="SignOutFromProfileAsync">
                             <ShadcnIcon Icon="SignOutIcon" Size="20" />
                             <span>@Text["Sign out"]</span>
                         </ShadcnButton>

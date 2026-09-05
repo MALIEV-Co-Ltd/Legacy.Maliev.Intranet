@@ -23,11 +23,10 @@
 }
 
 /* Named workspace composition consumes package tokens without styling package internals. */
-.legacy-workspace-shell .legacy-topbar {
+.legacy-workspace-frame > .legacy-topbar {
     border-bottom: 1px solid var(--shadcn-border);
-    background: color-mix(in srgb, var(--shadcn-background) 94%, transparent);
+    background: var(--shadcn-background);
     box-shadow: var(--shadcn-shadow-xs);
-    backdrop-filter: blur(10px);
 }
 
 .legacy-navigation-rail,

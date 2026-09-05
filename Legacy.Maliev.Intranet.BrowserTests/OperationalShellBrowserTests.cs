@@ -9,6 +9,68 @@ public sealed class OperationalShellBrowserTests(
     IntranetClientServerFixture server,
     PlaywrightFixture playwright)
 {
+    [Fact]
+    public async Task DesktopShellKeepsNavigationScrollableWithoutHorizontalRailAndUsesOpaqueTopbar()
+    {
+        await using var context = await playwright.Browser.NewContextAsync(new()
+        {
+            ViewportSize = new() { Width = 1280, Height = 900 },
+            ReducedMotion = ReducedMotion.Reduce,
+        });
+        var page = await context.NewPageAsync();
+        await StubProductionBoundariesAsync(page);
+        await page.GotoAsync(new Uri(server.BaseUri, "sales/orders").AbsoluteUri);
+
+        var railGroups = page.Locator(".legacy-rail-groups");
+        await railGroups.WaitForAsync();
+        Assert.Equal("hidden", await railGroups.EvaluateAsync<string>("node => getComputedStyle(node).overflowX"));
+        Assert.Contains(await railGroups.EvaluateAsync<string>("node => getComputedStyle(node).overflowY"), new[] { "auto", "scroll" });
+
+        var topbar = page.Locator(".legacy-topbar");
+        var topbarSurface = await topbar.EvaluateAsync<JsonElement>(
+            "node => ({ background: getComputedStyle(node).backgroundColor, backdrop: getComputedStyle(node).backdropFilter })");
+        Assert.DoesNotContain("rgba(0, 0, 0, 0)", topbarSurface.GetProperty("background").GetString(), StringComparison.Ordinal);
+        Assert.Equal("none", topbarSurface.GetProperty("backdrop").GetString());
+
+        var breadcrumbs = page.Locator("nav.page-breadcrumbs ol");
+        await breadcrumbs.WaitForAsync();
+        var breadcrumbBounds = await breadcrumbs.BoundingBoxAsync();
+        Assert.NotNull(breadcrumbBounds);
+        Assert.True(breadcrumbBounds!.X >= 16, $"Breadcrumb started at {breadcrumbBounds.X}px.");
+        Assert.True(1280 - (breadcrumbBounds.X + breadcrumbBounds.Width) >= 16, $"Breadcrumb ended at {breadcrumbBounds.X + breadcrumbBounds.Width}px.");
+    }
+
+    [Fact]
+    public async Task DesktopNavigationUsesCompactRowsWhileMobileDrawerKeepsTouchTargets()
+    {
+        await using var context = await playwright.Browser.NewContextAsync(new()
+        {
+            ViewportSize = new() { Width = 1280, Height = 900 },
+            HasTouch = false,
+            ReducedMotion = ReducedMotion.Reduce,
+        });
+        var page = await context.NewPageAsync();
+        await StubProductionBoundariesAsync(page);
+        await page.GotoAsync(new Uri(server.BaseUri, "sales/orders").AbsoluteUri);
+
+        var desktopRail = page.Locator(".legacy-navigation-rail[data-mobile='false']");
+        await desktopRail.WaitForAsync();
+        Assert.True(await desktopRail.EvaluateAsync<bool>(
+            "element => element.getBoundingClientRect().width <= 232"));
+        Assert.True(await desktopRail.Locator(".legacy-rail-link:visible").EvaluateAllAsync<bool>(
+            "elements => elements.length > 0 && elements.every(element => { const height = element.getBoundingClientRect().height; return height >= 34 && height <= 38; })"));
+
+        await page.SetViewportSizeAsync(768, 844);
+        await page.Locator("#legacy-mobile-navigation-toggle").ClickAsync();
+
+        var drawer = page.Locator(".legacy-navigation-rail[data-mobile='true']");
+        await drawer.WaitForAsync();
+        Assert.True(await drawer.Locator(".legacy-rail-link:visible").EvaluateAllAsync<bool>(
+            "elements => elements.length > 0 && elements.every(element => element.getBoundingClientRect().height >= 44)"));
+        Assert.Equal("hidden", await drawer.Locator(".legacy-rail-groups").EvaluateAsync<string>(
+            "element => getComputedStyle(element).overflowX"));
+    }
+
     private static readonly (string ParentHref, string ChildHref)[] NavigationHierarchy =
     [
         ("/customers", "/customers/new"),
@@ -48,6 +110,296 @@ public sealed class OperationalShellBrowserTests(
         await avatar.WaitForAsync();
         Assert.Equal("BE", (await avatar.Locator("[data-slot='avatar-fallback']").InnerTextAsync()).Trim());
         Assert.Equal("1px", await avatar.EvaluateAsync<string>("element => getComputedStyle(element, '::after').borderTopWidth"));
+    }
+
+    [Theory]
+    [InlineData(1280)]
+    [InlineData(320)]
+    public async Task EmployeeMenuOwnsLanguagePreferenceAndPersistsCultureSelection(int width)
+    {
+        await using var context = await playwright.Browser.NewContextAsync(new()
+        {
+            ViewportSize = new() { Width = width, Height = 900 },
+            HasTouch = width <= 720,
+            ReducedMotion = ReducedMotion.Reduce,
+        });
+        var page = await context.NewPageAsync();
+        await StubProductionBoundariesAsync(page);
+        await page.GotoAsync(new Uri(server.BaseUri, "sales/orders").AbsoluteUri);
+
+        Assert.Equal(0, await page.Locator(".legacy-topbar__utilities > .legacy-language-selector").CountAsync());
+        if (width <= 720)
+        {
+            var trigger = page.GetByRole(AriaRole.Button, new() { Name = "Employee menu" });
+            Assert.False(await trigger.Locator(".legacy-profile-chevron").IsVisibleAsync());
+            var bounds = await trigger.BoundingBoxAsync();
+            Assert.NotNull(bounds);
+            Assert.InRange(Math.Abs(bounds!.Width - bounds.Height), 0, 1);
+        }
+
+        await page.GetByRole(AriaRole.Button, new() { Name = "Employee menu" }).ClickAsync();
+        var preference = page.Locator(".legacy-profile-popover .legacy-language-selector");
+        await preference.WaitForAsync();
+        var language = preference.GetByRole(AriaRole.Combobox, new() { Name = "Language" });
+        Assert.True(await language.EvaluateAsync<bool>(
+            "element => element.getBoundingClientRect().width >= 44 && element.getBoundingClientRect().height >= 44"));
+
+        await language.ClickAsync();
+        await page.GetByRole(AriaRole.Option, new() { Name = "ไทย", Exact = true }).ClickAsync();
+        await page.WaitForFunctionAsync("() => localStorage.getItem('maliev_culture') === 'th-TH'");
+        await page.WaitForLoadStateAsync(LoadState.DOMContentLoaded);
+        Assert.Equal("th-TH", await page.EvaluateAsync<string>("localStorage.getItem('maliev_culture')"));
+
+        await page.GetByRole(AriaRole.Button, new() { Name = "เมนูพนักงาน" }).ClickAsync();
+        Assert.Equal("ไทย", (await page.GetByRole(AriaRole.Combobox, new() { Name = "ภาษา" }).InnerTextAsync()).Trim());
+    }
+
+    [Fact]
+    public async Task EmployeeProfileTriggerIsAStandaloneTouchSizedCapsule()
+    {
+        await using var context = await playwright.Browser.NewContextAsync(new()
+        {
+            ViewportSize = new() { Width = 1280, Height = 900 },
+            ReducedMotion = ReducedMotion.Reduce,
+        });
+        var page = await context.NewPageAsync();
+        await StubProductionBoundariesAsync(page);
+        await page.GotoAsync(new Uri(server.BaseUri, "sales/orders").AbsoluteUri);
+
+        var visual = await page.GetByRole(AriaRole.Button, new() { Name = "Employee menu" })
+            .EvaluateAsync<JsonElement>("""
+                element => {
+                    const bounds = element.getBoundingClientRect();
+                    const style = getComputedStyle(element);
+                    const utilitiesStyle = getComputedStyle(element.closest('.legacy-topbar__utilities'));
+                    return {
+                        height: bounds.height,
+                        radius: Number.parseFloat(style.borderTopLeftRadius),
+                        background: style.backgroundColor,
+                        topbarBackground: getComputedStyle(element.closest('.legacy-topbar')).backgroundColor,
+                        textAlign: style.textAlign,
+                        utilitiesBorder: utilitiesStyle.borderTopWidth,
+                        utilitiesShadow: utilitiesStyle.boxShadow
+                    };
+                }
+                """);
+
+        var height = visual.GetProperty("height").GetDouble();
+        Assert.True(height >= 44, visual.ToString());
+        Assert.True(visual.GetProperty("radius").GetDouble() >= height / 2 - 1, visual.ToString());
+        Assert.DoesNotContain("rgba(0, 0, 0, 0)", visual.GetProperty("background").GetString(), StringComparison.Ordinal);
+        Assert.NotEqual(visual.GetProperty("topbarBackground").GetString(), visual.GetProperty("background").GetString());
+        Assert.Equal("left", visual.GetProperty("textAlign").GetString());
+        Assert.Equal("0px", visual.GetProperty("utilitiesBorder").GetString());
+        Assert.Equal("none", visual.GetProperty("utilitiesShadow").GetString());
+    }
+
+    [Fact]
+    public async Task EmployeeMenuOwnsThemePreferenceAndPersistsSelection()
+    {
+        await using var context = await playwright.Browser.NewContextAsync(new()
+        {
+            ViewportSize = new() { Width = 1280, Height = 900 },
+            ReducedMotion = ReducedMotion.Reduce,
+        });
+        await context.AddInitScriptAsync("localStorage.setItem('maliev_theme', 'light')");
+        var page = await context.NewPageAsync();
+        await StubProductionBoundariesAsync(page);
+        await page.GotoAsync(new Uri(server.BaseUri, "sales/orders").AbsoluteUri);
+
+        Assert.Equal(0, await page.Locator(".legacy-topbar__utilities > .legacy-theme-toggle").CountAsync());
+        await page.GetByRole(AriaRole.Button, new() { Name = "Employee menu" }).ClickAsync();
+
+        var themePreference = page.Locator(".legacy-profile-popover .legacy-theme-toggle");
+        await themePreference.WaitForAsync();
+        Assert.True(await themePreference.EvaluateAsync<bool>(
+            "element => element.getBoundingClientRect().width >= 44 && element.getBoundingClientRect().height >= 44"));
+        await themePreference.ClickAsync();
+
+        await page.WaitForFunctionAsync("() => document.documentElement.dataset.malievTheme === 'dark'");
+        Assert.Equal("dark", await page.EvaluateAsync<string>("localStorage.getItem('maliev_theme')"));
+    }
+
+    [Fact]
+    public async Task CollapsedNavigationCentersEveryVisibleIconInRail()
+    {
+        await using var context = await playwright.Browser.NewContextAsync(new()
+        {
+            ViewportSize = new() { Width = 1280, Height = 900 },
+            ReducedMotion = ReducedMotion.Reduce,
+        });
+        var page = await context.NewPageAsync();
+        await StubProductionBoundariesAsync(page);
+        await page.GotoAsync(new Uri(server.BaseUri, "sales/orders").AbsoluteUri);
+
+        await page.Locator("#legacy-sidebar-collapse").ClickAsync();
+        var rail = page.Locator(".legacy-navigation-rail[data-mobile='false'][data-state='collapsed']");
+        await rail.WaitForAsync();
+
+        var maximumDeviation = await rail.EvaluateAsync<double>("""
+            element => {
+                const railBounds = element.getBoundingClientRect();
+                const railCenter = railBounds.left + railBounds.width / 2;
+                const icons = Array.from(element.querySelectorAll('.legacy-rail-link svg'))
+                    .filter(icon => icon.getBoundingClientRect().height > 0);
+                return Math.max(...icons.map(icon => {
+                    const bounds = icon.getBoundingClientRect();
+                    return Math.abs(bounds.left + bounds.width / 2 - railCenter);
+                }));
+            }
+            """);
+
+        Assert.InRange(maximumDeviation, 0, 1);
+    }
+
+    [Fact]
+    public async Task CollapsedNavigationLeavesBreathingRoomBetweenHeaderAndFirstDestination()
+    {
+        await using var context = await playwright.Browser.NewContextAsync(new()
+        {
+            ViewportSize = new() { Width = 1280, Height = 900 },
+            ReducedMotion = ReducedMotion.Reduce,
+        });
+        var page = await context.NewPageAsync();
+        await StubProductionBoundariesAsync(page);
+        await page.GotoAsync(new Uri(server.BaseUri, "Dashboard").AbsoluteUri);
+
+        await page.Locator("#legacy-sidebar-collapse").ClickAsync();
+        var rail = page.Locator(".legacy-navigation-rail[data-mobile='false'][data-state='collapsed']");
+        await rail.WaitForAsync();
+        var spacing = await rail.EvaluateAsync<double>("""
+            element => {
+                const header = element.querySelector('.legacy-rail-header').getBoundingClientRect();
+                const firstLink = element.querySelector('.legacy-rail-link').getBoundingClientRect();
+                return firstLink.top - header.bottom;
+            }
+            """);
+
+        Assert.True(spacing >= 12, $"Collapsed navigation gap was {spacing}px.");
+    }
+
+    [Fact]
+    public async Task ParentNavigationActionsAreCollapsedByDefaultAndChevronTogglesThem()
+    {
+        await using var context = await playwright.Browser.NewContextAsync(new()
+        {
+            ViewportSize = new() { Width = 1280, Height = 900 },
+            ReducedMotion = ReducedMotion.Reduce,
+        });
+        var page = await context.NewPageAsync();
+        await StubProductionBoundariesAsync(page);
+        await page.GotoAsync(new Uri(server.BaseUri, "Dashboard").AbsoluteUri);
+
+        var customerItem = page.Locator(".legacy-rail-item", new() { Has = page.Locator("a[href='/customers']") });
+        var chevron = customerItem.Locator(".legacy-rail-chevron");
+        var child = customerItem.Locator("a[href='/customers/new']");
+
+        await chevron.WaitForAsync();
+        Assert.Equal("false", await chevron.GetAttributeAsync("aria-expanded"));
+        Assert.True(await child.IsHiddenAsync());
+
+        await chevron.ClickAsync();
+        await child.WaitForAsync(new() { State = WaitForSelectorState.Visible });
+        Assert.Equal("true", await chevron.GetAttributeAsync("aria-expanded"));
+
+        await chevron.FocusAsync();
+        await page.Keyboard.PressAsync("Enter");
+        await child.WaitForAsync(new() { State = WaitForSelectorState.Hidden });
+        Assert.Equal("false", await chevron.GetAttributeAsync("aria-expanded"));
+    }
+
+    [Fact]
+    public async Task EveryCollapsedNavigationDestinationShowsShadcnTooltipToTheRightOnHover()
+    {
+        await using var context = await playwright.Browser.NewContextAsync(new()
+        {
+            ViewportSize = new() { Width = 1280, Height = 900 },
+            ReducedMotion = ReducedMotion.Reduce,
+        });
+        var page = await context.NewPageAsync();
+        await StubProductionBoundariesAsync(page);
+        await page.GotoAsync(new Uri(server.BaseUri, "Dashboard").AbsoluteUri);
+
+        await page.Locator("#legacy-sidebar-collapse").ClickAsync();
+        var rail = page.Locator(".legacy-navigation-rail[data-mobile='false'][data-state='collapsed']");
+        await rail.WaitForAsync();
+        var links = rail.Locator(".legacy-rail-link:visible");
+        var railBounds = await rail.BoundingBoxAsync();
+        Assert.NotNull(railBounds);
+
+        for (var index = 0; index < await links.CountAsync(); index++)
+        {
+            var link = links.Nth(index);
+            await link.HoverAsync();
+            var tooltipId = await link.GetAttributeAsync("aria-describedby");
+            Assert.StartsWith("shadcn-sidebar-tooltip-", tooltipId, StringComparison.Ordinal);
+            var tooltip = page.Locator($"#{tooltipId}");
+            await Assertions.Expect(tooltip).ToHaveCSSAsync("opacity", "1");
+            Assert.False(string.IsNullOrWhiteSpace(await link.GetAttributeAsync("href")));
+            Assert.Equal("tooltip", await tooltip.GetAttributeAsync("role"));
+            Assert.Equal((await tooltip.InnerTextAsync()).Trim(), await link.GetAttributeAsync("title"));
+            var tooltipBounds = await tooltip.BoundingBoxAsync();
+            Assert.NotNull(tooltipBounds);
+            Assert.True(tooltipBounds!.X >= railBounds!.X + railBounds.Width - 2,
+                $"Tooltip {tooltipId} started at {tooltipBounds.X}px; rail ended at {railBounds.X + railBounds.Width}px.");
+        }
+    }
+
+    [Fact]
+    public async Task SignOutActionUsesDestructiveColorWithAccessibleContrast()
+    {
+        await using var context = await playwright.Browser.NewContextAsync(new()
+        {
+            ViewportSize = new() { Width = 1280, Height = 900 },
+            ReducedMotion = ReducedMotion.Reduce,
+        });
+        var page = await context.NewPageAsync();
+        await StubProductionBoundariesAsync(page);
+        await page.GotoAsync(new Uri(server.BaseUri, "sales/orders").AbsoluteUri);
+
+        await page.GetByRole(AriaRole.Button, new() { Name = "Employee menu" }).ClickAsync();
+        var signOut = page.GetByRole(AriaRole.Button, new() { Name = "Sign out" });
+        var visual = await signOut.EvaluateAsync<JsonElement>("""
+            element => {
+                const style = getComputedStyle(element);
+                const surface = getComputedStyle(element.closest('.legacy-profile-popover')).backgroundColor;
+                const canvas = document.createElement('canvas');
+                canvas.width = canvas.height = 1;
+                const context = canvas.getContext('2d', { willReadFrequently: true });
+                const rgba = value => {
+                    context.clearRect(0, 0, 1, 1);
+                    context.fillStyle = value;
+                    context.fillRect(0, 0, 1, 1);
+                    return Array.from(context.getImageData(0, 0, 1, 1).data);
+                };
+                const composite = (foreground, background) => {
+                    const alpha = foreground[3] / 255;
+                    return foreground.slice(0, 3).map((channel, index) =>
+                        channel * alpha + background[index] * (1 - alpha));
+                };
+                const channel = value => {
+                    const normalized = value / 255;
+                    return normalized <= 0.04045
+                        ? normalized / 12.92
+                        : Math.pow((normalized + 0.055) / 1.055, 2.4);
+                };
+                const luminance = ([red, green, blue]) => {
+                    return 0.2126 * channel(red) + 0.7152 * channel(green) + 0.0722 * channel(blue);
+                };
+                const foreground = luminance(rgba(style.color));
+                const background = luminance(composite(rgba(style.backgroundColor), rgba(surface)));
+                return {
+                    color: style.color,
+                    background: style.backgroundColor,
+                    height: element.getBoundingClientRect().height,
+                    contrast: (Math.max(foreground, background) + 0.05) / (Math.min(foreground, background) + 0.05)
+                };
+            }
+            """);
+
+        Assert.DoesNotContain("rgba(0, 0, 0, 0)", visual.GetProperty("background").GetString(), StringComparison.Ordinal);
+        Assert.True(visual.GetProperty("height").GetDouble() >= 44, visual.ToString());
+        Assert.True(visual.GetProperty("contrast").GetDouble() >= 4.5, visual.ToString());
     }
 
     [Fact]
@@ -125,11 +477,10 @@ public sealed class OperationalShellBrowserTests(
         }
 
         Assert.Equal(1, await page.Locator("#legacy-sidebar-collapse:is(button)").CountAsync());
-        Assert.Equal(1, await page.Locator(".legacy-theme-toggle:is(button)").CountAsync());
+        Assert.Equal(0, await page.Locator(".legacy-topbar__utilities > .legacy-theme-toggle:is(button)").CountAsync());
         Assert.Equal(1, await page.Locator(".legacy-profile:is(button)").CountAsync());
         Assert.Equal(2, await page.Locator(".legacy-quick-action:is(a)").CountAsync());
         Assert.Equal(1, await page.Locator(".legacy-global-search input").CountAsync());
-        Assert.Equal(1, await page.Locator(".legacy-language-selector select").CountAsync());
 
         var desktopShell = await page.EvaluateAsync<JsonElement>("""
             () => {
@@ -153,24 +504,34 @@ public sealed class OperationalShellBrowserTests(
         var desktopLogo = desktopShell.GetProperty("logo");
         var desktopWorkspace = desktopShell.GetProperty("workspace");
         Assert.InRange(
-            Math.Abs(desktopTopbar.GetProperty("left").GetDouble() - desktopSidebar.GetProperty("right").GetDouble()),
+            Math.Abs(desktopTopbar.GetProperty("left").GetDouble() - desktopWorkspace.GetProperty("left").GetDouble()),
             0,
             2);
         Assert.InRange(
-            desktopTopbar.GetProperty("right").GetDouble(),
-            desktopShell.GetProperty("viewportWidth").GetInt32() - 0.5,
-            desktopShell.GetProperty("viewportWidth").GetInt32() + 0.5);
-        Assert.InRange(
-            Math.Abs(desktopSidebar.GetProperty("right").GetDouble() - desktopWorkspace.GetProperty("left").GetDouble()),
+            Math.Abs(desktopTopbar.GetProperty("right").GetDouble() - desktopWorkspace.GetProperty("right").GetDouble()),
             0,
             2);
+        Assert.InRange(
+            desktopWorkspace.GetProperty("left").GetDouble() - desktopSidebar.GetProperty("right").GetDouble(),
+            7.5,
+            8.5);
+        Assert.InRange(
+            desktopShell.GetProperty("viewportWidth").GetInt32() - desktopWorkspace.GetProperty("right").GetDouble(),
+            7.5,
+            8.5);
         Assert.True(desktopLogo.GetProperty("left").GetDouble() < desktopWorkspace.GetProperty("left").GetDouble(), desktopShell.ToString());
         Assert.InRange(desktopCollapse.GetProperty("left").GetDouble(), desktopSidebar.GetProperty("left").GetDouble(), desktopSidebar.GetProperty("right").GetDouble());
         Assert.InRange(desktopCollapse.GetProperty("right").GetDouble(), desktopSidebar.GetProperty("left").GetDouble(), desktopSidebar.GetProperty("right").GetDouble());
 
         var parent = page.Locator(".legacy-navigation-rail a[href='/sales/orders']");
-        var child = page.Locator(".legacy-navigation-rail a[href='/Orders/Create']");
         Assert.Equal("page", await parent.GetAttributeAsync("aria-current"));
+        var parentItem = page.Locator(".legacy-rail-item", new() { Has = page.Locator("a[href='/sales/orders']") });
+        var parentChevron = parentItem.Locator(".legacy-rail-chevron");
+        Assert.Equal("false", await parentChevron.GetAttributeAsync("aria-expanded"));
+        Assert.Equal(0, await parentItem.Locator("a[href='/Orders/Create']").CountAsync());
+        await parentChevron.ClickAsync();
+        var child = parentItem.Locator("a[href='/Orders/Create']");
+        await child.WaitForAsync();
         Assert.Contains("legacy-rail-link--child", await child.GetAttributeAsync("class"));
         Assert.True(await child.EvaluateAsync<bool>(
             "(node, parent) => Boolean(node.compareDocumentPosition(document.querySelector(parent)) & Node.DOCUMENT_POSITION_PRECEDING)",
@@ -248,6 +609,12 @@ public sealed class OperationalShellBrowserTests(
 
         var drawer = page.Locator(".legacy-navigation-rail[data-mobile='true']");
         await drawer.WaitForAsync();
+        var ordersItem = drawer.Locator(".legacy-rail-item", new() { Has = page.Locator("a[href='/sales/orders']") });
+        var ordersChevron = ordersItem.Locator(".legacy-rail-chevron");
+        Assert.True(await ordersChevron.EvaluateAsync<bool>(
+            "element => element.getBoundingClientRect().height >= 44"));
+        if (await ordersChevron.GetAttributeAsync("aria-expanded") == "false")
+            await ordersChevron.ClickAsync();
         Assert.True(await drawer.Locator("a[href='/Orders/Create']").EvaluateAsync<bool>(
             "element => element.getBoundingClientRect().height >= 44"));
         var close = drawer.Locator("#legacy-sidebar-collapse");
@@ -255,11 +622,16 @@ public sealed class OperationalShellBrowserTests(
         var firstFocusable = drawer.Locator(".legacy-rail-logo");
         await firstFocusable.FocusAsync();
         await page.Keyboard.PressAsync("Shift+Tab");
-        var lastNavigationLink = drawer.Locator(".legacy-rail-link").Last;
-        await page.WaitForFunctionAsync(
-            "element => element === document.activeElement",
-            await lastNavigationLink.ElementHandleAsync());
-        Assert.True(await lastNavigationLink.EvaluateAsync<bool>("element => element === document.activeElement"));
+        var wrappedFocus = await drawer.EvaluateAsync<JsonElement>("""
+            element => ({
+                isNavigationControl: document.activeElement?.matches('.legacy-logo-link, .legacy-rail-link, .legacy-rail-chevron') === true,
+                isInsideDrawer: element.contains(document.activeElement),
+                activeMarkup: document.activeElement?.outerHTML ?? ''
+            })
+            """);
+        Assert.True(
+            wrappedFocus.GetProperty("isNavigationControl").GetBoolean() && wrappedFocus.GetProperty("isInsideDrawer").GetBoolean(),
+            $"Shift+Tab escaped the drawer or missed a visible navigation control: {wrappedFocus.GetProperty("activeMarkup").GetString()}");
         await page.Keyboard.PressAsync("Escape");
         await drawer.WaitForAsync(new() { State = WaitForSelectorState.Detached });
         Assert.True(await menu.EvaluateAsync<bool>("element => element === document.activeElement"));
@@ -301,11 +673,15 @@ public sealed class OperationalShellBrowserTests(
             Assert.Null(await parent.GetAttributeAsync("aria-current"));
             Assert.Equal("page", await child.GetAttributeAsync("aria-current"));
             Assert.True(await child.EvaluateAsync<bool>(
-                "(node, parentSelector) => node.closest('ul.legacy-rail-children')?.parentElement?.querySelector(':scope > ' + parentSelector) !== null",
+                "(node, parentSelector) => node.closest('.legacy-rail-item')?.querySelector(parentSelector) !== null",
                 $"a[href='{parentHref}']"));
             var minimumHeight = width <= 768 ? 44 : 28;
             Assert.True(await child.EvaluateAsync<bool>("(node, minimum) => node.getBoundingClientRect().height >= minimum", minimumHeight));
             await parent.FocusAsync();
+            await page.Keyboard.PressAsync("Tab");
+            var chevron = parent.Locator("xpath=ancestor::*[contains(concat(' ', normalize-space(@class), ' '), ' legacy-rail-item ')][1]")
+                .Locator(".legacy-rail-chevron");
+            Assert.True(await chevron.EvaluateAsync<bool>("node => document.activeElement === node"));
             await page.Keyboard.PressAsync("Tab");
             Assert.True(await child.EvaluateAsync<bool>("node => document.activeElement === node"));
 

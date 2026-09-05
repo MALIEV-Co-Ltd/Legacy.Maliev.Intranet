@@ -108,7 +108,7 @@
 
 @code {
     [Parameter] public string Layout { get; set; } = "table";
-    [Parameter] public string Label { get; set; } = "Loading content";
+    [Parameter, EditorRequired] public string Label { get; set; } = default!;
     [Parameter] public int Rows { get; set; } = 5;
     [Parameter] public int Columns { get; set; } = 5;
     [Parameter] public bool ShowHeader { get; set; }

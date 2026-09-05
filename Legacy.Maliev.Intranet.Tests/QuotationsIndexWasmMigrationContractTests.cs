@@ -17,12 +17,12 @@ public sealed class QuotationsIndexWasmMigrationContractTests
         var source = File.ReadAllText(page);
         Assert.Contains("@page \"/Quotations/Index\"", source, StringComparison.Ordinal);
         Assert.Contains("/bff/quotations", source, StringComparison.Ordinal);
-        Assert.Contains("<OperationalTable", source, StringComparison.Ordinal);
+        Assert.Contains("<OperationalDataTable", source, StringComparison.Ordinal);
         Assert.Contains("<PageBreadcrumbs", source, StringComparison.Ordinal);
         Assert.Contains("/Quotations/View?id=", source, StringComparison.Ordinal);
         Assert.Contains("ExpandQuotation", source, StringComparison.Ordinal);
-        Assert.Contains("CollapseQuotation", source, StringComparison.Ordinal);
-        Assert.Contains("data-priority=\"supporting\"", source, StringComparison.Ordinal);
+        Assert.Contains("DetailsAriaLabel", source, StringComparison.Ordinal);
+        Assert.Contains("ShadcnDataTableColumn", source, StringComparison.Ordinal);
         Assert.Contains("<ShadcnChart", source, StringComparison.Ordinal);
         Assert.DoesNotContain("<Mud", source, StringComparison.Ordinal);
         Assert.Contains("Quotations/", app, StringComparison.Ordinal);
