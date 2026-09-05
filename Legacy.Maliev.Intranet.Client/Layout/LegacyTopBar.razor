@@ -20,11 +20,6 @@
         <LegacyQuickActions Session="Session" />
     </div>
     <div class="legacy-topbar__utilities legacy-topbar-utilities">
-        <ShadcnButton Class="legacy-theme-toggle" Variant="ShadcnButtonVariant.Ghost" Size="ShadcnButtonSize.Icon"
-                      aria-label="@ThemeLabel" title="@ThemeLabel" OnClick="ToggleThemeAsync">
-            <ShadcnIcon Icon="@(ThemeService.IsDarkMode ? SunIcon : MoonIcon)" Size="20" />
-        </ShadcnButton>
-
         <AuthorizeView>
             <Authorized Context="auth">
                 <div class="legacy-profile-menu">
@@ -50,6 +45,11 @@
                             <div class="legacy-profile-language">
                                 <LegacyLanguageSelector />
                             </div>
+                            <ShadcnButton Class="legacy-theme-toggle" Variant="ShadcnButtonVariant.Ghost"
+                                          aria-label="@ThemeLabel" title="@ThemeLabel" OnClick="ToggleThemeAsync">
+                                <ShadcnIcon Icon="@(ThemeService.IsDarkMode ? SunIcon : MoonIcon)" Size="20" />
+                                <span>@ThemeLabel</span>
+                            </ShadcnButton>
                         </div>
                         <div class="legacy-profile-menu-divider"></div>
                         <LegacyLink Href="/hr/profile" Role="LegacyLinkRole.Navigation"

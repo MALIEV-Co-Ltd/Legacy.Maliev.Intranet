@@ -44,7 +44,7 @@ public sealed class LegacyMemberShellContractTests
         Assert.Contains("legacy-profile-popover", css, StringComparison.Ordinal);
         Assert.DoesNotContain("legacy-signout-button", css, StringComparison.Ordinal);
         Assert.Contains("@media (max-width: 720px)", css, StringComparison.Ordinal);
-        Assert.Contains("@media (max-width: 420px)", css, StringComparison.Ordinal);
+        Assert.Contains("border-radius: 9999px", css, StringComparison.Ordinal);
     }
 
     private static string FindRoot()

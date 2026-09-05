@@ -10,7 +10,7 @@ public sealed class OperationalShellBrowserTests(
     PlaywrightFixture playwright)
 {
     [Fact]
-    public async Task DesktopShellKeepsNavigationScrollableWithoutHorizontalRailAndUsesOpaqueUtilities()
+    public async Task DesktopShellKeepsNavigationScrollableWithoutHorizontalRailAndUsesOpaqueTopbar()
     {
         await using var context = await playwright.Browser.NewContextAsync(new()
         {
@@ -31,10 +31,6 @@ public sealed class OperationalShellBrowserTests(
             "node => ({ background: getComputedStyle(node).backgroundColor, backdrop: getComputedStyle(node).backdropFilter })");
         Assert.DoesNotContain("rgba(0, 0, 0, 0)", topbarSurface.GetProperty("background").GetString(), StringComparison.Ordinal);
         Assert.Equal("none", topbarSurface.GetProperty("backdrop").GetString());
-
-        var utilities = page.Locator(".legacy-topbar__utilities");
-        Assert.True(await utilities.EvaluateAsync<bool>(
-            "node => { const style = getComputedStyle(node); return style.backgroundColor !== 'rgba(0, 0, 0, 0)' && style.borderTopWidth === '1px'; }"));
 
         var breadcrumbs = page.Locator("nav.page-breadcrumbs ol");
         await breadcrumbs.WaitForAsync();
@@ -146,6 +142,98 @@ public sealed class OperationalShellBrowserTests(
 
         await page.GetByRole(AriaRole.Button, new() { Name = "เมนูพนักงาน" }).ClickAsync();
         Assert.Equal("th-TH", await page.GetByLabel("ภาษา").InputValueAsync());
+    }
+
+    [Fact]
+    public async Task EmployeeProfileTriggerIsAStandaloneTouchSizedCapsule()
+    {
+        await using var context = await playwright.Browser.NewContextAsync(new()
+        {
+            ViewportSize = new() { Width = 1280, Height = 900 },
+            ReducedMotion = ReducedMotion.Reduce,
+        });
+        var page = await context.NewPageAsync();
+        await StubProductionBoundariesAsync(page);
+        await page.GotoAsync(new Uri(server.BaseUri, "sales/orders").AbsoluteUri);
+
+        var visual = await page.GetByRole(AriaRole.Button, new() { Name = "Employee menu" })
+            .EvaluateAsync<JsonElement>("""
+                element => {
+                    const bounds = element.getBoundingClientRect();
+                    const style = getComputedStyle(element);
+                    const utilitiesStyle = getComputedStyle(element.closest('.legacy-topbar__utilities'));
+                    return {
+                        height: bounds.height,
+                        radius: Number.parseFloat(style.borderTopLeftRadius),
+                        utilitiesBorder: utilitiesStyle.borderTopWidth,
+                        utilitiesShadow: utilitiesStyle.boxShadow
+                    };
+                }
+                """);
+
+        var height = visual.GetProperty("height").GetDouble();
+        Assert.True(height >= 44, visual.ToString());
+        Assert.True(visual.GetProperty("radius").GetDouble() >= height / 2 - 1, visual.ToString());
+        Assert.Equal("0px", visual.GetProperty("utilitiesBorder").GetString());
+        Assert.Equal("none", visual.GetProperty("utilitiesShadow").GetString());
+    }
+
+    [Fact]
+    public async Task EmployeeMenuOwnsThemePreferenceAndPersistsSelection()
+    {
+        await using var context = await playwright.Browser.NewContextAsync(new()
+        {
+            ViewportSize = new() { Width = 1280, Height = 900 },
+            ReducedMotion = ReducedMotion.Reduce,
+        });
+        await context.AddInitScriptAsync("localStorage.setItem('maliev_theme', 'light')");
+        var page = await context.NewPageAsync();
+        await StubProductionBoundariesAsync(page);
+        await page.GotoAsync(new Uri(server.BaseUri, "sales/orders").AbsoluteUri);
+
+        Assert.Equal(0, await page.Locator(".legacy-topbar__utilities > .legacy-theme-toggle").CountAsync());
+        await page.GetByRole(AriaRole.Button, new() { Name = "Employee menu" }).ClickAsync();
+
+        var themePreference = page.Locator(".legacy-profile-popover .legacy-theme-toggle");
+        await themePreference.WaitForAsync();
+        Assert.True(await themePreference.EvaluateAsync<bool>(
+            "element => element.getBoundingClientRect().width >= 44 && element.getBoundingClientRect().height >= 44"));
+        await themePreference.ClickAsync();
+
+        await page.WaitForFunctionAsync("() => document.documentElement.dataset.malievTheme === 'dark'");
+        Assert.Equal("dark", await page.EvaluateAsync<string>("localStorage.getItem('maliev_theme')"));
+    }
+
+    [Fact]
+    public async Task CollapsedNavigationCentersEveryVisibleIconInRail()
+    {
+        await using var context = await playwright.Browser.NewContextAsync(new()
+        {
+            ViewportSize = new() { Width = 1280, Height = 900 },
+            ReducedMotion = ReducedMotion.Reduce,
+        });
+        var page = await context.NewPageAsync();
+        await StubProductionBoundariesAsync(page);
+        await page.GotoAsync(new Uri(server.BaseUri, "sales/orders").AbsoluteUri);
+
+        await page.Locator("#legacy-sidebar-collapse").ClickAsync();
+        var rail = page.Locator(".legacy-navigation-rail[data-mobile='false'][data-state='collapsed']");
+        await rail.WaitForAsync();
+
+        var maximumDeviation = await rail.EvaluateAsync<double>("""
+            element => {
+                const railBounds = element.getBoundingClientRect();
+                const railCenter = railBounds.left + railBounds.width / 2;
+                const icons = Array.from(element.querySelectorAll('.legacy-rail-link svg'))
+                    .filter(icon => icon.getBoundingClientRect().height > 0);
+                return Math.max(...icons.map(icon => {
+                    const bounds = icon.getBoundingClientRect();
+                    return Math.abs(bounds.left + bounds.width / 2 - railCenter);
+                }));
+            }
+            """);
+
+        Assert.InRange(maximumDeviation, 0, 1);
     }
 
     [Fact]
@@ -280,7 +368,7 @@ public sealed class OperationalShellBrowserTests(
         }
 
         Assert.Equal(1, await page.Locator("#legacy-sidebar-collapse:is(button)").CountAsync());
-        Assert.Equal(1, await page.Locator(".legacy-theme-toggle:is(button)").CountAsync());
+        Assert.Equal(0, await page.Locator(".legacy-topbar__utilities > .legacy-theme-toggle:is(button)").CountAsync());
         Assert.Equal(1, await page.Locator(".legacy-profile:is(button)").CountAsync());
         Assert.Equal(2, await page.Locator(".legacy-quick-action:is(a)").CountAsync());
         Assert.Equal(1, await page.Locator(".legacy-global-search input").CountAsync());
