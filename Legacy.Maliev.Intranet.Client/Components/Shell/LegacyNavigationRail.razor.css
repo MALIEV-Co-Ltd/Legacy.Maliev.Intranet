@@ -25,10 +25,13 @@
 .legacy-sidebar-host ::deep .legacy-navigation-rail[data-state="collapsed"] .legacy-rail-user { justify-content: center; }
 .legacy-sidebar-host ::deep .legacy-navigation-rail[data-state="collapsed"] .legacy-rail-groups { padding-block-start: 1.125rem; }
 .legacy-sidebar-host ::deep .legacy-navigation-rail[data-state="collapsed"] .legacy-rail-link { width: 100%; justify-content: center; padding-inline: 0; }
-.legacy-sidebar-host ::deep .legacy-navigation-rail[data-state="collapsed"] .shadcn-sidebar-menu-tooltip {
-    inset-inline-start: calc(var(--shadcn-sidebar-width-icon) + .5rem);
-    translate: 0 -50%;
-}
+.legacy-sidebar-host ::deep .legacy-rail-popover-root { display: contents; }
+.legacy-sidebar-host ::deep .legacy-navigation-rail[data-state="expanded"] .legacy-rail-popover-content { display: none; }
+.legacy-sidebar-host ::deep .legacy-rail-popover-content { display: flex; width: min(17rem, calc(100vw - 5rem)); align-items: center; gap: .75rem; padding: .75rem; }
+.legacy-sidebar-host ::deep .legacy-rail-popover-icon { display: grid; width: 2.25rem; height: 2.25rem; flex: 0 0 auto; place-items: center; border-radius: var(--shadcn-radius-md); background: var(--shadcn-muted); color: var(--shadcn-foreground); }
+.legacy-sidebar-host ::deep .legacy-rail-popover-copy { display: grid; min-width: 0; gap: .125rem; }
+.legacy-sidebar-host ::deep .legacy-rail-popover-copy strong { color: var(--shadcn-popover-foreground); font-size: .875rem; line-height: 1.25; }
+.legacy-sidebar-host ::deep .legacy-rail-popover-copy small { color: var(--shadcn-muted-foreground); font-size: .75rem; line-height: 1.35; }
 @media (max-width: 48rem) {
     .legacy-sidebar-host ::deep .legacy-navigation-rail { position: fixed; }
     .legacy-sidebar-host ::deep .legacy-rail-group { padding-block: .25rem; }

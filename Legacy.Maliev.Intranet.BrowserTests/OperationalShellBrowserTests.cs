@@ -277,7 +277,7 @@ public sealed class OperationalShellBrowserTests(
     }
 
     [Fact]
-    public async Task EveryCollapsedNavigationDestinationShowsItsLabelToTheRightOnHover()
+    public async Task EveryCollapsedNavigationDestinationShowsShadcnPopoverToTheRightOnHover()
     {
         await using var context = await playwright.Browser.NewContextAsync(new()
         {
@@ -299,14 +299,18 @@ public sealed class OperationalShellBrowserTests(
         {
             var link = links.Nth(index);
             await link.HoverAsync();
-            var describedBy = await link.GetAttributeAsync("aria-describedby");
-            Assert.False(string.IsNullOrWhiteSpace(describedBy));
-            var tooltip = page.Locator($"#{describedBy}");
-            await tooltip.WaitForAsync(new() { State = WaitForSelectorState.Visible });
-            var tooltipBounds = await tooltip.BoundingBoxAsync();
-            Assert.NotNull(tooltipBounds);
-            Assert.True(tooltipBounds!.X >= railBounds!.X + railBounds.Width + 6,
-                $"Tooltip {describedBy} started at {tooltipBounds.X}px; rail ended at {railBounds.X + railBounds.Width}px.");
+            var popover = page.Locator(".shadcn-hover-card-content:visible");
+            await popover.WaitForAsync(new() { State = WaitForSelectorState.Visible });
+            await popover.HoverAsync();
+            var popoverId = await popover.GetAttributeAsync("id");
+            Assert.StartsWith("shadcn-hover-card-", popoverId, StringComparison.Ordinal);
+            Assert.False(string.IsNullOrWhiteSpace(await link.GetAttributeAsync("href")));
+            Assert.Equal("right", await popover.GetAttributeAsync("data-side"));
+            Assert.Null(await popover.GetAttributeAsync("role"));
+            var popoverBounds = await popover.BoundingBoxAsync();
+            Assert.NotNull(popoverBounds);
+            Assert.True(popoverBounds!.X >= railBounds!.X + railBounds.Width + 6,
+                $"Popover {popoverId} started at {popoverBounds.X}px; rail ended at {railBounds.X + railBounds.Width}px.");
         }
     }
 
@@ -617,7 +621,7 @@ public sealed class OperationalShellBrowserTests(
             Assert.Null(await parent.GetAttributeAsync("aria-current"));
             Assert.Equal("page", await child.GetAttributeAsync("aria-current"));
             Assert.True(await child.EvaluateAsync<bool>(
-                "(node, parentSelector) => node.closest('ul.legacy-rail-children')?.parentElement?.querySelector(':scope > ' + parentSelector) !== null",
+                "(node, parentSelector) => node.closest('.legacy-rail-item')?.querySelector(parentSelector) !== null",
                 $"a[href='{parentHref}']"));
             var minimumHeight = width <= 768 ? 44 : 28;
             Assert.True(await child.EvaluateAsync<bool>("(node, minimum) => node.getBoundingClientRect().height >= minimum", minimumHeight));
