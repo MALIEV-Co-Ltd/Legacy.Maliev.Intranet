@@ -854,7 +854,7 @@ public sealed class OperationalTableMigrationBrowserTests(
         await dialog.GetByRole(AriaRole.Button, new() { Name = "Cancel", Exact = true }).ClickAsync();
         await Assertions.Expect(dialog).ToBeHiddenAsync();
         Assert.True(await deleteTrigger.EvaluateAsync<bool>("node => document.activeElement === node"));
-        Assert.Empty(errors);
+        Assert.True(errors.Count == 0, string.Join(Environment.NewLine, errors));
     }
 
     private static List<string> CaptureErrors(IPage page)
