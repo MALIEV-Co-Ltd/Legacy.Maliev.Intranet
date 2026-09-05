@@ -744,6 +744,33 @@ builder.Services.AddAuthorizationBuilder()
 
 var app = builder.Build();
 app.UseStandardMiddleware();
+app.Use(async (context, next) =>
+{
+    context.Response.OnStarting(() =>
+    {
+        context.Response.Headers["Content-Security-Policy"] =
+            "default-src 'self'; " +
+            "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://accounts.google.com; " +
+            "style-src 'self' 'unsafe-inline'; " +
+            "img-src 'self' data: https:; " +
+            "font-src 'self' data:; " +
+            "connect-src 'self' http: https:; " +
+            "frame-src https://accounts.google.com; " +
+            "frame-ancestors 'none'; " +
+            "base-uri 'self'";
+
+        if (context.Response.StatusCode == StatusCodes.Status404NotFound &&
+            context.Request.Path.StartsWithSegments("/_framework", StringComparison.OrdinalIgnoreCase))
+        {
+            context.Response.Headers.CacheControl = "no-store, no-cache, max-age=0";
+            context.Response.Headers.Pragma = "no-cache";
+        }
+
+        return Task.CompletedTask;
+    });
+
+    await next(context);
+});
 app.UseBlazorFrameworkFiles();
 app.UseStaticFiles();
 app.UseRouting();
