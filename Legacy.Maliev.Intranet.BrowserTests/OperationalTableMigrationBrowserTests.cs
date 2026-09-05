@@ -131,6 +131,45 @@ public sealed class OperationalTableMigrationBrowserTests(
     }
 
     [Fact]
+    public async Task DashboardHealthyConnectionUsesAVisibleGreenPulse()
+    {
+        await using var context = await playwright.Browser.NewContextAsync(new()
+        {
+            ViewportSize = new() { Width = 1280, Height = 900 },
+            ReducedMotion = ReducedMotion.NoPreference,
+        });
+        var page = await context.NewPageAsync();
+        await StubSpecializedTableBoundariesAsync(page);
+        await page.GotoAsync(new Uri(server.BaseUri, "Dashboard").AbsoluteUri);
+
+        var dot = page.Locator(".dashboard-health.is-healthy > span");
+        await dot.WaitForAsync();
+        var visual = await dot.EvaluateAsync<JsonElement>("""
+            element => {
+                const style = getComputedStyle(element);
+                const canvas = document.createElement('canvas');
+                canvas.width = canvas.height = 1;
+                const context = canvas.getContext('2d', { willReadFrequently: true });
+                context.fillStyle = style.backgroundColor;
+                context.fillRect(0, 0, 1, 1);
+                const [red, green, blue] = context.getImageData(0, 0, 1, 1).data;
+                return {
+                    red,
+                    green,
+                    blue,
+                    animationName: style.animationName,
+                    animationIterationCount: style.animationIterationCount
+                };
+            }
+            """);
+
+        Assert.True(visual.GetProperty("green").GetDouble() > visual.GetProperty("red").GetDouble(), visual.ToString());
+        Assert.True(visual.GetProperty("green").GetDouble() > visual.GetProperty("blue").GetDouble(), visual.ToString());
+        Assert.NotEqual("none", visual.GetProperty("animationName").GetString());
+        Assert.Equal("infinite", visual.GetProperty("animationIterationCount").GetString());
+    }
+
+    [Fact]
     public async Task DashboardRefreshesItsSnapshotWithoutManualInteraction()
     {
         await using var context = await playwright.Browser.NewContextAsync(new()

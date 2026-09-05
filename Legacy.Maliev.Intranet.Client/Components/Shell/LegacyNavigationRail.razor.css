@@ -23,7 +23,12 @@
 .legacy-sidebar-host ::deep .legacy-navigation-rail[data-state="collapsed"] .legacy-rail-user-copy { display: none !important; }
 .legacy-sidebar-host ::deep .legacy-navigation-rail[data-state="collapsed"] .legacy-rail-monogram { display: inline-flex; }
 .legacy-sidebar-host ::deep .legacy-navigation-rail[data-state="collapsed"] .legacy-rail-user { justify-content: center; }
+.legacy-sidebar-host ::deep .legacy-navigation-rail[data-state="collapsed"] .legacy-rail-groups { padding-block-start: 1.125rem; }
 .legacy-sidebar-host ::deep .legacy-navigation-rail[data-state="collapsed"] .legacy-rail-link { width: 100%; justify-content: center; padding-inline: 0; }
+.legacy-sidebar-host ::deep .legacy-navigation-rail[data-state="collapsed"] .shadcn-sidebar-menu-tooltip {
+    inset-inline-start: calc(var(--shadcn-sidebar-width-icon) + .5rem);
+    translate: 0 -50%;
+}
 @media (max-width: 48rem) {
     .legacy-sidebar-host ::deep .legacy-navigation-rail { position: fixed; }
     .legacy-sidebar-host ::deep .legacy-rail-group { padding-block: .25rem; }

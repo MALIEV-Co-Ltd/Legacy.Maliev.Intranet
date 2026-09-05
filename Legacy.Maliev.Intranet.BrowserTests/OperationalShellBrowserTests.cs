@@ -173,6 +173,9 @@ public sealed class OperationalShellBrowserTests(
                     return {
                         height: bounds.height,
                         radius: Number.parseFloat(style.borderTopLeftRadius),
+                        background: style.backgroundColor,
+                        topbarBackground: getComputedStyle(element.closest('.legacy-topbar')).backgroundColor,
+                        textAlign: style.textAlign,
                         utilitiesBorder: utilitiesStyle.borderTopWidth,
                         utilitiesShadow: utilitiesStyle.boxShadow
                     };
@@ -182,6 +185,9 @@ public sealed class OperationalShellBrowserTests(
         var height = visual.GetProperty("height").GetDouble();
         Assert.True(height >= 44, visual.ToString());
         Assert.True(visual.GetProperty("radius").GetDouble() >= height / 2 - 1, visual.ToString());
+        Assert.DoesNotContain("rgba(0, 0, 0, 0)", visual.GetProperty("background").GetString(), StringComparison.Ordinal);
+        Assert.NotEqual(visual.GetProperty("topbarBackground").GetString(), visual.GetProperty("background").GetString());
+        Assert.Equal("left", visual.GetProperty("textAlign").GetString());
         Assert.Equal("0px", visual.GetProperty("utilitiesBorder").GetString());
         Assert.Equal("none", visual.GetProperty("utilitiesShadow").GetString());
     }
@@ -242,6 +248,66 @@ public sealed class OperationalShellBrowserTests(
             """);
 
         Assert.InRange(maximumDeviation, 0, 1);
+    }
+
+    [Fact]
+    public async Task CollapsedNavigationLeavesBreathingRoomBetweenHeaderAndFirstDestination()
+    {
+        await using var context = await playwright.Browser.NewContextAsync(new()
+        {
+            ViewportSize = new() { Width = 1280, Height = 900 },
+            ReducedMotion = ReducedMotion.Reduce,
+        });
+        var page = await context.NewPageAsync();
+        await StubProductionBoundariesAsync(page);
+        await page.GotoAsync(new Uri(server.BaseUri, "Dashboard").AbsoluteUri);
+
+        await page.Locator("#legacy-sidebar-collapse").ClickAsync();
+        var rail = page.Locator(".legacy-navigation-rail[data-mobile='false'][data-state='collapsed']");
+        await rail.WaitForAsync();
+        var spacing = await rail.EvaluateAsync<double>("""
+            element => {
+                const header = element.querySelector('.legacy-rail-header').getBoundingClientRect();
+                const firstLink = element.querySelector('.legacy-rail-link').getBoundingClientRect();
+                return firstLink.top - header.bottom;
+            }
+            """);
+
+        Assert.True(spacing >= 12, $"Collapsed navigation gap was {spacing}px.");
+    }
+
+    [Fact]
+    public async Task EveryCollapsedNavigationDestinationShowsItsLabelToTheRightOnHover()
+    {
+        await using var context = await playwright.Browser.NewContextAsync(new()
+        {
+            ViewportSize = new() { Width = 1280, Height = 900 },
+            ReducedMotion = ReducedMotion.Reduce,
+        });
+        var page = await context.NewPageAsync();
+        await StubProductionBoundariesAsync(page);
+        await page.GotoAsync(new Uri(server.BaseUri, "Dashboard").AbsoluteUri);
+
+        await page.Locator("#legacy-sidebar-collapse").ClickAsync();
+        var rail = page.Locator(".legacy-navigation-rail[data-mobile='false'][data-state='collapsed']");
+        await rail.WaitForAsync();
+        var links = rail.Locator(".legacy-rail-link:visible");
+        var railBounds = await rail.BoundingBoxAsync();
+        Assert.NotNull(railBounds);
+
+        for (var index = 0; index < await links.CountAsync(); index++)
+        {
+            var link = links.Nth(index);
+            await link.HoverAsync();
+            var describedBy = await link.GetAttributeAsync("aria-describedby");
+            Assert.False(string.IsNullOrWhiteSpace(describedBy));
+            var tooltip = page.Locator($"#{describedBy}");
+            await tooltip.WaitForAsync(new() { State = WaitForSelectorState.Visible });
+            var tooltipBounds = await tooltip.BoundingBoxAsync();
+            Assert.NotNull(tooltipBounds);
+            Assert.True(tooltipBounds!.X >= railBounds!.X + railBounds.Width + 6,
+                $"Tooltip {describedBy} started at {tooltipBounds.X}px; rail ended at {railBounds.X + railBounds.Width}px.");
+        }
     }
 
     [Fact]
