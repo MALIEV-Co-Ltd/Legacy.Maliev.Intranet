@@ -1,14 +1,14 @@
 @using Legacy.Maliev.Intranet.Client.Shared.Components
 
 <article class="dashboard-metric-card">
-    <div class="dashboard-metric-icon" aria-hidden="true">
-        <ShadcnIcon Icon="@Icon" Size="24" />
-    </div>
-    <div class="dashboard-metric-copy">
-        <span class="dashboard-metric-label">@Label</span>
-        <strong class="dashboard-metric-value">@Value</strong>
-        <LegacyLink Href="@NavigateTo" Role="LegacyLinkRole.Navigation" AriaLabel="@LinkText" Class="dashboard-metric-link">@LinkText <span aria-hidden="true">→</span></LegacyLink>
-    </div>
+    <LegacyLink Href="@NavigateTo" Role="LegacyLinkRole.Navigation" AriaLabel="@($"{Label}: {Value}. {LinkText}")" Class="dashboard-metric-link">
+        <span class="dashboard-metric-icon" aria-hidden="true"><ShadcnIcon Icon="@Icon" Size="18" /></span>
+        <span class="dashboard-metric-copy">
+            <span class="dashboard-metric-label">@Label</span>
+            <strong class="dashboard-metric-value">@Value</strong>
+        </span>
+        <span class="dashboard-metric-arrow" aria-hidden="true">→</span>
+    </LegacyLink>
 </article>
 
 @code {

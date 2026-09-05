@@ -29,10 +29,16 @@ Use the self-hosted `IBM Plex Sans Thai, sans-serif` family everywhere except ac
 - Tablet: collapsible rail/drawer with the same complete navigation and a compact utility bar.
 - Mobile: compact top header plus reachable navigation drawer; required actions remain visible and tables become deliberate responsive views rather than accidental one-column stacks.
 - Content uses fluid grids and bounded widths. Dense lists favor data tables on wide screens and structured records on narrow screens.
+- Command-center dashboards use a dense 12-column bento grid with 4-, 8-, and 12-column panel spans. Panels omitted by permission or unavailable data leave no reserved gaps; dense placement reflows the remaining panels, and the grid becomes one column at narrow mobile widths (760px and below).
+- Interactive mobile controls and record links retain a minimum 44px target. In the collapsed desktop rail, navigation links occupy the rail width and center their icons rather than inheriting expanded-state alignment.
 
 ## Components
 
 Shared primitives include AppShell, NavigationRail, GlobalSearch, QuickActions, PageHeader, MetricSummary, OperationalTable, StatusPill, EmptyState, ErrorState, LoadingState, and responsive form sections. Components must expose loading, empty, success, degraded, disabled, and error states.
+
+- Workspace metric tiles are permission-scoped navigation summaries: render only workspaces returned for the employee's grants, and do not fabricate hidden or zero-value placeholders.
+- Keep employee preferences, including language and theme, inside the profile popover alongside profile actions. The desktop profile trigger is a true capsule; at compact widths it may reduce to the avatar-sized control while preserving the 44px target.
+- In Blazor CSS isolation, a parent layout that sizes or aligns markup rendered inside a child component must deliberately cross the isolation boundary with `::deep`; this applies to bento panel spans, shell controls, chart internals, and similar parent-owned composition rules.
 
 ## Motion
 

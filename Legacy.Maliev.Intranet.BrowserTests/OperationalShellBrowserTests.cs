@@ -128,6 +128,14 @@ public sealed class OperationalShellBrowserTests(
         await page.GotoAsync(new Uri(server.BaseUri, "sales/orders").AbsoluteUri);
 
         Assert.Equal(0, await page.Locator(".legacy-topbar__utilities > .legacy-language-selector").CountAsync());
+        if (width <= 720)
+        {
+            var trigger = page.GetByRole(AriaRole.Button, new() { Name = "Employee menu" });
+            Assert.False(await trigger.Locator(".legacy-profile-chevron").IsVisibleAsync());
+            var bounds = await trigger.BoundingBoxAsync();
+            Assert.NotNull(bounds);
+            Assert.InRange(Math.Abs(bounds!.Width - bounds.Height), 0, 1);
+        }
 
         await page.GetByRole(AriaRole.Button, new() { Name = "Employee menu" }).ClickAsync();
         var preference = page.Locator(".legacy-profile-popover .legacy-language-selector");

@@ -10,6 +10,67 @@ public sealed class OperationalTableMigrationBrowserTests(
     PlaywrightFixture playwright)
 {
     [Fact]
+    public async Task DashboardPacksPermissionScopedContentIntoResponsiveBentoGrid()
+    {
+        await using var context = await playwright.Browser.NewContextAsync(new()
+        {
+            ViewportSize = new() { Width = 1280, Height = 900 },
+            ReducedMotion = ReducedMotion.Reduce,
+        });
+        var page = await context.NewPageAsync();
+        await StubSpecializedTableBoundariesAsync(page);
+        await page.UnrouteAsync("**/bff/dashboard");
+        await page.RouteAsync("**/bff/dashboard", route => route.FulfillAsync(new()
+        {
+            Status = 200,
+            ContentType = "application/json",
+            Body = JsonSerializer.Serialize(new
+            {
+                generatedAt = "2030-08-13T10:00:00+07:00",
+                cards = new[]
+                {
+                    new { key = "orders", count = 17, navigateTo = "/sales/orders" },
+                    new { key = "customers", count = 42, navigateTo = "/customers" },
+                    new { key = "quotations", count = 8, navigateTo = "/Quotations/Index" },
+                },
+                degradedSources = Array.Empty<string>(),
+                recentOrders = new[] { new { id = 901, name = "Precision fixture", quantity = 4, manufactured = 1, remaining = 3, promisedDate = "2030-08-20T00:00:00Z", navigateTo = "/sales/orders/901" } },
+                recentQuotations = new[] { new { id = 902, total = 1200m, quotedAmount = 1100m, currencyId = 764, expirationDate = "2030-09-01T00:00:00Z", accepted = (bool?)null, createdDate = "2030-08-02T00:00:00Z", navigateTo = "/Quotations/View?id=902" } },
+                recentCustomers = new[] { new { id = 69738, fullName = "Mali Dee", email = "mali@maliev.com", company = "MALIEV", navigateTo = "/Customers/View?id=69738" } },
+                recentPayments = new[] { new { id = 903, amount = 900m, currencyId = (int?)764, recipient = "Maliev Co., Ltd.", paymentDate = "2030-08-04T00:00:00Z", createdDate = "2030-08-03T00:00:00Z", navigateTo = "/Finances/View?id=903" } },
+                recentActivity = new[] { new { kind = "invoice", state = "paid", title = "INV-903", occurredAt = "2030-08-04T00:00:00Z", navigateTo = "/Invoices/View?id=903" } },
+                monthlyFinance = new[] { new { currencyId = "764", currentAmount = 1200m, previousAmount = 900m, deltaAmount = 300m, deltaPercent = 33.3m } },
+                quotationSummary = new { accepted = 4, declined = 3, open = 1 },
+                currencyCodes = new Dictionary<int, string> { [764] = "THB" },
+            }),
+        }));
+
+        await page.GotoAsync(new Uri(server.BaseUri, "Dashboard").AbsoluteUri);
+
+        var grid = page.Locator(".dashboard-bento-grid");
+        await grid.WaitForAsync();
+        Assert.Equal("dense", await grid.EvaluateAsync<string>("node => getComputedStyle(node).gridAutoFlow"));
+        Assert.True(await grid.Locator(".dashboard-bento").CountAsync() >= 8);
+        Assert.Equal(3, await grid.Locator(".dashboard-metric-card").CountAsync());
+
+        var wide = await grid.Locator(".dashboard-bento--wide").First.BoundingBoxAsync();
+        var compact = await grid.Locator(".dashboard-bento--compact").First.BoundingBoxAsync();
+        Assert.NotNull(wide);
+        Assert.NotNull(compact);
+        Assert.True(wide!.Width > compact!.Width * 1.5, $"Wide panel {wide.Width}px; compact panel {compact.Width}px.");
+        Assert.Equal(
+            await page.EvaluateAsync<int>("() => document.documentElement.clientWidth"),
+            await page.EvaluateAsync<int>("() => document.documentElement.scrollWidth"));
+        await page.SetViewportSizeAsync(390, 844);
+        var refreshBounds = await page.GetByRole(AriaRole.Button, new() { Name = "Refresh" }).BoundingBoxAsync();
+        Assert.NotNull(refreshBounds);
+        Assert.True(refreshBounds!.Width >= 44 && refreshBounds.Height >= 44);
+        Assert.All(
+            await grid.Locator(".dashboard-bento").EvaluateAllAsync<double[]>("nodes => nodes.map(node => node.getBoundingClientRect().width)"),
+            width => Assert.InRange(width, 340, 375));
+    }
+
+    [Fact]
     public async Task DashboardUsesSemanticWarningAndDistinctShadcnDonutSlices()
     {
         await using var context = await playwright.Browser.NewContextAsync(new()
@@ -55,6 +116,13 @@ public sealed class OperationalTableMigrationBrowserTests(
         var fills = await chart.Locator("[data-chart-shape='arc']").EvaluateAllAsync<string[]>(
             "nodes => nodes.map(node => getComputedStyle(node).fill)");
         Assert.Equal(3, fills.Distinct(StringComparer.Ordinal).Count());
+        var arcBounds = await chart.Locator("[data-chart-shape='arc']").EvaluateAllAsync<JsonElement>(
+            "nodes => { const boxes = nodes.map(node => node.getBoundingClientRect()); const left = Math.min(...boxes.map(box => box.left)); const right = Math.max(...boxes.map(box => box.right)); return { x: left, width: right - left }; }");
+        var totalBounds = await page.Locator(".dashboard-decision-total").BoundingBoxAsync();
+        Assert.NotNull(totalBounds);
+        var arcCenter = arcBounds.GetProperty("x").GetDouble() + arcBounds.GetProperty("width").GetDouble() / 2;
+        var totalCenter = totalBounds!.X + totalBounds.Width / 2;
+        Assert.InRange(totalCenter - arcCenter, -4, 4);
         var legend = page.Locator(".dashboard-decision-legend");
         Assert.Equal(3, await legend.Locator("[data-slot='chart-legend-item']").CountAsync());
         var legendColors = await legend.Locator(".shadcn-chart-legend-icon").EvaluateAllAsync<string[]>(
