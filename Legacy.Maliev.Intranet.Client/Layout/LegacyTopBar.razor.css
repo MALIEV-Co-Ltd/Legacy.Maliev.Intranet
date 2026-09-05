@@ -26,6 +26,8 @@
 .legacy-profile-action { border-radius: var(--shadcn-radius-sm); color: inherit; }
 .legacy-profile-action { width: 100%; }
 .legacy-profile-action:hover, .legacy-profile-action:focus-visible { background: var(--shadcn-accent); color: var(--shadcn-accent-foreground); }
+.legacy-profile-popover ::deep .legacy-profile-signout { min-height: 2.75rem; background: var(--shadcn-destructive); color: var(--shadcn-destructive-foreground); }
+.legacy-profile-popover ::deep .legacy-profile-signout:hover, .legacy-profile-popover ::deep .legacy-profile-signout:focus-visible { background: color-mix(in oklab, var(--shadcn-destructive) 88%, var(--shadcn-foreground)); color: var(--shadcn-destructive-foreground); }
 .legacy-profile-menu-divider { height: 1px; margin: 0.1875rem; }
 .legacy-signin-link { display: inline-flex; min-height: 2.75rem; align-items: center; }
 .legacy-session-status { position: absolute; top: 100%; right: 1rem; padding: 0.1875rem 0.4375rem; }

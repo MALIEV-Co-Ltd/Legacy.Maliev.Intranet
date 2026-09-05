@@ -118,6 +118,63 @@ public sealed class OperationalShellBrowserTests(
     }
 
     [Fact]
+    public async Task SignOutActionUsesDestructiveColorWithAccessibleContrast()
+    {
+        await using var context = await playwright.Browser.NewContextAsync(new()
+        {
+            ViewportSize = new() { Width = 1280, Height = 900 },
+            ReducedMotion = ReducedMotion.Reduce,
+        });
+        var page = await context.NewPageAsync();
+        await StubProductionBoundariesAsync(page);
+        await page.GotoAsync(new Uri(server.BaseUri, "sales/orders").AbsoluteUri);
+
+        await page.GetByRole(AriaRole.Button, new() { Name = "Employee menu" }).ClickAsync();
+        var signOut = page.GetByRole(AriaRole.Button, new() { Name = "Sign out" });
+        var visual = await signOut.EvaluateAsync<JsonElement>("""
+            element => {
+                const style = getComputedStyle(element);
+                const surface = getComputedStyle(element.closest('.legacy-profile-popover')).backgroundColor;
+                const canvas = document.createElement('canvas');
+                canvas.width = canvas.height = 1;
+                const context = canvas.getContext('2d', { willReadFrequently: true });
+                const rgba = value => {
+                    context.clearRect(0, 0, 1, 1);
+                    context.fillStyle = value;
+                    context.fillRect(0, 0, 1, 1);
+                    return Array.from(context.getImageData(0, 0, 1, 1).data);
+                };
+                const composite = (foreground, background) => {
+                    const alpha = foreground[3] / 255;
+                    return foreground.slice(0, 3).map((channel, index) =>
+                        channel * alpha + background[index] * (1 - alpha));
+                };
+                const channel = value => {
+                    const normalized = value / 255;
+                    return normalized <= 0.04045
+                        ? normalized / 12.92
+                        : Math.pow((normalized + 0.055) / 1.055, 2.4);
+                };
+                const luminance = ([red, green, blue]) => {
+                    return 0.2126 * channel(red) + 0.7152 * channel(green) + 0.0722 * channel(blue);
+                };
+                const foreground = luminance(rgba(style.color));
+                const background = luminance(composite(rgba(style.backgroundColor), rgba(surface)));
+                return {
+                    color: style.color,
+                    background: style.backgroundColor,
+                    height: element.getBoundingClientRect().height,
+                    contrast: (Math.max(foreground, background) + 0.05) / (Math.min(foreground, background) + 0.05)
+                };
+            }
+            """);
+
+        Assert.DoesNotContain("rgba(0, 0, 0, 0)", visual.GetProperty("background").GetString(), StringComparison.Ordinal);
+        Assert.True(visual.GetProperty("height").GetDouble() >= 44, visual.ToString());
+        Assert.True(visual.GetProperty("contrast").GetDouble() >= 4.5, visual.ToString());
+    }
+
+    [Fact]
     public async Task NarrowQuickCreateRoutesRemainVisibleFocusableAndTouchSized()
     {
         await using var context = await playwright.Browser.NewContextAsync(new()
