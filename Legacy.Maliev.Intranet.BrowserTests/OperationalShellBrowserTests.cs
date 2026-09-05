@@ -57,7 +57,7 @@ public sealed class OperationalShellBrowserTests(
         await desktopRail.WaitForAsync();
         Assert.True(await desktopRail.EvaluateAsync<bool>(
             "element => element.getBoundingClientRect().width <= 232"));
-        Assert.True(await desktopRail.Locator(".legacy-rail-link").EvaluateAllAsync<bool>(
+        Assert.True(await desktopRail.Locator(".legacy-rail-link:visible").EvaluateAllAsync<bool>(
             "elements => elements.length > 0 && elements.every(element => { const height = element.getBoundingClientRect().height; return height >= 34 && height <= 38; })"));
 
         await page.SetViewportSizeAsync(768, 844);
@@ -65,7 +65,7 @@ public sealed class OperationalShellBrowserTests(
 
         var drawer = page.Locator(".legacy-navigation-rail[data-mobile='true']");
         await drawer.WaitForAsync();
-        Assert.True(await drawer.Locator(".legacy-rail-link").EvaluateAllAsync<bool>(
+        Assert.True(await drawer.Locator(".legacy-rail-link:visible").EvaluateAllAsync<bool>(
             "elements => elements.length > 0 && elements.every(element => element.getBoundingClientRect().height >= 44)"));
         Assert.Equal("hidden", await drawer.Locator(".legacy-rail-groups").EvaluateAsync<string>(
             "element => getComputedStyle(element).overflowX"));
@@ -274,6 +274,36 @@ public sealed class OperationalShellBrowserTests(
             """);
 
         Assert.True(spacing >= 12, $"Collapsed navigation gap was {spacing}px.");
+    }
+
+    [Fact]
+    public async Task ParentNavigationActionsAreCollapsedByDefaultAndChevronTogglesThem()
+    {
+        await using var context = await playwright.Browser.NewContextAsync(new()
+        {
+            ViewportSize = new() { Width = 1280, Height = 900 },
+            ReducedMotion = ReducedMotion.Reduce,
+        });
+        var page = await context.NewPageAsync();
+        await StubProductionBoundariesAsync(page);
+        await page.GotoAsync(new Uri(server.BaseUri, "Dashboard").AbsoluteUri);
+
+        var customerItem = page.Locator(".legacy-rail-item", new() { Has = page.Locator("a[href='/customers']") });
+        var chevron = customerItem.Locator(".legacy-rail-chevron");
+        var child = customerItem.Locator("a[href='/customers/new']");
+
+        await chevron.WaitForAsync();
+        Assert.Equal("false", await chevron.GetAttributeAsync("aria-expanded"));
+        Assert.True(await child.IsHiddenAsync());
+
+        await chevron.ClickAsync();
+        await child.WaitForAsync(new() { State = WaitForSelectorState.Visible });
+        Assert.Equal("true", await chevron.GetAttributeAsync("aria-expanded"));
+
+        await chevron.FocusAsync();
+        await page.Keyboard.PressAsync("Enter");
+        await child.WaitForAsync(new() { State = WaitForSelectorState.Hidden });
+        Assert.Equal("false", await chevron.GetAttributeAsync("aria-expanded"));
     }
 
     [Fact]
@@ -489,8 +519,14 @@ public sealed class OperationalShellBrowserTests(
         Assert.InRange(desktopCollapse.GetProperty("right").GetDouble(), desktopSidebar.GetProperty("left").GetDouble(), desktopSidebar.GetProperty("right").GetDouble());
 
         var parent = page.Locator(".legacy-navigation-rail a[href='/sales/orders']");
-        var child = page.Locator(".legacy-navigation-rail a[href='/Orders/Create']");
         Assert.Equal("page", await parent.GetAttributeAsync("aria-current"));
+        var parentItem = page.Locator(".legacy-rail-item", new() { Has = page.Locator("a[href='/sales/orders']") });
+        var parentChevron = parentItem.Locator(".legacy-rail-chevron");
+        Assert.Equal("false", await parentChevron.GetAttributeAsync("aria-expanded"));
+        Assert.Equal(0, await parentItem.Locator("a[href='/Orders/Create']").CountAsync());
+        await parentChevron.ClickAsync();
+        var child = parentItem.Locator("a[href='/Orders/Create']");
+        await child.WaitForAsync();
         Assert.Contains("legacy-rail-link--child", await child.GetAttributeAsync("class"));
         Assert.True(await child.EvaluateAsync<bool>(
             "(node, parent) => Boolean(node.compareDocumentPosition(document.querySelector(parent)) & Node.DOCUMENT_POSITION_PRECEDING)",
@@ -568,6 +604,12 @@ public sealed class OperationalShellBrowserTests(
 
         var drawer = page.Locator(".legacy-navigation-rail[data-mobile='true']");
         await drawer.WaitForAsync();
+        var ordersItem = drawer.Locator(".legacy-rail-item", new() { Has = page.Locator("a[href='/sales/orders']") });
+        var ordersChevron = ordersItem.Locator(".legacy-rail-chevron");
+        Assert.True(await ordersChevron.EvaluateAsync<bool>(
+            "element => element.getBoundingClientRect().height >= 44"));
+        if (await ordersChevron.GetAttributeAsync("aria-expanded") == "false")
+            await ordersChevron.ClickAsync();
         Assert.True(await drawer.Locator("a[href='/Orders/Create']").EvaluateAsync<bool>(
             "element => element.getBoundingClientRect().height >= 44"));
         var close = drawer.Locator("#legacy-sidebar-collapse");
@@ -575,11 +617,16 @@ public sealed class OperationalShellBrowserTests(
         var firstFocusable = drawer.Locator(".legacy-rail-logo");
         await firstFocusable.FocusAsync();
         await page.Keyboard.PressAsync("Shift+Tab");
-        var lastNavigationLink = drawer.Locator(".legacy-rail-link").Last;
-        await page.WaitForFunctionAsync(
-            "element => element === document.activeElement",
-            await lastNavigationLink.ElementHandleAsync());
-        Assert.True(await lastNavigationLink.EvaluateAsync<bool>("element => element === document.activeElement"));
+        var wrappedFocus = await drawer.EvaluateAsync<JsonElement>("""
+            element => ({
+                isNavigationControl: document.activeElement?.matches('.legacy-rail-link, .legacy-rail-chevron') === true,
+                isInsideDrawer: element.contains(document.activeElement),
+                activeMarkup: document.activeElement?.outerHTML ?? ''
+            })
+            """);
+        Assert.True(
+            wrappedFocus.GetProperty("isNavigationControl").GetBoolean() && wrappedFocus.GetProperty("isInsideDrawer").GetBoolean(),
+            $"Shift+Tab escaped the drawer or missed a visible navigation control: {wrappedFocus.GetProperty("activeMarkup").GetString()}");
         await page.Keyboard.PressAsync("Escape");
         await drawer.WaitForAsync(new() { State = WaitForSelectorState.Detached });
         Assert.True(await menu.EvaluateAsync<bool>("element => element === document.activeElement"));
@@ -626,6 +673,10 @@ public sealed class OperationalShellBrowserTests(
             var minimumHeight = width <= 768 ? 44 : 28;
             Assert.True(await child.EvaluateAsync<bool>("(node, minimum) => node.getBoundingClientRect().height >= minimum", minimumHeight));
             await parent.FocusAsync();
+            await page.Keyboard.PressAsync("Tab");
+            var chevron = parent.Locator("xpath=ancestor::*[contains(concat(' ', normalize-space(@class), ' '), ' legacy-rail-item ')][1]")
+                .Locator(".legacy-rail-chevron");
+            Assert.True(await chevron.EvaluateAsync<bool>("node => document.activeElement === node"));
             await page.Keyboard.PressAsync("Tab");
             Assert.True(await child.EvaluateAsync<bool>("node => document.activeElement === node"));
 

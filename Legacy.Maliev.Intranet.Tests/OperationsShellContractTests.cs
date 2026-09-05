@@ -257,10 +257,15 @@ public sealed class OperationsShellContractTests
 
         Assert.Contains("<ShadcnSidebarMenu Class=\"legacy-rail-items\">", navigation, StringComparison.Ordinal);
         Assert.Contains("<ShadcnSidebarMenuItem Class=\"legacy-rail-item\">", navigation, StringComparison.Ordinal);
+        Assert.Contains("<ShadcnCollapsible Class=\"legacy-rail-collapsible\"", navigation, StringComparison.Ordinal);
+        Assert.Contains("<ShadcnCollapsibleTrigger Class=\"legacy-rail-chevron\"", navigation, StringComparison.Ordinal);
+        Assert.Contains("<ShadcnCollapsibleContent Class=\"legacy-rail-child-region\">", navigation, StringComparison.Ordinal);
         Assert.Contains("<ShadcnSidebarMenuSub Class=\"legacy-rail-children\"", navigation, StringComparison.Ordinal);
-        Assert.Contains("<ShadcnSidebarMenuButton", navigation, StringComparison.Ordinal);
+        Assert.Contains("<ShadcnHoverCardTrigger Href=\"@item.Href\"", navigation, StringComparison.Ordinal);
         Assert.Contains("<ShadcnSidebarMenuSubButton", navigation, StringComparison.Ordinal);
         Assert.Contains("GetEnabledChildren(item)", navigation, StringComparison.Ordinal);
+        Assert.Contains("Open=\"@IsItemOpen(item)\"", navigation, StringComparison.Ordinal);
+        Assert.Contains("OpenChanged=\"@(open => SetItemOpen(item, open))\"", navigation, StringComparison.Ordinal);
         Assert.Contains("IsItemPageCurrent(item)", navigation, StringComparison.Ordinal);
         Assert.Contains("FindCurrentItem()", navigation, StringComparison.Ordinal);
         Assert.DoesNotContain("aria-current=\"@(IsItemActive(item) ? \"page\" : null)\"", navigation, StringComparison.Ordinal);

@@ -31,7 +31,67 @@
                         @if (IsItemEnabled(item) || children.Count > 0)
                         {
                             <ShadcnSidebarMenuItem Class="legacy-rail-item">
-                                @if (IsItemEnabled(item))
+                                @if (children.Count > 0)
+                                {
+                                    <ShadcnCollapsible Class="legacy-rail-collapsible" Open="@IsItemOpen(item)"
+                                                       OpenChanged="@(open => SetItemOpen(item, open))">
+                                        <div class="legacy-rail-parent-row">
+                                            @if (IsItemEnabled(item))
+                                            {
+                                                <ShadcnHoverCard id="@ItemId(item)" Class="legacy-rail-popover-root"
+                                                                 OpenDelay="@TimeSpan.FromMilliseconds(150)"
+                                                                 CloseDelay="@TimeSpan.FromMilliseconds(100)">
+                                                    <ShadcnHoverCardTrigger Href="@item.Href"
+                                                                            Class="shadcn-sidebar-menu-button legacy-rail-link"
+                                                                            data-size="default" data-variant="default"
+                                                                            data-active="@(IsItemPageCurrent(item) ? "true" : null)"
+                                                                            aria-current="@(IsItemPageCurrent(item) ? "page" : null)"
+                                                                            @onclick="NavigateAsync">
+                                                        <ShadcnIcon Icon="@item.Icon" Size="20" />
+                                                        <span>@Text[item.Label]</span>
+                                                    </ShadcnHoverCardTrigger>
+                                                    <ShadcnHoverCardContent Side="ShadcnOverlaySide.Right"
+                                                                            Align="ShadcnOverlayAlign.Center"
+                                                                            SideOffset="16" AlignOffset="0"
+                                                                            Class="legacy-rail-popover-content">
+                                                        <span class="legacy-rail-popover-icon" aria-hidden="true">
+                                                            <ShadcnIcon Icon="@item.Icon" Size="18" />
+                                                        </span>
+                                                        <span class="legacy-rail-popover-copy">
+                                                            <strong>@Text[item.Label]</strong>
+                                                            <small>@Text[item.Description ?? item.Label]</small>
+                                                        </span>
+                                                    </ShadcnHoverCardContent>
+                                                </ShadcnHoverCard>
+                                            }
+                                            <ShadcnCollapsibleTrigger Class="legacy-rail-chevron"
+                                                                      aria-label="@Text["Expand or collapse {0}", Text[item.Label]]"
+                                                                      title="@Text["Expand or collapse {0}", Text[item.Label]]">
+                                                <ShadcnIcon Icon="ChevronRightIcon" Size="16" />
+                                            </ShadcnCollapsibleTrigger>
+                                        </div>
+                                        <ShadcnCollapsibleContent Class="legacy-rail-child-region">
+                                        @if (IsItemOpen(item))
+                                        {
+                                            <ShadcnSidebarMenuSub Class="legacy-rail-children"
+                                                aria-label="@Text[item.Label].Value">
+                                            @foreach (var child in children)
+                                            {
+                                                <ShadcnSidebarMenuSubItem>
+                                                    <ShadcnSidebarMenuSubButton id="@ItemId(child)" Href="@child.Href"
+                                                       Active="@IsItemPageCurrent(child)" Class="legacy-rail-link legacy-rail-link--child"
+                                                       title="@Text[child.Description ?? child.Label]" @onclick="NavigateAsync">
+                                                        <ShadcnIcon Icon="@child.Icon" Size="20" />
+                                                        <span>@Text[child.Label]</span>
+                                                    </ShadcnSidebarMenuSubButton>
+                                                </ShadcnSidebarMenuSubItem>
+                                            }
+                                            </ShadcnSidebarMenuSub>
+                                        }
+                                        </ShadcnCollapsibleContent>
+                                    </ShadcnCollapsible>
+                                }
+                                else if (IsItemEnabled(item))
                                 {
                                     <ShadcnHoverCard id="@ItemId(item)" Class="legacy-rail-popover-root"
                                                      OpenDelay="@TimeSpan.FromMilliseconds(150)"
@@ -58,24 +118,6 @@
                                             </span>
                                         </ShadcnHoverCardContent>
                                     </ShadcnHoverCard>
-                                }
-                                @if (children.Count > 0)
-                                {
-                                    <ShadcnSidebarMenuSub Class="legacy-rail-children"
-                                        aria-labelledby="@(IsItemEnabled(item) ? ItemId(item) : null)"
-                                        aria-label="@(!IsItemEnabled(item) ? Text[item.Label].Value : null)">
-                                    @foreach (var child in children)
-                                    {
-                                        <ShadcnSidebarMenuSubItem>
-                                            <ShadcnSidebarMenuSubButton id="@ItemId(child)" Href="@child.Href"
-                                               Active="@IsItemPageCurrent(child)" Class="legacy-rail-link legacy-rail-link--child"
-                                               title="@Text[child.Description ?? child.Label]" @onclick="NavigateAsync">
-                                                <ShadcnIcon Icon="@child.Icon" Size="20" />
-                                                <span>@Text[child.Label]</span>
-                                            </ShadcnSidebarMenuSubButton>
-                                        </ShadcnSidebarMenuSubItem>
-                                    }
-                                    </ShadcnSidebarMenuSub>
                                 }
                             </ShadcnSidebarMenuItem>
                         }
@@ -104,6 +146,9 @@
     [Parameter] public EmployeeSessionSummary? Session { get; set; }
     [Parameter] public EventCallback OnNavigate { get; set; }
 
+    private static readonly ShadcnIconData ChevronRightIcon = LucideIconCatalog.Instance.Get(LucideIconNames.ChevronRight);
+    private readonly Dictionary<string, bool> _itemOpenStates = new(StringComparer.OrdinalIgnoreCase);
+
     private bool IsItemEnabled(LegacyNavItem item) => LegacyNavigationAuthorization.IsEnabled(
         Session?.IsAuthenticated == true, item.RequiredPermission, Session?.Permissions, Session?.Roles);
 
@@ -126,6 +171,10 @@
         .Where(item => item.Kind == LegacyNavItemKind.ChildAction &&
                        string.Equals(item.ParentHref, parent.Href, StringComparison.OrdinalIgnoreCase) && IsItemEnabled(item))
         .ToArray();
+    private bool IsItemOpen(LegacyNavItem item) => _itemOpenStates.TryGetValue(item.Href, out var open)
+        ? open
+        : GetEnabledChildren(item).Any(IsItemPageCurrent);
+    private void SetItemOpen(LegacyNavItem item, bool open) => _itemOpenStates[item.Href] = open;
     private string CurrentRoute() => Navigation.ToBaseRelativePath(Navigation.Uri).Split('?', '#')[0].Trim('/');
     private static string NormalizeRoute(string href) => href.Trim('/').Split('?', '#')[0];
     private static string ItemId(LegacyNavItem item) => $"legacy-rail-owner-{NormalizeRoute(item.Href).Replace('/', '-').ToLowerInvariant()}";

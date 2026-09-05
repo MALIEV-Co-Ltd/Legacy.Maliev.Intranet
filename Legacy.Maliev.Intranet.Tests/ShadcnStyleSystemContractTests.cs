@@ -49,7 +49,8 @@ public sealed class ShadcnStyleSystemContractTests
         var rail = Read("Legacy.Maliev.Intranet.Client", "Components", "Shell", "LegacyNavigationRail.razor");
 
         Assert.Contains(".legacy-workspace-frame > .legacy-topbar", semantic, StringComparison.Ordinal);
-        Assert.Contains("<ShadcnSidebarMenuButton", rail, StringComparison.Ordinal);
+        Assert.Contains("<ShadcnHoverCardTrigger", rail, StringComparison.Ordinal);
+        Assert.Contains("<ShadcnCollapsible", rail, StringComparison.Ordinal);
         Assert.Contains("<ShadcnSidebarMenuSubButton", rail, StringComparison.Ordinal);
         Assert.DoesNotContain(".legacy-navigation-rail .legacy-rail-link.active", semantic, StringComparison.Ordinal);
         Assert.Contains("background: var(--shadcn-popover)", search, StringComparison.Ordinal);

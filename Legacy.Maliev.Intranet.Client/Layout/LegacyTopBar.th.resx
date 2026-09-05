@@ -9,6 +9,7 @@
   <data name="MALIEV dashboard" xml:space="preserve"><value>แดชบอร์ด MALIEV</value></data>
   <data name="Dashboard" xml:space="preserve"><value>ภาพรวม</value></data>
   <data name="Primary navigation" xml:space="preserve"><value>เมนูหลัก</value></data>
+  <data name="Expand or collapse {0}" xml:space="preserve"><value>ขยายหรือยุบ {0}</value></data>
   <data name="Navigation" xml:space="preserve"><value>เมนูนำทาง</value></data>
   <data name="More" xml:space="preserve"><value>เพิ่มเติม</value></data>
   <data name="More navigation" xml:space="preserve"><value>เมนูเพิ่มเติม</value></data>
