@@ -8,7 +8,7 @@ public sealed class ShadcnPackageIntegrationContractTests
         var project = Read("Legacy.Maliev.Intranet.Client", "Legacy.Maliev.Intranet.Client.csproj");
         var program = Read("Legacy.Maliev.Intranet.Client", "Program.cs");
 
-        Assert.Contains("<PackageReference Include=\"Maliev.ShadcnBlazor\" Version=\"2.1.4\"", project, StringComparison.Ordinal);
+        Assert.Contains("<PackageReference Include=\"Maliev.ShadcnBlazor\" Version=\"2.2.0\"", project, StringComparison.Ordinal);
         Assert.DoesNotContain("Maliev.ShadcnBlazor.csproj", project, StringComparison.Ordinal);
         Assert.Contains("AddMalievShadcn", program, StringComparison.Ordinal);
         Assert.DoesNotContain("AddMudServices", program, StringComparison.Ordinal);

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "packageVersion": "2.1.4",
+  "packageVersion": "2.2.0",
   "baseline": {
     "renderSites": 1485,
     "componentTypes": 36,
