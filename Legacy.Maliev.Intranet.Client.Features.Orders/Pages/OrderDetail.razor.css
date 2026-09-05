@@ -4,7 +4,7 @@
 .order-detail-header p { margin: 0.25rem 0 0; color: var(--shadcn-muted-foreground); }
 .order-header-actions, .order-status-actions, .order-upload-actions { align-items: center; flex-wrap: wrap; }
 .order-detail__loading { display: grid; gap: 1rem; min-width: 0; }
-.order-detail__loading-status { display: flex; width: fit-content; min-height: 2.75rem; align-items: center; gap: 0.625rem; color: var(--shadcn-muted-foreground); font-weight: 500; }
+.order-detail__loading-status { display: flex; width: fit-content; min-height: 2.75rem; align-items: center; gap: 0.625rem; color: var(--shadcn-muted-foreground); font-weight: var(--maliev-font-weight-body); }
 .order-edit-form { display: grid; gap: 0.875rem; }
 .order-edit-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; padding: 0.25rem 0 1rem; }
 .order-edit-wide { grid-column: 1 / -1; }

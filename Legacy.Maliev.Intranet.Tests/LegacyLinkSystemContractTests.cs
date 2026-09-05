@@ -76,7 +76,7 @@ public sealed class LegacyLinkSystemContractTests
             E("Legacy.Maliev.Intranet.Client/Pages/Dashboard.razor", authorize, "Href=\"@activity.NavigateTo\"", 1, "Role=\"LegacyLinkRole.Record\"", "AriaLabel=\"@ActivityTitle(activity)\"", "@ActivityTitle(activity)</LegacyLink>"),
             E("Legacy.Maliev.Intranet.Client/Pages/Login.razor", anonymous, "Href=\"https://www.maliev.com\"", 1, "Role=\"LegacyLinkRole.External\"", "Target=\"_blank\"", "Rel=\"noreferrer\"", "www.maliev.com"),
             E("Legacy.Maliev.Intranet.Client/Components/Dashboard/DashboardPanel.razor", null, "Href=\"@NavigateTo\"", 1, "Role=\"LegacyLinkRole.Navigation\"", "AriaLabel=\"@LinkText\"", "@LinkText"),
-            E("Legacy.Maliev.Intranet.Client/Components/Dashboard/DashboardMetricCard.razor", null, "Href=\"@NavigateTo\"", 1, "Role=\"LegacyLinkRole.Navigation\"", "AriaLabel=\"@LinkText\"", "dashboard-metric-link", "@LinkText"),
+            E("Legacy.Maliev.Intranet.Client/Components/Dashboard/DashboardMetricCard.razor", null, "Href=\"@NavigateTo\"", 1, "Role=\"LegacyLinkRole.Navigation\"", "AriaLabel=\"@($\"{Label}: {Value}. {LinkText}\")\"", "dashboard-metric-link"),
 
             E("Legacy.Maliev.Intranet.Client.Features.Customers/Pages/CustomerView.razor", authorize, "Href=\"/Customers/Index\"", 2, "Role=\"LegacyLinkRole.Navigation\"", "AriaLabel=\"@Text[\"BackToCustomers\"]\"", "@Text[\"BackToCustomers\"]</LegacyLink>"),
             E("Legacy.Maliev.Intranet.Client.Features.Customers/Components/CustomerOverview.razor", null, "mailto:{Customer.Email}", 1, "Role=\"LegacyLinkRole.Inline\"", "@Customer.Email"),
@@ -131,9 +131,10 @@ public sealed class LegacyLinkSystemContractTests
                 Assert.Contains(expectation.Authorization, source, StringComparison.Ordinal);
             }
 
-            Assert.Equal(
-                expectation.Count,
-                LegacyLinkSourceContracts.CountExpectedLinks(source, expectation.Href, expectation.LocalFragments));
+            var actualCount = LegacyLinkSourceContracts.CountExpectedLinks(source, expectation.Href, expectation.LocalFragments);
+            Assert.True(
+                actualCount == expectation.Count,
+                $"{expectation.RelativePath}: expected {expectation.Count} link(s) for {expectation.Href} with fragments {string.Join(", ", expectation.LocalFragments)}, found {actualCount}.");
         }
 
         var orders = ReadSource("Legacy.Maliev.Intranet.Client.Features.Orders/Pages/Orders.razor");
