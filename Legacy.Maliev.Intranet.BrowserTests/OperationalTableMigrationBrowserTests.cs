@@ -10,6 +10,59 @@ public sealed class OperationalTableMigrationBrowserTests(
     PlaywrightFixture playwright)
 {
     [Fact]
+    public async Task DashboardUsesSemanticWarningAndDistinctShadcnDonutSlices()
+    {
+        await using var context = await playwright.Browser.NewContextAsync(new()
+        {
+            ViewportSize = new() { Width = 1280, Height = 900 },
+            ReducedMotion = ReducedMotion.Reduce,
+        });
+        var page = await context.NewPageAsync();
+        await StubSpecializedTableBoundariesAsync(page);
+        await page.UnrouteAsync("**/bff/dashboard");
+        await page.RouteAsync("**/bff/dashboard", route => route.FulfillAsync(new()
+        {
+            Status = 200,
+            ContentType = "application/json",
+            Body = JsonSerializer.Serialize(new
+            {
+                generatedAt = "2030-08-13T10:00:00+07:00",
+                cards = Array.Empty<object>(),
+                degradedSources = new[] { "currencies" },
+                recentOrders = Array.Empty<object>(),
+                recentQuotations = Array.Empty<object>(),
+                recentCustomers = Array.Empty<object>(),
+                recentPayments = Array.Empty<object>(),
+                recentActivity = Array.Empty<object>(),
+                monthlyFinance = Array.Empty<object>(),
+                quotationSummary = new { accepted = 40, declined = 59, open = 1 },
+                currencyCodes = new Dictionary<int, string>(),
+            }),
+        }));
+
+        await page.GotoAsync(new Uri(server.BaseUri, "Dashboard").AbsoluteUri);
+
+        var warning = page.Locator(".dashboard-alert--warning");
+        await warning.WaitForAsync();
+        var warningColors = await warning.EvaluateAsync<JsonElement>(
+            "node => ({ background: getComputedStyle(node).backgroundColor, border: getComputedStyle(node).borderTopColor })");
+        Assert.NotEqual("rgba(0, 0, 0, 0)", warningColors.GetProperty("background").GetString());
+        Assert.NotEqual("rgba(0, 0, 0, 0)", warningColors.GetProperty("border").GetString());
+
+        var chart = page.Locator(".dashboard-decision-chart[data-slot='chart']");
+        await chart.WaitForAsync();
+        Assert.Equal(3, await chart.Locator("[data-chart-shape='arc']").CountAsync());
+        var fills = await chart.Locator("[data-chart-shape='arc']").EvaluateAllAsync<string[]>(
+            "nodes => nodes.map(node => getComputedStyle(node).fill)");
+        Assert.Equal(3, fills.Distinct(StringComparer.Ordinal).Count());
+        var legend = page.Locator(".dashboard-decision-legend");
+        Assert.Equal(3, await legend.Locator("[data-slot='chart-legend-item']").CountAsync());
+        var legendColors = await legend.Locator(".shadcn-chart-legend-icon").EvaluateAllAsync<string[]>(
+            "nodes => nodes.map(node => getComputedStyle(node).backgroundColor)");
+        Assert.Equal(3, legendColors.Distinct(StringComparer.Ordinal).Count());
+    }
+
+    [Fact]
     public async Task DashboardRefreshesItsSnapshotWithoutManualInteraction()
     {
         await using var context = await playwright.Browser.NewContextAsync(new()

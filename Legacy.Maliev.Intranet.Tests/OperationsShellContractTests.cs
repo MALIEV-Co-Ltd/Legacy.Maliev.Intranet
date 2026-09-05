@@ -177,7 +177,7 @@ public sealed class OperationsShellContractTests
         Assert.Contains("grid-template-columns: minmax(18rem, 1fr) auto auto", topBarCss, StringComparison.Ordinal);
         Assert.DoesNotContain("margin-left: calc(-1", topBarCss, StringComparison.Ordinal);
         Assert.DoesNotContain("margin-block: -", topBarCss, StringComparison.Ordinal);
-        Assert.Contains("border: 1px solid var(--legacy-border)", topBarCss, StringComparison.Ordinal);
+        Assert.Contains("border: 1px solid var(--shadcn-border)", topBarCss, StringComparison.Ordinal);
         Assert.Contains("legacy-rail-logo legacy-logo-link", navigation, StringComparison.Ordinal);
         Assert.Contains("legacy-sidebar-collapse", navigation, StringComparison.Ordinal);
         Assert.Contains("max-height: 100dvh", railCss, StringComparison.Ordinal);

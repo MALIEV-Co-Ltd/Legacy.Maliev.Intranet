@@ -9,6 +9,41 @@ public sealed class OperationalShellBrowserTests(
     IntranetClientServerFixture server,
     PlaywrightFixture playwright)
 {
+    [Fact]
+    public async Task DesktopShellKeepsNavigationScrollableWithoutHorizontalRailAndUsesOpaqueUtilities()
+    {
+        await using var context = await playwright.Browser.NewContextAsync(new()
+        {
+            ViewportSize = new() { Width = 1280, Height = 900 },
+            ReducedMotion = ReducedMotion.Reduce,
+        });
+        var page = await context.NewPageAsync();
+        await StubProductionBoundariesAsync(page);
+        await page.GotoAsync(new Uri(server.BaseUri, "sales/orders").AbsoluteUri);
+
+        var railGroups = page.Locator(".legacy-rail-groups");
+        await railGroups.WaitForAsync();
+        Assert.Equal("hidden", await railGroups.EvaluateAsync<string>("node => getComputedStyle(node).overflowX"));
+        Assert.Contains(await railGroups.EvaluateAsync<string>("node => getComputedStyle(node).overflowY"), new[] { "auto", "scroll" });
+
+        var topbar = page.Locator(".legacy-topbar");
+        var topbarSurface = await topbar.EvaluateAsync<JsonElement>(
+            "node => ({ background: getComputedStyle(node).backgroundColor, backdrop: getComputedStyle(node).backdropFilter })");
+        Assert.DoesNotContain("rgba(0, 0, 0, 0)", topbarSurface.GetProperty("background").GetString(), StringComparison.Ordinal);
+        Assert.Equal("none", topbarSurface.GetProperty("backdrop").GetString());
+
+        var utilities = page.Locator(".legacy-topbar__utilities");
+        Assert.True(await utilities.EvaluateAsync<bool>(
+            "node => { const style = getComputedStyle(node); return style.backgroundColor !== 'rgba(0, 0, 0, 0)' && style.borderTopWidth === '1px'; }"));
+
+        var breadcrumbs = page.Locator("nav.page-breadcrumbs ol");
+        await breadcrumbs.WaitForAsync();
+        var breadcrumbBounds = await breadcrumbs.BoundingBoxAsync();
+        Assert.NotNull(breadcrumbBounds);
+        Assert.True(breadcrumbBounds!.X >= 16, $"Breadcrumb started at {breadcrumbBounds.X}px.");
+        Assert.True(1280 - (breadcrumbBounds.X + breadcrumbBounds.Width) >= 16, $"Breadcrumb ended at {breadcrumbBounds.X + breadcrumbBounds.Width}px.");
+    }
+
     private static readonly (string ParentHref, string ChildHref)[] NavigationHierarchy =
     [
         ("/customers", "/customers/new"),
