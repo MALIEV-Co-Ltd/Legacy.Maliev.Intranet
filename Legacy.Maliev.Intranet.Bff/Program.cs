@@ -10,6 +10,7 @@ using Legacy.Maliev.Intranet.Bff.Diagnostics;
 using Legacy.Maliev.Intranet.Bff.Dashboard;
 using Legacy.Maliev.Intranet.Bff.Employees;
 using Legacy.Maliev.Intranet.Bff.Orders;
+using Legacy.Maliev.Intranet.Bff.Operations;
 using Legacy.Maliev.Intranet.Bff.Procurement;
 using Legacy.Maliev.Intranet.Bff.Quotations;
 using Legacy.Maliev.Intranet.Server.Orders;
@@ -336,6 +337,19 @@ builder.Services.AddHttpClient<QuotationFileProxy>(client =>
     .AddHttpMessageHandler<LegacyServiceAuthenticationHandler>()
     .AddStandardResilienceHandler();
 builder.Services.AddScoped<QuotationDetailAggregator>();
+builder.Services.AddHttpClient(AggregateOutcomeProxy.AccountingClient, client =>
+{
+    client.BaseAddress = new Uri(builder.Configuration["Services:Accounting"]
+        ?? "https+http://legacy-maliev-accounting-service");
+    client.Timeout = TimeSpan.FromSeconds(10);
+}).RemoveAllResilienceHandlers();
+builder.Services.AddHttpClient(AggregateOutcomeProxy.QuotationClient, client =>
+{
+    client.BaseAddress = new Uri(builder.Configuration["Services:Quotation"]
+        ?? "https+http://legacy-maliev-quotation-service");
+    client.Timeout = TimeSpan.FromSeconds(10);
+}).RemoveAllResilienceHandlers();
+builder.Services.AddScoped<AggregateOutcomeProxy>();
 builder.Services.AddScoped<IQuotationCreationGateway, QuotationCreationGateway>();
 builder.Services.AddScoped<QuotationCreationWorkflow>();
 if (builder.Environment.IsEnvironment("Testing"))
@@ -793,6 +807,9 @@ app.UseAntiforgery();
 app.UseMiddleware<DiagnosticEventMiddleware>();
 app.MapDefaultEndpoints("intranet-bff");
 app.MapStaticAssets().AllowAnonymous();
+
+app.MapGet("/Operations/OutcomeReadback", OutcomeReadbackEndpointMapper.GetAsync)
+    .RequireAuthorization();
 
 app.MapGet("/bff/session", (HttpContext context, IAntiforgery antiforgery) =>
 {
