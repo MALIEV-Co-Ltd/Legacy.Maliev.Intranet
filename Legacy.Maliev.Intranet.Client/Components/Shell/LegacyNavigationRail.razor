@@ -42,22 +42,18 @@
                                         <div class="legacy-rail-parent-row">
                                             @if (IsItemEnabled(item))
                                             {
-                                                <ShadcnHoverCard id="@ItemId(item)" Class="legacy-rail-popover-root"
-                                                                 OpenDelay="@TimeSpan.FromMilliseconds(150)"
-                                                                 CloseDelay="@TimeSpan.FromMilliseconds(100)">
-                                                    <ShadcnHoverCardTrigger Href="@item.Href"
-                                                                            Class="shadcn-sidebar-menu-button legacy-rail-link"
-                                                                            data-size="default" data-variant="default"
-                                                                            data-active="@(IsItemPageCurrent(item) ? "true" : null)"
-                                                                            aria-current="@(IsItemPageCurrent(item) ? "page" : null)"
-                                                                            @onclick="NavigateAsync">
+                                                <div class="legacy-rail-popover-root">
+                                                    <ShadcnSidebarMenuButton id="@ItemId(item)" Href="@item.Href"
+                                                                             Active="@IsItemPageCurrent(item)"
+                                                                             Class="legacy-rail-link"
+                                                                             style="@($"anchor-name: {PopoverAnchor(item)}")"
+                                                                             aria-describedby="@PopoverId(item)"
+                                                                             OnClick="NavigateAsync">
                                                         <ShadcnIcon Icon="@item.Icon" Size="20" />
                                                         <span>@Text[item.Label]</span>
-                                                    </ShadcnHoverCardTrigger>
-                                                    <ShadcnHoverCardContent Side="ShadcnOverlaySide.Right"
-                                                                            Align="ShadcnOverlayAlign.Center"
-                                                                            SideOffset="16" AlignOffset="0"
-                                                                            Class="legacy-rail-popover-content">
+                                                    </ShadcnSidebarMenuButton>
+                                                    <div id="@PopoverId(item)" class="shadcn-hover-card-content legacy-rail-popover-content"
+                                                         data-side="right" style="@($"position-anchor: {PopoverAnchor(item)}")">
                                                         <span class="legacy-rail-popover-icon" aria-hidden="true">
                                                             <ShadcnIcon Icon="@item.Icon" Size="18" />
                                                         </span>
@@ -65,8 +61,8 @@
                                                             <strong>@Text[item.Label]</strong>
                                                             <small>@Text[item.Description ?? item.Label]</small>
                                                         </span>
-                                                    </ShadcnHoverCardContent>
-                                                </ShadcnHoverCard>
+                                                    </div>
+                                                </div>
                                             }
                                             <ShadcnCollapsibleTrigger Class="legacy-rail-chevron"
                                                                       aria-label="@Text["Expand or collapse {0}", Text[item.Label]]"
@@ -97,22 +93,18 @@
                                 }
                                 else if (IsItemEnabled(item))
                                 {
-                                    <ShadcnHoverCard id="@ItemId(item)" Class="legacy-rail-popover-root"
-                                                     OpenDelay="@TimeSpan.FromMilliseconds(150)"
-                                                     CloseDelay="@TimeSpan.FromMilliseconds(100)">
-                                        <ShadcnHoverCardTrigger Href="@item.Href"
-                                                                Class="shadcn-sidebar-menu-button legacy-rail-link"
-                                                                data-size="default" data-variant="default"
-                                                                data-active="@(IsItemPageCurrent(item) ? "true" : null)"
-                                                                aria-current="@(IsItemPageCurrent(item) ? "page" : null)"
-                                                                @onclick="NavigateAsync">
+                                    <div class="legacy-rail-popover-root">
+                                        <ShadcnSidebarMenuButton id="@ItemId(item)" Href="@item.Href"
+                                                                 Active="@IsItemPageCurrent(item)"
+                                                                 Class="legacy-rail-link"
+                                                                 style="@($"anchor-name: {PopoverAnchor(item)}")"
+                                                                 aria-describedby="@PopoverId(item)"
+                                                                 OnClick="NavigateAsync">
                                             <ShadcnIcon Icon="@item.Icon" Size="20" />
                                             <span>@Text[item.Label]</span>
-                                        </ShadcnHoverCardTrigger>
-                                        <ShadcnHoverCardContent Side="ShadcnOverlaySide.Right"
-                                                                Align="ShadcnOverlayAlign.Center"
-                                                                SideOffset="16" AlignOffset="0"
-                                                                Class="legacy-rail-popover-content">
+                                        </ShadcnSidebarMenuButton>
+                                        <div id="@PopoverId(item)" class="shadcn-hover-card-content legacy-rail-popover-content"
+                                             data-side="right" style="@($"position-anchor: {PopoverAnchor(item)}")">
                                             <span class="legacy-rail-popover-icon" aria-hidden="true">
                                                 <ShadcnIcon Icon="@item.Icon" Size="18" />
                                             </span>
@@ -120,8 +112,8 @@
                                                 <strong>@Text[item.Label]</strong>
                                                 <small>@Text[item.Description ?? item.Label]</small>
                                             </span>
-                                        </ShadcnHoverCardContent>
-                                    </ShadcnHoverCard>
+                                        </div>
+                                    </div>
                                     @if (BadgeCount(item) is int badgeCount)
                                     {
                                         <ShadcnSidebarMenuBadge title="@Text["Quotation request count", badgeCount]"
@@ -251,6 +243,8 @@
             : null;
     private static string CompactCount(int count) => count > 999 ? "999+" : count.ToString(CultureInfo.InvariantCulture);
     private Task NavigateAsync() => OnNavigate.InvokeAsync();
+    private static string PopoverId(LegacyNavItem item) => $"shadcn-hover-card-{NormalizeRoute(item.Href).Replace('/', '-').ToLowerInvariant()}";
+    private static string PopoverAnchor(LegacyNavItem item) => $"--{PopoverId(item)}";
     public void Dispose()
     {
         _disposeCts.Cancel();
