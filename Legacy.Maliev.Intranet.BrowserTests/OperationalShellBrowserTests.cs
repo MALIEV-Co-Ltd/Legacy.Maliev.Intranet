@@ -85,6 +85,38 @@ public sealed class OperationalShellBrowserTests(
         Assert.Equal("1px", await avatar.EvaluateAsync<string>("element => getComputedStyle(element, '::after').borderTopWidth"));
     }
 
+    [Theory]
+    [InlineData(1280)]
+    [InlineData(320)]
+    public async Task EmployeeMenuOwnsLanguagePreferenceAndPersistsCultureSelection(int width)
+    {
+        await using var context = await playwright.Browser.NewContextAsync(new()
+        {
+            ViewportSize = new() { Width = width, Height = 900 },
+            HasTouch = width <= 720,
+            ReducedMotion = ReducedMotion.Reduce,
+        });
+        var page = await context.NewPageAsync();
+        await StubProductionBoundariesAsync(page);
+        await page.GotoAsync(new Uri(server.BaseUri, "sales/orders").AbsoluteUri);
+
+        Assert.Equal(0, await page.Locator(".legacy-topbar__utilities > .legacy-language-selector").CountAsync());
+
+        await page.GetByRole(AriaRole.Button, new() { Name = "Employee menu" }).ClickAsync();
+        var preference = page.Locator(".legacy-profile-popover .legacy-language-selector");
+        await preference.WaitForAsync();
+        Assert.True(await preference.Locator("select").EvaluateAsync<bool>(
+            "element => element.getBoundingClientRect().width >= 44 && element.getBoundingClientRect().height >= 44"));
+
+        await preference.Locator("select").SelectOptionAsync("th-TH");
+        await page.WaitForFunctionAsync("() => localStorage.getItem('maliev_culture') === 'th-TH'");
+        await page.WaitForLoadStateAsync(LoadState.DOMContentLoaded);
+        Assert.Equal("th-TH", await page.EvaluateAsync<string>("localStorage.getItem('maliev_culture')"));
+
+        await page.GetByRole(AriaRole.Button, new() { Name = "เมนูพนักงาน" }).ClickAsync();
+        Assert.Equal("th-TH", await page.GetByLabel("ภาษา").InputValueAsync());
+    }
+
     [Fact]
     public async Task NarrowQuickCreateRoutesRemainVisibleFocusableAndTouchSized()
     {
@@ -164,7 +196,6 @@ public sealed class OperationalShellBrowserTests(
         Assert.Equal(1, await page.Locator(".legacy-profile:is(button)").CountAsync());
         Assert.Equal(2, await page.Locator(".legacy-quick-action:is(a)").CountAsync());
         Assert.Equal(1, await page.Locator(".legacy-global-search input").CountAsync());
-        Assert.Equal(1, await page.Locator(".legacy-language-selector select").CountAsync());
 
         var desktopShell = await page.EvaluateAsync<JsonElement>("""
             () => {

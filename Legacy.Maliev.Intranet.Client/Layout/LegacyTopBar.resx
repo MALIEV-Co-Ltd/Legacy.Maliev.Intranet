@@ -13,6 +13,8 @@
   <data name="More" xml:space="preserve"><value>More</value></data>
   <data name="More navigation" xml:space="preserve"><value>More navigation</value></data>
   <data name="Employee menu" xml:space="preserve"><value>Employee menu</value></data>
+  <data name="Employee preferences" xml:space="preserve"><value>Employee preferences</value></data>
+  <data name="Preferences" xml:space="preserve"><value>Preferences</value></data>
   <data name="Employee" xml:space="preserve"><value>Employee</value></data>
   <data name="Employee workspace" xml:space="preserve"><value>Employee workspace</value></data>
   <data name="My profile" xml:space="preserve"><value>My profile</value></data>

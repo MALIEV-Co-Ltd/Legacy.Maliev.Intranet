@@ -13,6 +13,8 @@
   <data name="More" xml:space="preserve"><value>เพิ่มเติม</value></data>
   <data name="More navigation" xml:space="preserve"><value>เมนูเพิ่มเติม</value></data>
   <data name="Employee menu" xml:space="preserve"><value>เมนูพนักงาน</value></data>
+  <data name="Employee preferences" xml:space="preserve"><value>การตั้งค่าพนักงาน</value></data>
+  <data name="Preferences" xml:space="preserve"><value>การตั้งค่า</value></data>
   <data name="Employee" xml:space="preserve"><value>พนักงาน</value></data>
   <data name="Employee workspace" xml:space="preserve"><value>พื้นที่ทำงานพนักงาน</value></data>
   <data name="My profile" xml:space="preserve"><value>ข้อมูลของฉัน</value></data>

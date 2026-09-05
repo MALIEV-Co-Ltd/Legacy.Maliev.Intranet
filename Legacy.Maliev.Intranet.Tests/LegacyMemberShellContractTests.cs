@@ -14,9 +14,12 @@ public sealed class LegacyMemberShellContractTests
 
         Assert.Contains("legacy-profile-menu", topbar, StringComparison.Ordinal);
         Assert.Contains("legacy-profile", topbar, StringComparison.Ordinal);
-        Assert.Contains("aria-haspopup=\"menu\"", topbar, StringComparison.Ordinal);
-        Assert.Contains("role=\"menu\"", topbar, StringComparison.Ordinal);
-        Assert.Contains("href=\"/hr/profile\"", topbar, StringComparison.Ordinal);
+        Assert.Contains("aria-haspopup=\"dialog\"", topbar, StringComparison.Ordinal);
+        Assert.Contains("role=\"dialog\"", topbar, StringComparison.Ordinal);
+        Assert.Contains("legacy-profile-preferences", topbar, StringComparison.Ordinal);
+        Assert.Contains("<LegacyLanguageSelector />", topbar, StringComparison.Ordinal);
+        Assert.Contains("Href=\"/hr/profile\"", topbar, StringComparison.Ordinal);
+        Assert.Contains("Role=\"LegacyLinkRole.Navigation\"", topbar, StringComparison.Ordinal);
         Assert.Contains("Sign out", topbar, StringComparison.Ordinal);
         Assert.DoesNotContain("signup", topbar, StringComparison.OrdinalIgnoreCase);
     }
