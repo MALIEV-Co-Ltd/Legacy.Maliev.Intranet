@@ -42,31 +42,13 @@
                                         <div class="legacy-rail-parent-row">
                                             @if (IsItemEnabled(item))
                                             {
-                                                <ShadcnHoverCard id="@ItemId(item)" Class="legacy-rail-popover-root"
-                                                                 OpenDelay="@TimeSpan.FromMilliseconds(150)"
-                                                                 CloseDelay="@TimeSpan.FromMilliseconds(100)">
-                                                    <ShadcnHoverCardTrigger Href="@item.Href"
-                                                                            Class="shadcn-sidebar-menu-button legacy-rail-link"
-                                                                            data-size="default" data-variant="default"
-                                                                            data-active="@(IsItemPageCurrent(item) ? "true" : null)"
-                                                                            aria-current="@(IsItemPageCurrent(item) ? "page" : null)"
-                                                                            @onclick="NavigateAsync">
-                                                        <ShadcnIcon Icon="@item.Icon" Size="20" />
-                                                        <span>@Text[item.Label]</span>
-                                                    </ShadcnHoverCardTrigger>
-                                                    <ShadcnHoverCardContent Side="ShadcnOverlaySide.Right"
-                                                                            Align="ShadcnOverlayAlign.Center"
-                                                                            SideOffset="16" AlignOffset="0"
-                                                                            Class="legacy-rail-popover-content">
-                                                        <span class="legacy-rail-popover-icon" aria-hidden="true">
-                                                            <ShadcnIcon Icon="@item.Icon" Size="18" />
-                                                        </span>
-                                                        <span class="legacy-rail-popover-copy">
-                                                            <strong>@Text[item.Label]</strong>
-                                                            <small>@Text[item.Description ?? item.Label]</small>
-                                                        </span>
-                                                    </ShadcnHoverCardContent>
-                                                </ShadcnHoverCard>
+                                                <ShadcnSidebarMenuButton id="@ItemId(item)" Href="@item.Href"
+                                                                         Active="@IsItemPageCurrent(item)"
+                                                                         Tooltip="@Text[item.Description ?? item.Label]"
+                                                                         Class="legacy-rail-link" OnClick="NavigateAsync">
+                                                    <ShadcnIcon Icon="@item.Icon" Size="20" />
+                                                    <span>@Text[item.Label]</span>
+                                                </ShadcnSidebarMenuButton>
                                             }
                                             <ShadcnCollapsibleTrigger Class="legacy-rail-chevron"
                                                                       aria-label="@Text["Expand or collapse {0}", Text[item.Label]]"
@@ -97,31 +79,13 @@
                                 }
                                 else if (IsItemEnabled(item))
                                 {
-                                    <ShadcnHoverCard id="@ItemId(item)" Class="legacy-rail-popover-root"
-                                                     OpenDelay="@TimeSpan.FromMilliseconds(150)"
-                                                     CloseDelay="@TimeSpan.FromMilliseconds(100)">
-                                        <ShadcnHoverCardTrigger Href="@item.Href"
-                                                                Class="shadcn-sidebar-menu-button legacy-rail-link"
-                                                                data-size="default" data-variant="default"
-                                                                data-active="@(IsItemPageCurrent(item) ? "true" : null)"
-                                                                aria-current="@(IsItemPageCurrent(item) ? "page" : null)"
-                                                                @onclick="NavigateAsync">
-                                            <ShadcnIcon Icon="@item.Icon" Size="20" />
-                                            <span>@Text[item.Label]</span>
-                                        </ShadcnHoverCardTrigger>
-                                        <ShadcnHoverCardContent Side="ShadcnOverlaySide.Right"
-                                                                Align="ShadcnOverlayAlign.Center"
-                                                                SideOffset="16" AlignOffset="0"
-                                                                Class="legacy-rail-popover-content">
-                                            <span class="legacy-rail-popover-icon" aria-hidden="true">
-                                                <ShadcnIcon Icon="@item.Icon" Size="18" />
-                                            </span>
-                                            <span class="legacy-rail-popover-copy">
-                                                <strong>@Text[item.Label]</strong>
-                                                <small>@Text[item.Description ?? item.Label]</small>
-                                            </span>
-                                        </ShadcnHoverCardContent>
-                                    </ShadcnHoverCard>
+                                    <ShadcnSidebarMenuButton id="@ItemId(item)" Href="@item.Href"
+                                                             Active="@IsItemPageCurrent(item)"
+                                                             Tooltip="@Text[item.Description ?? item.Label]"
+                                                             Class="legacy-rail-link" OnClick="NavigateAsync">
+                                        <ShadcnIcon Icon="@item.Icon" Size="20" />
+                                        <span>@Text[item.Label]</span>
+                                    </ShadcnSidebarMenuButton>
                                     @if (BadgeCount(item) is int badgeCount)
                                     {
                                         <ShadcnSidebarMenuBadge title="@Text["Quotation request count", badgeCount]"

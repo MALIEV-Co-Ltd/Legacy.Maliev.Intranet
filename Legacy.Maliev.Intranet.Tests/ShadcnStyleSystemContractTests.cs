@@ -50,7 +50,8 @@ public sealed class ShadcnStyleSystemContractTests
 
         Assert.Contains(".legacy-workspace-frame > .legacy-topbar", semantic, StringComparison.Ordinal);
         Assert.DoesNotContain(".legacy-workspace-shell .legacy-topbar", semantic, StringComparison.Ordinal);
-        Assert.Contains("<ShadcnHoverCardTrigger", rail, StringComparison.Ordinal);
+        Assert.Contains("<ShadcnSidebarMenuButton", rail, StringComparison.Ordinal);
+        Assert.Contains("Tooltip=\"@Text[item.Description ?? item.Label]\"", rail, StringComparison.Ordinal);
         Assert.Contains("<ShadcnCollapsible", rail, StringComparison.Ordinal);
         Assert.Contains("<ShadcnSidebarMenuSubButton", rail, StringComparison.Ordinal);
         Assert.DoesNotContain(".legacy-navigation-rail .legacy-rail-link.active", semantic, StringComparison.Ordinal);

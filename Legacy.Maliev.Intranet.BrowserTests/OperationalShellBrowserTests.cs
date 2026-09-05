@@ -140,16 +140,18 @@ public sealed class OperationalShellBrowserTests(
         await page.GetByRole(AriaRole.Button, new() { Name = "Employee menu" }).ClickAsync();
         var preference = page.Locator(".legacy-profile-popover .legacy-language-selector");
         await preference.WaitForAsync();
-        Assert.True(await preference.Locator("select").EvaluateAsync<bool>(
+        var language = preference.GetByRole(AriaRole.Combobox, new() { Name = "Language" });
+        Assert.True(await language.EvaluateAsync<bool>(
             "element => element.getBoundingClientRect().width >= 44 && element.getBoundingClientRect().height >= 44"));
 
-        await preference.Locator("select").SelectOptionAsync("th-TH");
+        await language.ClickAsync();
+        await page.GetByRole(AriaRole.Option, new() { Name = "ไทย", Exact = true }).ClickAsync();
         await page.WaitForFunctionAsync("() => localStorage.getItem('maliev_culture') === 'th-TH'");
         await page.WaitForLoadStateAsync(LoadState.DOMContentLoaded);
         Assert.Equal("th-TH", await page.EvaluateAsync<string>("localStorage.getItem('maliev_culture')"));
 
         await page.GetByRole(AriaRole.Button, new() { Name = "เมนูพนักงาน" }).ClickAsync();
-        Assert.Equal("th-TH", await page.GetByLabel("ภาษา").InputValueAsync());
+        Assert.Equal("ไทย", (await page.GetByRole(AriaRole.Combobox, new() { Name = "ภาษา" }).InnerTextAsync()).Trim());
     }
 
     [Fact]
@@ -307,7 +309,7 @@ public sealed class OperationalShellBrowserTests(
     }
 
     [Fact]
-    public async Task EveryCollapsedNavigationDestinationShowsShadcnPopoverToTheRightOnHover()
+    public async Task EveryCollapsedNavigationDestinationShowsShadcnTooltipToTheRightOnHover()
     {
         await using var context = await playwright.Browser.NewContextAsync(new()
         {
@@ -329,18 +331,17 @@ public sealed class OperationalShellBrowserTests(
         {
             var link = links.Nth(index);
             await link.HoverAsync();
-            var popover = page.Locator(".shadcn-hover-card-content:visible");
-            await popover.WaitForAsync(new() { State = WaitForSelectorState.Visible });
-            await popover.HoverAsync();
-            var popoverId = await popover.GetAttributeAsync("id");
-            Assert.StartsWith("shadcn-hover-card-", popoverId, StringComparison.Ordinal);
+            var tooltipId = await link.GetAttributeAsync("aria-describedby");
+            Assert.StartsWith("shadcn-sidebar-tooltip-", tooltipId, StringComparison.Ordinal);
+            var tooltip = page.Locator($"#{tooltipId}");
+            await Assertions.Expect(tooltip).ToHaveCSSAsync("opacity", "1");
             Assert.False(string.IsNullOrWhiteSpace(await link.GetAttributeAsync("href")));
-            Assert.Equal("right", await popover.GetAttributeAsync("data-side"));
-            Assert.Null(await popover.GetAttributeAsync("role"));
-            var popoverBounds = await popover.BoundingBoxAsync();
-            Assert.NotNull(popoverBounds);
-            Assert.True(popoverBounds!.X >= railBounds!.X + railBounds.Width + 6,
-                $"Popover {popoverId} started at {popoverBounds.X}px; rail ended at {railBounds.X + railBounds.Width}px.");
+            Assert.Equal("tooltip", await tooltip.GetAttributeAsync("role"));
+            Assert.Equal((await tooltip.InnerTextAsync()).Trim(), await link.GetAttributeAsync("title"));
+            var tooltipBounds = await tooltip.BoundingBoxAsync();
+            Assert.NotNull(tooltipBounds);
+            Assert.True(tooltipBounds!.X >= railBounds!.X + railBounds.Width - 2,
+                $"Tooltip {tooltipId} started at {tooltipBounds.X}px; rail ended at {railBounds.X + railBounds.Width}px.");
         }
     }
 
@@ -503,17 +504,21 @@ public sealed class OperationalShellBrowserTests(
         var desktopLogo = desktopShell.GetProperty("logo");
         var desktopWorkspace = desktopShell.GetProperty("workspace");
         Assert.InRange(
-            Math.Abs(desktopTopbar.GetProperty("left").GetDouble() - desktopSidebar.GetProperty("right").GetDouble()),
+            Math.Abs(desktopTopbar.GetProperty("left").GetDouble() - desktopWorkspace.GetProperty("left").GetDouble()),
             0,
             2);
         Assert.InRange(
-            desktopTopbar.GetProperty("right").GetDouble(),
-            desktopShell.GetProperty("viewportWidth").GetInt32() - 0.5,
-            desktopShell.GetProperty("viewportWidth").GetInt32() + 0.5);
-        Assert.InRange(
-            Math.Abs(desktopSidebar.GetProperty("right").GetDouble() - desktopWorkspace.GetProperty("left").GetDouble()),
+            Math.Abs(desktopTopbar.GetProperty("right").GetDouble() - desktopWorkspace.GetProperty("right").GetDouble()),
             0,
             2);
+        Assert.InRange(
+            desktopWorkspace.GetProperty("left").GetDouble() - desktopSidebar.GetProperty("right").GetDouble(),
+            7.5,
+            8.5);
+        Assert.InRange(
+            desktopShell.GetProperty("viewportWidth").GetInt32() - desktopWorkspace.GetProperty("right").GetDouble(),
+            7.5,
+            8.5);
         Assert.True(desktopLogo.GetProperty("left").GetDouble() < desktopWorkspace.GetProperty("left").GetDouble(), desktopShell.ToString());
         Assert.InRange(desktopCollapse.GetProperty("left").GetDouble(), desktopSidebar.GetProperty("left").GetDouble(), desktopSidebar.GetProperty("right").GetDouble());
         Assert.InRange(desktopCollapse.GetProperty("right").GetDouble(), desktopSidebar.GetProperty("left").GetDouble(), desktopSidebar.GetProperty("right").GetDouble());
@@ -619,7 +624,7 @@ public sealed class OperationalShellBrowserTests(
         await page.Keyboard.PressAsync("Shift+Tab");
         var wrappedFocus = await drawer.EvaluateAsync<JsonElement>("""
             element => ({
-                isNavigationControl: document.activeElement?.matches('.legacy-rail-link, .legacy-rail-chevron') === true,
+                isNavigationControl: document.activeElement?.matches('.legacy-logo-link, .legacy-rail-link, .legacy-rail-chevron') === true,
                 isInsideDrawer: element.contains(document.activeElement),
                 activeMarkup: document.activeElement?.outerHTML ?? ''
             })

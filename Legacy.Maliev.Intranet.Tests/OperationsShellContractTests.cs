@@ -289,7 +289,8 @@ public sealed class OperationsShellContractTests
         Assert.Contains("<ShadcnSidebarMenu Class=\"legacy-rail-items\">", navigation, StringComparison.Ordinal);
         Assert.Contains("<ShadcnSidebarMenuItem Class=\"legacy-rail-item\">", navigation, StringComparison.Ordinal);
         Assert.Contains("<ShadcnSidebarMenuSub Class=\"legacy-rail-children\"", navigation, StringComparison.Ordinal);
-        Assert.Contains("<ShadcnHoverCardTrigger Href=\"@item.Href\"", navigation, StringComparison.Ordinal);
+        Assert.Contains("<ShadcnSidebarMenuButton id=\"@ItemId(item)\" Href=\"@item.Href\"", navigation, StringComparison.Ordinal);
+        Assert.Contains("Tooltip=\"@Text[item.Description ?? item.Label]\"", navigation, StringComparison.Ordinal);
         Assert.Contains("<ShadcnSidebarMenuSubButton", navigation, StringComparison.Ordinal);
         Assert.Contains("GetEnabledChildren(item)", navigation, StringComparison.Ordinal);
         Assert.Contains("Open=\"@IsItemOpen(item)\"", navigation, StringComparison.Ordinal);
