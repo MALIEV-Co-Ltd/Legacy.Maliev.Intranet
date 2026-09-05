@@ -9,6 +9,51 @@ public sealed class OrdersOperationalTableBrowserTests(
     IntranetClientServerFixture server,
     PlaywrightFixture playwright)
 {
+    [Theory]
+    [InlineData(1280, 2)]
+    [InlineData(390, 1)]
+    public async Task OrderDetailLoadingStateIsStructuredAtSupportedWidths(int width, int expectedPanelColumns)
+    {
+        await using var context = await playwright.Browser.NewContextAsync(new()
+        {
+            ViewportSize = new() { Width = width, Height = 900 },
+            DeviceScaleFactor = 1,
+            ReducedMotion = ReducedMotion.Reduce,
+        });
+        var page = await context.NewPageAsync();
+        var releaseOrderRequest = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        await StubOrdersBoundariesAsync(page);
+        await page.RouteAsync("**/bff/orders/94753", async route =>
+        {
+            await releaseOrderRequest.Task;
+            await route.FulfillAsync(new() { Status = 404 });
+        });
+
+        try
+        {
+            await page.GotoAsync(new Uri(server.BaseUri, "Orders/View?id=94753").AbsoluteUri);
+            var loading = page.Locator(".order-detail__loading[role='status'][aria-busy='true']");
+            await loading.WaitForAsync();
+
+            Assert.Contains("Loading order", await loading.InnerTextAsync(), StringComparison.Ordinal);
+            Assert.True(await loading.Locator("[data-slot='skeleton']").CountAsync() >= 16);
+            Assert.Equal(2, await loading.Locator(".mlv-progressive-skeleton-panel").CountAsync());
+            Assert.Equal(
+                expectedPanelColumns,
+                await loading.Locator(".mlv-progressive-skeleton-grid").EvaluateAsync<int>(
+                    "node => getComputedStyle(node).gridTemplateColumns.split(' ').length"));
+            Assert.True(await loading.Locator("[data-slot='skeleton']").First.EvaluateAsync<bool>(
+                "node => parseFloat(getComputedStyle(node).animationDuration) <= .001"));
+            Assert.Equal(
+                await page.EvaluateAsync<int>("() => document.documentElement.clientWidth"),
+                await page.EvaluateAsync<int>("() => document.documentElement.scrollWidth"));
+        }
+        finally
+        {
+            releaseOrderRequest.TrySetResult();
+        }
+    }
+
     [Fact]
     public async Task OrdersKeepSemanticContainedPriorityTablesAcrossSupportedWidths()
     {
