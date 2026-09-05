@@ -1,1 +1,3 @@
 .legacy-language-selector { display: inline-flex; align-items: center; }
+.legacy-language-selector ::deep .legacy-language-select { min-width: 7rem; }
+.legacy-language-selector ::deep .legacy-language-select [data-slot="select-trigger"] { height: 2.75rem; min-height: 2.75rem; }

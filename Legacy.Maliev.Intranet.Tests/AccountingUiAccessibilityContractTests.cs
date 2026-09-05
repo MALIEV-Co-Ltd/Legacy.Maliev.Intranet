@@ -61,11 +61,11 @@ public sealed class AccountingUiAccessibilityContractTests
         var invoiceView = ReadPage(root, "InvoiceView.razor");
 
         Assert.Contains("YearlyTrendTable", finances, StringComparison.Ordinal);
-        Assert.Contains("PaymentsTable", finances, StringComparison.Ordinal);
+        Assert.Contains("OperationalDataTable", finances, StringComparison.Ordinal);
         Assert.Contains("finance-summary-grid", finances, StringComparison.Ordinal);
         Assert.Contains("PaidStatus", invoices, StringComparison.Ordinal);
         Assert.Contains("UnpaidStatus", invoices, StringComparison.Ordinal);
-        Assert.Contains("InvoiceTableLabel", invoices, StringComparison.Ordinal);
+        Assert.Contains("OperationalDataTable", invoices, StringComparison.Ordinal);
         Assert.Contains("OrderItemsTable", invoiceCreate, StringComparison.Ordinal);
         Assert.Contains("OrderItemsTable", invoiceView, StringComparison.Ordinal);
         Assert.Contains("role=\"group\"", financeView, StringComparison.Ordinal);

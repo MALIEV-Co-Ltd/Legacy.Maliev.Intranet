@@ -71,60 +71,35 @@
             </section>
         }
 
-        <ListToolbar TSort="FinancePaymentSort"
-                     Value="@ToolbarValue"
-                     Defaults="@ToolbarDefaults"
-                     SortOptions="@ToolbarSortOptions"
-                     PageSizeOptions="@FinancePageSizes"
-                     SearchLabel="@Text["Search"]"
-                     IsBusy="@loading"
-                     OnRequest="HandleToolbarRequestAsync" />
-
-        @if (Page is null || Page.Items.Count == 0)
+        @if (Page is null)
         {
             <ShadcnAlert AlertRole="ShadcnAlertRole.Status"><ShadcnAlertDescription>@Text["NoPayments"]</ShadcnAlertDescription></ShadcnAlert>
         }
         else
         {
-            <OperationalTable TItem="FinancePaymentItem" TKey="int" Items="@Page.Items"
-                              KeySelector="@(payment => payment.Id)" TableLabel="@Text["PaymentsTable"]"
-                              ColumnCount="10" State="@tableState"
+            <OperationalDataTable TItem="FinancePaymentItem"
+                              Items="@(Page.Items)"
+                              Columns="@Columns"
+                              RowKey="@(payment => payment.Id.ToString(CultureInfo.InvariantCulture))"
+                              State="@dataTableState"
+                              StateChanged="HandleDataTableStateChangedAsync"
+                              RequestChanged="HandleDataTableRequestAsync"
+                              TotalCount="@(Page.TotalRecords)"
+                              FilterPlaceholder="@Text["Search"]"
+                              EmptyText="@Text["NoPayments"]"
+                              LoadingText="@Text["Loading"]"
+                              ActionsLabel="@Text["Actions"]"
+                              PageSizeOptions="@FinancePageSizes"
                               DetailHref="@(payment => $"/Finances/View?id={payment.Id}")"
                               DetailAriaLabel="@(payment => Text["ViewFinance", payment.Id])"
-                              ExpandAriaLabel="@(payment => Text["ExpandFinance", payment.Id])"
-                              CollapseAriaLabel="@(payment => Text["CollapseFinance", payment.Id])">
-                <HeaderContent>
-                    <tr><th class="operational-table__identity" data-priority="essential">@Text["Id"]</th>
-                        <th data-priority="essential">@Text["Direction"]</th><th data-priority="essential">@Text["Type"]</th>
-                        <th data-priority="essential">@Text["Amount"]</th><th data-priority="essential">@Text["PaymentDate"]</th>
-                        <th data-priority="supporting">@Text["Description"]</th><th data-priority="supporting">@Text["Method"]</th>
-                        <th data-priority="supporting">@Text["Recipient"]</th><th data-priority="supporting">@Text["TransactionNumber"]</th>
-                        <th class="operational-table__actions-heading"><span class="visually-hidden">@Text["Actions"]</span></th></tr>
-                </HeaderContent>
-                <RowContent Context="payment">
-                    <td class="operational-table__identity mlv-mono" data-priority="essential">@payment.Id</td>
-                    <td data-priority="essential">@payment.PaymentDirectionId</td><td data-priority="essential">@payment.PaymentTypeId</td>
-                    <td class="mlv-mono" data-priority="essential">@FormatAmount(payment.Amount, payment.CurrencyId?.ToString(CultureInfo.InvariantCulture))</td>
-                    <td class="mlv-mono" data-priority="essential">@FormatDate(payment.PaymentDate)</td>
-                    <td data-priority="supporting">@ValueOrFallback(payment.Description)</td><td data-priority="supporting">@payment.PaymentMethodId</td>
-                    <td data-priority="supporting">@ValueOrFallback(payment.Recipient)</td><td class="mlv-mono" data-priority="supporting">@ValueOrFallback(payment.TransactionNumber)</td>
-                </RowContent>
+                              DetailsAriaLabel="@(payment => Text["ExpandFinance", payment.Id])">
                 <QuickViewContent Context="payment"><dl class="operational-quick-view">
                     <div><dt>@Text["Description"]</dt><dd>@ValueOrFallback(payment.Description)</dd></div>
                     <div><dt>@Text["Method"]</dt><dd>@payment.PaymentMethodId</dd></div>
                     <div><dt>@Text["Recipient"]</dt><dd>@ValueOrFallback(payment.Recipient)</dd></div>
                     <div><dt>@Text["TransactionNumber"]</dt><dd class="mlv-mono">@ValueOrFallback(payment.TransactionNumber)</dd></div>
                 </dl></QuickViewContent>
-            </OperationalTable>
-        }
-
-        @if (Page is not null)
-        {
-            <nav class="finance-pager" aria-label="@Text["PaymentPages"]">
-                <ShadcnButton Variant="ShadcnButtonVariant.Outline" Disabled="@(!Page.HasPreviousPage)" OnClick="PreviousPageAsync">@Text["Previous"]</ShadcnButton>
-                <span aria-live="polite">@Text["PageSummary", Page.PageIndex, Page.TotalPages, Page.TotalRecords]</span>
-                <ShadcnButton Variant="ShadcnButtonVariant.Outline" Disabled="@(!Page.HasNextPage)" OnClick="NextPageAsync">@Text["Next"]</ShadcnButton>
-            </nav>
+            </OperationalDataTable>
         }
     }
 </main>
@@ -138,7 +113,7 @@
     private FinancePaymentPage? Page { get; set; }
     private static readonly int[] FinancePageSizes = [10, 25, 50, 100];
     private readonly LatestRequestGate requestGate = new();
-    private readonly OperationalTableState<int> tableState = new();
+    private ShadcnDataTableState dataTableState = new() { PageSize = 25 };
     private IReadOnlyList<PageBreadcrumbItem> Breadcrumbs =>
     [
         new(Text["Operations"], "/Dashboard"),
@@ -157,11 +132,19 @@
     private bool loading;
     private FinancePaymentSort currentSort = FinancePaymentSort.PaymentCreatedDate_Descending;
     private static int BangkokYear => TimeZoneInfo.ConvertTimeBySystemTimeZoneId(DateTimeOffset.UtcNow, "Asia/Bangkok").Year;
-    private ListToolbarState<FinancePaymentSort> ToolbarValue => new(Search, currentSort, Size);
-    private static ListToolbarState<FinancePaymentSort> ToolbarDefaults =>
-        new(null, FinancePaymentSort.PaymentCreatedDate_Descending, 25);
-    private IReadOnlyList<ListToolbarOption<FinancePaymentSort>> ToolbarSortOptions =>
-        Enum.GetValues<FinancePaymentSort>().Select(option => new ListToolbarOption<FinancePaymentSort>(option, Text[option.ToString()])).ToArray();
+    private IReadOnlyList<ShadcnDataTableColumn<FinancePaymentItem>> Columns =>
+    [
+        new("id", Text["Id"], payment => payment.Id) { Sortable = true, Hideable = false },
+        new("direction", Text["Direction"], payment => payment.PaymentDirectionId) { Sortable = true },
+        new("type", Text["Type"], payment => payment.PaymentTypeId) { Sortable = true },
+        new("amount", Text["Amount"], payment => payment.Amount) { Alignment = ShadcnTableAlignment.End, CellTemplate = payment => builder => builder.AddContent(0, FormatAmount(payment.Amount, payment.CurrencyId?.ToString(CultureInfo.InvariantCulture))) },
+        new("payment-date", Text["PaymentDate"], payment => payment.PaymentDate) { Sortable = true, CellTemplate = payment => builder => builder.AddContent(0, FormatDate(payment.PaymentDate)) },
+        new("description", Text["Description"], payment => ValueOrFallback(payment.Description)) { MinWidth = "14rem" },
+        new("method", Text["Method"], payment => payment.PaymentMethodId) { Sortable = true },
+        new("recipient", Text["Recipient"], payment => ValueOrFallback(payment.Recipient)) { Sortable = true },
+        new("transaction", Text["TransactionNumber"], payment => ValueOrFallback(payment.TransactionNumber)),
+        new("created", Text["PaymentCreatedDate_Descending"], payment => payment.CreatedDate) { Sortable = true },
+    ];
 
     private IReadOnlyList<(string Title, FinanceSummary Value)> SummaryCards =>
     [
@@ -189,13 +172,13 @@
         currentSort = Enum.TryParse<FinancePaymentSort>(SortQuery, true, out var parsed)
             ? parsed
             : FinancePaymentSort.PaymentCreatedDate_Descending;
+        dataTableState = BuildDataTableState();
         await LoadAsync();
     }
 
     private async Task LoadAsync()
     {
         using var lease = requestGate.Begin();
-        tableState.Clear();
         loading = true;
         error = null;
         HttpResponseMessage[]? responses = null;
@@ -316,22 +299,67 @@
         return true;
     }
 
-    private Task PreviousPageAsync() => NavigateAsync(Math.Max(1, Index - 1), Search, currentSort, Size);
-    private Task NextPageAsync() => NavigateAsync(Index + 1, Search, currentSort, Size);
+    private Task HandleDataTableStateChangedAsync(ShadcnDataTableState state)
+    {
+        dataTableState = state;
+        return Task.CompletedTask;
+    }
 
-    private Task HandleToolbarRequestAsync(ListToolbarRequest<FinancePaymentSort> request) =>
-        request.Reason == ListToolbarChangeReason.Refreshed && request.State.Normalize() == ToolbarValue.Normalize()
-            ? LoadAsync()
-            : NavigateAsync(1, request.State.Search, request.State.Sort, request.State.PageSize, replace: true);
+    private Task HandleDataTableRequestAsync(ShadcnDataTableRequest request) =>
+        NavigateAsync(request.PageIndex + 1, request.Query, MapSort(request.Sorts), request.PageSize, replace: true);
 
     private Task NavigateAsync(int index, string? search, FinancePaymentSort sort, int size, bool replace = false)
     {
-        tableState.Clear();
         Navigation.NavigateTo($"/Finances/Index?search={Uri.EscapeDataString(search ?? string.Empty)}&sort={sort}&index={index}&size={Math.Clamp(size, 1, 100)}", replace: replace);
         return Task.CompletedTask;
     }
 
     public void Dispose() => requestGate.Dispose();
+
+    private ShadcnDataTableState BuildDataTableState() => new()
+    {
+        Query = Search ?? string.Empty,
+        PageIndex = Math.Max(0, Index - 1),
+        PageSize = Size,
+        HiddenColumnKeys = new HashSet<string>(["created"], StringComparer.Ordinal),
+        Sorts = currentSort switch
+        {
+            FinancePaymentSort.PaymentId_Ascending => [new("id", ShadcnSortDirection.Ascending)],
+            FinancePaymentSort.PaymentId_Descending => [new("id", ShadcnSortDirection.Descending)],
+            FinancePaymentSort.PaymentCreatedDate_Ascending => [new("created", ShadcnSortDirection.Ascending)],
+            FinancePaymentSort.PaymentCreatedDate_Descending => [new("created", ShadcnSortDirection.Descending)],
+            FinancePaymentSort.PaymentDate_Ascending => [new("payment-date", ShadcnSortDirection.Ascending)],
+            FinancePaymentSort.PaymentDate_Descending => [new("payment-date", ShadcnSortDirection.Descending)],
+            FinancePaymentSort.PaymentDirection_Ascending => [new("direction", ShadcnSortDirection.Ascending)],
+            FinancePaymentSort.PaymentDirection_Descending => [new("direction", ShadcnSortDirection.Descending)],
+            FinancePaymentSort.PaymentType_Ascending => [new("type", ShadcnSortDirection.Ascending)],
+            FinancePaymentSort.PaymentType_Descending => [new("type", ShadcnSortDirection.Descending)],
+            FinancePaymentSort.PaymentMethod_Ascending => [new("method", ShadcnSortDirection.Ascending)],
+            FinancePaymentSort.PaymentMethod_Descending => [new("method", ShadcnSortDirection.Descending)],
+            FinancePaymentSort.Recipient_Ascending => [new("recipient", ShadcnSortDirection.Ascending)],
+            FinancePaymentSort.Recipient_Descending => [new("recipient", ShadcnSortDirection.Descending)],
+            _ => [],
+        },
+    };
+
+    private FinancePaymentSort MapSort(IReadOnlyList<ShadcnDataTableSort> sorts) => sorts.FirstOrDefault() switch
+    {
+        { ColumnKey: "id", Direction: ShadcnSortDirection.Ascending } => FinancePaymentSort.PaymentId_Ascending,
+        { ColumnKey: "id", Direction: ShadcnSortDirection.Descending } => FinancePaymentSort.PaymentId_Descending,
+        { ColumnKey: "created", Direction: ShadcnSortDirection.Ascending } => FinancePaymentSort.PaymentCreatedDate_Ascending,
+        { ColumnKey: "created", Direction: ShadcnSortDirection.Descending } => FinancePaymentSort.PaymentCreatedDate_Descending,
+        { ColumnKey: "payment-date", Direction: ShadcnSortDirection.Ascending } => FinancePaymentSort.PaymentDate_Ascending,
+        { ColumnKey: "payment-date", Direction: ShadcnSortDirection.Descending } => FinancePaymentSort.PaymentDate_Descending,
+        { ColumnKey: "direction", Direction: ShadcnSortDirection.Ascending } => FinancePaymentSort.PaymentDirection_Ascending,
+        { ColumnKey: "direction", Direction: ShadcnSortDirection.Descending } => FinancePaymentSort.PaymentDirection_Descending,
+        { ColumnKey: "type", Direction: ShadcnSortDirection.Ascending } => FinancePaymentSort.PaymentType_Ascending,
+        { ColumnKey: "type", Direction: ShadcnSortDirection.Descending } => FinancePaymentSort.PaymentType_Descending,
+        { ColumnKey: "method", Direction: ShadcnSortDirection.Ascending } => FinancePaymentSort.PaymentMethod_Ascending,
+        { ColumnKey: "method", Direction: ShadcnSortDirection.Descending } => FinancePaymentSort.PaymentMethod_Descending,
+        { ColumnKey: "recipient", Direction: ShadcnSortDirection.Ascending } => FinancePaymentSort.Recipient_Ascending,
+        { ColumnKey: "recipient", Direction: ShadcnSortDirection.Descending } => FinancePaymentSort.Recipient_Descending,
+        _ => currentSort,
+    };
 
     private string CurrencyName(string? id) => int.TryParse(id, CultureInfo.InvariantCulture, out var value) && currencies.TryGetValue(value, out var name) ? name : "-";
     private string FormatAmount(decimal amount, string? currencyId) => $"{amount:N2} {CurrencyName(currencyId)}";

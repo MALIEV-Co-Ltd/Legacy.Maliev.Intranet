@@ -25,10 +25,10 @@ public sealed class PurchaseOrdersIndexWasmMigrationContractTests
         Assert.Contains("/bff/purchase-orders", page, StringComparison.Ordinal);
         Assert.Contains("/bff/employees", page, StringComparison.Ordinal);
         Assert.Contains("Task.WhenAll", page, StringComparison.Ordinal);
-        Assert.Contains("OperationalTable", page, StringComparison.Ordinal);
+        Assert.Contains("OperationalDataTable", page, StringComparison.Ordinal);
         Assert.Contains("<ShadcnButton", page, StringComparison.Ordinal);
-        Assert.Contains("<ShadcnSpinner", page, StringComparison.Ordinal);
-        Assert.Contains("<ShadcnAlert", page, StringComparison.Ordinal);
+        Assert.Contains("LoadingText=", page, StringComparison.Ordinal);
+        Assert.Contains("EmptyText=", page, StringComparison.Ordinal);
         Assert.DoesNotContain("<Mud", page, StringComparison.Ordinal);
         Assert.Contains("Navigation.NavigateTo(\"/PurchaseOrders/Create\")", page, StringComparison.Ordinal);
         Assert.Contains("DetailHref=\"@(order => $\"/PurchaseOrders/View?id={order.Id}\")\"", page, StringComparison.Ordinal);

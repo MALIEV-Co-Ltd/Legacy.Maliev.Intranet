@@ -23,11 +23,10 @@ public sealed class QuotationOperationsUiContractTests
         Assert.Contains("quotation-decision-data", quotationIndex, StringComparison.Ordinal);
         Assert.Contains("<ShadcnChart", quotationIndex, StringComparison.Ordinal);
         Assert.Contains("aria-label=\"@Text[\"TableCaption\"]\"", quotationIndex, StringComparison.Ordinal);
-        Assert.Contains("<nav", quotationIndex, StringComparison.Ordinal);
         Assert.Contains("aria-live=\"polite\"", quotationIndex, StringComparison.Ordinal);
 
         var requestIndex = Read(feature, "QuotationRequests", "Index.razor");
-        Assert.Contains("<ListToolbar", requestIndex, StringComparison.Ordinal);
+        Assert.Contains("<OperationalDataTable", requestIndex, StringComparison.Ordinal);
         var sharedToolbar = File.ReadAllText(Path.Combine(
             root,
             "Legacy.Maliev.Intranet.Client.Shared",
@@ -35,10 +34,8 @@ public sealed class QuotationOperationsUiContractTests
             "ListToolbar.razor"));
         Assert.Contains("role=\"search\"", sharedToolbar, StringComparison.Ordinal);
         Assert.Contains("quotation-request-status", requestIndex, StringComparison.Ordinal);
-        Assert.Contains("aria-label=\"@Text[\"PaginationLabel\"]\"", requestIndex, StringComparison.Ordinal);
-        Assert.Contains("AriaDescribedBy=\"quotation-request-table-summary\"", requestIndex, StringComparison.Ordinal);
-        Assert.DoesNotContain("<section class=\"quotation-request-table-region\" aria-describedby=", requestIndex, StringComparison.Ordinal);
-        Assert.Contains("AriaDescribedBy=\"quotation-table-caption\"", quotationIndex, StringComparison.Ordinal);
+        Assert.Contains("<section class=\"quotation-request-table-region\" aria-label=\"@Text[\"TableCaption\"]\"", requestIndex, StringComparison.Ordinal);
+        Assert.Contains("<section class=\"quotation-table-section\" aria-label=\"@Text[\"TableCaption\"]\"", quotationIndex, StringComparison.Ordinal);
 
         var requestView = Read(feature, "QuotationRequests", "View.razor");
         Assert.Contains("X-CSRF-TOKEN", requestView, StringComparison.Ordinal);

@@ -26,6 +26,8 @@
   <data name="Period" xml:space="preserve"><value>ระยะเวลา</value></data>
   <data name="Days" xml:space="preserve"><value>{0} วัน</value></data>
   <data name="ExpirationDate" xml:space="preserve"><value>วันหมดอายุ</value></data>
+  <data name="CreatedDate" xml:space="preserve"><value>วันที่สร้าง</value></data>
+  <data name="ModifiedDate" xml:space="preserve"><value>วันที่แก้ไข</value></data>
   <data name="Subtotal" xml:space="preserve"><value>ยอดก่อนภาษี</value></data>
   <data name="Vat" xml:space="preserve"><value>ภาษีมูลค่าเพิ่ม</value></data>
   <data name="Total" xml:space="preserve"><value>ยอดรวม</value></data>

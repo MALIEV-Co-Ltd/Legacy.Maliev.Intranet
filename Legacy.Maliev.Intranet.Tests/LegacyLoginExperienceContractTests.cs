@@ -39,6 +39,8 @@ public sealed class LegacyLoginExperienceContractTests
             "Secure access to your work",
             "Sign in with your MALIEV work account to continue.",
             "Checking your employee session...",
+            "Show password",
+            "Hide password",
             "Need help accessing your employee account?",
             "Contact your MALIEV administrator if you cannot access your employee account.",
         };

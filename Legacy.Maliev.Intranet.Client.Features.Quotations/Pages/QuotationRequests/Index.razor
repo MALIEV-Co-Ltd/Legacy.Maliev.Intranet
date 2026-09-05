@@ -17,79 +17,33 @@
         </div>
     </header>
 
-    <ListToolbar TSort="QuotationRequestSort"
-                 Value="@ToolbarValue"
-                 Defaults="@ToolbarDefaults"
-                 SortOptions="@ToolbarSortOptions"
-                 PageSizeOptions="@StandardPageSizes"
-                 SearchLabel="@Text["Search"]"
-                 IsBusy="@loading"
-                 OnRequest="HandleToolbarRequestAsync" />
-
-    @if (loading)
-    {
-        <div role="status" aria-live="polite">
-            <ShadcnSpinner Label="@Text["Loading"]" Size="1.25rem" />
-            <span>@Text["Loading"]</span>
-        </div>
-    }
-    else if (error is not null)
-    {
-        <ShadcnAlert Variant="ShadcnAlertVariant.Destructive" AlertRole="ShadcnAlertRole.Alert"><ShadcnAlertDescription>@error</ShadcnAlertDescription></ShadcnAlert>
-    }
-    else if (page is null || page.Items.Count == 0)
-    {
-        <ShadcnAlert AlertRole="ShadcnAlertRole.Status"><ShadcnAlertDescription>@Text["Empty"]</ShadcnAlertDescription></ShadcnAlert>
-    }
-    else
-    {
-        <p id="quotation-request-table-summary" class="quotation-request-table-summary">
-            @Text["RecordsSummary", page.TotalRecords]
-        </p>
-        <section class="quotation-request-table-region">
-        <OperationalTable TItem="QuotationRequestItem"
-                          TKey="int"
-                          Items="@(page.Items)"
-                          KeySelector="@(context => context.Id)"
-                          TableLabel="@Text["TableCaption"]"
-                          AriaDescribedBy="quotation-request-table-summary"
-                          ColumnCount="6"
-                          State="@tableState"
-                          DetailHref="@(context => $"/QuotationRequests/View?id={context.Id}")"
-                          DetailAriaLabel="@(context => Text["ViewQuotationRequest", context.Id])"
-                          ExpandAriaLabel="@(context => Text["ExpandQuotationRequest", context.Id])"
-                          CollapseAriaLabel="@(context => Text["CollapseQuotationRequest", context.Id])">
-            <HeaderContent>
-                <tr>
-                    <th class="operational-table__identity quotation-request-id" data-priority="essential">@Text["Id"]</th>
-                    <th class="quotation-request-customer" data-priority="essential">@Text["Customer"]</th>
-                    <th class="quotation-request-status-cell" data-priority="essential">@Text["Status"]</th>
-                    <th class="quotation-request-created" data-priority="essential">@Text["Created"]</th>
-                    <th class="quotation-request-company" data-priority="supporting">@Text["Company"]</th>
-                    <th class="operational-table__actions-heading"><span class="visually-hidden">@Text["Actions"]</span></th>
-                </tr>
-            </HeaderContent>
-            <RowContent Context="context">
-                <td class="operational-table__identity quotation-request-id mlv-mono" data-priority="essential">@context.Id</td>
-                <td class="quotation-request-customer" data-priority="essential" title="@Name(context)">@Name(context)</td>
-                <td class="quotation-request-status-cell" data-priority="essential"><span class="@StatusClass(context.Done)">@(context.Done == true ? Text["Done"] : Text["Open"])</span></td>
-                <td class="quotation-request-created" data-priority="essential">@Format(context.CreatedDate)</td>
-                <td class="quotation-request-company" data-priority="supporting" title="@Fallback(context.CompanyName)">@Fallback(context.CompanyName)</td>
-            </RowContent>
+    <section class="quotation-request-table-region" aria-label="@Text["TableCaption"]">
+        <OperationalDataTable TItem="QuotationRequestItem"
+                              Items="@(page?.Items ?? [])"
+                              Columns="@Columns"
+                              RowKey="@(request => request.Id.ToString(CultureInfo.InvariantCulture))"
+                              State="@dataTableState"
+                              StateChanged="HandleDataTableStateChangedAsync"
+                              RequestChanged="HandleDataTableRequestAsync"
+                              TotalCount="@(page?.TotalRecords ?? 0)"
+                              Loading="@loading"
+                              Error="@error"
+                              FilterPlaceholder="@Text["Search"]"
+                              EmptyText="@Text["Empty"]"
+                              LoadingText="@Text["Loading"]"
+                              ActionsLabel="@Text["Actions"]"
+                              PageSizeOptions="@StandardPageSizes"
+                              DetailHref="@(request => $"/QuotationRequests/View?id={request.Id}")"
+                              DetailAriaLabel="@(request => Text["ViewQuotationRequest", request.Id])"
+                              DetailsAriaLabel="@(request => Text["ExpandQuotationRequest", request.Id])">
             <QuickViewContent Context="context">
                 <dl class="quotation-request-quick-view">
                     <div><dt>@Text["Customer"]</dt><dd>@Name(context)</dd></div>
                     <div><dt>@Text["Company"]</dt><dd>@Fallback(context.CompanyName)</dd></div>
                 </dl>
             </QuickViewContent>
-        </OperationalTable>
-        </section>
-        <nav class="quotation-request-pager" aria-label="@Text["PaginationLabel"]">
-            <ShadcnButton Variant="ShadcnButtonVariant.Outline" Disabled="@(!page.HasPreviousPage)" OnClick="PreviousAsync">@Text["Previous"]</ShadcnButton>
-            <span aria-live="polite" aria-atomic="true">@Text["Page", page.PageIndex, page.TotalPages, page.TotalRecords]</span>
-            <ShadcnButton Variant="ShadcnButtonVariant.Outline" Disabled="@(!page.HasNextPage)" OnClick="NextAsync">@Text["Next"]</ShadcnButton>
-        </nav>
-    }
+        </OperationalDataTable>
+    </section>
     </div>
 </div>
 
@@ -102,15 +56,18 @@
     private QuotationRequestPage? page;
     private static readonly int[] StandardPageSizes = [10, 25, 50, 100, 250];
     private readonly LatestRequestGate requestGate = new();
-    private readonly OperationalTableState<int> tableState = new();
+    private ShadcnDataTableState dataTableState = new() { PageSize = 25 };
     private bool loading = true;
     private string? error;
     private QuotationRequestSort sortInput;
-    private ListToolbarState<QuotationRequestSort> ToolbarValue => new(Search, sortInput, Size);
-    private static ListToolbarState<QuotationRequestSort> ToolbarDefaults =>
-        new(null, QuotationRequestSort.RequestCreatedDate_Descending, 25);
-    private IReadOnlyList<ListToolbarOption<QuotationRequestSort>> ToolbarSortOptions =>
-        Enum.GetValues<QuotationRequestSort>().Select(option => new ListToolbarOption<QuotationRequestSort>(option, Text[option.ToString()])).ToArray();
+    private IReadOnlyList<ShadcnDataTableColumn<QuotationRequestItem>> Columns =>
+    [
+        new("id", Text["Id"], request => request.Id) { Sortable = true, Hideable = false },
+        new("customer", Text["Customer"], request => Name(request)) { MinWidth = "12rem" },
+        new("status", Text["Status"], request => request.Done == true ? Text["Done"].Value : Text["Open"].Value),
+        new("created", Text["Created"], request => request.CreatedDate) { Sortable = true, MinWidth = "10rem", CellTemplate = request => builder => builder.AddContent(0, Format(request.CreatedDate)) },
+        new("company", Text["Company"], request => Fallback(request.CompanyName)) { MinWidth = "14rem" },
+    ];
     private IReadOnlyList<PageBreadcrumbItem> Breadcrumbs =>
     [
         new(Text["Operations"], "/Dashboard"),
@@ -124,13 +81,13 @@
         sortInput = Enum.TryParse<QuotationRequestSort>(Sort, true, out var parsed)
             ? parsed
             : QuotationRequestSort.RequestCreatedDate_Descending;
+        dataTableState = BuildDataTableState();
         await LoadAsync();
     }
 
     private async Task LoadAsync()
     {
         using var lease = requestGate.Begin();
-        tableState.Clear();
         loading = true;
         error = null;
         try
@@ -179,22 +136,46 @@
         }
     }
 
-    private Task PreviousAsync() => NavigateAsync(Math.Max(1, PageIndex - 1), Search, sortInput, Size);
-    private Task NextAsync() => NavigateAsync(PageIndex + 1, Search, sortInput, Size);
+    private Task HandleDataTableStateChangedAsync(ShadcnDataTableState state)
+    {
+        dataTableState = state;
+        return Task.CompletedTask;
+    }
 
-    private Task HandleToolbarRequestAsync(ListToolbarRequest<QuotationRequestSort> request) =>
-        request.Reason == ListToolbarChangeReason.Refreshed && request.State.Normalize() == ToolbarValue.Normalize()
-            ? LoadAsync()
-            : NavigateAsync(1, request.State.Search, request.State.Sort, request.State.PageSize, replace: true);
+    private Task HandleDataTableRequestAsync(ShadcnDataTableRequest request) =>
+        NavigateAsync(request.PageIndex + 1, request.Query, MapSort(request.Sorts), request.PageSize, replace: true);
 
     private Task NavigateAsync(int index, string? search, QuotationRequestSort sort, int size, bool replace = false)
     {
-        tableState.Clear();
         Navigation.NavigateTo($"/QuotationRequests/Index?search={Uri.EscapeDataString(search ?? string.Empty)}&sort={sort}&index={index}&size={Math.Clamp(size, 1, 250)}", replace: replace);
         return Task.CompletedTask;
     }
 
     public void Dispose() => requestGate.Dispose();
+
+    private ShadcnDataTableState BuildDataTableState() => new()
+    {
+        Query = Search ?? string.Empty,
+        PageIndex = Math.Max(0, PageIndex - 1),
+        PageSize = Size,
+        Sorts = sortInput switch
+        {
+            QuotationRequestSort.RequestId_Ascending => [new("id", ShadcnSortDirection.Ascending)],
+            QuotationRequestSort.RequestId_Descending => [new("id", ShadcnSortDirection.Descending)],
+            QuotationRequestSort.RequestCreatedDate_Ascending => [new("created", ShadcnSortDirection.Ascending)],
+            QuotationRequestSort.RequestCreatedDate_Descending => [new("created", ShadcnSortDirection.Descending)],
+            _ => [],
+        },
+    };
+
+    private QuotationRequestSort MapSort(IReadOnlyList<ShadcnDataTableSort> sorts) => sorts.FirstOrDefault() switch
+    {
+        { ColumnKey: "id", Direction: ShadcnSortDirection.Ascending } => QuotationRequestSort.RequestId_Ascending,
+        { ColumnKey: "id", Direction: ShadcnSortDirection.Descending } => QuotationRequestSort.RequestId_Descending,
+        { ColumnKey: "created", Direction: ShadcnSortDirection.Ascending } => QuotationRequestSort.RequestCreatedDate_Ascending,
+        { ColumnKey: "created", Direction: ShadcnSortDirection.Descending } => QuotationRequestSort.RequestCreatedDate_Descending,
+        _ => sortInput,
+    };
 
     private string Error(HttpStatusCode value) => value switch
     {

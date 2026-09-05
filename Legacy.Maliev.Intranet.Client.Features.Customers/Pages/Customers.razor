@@ -1,6 +1,7 @@
 @page "/Customers/Index"
 @page "/customers"
 @page "/sales/customers"
+@using System.Globalization
 @attribute [Authorize]
 @implements IDisposable
 @inject HttpClient Http
@@ -19,74 +20,25 @@
         </ShadcnButton>
     </header>
 
-    <ListToolbar TSort="CustomerListSort"
-                 Value="@ToolbarState"
-                 Defaults="@DefaultToolbarState"
-                 SortOptions="@SortOptions"
-                 PageSizeOptions="@PageSizeOptions"
-                 SearchLabel="@Text["Search"]"
-                 IsBusy="@loading"
-                 OnRequest="HandleToolbarRequestAsync" />
-
-    @if (loading)
-    {
-        <div role="status" aria-live="polite" class="customers-loading"><ShadcnSpinner Label="@Text["Loading"]" Size="1.25rem" /><span>@Text["Loading"]</span></div>
-    }
-    else if (!string.IsNullOrWhiteSpace(error))
-    {
-        <ShadcnAlert Variant="ShadcnAlertVariant.Destructive" AlertRole="ShadcnAlertRole.Alert"><ShadcnAlertDescription>@error</ShadcnAlertDescription></ShadcnAlert>
-    }
-    else if (page is null || page.Items.Count == 0)
-    {
-        <ShadcnAlert AlertRole="ShadcnAlertRole.Status"><ShadcnAlertDescription>@Text["Empty"]</ShadcnAlertDescription></ShadcnAlert>
-    }
-    else
-    {
-        <div class="customers-results-bar">
-            <p class="customers-results-summary" aria-live="polite">
-                @Text["PageSummary", page.PageIndex, page.TotalPages, page.TotalRecords]
-            </p>
-            @if (page.TotalPages > 1)
-            {
-                <nav class="customers-pagination customers-pagination--top" aria-label="@Text["CustomerPagesTop"]">
-                    <ShadcnButton Variant="ShadcnButtonVariant.Ghost" Disabled="@(!page.HasPreviousPage)" OnClick="PreviousPageAsync">@Text["Previous"]</ShadcnButton>
-                    <ShadcnButton Variant="ShadcnButtonVariant.Ghost" Disabled="@(!page.HasNextPage)" OnClick="NextPageAsync">@Text["Next"]</ShadcnButton>
-                </nav>
-            }
-        </div>
-        <section class="customer-table-region" aria-label="@Text["CustomersTable"]">
-        <OperationalTable TItem="CustomerListItem"
-                          TKey="int"
-                          Items="@(page.Items)"
-                          KeySelector="@(context => context.Id)"
-                          TableLabel="@Text["CustomersTable"]"
-                          ColumnCount="5"
-                          State="@tableState"
-                          DetailHref="@(context => $"/Customers/View?id={context.Id}")"
-                          DetailAriaLabel="@(context => Text["ViewCustomer", context.Id])"
-                          ExpandAriaLabel="@(context => Text["ExpandCustomer", context.Id])"
-                          CollapseAriaLabel="@(context => Text["CollapseCustomer", context.Id])">
-            <HeaderContent>
-                <tr>
-                <th class="operational-table__identity customer-id" data-priority="essential" aria-sort="@GetAriaSort(CustomerListSort.CustomerId_Ascending, CustomerListSort.CustomerId_Descending)">
-                    <ShadcnButton Class="customer-sort-button" Variant="ShadcnButtonVariant.Ghost" OnClick="@(() => SortFromHeaderAsync(CustomerListSort.CustomerId_Ascending, CustomerListSort.CustomerId_Descending))" aria-label="@Text["SortByField", Text["Id"]]">@Text["Id"]</ShadcnButton>
-                </th>
-                <th class="customer-name" data-priority="essential">@Text["Name"]</th>
-                <th class="customer-email" data-priority="essential" aria-sort="@GetAriaSort(CustomerListSort.CustomerEmail_Ascending, CustomerListSort.CustomerEmail_Descending)">
-                    <ShadcnButton Class="customer-sort-button" Variant="ShadcnButtonVariant.Ghost" OnClick="@(() => SortFromHeaderAsync(CustomerListSort.CustomerEmail_Ascending, CustomerListSort.CustomerEmail_Descending))" aria-label="@Text["SortByField", Text["Email"]]">@Text["Email"]</ShadcnButton>
-                </th>
-                <th class="customer-company" data-priority="supporting" aria-sort="@GetAriaSort(CustomerListSort.CustomerCompany_Ascending, CustomerListSort.CustomerCompany_Descending)">
-                    <ShadcnButton Class="customer-sort-button" Variant="ShadcnButtonVariant.Ghost" OnClick="@(() => SortFromHeaderAsync(CustomerListSort.CustomerCompany_Ascending, CustomerListSort.CustomerCompany_Descending))" aria-label="@Text["SortByField", Text["Company"]]">@Text["Company"]</ShadcnButton>
-                </th>
-                <th class="operational-table__actions-heading"><span class="visually-hidden">@Text["Actions"]</span></th>
-                </tr>
-            </HeaderContent>
-            <RowContent Context="context">
-                <td class="operational-table__identity customer-id mlv-mono" data-priority="essential">@context.Id</td>
-                <td class="customer-name" data-priority="essential" title="@context.FullName">@context.FullName</td>
-                <td class="customer-email" data-priority="essential" title="@context.Email">@context.Email</td>
-                <td class="customer-company" data-priority="supporting" title="@context.Company?.Name">@ValueOrFallback(context.Company?.Name)</td>
-            </RowContent>
+    <section class="customer-table-region" aria-label="@Text["CustomersTable"]">
+        <OperationalDataTable TItem="CustomerListItem"
+                              Items="@(page?.Items ?? [])"
+                              Columns="@Columns"
+                              RowKey="@(customer => customer.Id.ToString(CultureInfo.InvariantCulture))"
+                              State="@dataTableState"
+                              StateChanged="HandleDataTableStateChangedAsync"
+                              RequestChanged="HandleDataTableRequestAsync"
+                              TotalCount="@(page?.TotalRecords ?? 0)"
+                              Loading="@loading"
+                              Error="@error"
+                              FilterPlaceholder="@Text["Search"]"
+                              EmptyText="@Text["Empty"]"
+                              LoadingText="@Text["Loading"]"
+                              ActionsLabel="@Text["Actions"]"
+                              PageSizeOptions="@PageSizeOptions"
+                              DetailHref="@(customer => $"/Customers/View?id={customer.Id}")"
+                              DetailAriaLabel="@(customer => Text["ViewCustomer", customer.Id])"
+                              DetailsAriaLabel="@(customer => Text["ExpandCustomer", customer.Id])">
             <QuickViewContent Context="context">
                 <dl class="customer-quick-view">
                     <div><dt>@Text["Name"]</dt><dd>@context.FullName</dd></div>
@@ -94,16 +46,8 @@
                     <div><dt>@Text["Company"]</dt><dd>@ValueOrFallback(context.Company?.Name)</dd></div>
                 </dl>
             </QuickViewContent>
-        </OperationalTable>
-        </section>
-        @if (page.TotalPages > 1)
-        {
-            <nav class="customers-pagination customers-pagination--bottom" aria-label="@Text["CustomerPagesBottom"]">
-                <ShadcnButton Variant="ShadcnButtonVariant.Ghost" Disabled="@(!page.HasPreviousPage)" OnClick="PreviousPageAsync">@Text["Previous"]</ShadcnButton>
-                <ShadcnButton Variant="ShadcnButtonVariant.Ghost" Disabled="@(!page.HasNextPage)" OnClick="NextPageAsync">@Text["Next"]</ShadcnButton>
-            </nav>
-        }
-    }
+        </OperationalDataTable>
+    </section>
 </div>
 </div>
 
@@ -118,23 +62,14 @@
     private bool loading;
     private CustomerListSort currentSort = CustomerListSort.CustomerCreatedDate_Descending;
     private readonly LatestRequestGate requestGate = new();
-    private readonly OperationalTableState<int> tableState = new();
-    private static readonly ListToolbarState<CustomerListSort> DefaultToolbarState =
-        new(null, CustomerListSort.CustomerCreatedDate_Descending, 25);
+    private ShadcnDataTableState dataTableState = new() { PageSize = 25 };
     private static readonly int[] PageSizeOptions = [25, 50, 100, 250];
-    private ListToolbarState<CustomerListSort> ToolbarState => new(Search, currentSort, Size);
-    private IReadOnlyList<ListToolbarOption<CustomerListSort>> SortOptions =>
+    private IReadOnlyList<ShadcnDataTableColumn<CustomerListItem>> Columns =>
     [
-        new(CustomerListSort.CustomerCreatedDate_Descending, Text[nameof(CustomerListSort.CustomerCreatedDate_Descending)]),
-        new(CustomerListSort.CustomerCreatedDate_Ascending, Text[nameof(CustomerListSort.CustomerCreatedDate_Ascending)]),
-        new(CustomerListSort.CustomerModifiedDate_Descending, Text[nameof(CustomerListSort.CustomerModifiedDate_Descending)]),
-        new(CustomerListSort.CustomerModifiedDate_Ascending, Text[nameof(CustomerListSort.CustomerModifiedDate_Ascending)]),
-        new(CustomerListSort.CustomerCompany_Ascending, Text[nameof(CustomerListSort.CustomerCompany_Ascending)]),
-        new(CustomerListSort.CustomerCompany_Descending, Text[nameof(CustomerListSort.CustomerCompany_Descending)]),
-        new(CustomerListSort.CustomerEmail_Ascending, Text[nameof(CustomerListSort.CustomerEmail_Ascending)]),
-        new(CustomerListSort.CustomerEmail_Descending, Text[nameof(CustomerListSort.CustomerEmail_Descending)]),
-        new(CustomerListSort.CustomerId_Descending, Text[nameof(CustomerListSort.CustomerId_Descending)]),
-        new(CustomerListSort.CustomerId_Ascending, Text[nameof(CustomerListSort.CustomerId_Ascending)])
+        new("id", Text["Id"], customer => customer.Id) { Sortable = true, Hideable = false },
+        new("name", Text["Name"], customer => customer.FullName) { MinWidth = "12rem" },
+        new("email", Text["Email"], customer => customer.Email) { Sortable = true, MinWidth = "14rem" },
+        new("company", Text["Company"], customer => ValueOrFallback(customer.Company?.Name)) { Sortable = true, MinWidth = "14rem" },
     ];
     private IReadOnlyList<PageBreadcrumbItem> Breadcrumbs =>
     [
@@ -149,6 +84,7 @@
         currentSort = Enum.TryParse<CustomerListSort>(SortQuery, ignoreCase: true, out var parsedSort)
             ? parsedSort
             : CustomerListSort.CustomerCreatedDate_Descending;
+        dataTableState = BuildDataTableState();
         await LoadAsync();
     }
 
@@ -157,8 +93,7 @@
         CancellationToken cancellationToken = default)
     {
         using var lease = requestGate.Begin(cancellationToken);
-        var state = (requestedState ?? ToolbarState).Normalize();
-        tableState.Clear();
+        var state = (requestedState ?? new ListToolbarState<CustomerListSort>(Search, currentSort, Size)).Normalize();
         loading = true;
         error = null;
         try
@@ -226,35 +161,51 @@
         }
     }
 
-    private Task PreviousPageAsync() => NavigateAsync(Math.Max(1, Index - 1), Search, currentSort, Size);
-    private Task NextPageAsync() => NavigateAsync(Index + 1, Search, currentSort, Size);
-
-    private Task SortFromHeaderAsync(CustomerListSort ascending, CustomerListSort descending) =>
-        NavigateAsync(1, Search, currentSort == ascending ? descending : ascending, Size, replace: true);
-
-    private string GetAriaSort(CustomerListSort ascending, CustomerListSort descending) =>
-        currentSort == ascending ? "ascending" : currentSort == descending ? "descending" : "none";
-
-    private Task HandleToolbarRequestAsync(ListToolbarRequest<CustomerListSort> request)
+    private Task HandleDataTableStateChangedAsync(ShadcnDataTableState state)
     {
-        var state = request.State.Normalize();
-        if (request.Reason == ListToolbarChangeReason.Refreshed && state == ToolbarState.Normalize())
-        {
-            return LoadAsync();
-        }
-
-        return NavigateAsync(1, state.Search, state.Sort, state.PageSize, replace: true);
+        dataTableState = state;
+        return Task.CompletedTask;
     }
+
+    private Task HandleDataTableRequestAsync(ShadcnDataTableRequest request) =>
+        NavigateAsync(request.PageIndex + 1, request.Query, MapSort(request.Sorts), request.PageSize, replace: true);
 
     private Task NavigateAsync(int index, string? search, CustomerListSort sort, int size, bool replace = false)
     {
-        tableState.Clear();
         var uri = $"/Customers/Index?search={Uri.EscapeDataString(search ?? string.Empty)}&sort={sort}&index={index}&size={Math.Clamp(size, 1, 250)}";
         Navigation.NavigateTo(uri, replace: replace);
         return Task.CompletedTask;
     }
 
     public void Dispose() => requestGate.Dispose();
+
+    private ShadcnDataTableState BuildDataTableState() => new()
+    {
+        Query = Search ?? string.Empty,
+        PageIndex = Math.Max(0, Index - 1),
+        PageSize = Size,
+        Sorts = currentSort switch
+        {
+            CustomerListSort.CustomerId_Ascending => [new("id", ShadcnSortDirection.Ascending)],
+            CustomerListSort.CustomerId_Descending => [new("id", ShadcnSortDirection.Descending)],
+            CustomerListSort.CustomerEmail_Ascending => [new("email", ShadcnSortDirection.Ascending)],
+            CustomerListSort.CustomerEmail_Descending => [new("email", ShadcnSortDirection.Descending)],
+            CustomerListSort.CustomerCompany_Ascending => [new("company", ShadcnSortDirection.Ascending)],
+            CustomerListSort.CustomerCompany_Descending => [new("company", ShadcnSortDirection.Descending)],
+            _ => [],
+        },
+    };
+
+    private CustomerListSort MapSort(IReadOnlyList<ShadcnDataTableSort> sorts) => sorts.FirstOrDefault() switch
+    {
+        { ColumnKey: "id", Direction: ShadcnSortDirection.Ascending } => CustomerListSort.CustomerId_Ascending,
+        { ColumnKey: "id", Direction: ShadcnSortDirection.Descending } => CustomerListSort.CustomerId_Descending,
+        { ColumnKey: "email", Direction: ShadcnSortDirection.Ascending } => CustomerListSort.CustomerEmail_Ascending,
+        { ColumnKey: "email", Direction: ShadcnSortDirection.Descending } => CustomerListSort.CustomerEmail_Descending,
+        { ColumnKey: "company", Direction: ShadcnSortDirection.Ascending } => CustomerListSort.CustomerCompany_Ascending,
+        { ColumnKey: "company", Direction: ShadcnSortDirection.Descending } => CustomerListSort.CustomerCompany_Descending,
+        _ => currentSort,
+    };
 
     private static string ValueOrFallback(string? value) => string.IsNullOrWhiteSpace(value) ? "-" : value;
 }

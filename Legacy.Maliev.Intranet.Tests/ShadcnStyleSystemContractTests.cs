@@ -49,6 +49,7 @@ public sealed class ShadcnStyleSystemContractTests
         var rail = Read("Legacy.Maliev.Intranet.Client", "Components", "Shell", "LegacyNavigationRail.razor");
 
         Assert.Contains(".legacy-workspace-frame > .legacy-topbar", semantic, StringComparison.Ordinal);
+        Assert.DoesNotContain(".legacy-workspace-shell .legacy-topbar", semantic, StringComparison.Ordinal);
         Assert.Contains("<ShadcnHoverCardTrigger", rail, StringComparison.Ordinal);
         Assert.Contains("<ShadcnCollapsible", rail, StringComparison.Ordinal);
         Assert.Contains("<ShadcnSidebarMenuSubButton", rail, StringComparison.Ordinal);
@@ -58,18 +59,18 @@ public sealed class ShadcnStyleSystemContractTests
     }
 
     [Fact]
-    public void ShellLogosUseOfficialLightAndDarkSvgAssetsWithoutFilters()
+    public void ShellUsesTheOfficialBrandAssetWithThemeAwareContrast()
     {
         var topBar = Read("Legacy.Maliev.Intranet.Client", "Layout", "LegacyTopBar.razor");
         var rail = Read("Legacy.Maliev.Intranet.Client", "Components", "Shell", "LegacyNavigationRail.razor");
-        var appCss = Read("Legacy.Maliev.Intranet.Client", "wwwroot", "css", "app.css");
+        var tokens = Read("Legacy.Maliev.Intranet.Client", "wwwroot", "css", "design-tokens.css");
 
         Assert.DoesNotContain("images/MALIEV_BLACK.svg", topBar, StringComparison.Ordinal);
         Assert.DoesNotContain("images/MALIEV_WHITE.svg", topBar, StringComparison.Ordinal);
-        Assert.Contains("images/MALIEV_BLACK.svg", rail, StringComparison.Ordinal);
-        Assert.Contains("images/MALIEV_WHITE.svg", rail, StringComparison.Ordinal);
-        Assert.Contains(":root[data-maliev-theme=\"dark\"] .legacy-logo-image--dark", appCss, StringComparison.Ordinal);
-        Assert.DoesNotContain("filter: invert", appCss, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("src=\"images/MALIEV_BLACK.svg\"", rail, StringComparison.Ordinal);
+        Assert.Contains("alt=\"MALIEV\"", rail, StringComparison.Ordinal);
+        Assert.DoesNotContain("legacy-rail-brand__mark", rail, StringComparison.Ordinal);
+        Assert.Contains("--legacy-brand-logo-filter: invert(1)", tokens, StringComparison.Ordinal);
     }
 
     private static string Read(params string[] segments) => File.ReadAllText(Path.Combine([FindRoot(), .. segments]));

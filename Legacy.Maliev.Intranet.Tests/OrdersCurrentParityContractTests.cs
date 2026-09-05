@@ -15,12 +15,11 @@ public sealed class OrdersCurrentParityContractTests
         Assert.Contains("<ModuleHeader", source, StringComparison.Ordinal);
         Assert.Contains("<PageBody", source, StringComparison.Ordinal);
         Assert.Contains("<PanelCard", source, StringComparison.Ordinal);
-        Assert.Contains("<ListToolbar", source, StringComparison.Ordinal);
-        Assert.Contains("OnRequest=\"HandleToolbarRequestAsync\"", source, StringComparison.Ordinal);
+        Assert.Contains("<OperationalDataTable", source, StringComparison.Ordinal);
+        Assert.Contains("RequestChanged=\"HandleDataTableRequestAsync\"", source, StringComparison.Ordinal);
         Assert.Contains("<ProgressiveSkeleton", source, StringComparison.Ordinal);
         Assert.Contains("<PrimaryButton", source, StringComparison.Ordinal);
-        Assert.Contains("<SecondaryButton", source, StringComparison.Ordinal);
-        Assert.Contains("<OperationalTable", source, StringComparison.Ordinal);
+        Assert.Contains("<OperationalDataTable", source, StringComparison.Ordinal);
         Assert.Contains("<PageBreadcrumbs", source, StringComparison.Ordinal);
         Assert.Contains("aria-live", source, StringComparison.Ordinal);
         Assert.DoesNotContain("<MudContainer", source, StringComparison.Ordinal);
@@ -41,7 +40,7 @@ public sealed class OrdersCurrentParityContractTests
         Assert.Contains("/bff/session", source, StringComparison.Ordinal);
         Assert.Contains("OrderListPage", source, StringComparison.Ordinal);
         Assert.Contains("Search", source, StringComparison.Ordinal);
-        Assert.Contains("Refresh", source, StringComparison.Ordinal);
+        Assert.Contains("ShadcnDataTableRequest", source, StringComparison.Ordinal);
         Assert.DoesNotContain("api/v1/", source, StringComparison.Ordinal);
     }
 

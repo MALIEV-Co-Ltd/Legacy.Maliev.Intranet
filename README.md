@@ -5,7 +5,7 @@ Public .NET 10 migration target replacing the tightly coupled private legacy Int
 The approved employee UI architecture is being introduced alongside the compatibility
 application so routes can move independently without a flag-day rewrite:
 
-- `Legacy.Maliev.Intranet.Client` is the standalone Blazor WebAssembly employee UI and uses MudBlazor;
+- `Legacy.Maliev.Intranet.Client` is the standalone Blazor WebAssembly employee UI and consumes the released `Maliev.ShadcnBlazor` component library;
 - `Legacy.Maliev.Intranet.Bff` is the same-origin cookie, CSRF, authorization, proxy, upload, and SignalR boundary;
 - `Legacy.Maliev.Intranet.Contracts` contains browser-safe BFF DTOs only;
 - `Legacy.Maliev.Intranet` remains the Razor Pages compatibility host until every route passes parity gates.

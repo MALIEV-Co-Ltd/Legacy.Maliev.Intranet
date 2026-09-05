@@ -20,6 +20,8 @@
   <data name="Continue with email" xml:space="preserve"><value>ดำเนินการต่อด้วยอีเมล</value></data>
   <data name="Change" xml:space="preserve"><value>เปลี่ยน</value></data>
   <data name="Password" xml:space="preserve"><value>รหัสผ่าน</value></data>
+  <data name="Show password" xml:space="preserve"><value>แสดงรหัสผ่าน</value></data>
+  <data name="Hide password" xml:space="preserve"><value>ซ่อนรหัสผ่าน</value></data>
   <data name="Remember me" xml:space="preserve"><value>จดจำฉัน</value></data>
   <data name="Signing in..." xml:space="preserve"><value>กำลังเข้าสู่ระบบ...</value></data>
   <data name="Sign in with email" xml:space="preserve"><value>เข้าสู่ระบบด้วยอีเมล</value></data>

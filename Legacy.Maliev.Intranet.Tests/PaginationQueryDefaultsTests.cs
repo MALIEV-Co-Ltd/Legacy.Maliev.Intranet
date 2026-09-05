@@ -67,9 +67,8 @@ public sealed class PaginationQueryDefaultsTests
         var source = File.ReadAllText(Path.Combine(root, relativePath.Replace('/', Path.DirectorySeparatorChar)));
 
         Assert.Contains("public int Size { get; set; } = 10", source, StringComparison.Ordinal);
-        Assert.Contains("ListToolbarState<", source, StringComparison.Ordinal);
-        Assert.Contains("new(null,", source, StringComparison.Ordinal);
-        Assert.Contains(", 10);", source, StringComparison.Ordinal);
+        Assert.Contains("ShadcnDataTableState dataTableState = new() { PageSize = 10 }", source, StringComparison.Ordinal);
+        Assert.Contains("PageSize = Size", source, StringComparison.Ordinal);
     }
 
     private static string FindRoot()

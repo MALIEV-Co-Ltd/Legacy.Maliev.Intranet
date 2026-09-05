@@ -3,6 +3,44 @@ namespace Legacy.Maliev.Intranet.Tests;
 public sealed class OperationsShellContractTests
 {
     [Fact]
+    public void BlazorShell_UsesTheDocumentedInsetSidebarComposition()
+    {
+        var root = FindRoot();
+        var layout = Read(root, "Legacy.Maliev.Intranet.Client", "Layout", "MainLayout.razor");
+        var navigation = Read(root, "Legacy.Maliev.Intranet.Client", "Components", "Shell", "LegacyNavigationRail.razor");
+        var railCss = Read(root, "Legacy.Maliev.Intranet.Client", "Components", "Shell", "LegacyNavigationRail.razor.css");
+
+        Assert.Contains("Width=\"var(--legacy-rail-width)\"", layout, StringComparison.Ordinal);
+        Assert.Contains("Variant=\"ShadcnSidebarVariant.Inset\"", navigation, StringComparison.Ordinal);
+        Assert.Contains("<ShadcnSidebarRail TargetId=\"legacy-navigation-rail\" />", navigation, StringComparison.Ordinal);
+        Assert.Contains("images/MALIEV_BLACK.svg", navigation, StringComparison.Ordinal);
+        Assert.Contains("<ShadcnCollapsible Class=\"legacy-rail-collapsible\"", navigation, StringComparison.Ordinal);
+        Assert.Contains("<ShadcnSidebarMenuBadge", navigation, StringComparison.Ordinal);
+        Assert.Contains("<ShadcnSidebarMenuButton Size=\"ShadcnSidebarMenuButtonSize.Large\"", navigation, StringComparison.Ordinal);
+        Assert.DoesNotContain("legacy-rail-brand__mark", navigation, StringComparison.Ordinal);
+        Assert.DoesNotContain("::deep .legacy-rail-link { min-height: 2.75rem; }", railCss, StringComparison.Ordinal);
+        Assert.Contains("@media (max-width: 48rem)", railCss, StringComparison.Ordinal);
+        Assert.Contains(".legacy-sidebar-host ::deep .legacy-rail-link { min-height: 2.75rem;", railCss, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void VisualSystem_UsesTheLibrarySansTypographyForShellAndTables()
+    {
+        var root = FindRoot();
+        var program = Read(root, "Legacy.Maliev.Intranet.Client", "Program.cs");
+        var tokens = Read(root, "Legacy.Maliev.Intranet.Client", "wwwroot", "css", "design-tokens.css");
+        var modules = Read(root, "Legacy.Maliev.Intranet.Client", "wwwroot", "css", "module-pages.css");
+        var index = Read(root, "Legacy.Maliev.Intranet.Client", "wwwroot", "index.html");
+
+        Assert.DoesNotContain("options.FontFamily", program, StringComparison.Ordinal);
+        Assert.Contains("--maliev-font-sans: var(--shadcn-font-sans)", tokens, StringComparison.Ordinal);
+        Assert.Contains(":where(.operational-table, .shadcn-table) .mlv-mono", modules, StringComparison.Ordinal);
+        Assert.Contains("font-family: inherit", modules, StringComparison.Ordinal);
+        Assert.Contains("font-variant-numeric: tabular-nums", modules, StringComparison.Ordinal);
+        Assert.DoesNotContain("css/ibm-plex-sans-thai.css", index, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void BlazorShell_UsesPersistentRailAuthorizedSearchAndAuthorizedQuickActions()
     {
         var root = FindRoot();
@@ -32,7 +70,7 @@ public sealed class OperationsShellContractTests
         Assert.Contains("/Orders/Create", actions, StringComparison.Ordinal);
         Assert.Contains("<ShadcnThemeProvider", layout, StringComparison.Ordinal);
         Assert.Contains("Class=\"legacy-layout\"", layout, StringComparison.Ordinal);
-        Assert.Contains("<main id=\"main-content\" class=\"legacy-main-content legacy-page-container\"", layout, StringComparison.Ordinal);
+        Assert.Contains("<main id=\"main-content\" class=\"legacy-main-content legacy-page-container\" tabindex=\"-1\">", layout, StringComparison.Ordinal);
         Assert.Contains("<ShadcnInput TValue=\"string\"", search, StringComparison.Ordinal);
         Assert.Contains("LucideIconCatalog.Instance.Get", search, StringComparison.Ordinal);
         Assert.DoesNotContain("<Mud", string.Concat(layout, topBar, navigation, search, actions), StringComparison.Ordinal);
@@ -52,18 +90,17 @@ public sealed class OperationsShellContractTests
         var tokens = Read(root, "Legacy.Maliev.Intranet.Client", "wwwroot", "css", "design-tokens.css");
         var index = Read(root, "Legacy.Maliev.Intranet.Client", "wwwroot", "index.html");
 
-        Assert.Contains("position: fixed", railCss, StringComparison.Ordinal);
-        Assert.Contains("@media (max-width: 48rem)", railCss, StringComparison.Ordinal);
-        Assert.Contains("min-height: 44px", searchCss, StringComparison.Ordinal);
+        Assert.Contains("max-height: 100dvh", railCss, StringComparison.Ordinal);
+        Assert.Contains("height: 2.75rem", searchCss, StringComparison.Ordinal);
         Assert.Contains("@media (max-width: 720px)", searchCss, StringComparison.Ordinal);
         Assert.DoesNotContain(".legacy-quick-actions { display: none; }", actionsCss, StringComparison.Ordinal);
         Assert.Contains("min-width: 44px", topBarCss, StringComparison.Ordinal);
         Assert.Contains(".legacy-workspace-shell", appCss, StringComparison.Ordinal);
         Assert.DoesNotContain(".legacy-navigation-backdrop", appCss, StringComparison.Ordinal);
         Assert.Contains("--legacy-rail-width: 224px", tokens, StringComparison.Ordinal);
-        Assert.Contains("--maliev-font-sans: 'IBM Plex Sans Thai', sans-serif", tokens, StringComparison.Ordinal);
-        Assert.Contains("css/ibm-plex-sans-thai.css", index, StringComparison.Ordinal);
-        Assert.Contains("'IBM Plex Sans Thai', sans-serif", index, StringComparison.Ordinal);
+        Assert.Contains("--maliev-font-sans: var(--shadcn-font-sans)", tokens, StringComparison.Ordinal);
+        Assert.Contains("_content/Maliev.ShadcnBlazor/fonts/geist-sans-variable.woff2", index, StringComparison.Ordinal);
+        Assert.Contains("_content/Maliev.ShadcnBlazor/fonts/noto-sans-thai.woff2", index, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -101,7 +138,7 @@ public sealed class OperationsShellContractTests
         Assert.Contains("min-width: 0", topBarCss, StringComparison.Ordinal);
         Assert.Contains("@media (max-width: 960px)", topBarCss, StringComparison.Ordinal);
         Assert.Contains("min-width: 44px", actionsCss, StringComparison.Ordinal);
-        Assert.Contains("min-height: 2.75rem", railCss, StringComparison.Ordinal);
+        Assert.DoesNotContain("::deep .legacy-rail-link { min-height: 2.75rem; }", railCss, StringComparison.Ordinal);
         Assert.Contains("max-width: 100%", appCss, StringComparison.Ordinal);
         Assert.Contains("@media (prefers-reduced-motion: reduce)", railCss, StringComparison.Ordinal);
     }
@@ -137,21 +174,13 @@ public sealed class OperationsShellContractTests
     }
 
     [Fact]
-    public void LanguageSelector_OffersOneEnglishAndOneThaiChoiceAndRestoresTheSavedCultureBeforeStartup()
+    public void CultureBootstrap_RestoresTheSavedCultureBeforeStartup()
     {
         var root = FindRoot();
-        var selector = Read(root, "Legacy.Maliev.Intranet.Client", "Components", "Shell", "LegacyLanguageSelector.razor");
         var program = Read(root, "Legacy.Maliev.Intranet.Client", "Program.cs");
         var script = Read(root, "Legacy.Maliev.Intranet.Client", "wwwroot", "js", "workspace-culture.js");
         var index = Read(root, "Legacy.Maliev.Intranet.Client", "wwwroot", "index.html");
 
-        Assert.Equal(2, System.Text.RegularExpressions.Regex.Matches(selector, "<ShadcnNativeSelectOption").Count);
-        Assert.Contains(@"<ShadcnNativeSelectOption TValue=""string"" Value=""@EnglishCulture"">English", selector, StringComparison.Ordinal);
-        Assert.Contains(@"<ShadcnNativeSelectOption TValue=""string"" Value=""@ThaiCulture"">ไทย", selector, StringComparison.Ordinal);
-        Assert.DoesNotContain("en-US", selector, StringComparison.Ordinal);
-        Assert.Contains("<ShadcnNativeSelect TValue=\"string\"", selector, StringComparison.Ordinal);
-        Assert.DoesNotContain("<Mud", selector, StringComparison.Ordinal);
-        Assert.Contains("malievCulture.set", selector, StringComparison.Ordinal);
         Assert.Contains("malievCulture.get", program, StringComparison.Ordinal);
         Assert.Contains("WorkspaceCulture.Apply(selectedCulture)", program, StringComparison.Ordinal);
         Assert.Contains("localStorage.setItem('maliev_culture'", script, StringComparison.Ordinal);
@@ -181,6 +210,8 @@ public sealed class OperationsShellContractTests
         Assert.Contains("legacy-rail-logo legacy-logo-link", navigation, StringComparison.Ordinal);
         Assert.Contains("legacy-sidebar-collapse", navigation, StringComparison.Ordinal);
         Assert.Contains("max-height: 100dvh", railCss, StringComparison.Ordinal);
+        Assert.Contains(".legacy-sidebar-host ::deep .legacy-rail-chevron[aria-expanded=\"true\"] svg", railCss, StringComparison.Ordinal);
+        Assert.Contains("transform: rotate(90deg)", railCss, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -246,7 +277,7 @@ public sealed class OperationsShellContractTests
         Assert.Contains("item.Kind == LegacyNavItemKind.ChildAction", navigation, StringComparison.Ordinal);
         Assert.Contains("legacy-rail-link--child", navigation, StringComparison.Ordinal);
         Assert.Contains(".legacy-rail-link--child", railCss, StringComparison.Ordinal);
-        Assert.Contains("min-height: 2.75rem", railCss, StringComparison.Ordinal);
+        Assert.DoesNotContain("::deep .legacy-rail-link { min-height: 2.75rem; }", railCss, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -257,9 +288,6 @@ public sealed class OperationsShellContractTests
 
         Assert.Contains("<ShadcnSidebarMenu Class=\"legacy-rail-items\">", navigation, StringComparison.Ordinal);
         Assert.Contains("<ShadcnSidebarMenuItem Class=\"legacy-rail-item\">", navigation, StringComparison.Ordinal);
-        Assert.Contains("<ShadcnCollapsible Class=\"legacy-rail-collapsible\"", navigation, StringComparison.Ordinal);
-        Assert.Contains("<ShadcnCollapsibleTrigger Class=\"legacy-rail-chevron\"", navigation, StringComparison.Ordinal);
-        Assert.Contains("<ShadcnCollapsibleContent Class=\"legacy-rail-child-region\">", navigation, StringComparison.Ordinal);
         Assert.Contains("<ShadcnSidebarMenuSub Class=\"legacy-rail-children\"", navigation, StringComparison.Ordinal);
         Assert.Contains("<ShadcnHoverCardTrigger Href=\"@item.Href\"", navigation, StringComparison.Ordinal);
         Assert.Contains("<ShadcnSidebarMenuSubButton", navigation, StringComparison.Ordinal);
