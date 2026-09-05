@@ -6,11 +6,12 @@
 .legacy-rail-logo img, .legacy-logo-link img { display: block; width: 8rem; height: auto; }
 .legacy-rail-monogram { display: none; width: 2rem; height: 2rem; flex: 0 0 2rem; align-items: center; justify-content: center; border-radius: 9999px; background: var(--shadcn-sidebar-primary); color: var(--shadcn-sidebar-primary-foreground); font-weight: 600; }
 .legacy-sidebar-host ::deep .legacy-sidebar-collapse { flex: 0 0 2rem; }
-.legacy-sidebar-host ::deep .legacy-rail-groups { min-width: 0; overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain; padding-block: .25rem; }
-.legacy-sidebar-host ::deep .legacy-rail-group { padding-block: .25rem; }
-.legacy-sidebar-host ::deep .legacy-rail-link { min-height: 2.75rem; }
-.legacy-sidebar-host ::deep .legacy-rail-link svg { width: 1.125rem; height: 1.125rem; flex: 0 0 auto; }
+.legacy-sidebar-host ::deep .legacy-rail-groups { min-width: 0; overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain; padding-block: .125rem; }
+.legacy-sidebar-host ::deep .legacy-rail-group { padding-block: .125rem; }
+.legacy-sidebar-host ::deep .legacy-rail-link { min-height: 2.25rem; padding-block: .375rem; }
+.legacy-sidebar-host ::deep .legacy-rail-link svg { width: 1rem; height: 1rem; flex: 0 0 auto; }
 .legacy-sidebar-host ::deep .legacy-rail-link--child { color: var(--shadcn-sidebar-foreground); }
+.legacy-sidebar-host ::deep .legacy-rail-children { margin-left: .625rem; padding-left: .5rem; }
 .legacy-sidebar-host ::deep .legacy-rail-footer { border-top: 1px solid var(--shadcn-sidebar-border); }
 .legacy-rail-user { display: flex; min-width: 0; align-items: center; gap: .625rem; padding: .25rem; }
 .legacy-rail-avatar { flex: 0 0 auto; }
@@ -23,5 +24,10 @@
 .legacy-sidebar-host ::deep .legacy-navigation-rail[data-state="collapsed"] .legacy-rail-monogram { display: inline-flex; }
 .legacy-sidebar-host ::deep .legacy-navigation-rail[data-state="collapsed"] .legacy-rail-user { justify-content: center; }
 .legacy-sidebar-host ::deep .legacy-navigation-rail[data-state="collapsed"] .legacy-rail-link { justify-content: center; padding-inline: 0; }
-@media (max-width: 48rem) { .legacy-sidebar-host ::deep .legacy-navigation-rail { position: fixed; } }
+@media (max-width: 48rem) {
+    .legacy-sidebar-host ::deep .legacy-navigation-rail { position: fixed; }
+    .legacy-sidebar-host ::deep .legacy-rail-group { padding-block: .25rem; }
+    .legacy-sidebar-host ::deep .legacy-rail-link { min-height: 2.75rem; padding-block: .5rem; }
+    .legacy-sidebar-host ::deep .legacy-rail-link svg { width: 1.125rem; height: 1.125rem; }
+}
 @media (prefers-reduced-motion: reduce) { .legacy-sidebar-host ::deep .legacy-navigation-rail { transition: none; } }

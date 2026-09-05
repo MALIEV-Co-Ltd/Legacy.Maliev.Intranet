@@ -97,7 +97,7 @@
     --legacy-warn-bg: var(--shadcn-accent);
     --legacy-warn-border: var(--shadcn-border);
     --legacy-warn-fg: var(--shadcn-accent-foreground);
-    --legacy-rail-width: 248px;
+    --legacy-rail-width: 224px;
     --legacy-utility-height: 4.25rem;
     --legacy-radius-md: var(--shadcn-radius-md);
     --legacy-radius-lg: var(--shadcn-radius-lg);

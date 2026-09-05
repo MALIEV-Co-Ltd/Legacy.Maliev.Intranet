@@ -60,7 +60,7 @@ public sealed class OperationsShellContractTests
         Assert.Contains("min-width: 44px", topBarCss, StringComparison.Ordinal);
         Assert.Contains(".legacy-workspace-shell", appCss, StringComparison.Ordinal);
         Assert.DoesNotContain(".legacy-navigation-backdrop", appCss, StringComparison.Ordinal);
-        Assert.Contains("--legacy-rail-width: 248px", tokens, StringComparison.Ordinal);
+        Assert.Contains("--legacy-rail-width: 224px", tokens, StringComparison.Ordinal);
         Assert.Contains("--maliev-font-sans: 'IBM Plex Sans Thai', sans-serif", tokens, StringComparison.Ordinal);
         Assert.Contains("css/ibm-plex-sans-thai.css", index, StringComparison.Ordinal);
         Assert.Contains("'IBM Plex Sans Thai', sans-serif", index, StringComparison.Ordinal);

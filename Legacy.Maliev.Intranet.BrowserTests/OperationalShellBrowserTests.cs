@@ -44,6 +44,37 @@ public sealed class OperationalShellBrowserTests(
         Assert.True(1280 - (breadcrumbBounds.X + breadcrumbBounds.Width) >= 16, $"Breadcrumb ended at {breadcrumbBounds.X + breadcrumbBounds.Width}px.");
     }
 
+    [Fact]
+    public async Task DesktopNavigationUsesCompactRowsWhileMobileDrawerKeepsTouchTargets()
+    {
+        await using var context = await playwright.Browser.NewContextAsync(new()
+        {
+            ViewportSize = new() { Width = 1280, Height = 900 },
+            HasTouch = false,
+            ReducedMotion = ReducedMotion.Reduce,
+        });
+        var page = await context.NewPageAsync();
+        await StubProductionBoundariesAsync(page);
+        await page.GotoAsync(new Uri(server.BaseUri, "sales/orders").AbsoluteUri);
+
+        var desktopRail = page.Locator(".legacy-navigation-rail[data-mobile='false']");
+        await desktopRail.WaitForAsync();
+        Assert.True(await desktopRail.EvaluateAsync<bool>(
+            "element => element.getBoundingClientRect().width <= 232"));
+        Assert.True(await desktopRail.Locator(".legacy-rail-link").EvaluateAllAsync<bool>(
+            "elements => elements.length > 0 && elements.every(element => { const height = element.getBoundingClientRect().height; return height >= 34 && height <= 38; })"));
+
+        await page.SetViewportSizeAsync(768, 844);
+        await page.Locator("#legacy-mobile-navigation-toggle").ClickAsync();
+
+        var drawer = page.Locator(".legacy-navigation-rail[data-mobile='true']");
+        await drawer.WaitForAsync();
+        Assert.True(await drawer.Locator(".legacy-rail-link").EvaluateAllAsync<bool>(
+            "elements => elements.length > 0 && elements.every(element => element.getBoundingClientRect().height >= 44)"));
+        Assert.Equal("hidden", await drawer.Locator(".legacy-rail-groups").EvaluateAsync<string>(
+            "element => getComputedStyle(element).overflowX"));
+    }
+
     private static readonly (string ParentHref, string ChildHref)[] NavigationHierarchy =
     [
         ("/customers", "/customers/new"),
