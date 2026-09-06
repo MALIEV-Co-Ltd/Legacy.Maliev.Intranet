@@ -41,6 +41,48 @@ public sealed class OperationalShellBrowserTests(
     }
 
     [Fact]
+    public async Task DesktopSidebarRailDividerSpansTheFullViewport()
+    {
+        await using var context = await playwright.Browser.NewContextAsync(new()
+        {
+            ViewportSize = new() { Width = 1280, Height = 900 },
+            ReducedMotion = ReducedMotion.Reduce,
+        });
+        var page = await context.NewPageAsync();
+        await StubProductionBoundariesAsync(page);
+        await page.GotoAsync(new Uri(server.BaseUri, "sales/orders").AbsoluteUri);
+
+        var rail = page.Locator(".legacy-navigation-rail[data-mobile='false'] > .shadcn-sidebar-rail");
+        await rail.WaitForAsync();
+        var geometry = await rail.EvaluateAsync<JsonElement>("""
+            element => {
+                const bounds = element.getBoundingClientRect();
+                const divider = getComputedStyle(element, '::after');
+                return {
+                    top: bounds.top,
+                    bottom: bounds.bottom,
+                    height: bounds.height,
+                    viewportHeight: window.innerHeight,
+                    dividerBackground: divider.backgroundColor
+                };
+            }
+            """);
+
+        Assert.InRange(Math.Abs(geometry.GetProperty("top").GetDouble()), 0, 0.5);
+        Assert.InRange(
+            Math.Abs(geometry.GetProperty("viewportHeight").GetDouble() - geometry.GetProperty("bottom").GetDouble()),
+            0,
+            0.5);
+        Assert.InRange(
+            Math.Abs(geometry.GetProperty("viewportHeight").GetDouble() - geometry.GetProperty("height").GetDouble()),
+            0,
+            0.5);
+        Assert.DoesNotContain(
+            geometry.GetProperty("dividerBackground").GetString(),
+            new[] { "transparent", "rgba(0, 0, 0, 0)" });
+    }
+
+    [Fact]
     public async Task DesktopNavigationUsesCompactRowsWhileMobileDrawerKeepsTouchTargets()
     {
         await using var context = await playwright.Browser.NewContextAsync(new()

@@ -1,5 +1,6 @@
 .legacy-sidebar-host { display: contents; }
 .legacy-sidebar-host ::deep .legacy-navigation-rail { position: sticky; top: 0; max-height: 100dvh; overflow: visible; }
+.legacy-sidebar-host ::deep .legacy-navigation-rail[data-mobile="false"] > .shadcn-sidebar-rail::after { background: var(--shadcn-sidebar-border); }
 .legacy-sidebar-host ::deep .legacy-rail-header { min-height: var(--legacy-utility-height); justify-content: center; }
 .legacy-rail-identity { display: flex; min-width: 0; align-items: center; justify-content: space-between; gap: .5rem; }
 .legacy-rail-logo, .legacy-logo-link { display: inline-flex; min-width: 0; min-height: 2.75rem; flex: 1 1 auto; align-items: center; overflow: hidden; }
