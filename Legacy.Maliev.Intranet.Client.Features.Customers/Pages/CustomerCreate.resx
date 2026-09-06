@@ -23,6 +23,7 @@
   <data name="RateLimited" xml:space="preserve"><value>Too many requests were submitted. Wait a moment and try again.</value></data>
   <data name="CreateFailed" xml:space="preserve"><value>The customer could not be created. Please retry.</value></data>
   <data name="InvalidResponse" xml:space="preserve"><value>The customer services returned an invalid response.</value></data>
+  <data name="ServiceUnavailable" xml:space="preserve"><value>Customer services are unavailable. No customer account was created. Check service health and try again.</value></data>
   <data name="IdentityAndAccess" xml:space="preserve"><value>Identity and account access</value></data>
   <data name="ContactDetails" xml:space="preserve"><value>Contact details</value></data>
 </root>

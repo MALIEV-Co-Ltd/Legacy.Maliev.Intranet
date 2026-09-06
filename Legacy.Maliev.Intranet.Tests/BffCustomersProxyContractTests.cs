@@ -515,12 +515,14 @@ public sealed class BffCustomersProxyContractTests
         await SignInAsync(client);
         var invalid = ValidCreateRequest();
         invalid.Email = "not-an-email";
+        invalid.Telephone = null;
 
         using var response = await SendCreateAsync(client, invalid, includeCsrf: true);
         var body = await response.Content.ReadAsStringAsync();
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         Assert.Contains("email", body, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("telephone", body, StringComparison.OrdinalIgnoreCase);
         Assert.Empty(profile.Requests);
         Assert.Empty(identity.Requests);
     }

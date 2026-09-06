@@ -30,7 +30,7 @@
         <section class="customer-create__section" aria-labelledby="customer-contact-heading">
             <h2 id="customer-contact-heading">@Text["ContactDetails"]</h2>
             <div class="customer-create__grid">
-                <ShadcnFormField Id="customer-create-telephone" Label="@Text["Telephone"]"><Control><ShadcnInput TValue="string" id="customer-create-telephone" Type="tel" @bind-Value="model.Telephone" /></Control></ShadcnFormField>
+                <ShadcnFormField Id="customer-create-telephone" Label="@Text["Telephone"]" Error="@ValidationFor(() => model.Telephone)" Required="true"><Control><ShadcnInput TValue="string" id="customer-create-telephone" Type="tel" @bind-Value="model.Telephone" Required="true" /></Control></ShadcnFormField>
                 <ShadcnFormField Id="customer-create-mobile" Label="@Text["Mobile"]"><Control><ShadcnInput TValue="string" id="customer-create-mobile" Type="tel" @bind-Value="model.Mobile" /></Control></ShadcnFormField>
                 <ShadcnFormField Id="customer-create-fax" Label="@Text["Fax"]"><Control><ShadcnInput TValue="string" id="customer-create-fax" @bind-Value="model.Fax" /></Control></ShadcnFormField>
                 <ShadcnFormField Id="customer-create-date-of-birth" Label="@Text["DateOfBirth"]"><Control><ShadcnDatePicker id="customer-create-date-of-birth" @bind-Value="DateOfBirth" Clearable="true" CalendarLabel="@Text["DateOfBirth"]" /></Control></ShadcnFormField>
@@ -128,6 +128,18 @@
 
             if (!response.IsSuccessStatusCode)
             {
+                if (response.StatusCode == HttpStatusCode.BadGateway)
+                {
+                    error = Text["InvalidResponse"];
+                    return;
+                }
+
+                if (response.StatusCode == HttpStatusCode.ServiceUnavailable)
+                {
+                    error = Text["ServiceUnavailable"];
+                    return;
+                }
+
                 error = Text["CreateFailed"];
                 return;
             }

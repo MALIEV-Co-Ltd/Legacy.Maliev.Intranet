@@ -23,6 +23,7 @@
   <data name="RateLimited" xml:space="preserve"><value>มีการส่งคำขอมากเกินไป รอสักครู่แล้วลองอีกครั้ง</value></data>
   <data name="CreateFailed" xml:space="preserve"><value>ไม่สามารถสร้างลูกค้าได้ กรุณาลองอีกครั้ง</value></data>
   <data name="InvalidResponse" xml:space="preserve"><value>ระบบข้อมูลลูกค้าส่งข้อมูลกลับมาไม่ถูกต้อง</value></data>
+  <data name="ServiceUnavailable" xml:space="preserve"><value>บริการลูกค้าไม่พร้อมใช้งาน จึงยังไม่ได้สร้างบัญชีลูกค้า กรุณาตรวจสอบสถานะบริการแล้วลองอีกครั้ง</value></data>
   <data name="IdentityAndAccess" xml:space="preserve"><value>ข้อมูลประจำตัวและการเข้าถึงบัญชี</value></data>
   <data name="ContactDetails" xml:space="preserve"><value>ข้อมูลการติดต่อ</value></data>
 </root>

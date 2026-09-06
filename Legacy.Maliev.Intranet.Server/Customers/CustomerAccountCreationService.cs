@@ -80,6 +80,7 @@ public sealed class CustomerAccountCreationService(
         }
         catch (HttpRequestException)
         {
+            logger.LogWarning("Customer profile creation was unavailable.");
             return new(CustomerAccountCreationStatus.Unavailable);
         }
 
@@ -88,6 +89,9 @@ public sealed class CustomerAccountCreationService(
         {
             if (!profileResponse.IsSuccessStatusCode)
             {
+                logger.LogWarning(
+                    "Customer profile creation returned HTTP {StatusCode}.",
+                    (int)profileResponse.StatusCode);
                 return FromFailure(profileResponse);
             }
 
@@ -114,6 +118,10 @@ public sealed class CustomerAccountCreationService(
             using var identityResponse = await identities.CreateAsync(customerId, request, temporaryPassword, CancellationToken.None);
             if (!identityResponse.IsSuccessStatusCode)
             {
+                logger.LogWarning(
+                    "Customer identity creation returned HTTP {StatusCode} for profile {CustomerId}.",
+                    (int)identityResponse.StatusCode,
+                    customerId);
                 identityResult = FromFailure(identityResponse);
             }
             else
@@ -137,6 +145,7 @@ public sealed class CustomerAccountCreationService(
         }
         catch (HttpRequestException)
         {
+            logger.LogWarning("Customer identity creation was unavailable for profile {CustomerId}.", customerId);
             identityResult = new(CustomerAccountCreationStatus.Unavailable);
         }
 

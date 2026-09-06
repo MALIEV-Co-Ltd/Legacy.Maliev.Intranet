@@ -17,8 +17,8 @@ public sealed class CreateCustomerAccountRequest
     [Required, EmailAddress, StringLength(320)]
     public string Email { get; set; } = string.Empty;
 
-    /// <summary>Gets or sets the optional telephone number.</summary>
-    [Phone, StringLength(64)]
+    /// <summary>Gets or sets the required telephone number used for customer contact.</summary>
+    [Required, Phone, StringLength(64)]
     public string? Telephone { get; set; }
 
     /// <summary>Gets or sets the optional mobile number.</summary>
