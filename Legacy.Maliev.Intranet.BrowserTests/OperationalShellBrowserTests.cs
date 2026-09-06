@@ -172,11 +172,9 @@ public sealed class OperationalShellBrowserTests(
         Assert.Equal(0, await page.Locator(".legacy-topbar__utilities > .legacy-language-selector").CountAsync());
         if (width <= 720)
         {
+            await page.Locator("#legacy-mobile-navigation-toggle").ClickAsync();
             var trigger = page.GetByRole(AriaRole.Button, new() { Name = "Employee menu" });
-            Assert.False(await trigger.Locator(".legacy-profile-chevron").IsVisibleAsync());
-            var bounds = await trigger.BoundingBoxAsync();
-            Assert.NotNull(bounds);
-            Assert.InRange(Math.Abs(bounds!.Width - bounds.Height), 0, 1);
+            Assert.True(await trigger.IsVisibleAsync());
         }
 
         await page.GetByRole(AriaRole.Button, new() { Name = "Employee menu" }).ClickAsync();
@@ -192,6 +190,10 @@ public sealed class OperationalShellBrowserTests(
         await page.WaitForLoadStateAsync(LoadState.DOMContentLoaded);
         Assert.Equal("th-TH", await page.EvaluateAsync<string>("localStorage.getItem('maliev_culture')"));
 
+        if (width <= 720)
+        {
+            await page.Locator("#legacy-mobile-navigation-toggle").ClickAsync();
+        }
         await page.GetByRole(AriaRole.Button, new() { Name = "เมนูพนักงาน" }).ClickAsync();
         Assert.Equal("ไทย", (await page.GetByRole(AriaRole.Combobox, new() { Name = "ภาษา" }).InnerTextAsync()).Trim());
     }
@@ -213,15 +215,15 @@ public sealed class OperationalShellBrowserTests(
                 element => {
                     const bounds = element.getBoundingClientRect();
                     const style = getComputedStyle(element);
-                    const utilitiesStyle = getComputedStyle(element.closest('.legacy-topbar__utilities'));
+                    const footerStyle = getComputedStyle(element.closest('.legacy-profile-menu'));
                     return {
                         height: bounds.height,
                         radius: Number.parseFloat(style.borderTopLeftRadius),
                         background: style.backgroundColor,
-                        topbarBackground: getComputedStyle(element.closest('.legacy-topbar')).backgroundColor,
+                        sidebarBackground: getComputedStyle(element.closest('.legacy-navigation-rail')).backgroundColor,
                         textAlign: style.textAlign,
-                        utilitiesBorder: utilitiesStyle.borderTopWidth,
-                        utilitiesShadow: utilitiesStyle.boxShadow
+                        footerPosition: footerStyle.position,
+                        footerMinWidth: footerStyle.minWidth
                     };
                 }
                 """);
@@ -230,10 +232,10 @@ public sealed class OperationalShellBrowserTests(
         Assert.True(height >= 44, visual.ToString());
         Assert.True(visual.GetProperty("radius").GetDouble() >= height / 2 - 1, visual.ToString());
         Assert.DoesNotContain("rgba(0, 0, 0, 0)", visual.GetProperty("background").GetString(), StringComparison.Ordinal);
-        Assert.NotEqual(visual.GetProperty("topbarBackground").GetString(), visual.GetProperty("background").GetString());
+        Assert.NotEqual(visual.GetProperty("sidebarBackground").GetString(), visual.GetProperty("background").GetString());
         Assert.Equal("left", visual.GetProperty("textAlign").GetString());
-        Assert.Equal("0px", visual.GetProperty("utilitiesBorder").GetString());
-        Assert.Equal("none", visual.GetProperty("utilitiesShadow").GetString());
+        Assert.Equal("relative", visual.GetProperty("footerPosition").GetString());
+        Assert.Equal("0px", visual.GetProperty("footerMinWidth").GetString());
     }
 
     [Fact]
@@ -508,7 +510,7 @@ public sealed class OperationalShellBrowserTests(
         await page.GotoAsync(new Uri(server.BaseUri, "sales/orders").AbsoluteUri);
         try
         {
-            await page.Locator(".legacy-topbar__utilities").WaitForAsync(new() { Timeout = 10_000 });
+            await page.Locator(".legacy-navigation-rail").WaitForAsync(new() { Timeout = 10_000 });
         }
         catch (TimeoutException exception)
         {
@@ -519,7 +521,6 @@ public sealed class OperationalShellBrowserTests(
         }
 
         Assert.Equal(1, await page.Locator("#legacy-sidebar-collapse:is(button)").CountAsync());
-        Assert.Equal(0, await page.Locator(".legacy-topbar__utilities > .legacy-theme-toggle:is(button)").CountAsync());
         Assert.Equal(1, await page.Locator(".legacy-profile:is(button)").CountAsync());
         Assert.Equal(2, await page.Locator(".legacy-quick-action:is(a)").CountAsync());
         Assert.Equal(1, await page.Locator(".legacy-global-search input").CountAsync());
@@ -579,7 +580,7 @@ public sealed class OperationalShellBrowserTests(
             "(node, parent) => Boolean(node.compareDocumentPosition(document.querySelector(parent)) & Node.DOCUMENT_POSITION_PRECEDING)",
             ".legacy-navigation-rail a[href='/sales/orders']"));
 
-        var zones = await page.Locator(".legacy-topbar__search, .legacy-topbar__actions, .legacy-topbar__utilities")
+        var zones = await page.Locator(".legacy-topbar__search, .legacy-topbar__actions")
             .EvaluateAllAsync<JsonElement>("""
                 elements => elements.map(element => {
                     const rect = element.getBoundingClientRect();
@@ -587,7 +588,7 @@ public sealed class OperationalShellBrowserTests(
                 })
                 """);
         var centers = zones.EnumerateArray().Select(zone => zone.GetProperty("center").GetDouble()).ToArray();
-        Assert.Equal(3, centers.Length);
+        Assert.Equal(2, centers.Length);
         Assert.True(centers.Max() - centers.Min() <= 2, zones.ToString());
 
         foreach (var width in new[] { 1280, 768, 390, 320 })

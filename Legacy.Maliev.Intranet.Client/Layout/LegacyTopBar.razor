@@ -1,11 +1,9 @@
 @using Legacy.Maliev.Intranet.Client.Components.Shell
 @using Legacy.Maliev.Intranet.Client.Shared.Components
 @using Legacy.Maliev.Intranet.Contracts
-@inject LegacyThemeService ThemeService
 @inject IStringLocalizer<LegacyTopBar> Text
-@implements IDisposable
 
-<header class="legacy-topbar" @onkeydown="HandleKeyDown">
+<header class="legacy-topbar">
     <div class="legacy-topbar__brand">
         <ShadcnSidebarTrigger id="legacy-mobile-navigation-toggle"
                               TargetId="legacy-navigation-rail"
@@ -19,60 +17,6 @@
     <div class="legacy-topbar__actions">
         <LegacyQuickActions Session="Session" />
     </div>
-    <div class="legacy-topbar__utilities legacy-topbar-utilities">
-        <AuthorizeView>
-            <Authorized Context="auth">
-                <div class="legacy-profile-menu">
-                <ShadcnButton Class="legacy-profile" Variant="ShadcnButtonVariant.Ghost"
-                              aria-haspopup="dialog" aria-expanded="@_profileMenuOpen"
-                              aria-label="@Text["Employee menu"]" OnClick="ToggleProfileMenuAsync">
-                    <ShadcnAvatar Class="legacy-session-avatar" aria-hidden="true">
-                        <ShadcnAvatarFallback>@GetInitials(Session?.DisplayName ?? auth.User.Identity?.Name)</ShadcnAvatarFallback>
-                    </ShadcnAvatar>
-                    <span class="legacy-session-copy">
-                        <strong>@(Session?.DisplayName ?? auth.User.Identity?.Name ?? Text["Employee"])</strong>
-                        <small>@Text["Employee workspace"]</small>
-                    </span>
-                    <ShadcnIcon Icon="ChevronDownIcon" Size="18" Class="legacy-profile-chevron" />
-                </ShadcnButton>
-
-                @if (_profileMenuOpen)
-                {
-                    <div class="legacy-profile-popover" role="dialog" aria-label="@Text["Employee preferences"]">
-                        <div class="legacy-profile-preferences" role="group" aria-labelledby="legacy-profile-preferences-title">
-                            <strong id="legacy-profile-preferences-title" class="legacy-profile-preferences-title">@Text["Preferences"]</strong>
-                            <span class="legacy-profile-preference-label">@Text["Language"]</span>
-                            <div class="legacy-profile-language">
-                                <LegacyLanguageSelector />
-                            </div>
-                            <ShadcnButton Class="legacy-theme-toggle" Variant="ShadcnButtonVariant.Ghost"
-                                          aria-label="@ThemeLabel" title="@ThemeLabel" OnClick="ToggleThemeAsync">
-                                <ShadcnIcon Icon="@(ThemeService.IsDarkMode ? SunIcon : MoonIcon)" Size="20" />
-                                <span>@ThemeLabel</span>
-                            </ShadcnButton>
-                        </div>
-                        <div class="legacy-profile-menu-divider"></div>
-                        <LegacyLink Href="/hr/profile" Role="LegacyLinkRole.Navigation"
-                                    Class="legacy-profile-action" StartIconData="ProfileIcon"
-                                    AriaLabel="@Text["My profile"]" @onclick="CloseProfileMenuAsync">
-                            @Text["My profile"]
-                        </LegacyLink>
-                        <div class="legacy-profile-menu-divider"></div>
-                        <ShadcnButton Class="legacy-profile-action legacy-profile-signout" Variant="ShadcnButtonVariant.Destructive"
-                                      OnClick="SignOutFromProfileAsync">
-                            <ShadcnIcon Icon="SignOutIcon" Size="20" />
-                            <span>@Text["Sign out"]</span>
-                        </ShadcnButton>
-                    </div>
-                }
-                </div>
-            </Authorized>
-            <NotAuthorized>
-                <a class="legacy-signin-link" href="/Login">@Text["Sign in"]</a>
-            </NotAuthorized>
-        </AuthorizeView>
-    </div>
-
     @if (Session is null)
     {
         <span class="legacy-session-status" role="status">@Text["Session unavailable"]</span>
@@ -81,59 +25,4 @@
 
 @code {
     [Parameter] public EmployeeSessionSummary? Session { get; set; }
-    [Parameter] public EventCallback OnSignOut { get; set; }
-
-    private bool _profileMenuOpen;
-    private static readonly ShadcnIconData SunIcon = LucideIconCatalog.Instance.Get(LucideIconNames.Sun);
-    private static readonly ShadcnIconData MoonIcon = LucideIconCatalog.Instance.Get(LucideIconNames.Moon);
-    private static readonly ShadcnIconData ChevronDownIcon = LucideIconCatalog.Instance.Get(LucideIconNames.ChevronDown);
-    private static readonly ShadcnIconData ProfileIcon = LucideIconCatalog.Instance.Get(LucideIconNames.CircleUserRound);
-    private static readonly ShadcnIconData SignOutIcon = LucideIconCatalog.Instance.Get(LucideIconNames.LogOut);
-
-    protected override void OnInitialized() => ThemeService.Changed += OnThemeChanged;
-
-    private Task ToggleProfileMenuAsync()
-    {
-        _profileMenuOpen = !_profileMenuOpen;
-        return Task.CompletedTask;
-    }
-
-    private Task CloseProfileMenuAsync()
-    {
-        _profileMenuOpen = false;
-        return Task.CompletedTask;
-    }
-
-    private async Task SignOutFromProfileAsync()
-    {
-        _profileMenuOpen = false;
-        await OnSignOut.InvokeAsync();
-    }
-
-    private async Task HandleKeyDown(KeyboardEventArgs args)
-    {
-        if (args.Key == "Escape")
-        {
-            _profileMenuOpen = false;
-        }
-    }
-
-    private string ThemeLabel => ThemeService.IsDarkMode ? Text["Use light theme"].Value : Text["Use dark theme"].Value;
-    private Task ToggleThemeAsync() => ThemeService.ToggleAsync();
-    private void OnThemeChanged(object? sender, EventArgs args) => _ = InvokeAsync(StateHasChanged);
-
-    public void Dispose() => ThemeService.Changed -= OnThemeChanged;
-
-    private static string GetInitials(string? name)
-    {
-        if (string.IsNullOrWhiteSpace(name))
-        {
-            return "U";
-        }
-
-        var parts = name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-        return parts.Length > 1
-            ? string.Concat(parts[0][0], parts[^1][0]).ToUpperInvariant()
-            : name[..Math.Min(2, name.Length)].ToUpperInvariant();
-    }
 }
