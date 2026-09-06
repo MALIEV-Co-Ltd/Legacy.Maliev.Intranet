@@ -66,7 +66,7 @@
     private static readonly int[] PageSizeOptions = [25, 50, 100, 250];
     private IReadOnlyList<ShadcnDataTableColumn<CustomerListItem>> Columns =>
     [
-        new("id", Text["Id"], customer => customer.Id) { Sortable = true, Hideable = false },
+        new("id", Text["Id"], customer => customer.Id) { Sortable = true, Hideable = false, CellTemplate = CustomerIdLink },
         new("name", Text["Name"], customer => customer.FullName) { MinWidth = "12rem" },
         new("email", Text["Email"], customer => customer.Email) { Sortable = true, MinWidth = "14rem" },
         new("company", Text["Company"], customer => ValueOrFallback(customer.Company?.Name)) { Sortable = true, MinWidth = "14rem" },
@@ -205,6 +205,17 @@
         { ColumnKey: "company", Direction: ShadcnSortDirection.Ascending } => CustomerListSort.CustomerCompany_Ascending,
         { ColumnKey: "company", Direction: ShadcnSortDirection.Descending } => CustomerListSort.CustomerCompany_Descending,
         _ => currentSort,
+    };
+
+    private RenderFragment CustomerIdLink(CustomerListItem customer) => builder =>
+    {
+        builder.OpenComponent<LegacyLink>(0);
+        builder.AddAttribute(1, nameof(LegacyLink.Href), $"/Customers/View?id={customer.Id}");
+        builder.AddAttribute(2, nameof(LegacyLink.Role), LegacyLinkRole.Record);
+        builder.AddAttribute(3, nameof(LegacyLink.AriaLabel), $"{Text["Id"]} {customer.Id}");
+        builder.AddAttribute(4, nameof(LegacyLink.ChildContent),
+            (RenderFragment)(content => content.AddContent(0, customer.Id)));
+        builder.CloseComponent();
     };
 
     private static string ValueOrFallback(string? value) => string.IsNullOrWhiteSpace(value) ? "-" : value;

@@ -40,6 +40,26 @@ public sealed class OperationalTableMigrationBrowserTests(
     }
 
     [Fact]
+    public async Task CustomerIdLinkNavigatesToCustomerDetails()
+    {
+        await using var context = await playwright.Browser.NewContextAsync(new()
+        {
+            ViewportSize = new() { Width = 1280, Height = 900 },
+            ReducedMotion = ReducedMotion.Reduce,
+        });
+        var page = await context.NewPageAsync();
+        await StubSalesBoundariesAsync(page);
+        await page.GotoAsync(new Uri(server.BaseUri, "customers").AbsoluteUri);
+
+        var customerId = page.GetByRole(AriaRole.Link, new() { Name = "ID 101", Exact = true });
+        await customerId.WaitForAsync();
+        Assert.Equal("/Customers/View?id=101", await customerId.GetAttributeAsync("href"));
+
+        await customerId.ClickAsync();
+        await page.WaitForURLAsync("**/Customers/View?id=101");
+    }
+
+    [Fact]
     public async Task EmployeeSortingUpdatesRowsWithoutRefreshingTheBlazorPage()
     {
         await using var context = await playwright.Browser.NewContextAsync(new()
