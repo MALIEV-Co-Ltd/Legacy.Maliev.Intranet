@@ -238,6 +238,62 @@ public sealed class OperationalTableMigrationBrowserTests(
         Assert.Equal(currentLabel, (await breadcrumbs.Locator("li[aria-current='page']").InnerTextAsync()).Trim());
     }
 
+    [Fact]
+    public async Task CustomerBreadcrumbAlignsWithTheTopLeftOfThePageContent()
+    {
+        await using var context = await playwright.Browser.NewContextAsync(new()
+        {
+            ViewportSize = new() { Width = 1280, Height = 900 },
+            ReducedMotion = ReducedMotion.Reduce,
+        });
+        var page = await context.NewPageAsync();
+        await StubSalesBoundariesAsync(page);
+        await page.GotoAsync(new Uri(server.BaseUri, "customers").AbsoluteUri);
+
+        var geometry = await page.Locator(".customer-shell").EvaluateAsync<JsonElement>("""
+            body => {
+                const breadcrumb = body.querySelector('nav.page-breadcrumbs');
+                const list = breadcrumb.querySelector('ol');
+                const header = body.querySelector('.customers-page-header');
+                const bodyBounds = body.getBoundingClientRect();
+                const bodyStyle = getComputedStyle(body);
+                const breadcrumbBounds = breadcrumb.getBoundingClientRect();
+                const listBounds = list.getBoundingClientRect();
+                const headerBounds = header.getBoundingClientRect();
+                return {
+                    contentLeft: bodyBounds.left + Number.parseFloat(bodyStyle.paddingLeft),
+                    contentTop: bodyBounds.top + Number.parseFloat(bodyStyle.paddingTop),
+                    breadcrumbLeft: breadcrumbBounds.left,
+                    breadcrumbTop: breadcrumbBounds.top,
+                    listLeft: listBounds.left,
+                    headerLeft: headerBounds.left,
+                    breadcrumbBottom: breadcrumbBounds.bottom,
+                    headerTop: headerBounds.top
+                };
+            }
+            """);
+
+        Assert.InRange(
+            Math.Abs(geometry.GetProperty("contentLeft").GetDouble() - geometry.GetProperty("breadcrumbLeft").GetDouble()),
+            0,
+            0.5);
+        Assert.InRange(
+            Math.Abs(geometry.GetProperty("contentLeft").GetDouble() - geometry.GetProperty("listLeft").GetDouble()),
+            0,
+            0.5);
+        Assert.InRange(
+            Math.Abs(geometry.GetProperty("headerLeft").GetDouble() - geometry.GetProperty("breadcrumbLeft").GetDouble()),
+            0,
+            0.5);
+        Assert.InRange(
+            Math.Abs(geometry.GetProperty("contentTop").GetDouble() - geometry.GetProperty("breadcrumbTop").GetDouble()),
+            0,
+            0.5);
+        Assert.True(
+            geometry.GetProperty("breadcrumbBottom").GetDouble() <= geometry.GetProperty("headerTop").GetDouble(),
+            geometry.ToString());
+    }
+
     [Theory]
     [MemberData(nameof(OperationalWavePages))]
     public async Task OperationalWaveUsesContainedTablesExactRoutesAndSingleQuickView(
