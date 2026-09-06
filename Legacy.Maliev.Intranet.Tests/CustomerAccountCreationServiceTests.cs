@@ -19,8 +19,10 @@ public sealed class CustomerAccountCreationServiceTests
 
         Assert.Equal(CustomerAccountCreationStatus.Created, result.Status);
         Assert.Equal(42, result.CustomerId);
+        Assert.False(string.IsNullOrWhiteSpace(result.TemporaryPassword));
         Assert.Empty(profiles.DeletedIds);
         Assert.Equal(42, identities.CustomerIds.Single());
+        Assert.Single(identities.TemporaryPasswords);
     }
 
     [Theory]
@@ -176,8 +178,6 @@ public sealed class CustomerAccountCreationServiceTests
         FirstName = "Ada",
         LastName = "Lovelace",
         Email = "ada@example.com",
-        Password = "correct horse battery staple",
-        ConfirmPassword = "correct horse battery staple",
         Telephone = "+66 2 123 4567",
         Mobile = "+66 81 234 5678",
         Fax = "+66 2 765 4321",
@@ -239,12 +239,16 @@ public sealed class CustomerAccountCreationServiceTests
 
         public List<int> CustomerIds { get; } = [];
 
+        public List<string> TemporaryPasswords { get; } = [];
+
         public Task<HttpResponseMessage> CreateAsync(
             int customerId,
             CreateCustomerAccountRequest request,
+            string temporaryPassword,
             CancellationToken cancellationToken)
         {
             CustomerIds.Add(customerId);
+            TemporaryPasswords.Add(temporaryPassword);
             return NextAsync(_createResults);
         }
     }
@@ -254,6 +258,7 @@ public sealed class CustomerAccountCreationServiceTests
         public Task<HttpResponseMessage> CreateAsync(
             int customerId,
             CreateCustomerAccountRequest request,
+            string temporaryPassword,
             CancellationToken cancellationToken)
         {
             cancellation.Cancel();

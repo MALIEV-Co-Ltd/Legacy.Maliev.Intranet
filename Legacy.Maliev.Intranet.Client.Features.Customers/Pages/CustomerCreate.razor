@@ -24,9 +24,7 @@
                 <ShadcnFormField Id="customer-create-first-name" Label="@Text["FirstName"]" Error="@ValidationFor(() => model.FirstName)" Required="true"><Control><ShadcnInput TValue="string" id="customer-create-first-name" @bind-Value="model.FirstName" Required="true" /></Control></ShadcnFormField>
                 <ShadcnFormField Id="customer-create-last-name" Label="@Text["LastName"]" Error="@ValidationFor(() => model.LastName)" Required="true"><Control><ShadcnInput TValue="string" id="customer-create-last-name" @bind-Value="model.LastName" Required="true" /></Control></ShadcnFormField>
                 <ShadcnFormField Id="customer-create-email" Label="@Text["Email"]" Error="@ValidationFor(() => model.Email)" Required="true" Class="customer-create__span"><Control><ShadcnInput TValue="string" id="customer-create-email" Type="email" @bind-Value="model.Email" Required="true" /></Control></ShadcnFormField>
-                <ShadcnFormField Id="customer-create-password" Label="@Text["Password"]" Error="@ValidationFor(() => model.Password)" Required="true"><Control><ShadcnInput TValue="string" id="customer-create-password" Type="password" autocomplete="new-password" @bind-Value="model.Password" Required="true" /></Control></ShadcnFormField>
-                <ShadcnFormField Id="customer-create-confirm-password" Label="@Text["ConfirmPassword"]" Error="@ValidationFor(() => model.ConfirmPassword)" Required="true"><Control><ShadcnInput TValue="string" id="customer-create-confirm-password" Type="password" autocomplete="new-password" @bind-Value="model.ConfirmPassword" Required="true" /></Control></ShadcnFormField>
-                <p class="customer-create__privacy customer-create__span">@Text["PasswordPrivacy"]</p>
+                <p class="customer-create__privacy customer-create__span">@Text["AccountNotificationDescription"]</p>
             </div>
         </section>
         <section class="customer-create__section" aria-labelledby="customer-contact-heading">

@@ -17,8 +17,9 @@ public sealed class CustomersCreateWasmMigrationContractTests
         Assert.Contains("[Authorize", page, StringComparison.Ordinal);
         Assert.Contains("<EditForm", page, StringComparison.Ordinal);
         Assert.Contains("<ShadcnFormField", page, StringComparison.Ordinal);
-        Assert.Contains("model.Password", page, StringComparison.Ordinal);
-        Assert.Contains("model.ConfirmPassword", page, StringComparison.Ordinal);
+        Assert.DoesNotContain("model.Password", page, StringComparison.Ordinal);
+        Assert.DoesNotContain("model.ConfirmPassword", page, StringComparison.Ordinal);
+        Assert.Contains("AccountNotificationDescription", page, StringComparison.Ordinal);
         Assert.Contains("submitting", page, StringComparison.Ordinal);
         Assert.Contains("X-CSRF-TOKEN", page, StringComparison.Ordinal);
         Assert.Contains("JsonContent.Create(model)", page, StringComparison.Ordinal);

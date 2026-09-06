@@ -2,6 +2,7 @@ using Legacy.Maliev.Intranet.Contracts;
 using Microsoft.Extensions.Logging;
 using System.Net;
 using System.Net.Http.Json;
+using System.Security.Cryptography;
 
 namespace Legacy.Maliev.Intranet.Customers;
 
@@ -27,7 +28,11 @@ public enum CustomerAccountCreationStatus
 }
 
 /// <summary>Safe workflow result returned to the thin BFF endpoint.</summary>
-public sealed record CustomerAccountCreationResult(CustomerAccountCreationStatus Status, int? CustomerId = null, TimeSpan? RetryAfter = null);
+public sealed record CustomerAccountCreationResult(
+    CustomerAccountCreationStatus Status,
+    int? CustomerId = null,
+    TimeSpan? RetryAfter = null,
+    string? TemporaryPassword = null);
 
 /// <summary>Server-authenticated CustomerService client used only by the account workflow.</summary>
 public interface ICustomerProfileCreationClient
@@ -43,7 +48,7 @@ public interface ICustomerProfileCreationClient
 public interface ICustomerIdentityCreationClient
 {
     /// <summary>Creates the customer identity for an already-created profile.</summary>
-    Task<HttpResponseMessage> CreateAsync(int customerId, CreateCustomerAccountRequest request, CancellationToken cancellationToken);
+    Task<HttpResponseMessage> CreateAsync(int customerId, CreateCustomerAccountRequest request, string temporaryPassword, CancellationToken cancellationToken);
 }
 
 /// <summary>Owns the legacy profile-plus-identity transaction outside the BFF endpoint.</summary>
@@ -102,10 +107,11 @@ public sealed class CustomerAccountCreationService(
             }
         }
 
+        var temporaryPassword = GenerateTemporaryPassword();
         CustomerAccountCreationResult identityResult;
         try
         {
-            using var identityResponse = await identities.CreateAsync(customerId, request, CancellationToken.None);
+            using var identityResponse = await identities.CreateAsync(customerId, request, temporaryPassword, CancellationToken.None);
             if (!identityResponse.IsSuccessStatusCode)
             {
                 identityResult = FromFailure(identityResponse);
@@ -116,7 +122,7 @@ public sealed class CustomerAccountCreationService(
                 {
                     var identity = await identityResponse.Content.ReadFromJsonAsync<CreatedIdentity>(CancellationToken.None);
                     identityResult = identity is not null && identity.DatabaseID == customerId
-                        ? new(CustomerAccountCreationStatus.Created, customerId)
+                        ? new(CustomerAccountCreationStatus.Created, customerId, TemporaryPassword: temporaryPassword)
                         : new(CustomerAccountCreationStatus.BadGateway);
                 }
                 catch (System.Text.Json.JsonException)
@@ -202,6 +208,20 @@ public sealed class CustomerAccountCreationService(
         return retryAfter.HasValue && retryAfter.Value > TimeSpan.Zero && retryAfter.Value <= TimeSpan.FromHours(1)
             ? retryAfter
             : null;
+    }
+
+    private static string GenerateTemporaryPassword()
+    {
+        const string alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@$%";
+        Span<byte> bytes = stackalloc byte[20];
+        RandomNumberGenerator.Fill(bytes);
+        Span<char> password = stackalloc char[20];
+        for (var index = 0; index < password.Length; index++)
+        {
+            password[index] = alphabet[bytes[index] % alphabet.Length];
+        }
+
+        return new string(password);
     }
 
     private sealed record CreatedProfile(int Id);

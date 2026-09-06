@@ -319,6 +319,25 @@ public sealed class OperationalTableMigrationBrowserTests(
         Assert.True(gap >= 16, $"Customer create card gap was {gap}px at {width}px.");
     }
 
+    [Fact]
+    public async Task CustomerCreateUsesEmailOnboardingWithoutEmployeePasswordFields()
+    {
+        await using var context = await playwright.Browser.NewContextAsync(new()
+        {
+            ViewportSize = new() { Width = 1280, Height = 900 },
+            ReducedMotion = ReducedMotion.Reduce,
+        });
+        var page = await context.NewPageAsync();
+        await StubSalesBoundariesAsync(page);
+        await page.GotoAsync(new Uri(server.BaseUri, "customers/new").AbsoluteUri);
+
+        var form = page.Locator("form.customer-create__form");
+        await form.WaitForAsync();
+        Assert.Equal(0, await form.Locator("input[type='password']").CountAsync());
+        Assert.Equal(0, await form.GetByText("Password", new() { Exact = true }).CountAsync());
+        Assert.Contains("instructions", await form.InnerTextAsync(), StringComparison.OrdinalIgnoreCase);
+    }
+
     [Theory]
     [MemberData(nameof(OperationalWavePages))]
     public async Task OperationalWaveUsesContainedTablesExactRoutesAndSingleQuickView(

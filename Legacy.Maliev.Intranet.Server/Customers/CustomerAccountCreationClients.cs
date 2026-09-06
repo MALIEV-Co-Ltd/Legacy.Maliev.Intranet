@@ -55,6 +55,7 @@ public sealed class CustomerIdentityCreationClient(HttpClient httpClient) : ICus
     public async Task<HttpResponseMessage> CreateAsync(
         int customerId,
         CreateCustomerAccountRequest request,
+        string temporaryPassword,
         CancellationToken cancellationToken)
     {
         using var message = new HttpRequestMessage(HttpMethod.Post, $"/auth/v1/customer-identities/{customerId}")
@@ -62,7 +63,7 @@ public sealed class CustomerIdentityCreationClient(HttpClient httpClient) : ICus
             Content = JsonContent.Create(new CustomerIdentityRequest(
                 request.Email,
                 request.Email,
-                request.Password,
+                temporaryPassword,
                 true,
                 request.Telephone,
                 request.Fax,
