@@ -295,6 +295,31 @@ public sealed class OperationalTableMigrationBrowserTests(
     }
 
     [Theory]
+    [InlineData(1280)]
+    [InlineData(390)]
+    public async Task CustomerCreateCardsKeepDistinctVerticalSpacing(int width)
+    {
+        await using var context = await playwright.Browser.NewContextAsync(new()
+        {
+            ViewportSize = new() { Width = width, Height = 900 },
+            HasTouch = width <= 720,
+            ReducedMotion = ReducedMotion.Reduce,
+        });
+        var page = await context.NewPageAsync();
+        await StubSalesBoundariesAsync(page);
+        await page.GotoAsync(new Uri(server.BaseUri, "customers/new").AbsoluteUri);
+
+        var sections = page.Locator("form.customer-create__form > .customer-create__section");
+        await sections.First.WaitForAsync();
+        Assert.Equal(2, await sections.CountAsync());
+
+        var gap = await sections.EvaluateAllAsync<double>("""
+            elements => elements[1].getBoundingClientRect().top - elements[0].getBoundingClientRect().bottom
+            """);
+        Assert.True(gap >= 16, $"Customer create card gap was {gap}px at {width}px.");
+    }
+
+    [Theory]
     [MemberData(nameof(OperationalWavePages))]
     public async Task OperationalWaveUsesContainedTablesExactRoutesAndSingleQuickView(
         string route, string? detailHref, string expandName)

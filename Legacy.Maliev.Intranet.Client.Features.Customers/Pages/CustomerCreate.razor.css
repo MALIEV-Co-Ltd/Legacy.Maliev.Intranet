@@ -1,7 +1,7 @@
 .customer-create { width: min(100%, 64rem); margin-inline: auto; }
 .customer-create .operations-page-header p { margin: 0.25rem 0 0; color: var(--shadcn-muted-foreground); }
 .customer-create__alert { margin-bottom: 1rem; }
-.customer-create__form { display: grid; gap: 1rem; }
+.customer-create ::deep .customer-create__form { display: grid; gap: 1rem; }
 .customer-create__section { padding: 1rem; border: 1px solid var(--shadcn-border); border-radius: var(--shadcn-radius-lg); background: var(--shadcn-card); color: var(--shadcn-card-foreground); }
 .customer-create__section h2 { margin: 0 0 1rem; font-size: 1rem; }
 .customer-create__grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
