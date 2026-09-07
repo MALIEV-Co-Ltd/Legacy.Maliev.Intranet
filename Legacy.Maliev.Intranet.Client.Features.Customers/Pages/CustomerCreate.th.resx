@@ -26,4 +26,6 @@
   <data name="ServiceUnavailable" xml:space="preserve"><value>บริการลูกค้าไม่พร้อมใช้งาน จึงยังไม่ได้สร้างบัญชีลูกค้า กรุณาตรวจสอบสถานะบริการแล้วลองอีกครั้ง</value></data>
   <data name="IdentityAndAccess" xml:space="preserve"><value>ข้อมูลประจำตัวและการเข้าถึงบัญชี</value></data>
   <data name="ContactDetails" xml:space="preserve"><value>ข้อมูลการติดต่อ</value></data>
+  <data name="OnboardingDeliveryPending" xml:space="preserve"><value>สร้างบัญชีลูกค้าแล้ว แต่ยังส่งอีเมลสำหรับตั้งรหัสผ่านไม่สำเร็จ โปรดอย่าสร้างบัญชีซ้ำ และให้ดำเนินการส่งคำเชิญอีกครั้งจากหน้าข้อมูลลูกค้า</value></data>
+  <data name="ViewCreatedCustomer" xml:space="preserve"><value>เปิดหน้าข้อมูลลูกค้า</value></data>
 </root>

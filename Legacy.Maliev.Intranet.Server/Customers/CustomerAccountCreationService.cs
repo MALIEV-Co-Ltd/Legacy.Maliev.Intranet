@@ -32,7 +32,7 @@ public sealed record CustomerAccountCreationResult(
     CustomerAccountCreationStatus Status,
     int? CustomerId = null,
     TimeSpan? RetryAfter = null,
-    string? TemporaryPassword = null);
+    string? OnboardingToken = null);
 
 /// <summary>Server-authenticated CustomerService client used only by the account workflow.</summary>
 public interface ICustomerProfileCreationClient
@@ -48,7 +48,10 @@ public interface ICustomerProfileCreationClient
 public interface ICustomerIdentityCreationClient
 {
     /// <summary>Creates the customer identity for an already-created profile.</summary>
-    Task<HttpResponseMessage> CreateAsync(int customerId, CreateCustomerAccountRequest request, string temporaryPassword, CancellationToken cancellationToken);
+    Task<HttpResponseMessage> CreateAsync(int customerId, CreateCustomerAccountRequest request, string bootstrapSecret, CancellationToken cancellationToken);
+
+    /// <summary>Creates a single-use setup challenge after the bootstrap identity has committed.</summary>
+    Task<HttpResponseMessage> CreatePasswordSetupChallengeAsync(int customerId, CancellationToken cancellationToken);
 }
 
 /// <summary>Owns the legacy profile-plus-identity transaction outside the BFF endpoint.</summary>
@@ -111,11 +114,11 @@ public sealed class CustomerAccountCreationService(
             }
         }
 
-        var temporaryPassword = GenerateTemporaryPassword();
+        var bootstrapSecret = GenerateBootstrapSecret();
         CustomerAccountCreationResult identityResult;
         try
         {
-            using var identityResponse = await identities.CreateAsync(customerId, request, temporaryPassword, CancellationToken.None);
+            using var identityResponse = await identities.CreateAsync(customerId, request, bootstrapSecret, CancellationToken.None);
             if (!identityResponse.IsSuccessStatusCode)
             {
                 logger.LogWarning(
@@ -130,7 +133,7 @@ public sealed class CustomerAccountCreationService(
                 {
                     var identity = await identityResponse.Content.ReadFromJsonAsync<CreatedIdentity>(CancellationToken.None);
                     identityResult = identity is not null && identity.DatabaseID == customerId
-                        ? new(CustomerAccountCreationStatus.Created, customerId, TemporaryPassword: temporaryPassword)
+                        ? await CreateOnboardingChallengeAsync(customerId)
                         : new(CustomerAccountCreationStatus.BadGateway);
                 }
                 catch (System.Text.Json.JsonException)
@@ -157,6 +160,35 @@ public sealed class CustomerAccountCreationService(
         return await CompensateAsync(customerId, identityResult, CancellationToken.None)
             ? identityResult
             : new(CustomerAccountCreationStatus.Unavailable);
+    }
+
+    private async Task<CustomerAccountCreationResult> CreateOnboardingChallengeAsync(int customerId)
+    {
+        try
+        {
+            using var response = await identities.CreatePasswordSetupChallengeAsync(customerId, CancellationToken.None);
+            if (!response.IsSuccessStatusCode)
+            {
+                logger.LogWarning(
+                    "Customer identity {CustomerId} was created but its onboarding challenge returned HTTP {StatusCode}.",
+                    customerId,
+                    (int)response.StatusCode);
+                return new(CustomerAccountCreationStatus.Created, customerId);
+            }
+
+            var challenge = await response.Content.ReadFromJsonAsync<OnboardingChallenge>(CancellationToken.None);
+            return challenge?.Accepted == true && !string.IsNullOrWhiteSpace(challenge.Token)
+                ? new(CustomerAccountCreationStatus.Created, customerId, OnboardingToken: challenge.Token)
+                : new(CustomerAccountCreationStatus.Created, customerId);
+        }
+        catch (Exception exception) when (
+            exception is HttpRequestException or OperationCanceledException or System.Text.Json.JsonException)
+        {
+            logger.LogWarning(
+                "Customer identity {CustomerId} was created but its onboarding challenge was unavailable.",
+                customerId);
+            return new(CustomerAccountCreationStatus.Created, customerId);
+        }
     }
 
     private async Task<bool> CompensateAsync(
@@ -219,7 +251,7 @@ public sealed class CustomerAccountCreationService(
             : null;
     }
 
-    private static string GenerateTemporaryPassword()
+    private static string GenerateBootstrapSecret()
     {
         const string alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@$%";
         Span<byte> bytes = stackalloc byte[20];
@@ -235,4 +267,5 @@ public sealed class CustomerAccountCreationService(
 
     private sealed record CreatedProfile(int Id);
     private sealed record CreatedIdentity(int DatabaseID);
+    private sealed record OnboardingChallenge(bool Accepted, string? Token);
 }

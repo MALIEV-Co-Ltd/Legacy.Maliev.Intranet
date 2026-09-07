@@ -55,7 +55,7 @@ public sealed class CustomerIdentityCreationClient(HttpClient httpClient) : ICus
     public async Task<HttpResponseMessage> CreateAsync(
         int customerId,
         CreateCustomerAccountRequest request,
-        string temporaryPassword,
+        string bootstrapSecret,
         CancellationToken cancellationToken)
     {
         using var message = new HttpRequestMessage(HttpMethod.Post, $"/auth/v1/customer-identities/{customerId}")
@@ -63,12 +63,24 @@ public sealed class CustomerIdentityCreationClient(HttpClient httpClient) : ICus
             Content = JsonContent.Create(new CustomerIdentityRequest(
                 request.Email,
                 request.Email,
-                temporaryPassword,
+                bootstrapSecret,
                 true,
                 request.Telephone,
                 request.Fax,
-                request.Mobile)),
+                request.Mobile,
+                PasswordSetupRequired: true)),
         };
+        return await httpClient.SendAsync(message, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public async Task<HttpResponseMessage> CreatePasswordSetupChallengeAsync(
+        int customerId,
+        CancellationToken cancellationToken)
+    {
+        using var message = new HttpRequestMessage(
+            HttpMethod.Post,
+            $"/auth/v1/customer-identities/{customerId}/password-setup");
         return await httpClient.SendAsync(message, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
     }
 
@@ -79,5 +91,6 @@ public sealed class CustomerIdentityCreationClient(HttpClient httpClient) : ICus
         bool EmailConfirmed,
         string? PhoneNumber,
         string? FaxNumber,
-        string? MobileNumber);
+        string? MobileNumber,
+        bool PasswordSetupRequired);
 }

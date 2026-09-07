@@ -22,6 +22,7 @@ using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.AspNetCore.WebUtilities;
 using System.ComponentModel.DataAnnotations;
 using System.Globalization;
 using System.Net.Http.Json;
@@ -2001,6 +2002,7 @@ app.MapPost("/bff/customers", async (
     HttpContext context,
     Legacy.Maliev.Intranet.Customers.CustomerAccountCreationService workflow,
     Legacy.Maliev.Intranet.Bff.Customers.CustomerAccountNotificationProxy notifications,
+    IConfiguration configuration,
     ILoggerFactory loggerFactory,
     CancellationToken cancellationToken) =>
 {
@@ -2031,18 +2033,31 @@ app.MapPost("/bff/customers", async (
         context.Response.Headers.RetryAfter = ((int)Math.Ceiling(retryAfter.TotalSeconds)).ToString(CultureInfo.InvariantCulture);
     }
 
+    var onboardingDelivery = "retry_required";
     if (result.Status == Legacy.Maliev.Intranet.Customers.CustomerAccountCreationStatus.Created &&
-        result.TemporaryPassword is { } temporaryPassword)
+        result.OnboardingToken is { } onboardingToken)
     {
         try
         {
-            using var notificationResponse = await notifications.SendCreatedAsync(request, temporaryPassword, CancellationToken.None);
+            var setupUrl = BuildCustomerSetupCallback(
+                configuration,
+                request.Email,
+                onboardingToken);
+            using var notificationResponse = await notifications.SendCreatedAsync(
+                request.Email.Trim(),
+                $"{request.FirstName} {request.LastName}".Trim(),
+                setupUrl,
+                CancellationToken.None);
             if (!notificationResponse.IsSuccessStatusCode)
             {
                 loggerFactory.CreateLogger("CustomerAccountNotification").LogWarning(
                     "Customer account {CustomerId} was created but onboarding notification returned HTTP {StatusCode}.",
                     result.CustomerId,
                     (int)notificationResponse.StatusCode);
+            }
+            else
+            {
+                onboardingDelivery = "delivered";
             }
         }
         catch (Exception exception) when (exception is HttpRequestException or OperationCanceledException or System.Text.Json.JsonException)
@@ -2057,7 +2072,9 @@ app.MapPost("/bff/customers", async (
     return result.Status switch
     {
         Legacy.Maliev.Intranet.Customers.CustomerAccountCreationStatus.Created when result.CustomerId is { } customerId =>
-            Results.Created($"/Customers/View?id={customerId}", new CreatedCustomerAccount(customerId)),
+            Results.Created(
+                $"/Customers/View?id={customerId}",
+                new CreatedCustomerAccount(customerId, onboardingDelivery)),
         Legacy.Maliev.Intranet.Customers.CustomerAccountCreationStatus.BadRequest =>
             Results.Problem(statusCode: StatusCodes.Status400BadRequest, title: "Customer data was rejected"),
         Legacy.Maliev.Intranet.Customers.CustomerAccountCreationStatus.Unauthorized =>
@@ -3017,6 +3034,21 @@ static void DeleteGoogleIdentityFlowCookie(HttpContext context)
             IsEssential = true,
             Path = "/bff/google",
         });
+}
+
+static string BuildCustomerSetupCallback(
+    IConfiguration configuration,
+    string email,
+    string token)
+{
+    var publicWebBaseUrl = configuration["CustomerOnboarding:PublicWebBaseUrl"]
+        ?? "https://www.maliev.com";
+    var callback = new Uri(new Uri(publicWebBaseUrl, UriKind.Absolute), "/Account/SetInitialPassword").ToString();
+    return QueryHelpers.AddQueryString(callback, new Dictionary<string, string?>
+    {
+        ["email"] = email.Trim(),
+        ["token"] = token,
+    });
 }
 
 /// <summary>Same-origin security and proxy boundary for the legacy Intranet WASM client.</summary>

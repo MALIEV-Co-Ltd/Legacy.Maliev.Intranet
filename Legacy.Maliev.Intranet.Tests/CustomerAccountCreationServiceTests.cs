@@ -19,10 +19,13 @@ public sealed class CustomerAccountCreationServiceTests
 
         Assert.Equal(CustomerAccountCreationStatus.Created, result.Status);
         Assert.Equal(42, result.CustomerId);
-        Assert.False(string.IsNullOrWhiteSpace(result.TemporaryPassword));
+        Assert.Equal("setup-token", result.OnboardingToken);
+        Assert.Null(typeof(CustomerAccountCreationResult).GetProperty("TemporaryPassword"));
         Assert.Empty(profiles.DeletedIds);
         Assert.Equal(42, identities.CustomerIds.Single());
-        Assert.Single(identities.TemporaryPasswords);
+        Assert.Single(identities.BootstrapPasswords);
+        Assert.DoesNotContain("setup-token", identities.BootstrapPasswords);
+        Assert.Equal([42], identities.SetupCustomerIds);
     }
 
     [Theory]
@@ -239,17 +242,27 @@ public sealed class CustomerAccountCreationServiceTests
 
         public List<int> CustomerIds { get; } = [];
 
-        public List<string> TemporaryPasswords { get; } = [];
+        public List<string> BootstrapPasswords { get; } = [];
+
+        public List<int> SetupCustomerIds { get; } = [];
 
         public Task<HttpResponseMessage> CreateAsync(
             int customerId,
             CreateCustomerAccountRequest request,
-            string temporaryPassword,
+            string bootstrapSecret,
             CancellationToken cancellationToken)
         {
             CustomerIds.Add(customerId);
-            TemporaryPasswords.Add(temporaryPassword);
+            BootstrapPasswords.Add(bootstrapSecret);
             return NextAsync(_createResults);
+        }
+
+        public Task<HttpResponseMessage> CreatePasswordSetupChallengeAsync(
+            int customerId,
+            CancellationToken cancellationToken)
+        {
+            SetupCustomerIds.Add(customerId);
+            return Task.FromResult(Response(HttpStatusCode.OK, "{\"accepted\":true,\"token\":\"setup-token\"}"));
         }
     }
 
@@ -258,12 +271,17 @@ public sealed class CustomerAccountCreationServiceTests
         public Task<HttpResponseMessage> CreateAsync(
             int customerId,
             CreateCustomerAccountRequest request,
-            string temporaryPassword,
+            string bootstrapSecret,
             CancellationToken cancellationToken)
         {
             cancellation.Cancel();
             return Task.FromException<HttpResponseMessage>(new OperationCanceledException(cancellation.Token));
         }
+
+        public Task<HttpResponseMessage> CreatePasswordSetupChallengeAsync(
+            int customerId,
+            CancellationToken cancellationToken) =>
+            throw new InvalidOperationException("Setup must not run after identity creation fails.");
     }
 
     private static Task<HttpResponseMessage> NextAsync(Queue<object> results)

@@ -9,16 +9,17 @@ public sealed class CustomerAccountNotificationProxy(HttpClient httpClient)
 {
     /// <summary>Delivers the generated temporary credential without exposing it to the browser.</summary>
     public Task<HttpResponseMessage> SendCreatedAsync(
-        CreateCustomerAccountRequest request,
-        string temporaryPassword,
+        string email,
+        string customerName,
+        string setupUrl,
         CancellationToken cancellationToken) =>
         httpClient.PostAsJsonAsync(
             "/notifications/v1/email/NoReply",
             new
             {
-                To = request.Email,
+                To = email,
                 Subject = "Your MALIEV customer account",
-                Body = $"<p>Hello {WebUtility.HtmlEncode($"{request.FirstName} {request.LastName}")},</p><p>Your MALIEV customer account has been created. Sign in with your email and the temporary password below, then create your own password immediately.</p><p><strong>Temporary password:</strong> {WebUtility.HtmlEncode(temporaryPassword)}</p><p>This message was automatically generated. Please do not reply.</p>",
+                Body = $"<p>Hello {WebUtility.HtmlEncode(customerName)},</p><p>Your MALIEV customer account has been created.</p><p><a href=\"{WebUtility.HtmlEncode(setupUrl)}\">Create your password</a></p><p>This single-use link expires in 24 hours. This message was automatically generated. Please do not reply.</p>",
                 ReplyTo = (string?)null,
                 Cc = (IReadOnlyList<string>?)null,
                 Bcc = (IReadOnlyList<string>?)null,
