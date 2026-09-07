@@ -16,6 +16,15 @@
     {
         <ShadcnAlert Variant="ShadcnAlertVariant.Destructive" AlertRole="ShadcnAlertRole.Alert" Class="customer-create__alert"><ShadcnAlertDescription>@error</ShadcnAlertDescription></ShadcnAlert>
     }
+    @if (!string.IsNullOrWhiteSpace(onboardingWarning) && createdCustomerId is { } customerId)
+    {
+        <ShadcnAlert AlertRole="ShadcnAlertRole.Status" Class="customer-create__alert">
+            <ShadcnAlertDescription>
+                @onboardingWarning
+                <LegacyLink Href="@($"/Customers/View?id={customerId}")" Role="LegacyLinkRole.Navigation">@Text["ViewCreatedCustomer"]</LegacyLink>
+            </ShadcnAlertDescription>
+        </ShadcnAlert>
+    }
     <EditForm EditContext="@editContext" OnValidSubmit="SubmitAsync" OnInvalidSubmit="HandleInvalidSubmit" Class="customer-create__form">
         <DataAnnotationsValidator />
         <section class="customer-create__section" aria-labelledby="customer-identity-heading">
@@ -50,6 +59,8 @@
     private EditContext editContext = null!;
     private bool submitting;
     private string? error;
+    private string? onboardingWarning;
+    private int? createdCustomerId;
 
     protected override void OnInitialized() => editContext = new EditContext(model);
 
@@ -73,6 +84,7 @@
 
         submitting = true;
         error = null;
+        onboardingWarning = null;
         try
         {
             using var sessionResponse = await Http.GetForPresentationAsync("/bff/session");
@@ -148,6 +160,13 @@
             if (created is null || created.Id <= 0)
             {
                 error = Text["InvalidResponse"];
+                return;
+            }
+
+            if (!string.Equals(created.OnboardingDelivery, "delivered", StringComparison.Ordinal))
+            {
+                createdCustomerId = created.Id;
+                onboardingWarning = Text["OnboardingDeliveryPending"];
                 return;
             }
 

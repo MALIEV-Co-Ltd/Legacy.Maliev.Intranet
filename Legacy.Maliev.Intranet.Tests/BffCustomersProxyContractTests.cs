@@ -436,7 +436,8 @@ public sealed class BffCustomersProxyContractTests
         var profile = new RecordingWorkflowHandler(
             (HttpStatusCode.Created, "{\"id\":42}"));
         var identity = new RecordingWorkflowHandler(
-            (HttpStatusCode.Created, "{\"databaseID\":42}"));
+            (HttpStatusCode.Created, "{\"databaseID\":42}"),
+            (HttpStatusCode.OK, "{\"accepted\":true,\"token\":\"setup-token\"}"));
         await using var factory = new CustomersBffFactory(
             new RecordingCustomerHandler(HttpStatusCode.OK, CustomerPageJson),
             hasPermission: true,
@@ -452,8 +453,22 @@ public sealed class BffCustomersProxyContractTests
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
         Assert.Equal("/customers", profile.Requests.Single().PathAndQuery);
         Assert.Equal("Bearer signed-service-token", profile.Requests.Single().Authorization);
-        Assert.Equal("/auth/v1/customer-identities/42", identity.Requests.Single().PathAndQuery);
-        Assert.Equal("Bearer signed-service-token", identity.Requests.Single().Authorization);
+        Assert.Collection(
+            identity.Requests,
+            request =>
+            {
+                Assert.Equal(HttpMethod.Post, request.Method);
+                Assert.Equal("/auth/v1/customer-identities/42", request.PathAndQuery);
+                Assert.Equal("Bearer signed-service-token", request.Authorization);
+                Assert.Contains("\"passwordSetupRequired\":true", request.Body, StringComparison.Ordinal);
+            },
+            request =>
+            {
+                Assert.Equal(HttpMethod.Post, request.Method);
+                Assert.Equal("/auth/v1/customer-identities/42/password-setup", request.PathAndQuery);
+                Assert.Equal("Bearer signed-service-token", request.Authorization);
+                Assert.Null(request.Body);
+            });
         Assert.Contains("\"id\":42", body, StringComparison.Ordinal);
         Assert.DoesNotContain("password", body, StringComparison.OrdinalIgnoreCase);
     }
@@ -1243,6 +1258,9 @@ public sealed class BffCustomersProxyContractTests
         var app = BuildPermissionPipeline(signingKey);
         app.MapPost("/auth/v1/customer-identities/{id:int}", (int id) =>
                 Results.Text($"{{\"databaseID\":{id}}}", "application/json", statusCode: StatusCodes.Status201Created))
+            .RequireAuthorization("Permission:legacy-auth.customer-identities.create");
+        app.MapPost("/auth/v1/customer-identities/{id:int}/password-setup", (int id) =>
+                Results.Json(new { accepted = true, token = $"setup-token-{id}" }))
             .RequireAuthorization("Permission:legacy-auth.customer-identities.create");
         await app.StartAsync();
         return app;

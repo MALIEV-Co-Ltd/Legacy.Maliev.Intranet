@@ -34,5 +34,5 @@ public sealed class CreateCustomerAccountRequest
     public DateTime? DateOfBirth { get; set; }
 }
 
-/// <summary>Browser-safe identifier returned after both profile and identity are created.</summary>
-public sealed record CreatedCustomerAccount(int Id);
+/// <summary>Browser-safe creation result with an explicit onboarding-delivery outcome.</summary>
+public sealed record CreatedCustomerAccount(int Id, string OnboardingDelivery = "delivered");

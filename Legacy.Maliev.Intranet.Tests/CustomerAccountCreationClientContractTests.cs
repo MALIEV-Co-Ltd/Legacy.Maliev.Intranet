@@ -27,7 +27,7 @@ public sealed class CustomerAccountCreationClientContractTests
     }
 
     [Fact]
-    public async Task IdentityCreate_UsesGeneratedTemporaryPasswordAndNeverSendsConfirmationFields()
+    public async Task IdentityCreate_ClassifiesUnsharedBootstrapCredentialExplicitly()
     {
         var handler = new RecordingHandler(HttpStatusCode.Created, "{\"databaseID\":42}");
         var client = new CustomerIdentityCreationClient(CreateHttpClient(handler));
@@ -40,8 +40,23 @@ public sealed class CustomerAccountCreationClientContractTests
         Assert.Contains("\"userName\":\"ada@example.com\"", handler.Body, StringComparison.Ordinal);
         Assert.Contains("\"password\":\"temporary-password\"", handler.Body, StringComparison.Ordinal);
         Assert.Contains("\"emailConfirmed\":true", handler.Body, StringComparison.Ordinal);
+        Assert.Contains("\"passwordSetupRequired\":true", handler.Body, StringComparison.Ordinal);
         Assert.DoesNotContain("confirmPassword", handler.Body, StringComparison.Ordinal);
         Assert.DoesNotContain("password", handler.PathAndQuery, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task PasswordSetupChallenge_UsesDedicatedBodylessAuthRoute()
+    {
+        var handler = new RecordingHandler(HttpStatusCode.OK, "{\"accepted\":true,\"token\":\"setup-token\"}");
+        var client = new CustomerIdentityCreationClient(CreateHttpClient(handler));
+
+        using var response = await client.CreatePasswordSetupChallengeAsync(42, CancellationToken.None);
+
+        Assert.Equal(HttpMethod.Post, handler.Method);
+        Assert.Equal("/auth/v1/customer-identities/42/password-setup", handler.PathAndQuery);
+        Assert.Equal("Bearer signed-service-token", handler.Authorization);
+        Assert.Null(handler.Body);
     }
 
     [Fact]
