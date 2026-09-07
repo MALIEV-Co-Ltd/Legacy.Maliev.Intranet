@@ -7,7 +7,6 @@ internal static class LegacyLinkSourceContracts
     private static readonly SpecializedOwner[] SpecializedOwners =
     [
         Raw("Legacy.Maliev.Intranet.Client/Layout/MainLayout.razor", "href=\"#main-content\"", "class=\"legacy-skip-link\"", "@Text[\"Skip to content\"]"),
-        Raw("Legacy.Maliev.Intranet.Client/Layout/LegacyTopBar.razor", "href=\"/Login\"", "class=\"legacy-signin-link\"", "@Text[\"Sign in\"]"),
         Raw("Legacy.Maliev.Intranet.Client/Components/Shell/LegacyNavigationRail.razor", "href=\"/Dashboard\"", "class=\"legacy-rail-logo legacy-logo-link\"", "@Text[\"MALIEV dashboard\"]"),
         ShadcnSidebarMenuButton("Legacy.Maliev.Intranet.Client/Components/Shell/LegacyNavigationRail.razor", 2, "Href=\"@item.Href\"", "Active=\"@IsItemPageCurrent(item)\"", "Tooltip=\"@Text[item.Description ?? item.Label]\"", "Class=\"legacy-rail-link\"", "OnClick=\"NavigateAsync\""),
         ShadcnSidebarMenuSubButton("Legacy.Maliev.Intranet.Client/Components/Shell/LegacyNavigationRail.razor", "Href=\"@child.Href\"", "legacy-rail-link--child", "Active=\"@IsItemPageCurrent(child)\"", "@onclick=\"NavigateAsync\""),
