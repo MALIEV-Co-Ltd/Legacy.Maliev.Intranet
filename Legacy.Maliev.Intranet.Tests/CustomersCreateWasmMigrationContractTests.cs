@@ -9,6 +9,7 @@ public sealed class CustomersCreateWasmMigrationContractTests
         var featurePage = Path.Combine(root, "Legacy.Maliev.Intranet.Client.Features.Customers", "Pages", "CustomerCreate.razor");
         var workflow = Path.Combine(root, "Legacy.Maliev.Intranet.Server", "Customers", "CustomerAccountCreationService.cs");
         var clients = Path.Combine(root, "Legacy.Maliev.Intranet.Server", "Customers", "CustomerAccountCreationClients.cs");
+        var requestContract = File.ReadAllText(Path.Combine(root, "Legacy.Maliev.Intranet.Contracts", "CustomerAccountCreationContracts.cs"));
         var bffProgram = File.ReadAllText(Path.Combine(root, "Legacy.Maliev.Intranet.Bff", "Program.cs"));
 
         Assert.True(File.Exists(featurePage), "The WASM customer-account creation route is missing.");
@@ -17,8 +18,12 @@ public sealed class CustomersCreateWasmMigrationContractTests
         Assert.Contains("[Authorize", page, StringComparison.Ordinal);
         Assert.Contains("<EditForm", page, StringComparison.Ordinal);
         Assert.Contains("<ShadcnFormField", page, StringComparison.Ordinal);
-        Assert.Contains("model.Password", page, StringComparison.Ordinal);
-        Assert.Contains("model.ConfirmPassword", page, StringComparison.Ordinal);
+        Assert.DoesNotContain("model.Password", page, StringComparison.Ordinal);
+        Assert.DoesNotContain("model.ConfirmPassword", page, StringComparison.Ordinal);
+        Assert.Contains("AccountNotificationDescription", page, StringComparison.Ordinal);
+        Assert.Contains("[Required, Phone, StringLength(64)]", requestContract, StringComparison.Ordinal);
+        Assert.Contains("Id=\"customer-create-telephone\" Label=\"@Text[\"Telephone\"]\" Error=\"@ValidationFor(() => model.Telephone)\" Required=\"true\"", page, StringComparison.Ordinal);
+        Assert.Contains("customer-create__alert", File.ReadAllText(Path.Combine(root, "Legacy.Maliev.Intranet.Client.Features.Customers", "Pages", "CustomerCreate.razor.css")), StringComparison.Ordinal);
         Assert.Contains("submitting", page, StringComparison.Ordinal);
         Assert.Contains("X-CSRF-TOKEN", page, StringComparison.Ordinal);
         Assert.Contains("JsonContent.Create(model)", page, StringComparison.Ordinal);

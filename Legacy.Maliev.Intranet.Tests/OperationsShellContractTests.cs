@@ -51,7 +51,7 @@ public sealed class OperationsShellContractTests
         var actions = Read(root, "Legacy.Maliev.Intranet.Client", "Components", "Shell", "LegacyQuickActions.razor");
 
         Assert.Contains("<ShadcnSidebarProvider", layout, StringComparison.Ordinal);
-        Assert.Contains("<LegacyNavigationRail Session=\"session\" OnNavigate=\"CloseNavigationAsync\" />", layout, StringComparison.Ordinal);
+        Assert.Contains("<LegacyNavigationRail Session=\"session\" OnNavigate=\"CloseNavigationAsync\" OnSignOut=\"SignOutAsync\" />", layout, StringComparison.Ordinal);
         Assert.Contains("<ShadcnSidebarInset", layout, StringComparison.Ordinal);
         Assert.DoesNotContain("class=\"legacy-topbar-logo\"", topBar, StringComparison.Ordinal);
         Assert.DoesNotContain("IsDrawer=\"true\"", layout, StringComparison.Ordinal);
@@ -200,13 +200,14 @@ public sealed class OperationsShellContractTests
         Assert.Contains("class=\"legacy-topbar__brand\"", topBar, StringComparison.Ordinal);
         Assert.DoesNotContain("Text[\"Light\"]", topBar, StringComparison.Ordinal);
         Assert.DoesNotContain("Text[\"Dark\"]", topBar, StringComparison.Ordinal);
-        Assert.Contains("aria-label=\"@ThemeLabel\"", topBar, StringComparison.Ordinal);
-        Assert.Contains("legacy-topbar__utilities", topBar, StringComparison.Ordinal);
+        Assert.DoesNotContain("aria-label=\"@ThemeLabel\"", topBar, StringComparison.Ordinal);
+        Assert.Contains("legacy-profile-preferences", navigation, StringComparison.Ordinal);
+        Assert.Contains("aria-label=\"@ThemeLabel\"", navigation, StringComparison.Ordinal);
         Assert.Contains("display: grid", topBarCss, StringComparison.Ordinal);
         Assert.Contains("grid-template-columns: minmax(18rem, 1fr) auto auto", topBarCss, StringComparison.Ordinal);
         Assert.DoesNotContain("margin-left: calc(-1", topBarCss, StringComparison.Ordinal);
         Assert.DoesNotContain("margin-block: -", topBarCss, StringComparison.Ordinal);
-        Assert.Contains("border: 1px solid var(--shadcn-border)", topBarCss, StringComparison.Ordinal);
+        Assert.Contains("border: 1px solid var(--shadcn-border)", railCss, StringComparison.Ordinal);
         Assert.Contains("legacy-rail-logo legacy-logo-link", navigation, StringComparison.Ordinal);
         Assert.Contains("legacy-sidebar-collapse", navigation, StringComparison.Ordinal);
         Assert.Contains("max-height: 100dvh", railCss, StringComparison.Ordinal);
@@ -308,7 +309,7 @@ public sealed class OperationsShellContractTests
         var topBarCss = Read(root, "Legacy.Maliev.Intranet.Client", "Layout", "LegacyTopBar.razor.css");
         var quickActions = Read(root, "Legacy.Maliev.Intranet.Client", "Components", "Shell", "LegacyQuickActions.razor");
 
-        foreach (var zone in new[] { "brand", "search", "actions", "utilities" })
+        foreach (var zone in new[] { "brand", "search", "actions" })
             Assert.Contains($"legacy-topbar__{zone}", topBar, StringComparison.Ordinal);
 
         Assert.Contains("display: grid", topBarCss, StringComparison.Ordinal);

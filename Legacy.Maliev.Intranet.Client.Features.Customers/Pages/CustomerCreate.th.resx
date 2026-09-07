@@ -10,9 +10,7 @@
   <data name="FirstName" xml:space="preserve"><value>ชื่อ</value></data>
   <data name="LastName" xml:space="preserve"><value>นามสกุล</value></data>
   <data name="Email" xml:space="preserve"><value>อีเมล</value></data>
-  <data name="Password" xml:space="preserve"><value>รหัสผ่าน</value></data>
-  <data name="ConfirmPassword" xml:space="preserve"><value>ยืนยันรหัสผ่าน</value></data>
-  <data name="PasswordPrivacy" xml:space="preserve"><value>รหัสผ่านจะถูกส่งไปยังระบบยืนยันตัวตนเท่านั้น และจะไม่บันทึกไว้กับข้อมูลลูกค้า</value></data>
+  <data name="AccountNotificationDescription" xml:space="preserve"><value>ระบบจะส่งอีเมลให้ลูกค้าพร้อมคำแนะนำในการสร้างรหัสผ่านของตนเอง</value></data>
   <data name="Telephone" xml:space="preserve"><value>โทรศัพท์</value></data>
   <data name="Mobile" xml:space="preserve"><value>มือถือ</value></data>
   <data name="Fax" xml:space="preserve"><value>โทรสาร</value></data>
@@ -23,8 +21,9 @@
   <data name="Forbidden" xml:space="preserve"><value>คุณไม่ได้รับอนุญาตให้สร้างลูกค้า</value></data>
   <data name="Conflict" xml:space="preserve"><value>มีบัญชีสำหรับที่อยู่อีเมลนี้อยู่แล้ว</value></data>
   <data name="RateLimited" xml:space="preserve"><value>มีการส่งคำขอมากเกินไป รอสักครู่แล้วลองอีกครั้ง</value></data>
-  <data name="CreateFailed" xml:space="preserve"><value>ไม่สามารถสร้างลูกค้าได้ ไม่มีการเก็บรหัสผ่าน กรุณาลองอีกครั้ง</value></data>
+  <data name="CreateFailed" xml:space="preserve"><value>ไม่สามารถสร้างลูกค้าได้ กรุณาลองอีกครั้ง</value></data>
   <data name="InvalidResponse" xml:space="preserve"><value>ระบบข้อมูลลูกค้าส่งข้อมูลกลับมาไม่ถูกต้อง</value></data>
+  <data name="ServiceUnavailable" xml:space="preserve"><value>บริการลูกค้าไม่พร้อมใช้งาน จึงยังไม่ได้สร้างบัญชีลูกค้า กรุณาตรวจสอบสถานะบริการแล้วลองอีกครั้ง</value></data>
   <data name="IdentityAndAccess" xml:space="preserve"><value>ข้อมูลประจำตัวและการเข้าถึงบัญชี</value></data>
   <data name="ContactDetails" xml:space="preserve"><value>ข้อมูลการติดต่อ</value></data>
 </root>

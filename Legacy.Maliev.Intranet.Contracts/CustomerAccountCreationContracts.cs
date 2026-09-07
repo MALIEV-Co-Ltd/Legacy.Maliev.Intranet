@@ -2,7 +2,7 @@ using System.ComponentModel.DataAnnotations;
 
 namespace Legacy.Maliev.Intranet.Contracts;
 
-/// <summary>Validated customer profile and initial account fields accepted by the employee BFF.</summary>
+/// <summary>Validated customer profile and contact fields accepted by the employee BFF.</summary>
 public sealed class CreateCustomerAccountRequest
 {
     /// <summary>Gets or sets the customer's given name.</summary>
@@ -17,16 +17,8 @@ public sealed class CreateCustomerAccountRequest
     [Required, EmailAddress, StringLength(320)]
     public string Email { get; set; } = string.Empty;
 
-    /// <summary>Gets or sets the initial account password carried only in JSON.</summary>
-    [Required, StringLength(1024, MinimumLength = 6), DataType(DataType.Password)]
-    public string Password { get; set; } = string.Empty;
-
-    /// <summary>Gets or sets the repeated password used only for boundary validation.</summary>
-    [Required, Compare(nameof(Password)), DataType(DataType.Password)]
-    public string ConfirmPassword { get; set; } = string.Empty;
-
-    /// <summary>Gets or sets the optional telephone number.</summary>
-    [Phone, StringLength(64)]
+    /// <summary>Gets or sets the required telephone number used for customer contact.</summary>
+    [Required, Phone, StringLength(64)]
     public string? Telephone { get; set; }
 
     /// <summary>Gets or sets the optional mobile number.</summary>

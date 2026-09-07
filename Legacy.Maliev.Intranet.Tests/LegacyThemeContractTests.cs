@@ -25,21 +25,22 @@ public sealed class LegacyThemeContractTests
     {
         var root = FindRoot();
         var layout = File.ReadAllText(Path.Combine(root, "Legacy.Maliev.Intranet.Client", "Layout", "MainLayout.razor"));
-        var topbar = File.ReadAllText(Path.Combine(root, "Legacy.Maliev.Intranet.Client", "Layout", "LegacyTopBar.razor"));
+        var rail = File.ReadAllText(Path.Combine(root, "Legacy.Maliev.Intranet.Client", "Components", "Shell", "LegacyNavigationRail.razor"));
+        var railCss = File.ReadAllText(Path.Combine(root, "Legacy.Maliev.Intranet.Client", "Components", "Shell", "LegacyNavigationRail.razor.css"));
         var css = File.ReadAllText(Path.Combine(root, "Legacy.Maliev.Intranet.Client", "wwwroot", "css", "design-tokens.css"));
 
         Assert.Contains("IsDarkMode=\"@ThemeService.IsDarkMode\"", layout, StringComparison.Ordinal);
         Assert.Contains("<ShadcnThemeProvider", layout, StringComparison.Ordinal);
         Assert.Contains("Direction=\"ShadcnDirection.LeftToRight\"", layout, StringComparison.Ordinal);
         Assert.DoesNotContain("new MudTheme", layout, StringComparison.Ordinal);
-        Assert.Contains("ThemeLabel", topbar, StringComparison.Ordinal);
-        Assert.Contains("<ShadcnButton Class=\"legacy-theme-toggle\"", topbar, StringComparison.Ordinal);
+        Assert.Contains("ThemeLabel", rail, StringComparison.Ordinal);
+        Assert.Contains("<ShadcnButton Class=\"legacy-theme-toggle\"", rail, StringComparison.Ordinal);
         Assert.True(
-            topbar.IndexOf("legacy-profile-preferences", StringComparison.Ordinal)
-            < topbar.IndexOf("<ShadcnButton Class=\"legacy-theme-toggle\"", StringComparison.Ordinal),
+            rail.IndexOf("legacy-profile-preferences", StringComparison.Ordinal)
+            < rail.IndexOf("<ShadcnButton Class=\"legacy-theme-toggle\"", StringComparison.Ordinal),
             "The workspace theme preference should live inside the employee profile preferences surface.");
-        Assert.Contains("<ShadcnIcon Icon=\"@(ThemeService.IsDarkMode ? SunIcon : MoonIcon)\"", topbar, StringComparison.Ordinal);
-        Assert.Contains("OnClick=\"ToggleThemeAsync\"", topbar, StringComparison.Ordinal);
+        Assert.Contains("<ShadcnIcon Icon=\"@(ThemeService.IsDarkMode ? SunIcon : MoonIcon)\"", rail, StringComparison.Ordinal);
+        Assert.Contains("OnClick=\"ToggleThemeAsync\"", rail, StringComparison.Ordinal);
         Assert.Contains(":root[data-maliev-theme=\"dark\"]", css, StringComparison.Ordinal);
         Assert.Contains("--legacy-background: var(--shadcn-background)", css, StringComparison.Ordinal);
     }

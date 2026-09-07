@@ -6,44 +6,42 @@ public sealed class LegacyMemberShellContractTests
     public void MemberShell_UsesProfileMenuForLegacyProfileAndSignOut()
     {
         var root = FindRoot();
-        var topbar = File.ReadAllText(Path.Combine(
+        var rail = File.ReadAllText(Path.Combine(
             root,
             "Legacy.Maliev.Intranet.Client",
-            "Layout",
-            "LegacyTopBar.razor"));
+            "Components",
+            "Shell",
+            "LegacyNavigationRail.razor"));
 
-        Assert.Contains("legacy-profile-menu", topbar, StringComparison.Ordinal);
-        Assert.Contains("legacy-profile", topbar, StringComparison.Ordinal);
-        Assert.Contains("aria-haspopup=\"dialog\"", topbar, StringComparison.Ordinal);
-        Assert.Contains("role=\"dialog\"", topbar, StringComparison.Ordinal);
-        Assert.Contains("legacy-profile-preferences", topbar, StringComparison.Ordinal);
-        Assert.Contains("<LegacyLanguageSelector />", topbar, StringComparison.Ordinal);
-        Assert.Contains("Href=\"/hr/profile\"", topbar, StringComparison.Ordinal);
-        Assert.Contains("Role=\"LegacyLinkRole.Navigation\"", topbar, StringComparison.Ordinal);
-        Assert.Contains("Sign out", topbar, StringComparison.Ordinal);
-        Assert.DoesNotContain("signup", topbar, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("legacy-profile-menu", rail, StringComparison.Ordinal);
+        Assert.Contains("legacy-profile", rail, StringComparison.Ordinal);
+        Assert.Contains("aria-haspopup=\"dialog\"", rail, StringComparison.Ordinal);
+        Assert.Contains("role=\"dialog\"", rail, StringComparison.Ordinal);
+        Assert.Contains("legacy-profile-preferences", rail, StringComparison.Ordinal);
+        Assert.Contains("<LegacyLanguageSelector />", rail, StringComparison.Ordinal);
+        Assert.Contains("Href=\"/hr/profile\"", rail, StringComparison.Ordinal);
+        Assert.Contains("Role=\"LegacyLinkRole.Navigation\"", rail, StringComparison.Ordinal);
+        Assert.Contains("Sign out", rail, StringComparison.Ordinal);
+        Assert.DoesNotContain("signup", rail, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
     public void MemberShell_ProfileMenuIsKeyboardAndResponsiveSafe()
     {
         var root = FindRoot();
-        var topbar = File.ReadAllText(Path.Combine(
+        var rail = File.ReadAllText(Path.Combine(
             root,
             "Legacy.Maliev.Intranet.Client",
-            "Layout",
-            "LegacyTopBar.razor"));
-        var css = File.ReadAllText(Path.Combine(
-            root,
-            "Legacy.Maliev.Intranet.Client",
-            "Layout",
-            "LegacyTopBar.razor.css"));
+            "Components",
+            "Shell",
+            "LegacyNavigationRail.razor"));
+        var css = File.ReadAllText(Path.Combine(root, "Legacy.Maliev.Intranet.Client", "Components", "Shell", "LegacyNavigationRail.razor.css"));
 
-        Assert.Contains("aria-expanded=\"@_profileMenuOpen\"", topbar, StringComparison.Ordinal);
-        Assert.Contains("Escape", topbar, StringComparison.Ordinal);
+        Assert.Contains("aria-expanded=\"@_profileMenuOpen\"", rail, StringComparison.Ordinal);
+        Assert.Contains("Escape", rail, StringComparison.Ordinal);
         Assert.Contains("legacy-profile-popover", css, StringComparison.Ordinal);
         Assert.DoesNotContain("legacy-signout-button", css, StringComparison.Ordinal);
-        Assert.Contains("@media (max-width: 720px)", css, StringComparison.Ordinal);
+        Assert.Contains("@media (max-width: 48rem)", css, StringComparison.Ordinal);
         Assert.Contains("border-radius: 9999px", css, StringComparison.Ordinal);
     }
 

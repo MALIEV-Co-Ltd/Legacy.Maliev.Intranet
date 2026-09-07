@@ -1,12 +1,14 @@
 @using System.Globalization
 @using System.Text.Json
 @using Legacy.Maliev.Intranet.Client.Layout
+@using Legacy.Maliev.Intranet.Client.Shared.Components
 @inject NavigationManager Navigation
 @inject HttpClient Http
+@inject LegacyThemeService ThemeService
 @inject IStringLocalizer<LegacyTopBar> Text
 @implements IDisposable
 
-<div class="legacy-sidebar-host">
+<div class="legacy-sidebar-host" @onkeydown="HandleKeyDown">
 <ShadcnSidebar Id="legacy-navigation-rail"
                Variant="ShadcnSidebarVariant.Inset"
                Collapsible="ShadcnSidebarCollapsible.Icon"
@@ -106,17 +108,52 @@
     <ShadcnSidebarFooter Class="legacy-rail-footer">
         <ShadcnSidebarMenu>
             <ShadcnSidebarMenuItem>
-                <ShadcnSidebarMenuButton Size="ShadcnSidebarMenuButtonSize.Large"
-                                         Class="legacy-rail-user"
-                                         Tooltip="@EmployeeLabel">
-                    <ShadcnAvatar Class="legacy-rail-avatar" aria-hidden="true">
-                        <ShadcnAvatarFallback>@GetInitials(Session?.DisplayName)</ShadcnAvatarFallback>
-                    </ShadcnAvatar>
-                    <span class="legacy-rail-user-copy">
-                        <strong>@EmployeeLabel</strong>
-                        <small>@Text["Employee workspace"]</small>
-                    </span>
-                </ShadcnSidebarMenuButton>
+                <div class="legacy-profile-menu">
+                    <ShadcnSidebarMenuButton Size="ShadcnSidebarMenuButtonSize.Large"
+                                             Class="legacy-rail-user legacy-profile"
+                                             Tooltip="@EmployeeLabel"
+                                             aria-haspopup="dialog" aria-expanded="@_profileMenuOpen"
+                                             aria-label="@Text["Employee menu"]" OnClick="ToggleProfileMenuAsync">
+                        <ShadcnAvatar Class="legacy-rail-avatar legacy-session-avatar" aria-hidden="true">
+                            <ShadcnAvatarFallback>@GetInitials(Session?.DisplayName)</ShadcnAvatarFallback>
+                        </ShadcnAvatar>
+                        <span class="legacy-rail-user-copy legacy-session-copy">
+                            <strong>@EmployeeLabel</strong>
+                            <small>@Text["Employee workspace"]</small>
+                        </span>
+                        <ShadcnIcon Icon="ChevronDownIcon" Size="18" Class="legacy-profile-chevron" />
+                    </ShadcnSidebarMenuButton>
+
+                    @if (_profileMenuOpen)
+                    {
+                        <div class="legacy-profile-popover" role="dialog" aria-label="@Text["Employee preferences"]">
+                            <div class="legacy-profile-preferences" role="group" aria-labelledby="legacy-profile-preferences-title">
+                                <strong id="legacy-profile-preferences-title" class="legacy-profile-preferences-title">@Text["Preferences"]</strong>
+                                <span class="legacy-profile-preference-label">@Text["Language"]</span>
+                                <div class="legacy-profile-language">
+                                    <LegacyLanguageSelector />
+                                </div>
+                                <ShadcnButton Class="legacy-theme-toggle" Variant="ShadcnButtonVariant.Ghost"
+                                              aria-label="@ThemeLabel" title="@ThemeLabel" OnClick="ToggleThemeAsync">
+                                    <ShadcnIcon Icon="@(ThemeService.IsDarkMode ? SunIcon : MoonIcon)" Size="20" />
+                                    <span>@ThemeLabel</span>
+                                </ShadcnButton>
+                            </div>
+                            <div class="legacy-profile-menu-divider"></div>
+                            <LegacyLink Href="/hr/profile" Role="LegacyLinkRole.Navigation"
+                                        Class="legacy-profile-action" StartIconData="ProfileIcon"
+                                        AriaLabel="@Text["My profile"]" @onclick="CloseProfileMenuAsync">
+                                @Text["My profile"]
+                            </LegacyLink>
+                            <div class="legacy-profile-menu-divider"></div>
+                            <ShadcnButton Class="legacy-profile-action legacy-profile-signout" Variant="ShadcnButtonVariant.Destructive"
+                                          OnClick="SignOutFromProfileAsync">
+                                <ShadcnIcon Icon="SignOutIcon" Size="20" />
+                                <span>@Text["Sign out"]</span>
+                            </ShadcnButton>
+                        </div>
+                    }
+                </div>
             </ShadcnSidebarMenuItem>
         </ShadcnSidebarMenu>
     </ShadcnSidebarFooter>
@@ -129,11 +166,17 @@
     [Parameter] public EventCallback OnNavigate { get; set; }
 
     private string EmployeeLabel => Session?.DisplayName ?? Text["Employee"];
+    private bool _profileMenuOpen;
     private int? _quotationRequestCount;
     private bool _quotationRequestCountLoaded;
     private bool _quotationRequestCountPending;
     private readonly CancellationTokenSource _disposeCts = new();
     private static readonly ShadcnIconData ChevronRightIcon = LucideIconCatalog.Instance.Get(LucideIconNames.ChevronRight);
+    private static readonly ShadcnIconData SunIcon = LucideIconCatalog.Instance.Get(LucideIconNames.Sun);
+    private static readonly ShadcnIconData MoonIcon = LucideIconCatalog.Instance.Get(LucideIconNames.Moon);
+    private static readonly ShadcnIconData ChevronDownIcon = LucideIconCatalog.Instance.Get(LucideIconNames.ChevronDown);
+    private static readonly ShadcnIconData ProfileIcon = LucideIconCatalog.Instance.Get(LucideIconNames.CircleUserRound);
+    private static readonly ShadcnIconData SignOutIcon = LucideIconCatalog.Instance.Get(LucideIconNames.LogOut);
     private readonly Dictionary<string, bool> _itemOpenStates = new(StringComparer.OrdinalIgnoreCase);
 
     protected override void OnParametersSet()
@@ -215,10 +258,49 @@
             : null;
     private static string CompactCount(int count) => count > 999 ? "999+" : count.ToString(CultureInfo.InvariantCulture);
     private Task NavigateAsync() => OnNavigate.InvokeAsync();
+    private Task ToggleProfileMenuAsync()
+    {
+        _profileMenuOpen = !_profileMenuOpen;
+        return Task.CompletedTask;
+    }
+
+    private Task CloseProfileMenuAsync()
+    {
+        _profileMenuOpen = false;
+        return Task.CompletedTask;
+    }
+
+    private Task HandleKeyDown(KeyboardEventArgs args)
+    {
+        if (args.Key == "Escape")
+        {
+            _profileMenuOpen = false;
+        }
+
+        return Task.CompletedTask;
+    }
+
+    private async Task SignOutFromProfileAsync()
+    {
+        _profileMenuOpen = false;
+        await OnSignOut.InvokeAsync();
+    }
+
+    private string ThemeLabel => ThemeService.IsDarkMode ? Text["Use light theme"].Value : Text["Use dark theme"].Value;
+    private Task ToggleThemeAsync() => ThemeService.ToggleAsync();
+    private void OnThemeChanged(object? sender, EventArgs args) => _ = InvokeAsync(StateHasChanged);
     public void Dispose()
     {
+        ThemeService.Changed -= OnThemeChanged;
         _disposeCts.Cancel();
         _disposeCts.Dispose();
+    }
+
+    [Parameter] public EventCallback OnSignOut { get; set; }
+
+    protected override void OnInitialized()
+    {
+        ThemeService.Changed += OnThemeChanged;
     }
     private static string GetInitials(string? name)
     {

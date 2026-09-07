@@ -39,9 +39,8 @@ public sealed class IntranetParityContractTests
 
         Assert.Contains("<LegacyTopBar", layout, StringComparison.Ordinal);
         Assert.Contains("<ShadcnSidebarProvider", layout, StringComparison.Ordinal);
-        Assert.Contains("<LegacyNavigationRail Session=\"session\" OnNavigate=\"CloseNavigationAsync\" />", layout, StringComparison.Ordinal);
+        Assert.Contains("<LegacyNavigationRail Session=\"session\" OnNavigate=\"CloseNavigationAsync\" OnSignOut=\"SignOutAsync\" />", layout, StringComparison.Ordinal);
         Assert.Contains("<ShadcnSidebarInset", layout, StringComparison.Ordinal);
-        Assert.Contains("OnSignOut=\"SignOutAsync\"", layout, StringComparison.Ordinal);
         Assert.True(File.Exists(blackLogo));
         Assert.True(File.Exists(whiteLogo));
         Assert.DoesNotContain("legacy-logo-image--light", topbar, StringComparison.Ordinal);
@@ -53,11 +52,11 @@ public sealed class IntranetParityContractTests
         Assert.Contains("TargetId=\"legacy-navigation-rail\"", topbar, StringComparison.Ordinal);
         Assert.Contains("Active=\"@IsItemPageCurrent", rail, StringComparison.Ordinal);
         Assert.Contains("Navigation.LocationChanged", layout, StringComparison.Ordinal);
-        Assert.Contains("Escape", topbar, StringComparison.Ordinal);
+        Assert.Contains("Escape", rail, StringComparison.Ordinal);
         Assert.Contains("max-height: 100dvh", railCss, StringComparison.Ordinal);
         Assert.Contains("@media (max-width: 48rem)", railCss, StringComparison.Ordinal);
         Assert.Contains("@media (max-width: 720px)", css, StringComparison.Ordinal);
-        Assert.Contains(".legacy-profile-menu ::deep .legacy-profile-chevron", css, StringComparison.Ordinal);
+        Assert.Contains(".legacy-profile-chevron", railCss, StringComparison.Ordinal);
         Assert.Contains("/customers", navigation, StringComparison.Ordinal);
         Assert.Contains("/sales/orders", navigation, StringComparison.Ordinal);
         Assert.Contains("/purchasing", navigation, StringComparison.Ordinal);

@@ -40,6 +40,26 @@ public sealed class OperationalTableMigrationBrowserTests(
     }
 
     [Fact]
+    public async Task CustomerIdLinkNavigatesToCustomerDetails()
+    {
+        await using var context = await playwright.Browser.NewContextAsync(new()
+        {
+            ViewportSize = new() { Width = 1280, Height = 900 },
+            ReducedMotion = ReducedMotion.Reduce,
+        });
+        var page = await context.NewPageAsync();
+        await StubSalesBoundariesAsync(page);
+        await page.GotoAsync(new Uri(server.BaseUri, "customers").AbsoluteUri);
+
+        var customerId = page.GetByRole(AriaRole.Link, new() { Name = "ID 101", Exact = true });
+        await customerId.WaitForAsync();
+        Assert.Equal("/Customers/View?id=101", await customerId.GetAttributeAsync("href"));
+
+        await customerId.ClickAsync();
+        await page.WaitForURLAsync("**/Customers/View?id=101");
+    }
+
+    [Fact]
     public async Task EmployeeSortingUpdatesRowsWithoutRefreshingTheBlazorPage()
     {
         await using var context = await playwright.Browser.NewContextAsync(new()
@@ -216,6 +236,106 @@ public sealed class OperationalTableMigrationBrowserTests(
         Assert.Equal(2, await breadcrumbs.Locator("li").CountAsync());
         Assert.Equal("/Dashboard", await breadcrumbs.GetByRole(AriaRole.Link).GetAttributeAsync("href"));
         Assert.Equal(currentLabel, (await breadcrumbs.Locator("li[aria-current='page']").InnerTextAsync()).Trim());
+    }
+
+    [Fact]
+    public async Task CustomerBreadcrumbAlignsWithTheTopLeftOfThePageContent()
+    {
+        await using var context = await playwright.Browser.NewContextAsync(new()
+        {
+            ViewportSize = new() { Width = 1280, Height = 900 },
+            ReducedMotion = ReducedMotion.Reduce,
+        });
+        var page = await context.NewPageAsync();
+        await StubSalesBoundariesAsync(page);
+        await page.GotoAsync(new Uri(server.BaseUri, "customers").AbsoluteUri);
+
+        var geometry = await page.Locator(".customer-shell").EvaluateAsync<JsonElement>("""
+            body => {
+                const breadcrumb = body.querySelector('nav.page-breadcrumbs');
+                const list = breadcrumb.querySelector('ol');
+                const header = body.querySelector('.customers-page-header');
+                const bodyBounds = body.getBoundingClientRect();
+                const bodyStyle = getComputedStyle(body);
+                const breadcrumbBounds = breadcrumb.getBoundingClientRect();
+                const listBounds = list.getBoundingClientRect();
+                const headerBounds = header.getBoundingClientRect();
+                return {
+                    contentLeft: bodyBounds.left + Number.parseFloat(bodyStyle.paddingLeft),
+                    contentTop: bodyBounds.top + Number.parseFloat(bodyStyle.paddingTop),
+                    breadcrumbLeft: breadcrumbBounds.left,
+                    breadcrumbTop: breadcrumbBounds.top,
+                    listLeft: listBounds.left,
+                    headerLeft: headerBounds.left,
+                    breadcrumbBottom: breadcrumbBounds.bottom,
+                    headerTop: headerBounds.top
+                };
+            }
+            """);
+
+        Assert.InRange(
+            Math.Abs(geometry.GetProperty("contentLeft").GetDouble() - geometry.GetProperty("breadcrumbLeft").GetDouble()),
+            0,
+            0.5);
+        Assert.InRange(
+            Math.Abs(geometry.GetProperty("contentLeft").GetDouble() - geometry.GetProperty("listLeft").GetDouble()),
+            0,
+            0.5);
+        Assert.InRange(
+            Math.Abs(geometry.GetProperty("headerLeft").GetDouble() - geometry.GetProperty("breadcrumbLeft").GetDouble()),
+            0,
+            0.5);
+        Assert.InRange(
+            Math.Abs(geometry.GetProperty("contentTop").GetDouble() - geometry.GetProperty("breadcrumbTop").GetDouble()),
+            0,
+            0.5);
+        Assert.True(
+            geometry.GetProperty("breadcrumbBottom").GetDouble() <= geometry.GetProperty("headerTop").GetDouble(),
+            geometry.ToString());
+    }
+
+    [Theory]
+    [InlineData(1280)]
+    [InlineData(390)]
+    public async Task CustomerCreateCardsKeepDistinctVerticalSpacing(int width)
+    {
+        await using var context = await playwright.Browser.NewContextAsync(new()
+        {
+            ViewportSize = new() { Width = width, Height = 900 },
+            HasTouch = width <= 720,
+            ReducedMotion = ReducedMotion.Reduce,
+        });
+        var page = await context.NewPageAsync();
+        await StubSalesBoundariesAsync(page);
+        await page.GotoAsync(new Uri(server.BaseUri, "customers/new").AbsoluteUri);
+
+        var sections = page.Locator("form.customer-create__form > .customer-create__section");
+        await sections.First.WaitForAsync();
+        Assert.Equal(2, await sections.CountAsync());
+
+        var gap = await sections.EvaluateAllAsync<double>("""
+            elements => elements[1].getBoundingClientRect().top - elements[0].getBoundingClientRect().bottom
+            """);
+        Assert.True(gap >= 16, $"Customer create card gap was {gap}px at {width}px.");
+    }
+
+    [Fact]
+    public async Task CustomerCreateUsesEmailOnboardingWithoutEmployeePasswordFields()
+    {
+        await using var context = await playwright.Browser.NewContextAsync(new()
+        {
+            ViewportSize = new() { Width = 1280, Height = 900 },
+            ReducedMotion = ReducedMotion.Reduce,
+        });
+        var page = await context.NewPageAsync();
+        await StubSalesBoundariesAsync(page);
+        await page.GotoAsync(new Uri(server.BaseUri, "customers/new").AbsoluteUri);
+
+        var form = page.Locator("form.customer-create__form");
+        await form.WaitForAsync();
+        Assert.Equal(0, await form.Locator("input[type='password']").CountAsync());
+        Assert.Equal(0, await form.GetByText("Password", new() { Exact = true }).CountAsync());
+        Assert.Contains("instructions", await form.InnerTextAsync(), StringComparison.OrdinalIgnoreCase);
     }
 
     [Theory]

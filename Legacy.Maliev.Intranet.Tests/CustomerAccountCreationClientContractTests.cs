@@ -27,18 +27,18 @@ public sealed class CustomerAccountCreationClientContractTests
     }
 
     [Fact]
-    public async Task IdentityCreate_UsesExactAuthServiceJsonAndPasswordNeverEntersUrl()
+    public async Task IdentityCreate_UsesGeneratedTemporaryPasswordAndNeverSendsConfirmationFields()
     {
         var handler = new RecordingHandler(HttpStatusCode.Created, "{\"databaseID\":42}");
         var client = new CustomerIdentityCreationClient(CreateHttpClient(handler));
 
-        using var response = await client.CreateAsync(42, ValidRequest(), CancellationToken.None);
+        using var response = await client.CreateAsync(42, ValidRequest(), "temporary-password", CancellationToken.None);
 
         Assert.Equal(HttpMethod.Post, handler.Method);
         Assert.Equal("/auth/v1/customer-identities/42", handler.PathAndQuery);
         Assert.Equal("Bearer signed-service-token", handler.Authorization);
         Assert.Contains("\"userName\":\"ada@example.com\"", handler.Body, StringComparison.Ordinal);
-        Assert.Contains("\"password\":\"correct horse battery staple\"", handler.Body, StringComparison.Ordinal);
+        Assert.Contains("\"password\":\"temporary-password\"", handler.Body, StringComparison.Ordinal);
         Assert.Contains("\"emailConfirmed\":true", handler.Body, StringComparison.Ordinal);
         Assert.DoesNotContain("confirmPassword", handler.Body, StringComparison.Ordinal);
         Assert.DoesNotContain("password", handler.PathAndQuery, StringComparison.OrdinalIgnoreCase);
@@ -69,8 +69,6 @@ public sealed class CustomerAccountCreationClientContractTests
         FirstName = "Ada",
         LastName = "Lovelace",
         Email = "ada@example.com",
-        Password = "correct horse battery staple",
-        ConfirmPassword = "correct horse battery staple",
         Telephone = "+66 2 123 4567",
         Mobile = "+66 81 234 5678",
         Fax = "+66 2 765 4321",

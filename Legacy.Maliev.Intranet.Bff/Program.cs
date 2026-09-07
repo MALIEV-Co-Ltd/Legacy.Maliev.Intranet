@@ -53,6 +53,15 @@ builder.Services.AddOptions<ServiceAuthenticationOptions>()
 builder.Services.AddSingleton<IServiceAccessTokenProvider, ServiceAccessTokenProvider>();
 builder.Services.AddTransient<LegacyServiceAuthenticationHandler>();
 builder.Services.AddScoped<Legacy.Maliev.Intranet.Customers.CustomerAccountCreationService>();
+#pragma warning disable EXTEXP0001
+builder.Services.AddHttpClient<Legacy.Maliev.Intranet.Bff.Customers.CustomerAccountNotificationProxy>(client =>
+{
+    client.BaseAddress = new Uri(builder.Configuration["Services:Notification"]
+        ?? "https+http://legacy-maliev-notification-service");
+    client.Timeout = TimeSpan.FromSeconds(30);
+}).RemoveAllResilienceHandlers()
+    .AddHttpMessageHandler<LegacyServiceAuthenticationHandler>();
+#pragma warning restore EXTEXP0001
 builder.Services.AddScoped<Legacy.Maliev.Intranet.Employees.EmployeeAccountCreationService>();
 builder.Services.AddScoped<Legacy.Maliev.Intranet.Suppliers.SupplierCreationService>();
 builder.Services.AddScoped<Legacy.Maliev.Intranet.Suppliers.SupplierManagementService>();
@@ -1991,6 +2000,8 @@ app.MapPost("/bff/customers", async (
     CreateCustomerAccountRequest request,
     HttpContext context,
     Legacy.Maliev.Intranet.Customers.CustomerAccountCreationService workflow,
+    Legacy.Maliev.Intranet.Bff.Customers.CustomerAccountNotificationProxy notifications,
+    ILoggerFactory loggerFactory,
     CancellationToken cancellationToken) =>
 {
     var validationResults = new List<ValidationResult>();
@@ -2018,6 +2029,29 @@ app.MapPost("/bff/customers", async (
         result.RetryAfter is { } retryAfter)
     {
         context.Response.Headers.RetryAfter = ((int)Math.Ceiling(retryAfter.TotalSeconds)).ToString(CultureInfo.InvariantCulture);
+    }
+
+    if (result.Status == Legacy.Maliev.Intranet.Customers.CustomerAccountCreationStatus.Created &&
+        result.TemporaryPassword is { } temporaryPassword)
+    {
+        try
+        {
+            using var notificationResponse = await notifications.SendCreatedAsync(request, temporaryPassword, CancellationToken.None);
+            if (!notificationResponse.IsSuccessStatusCode)
+            {
+                loggerFactory.CreateLogger("CustomerAccountNotification").LogWarning(
+                    "Customer account {CustomerId} was created but onboarding notification returned HTTP {StatusCode}.",
+                    result.CustomerId,
+                    (int)notificationResponse.StatusCode);
+            }
+        }
+        catch (Exception exception) when (exception is HttpRequestException or OperationCanceledException or System.Text.Json.JsonException)
+        {
+            loggerFactory.CreateLogger("CustomerAccountNotification").LogWarning(
+                exception,
+                "Customer account {CustomerId} was created but onboarding notification could not be delivered.",
+                result.CustomerId);
+        }
     }
 
     return result.Status switch

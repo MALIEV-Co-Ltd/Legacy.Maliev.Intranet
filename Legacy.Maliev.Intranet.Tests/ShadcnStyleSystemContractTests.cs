@@ -45,7 +45,7 @@ public sealed class ShadcnStyleSystemContractTests
     {
         var semantic = Read("Legacy.Maliev.Intranet.Client", "wwwroot", "css", "shadcn.css");
         var search = Read("Legacy.Maliev.Intranet.Client", "Components", "Shell", "LegacyGlobalSearch.razor.css");
-        var topBar = Read("Legacy.Maliev.Intranet.Client", "Layout", "LegacyTopBar.razor.css");
+        var railCss = Read("Legacy.Maliev.Intranet.Client", "Components", "Shell", "LegacyNavigationRail.razor.css");
         var rail = Read("Legacy.Maliev.Intranet.Client", "Components", "Shell", "LegacyNavigationRail.razor");
 
         Assert.Contains(".legacy-workspace-frame > .legacy-topbar", semantic, StringComparison.Ordinal);
@@ -56,7 +56,7 @@ public sealed class ShadcnStyleSystemContractTests
         Assert.Contains("<ShadcnSidebarMenuSubButton", rail, StringComparison.Ordinal);
         Assert.DoesNotContain(".legacy-navigation-rail .legacy-rail-link.active", semantic, StringComparison.Ordinal);
         Assert.Contains("background: var(--shadcn-popover)", search, StringComparison.Ordinal);
-        Assert.Contains("background: var(--shadcn-popover)", topBar, StringComparison.Ordinal);
+        Assert.Contains("background: var(--shadcn-popover)", railCss, StringComparison.Ordinal);
     }
 
     [Fact]

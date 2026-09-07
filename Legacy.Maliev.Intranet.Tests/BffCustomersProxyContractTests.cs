@@ -515,14 +515,14 @@ public sealed class BffCustomersProxyContractTests
         await SignInAsync(client);
         var invalid = ValidCreateRequest();
         invalid.Email = "not-an-email";
-        invalid.ConfirmPassword = "does-not-match";
+        invalid.Telephone = null;
 
         using var response = await SendCreateAsync(client, invalid, includeCsrf: true);
         var body = await response.Content.ReadAsStringAsync();
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         Assert.Contains("email", body, StringComparison.OrdinalIgnoreCase);
-        Assert.Contains("confirmPassword", body, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("telephone", body, StringComparison.OrdinalIgnoreCase);
         Assert.Empty(profile.Requests);
         Assert.Empty(identity.Requests);
     }
@@ -992,8 +992,6 @@ public sealed class BffCustomersProxyContractTests
         FirstName = "Ada",
         LastName = "Lovelace",
         Email = "ada@example.com",
-        Password = "correct horse battery staple",
-        ConfirmPassword = "correct horse battery staple",
         Telephone = "+66 2 123 4567",
         Mobile = "+66 81 234 5678",
         Fax = "+66 2 765 4321",
