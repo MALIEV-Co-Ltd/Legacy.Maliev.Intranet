@@ -2,6 +2,8 @@ namespace Legacy.Maliev.Intranet.Tests;
 
 public sealed class LegacyServiceDefaultsIdentityContractTests
 {
+    private const string DotNetPatchVersion = "10.0.12";
+
     [Fact]
     public void HostsConsumeLegacyServiceDefaultsWithoutNewPlatformRepositoryCollision()
     {
@@ -22,11 +24,42 @@ public sealed class LegacyServiceDefaultsIdentityContractTests
         var workflow = File.ReadAllText(Path.Combine(root, ".github", "workflows", "_build-and-test.yml"));
         Assert.Contains("repository: MALIEV-Co-Ltd/Legacy.Maliev.ServiceDefaults", workflow, StringComparison.Ordinal);
         Assert.Contains("path: .dependencies/Legacy.Maliev.ServiceDefaults", workflow, StringComparison.Ordinal);
-        Assert.Contains("ref: 1a7e4ba3c3dfd8c8793e9ad7da2083dc4df6cf4f", workflow, StringComparison.Ordinal);
+        Assert.Contains("ref: 9c4ac9d44a08bcd0aa2088348790ab863814669c", workflow, StringComparison.Ordinal);
         Assert.Contains("repository: MALIEV-Co-Ltd/Legacy.Maliev.CompatibilityContracts", workflow, StringComparison.Ordinal);
         Assert.Contains("path: .dependencies/Legacy.Maliev.CompatibilityContracts", workflow, StringComparison.Ordinal);
         Assert.DoesNotContain("repository: MALIEV-Co-Ltd/Maliev.Aspire", workflow, StringComparison.Ordinal);
         Assert.DoesNotContain("repository: MALIEV-Co-Ltd/Maliev.MessagingContracts", workflow, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void DirectFrameworkPackages_UseOneSupportedPatchBoundary()
+    {
+        var root = FindRoot();
+        var projectSources = Directory
+            .GetFiles(root, "*.csproj", SearchOption.AllDirectories)
+            .Where(path => !path.Contains($"{Path.DirectorySeparatorChar}.worktrees{Path.DirectorySeparatorChar}", StringComparison.OrdinalIgnoreCase))
+            .Select(File.ReadAllText)
+            .ToArray();
+
+        var source = string.Join(Environment.NewLine, projectSources);
+        Assert.DoesNotMatch("Microsoft\\.[^\"]+\" Version=\"10\\.0\\.(?:[0-9]|1[01])\"", source);
+
+        foreach (var package in new[]
+        {
+            "Microsoft.AspNetCore.Components.Authorization",
+            "Microsoft.AspNetCore.Components.Web",
+            "Microsoft.AspNetCore.Components.WebAssembly",
+            "Microsoft.AspNetCore.Components.WebAssembly.DevServer",
+            "Microsoft.AspNetCore.Components.WebAssembly.Server",
+            "Microsoft.AspNetCore.DataProtection.StackExchangeRedis",
+            "Microsoft.AspNetCore.Mvc.Testing",
+            "Microsoft.Extensions.Caching.StackExchangeRedis",
+            "Microsoft.Extensions.Localization",
+            "Microsoft.Extensions.Localization.Abstractions",
+        })
+        {
+            Assert.Contains($"Include=\"{package}\" Version=\"{DotNetPatchVersion}\"", source, StringComparison.Ordinal);
+        }
     }
 
     [Fact]
