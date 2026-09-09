@@ -10,7 +10,7 @@
     <PackageReference Include="Legacy.Maliev.ServiceDefaults" Version="$(SharedLibraryVersion)" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Server" Version="10.0.3" />
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Server" Version="10.0.12" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Legacy.Maliev.Intranet.Client\Legacy.Maliev.Intranet.Client.csproj" />
