@@ -41,6 +41,43 @@
             <ShadcnButton ButtonType="ShadcnButtonType.Submit" OperationFeedback="false" Disabled="@submitting">@(submitting ? Text["Saving"] : Text["Save"])</ShadcnButton>
         </EditForm>
 
+        <section class="quotation-request-card quotation-request-qualification" aria-labelledby="quotation-qualification-heading">
+            <div class="quotation-request-section-heading">
+                <div><h2 id="quotation-qualification-heading">@Text["Qualification"]</h2><p>@Text["QualificationDescription"]</p></div>
+                @if (qualification is not null) { <span class="quotation-request-status">@Text[QualificationLabel(qualification.State)]</span> }
+            </div>
+            @if (qualificationLoading)
+            {
+                <div role="status" aria-live="polite"><ShadcnSpinner Label="@Text["QualificationLoading"]" Size="1rem" /><span>@Text["QualificationLoading"]</span></div>
+            }
+            else if (qualificationError is not null)
+            {
+                <ShadcnAlert Variant="ShadcnAlertVariant.Destructive" AlertRole="ShadcnAlertRole.Alert"><ShadcnAlertDescription>@qualificationError</ShadcnAlertDescription></ShadcnAlert>
+            }
+            else if (qualification is not null)
+            {
+                <EditForm Model="@qualificationEdit" OnValidSubmit="SaveQualificationAsync" class="quotation-qualification-form" aria-busy="@qualificationSubmitting.ToString().ToLowerInvariant()">
+                    <DataAnnotationsValidator />
+                    <div class="quotation-request-grid">
+                        <QuotationSelectField TValue="string" Id="qualification-state" Label="@Text["QualificationState"]" @bind-Value="qualificationEdit.State" Options="@QualificationStateOptions" Placeholder="@Text["QualificationState"]" Required="true" Disabled="@qualificationSubmitting" />
+                        <QuotationInputField TValue="string" Id="qualification-completeness" Label="@Text["Completeness"]" @bind-Value="qualificationEdit.Completeness" Disabled="@qualificationSubmitting" />
+                        <QuotationInputField TValue="int" Id="qualification-duplicates" Label="@Text["DuplicateCount"]" Type="number" @bind-Value="qualificationEdit.DuplicateCount" Disabled="@qualificationSubmitting" />
+                        <QuotationInputField TValue="string" Id="qualification-unmatched" Label="@Text["UnmatchedClassification"]" @bind-Value="qualificationEdit.UnmatchedClassification" Disabled="@qualificationSubmitting" />
+                        <div class="quotation-request-wide"><ShadcnFormField Id="qualification-reason" Label="@Text["QualificationReason"]"><Control><ShadcnTextarea TValue="string" id="qualification-reason" @bind-Value="qualificationEdit.Reason" rows="3" Disabled="@qualificationSubmitting" /></Control></ShadcnFormField></div>
+                    </div>
+                    <ShadcnButton ButtonType="ShadcnButtonType.Submit" OperationFeedback="false" Disabled="@qualificationSubmitting">@(qualificationSubmitting ? Text["QualificationSaving"] : Text["QualificationSave"])</ShadcnButton>
+                </EditForm>
+                <div class="quotation-qualification-audit">
+                    <h3>@Text["QualificationHistory"]</h3>
+                    @if (qualification.Events.Count == 0) { <p>@Text["QualificationHistoryEmpty"]</p> }
+                    else
+                    {
+                        <ol>@foreach (var item in qualification.Events.OrderByDescending(item => item.ChangedUtc)) { <li><strong>@Text[QualificationLabel(item.State)]</strong><span>@item.ChangedUtc.ToLocalTime().ToString("g") · @item.ChangedBy</span>@if (!string.IsNullOrWhiteSpace(item.Reason)) { <p>@item.Reason</p> }</li> }</ol>
+                    }
+                </div>
+            }
+        </section>
+
         <section class="quotation-request-card quotation-request-files" aria-labelledby="quotation-request-files-heading">
             <h2 id="quotation-request-files-heading">@Text["Files"]</h2>
             @if (detail.Files.Count == 0) { <p>@Text["NoFiles"]</p> }
@@ -59,7 +96,13 @@
     private bool submitting;
     private string? error;
     private string? notice;
+    private QuotationQualificationReceipt? qualification;
+    private QualificationEdit qualificationEdit = new();
+    private bool qualificationLoading;
+    private bool qualificationSubmitting;
+    private string? qualificationError;
     private IReadOnlyList<ShadcnSelectOption<bool?>> StatusOptions => [new(false, Text["Open"]), new(true, Text["Done"])];
+    private IReadOnlyList<ShadcnSelectOption<string>> QualificationStateOptions => [new("unreviewed", Text["QualificationUnreviewed"]), new("qualified", Text["QualificationQualified"]), new("not_qualified", Text["QualificationNotQualified"]), new("duplicate", Text["QualificationDuplicate"]), new("stale", Text["QualificationStale"]), new("incomplete", Text["QualificationIncomplete"])];
 
     protected override async Task OnParametersSetAsync() => await LoadAsync();
     private async Task LoadAsync()
@@ -77,9 +120,46 @@
             if (detail is null) { error = Text["Invalid"]; return; }
             edit = Edit.From(detail.Request);
             editContext = new EditContext(edit);
+            await LoadQualificationAsync(detail.Request.Id);
         }
         catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException) { error = Text["Unavailable"]; }
         finally { loading = false; }
+    }
+
+    private async Task LoadQualificationAsync(int id)
+    {
+        qualificationLoading = true; qualificationError = null;
+        try
+        {
+            using var response = await Http.GetForPresentationAsync($"/bff/quotation-requests/{id}/qualification-receipt");
+            if (response.StatusCode == HttpStatusCode.NotFound) { qualificationError = Text["QualificationNotFound"]; return; }
+            if (!response.IsSuccessStatusCode) { qualificationError = ErrorFor(response.StatusCode); return; }
+            qualification = await response.Content.ReadFromJsonAsync<QuotationQualificationReceipt>();
+            if (qualification is null) { qualificationError = Text["Invalid"]; return; }
+            qualificationEdit = QualificationEdit.From(qualification);
+        }
+        catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException) { qualificationError = Text["Unavailable"]; }
+        finally { qualificationLoading = false; }
+    }
+
+    private async Task SaveQualificationAsync()
+    {
+        if (detail is null || qualification is null || session?.CsrfToken is null || qualificationSubmitting) return;
+        if (qualificationEdit.State != "qualified" && string.IsNullOrWhiteSpace(qualificationEdit.Reason)) { qualificationError = Text["QualificationReasonRequired"]; return; }
+        using var request = new HttpRequestMessage(HttpMethod.Put, $"/bff/quotation-requests/{detail.Request.Id}/qualification") { Content = JsonContent.Create(qualificationEdit.ToRequest(qualification.Version)) };
+        request.Headers.Add("X-CSRF-TOKEN", session.CsrfToken);
+        qualificationSubmitting = true; qualificationError = null;
+        try
+        {
+            using var response = await Http.SendAsync(request);
+            if (response.StatusCode == HttpStatusCode.Conflict) { qualificationError = Text["Conflict"]; return; }
+            if (!response.IsSuccessStatusCode) { qualificationError = ErrorFor(response.StatusCode); return; }
+            qualification = await response.Content.ReadFromJsonAsync<QuotationQualificationReceipt>();
+            if (qualification is null) { qualificationError = Text["Invalid"]; return; }
+            qualificationEdit = QualificationEdit.From(qualification); notice = Text["QualificationSaved"];
+        }
+        catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException) { qualificationError = Text["Unavailable"]; }
+        finally { qualificationSubmitting = false; }
     }
 
     private async Task SaveAsync()
@@ -101,10 +181,17 @@
 
     private string ErrorFor(HttpStatusCode status) => status switch { HttpStatusCode.Forbidden => Text["Forbidden"], HttpStatusCode.TooManyRequests => Text["RateLimited"], HttpStatusCode.BadGateway => Text["Invalid"], _ => Text["Unavailable"] };
     private static string StatusClass(bool? done) => done == true ? "quotation-request-status quotation-request-status--done" : "quotation-request-status quotation-request-status--open";
+    private static string QualificationLabel(string state) => state switch { "qualified" => "QualificationQualified", "not_qualified" => "QualificationNotQualified", "duplicate" => "QualificationDuplicate", "stale" => "QualificationStale", "incomplete" => "QualificationIncomplete", _ => "QualificationUnreviewed" };
     private sealed class Edit
     {
         public string? FirstName { get; set; } public string? LastName { get; set; } public string? Email { get; set; } public string? TelephoneNumber { get; set; } public string? Country { get; set; } public string? CompanyName { get; set; } public string? TaxIdentification { get; set; } public string? Message { get; set; } public string? InternalComment { get; set; } public bool? Done { get; set; } public DateTime? ModifiedDate { get; set; }
         public static Edit From(QuotationRequestItem value) => new() { FirstName = value.FirstName, LastName = value.LastName, Email = value.Email, TelephoneNumber = value.TelephoneNumber, Country = value.Country, CompanyName = value.CompanyName, TaxIdentification = value.TaxIdentification, Message = value.Message, InternalComment = value.InternalComment, Done = value.Done, ModifiedDate = value.ModifiedDate };
         public QuotationRequestUpdate ToRequest() => new(FirstName, LastName, Email, TelephoneNumber, Country, CompanyName, TaxIdentification, Message, InternalComment, Done, ModifiedDate);
+    }
+    private sealed class QualificationEdit
+    {
+        public string State { get; set; } = "unreviewed"; public string? Reason { get; set; } public string? Completeness { get; set; } public int DuplicateCount { get; set; } public string? UnmatchedClassification { get; set; } public string IdempotencyKey { get; set; } = Guid.NewGuid().ToString("D");
+        public static QualificationEdit From(QuotationQualificationReceipt value) { var latest = value.Events.OrderByDescending(item => item.Version).FirstOrDefault(); return new() { State = value.State, Reason = latest?.Reason, Completeness = latest?.Completeness, DuplicateCount = latest?.DuplicateCount ?? 0, UnmatchedClassification = latest?.UnmatchedClassification }; }
+        public QuotationQualificationUpdate ToRequest(int expectedVersion) => new(State, Reason, Completeness, DuplicateCount, UnmatchedClassification, IdempotencyKey, expectedVersion);
     }
 }

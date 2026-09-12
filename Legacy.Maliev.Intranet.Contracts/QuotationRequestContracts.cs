@@ -32,3 +32,37 @@ public sealed record QuotationRequestFileItem(
 /// <summary>Complete browser-safe quotation-request editor projection.</summary>
 public sealed record QuotationRequestDetail(
     QuotationRequestItem Request, IReadOnlyList<QuotationRequestFileItem> Files);
+
+/// <summary>Employee-owned quotation-request qualification transition.</summary>
+public sealed record QuotationQualificationUpdate(
+    string State,
+    string? Reason,
+    string? Completeness,
+    int DuplicateCount,
+    string? UnmatchedClassification,
+    string IdempotencyKey,
+    int ExpectedVersion);
+
+/// <summary>PII-free qualification reconciliation receipt.</summary>
+public sealed record QuotationQualificationReceipt(
+    int RequestId,
+    Guid? JourneyId,
+    string TransactionId,
+    string State,
+    DateTime? StateChangedUtc,
+    int Version,
+    IReadOnlyList<QuotationQualificationEvent> Events);
+
+/// <summary>One immutable PII-free qualification transition.</summary>
+public sealed record QuotationQualificationEvent(
+    long Id,
+    string IdempotencyKey,
+    string PreviousState,
+    string State,
+    int Version,
+    DateTime ChangedUtc,
+    string ChangedBy,
+    string? Completeness,
+    int DuplicateCount,
+    string? UnmatchedClassification,
+    string? Reason);

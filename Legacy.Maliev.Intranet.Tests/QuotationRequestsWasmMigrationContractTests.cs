@@ -11,6 +11,21 @@ namespace Legacy.Maliev.Intranet.Tests;
 public sealed class QuotationRequestsWasmMigrationContractTests
 {
     [Fact]
+    public void QualificationContracts_PreserveEveryReceiptAndAuditField()
+    {
+        var journeyId = Guid.NewGuid();
+        var changed = new DateTime(2030, 7, 18, 9, 30, 0, DateTimeKind.Utc);
+        var transition = new QuotationQualificationEvent(9, "retry-key", "unreviewed", "qualified", 2, changed, "employee-7", "complete", 0, null, "reviewed");
+        var receipt = new QuotationQualificationReceipt(84, journeyId, "request-84", "qualified", changed, 2, [transition]);
+        var update = new QuotationQualificationUpdate("qualified", null, "complete", 0, null, "retry-key", 1);
+
+        Assert.Equal((84, journeyId, "request-84", "qualified", changed, 2), (receipt.RequestId, receipt.JourneyId, receipt.TransactionId, receipt.State, receipt.StateChangedUtc, receipt.Version));
+        Assert.Same(transition, Assert.Single(receipt.Events));
+        Assert.Equal((9L, "retry-key", "unreviewed", "qualified", 2, changed, "employee-7", "complete", 0, null, "reviewed"), (transition.Id, transition.IdempotencyKey, transition.PreviousState, transition.State, transition.Version, transition.ChangedUtc, transition.ChangedBy, transition.Completeness, transition.DuplicateCount, transition.UnmatchedClassification, transition.Reason));
+        Assert.Equal(("qualified", null, "complete", 0, null, "retry-key", 1), (update.State, update.Reason, update.Completeness, update.DuplicateCount, update.UnmatchedClassification, update.IdempotencyKey, update.ExpectedVersion));
+    }
+
+    [Fact]
     public void Routes_AreLazyBrowserSafeAndUseOwnedBffContracts()
     {
         var root = FindRepositoryRoot();
@@ -31,10 +46,15 @@ public sealed class QuotationRequestsWasmMigrationContractTests
         Assert.Contains("ShadcnDataTableColumn", index, StringComparison.Ordinal);
         Assert.Contains("@page \"/QuotationRequests/View\"", view, StringComparison.Ordinal);
         Assert.Contains("X-CSRF-TOKEN", view, StringComparison.Ordinal);
+        Assert.Contains("/qualification-receipt", view, StringComparison.Ordinal);
+        Assert.Contains("SaveQualificationAsync", view, StringComparison.Ordinal);
+        Assert.Contains("QuotationQualificationReceipt", view, StringComparison.Ordinal);
         Assert.Contains("<EditForm", view, StringComparison.Ordinal);
         Assert.Contains("<QuotationInputField", view, StringComparison.Ordinal);
         Assert.DoesNotContain("<Mud", view, StringComparison.Ordinal);
         Assert.Contains("X-Expected-Modified-Date", proxy, StringComparison.Ordinal);
+        Assert.Contains("/qualification-receipt", proxy, StringComparison.Ordinal);
+        Assert.Contains("UpdateQualificationAsync", mapper, StringComparison.Ordinal);
         Assert.Contains("/uploads/SignedUrl", proxy, StringComparison.Ordinal);
         Assert.Contains("file.RequestId != id", mapper, StringComparison.Ordinal);
         Assert.Contains("QuotationRequests/", app, StringComparison.Ordinal);
@@ -62,6 +82,12 @@ public sealed class QuotationRequestsWasmMigrationContractTests
         using var document = JsonDocument.Parse(Assert.IsType<string>(handler.Body));
         Assert.False(document.RootElement.TryGetProperty("modifiedDate", out _));
         Assert.True(document.RootElement.GetProperty("done").GetBoolean());
+
+        using var qualification = await proxy.UpdateQualificationAsync(84, new("qualified", null, "complete", 0, null, "stable-key", 2), CancellationToken.None);
+        Assert.Equal("/quotationrequests/84/qualification", handler.Path);
+        using var qualificationDocument = JsonDocument.Parse(Assert.IsType<string>(handler.Body));
+        Assert.Equal("stable-key", qualificationDocument.RootElement.GetProperty("idempotencyKey").GetString());
+        Assert.Equal(2, qualificationDocument.RootElement.GetProperty("expectedVersion").GetInt32());
     }
 
     private sealed class RecordingHandler : HttpMessageHandler

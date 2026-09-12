@@ -60,10 +60,10 @@ public sealed class BffHttpMethodSurfaceTests
             .ToArray();
 
         Assert.Equal(ExpectedEndpointSurface, actual);
-        Assert.Equal(95, actual.Length);
-        Assert.Equal(53, actual.Count(value => value.StartsWith("GET ", StringComparison.Ordinal)));
+        Assert.Equal(97, actual.Length);
+        Assert.Equal(54, actual.Count(value => value.StartsWith("GET ", StringComparison.Ordinal)));
         Assert.Equal(23, actual.Count(value => value.StartsWith("POST ", StringComparison.Ordinal)));
-        Assert.Equal(10, actual.Count(value => value.StartsWith("PUT ", StringComparison.Ordinal)));
+        Assert.Equal(11, actual.Count(value => value.StartsWith("PUT ", StringComparison.Ordinal)));
         Assert.Equal(9, actual.Count(value => value.StartsWith("DELETE ", StringComparison.Ordinal)));
     }
 
@@ -293,6 +293,7 @@ public sealed class BffHttpMethodSurfaceTests
         GET /bff/purchase-orders/{id:int}
         GET /bff/quotation-requests
         GET /bff/quotation-requests/{id:int}
+        GET /bff/quotation-requests/{id:int}/qualification-receipt
         GET /bff/quotations
         GET /bff/quotations/create
         GET /bff/quotations/create/orders
@@ -332,6 +333,7 @@ public sealed class BffHttpMethodSurfaceTests
         PUT /bff/orders/{id:int}
         PUT /bff/profile
         PUT /bff/quotation-requests/{id:int}
+        PUT /bff/quotation-requests/{id:int}/qualification
         PUT /bff/quotations/{id:int}/decision
         PUT /bff/suppliers/{id:int}
         DELETE /bff/catalog/materials/{id:int}/colors/{colorId:int}
