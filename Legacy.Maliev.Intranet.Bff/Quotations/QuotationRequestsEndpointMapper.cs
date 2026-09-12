@@ -55,6 +55,44 @@ internal static class QuotationRequestsEndpointMapper
         catch (Exception exception) when (Bounded(exception, token)) { return Unavailable(); }
     }
 
+    public static async Task<IResult> QualificationReceiptAsync(int id, QuotationRequestsProxy requests, HttpContext context, CancellationToken token)
+    {
+        if (id <= 0) return Results.BadRequest();
+        try
+        {
+            using var response = await requests.GetQualificationReceiptAsync(id, token);
+            if (response.StatusCode == HttpStatusCode.NotFound) return Results.NotFound();
+            var failure = Failure(response, context); if (failure is not null) return failure;
+            var receipt = await response.Content.ReadFromJsonAsync<QuotationQualificationReceipt>(token);
+            return receipt is null || receipt.RequestId != id ? Invalid() : Results.Ok(receipt);
+        }
+        catch (Exception exception) when (Bounded(exception, token)) { return Unavailable(); }
+    }
+
+    public static async Task<IResult> UpdateQualificationAsync(int id, QuotationQualificationUpdate input, QuotationRequestsProxy requests, HttpContext context, CancellationToken token)
+    {
+        if (id <= 0
+            || string.IsNullOrWhiteSpace(input.State)
+            || string.IsNullOrWhiteSpace(input.IdempotencyKey)
+            || input.IdempotencyKey.Length > 128
+            || input.DuplicateCount < 0
+            || input.ExpectedVersion < 0)
+        {
+            return Results.BadRequest();
+        }
+
+        try
+        {
+            using var response = await requests.UpdateQualificationAsync(id, input, token);
+            if (response.StatusCode == HttpStatusCode.NotFound) return Results.NotFound();
+            if (response.StatusCode == HttpStatusCode.Conflict) return Results.Conflict();
+            var failure = Failure(response, context); if (failure is not null) return failure;
+            var receipt = await response.Content.ReadFromJsonAsync<QuotationQualificationReceipt>(token);
+            return receipt is null || receipt.RequestId != id ? Invalid() : Results.Ok(receipt);
+        }
+        catch (Exception exception) when (Bounded(exception, token)) { return Unavailable(); }
+    }
+
     private static async Task<QuotationRequestFileItem> ResolveAsync(RequestFile item, QuotationRequestFilesProxy files, SemaphoreSlim limiter, CancellationToken token)
     {
         if (string.IsNullOrWhiteSpace(item.Bucket) || string.IsNullOrWhiteSpace(item.ObjectName)) return new(item.Id, item.RequestId, item.ObjectName ?? "-", item.CreatedDate, null);

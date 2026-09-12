@@ -13,6 +13,12 @@ public sealed class QuotationRequestsProxy(HttpClient httpClient)
     public Task<HttpResponseMessage> GetAsync(int id, CancellationToken token) => SendAsync(new(HttpMethod.Get, $"/quotationrequests/{id}"), token);
     /// <summary>Gets request-owned file metadata.</summary>
     public Task<HttpResponseMessage> GetFilesAsync(int id, CancellationToken token) => SendAsync(new(HttpMethod.Get, $"/quotationrequests/{id}/files"), token);
+    /// <summary>Gets the PII-free employee qualification receipt.</summary>
+    public Task<HttpResponseMessage> GetQualificationReceiptAsync(int id, CancellationToken token) =>
+        SendAsync(new(HttpMethod.Get, $"/quotationrequests/{id}/qualification-receipt"), token);
+    /// <summary>Records an employee qualification transition.</summary>
+    public Task<HttpResponseMessage> UpdateQualificationAsync(int id, QuotationQualificationUpdate input, CancellationToken token) =>
+        SendAsync(new(HttpMethod.Put, $"/quotationrequests/{id}/qualification") { Content = JsonContent.Create(input) }, token);
     /// <summary>Updates one request with its expected modified timestamp.</summary>
     public Task<HttpResponseMessage> UpdateAsync(int id, QuotationRequestUpdate input, CancellationToken token)
     {

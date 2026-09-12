@@ -37,7 +37,7 @@ public sealed class LegacyServiceDefaultsIdentityContractTests
         var root = FindRoot();
         var projectSources = Directory
             .GetFiles(root, "*.csproj", SearchOption.AllDirectories)
-            .Where(path => !path.Contains($"{Path.DirectorySeparatorChar}.worktrees{Path.DirectorySeparatorChar}", StringComparison.OrdinalIgnoreCase))
+            .Where(path => !Path.GetRelativePath(root, path).StartsWith($".worktrees{Path.DirectorySeparatorChar}", StringComparison.OrdinalIgnoreCase))
             .Select(File.ReadAllText)
             .ToArray();
 

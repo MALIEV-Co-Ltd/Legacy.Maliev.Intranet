@@ -41,3 +41,14 @@
 .quotation-request-wide { grid-column: 1 / -1; }
 .quotation-request-files { margin-top: 1rem; }
 .quotation-request-files ul { display: grid; gap: .5rem; margin: 0; padding-left: 1.25rem; }
+.quotation-request-qualification { margin-top: 1rem; }
+.quotation-request-section-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; }
+.quotation-request-section-heading p { margin: -.5rem 0 1rem; color: var(--legacy-muted); }
+.quotation-qualification-form { display: grid; gap: 1rem; }
+.quotation-qualification-audit { margin-top: 1.5rem; border-top: 1px solid var(--shadcn-border); padding-top: 1rem; }
+.quotation-qualification-audit h3 { margin: 0 0 .75rem; font-size: 1rem; }
+.quotation-qualification-audit ol { display: grid; gap: .75rem; margin: 0; padding: 0; list-style: none; }
+.quotation-qualification-audit li { display: grid; gap: .2rem; padding-left: .75rem; border-left: 2px solid var(--shadcn-border); }
+.quotation-qualification-audit li span { color: var(--legacy-muted); font-size: .8125rem; }
+.quotation-qualification-audit li p { margin: 0; }
+@media (max-width: 700px) { .quotation-request-section-heading { align-items: stretch; flex-direction: column; } }

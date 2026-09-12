@@ -38,4 +38,25 @@
   <data name="Conflict" xml:space="preserve"><value>This request changed after it was loaded. Reload and try again.</value></data>
   <data name="Saved" xml:space="preserve"><value>Quotation request saved.</value></data>
   <data name="Retry" xml:space="preserve"><value>Try again</value></data>
+  <data name="Qualification" xml:space="preserve"><value>Lead qualification</value></data>
+  <data name="QualificationDescription" xml:space="preserve"><value>Record the review outcome without exposing customer details in analytics.</value></data>
+  <data name="QualificationLoading" xml:space="preserve"><value>Loading qualification history</value></data>
+  <data name="QualificationState" xml:space="preserve"><value>Outcome</value></data>
+  <data name="QualificationUnreviewed" xml:space="preserve"><value>Unreviewed</value></data>
+  <data name="QualificationQualified" xml:space="preserve"><value>Qualified</value></data>
+  <data name="QualificationNotQualified" xml:space="preserve"><value>Not qualified</value></data>
+  <data name="QualificationDuplicate" xml:space="preserve"><value>Duplicate</value></data>
+  <data name="QualificationStale" xml:space="preserve"><value>Stale</value></data>
+  <data name="QualificationIncomplete" xml:space="preserve"><value>Incomplete</value></data>
+  <data name="Completeness" xml:space="preserve"><value>Completeness classification</value></data>
+  <data name="DuplicateCount" xml:space="preserve"><value>Duplicate count</value></data>
+  <data name="UnmatchedClassification" xml:space="preserve"><value>Unmatched classification</value></data>
+  <data name="QualificationReason" xml:space="preserve"><value>Review reason</value></data>
+  <data name="QualificationReasonRequired" xml:space="preserve"><value>A review reason is required unless the request is qualified.</value></data>
+  <data name="QualificationSave" xml:space="preserve"><value>Save qualification</value></data>
+  <data name="QualificationSaving" xml:space="preserve"><value>Saving qualification</value></data>
+  <data name="QualificationSaved" xml:space="preserve"><value>Qualification outcome saved.</value></data>
+  <data name="QualificationNotFound" xml:space="preserve"><value>No qualification receipt exists for this request.</value></data>
+  <data name="QualificationHistory" xml:space="preserve"><value>Audit history</value></data>
+  <data name="QualificationHistoryEmpty" xml:space="preserve"><value>No qualification changes have been recorded.</value></data>
 </root>

@@ -1030,6 +1030,13 @@ app.MapPut("/bff/quotation-requests/{id:int}", QuotationRequestsEndpointMapper.U
     .AddEndpointFilter<AntiforgeryValidationFilter>()
     .RequireAuthorization(LegacyEmployeePermissions.QuotationRequestsUpdate);
 
+app.MapGet("/bff/quotation-requests/{id:int}/qualification-receipt", QuotationRequestsEndpointMapper.QualificationReceiptAsync)
+    .RequireAuthorization(LegacyEmployeePermissions.QuotationRequestsRead);
+
+app.MapPut("/bff/quotation-requests/{id:int}/qualification", QuotationRequestsEndpointMapper.UpdateQualificationAsync)
+    .AddEndpointFilter<AntiforgeryValidationFilter>()
+    .RequireAuthorization(LegacyEmployeePermissions.QuotationRequestsUpdate);
+
 app.MapGet("/bff/quotations", (
     QuotationListSort? sort,
     string? search,

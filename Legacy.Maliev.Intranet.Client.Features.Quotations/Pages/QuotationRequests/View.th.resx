@@ -38,4 +38,25 @@
   <data name="Conflict" xml:space="preserve"><value>คำขอนี้ถูกแก้ไขหลังจากที่คุณเปิดหน้า โปรดโหลดข้อมูลล่าสุดแล้วลองอีกครั้ง</value></data>
   <data name="Saved" xml:space="preserve"><value>บันทึกคำขอใบเสนอราคาเรียบร้อยแล้ว</value></data>
   <data name="Retry" xml:space="preserve"><value>ลองอีกครั้ง</value></data>
+  <data name="Qualification" xml:space="preserve"><value>การประเมินโอกาสทางการขาย</value></data>
+  <data name="QualificationDescription" xml:space="preserve"><value>บันทึกผลการพิจารณาโดยไม่ส่งข้อมูลส่วนบุคคลของลูกค้าไปยังระบบวิเคราะห์</value></data>
+  <data name="QualificationLoading" xml:space="preserve"><value>กำลังโหลดประวัติการประเมิน</value></data>
+  <data name="QualificationState" xml:space="preserve"><value>ผลการประเมิน</value></data>
+  <data name="QualificationUnreviewed" xml:space="preserve"><value>ยังไม่ได้ประเมิน</value></data>
+  <data name="QualificationQualified" xml:space="preserve"><value>ผ่านการประเมิน</value></data>
+  <data name="QualificationNotQualified" xml:space="preserve"><value>ไม่ผ่านการประเมิน</value></data>
+  <data name="QualificationDuplicate" xml:space="preserve"><value>ข้อมูลซ้ำ</value></data>
+  <data name="QualificationStale" xml:space="preserve"><value>ข้อมูลล้าสมัย</value></data>
+  <data name="QualificationIncomplete" xml:space="preserve"><value>ข้อมูลไม่ครบถ้วน</value></data>
+  <data name="Completeness" xml:space="preserve"><value>ระดับความครบถ้วนของข้อมูล</value></data>
+  <data name="DuplicateCount" xml:space="preserve"><value>จำนวนรายการซ้ำ</value></data>
+  <data name="UnmatchedClassification" xml:space="preserve"><value>ประเภทที่ยังจับคู่ไม่ได้</value></data>
+  <data name="QualificationReason" xml:space="preserve"><value>เหตุผลประกอบการพิจารณา</value></data>
+  <data name="QualificationReasonRequired" xml:space="preserve"><value>โปรดระบุเหตุผล เว้นแต่คำขอนี้ผ่านการประเมินแล้ว</value></data>
+  <data name="QualificationSave" xml:space="preserve"><value>บันทึกผลการประเมิน</value></data>
+  <data name="QualificationSaving" xml:space="preserve"><value>กำลังบันทึกผลการประเมิน</value></data>
+  <data name="QualificationSaved" xml:space="preserve"><value>บันทึกผลการประเมินเรียบร้อยแล้ว</value></data>
+  <data name="QualificationNotFound" xml:space="preserve"><value>ยังไม่มีข้อมูลการประเมินสำหรับคำขอนี้</value></data>
+  <data name="QualificationHistory" xml:space="preserve"><value>ประวัติการเปลี่ยนแปลง</value></data>
+  <data name="QualificationHistoryEmpty" xml:space="preserve"><value>ยังไม่มีการเปลี่ยนแปลงผลการประเมิน</value></data>
 </root>
