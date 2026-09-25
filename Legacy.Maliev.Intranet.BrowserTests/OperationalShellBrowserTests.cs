@@ -667,7 +667,7 @@ public sealed class OperationalShellBrowserTests(
         await page.Keyboard.PressAsync("Shift+Tab");
         var wrappedFocus = await drawer.EvaluateAsync<JsonElement>("""
             element => ({
-                isNavigationControl: document.activeElement?.matches('.legacy-logo-link, .legacy-rail-link, .legacy-rail-chevron') === true,
+                isNavigationControl: document.activeElement?.matches('.legacy-logo-link, .legacy-rail-link, .legacy-rail-chevron, .legacy-rail-user') === true,
                 isInsideDrawer: element.contains(document.activeElement),
                 activeMarkup: document.activeElement?.outerHTML ?? ''
             })
