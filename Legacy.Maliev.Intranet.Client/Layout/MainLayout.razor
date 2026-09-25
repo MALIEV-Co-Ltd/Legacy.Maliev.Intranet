@@ -8,6 +8,8 @@
 @implements IDisposable
 
 <ShadcnThemeProvider IsDarkMode="@ThemeService.IsDarkMode" Direction="ShadcnDirection.LeftToRight" Class="legacy-provider-root">
+<AuthorizeView>
+<Authorized>
 <a class="legacy-skip-link" href="#main-content">@Text["Skip to content"]</a>
 
 <ShadcnSidebarProvider @bind-Open="_sidebarOpen"
@@ -29,6 +31,11 @@
         </div>
     </ShadcnSidebarInset>
 </ShadcnSidebarProvider>
+</Authorized>
+<NotAuthorized>
+    @Body
+</NotAuthorized>
+</AuthorizeView>
 </ShadcnThemeProvider>
 
 @code {

@@ -58,7 +58,14 @@ public sealed class LoginBrowserTests(
         });
         var page = await context.NewPageAsync();
         var errors = new List<string>();
+        var sidebarImports = 0;
         page.PageError += (_, error) => errors.Add(error);
+
+        await page.RouteAsync("**/shadcn-disclosure-navigation.js", route =>
+        {
+            Interlocked.Increment(ref sidebarImports);
+            return route.ContinueAsync();
+        });
 
         await page.RouteAsync("**/bff/session", route => route.FulfillAsync(new()
         {
@@ -74,6 +81,8 @@ public sealed class LoginBrowserTests(
         Assert.Equal("/Login", new Uri(page.Url).AbsolutePath);
         Assert.Equal(0, await page.Locator(".legacy-layout").CountAsync());
         Assert.Equal(0, await page.Locator(".legacy-navigation").CountAsync());
+        Assert.Equal(0, Volatile.Read(ref sidebarImports));
+        Assert.False(await page.Locator("#blazor-error-ui").IsVisibleAsync());
         Assert.Empty(errors);
     }
 
