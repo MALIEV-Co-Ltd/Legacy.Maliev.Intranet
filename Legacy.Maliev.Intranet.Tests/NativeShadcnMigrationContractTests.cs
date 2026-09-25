@@ -6,7 +6,7 @@ namespace Legacy.Maliev.Intranet.Tests;
 
 public sealed partial class NativeShadcnMigrationContractTests
 {
-    private const string PackageVersion = "2.2.0";
+    private const string PackageVersion = "2.2.1";
 
     private static readonly string[] ConsumerProjectDirectories =
     [
