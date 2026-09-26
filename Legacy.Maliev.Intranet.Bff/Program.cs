@@ -56,6 +56,8 @@ builder.Services.AddOptions<ServiceAuthenticationOptions>()
 builder.Services.AddSingleton<IServiceAccessTokenProvider, ServiceAccessTokenProvider>();
 builder.Services.AddTransient<LegacyServiceAuthenticationHandler>();
 builder.Services.AddScoped<Legacy.Maliev.Intranet.Customers.CustomerAccountCreationService>();
+builder.Services.AddOptions<Legacy.Maliev.Intranet.Customers.CustomerIdentityReconciliationOptions>()
+    .Bind(builder.Configuration.GetSection(Legacy.Maliev.Intranet.Customers.CustomerIdentityReconciliationOptions.SectionName));
 #pragma warning disable EXTEXP0001
 builder.Services.AddHttpClient<Legacy.Maliev.Intranet.Bff.Customers.CustomerAccountNotificationProxy>(client =>
 {

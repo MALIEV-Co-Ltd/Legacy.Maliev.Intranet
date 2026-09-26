@@ -55,18 +55,37 @@ public sealed class CustomerIdentityCreationClient(HttpClient httpClient) : ICus
     {
         using var message = new HttpRequestMessage(HttpMethod.Post, $"/auth/v1/customer-identities/{customerId}")
         {
-            Content = JsonContent.Create(new CustomerIdentityRequest(
-                request.Email,
-                request.Email,
-                bootstrapSecret,
-                true,
-                request.Telephone,
-                request.Fax,
-                request.Mobile,
-                PasswordSetupRequired: true)),
+            Content = IdentityContent(request, bootstrapSecret),
         };
         return await httpClient.SendAsync(message, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
     }
+
+    /// <inheritdoc />
+    public async Task<HttpResponseMessage> ReconcileCreateAsync(
+        int customerId,
+        CreateCustomerAccountRequest request,
+        string bootstrapSecret,
+        Guid operationId,
+        CancellationToken cancellationToken)
+    {
+        using var message = new HttpRequestMessage(HttpMethod.Post, $"/auth/v1/customer-identities/{customerId}/reconcile-create")
+        {
+            Content = IdentityContent(request, bootstrapSecret),
+        };
+        message.Headers.Add("Idempotency-Key", operationId.ToString("D"));
+        return await httpClient.SendAsync(message, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+    }
+
+    private static JsonContent IdentityContent(CreateCustomerAccountRequest request, string bootstrapSecret) =>
+        JsonContent.Create(new CustomerIdentityRequest(
+            request.Email,
+            request.Email,
+            bootstrapSecret,
+            true,
+            request.Telephone,
+            request.Fax,
+            request.Mobile,
+            PasswordSetupRequired: true));
 
     /// <inheritdoc />
     public async Task<HttpResponseMessage> CreatePasswordSetupChallengeAsync(

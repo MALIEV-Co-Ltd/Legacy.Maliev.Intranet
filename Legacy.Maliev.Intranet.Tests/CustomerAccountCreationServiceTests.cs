@@ -3,6 +3,7 @@ using System.Text;
 using Legacy.Maliev.Intranet.Contracts;
 using Legacy.Maliev.Intranet.Customers;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 
 namespace Legacy.Maliev.Intranet.Tests;
 
@@ -165,6 +166,132 @@ public sealed class CustomerAccountCreationServiceTests
     }
 
     [Fact]
+    public async Task CreateAsync_ReconcileCreate_ReplaysLostIdentityResponseWithIdenticalSecret()
+    {
+        var profiles = new ProfileClientStub(
+            Response(HttpStatusCode.Created, "{\"id\":42}"),
+            Response(HttpStatusCode.Created, "{\"id\":42}"));
+        var identities = new IdentityClientStub(
+            new HttpRequestException("response lost after commit"),
+            Response(HttpStatusCode.OK, "{\"databaseId\":42,\"status\":\"replayed\"}"));
+        var service = CreateService(profiles, identities, EnabledOptions());
+
+        var uncertain = await service.CreateAsync(ValidRequest(), TestOperationId, CancellationToken.None);
+        var replay = await service.CreateAsync(ValidRequest(), TestOperationId, CancellationToken.None);
+
+        Assert.Equal(CustomerAccountCreationStatus.Unavailable, uncertain.Status);
+        Assert.Equal(CustomerAccountCreationStatus.Created, replay.Status);
+        Assert.Equal(42, replay.CustomerId);
+        Assert.Equal([TestOperationId, TestOperationId], identities.ReconcileOperationIds);
+        Assert.Equal(identities.BootstrapPasswords[0], identities.BootstrapPasswords[1]);
+        Assert.Empty(identities.CreateCustomerIds);
+        Assert.Empty(profiles.DeletedIds);
+    }
+
+    [Fact]
+    public async Task CreateAsync_ReconcileCreate_AcceptsCreatedReceipt()
+    {
+        var profiles = new ProfileClientStub(Response(HttpStatusCode.Created, "{\"id\":42}"));
+        var identities = new IdentityClientStub(Response(HttpStatusCode.Created, "{\"databaseId\":42,\"status\":\"created\"}"));
+
+        var result = await CreateService(profiles, identities, EnabledOptions())
+            .CreateAsync(ValidRequest(), TestOperationId, CancellationToken.None);
+
+        Assert.Equal(CustomerAccountCreationStatus.Created, result.Status);
+        Assert.Equal(42, result.CustomerId);
+        Assert.Equal([TestOperationId], identities.ReconcileOperationIds);
+        Assert.Empty(identities.CreateCustomerIds);
+        Assert.Equal([42], identities.SetupCustomerIds);
+    }
+
+    [Fact]
+    public async Task CreateAsync_ReconcileCreate_ChangedProfileWithSameKeyConflictsBeforeIdentity()
+    {
+        var profiles = new ProfileClientStub(
+            Response(HttpStatusCode.Created, "{\"id\":42}"),
+            Response(HttpStatusCode.Conflict, "{}"));
+        var identities = new IdentityClientStub(Response(HttpStatusCode.Created, "{\"databaseId\":42,\"status\":\"created\"}"));
+        var service = CreateService(profiles, identities, EnabledOptions());
+        var changed = ValidRequest();
+        changed.FirstName = "Grace";
+
+        var created = await service.CreateAsync(ValidRequest(), TestOperationId, CancellationToken.None);
+        var conflict = await service.CreateAsync(changed, TestOperationId, CancellationToken.None);
+
+        Assert.Equal(CustomerAccountCreationStatus.Created, created.Status);
+        Assert.Equal(CustomerAccountCreationStatus.Conflict, conflict.Status);
+        Assert.Equal([TestOperationId, TestOperationId], profiles.OperationIds);
+        Assert.Equal([TestOperationId], identities.ReconcileOperationIds);
+        Assert.Empty(profiles.DeletedIds);
+    }
+
+    [Fact]
+    public async Task CreateAsync_ReconcileCreate_RejectsMismatchedReceiptWithoutOnboarding()
+    {
+        var profiles = new ProfileClientStub(Response(HttpStatusCode.Created, "{\"id\":42}"));
+        var identities = new IdentityClientStub(Response(HttpStatusCode.OK, "{\"databaseId\":41,\"status\":\"replayed\"}"));
+        var result = await CreateService(profiles, identities, EnabledOptions())
+            .CreateAsync(ValidRequest(), TestOperationId, CancellationToken.None);
+
+        Assert.Equal(CustomerAccountCreationStatus.BadGateway, result.Status);
+        Assert.Equal(42, result.CustomerId);
+        Assert.Empty(identities.SetupCustomerIds);
+        Assert.Empty(profiles.DeletedIds);
+    }
+
+    [Fact]
+    public async Task CreateAsync_ReconcileCreate_RejectsStatusCodeAndBodyMismatch()
+    {
+        var profiles = new ProfileClientStub(Response(HttpStatusCode.Created, "{\"id\":42}"));
+        var identities = new IdentityClientStub(Response(HttpStatusCode.Created, "{\"databaseId\":42,\"status\":\"replayed\"}"));
+        var result = await CreateService(profiles, identities, EnabledOptions())
+            .CreateAsync(ValidRequest(), TestOperationId, CancellationToken.None);
+
+        Assert.Equal(CustomerAccountCreationStatus.BadGateway, result.Status);
+        Assert.Empty(identities.SetupCustomerIds);
+    }
+
+    [Fact]
+    public async Task CreateAsync_ReconcileCreate_RejectsUnexpectedSuccessfulStatusAndRetainsProfile()
+    {
+        var profiles = new ProfileClientStub(Response(HttpStatusCode.Created, "{\"id\":42}"));
+        var identities = new IdentityClientStub(Response(HttpStatusCode.Accepted, "{\"databaseId\":42}"));
+        var result = await CreateService(profiles, identities, EnabledOptions())
+            .CreateAsync(ValidRequest(), TestOperationId, CancellationToken.None);
+
+        Assert.Equal(CustomerAccountCreationStatus.BadGateway, result.Status);
+        Assert.Equal(42, result.CustomerId);
+        Assert.Empty(identities.SetupCustomerIds);
+        Assert.Empty(profiles.DeletedIds);
+    }
+
+    [Fact]
+    public async Task CreateAsync_ReconcileCreate_MissingProtectedKeyStopsBeforeProfileWrite()
+    {
+        var profiles = new ProfileClientStub(Response(HttpStatusCode.Created, "{\"id\":42}"));
+        var identities = new IdentityClientStub(Response(HttpStatusCode.Created, "{\"databaseId\":42,\"status\":\"created\"}"));
+        var service = CreateService(profiles, identities, new() { Enabled = true });
+
+        var result = await service.CreateAsync(ValidRequest(), TestOperationId, CancellationToken.None);
+
+        Assert.Equal(CustomerAccountCreationStatus.Unavailable, result.Status);
+        Assert.Empty(profiles.OperationIds);
+        Assert.Empty(identities.CustomerIds);
+    }
+
+    [Fact]
+    public void ReconcileBootstrapSecret_IsStableForOperationAndDistinctForChangedOperation()
+    {
+        var options = EnabledOptions();
+        var first = options.DeriveBootstrapSecret(TestOperationId, 42);
+        Assert.Equal(first, options.DeriveBootstrapSecret(TestOperationId, 42));
+        Assert.NotEqual(first, options.DeriveBootstrapSecret(Guid.NewGuid(), 42));
+        Assert.NotEqual(first, options.DeriveBootstrapSecret(TestOperationId, 43));
+        Assert.StartsWith("Aa1!", first, StringComparison.Ordinal);
+        Assert.True(first.Length >= 40);
+    }
+
+    [Fact]
     public async Task CreateAsync_CallerCancelsAfterProfileCreation_RetainsProfile()
     {
         using var cancellation = new CancellationTokenSource();
@@ -197,8 +324,15 @@ public sealed class CustomerAccountCreationServiceTests
 
     private static CustomerAccountCreationService CreateService(
         ICustomerProfileCreationClient profiles,
-        ICustomerIdentityCreationClient identities) =>
-        new(profiles, identities, NullLogger<CustomerAccountCreationService>.Instance);
+        ICustomerIdentityCreationClient identities,
+        CustomerIdentityReconciliationOptions? options = null) =>
+        new(profiles, identities, Options.Create(options ?? new()), NullLogger<CustomerAccountCreationService>.Instance);
+
+    private static CustomerIdentityReconciliationOptions EnabledOptions() => new()
+    {
+        Enabled = true,
+        BootstrapKeyBase64 = Convert.ToBase64String(Enumerable.Range(0, 32).Select(index => (byte)index).ToArray()),
+    };
 
     private static CreateCustomerAccountRequest ValidRequest() => new()
     {
@@ -271,6 +405,10 @@ public sealed class CustomerAccountCreationServiceTests
 
         public List<int> CustomerIds { get; } = [];
 
+        public List<int> CreateCustomerIds { get; } = [];
+
+        public List<Guid> ReconcileOperationIds { get; } = [];
+
         public List<string> BootstrapPasswords { get; } = [];
 
         public List<int> SetupCustomerIds { get; } = [];
@@ -282,6 +420,20 @@ public sealed class CustomerAccountCreationServiceTests
             CancellationToken cancellationToken)
         {
             CustomerIds.Add(customerId);
+            CreateCustomerIds.Add(customerId);
+            BootstrapPasswords.Add(bootstrapSecret);
+            return NextAsync(_createResults);
+        }
+
+        public Task<HttpResponseMessage> ReconcileCreateAsync(
+            int customerId,
+            CreateCustomerAccountRequest request,
+            string bootstrapSecret,
+            Guid operationId,
+            CancellationToken cancellationToken)
+        {
+            CustomerIds.Add(customerId);
+            ReconcileOperationIds.Add(operationId);
             BootstrapPasswords.Add(bootstrapSecret);
             return NextAsync(_createResults);
         }
@@ -311,6 +463,14 @@ public sealed class CustomerAccountCreationServiceTests
             int customerId,
             CancellationToken cancellationToken) =>
             throw new InvalidOperationException("Setup must not run after identity creation fails.");
+
+        public Task<HttpResponseMessage> ReconcileCreateAsync(
+            int customerId,
+            CreateCustomerAccountRequest request,
+            string bootstrapSecret,
+            Guid operationId,
+            CancellationToken cancellationToken) =>
+            throw new InvalidOperationException("Reconciliation was not enabled for this test.");
     }
 
     private static Task<HttpResponseMessage> NextAsync(Queue<object> results)
