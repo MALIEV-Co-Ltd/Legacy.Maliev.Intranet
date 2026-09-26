@@ -2033,7 +2033,19 @@ app.MapPost("/bff/customers", async (
         return Results.ValidationProblem(errors);
     }
 
-    var result = await workflow.CreateAsync(request, cancellationToken);
+    var operationId = Guid.NewGuid();
+    if (context.Request.Headers.TryGetValue("Idempotency-Key", out var keyHeader))
+    {
+        if (keyHeader.Count != 1 || !Guid.TryParse(keyHeader[0], out operationId) || operationId == Guid.Empty)
+        {
+            return Results.ValidationProblem(new Dictionary<string, string[]>
+            {
+                ["Idempotency-Key"] = ["A single non-empty GUID Idempotency-Key is required."],
+            });
+        }
+    }
+
+    var result = await workflow.CreateAsync(request, operationId, cancellationToken);
     if (result.Status == Legacy.Maliev.Intranet.Customers.CustomerAccountCreationStatus.RateLimited &&
         result.RetryAfter is { } retryAfter)
     {

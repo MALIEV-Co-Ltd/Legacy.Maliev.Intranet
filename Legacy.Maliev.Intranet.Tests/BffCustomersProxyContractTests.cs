@@ -495,6 +495,35 @@ public sealed class BffCustomersProxyContractTests
     }
 
     [Fact]
+    public async Task Create_InvalidOperationKey_IsRejectedBeforeAnyDownstreamCall()
+    {
+        var profile = new RecordingWorkflowHandler((HttpStatusCode.Created, "{\"id\":42}"));
+        var identity = new RecordingWorkflowHandler((HttpStatusCode.Created, "{\"databaseID\":42}"));
+        await using var factory = new CustomersBffFactory(
+            new RecordingCustomerHandler(HttpStatusCode.OK, CustomerPageJson),
+            hasPermission: true,
+            hasCreatePermission: true,
+            profileDownstream: profile,
+            identityDownstream: identity);
+        using var client = CreateClient(factory);
+        await SignInAsync(client);
+        using var sessionResponse = await client.GetAsync("/bff/session");
+        var session = await sessionResponse.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>();
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/bff/customers")
+        {
+            Content = JsonContent.Create(ValidCreateRequest()),
+        };
+        request.Headers.Add("X-CSRF-TOKEN", session.GetProperty("csrfToken").GetString());
+        request.Headers.Add("Idempotency-Key", "invalid");
+
+        using var response = await client.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Empty(profile.Requests);
+        Assert.Empty(identity.Requests);
+    }
+
+    [Fact]
     public async Task Create_WithoutExactPermission_IsForbiddenBeforeAnyDownstreamCall()
     {
         var profile = new RecordingWorkflowHandler((HttpStatusCode.Created, "{\"id\":42}"));
@@ -543,11 +572,9 @@ public sealed class BffCustomersProxyContractTests
     }
 
     [Fact]
-    public async Task Create_IdentityConflict_CompensatesProfileAndPreservesConflict()
+    public async Task Create_IdentityConflict_RetainsProfileAndPreservesConflict()
     {
-        var profile = new RecordingWorkflowHandler(
-            (HttpStatusCode.Created, "{\"id\":42}"),
-            (HttpStatusCode.NoContent, string.Empty));
+        var profile = new RecordingWorkflowHandler((HttpStatusCode.Created, "{\"id\":42}"));
         var identity = new RecordingWorkflowHandler((HttpStatusCode.Conflict, "{}"));
         await using var factory = new CustomersBffFactory(
             new RecordingCustomerHandler(HttpStatusCode.OK, CustomerPageJson),
@@ -561,14 +588,40 @@ public sealed class BffCustomersProxyContractTests
         using var response = await SendCreateAsync(client, ValidCreateRequest(), includeCsrf: true);
 
         Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
-        Assert.Collection(
-            profile.Requests,
-            request => Assert.Equal(HttpMethod.Post, request.Method),
-            request =>
-            {
-                Assert.Equal(HttpMethod.Delete, request.Method);
-                Assert.Equal("/customers/42", request.PathAndQuery);
-            });
+        Assert.Equal(HttpMethod.Post, Assert.Single(profile.Requests).Method);
+    }
+
+    [Fact]
+    public async Task Create_RetryAfterUncertainIdentity_UsesSameProfileKeyWithoutDeletingProfile()
+    {
+        var operationId = Guid.Parse("1904e7f5-7223-45c9-8ea3-91c0aa498cf0");
+        var profile = new RecordingWorkflowHandler(
+            (HttpStatusCode.Created, "{\"id\":42}"),
+            (HttpStatusCode.Created, "{\"id\":42}"));
+        var identity = new RecordingWorkflowHandler(
+            (HttpStatusCode.ServiceUnavailable, "{}"),
+            (HttpStatusCode.Conflict, "{}"));
+        await using var factory = new CustomersBffFactory(
+            new RecordingCustomerHandler(HttpStatusCode.OK, CustomerPageJson),
+            hasPermission: true,
+            hasCreatePermission: true,
+            profileDownstream: profile,
+            identityDownstream: identity);
+        using var client = CreateClient(factory);
+        await SignInAsync(client);
+
+        using var first = await SendCreateAsync(client, ValidCreateRequest(), includeCsrf: true, operationId: operationId);
+        using var replay = await SendCreateAsync(client, ValidCreateRequest(), includeCsrf: true, operationId: operationId);
+
+        Assert.Equal(HttpStatusCode.ServiceUnavailable, first.StatusCode);
+        Assert.Equal(HttpStatusCode.Conflict, replay.StatusCode);
+        Assert.Equal(2, profile.Requests.Count);
+        Assert.All(profile.Requests, request =>
+        {
+            Assert.Equal(HttpMethod.Post, request.Method);
+            Assert.Equal(operationId.ToString("D"), request.IdempotencyKey);
+        });
+        Assert.Equal(2, identity.Requests.Count);
     }
 
     [Fact]
@@ -643,7 +696,7 @@ public sealed class BffCustomersProxyContractTests
     }
 
     [Fact]
-    public async Task Create_ServiceTokenWithoutIdentityPermission_IsForbiddenAndCompensated()
+    public async Task Create_ServiceTokenWithoutIdentityPermission_IsForbiddenWithoutProfileDelete()
     {
         using var signingKey = RSA.Create(2048);
         await using var customer = await StartCustomerCreationPermissionPipelineAsync(signingKey);
@@ -967,7 +1020,8 @@ public sealed class BffCustomersProxyContractTests
     private static async Task<HttpResponseMessage> SendCreateAsync(
         HttpClient client,
         CreateCustomerAccountRequest requestBody,
-        bool includeCsrf)
+        bool includeCsrf,
+        Guid? operationId = null)
     {
         using var request = new HttpRequestMessage(HttpMethod.Post, "/bff/customers")
         {
@@ -979,6 +1033,8 @@ public sealed class BffCustomersProxyContractTests
             var session = await sessionResponse.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>();
             request.Headers.Add("X-CSRF-TOKEN", session.GetProperty("csrfToken").GetString());
         }
+
+        if (operationId is { } key) request.Headers.Add("Idempotency-Key", key.ToString("D"));
 
         return await client.SendAsync(request);
     }
@@ -1155,7 +1211,8 @@ public sealed class BffCustomersProxyContractTests
                 request.Method,
                 request.RequestUri?.PathAndQuery,
                 request.Headers.Authorization?.ToString(),
-                request.Content is null ? null : await request.Content.ReadAsStringAsync(cancellationToken)));
+                request.Content is null ? null : await request.Content.ReadAsStringAsync(cancellationToken),
+                request.Headers.TryGetValues("Idempotency-Key", out var keys) ? keys.Single() : null));
             var response = _responses.Dequeue();
             return new HttpResponseMessage(response.StatusCode)
             {
@@ -1164,7 +1221,7 @@ public sealed class BffCustomersProxyContractTests
         }
     }
 
-    private sealed record RecordedRequest(HttpMethod Method, string? PathAndQuery, string? Authorization, string? Body);
+    private sealed record RecordedRequest(HttpMethod Method, string? PathAndQuery, string? Authorization, string? Body, string? IdempotencyKey);
 
     private const string CustomerPageJson =
         """{"Items":[{"Id":42,"FirstName":"Ada","LastName":"Lovelace","FullName":"Ada Lovelace","Email":"ada@example.com","Company":{"Id":7,"Name":"Analytical Engines Ltd"}}],"PageIndex":2,"TotalPages":4,"TotalRecords":75,"HasNextPage":true,"HasPreviousPage":true}""";

@@ -3,7 +3,7 @@ namespace Legacy.Maliev.Intranet.Tests;
 public sealed class CustomersCreateWasmMigrationContractTests
 {
     [Fact]
-    public void CustomersCreateSlice_IsLazyAuthorizedCsrfProtectedAndPreservesRollback()
+    public void CustomersCreateSlice_IsLazyAuthorizedCsrfProtectedAndKeepsRetryKey()
     {
         var root = FindRoot();
         var featurePage = Path.Combine(root, "Legacy.Maliev.Intranet.Client.Features.Customers", "Pages", "CustomerCreate.razor");
@@ -26,6 +26,8 @@ public sealed class CustomersCreateWasmMigrationContractTests
         Assert.Contains("customer-create__alert", File.ReadAllText(Path.Combine(root, "Legacy.Maliev.Intranet.Client.Features.Customers", "Pages", "CustomerCreate.razor.css")), StringComparison.Ordinal);
         Assert.Contains("submitting", page, StringComparison.Ordinal);
         Assert.Contains("X-CSRF-TOKEN", page, StringComparison.Ordinal);
+        Assert.Contains("private readonly Guid createOperationId = Guid.NewGuid()", page, StringComparison.Ordinal);
+        Assert.Contains("request.Headers.Add(\"Idempotency-Key\", createOperationId.ToString(\"D\"))", page, StringComparison.Ordinal);
         Assert.Contains("JsonContent.Create(model)", page, StringComparison.Ordinal);
         Assert.Contains("HttpMethod.Post, \"/bff/customers\"", page, StringComparison.Ordinal);
         Assert.Contains("HttpStatusCode.Unauthorized", page, StringComparison.Ordinal);
@@ -43,6 +45,8 @@ public sealed class CustomersCreateWasmMigrationContractTests
         Assert.Contains("/customers", clientSource, StringComparison.Ordinal);
         Assert.Contains("/auth/v1/customer-identities/", clientSource, StringComparison.Ordinal);
         Assert.Contains("JsonContent.Create", clientSource, StringComparison.Ordinal);
+        Assert.Contains("message.Headers.Add(\"Idempotency-Key\", operationId.ToString(\"D\"))", clientSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("profiles.DeleteAsync", File.ReadAllText(workflow), StringComparison.Ordinal);
         Assert.Contains("MapPost(\"/bff/customers\"", bffProgram, StringComparison.Ordinal);
         Assert.Contains("CustomerAccountCreationService", bffProgram, StringComparison.Ordinal);
         Assert.Contains("AntiforgeryValidationFilter", bffProgram, StringComparison.Ordinal);

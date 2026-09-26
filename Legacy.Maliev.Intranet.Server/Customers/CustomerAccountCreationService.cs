@@ -38,10 +38,8 @@ public sealed record CustomerAccountCreationResult(
 public interface ICustomerProfileCreationClient
 {
     /// <summary>Creates the customer profile using the exact legacy JSON contract.</summary>
-    Task<HttpResponseMessage> CreateAsync(CreateCustomerAccountRequest request, CancellationToken cancellationToken);
+    Task<HttpResponseMessage> CreateAsync(CreateCustomerAccountRequest request, Guid operationId, CancellationToken cancellationToken);
 
-    /// <summary>Deletes a profile when the following identity step fails.</summary>
-    Task<HttpResponseMessage> DeleteAsync(int customerId, CancellationToken cancellationToken);
 }
 
 /// <summary>Server-authenticated AuthService client used only by the account workflow.</summary>
@@ -63,19 +61,21 @@ public sealed class CustomerAccountCreationService(
     /// <summary>Creates a customer profile and identity or returns a safe downstream outcome.</summary>
     public Task<CustomerAccountCreationResult> CreateAsync(
         CreateCustomerAccountRequest request,
+        Guid operationId,
         CancellationToken cancellationToken)
     {
-        return CreateCoreAsync(request, cancellationToken);
+        return CreateCoreAsync(request, operationId, cancellationToken);
     }
 
     private async Task<CustomerAccountCreationResult> CreateCoreAsync(
         CreateCustomerAccountRequest request,
+        Guid operationId,
         CancellationToken cancellationToken)
     {
         HttpResponseMessage profileResponse;
         try
         {
-            profileResponse = await profiles.CreateAsync(request, cancellationToken);
+            profileResponse = await profiles.CreateAsync(request, operationId, cancellationToken);
         }
         catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
         {
@@ -157,9 +157,14 @@ public sealed class CustomerAccountCreationService(
             return identityResult;
         }
 
-        return await CompensateAsync(customerId, identityResult, CancellationToken.None)
-            ? identityResult
-            : new(CustomerAccountCreationStatus.Unavailable);
+        // A keyed profile response may be a replay of an earlier committed create.
+        // AuthService cannot yet prove whether an uncertain identity create committed
+        // to this attempt, so deleting the profile would risk orphaning that identity.
+        logger.LogWarning(
+            "Customer account {CustomerId} requires identity reconciliation after {WorkflowStatus}; profile was retained.",
+            customerId,
+            identityResult.Status);
+        return identityResult with { CustomerId = customerId };
     }
 
     private async Task<CustomerAccountCreationResult> CreateOnboardingChallengeAsync(int customerId)
@@ -188,45 +193,6 @@ public sealed class CustomerAccountCreationService(
                 "Customer identity {CustomerId} was created but its onboarding challenge was unavailable.",
                 customerId);
             return new(CustomerAccountCreationStatus.Created, customerId);
-        }
-    }
-
-    private async Task<bool> CompensateAsync(
-        int customerId,
-        CustomerAccountCreationResult originalResult,
-        CancellationToken cancellationToken)
-    {
-        try
-        {
-            using var response = await profiles.DeleteAsync(customerId, cancellationToken);
-            if (response.IsSuccessStatusCode || response.StatusCode == HttpStatusCode.NotFound)
-            {
-                return true;
-            }
-
-            logger.LogError(
-                "Customer profile compensation failed with HTTP {StatusCode} for profile {CustomerId} after {WorkflowStatus}.",
-                (int)response.StatusCode,
-                customerId,
-                originalResult.Status);
-            return false;
-        }
-        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
-        {
-            logger.LogError(
-                "Customer profile compensation timed out for profile {CustomerId} after {WorkflowStatus}.",
-                customerId,
-                originalResult.Status);
-            return false;
-        }
-        catch (HttpRequestException exception)
-        {
-            logger.LogError(
-                exception,
-                "Customer profile compensation was unavailable for profile {CustomerId} after {WorkflowStatus}.",
-                customerId,
-                originalResult.Status);
-            return false;
         }
     }
 
