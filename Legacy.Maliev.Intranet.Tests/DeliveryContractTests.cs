@@ -87,6 +87,31 @@ public sealed class DeliveryContractTests
     }
 
     [Fact]
+    public void ImageBuilds_DoNotUseRetiredNodeGraphOrPruneHostImages()
+    {
+        var root = FindRoot();
+        var paths = new[]
+        {
+            Path.Combine(root, "Legacy.Maliev.Intranet", "Dockerfile"),
+            Path.Combine(root, "Legacy.Maliev.Intranet.Bff", "Dockerfile"),
+            Path.Combine(root, ".github", "workflows", "publish-image.yml"),
+        };
+
+        Assert.All(paths, path =>
+        {
+            var content = File.ReadAllText(path);
+            Assert.DoesNotContain("npm ", content, StringComparison.OrdinalIgnoreCase);
+            Assert.DoesNotContain("gulp", content, StringComparison.OrdinalIgnoreCase);
+            Assert.DoesNotContain("docker image prune", content, StringComparison.OrdinalIgnoreCase);
+        });
+
+        Assert.False(File.Exists(Path.Combine(root, "package.json")));
+        Assert.False(File.Exists(Path.Combine(root, "package-lock.json")));
+        Assert.False(File.Exists(Path.Combine(root, "Legacy.Maliev.Intranet", "package.json")));
+        Assert.False(File.Exists(Path.Combine(root, "Legacy.Maliev.Intranet", "package-lock.json")));
+    }
+
+    [Fact]
     public void Kustomization_DeclaresSeparateCompatibilityAndBffRuntimeResources()
     {
         var root = FindRoot();
