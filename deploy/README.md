@@ -16,3 +16,22 @@ These manifests are planning artifacts only. Deployment stays disabled until eve
 - One small replica preserves cluster capacity until measured load proves a different setting is safe without additional cost.
 
 The authoritative ingress, secret projection and environment overlay belong in `MALIEV-Co-Ltd/maliev-gitops` after the migration is complete.
+
+## Source deployment changes after extraction
+
+The original Intranet commit `7435f6b8fde7cb06c439532f5aac0f8a31778175`
+made its Node/Gulp release script restore the lockfile graph with `npm ci` and
+replaced host-wide `docker image prune -a` with dangling-image pruning. The
+migrated Intranet has no Node/Gulp release graph or imperative `deploy.ps1`:
+both images build the .NET application in a fresh Docker stage, exclude local
+`bin`/`obj` from the context, and pin the shared source dependencies by commit
+SHA. The image workflow invokes a pinned reusable workflow, is disabled until
+`LEGACY_DEPLOY_ENABLED=true`, and does not prune host images. Delivery contract
+tests protect those boundaries. This records the behavior mapping; it does not
+authorize image publication or application deployment.
+
+The original commit `4198baa6b0e7903f2b9b6e3d5d68f9d2c2b5b0db` only
+upgraded `js-yaml` in the retired Intranet `package-lock.json`. There is no
+`js-yaml` or npm graph in the migrated repository, so that dependency change
+has no migrated runtime/build target. NuGet, Docker, and GitHub Actions remain
+covered by their own dependency update configuration.
