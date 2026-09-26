@@ -52,6 +52,11 @@ jobs:
         with:
           solution: Legacy.Maliev.Intranet.slnx
           use-local-maliev-dependencies: 'true'
+      - name: Verify compatibility and BFF image restore
+        shell: bash
+        run: |
+          docker build --file Legacy.Maliev.Intranet/Dockerfile --target build --tag legacy-intranet-compatibility-restore:validation .
+          docker build --file Legacy.Maliev.Intranet.Bff/Dockerfile --target build --tag legacy-intranet-bff-restore:validation .
       - name: Collect and gate Intranet coverage
         shell: bash
         run: |
