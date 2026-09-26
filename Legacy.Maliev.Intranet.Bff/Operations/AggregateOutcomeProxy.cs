@@ -20,8 +20,13 @@ public sealed class AggregateOutcomeProxy(IHttpClientFactory clients)
         string accessToken,
         CancellationToken cancellationToken)
     {
-        var clientName = source == "quotation" ? QuotationClient : AccountingClient;
-        var path = source == "quotation" ? "/quotations/outcomes/readback" : "/invoices/outcomes/readback";
+        var clientName = source == "invoice" ? AccountingClient : QuotationClient;
+        var path = source switch
+        {
+            "quotation" => "/quotations/outcomes/readback",
+            "qualification" => "/quotationrequests/qualification-outcomes/readback",
+            _ => "/invoices/outcomes/readback",
+        };
         path += "?fromUtc=" + Uri.EscapeDataString(fromUtc.ToString("O", CultureInfo.InvariantCulture))
             + "&toUtc=" + Uri.EscapeDataString(toUtc.ToString("O", CultureInfo.InvariantCulture));
         using var request = new HttpRequestMessage(HttpMethod.Get, path);
