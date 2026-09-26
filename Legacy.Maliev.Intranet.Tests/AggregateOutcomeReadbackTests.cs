@@ -21,8 +21,10 @@ public sealed class AggregateOutcomeReadbackTests
     private const string From = "2026-08-25T17:00:00Z";
     private const string To = "2026-09-01T17:00:00Z";
 
-    [Fact]
-    public async Task AnonymousOperationsReadbackIsChallengedByRealRouting()
+    [Theory]
+    [InlineData("/Operations/OutcomeReadback")]
+    [InlineData("/Analytics/OutcomeReadback")]
+    public async Task AnonymousReadbackIsChallengedByRealRouting(string path)
     {
         await using var factory = new WebApplicationFactory<BffProgram>().WithWebHostBuilder(builder =>
         {
@@ -35,27 +37,32 @@ public sealed class AggregateOutcomeReadbackTests
             BaseAddress = new Uri("https://localhost"),
         });
 
-        using var response = await client.GetAsync(Route("quotation"));
+        using var response = await client.GetAsync(Route("quotation", path));
 
         Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
         Assert.Contains("Login", response.Headers.Location?.ToString(), StringComparison.OrdinalIgnoreCase);
     }
 
     [Theory]
-    [InlineData("quotation", "/quotations/outcomes/readback", "quotation")]
-    [InlineData("invoice", "/invoices/outcomes/readback", "invoice")]
-    [InlineData("qualification", "/quotationrequests/qualification-outcomes/readback", "qualification")]
-    [InlineData("qualification", "/quotationrequests/qualification-outcomes/readback", "qualification-mixed")]
+    [InlineData("quotation", "/quotations/outcomes/readback", "quotation", "/Operations/OutcomeReadback")]
+    [InlineData("quotation", "/quotations/outcomes/readback", "quotation", "/Analytics/OutcomeReadback")]
+    [InlineData("invoice", "/invoices/outcomes/readback", "invoice", "/Operations/OutcomeReadback")]
+    [InlineData("invoice", "/invoices/outcomes/readback", "invoice", "/Analytics/OutcomeReadback")]
+    [InlineData("qualification", "/quotationrequests/qualification-outcomes/readback", "qualification", "/Operations/OutcomeReadback")]
+    [InlineData("qualification", "/quotationrequests/qualification-outcomes/readback", "qualification", "/Analytics/OutcomeReadback")]
+    [InlineData("qualification", "/quotationrequests/qualification-outcomes/readback", "qualification-mixed", "/Operations/OutcomeReadback")]
+    [InlineData("qualification", "/quotationrequests/qualification-outcomes/readback", "qualification-mixed", "/Analytics/OutcomeReadback")]
     public async Task EmployeeSessionUsesFixedProducerRouteAndReturnsAggregateOnlyEnvelope(
         string source,
         string expectedPath,
-        string fixture)
+        string fixture,
+        string route)
     {
         var upstream = new RecordingHandler(Fixture(fixture), HttpStatusCode.OK);
         await using var factory = new OutcomeBffFactory(upstream, PermissionsFor(source));
         using var client = factory.CreateClient(ClientOptions());
 
-        using var response = await client.GetAsync(Route(source));
+        using var response = await client.GetAsync(Route(source, route));
         var json = await response.Content.ReadAsStringAsync();
         using var document = JsonDocument.Parse(json);
 
@@ -112,16 +119,19 @@ public sealed class AggregateOutcomeReadbackTests
     }
 
     [Theory]
-    [InlineData("quotation")]
-    [InlineData("invoice")]
-    [InlineData("qualification")]
-    public async Task SourceSpecificReadPermissionIsRequiredBeforeProducerCall(string source)
+    [InlineData("quotation", "/Operations/OutcomeReadback")]
+    [InlineData("quotation", "/Analytics/OutcomeReadback")]
+    [InlineData("invoice", "/Operations/OutcomeReadback")]
+    [InlineData("invoice", "/Analytics/OutcomeReadback")]
+    [InlineData("qualification", "/Operations/OutcomeReadback")]
+    [InlineData("qualification", "/Analytics/OutcomeReadback")]
+    public async Task SourceSpecificReadPermissionIsRequiredBeforeProducerCall(string source, string route)
     {
         var upstream = new RecordingHandler(Fixture(source), HttpStatusCode.OK);
         await using var factory = new OutcomeBffFactory(upstream, []);
         using var client = factory.CreateClient(ClientOptions());
 
-        using var response = await client.GetAsync(Route(source));
+        using var response = await client.GetAsync(Route(source, route));
 
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
         Assert.Equal(0, upstream.Calls);
@@ -278,8 +288,8 @@ public sealed class AggregateOutcomeReadbackTests
         BaseAddress = new Uri("https://localhost"),
     };
 
-    private static string Route(string source) =>
-        $"/Operations/OutcomeReadback?source={source}&fromUtc={Uri.EscapeDataString(From)}&toUtc={Uri.EscapeDataString(To)}";
+    private static string Route(string source, string path = "/Operations/OutcomeReadback") =>
+        $"{path}?source={source}&fromUtc={Uri.EscapeDataString(From)}&toUtc={Uri.EscapeDataString(To)}";
 
     private static string[] PermissionsFor(string source) => source switch
     {
