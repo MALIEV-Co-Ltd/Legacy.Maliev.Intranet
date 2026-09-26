@@ -26,6 +26,8 @@ using Microsoft.AspNetCore.WebUtilities;
 using System.ComponentModel.DataAnnotations;
 using System.Globalization;
 using System.Net.Http.Json;
+using System.Security.Cryptography;
+using System.Text;
 using System.Threading.RateLimiting;
 using Polly;
 
@@ -2033,7 +2035,26 @@ app.MapPost("/bff/customers", async (
         return Results.ValidationProblem(errors);
     }
 
-    var result = await workflow.CreateAsync(request, cancellationToken);
+    var operationId = Guid.NewGuid();
+    if (context.Request.Headers.TryGetValue("Idempotency-Key", out var keyHeader))
+    {
+        if (keyHeader.Count != 1 || !Guid.TryParse(keyHeader[0], out operationId) || operationId == Guid.Empty)
+        {
+            return Results.ValidationProblem(new Dictionary<string, string[]>
+            {
+                ["Idempotency-Key"] = ["A single non-empty GUID Idempotency-Key is required."],
+            });
+        }
+    }
+
+    var employeeIdentityId = context.User.FindFirstValue(ClaimTypes.NameIdentifier);
+    if (string.IsNullOrWhiteSpace(employeeIdentityId))
+    {
+        return Results.StatusCode(StatusCodes.Status403Forbidden);
+    }
+
+    var downstreamOperationId = DeriveCustomerCreateOperationId(employeeIdentityId, operationId);
+    var result = await workflow.CreateAsync(request, downstreamOperationId, cancellationToken);
     if (result.Status == Legacy.Maliev.Intranet.Customers.CustomerAccountCreationStatus.RateLimited &&
         result.RetryAfter is { } retryAfter)
     {
@@ -2701,6 +2722,13 @@ static bool TryGetLegacyEmployeeId(ClaimsPrincipal principal, out int employeeId
         NumberStyles.None,
         CultureInfo.InvariantCulture,
         out employeeId) && employeeId > 0;
+
+static Guid DeriveCustomerCreateOperationId(string employeeIdentityId, Guid operationId)
+{
+    var value = $"maliev-intranet:customer-create:v1:{employeeIdentityId}:{operationId:N}";
+    var digest = SHA256.HashData(Encoding.UTF8.GetBytes(value));
+    return new Guid(digest.AsSpan(0, 16));
+}
 
 static async Task<IResult> GetSelfProfileAsync(
     int employeeId,

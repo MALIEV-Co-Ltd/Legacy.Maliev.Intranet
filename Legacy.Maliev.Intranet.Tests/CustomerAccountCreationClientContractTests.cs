@@ -13,11 +13,13 @@ public sealed class CustomerAccountCreationClientContractTests
         var handler = new RecordingHandler(HttpStatusCode.Created, "{\"id\":42}");
         var client = new CustomerProfileCreationClient(CreateHttpClient(handler));
 
-        using var response = await client.CreateAsync(ValidRequest(), CancellationToken.None);
+        var operationId = Guid.Parse("1904e7f5-7223-45c9-8ea3-91c0aa498cf0");
+        using var response = await client.CreateAsync(ValidRequest(), operationId, CancellationToken.None);
 
         Assert.Equal(HttpMethod.Post, handler.Method);
         Assert.Equal("/customers", handler.PathAndQuery);
         Assert.Equal("Bearer signed-service-token", handler.Authorization);
+        Assert.Equal(operationId.ToString("D"), handler.IdempotencyKey);
         Assert.Contains("\"firstName\":\"Ada\"", handler.Body, StringComparison.Ordinal);
         Assert.Contains("\"lastName\":\"Lovelace\"", handler.Body, StringComparison.Ordinal);
         Assert.Contains("\"email\":\"ada@example.com\"", handler.Body, StringComparison.Ordinal);
@@ -59,19 +61,6 @@ public sealed class CustomerAccountCreationClientContractTests
         Assert.Null(handler.Body);
     }
 
-    [Fact]
-    public async Task ProfileCompensation_UsesOwnedDeleteRoute()
-    {
-        var handler = new RecordingHandler(HttpStatusCode.NoContent, string.Empty);
-        var client = new CustomerProfileCreationClient(CreateHttpClient(handler));
-
-        using var response = await client.DeleteAsync(42, CancellationToken.None);
-
-        Assert.Equal(HttpMethod.Delete, handler.Method);
-        Assert.Equal("/customers/42", handler.PathAndQuery);
-        Assert.Null(handler.Body);
-    }
-
     private static HttpClient CreateHttpClient(HttpMessageHandler handler)
     {
         var client = new HttpClient(handler) { BaseAddress = new Uri("http://downstream") };
@@ -95,6 +84,7 @@ public sealed class CustomerAccountCreationClientContractTests
         public HttpMethod? Method { get; private set; }
         public string? PathAndQuery { get; private set; }
         public string? Authorization { get; private set; }
+        public string? IdempotencyKey { get; private set; }
         public string? Body { get; private set; }
 
         protected override async Task<HttpResponseMessage> SendAsync(
@@ -104,6 +94,7 @@ public sealed class CustomerAccountCreationClientContractTests
             Method = request.Method;
             PathAndQuery = request.RequestUri?.PathAndQuery;
             Authorization = request.Headers.Authorization?.ToString();
+            IdempotencyKey = request.Headers.TryGetValues("Idempotency-Key", out var values) ? values.Single() : null;
             Body = request.Content is null ? null : await request.Content.ReadAsStringAsync(cancellationToken);
             return new HttpResponseMessage(statusCode)
             {

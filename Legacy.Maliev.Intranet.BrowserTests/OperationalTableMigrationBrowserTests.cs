@@ -338,6 +338,51 @@ public sealed class OperationalTableMigrationBrowserTests(
         Assert.Contains("instructions", await form.InnerTextAsync(), StringComparison.OrdinalIgnoreCase);
     }
 
+    [Fact]
+    public async Task CustomerCreate_UnchangedRetryReusesKeyButEditedRetryRotatesIt()
+    {
+        await using var context = await playwright.Browser.NewContextAsync(new()
+        {
+            ViewportSize = new() { Width = 1280, Height = 900 },
+            ReducedMotion = ReducedMotion.Reduce,
+        });
+        var page = await context.NewPageAsync();
+        await StubSalesBoundariesAsync(page);
+        var keys = new List<string>();
+        await page.RouteAsync("**/bff/customers", async route =>
+        {
+            keys.Add(route.Request.Headers["idempotency-key"]);
+            await route.FulfillAsync(new()
+            {
+                Status = 503,
+                ContentType = "application/problem+json",
+                Body = "{\"title\":\"Customer creation unavailable\",\"status\":503}",
+            });
+        });
+        await page.GotoAsync(new Uri(server.BaseUri, "customers/new").AbsoluteUri);
+        await page.Locator("#customer-create-first-name").FillAsync("Ada");
+        await page.Locator("#customer-create-last-name").FillAsync("Lovelace");
+        await page.Locator("#customer-create-email").FillAsync("ada@example.test");
+        await page.Locator("#customer-create-telephone").FillAsync("021234567");
+        var submit = page.Locator("button[type='submit']");
+
+        await submit.ClickAsync();
+        await page.Locator(".customer-create__alert").WaitForAsync();
+        await submit.ClickAsync();
+        await Assertions.Expect(page.Locator(".customer-create__alert")).ToBeVisibleAsync();
+        await page.Locator("#customer-create-first-name").FillAsync("Grace");
+        var changedResponse = page.WaitForResponseAsync("**/bff/customers");
+        await submit.ClickAsync();
+        await changedResponse;
+
+        Assert.Equal(3, keys.Count);
+        Assert.True(Guid.TryParse(keys[0], out var key));
+        Assert.NotEqual(Guid.Empty, key);
+        Assert.Equal(keys[0], keys[1]);
+        Assert.True(Guid.TryParse(keys[2], out var changedKey));
+        Assert.NotEqual(key, changedKey);
+    }
+
     [Theory]
     [MemberData(nameof(OperationalWavePages))]
     public async Task OperationalWaveUsesContainedTablesExactRoutesAndSingleQuickView(

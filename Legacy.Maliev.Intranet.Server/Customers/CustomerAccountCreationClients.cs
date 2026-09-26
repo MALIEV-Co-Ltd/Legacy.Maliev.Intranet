@@ -9,6 +9,7 @@ public sealed class CustomerProfileCreationClient(HttpClient httpClient) : ICust
     /// <inheritdoc />
     public async Task<HttpResponseMessage> CreateAsync(
         CreateCustomerAccountRequest request,
+        Guid operationId,
         CancellationToken cancellationToken)
     {
         using var message = new HttpRequestMessage(HttpMethod.Post, "/customers")
@@ -25,13 +26,7 @@ public sealed class CustomerProfileCreationClient(HttpClient httpClient) : ICust
                 null,
                 null)),
         };
-        return await httpClient.SendAsync(message, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
-    }
-
-    /// <inheritdoc />
-    public async Task<HttpResponseMessage> DeleteAsync(int customerId, CancellationToken cancellationToken)
-    {
-        using var message = new HttpRequestMessage(HttpMethod.Delete, $"/customers/{customerId}");
+        message.Headers.Add("Idempotency-Key", operationId.ToString("D"));
         return await httpClient.SendAsync(message, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
     }
 

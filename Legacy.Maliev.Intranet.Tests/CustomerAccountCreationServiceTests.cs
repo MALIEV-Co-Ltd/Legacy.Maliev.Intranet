@@ -8,6 +8,8 @@ namespace Legacy.Maliev.Intranet.Tests;
 
 public sealed class CustomerAccountCreationServiceTests
 {
+    private static readonly Guid TestOperationId = Guid.Parse("1904e7f5-7223-45c9-8ea3-91c0aa498cf0");
+
     [Fact]
     public async Task CreateAsync_ValidProfileAndIdentity_ReturnsCreatedWithoutCompensation()
     {
@@ -15,7 +17,7 @@ public sealed class CustomerAccountCreationServiceTests
         var identities = new IdentityClientStub(Response(HttpStatusCode.Created, "{\"databaseID\":42}"));
         var service = CreateService(profiles, identities);
 
-        var result = await service.CreateAsync(ValidRequest(), CancellationToken.None);
+        var result = await service.CreateAsync(ValidRequest(), TestOperationId, CancellationToken.None);
 
         Assert.Equal(CustomerAccountCreationStatus.Created, result.Status);
         Assert.Equal(42, result.CustomerId);
@@ -43,7 +45,7 @@ public sealed class CustomerAccountCreationServiceTests
         var identities = new IdentityClientStub(Response(HttpStatusCode.Created, "{\"databaseID\":42}"));
         var service = CreateService(profiles, identities);
 
-        var result = await service.CreateAsync(ValidRequest(), CancellationToken.None);
+        var result = await service.CreateAsync(ValidRequest(), TestOperationId, CancellationToken.None);
 
         Assert.Equal(expectedStatus, result.Status);
         Assert.Empty(identities.CustomerIds);
@@ -61,7 +63,7 @@ public sealed class CustomerAccountCreationServiceTests
     [InlineData(HttpStatusCode.Conflict, CustomerAccountCreationStatus.Conflict)]
     [InlineData(HttpStatusCode.TooManyRequests, CustomerAccountCreationStatus.RateLimited)]
     [InlineData(HttpStatusCode.InternalServerError, CustomerAccountCreationStatus.Unavailable)]
-    public async Task CreateAsync_IdentityFailure_CompensatesProfile(
+    public async Task CreateAsync_IdentityFailure_RetainsProfileForReconciliation(
         HttpStatusCode downstreamStatus,
         CustomerAccountCreationStatus expectedStatus)
     {
@@ -69,10 +71,11 @@ public sealed class CustomerAccountCreationServiceTests
         var identities = new IdentityClientStub(Response(downstreamStatus, "{}", retryAfterSeconds: 5));
         var service = CreateService(profiles, identities);
 
-        var result = await service.CreateAsync(ValidRequest(), CancellationToken.None);
+        var result = await service.CreateAsync(ValidRequest(), TestOperationId, CancellationToken.None);
 
         Assert.Equal(expectedStatus, result.Status);
-        Assert.Equal([42], profiles.DeletedIds);
+        Assert.Equal(42, result.CustomerId);
+        Assert.Empty(profiles.DeletedIds);
         if (downstreamStatus == HttpStatusCode.TooManyRequests)
         {
             Assert.Equal(TimeSpan.FromSeconds(5), result.RetryAfter);
@@ -80,79 +83,100 @@ public sealed class CustomerAccountCreationServiceTests
     }
 
     [Fact]
-    public async Task CreateAsync_InvalidIdentityPayload_CompensatesAndReturnsBadGateway()
+    public async Task CreateAsync_InvalidIdentityPayload_RetainsProfileAndReturnsBadGateway()
     {
         var profiles = new ProfileClientStub(Response(HttpStatusCode.Created, "{\"id\":42}"));
         var identities = new IdentityClientStub(Response(HttpStatusCode.Created, "not-json"));
         var service = CreateService(profiles, identities);
 
-        var result = await service.CreateAsync(ValidRequest(), CancellationToken.None);
+        var result = await service.CreateAsync(ValidRequest(), TestOperationId, CancellationToken.None);
 
         Assert.Equal(CustomerAccountCreationStatus.BadGateway, result.Status);
-        Assert.Equal([42], profiles.DeletedIds);
+        Assert.Equal(42, result.CustomerId);
+        Assert.Empty(profiles.DeletedIds);
     }
 
     [Fact]
-    public async Task CreateAsync_IdentityTransportFailure_CompensatesAndReturnsUnavailable()
+    public async Task CreateAsync_IdentityTransportFailure_RetainsProfileAndReturnsUnavailable()
     {
         var profiles = new ProfileClientStub(Response(HttpStatusCode.Created, "{\"id\":42}"));
         var identities = new IdentityClientStub(new HttpRequestException("auth unavailable"));
         var service = CreateService(profiles, identities);
 
-        var result = await service.CreateAsync(ValidRequest(), CancellationToken.None);
+        var result = await service.CreateAsync(ValidRequest(), TestOperationId, CancellationToken.None);
 
         Assert.Equal(CustomerAccountCreationStatus.Unavailable, result.Status);
-        Assert.Equal([42], profiles.DeletedIds);
+        Assert.Equal(42, result.CustomerId);
+        Assert.Empty(profiles.DeletedIds);
     }
 
     [Fact]
-    public async Task CreateAsync_CompensationFailure_FailsClosedWithoutMaskingWithAnException()
+    public async Task CreateAsync_IdentityConflict_DoesNotDeletePossiblyReplayedProfile()
     {
-        var profiles = new ProfileClientStub(
-            Response(HttpStatusCode.Created, "{\"id\":42}"),
-            deleteException: new HttpRequestException("delete unavailable"));
+        var profiles = new ProfileClientStub(Response(HttpStatusCode.Created, "{\"id\":42}"));
         var identities = new IdentityClientStub(Response(HttpStatusCode.Conflict, "{}"));
         var service = CreateService(profiles, identities);
 
-        var result = await service.CreateAsync(ValidRequest(), CancellationToken.None);
+        var result = await service.CreateAsync(ValidRequest(), TestOperationId, CancellationToken.None);
 
-        Assert.Equal(CustomerAccountCreationStatus.Unavailable, result.Status);
-        Assert.Equal([42], profiles.DeletedIds);
+        Assert.Equal(CustomerAccountCreationStatus.Conflict, result.Status);
+        Assert.Empty(profiles.DeletedIds);
     }
 
     [Fact]
-    public async Task CreateAsync_DuplicateSubmission_CompensatesOnlyTheDuplicateProfile()
+    public async Task CreateAsync_ReplayedProfile_IdentityConflictRetainsOriginalProfile()
     {
         var profiles = new ProfileClientStub(
             Response(HttpStatusCode.Created, "{\"id\":41}"),
-            Response(HttpStatusCode.Created, "{\"id\":42}"));
+            Response(HttpStatusCode.Created, "{\"id\":41}"));
         var identities = new IdentityClientStub(
             Response(HttpStatusCode.Created, "{\"databaseID\":41}"),
             Response(HttpStatusCode.Conflict, "{}"));
         var service = CreateService(profiles, identities);
 
-        var first = await service.CreateAsync(ValidRequest(), CancellationToken.None);
-        var duplicate = await service.CreateAsync(ValidRequest(), CancellationToken.None);
+        var first = await service.CreateAsync(ValidRequest(), TestOperationId, CancellationToken.None);
+        var duplicate = await service.CreateAsync(ValidRequest(), TestOperationId, CancellationToken.None);
 
         Assert.Equal(CustomerAccountCreationStatus.Created, first.Status);
         Assert.Equal(41, first.CustomerId);
         Assert.Equal(CustomerAccountCreationStatus.Conflict, duplicate.Status);
-        Assert.Equal([42], profiles.DeletedIds);
+        Assert.Equal(41, duplicate.CustomerId);
+        Assert.Equal([TestOperationId, TestOperationId], profiles.OperationIds);
+        Assert.Empty(profiles.DeletedIds);
     }
 
     [Fact]
-    public async Task CreateAsync_CallerCancelsAfterProfileCreation_StillCompensatesTheProfile()
+    public async Task CreateAsync_ProfileResponseLost_RetryUsesOriginalOperationKey()
+    {
+        var profiles = new ProfileClientStub(
+            new HttpRequestException("response lost after commit"),
+            Response(HttpStatusCode.Created, "{\"id\":42}"));
+        var identities = new IdentityClientStub(Response(HttpStatusCode.Created, "{\"databaseID\":42}"));
+        var service = CreateService(profiles, identities);
+
+        var uncertain = await service.CreateAsync(ValidRequest(), TestOperationId, CancellationToken.None);
+        var replay = await service.CreateAsync(ValidRequest(), TestOperationId, CancellationToken.None);
+
+        Assert.Equal(CustomerAccountCreationStatus.Unavailable, uncertain.Status);
+        Assert.Equal(CustomerAccountCreationStatus.Created, replay.Status);
+        Assert.Equal(42, replay.CustomerId);
+        Assert.Equal([TestOperationId, TestOperationId], profiles.OperationIds);
+        Assert.Empty(profiles.DeletedIds);
+    }
+
+    [Fact]
+    public async Task CreateAsync_CallerCancelsAfterProfileCreation_RetainsProfile()
     {
         using var cancellation = new CancellationTokenSource();
         var profiles = new ProfileClientStub(Response(HttpStatusCode.Created, "{\"id\":42}"));
         var identities = new CancelingIdentityClient(cancellation);
         var service = CreateService(profiles, identities);
 
-        var result = await service.CreateAsync(ValidRequest(), cancellation.Token);
+        var result = await service.CreateAsync(ValidRequest(), TestOperationId, cancellation.Token);
 
         Assert.True(cancellation.IsCancellationRequested);
         Assert.Equal(CustomerAccountCreationStatus.Unavailable, result.Status);
-        Assert.Equal([42], profiles.DeletedIds);
+        Assert.Empty(profiles.DeletedIds);
     }
 
     [Fact]
@@ -166,7 +190,7 @@ public sealed class CustomerAccountCreationServiceTests
             new IdentityClientStub(Response(HttpStatusCode.Created, "{\"databaseID\":42}")));
 
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
-            service.CreateAsync(ValidRequest(), cancellation.Token));
+            service.CreateAsync(ValidRequest(), TestOperationId, cancellation.Token));
 
         Assert.Empty(profiles.DeletedIds);
     }
@@ -224,8 +248,13 @@ public sealed class CustomerAccountCreationServiceTests
 
         public List<int> DeletedIds { get; } = [];
 
-        public Task<HttpResponseMessage> CreateAsync(CreateCustomerAccountRequest request, CancellationToken cancellationToken) =>
-            NextAsync(_createResults);
+        public List<Guid> OperationIds { get; } = [];
+
+        public Task<HttpResponseMessage> CreateAsync(CreateCustomerAccountRequest request, Guid operationId, CancellationToken cancellationToken)
+        {
+            OperationIds.Add(operationId);
+            return NextAsync(_createResults);
+        }
 
         public Task<HttpResponseMessage> DeleteAsync(int customerId, CancellationToken cancellationToken)
         {
