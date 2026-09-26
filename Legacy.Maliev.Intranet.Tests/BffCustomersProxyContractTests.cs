@@ -616,12 +616,47 @@ public sealed class BffCustomersProxyContractTests
         Assert.Equal(HttpStatusCode.ServiceUnavailable, first.StatusCode);
         Assert.Equal(HttpStatusCode.Conflict, replay.StatusCode);
         Assert.Equal(2, profile.Requests.Count);
+        var downstreamKey = profile.Requests[0].IdempotencyKey;
+        Assert.True(Guid.TryParse(downstreamKey, out var downstreamOperationId));
+        Assert.NotEqual(operationId, downstreamOperationId);
         Assert.All(profile.Requests, request =>
         {
             Assert.Equal(HttpMethod.Post, request.Method);
-            Assert.Equal(operationId.ToString("D"), request.IdempotencyKey);
+            Assert.Equal(downstreamKey, request.IdempotencyKey);
         });
         Assert.Equal(2, identity.Requests.Count);
+    }
+
+    [Fact]
+    public async Task Create_SameBrowserKeyForDifferentEmployees_UsesDistinctDownstreamKeys()
+    {
+        var operationId = Guid.Parse("1904e7f5-7223-45c9-8ea3-91c0aa498cf0");
+        var profile = new RecordingWorkflowHandler(
+            (HttpStatusCode.Created, "{\"id\":42}"),
+            (HttpStatusCode.Created, "{\"id\":42}"));
+        var identity = new RecordingWorkflowHandler(
+            (HttpStatusCode.ServiceUnavailable, "{}"),
+            (HttpStatusCode.ServiceUnavailable, "{}"));
+        await using var factory = new CustomersBffFactory(
+            new RecordingCustomerHandler(HttpStatusCode.OK, CustomerPageJson),
+            hasPermission: true,
+            hasCreatePermission: true,
+            profileDownstream: profile,
+            identityDownstream: identity);
+        using var firstEmployee = CreateClient(factory);
+        using var secondEmployee = CreateClient(factory);
+        await SignInAsync(firstEmployee, "first.employee@maliev.com");
+        await SignInAsync(secondEmployee, "second.employee@maliev.com");
+
+        using var first = await SendCreateAsync(firstEmployee, ValidCreateRequest(), includeCsrf: true, operationId);
+        using var second = await SendCreateAsync(secondEmployee, ValidCreateRequest(), includeCsrf: true, operationId);
+
+        Assert.Equal(HttpStatusCode.ServiceUnavailable, first.StatusCode);
+        Assert.Equal(HttpStatusCode.ServiceUnavailable, second.StatusCode);
+        Assert.Equal(2, profile.Requests.Count);
+        Assert.True(Guid.TryParse(profile.Requests[0].IdempotencyKey, out _));
+        Assert.True(Guid.TryParse(profile.Requests[1].IdempotencyKey, out _));
+        Assert.NotEqual(profile.Requests[0].IdempotencyKey, profile.Requests[1].IdempotencyKey);
     }
 
     [Fact]
@@ -998,7 +1033,7 @@ public sealed class BffCustomersProxyContractTests
             HandleCookies = true,
         });
 
-    private static async Task SignInAsync(HttpClient client)
+    private static async Task SignInAsync(HttpClient client, string email = "employee@maliev.com")
     {
         using var sessionResponse = await client.GetAsync("/bff/session");
         var session = await sessionResponse.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>();
@@ -1007,7 +1042,7 @@ public sealed class BffCustomersProxyContractTests
         {
             Content = JsonContent.Create(new
             {
-                email = "employee@maliev.com",
+                email,
                 password = "password",
                 returnUrl = "/Customers/Index",
             }),
@@ -1136,7 +1171,7 @@ public sealed class BffCustomersProxyContractTests
                 true,
                 new AuthTokenResponse("server-only-access-token", "server-only-refresh-token", "Bearer", 900, DateTimeOffset.UtcNow.AddDays(1)),
                 new EmployeeIdentity(
-                    "employee-id",
+                    email,
                     email,
                     email,
                     [

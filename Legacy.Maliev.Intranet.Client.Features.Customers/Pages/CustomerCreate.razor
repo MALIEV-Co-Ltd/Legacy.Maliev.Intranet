@@ -56,19 +56,29 @@
 
 @code {
     private readonly CreateCustomerAccountRequest model = new();
-    private readonly Guid createOperationId = Guid.NewGuid();
+    private Guid createOperationId = Guid.NewGuid();
     private EditContext editContext = null!;
     private bool submitting;
     private string? error;
     private string? onboardingWarning;
     private int? createdCustomerId;
 
-    protected override void OnInitialized() => editContext = new EditContext(model);
+    protected override void OnInitialized()
+    {
+        editContext = new EditContext(model);
+        editContext.OnFieldChanged += (_, _) => createOperationId = Guid.NewGuid();
+    }
 
     private DateOnly? DateOfBirth
     {
         get => model.DateOfBirth is DateTime date ? DateOnly.FromDateTime(date) : null;
-        set => model.DateOfBirth = value?.ToDateTime(TimeOnly.MinValue);
+        set
+        {
+            var updated = value?.ToDateTime(TimeOnly.MinValue);
+            if (model.DateOfBirth == updated) return;
+            model.DateOfBirth = updated;
+            editContext.NotifyFieldChanged(new FieldIdentifier(model, nameof(model.DateOfBirth)));
+        }
     }
 
     private string? ValidationFor<TValue>(Expression<Func<TValue>> expression) =>

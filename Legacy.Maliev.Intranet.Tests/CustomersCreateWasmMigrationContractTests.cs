@@ -26,7 +26,9 @@ public sealed class CustomersCreateWasmMigrationContractTests
         Assert.Contains("customer-create__alert", File.ReadAllText(Path.Combine(root, "Legacy.Maliev.Intranet.Client.Features.Customers", "Pages", "CustomerCreate.razor.css")), StringComparison.Ordinal);
         Assert.Contains("submitting", page, StringComparison.Ordinal);
         Assert.Contains("X-CSRF-TOKEN", page, StringComparison.Ordinal);
-        Assert.Contains("private readonly Guid createOperationId = Guid.NewGuid()", page, StringComparison.Ordinal);
+        Assert.Contains("private Guid createOperationId = Guid.NewGuid()", page, StringComparison.Ordinal);
+        Assert.Contains("editContext.OnFieldChanged += (_, _) => createOperationId = Guid.NewGuid()", page, StringComparison.Ordinal);
+        Assert.Contains("editContext.NotifyFieldChanged(new FieldIdentifier(model, nameof(model.DateOfBirth)))", page, StringComparison.Ordinal);
         Assert.Contains("request.Headers.Add(\"Idempotency-Key\", createOperationId.ToString(\"D\"))", page, StringComparison.Ordinal);
         Assert.Contains("JsonContent.Create(model)", page, StringComparison.Ordinal);
         Assert.Contains("HttpMethod.Post, \"/bff/customers\"", page, StringComparison.Ordinal);

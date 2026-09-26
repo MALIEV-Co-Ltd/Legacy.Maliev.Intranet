@@ -339,7 +339,7 @@ public sealed class OperationalTableMigrationBrowserTests(
     }
 
     [Fact]
-    public async Task CustomerCreate_RetryAfterUnavailableResponse_ReusesOperationKey()
+    public async Task CustomerCreate_UnchangedRetryReusesKeyButEditedRetryRotatesIt()
     {
         await using var context = await playwright.Browser.NewContextAsync(new()
         {
@@ -370,11 +370,17 @@ public sealed class OperationalTableMigrationBrowserTests(
         await page.Locator(".customer-create__alert").WaitForAsync();
         await submit.ClickAsync();
         await Assertions.Expect(page.Locator(".customer-create__alert")).ToBeVisibleAsync();
+        await page.Locator("#customer-create-first-name").FillAsync("Grace");
+        var changedResponse = page.WaitForResponseAsync("**/bff/customers");
+        await submit.ClickAsync();
+        await changedResponse;
 
-        Assert.Equal(2, keys.Count);
+        Assert.Equal(3, keys.Count);
         Assert.True(Guid.TryParse(keys[0], out var key));
         Assert.NotEqual(Guid.Empty, key);
         Assert.Equal(keys[0], keys[1]);
+        Assert.True(Guid.TryParse(keys[2], out var changedKey));
+        Assert.NotEqual(key, changedKey);
     }
 
     [Theory]
