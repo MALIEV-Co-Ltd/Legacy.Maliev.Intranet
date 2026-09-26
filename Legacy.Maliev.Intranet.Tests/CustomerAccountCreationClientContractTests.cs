@@ -48,6 +48,25 @@ public sealed class CustomerAccountCreationClientContractTests
     }
 
     [Fact]
+    public async Task IdentityReconcileCreate_UsesDedicatedServiceRouteAndOperationKey()
+    {
+        var handler = new RecordingHandler(HttpStatusCode.Created, "{\"databaseId\":42,\"status\":\"created\"}");
+        var client = new CustomerIdentityCreationClient(CreateHttpClient(handler));
+        var operationId = Guid.Parse("1904e7f5-7223-45c9-8ea3-91c0aa498cf0");
+
+        using var response = await client.ReconcileCreateAsync(
+            42, ValidRequest(), "Aa1!derived-bootstrap-secret", operationId, CancellationToken.None);
+
+        Assert.Equal(HttpMethod.Post, handler.Method);
+        Assert.Equal("/auth/v1/customer-identities/42/reconcile-create", handler.PathAndQuery);
+        Assert.Equal(operationId.ToString("D"), handler.IdempotencyKey);
+        Assert.Equal("Bearer signed-service-token", handler.Authorization);
+        Assert.Contains("\"password\":\"Aa1!derived-bootstrap-secret\"", handler.Body, StringComparison.Ordinal);
+        Assert.Contains("\"passwordSetupRequired\":true", handler.Body, StringComparison.Ordinal);
+        Assert.DoesNotContain("password", handler.PathAndQuery, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public async Task PasswordSetupChallenge_UsesDedicatedBodylessAuthRoute()
     {
         var handler = new RecordingHandler(HttpStatusCode.OK, "{\"accepted\":true,\"token\":\"setup-token\"}");

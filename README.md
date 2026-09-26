@@ -87,3 +87,9 @@ only in the historical inventory and return `410 Gone`: the legacy PageModels we
 stubs, and no Traveler entity, repository, controller, DTO, persistence, or wire contract
 exists to migrate. Any future manufacturing-traveler capability requires a separately
 designed bounded context; it is intentionally not fabricated in this legacy migration.
+
+# Customer identity retry rollout
+
+The BFF's customer-create workflow uses the existing AuthService identity-create route by default. After AuthService's service-only `reconcile-create` endpoint and its PostgreSQL receipt migration are available, set `CustomerIdentityReconciliation:Enabled=true` and project a dedicated, protected 32-byte base64 `CustomerIdentityReconciliation:BootstrapKeyBase64` into every BFF replica. Grant the BFF service identity `legacy-auth.customer-identities.reconcile-create` separately from the existing identity-create permission. Do not put this key in Git, logs, browser configuration, or a URL. An enabled workflow without a valid key fails before creating a customer profile.
+
+For one employee-scoped create operation and customer ID, the BFF derives a stable high-entropy bootstrap password using a domain-separated HMAC. AuthService receives the same payload and operation key on retry and can distinguish a replay from a conflicting create. The bootstrap password is never sent to the employee or stored in the BFF; customers use the separate single-use password-setup challenge. Keep the dedicated key stable across replicas and deployments for at least the full profile/identity retry and receipt retention window. Rotating it while an operation is unresolved changes the derived password and makes that operation conflict; reconcile outstanding operations before rotation. This feature gate does not authorize application deployment or database migration.

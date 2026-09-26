@@ -1,5 +1,6 @@
 using Legacy.Maliev.Intranet.Contracts;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using System.Net;
 using System.Net.Http.Json;
 using System.Security.Cryptography;
@@ -48,6 +49,9 @@ public interface ICustomerIdentityCreationClient
     /// <summary>Creates the customer identity for an already-created profile.</summary>
     Task<HttpResponseMessage> CreateAsync(int customerId, CreateCustomerAccountRequest request, string bootstrapSecret, CancellationToken cancellationToken);
 
+    /// <summary>Creates or reconciles one service-owned identity operation.</summary>
+    Task<HttpResponseMessage> ReconcileCreateAsync(int customerId, CreateCustomerAccountRequest request, string bootstrapSecret, Guid operationId, CancellationToken cancellationToken);
+
     /// <summary>Creates a single-use setup challenge after the bootstrap identity has committed.</summary>
     Task<HttpResponseMessage> CreatePasswordSetupChallengeAsync(int customerId, CancellationToken cancellationToken);
 }
@@ -56,6 +60,7 @@ public interface ICustomerIdentityCreationClient
 public sealed class CustomerAccountCreationService(
     ICustomerProfileCreationClient profiles,
     ICustomerIdentityCreationClient identities,
+    IOptions<CustomerIdentityReconciliationOptions> reconciliationOptions,
     ILogger<CustomerAccountCreationService> logger)
 {
     /// <summary>Creates a customer profile and identity or returns a safe downstream outcome.</summary>
@@ -72,6 +77,25 @@ public sealed class CustomerAccountCreationService(
         Guid operationId,
         CancellationToken cancellationToken)
     {
+        var reconciliation = reconciliationOptions.Value;
+        if (reconciliation.Enabled)
+        {
+            if (operationId == Guid.Empty)
+            {
+                return new(CustomerAccountCreationStatus.BadRequest);
+            }
+
+            try
+            {
+                reconciliation.Validate();
+            }
+            catch (InvalidOperationException)
+            {
+                logger.LogError("Customer identity reconciliation is enabled without a valid protected key.");
+                return new(CustomerAccountCreationStatus.Unavailable);
+            }
+        }
+
         HttpResponseMessage profileResponse;
         try
         {
@@ -114,11 +138,15 @@ public sealed class CustomerAccountCreationService(
             }
         }
 
-        var bootstrapSecret = GenerateBootstrapSecret();
+        var bootstrapSecret = reconciliation.Enabled
+            ? reconciliation.DeriveBootstrapSecret(operationId, customerId)
+            : GenerateBootstrapSecret();
         CustomerAccountCreationResult identityResult;
         try
         {
-            using var identityResponse = await identities.CreateAsync(customerId, request, bootstrapSecret, CancellationToken.None);
+            using var identityResponse = reconciliation.Enabled
+                ? await identities.ReconcileCreateAsync(customerId, request, bootstrapSecret, operationId, CancellationToken.None)
+                : await identities.CreateAsync(customerId, request, bootstrapSecret, CancellationToken.None);
             if (!identityResponse.IsSuccessStatusCode)
             {
                 logger.LogWarning(
@@ -131,10 +159,23 @@ public sealed class CustomerAccountCreationService(
             {
                 try
                 {
-                    var identity = await identityResponse.Content.ReadFromJsonAsync<CreatedIdentity>(CancellationToken.None);
-                    identityResult = identity is not null && identity.DatabaseID == customerId
-                        ? await CreateOnboardingChallengeAsync(customerId)
-                        : new(CustomerAccountCreationStatus.BadGateway);
+                    if (reconciliation.Enabled)
+                    {
+                        var receipt = await identityResponse.Content.ReadFromJsonAsync<IdentityCreateReceipt>(CancellationToken.None);
+                        var expectedStatus = identityResponse.StatusCode == HttpStatusCode.Created ? "created" :
+                            identityResponse.StatusCode == HttpStatusCode.OK ? "replayed" : null;
+                        identityResult = expectedStatus is not null && receipt is not null && receipt.DatabaseId == customerId &&
+                            string.Equals(receipt.Status, expectedStatus, StringComparison.Ordinal)
+                            ? await CreateOnboardingChallengeAsync(customerId)
+                            : new(CustomerAccountCreationStatus.BadGateway);
+                    }
+                    else
+                    {
+                        var identity = await identityResponse.Content.ReadFromJsonAsync<CreatedIdentity>(CancellationToken.None);
+                        identityResult = identity is not null && identity.DatabaseID == customerId
+                            ? await CreateOnboardingChallengeAsync(customerId)
+                            : new(CustomerAccountCreationStatus.BadGateway);
+                    }
                 }
                 catch (System.Text.Json.JsonException)
                 {
@@ -158,8 +199,8 @@ public sealed class CustomerAccountCreationService(
         }
 
         // A keyed profile response may be a replay of an earlier committed create.
-        // AuthService cannot yet prove whether an uncertain identity create committed
-        // to this attempt, so deleting the profile would risk orphaning that identity.
+        // A failed or uncertain identity response does not prove that no identity was
+        // committed; deleting the profile could orphan it even on the keyed route.
         logger.LogWarning(
             "Customer account {CustomerId} requires identity reconciliation after {WorkflowStatus}; profile was retained.",
             customerId,
@@ -233,5 +274,6 @@ public sealed class CustomerAccountCreationService(
 
     private sealed record CreatedProfile(int Id);
     private sealed record CreatedIdentity(int DatabaseID);
+    private sealed record IdentityCreateReceipt(int DatabaseId, string Status);
     private sealed record OnboardingChallenge(bool Accepted, string? Token);
 }
