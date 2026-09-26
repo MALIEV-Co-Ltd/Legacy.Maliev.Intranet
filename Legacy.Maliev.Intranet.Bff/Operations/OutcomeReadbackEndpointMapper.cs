@@ -6,7 +6,7 @@ using Legacy.Maliev.Intranet.Contracts;
 
 namespace Legacy.Maliev.Intranet.Bff.Operations;
 
-/// <summary>Maps employee sessions to privacy-safe aggregate outcome receipts.</summary>
+/// <summary>Maps employee sessions to privacy-safe outcome receipts.</summary>
 internal static class OutcomeReadbackEndpointMapper
 {
     internal const int MaximumPayloadBytes = 1024 * 1024;
@@ -24,7 +24,7 @@ internal static class OutcomeReadbackEndpointMapper
         TimeProvider timeProvider,
         CancellationToken cancellationToken)
     {
-        if (source is not ("quotation" or "invoice") ||
+        if (source is not ("quotation" or "invoice" or "qualification") ||
             !AggregateOutcomePayload.TryUtc(fromUtc, out var from) ||
             !AggregateOutcomePayload.TryUtc(toUtc, out var to) ||
             from >= to || to - from > TimeSpan.FromDays(31) ||
@@ -33,9 +33,12 @@ internal static class OutcomeReadbackEndpointMapper
             return Results.BadRequest(new { error = "invalid_aggregate_window_or_source" });
         }
 
-        var requiredPermission = source == "quotation"
-            ? LegacyEmployeePermissions.QuotationsRead
-            : LegacyEmployeePermissions.AccountingRead;
+        var requiredPermission = source switch
+        {
+            "quotation" => LegacyEmployeePermissions.QuotationsRead,
+            "qualification" => LegacyEmployeePermissions.QuotationRequestsRead,
+            _ => LegacyEmployeePermissions.AccountingRead,
+        };
         if (!LegacyNavigationAuthorization.IsEnabled(context.User, requiredPermission))
         {
             return Results.Forbid();

@@ -44,6 +44,8 @@ public sealed class AggregateOutcomeReadbackTests
     [Theory]
     [InlineData("quotation", "/quotations/outcomes/readback", "quotation")]
     [InlineData("invoice", "/invoices/outcomes/readback", "invoice")]
+    [InlineData("qualification", "/quotationrequests/qualification-outcomes/readback", "qualification")]
+    [InlineData("qualification", "/quotationrequests/qualification-outcomes/readback", "qualification-mixed")]
     public async Task EmployeeSessionUsesFixedProducerRouteAndReturnsAggregateOnlyEnvelope(
         string source,
         string expectedPath,
@@ -60,7 +62,8 @@ public sealed class AggregateOutcomeReadbackTests
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Equal(source, document.RootElement.GetProperty("source").GetString());
         Assert.Equal(200, document.RootElement.GetProperty("httpStatus").GetInt32());
-        Assert.Equal(JsonValueKind.Array, document.RootElement.GetProperty("payload").GetProperty("Days").ValueKind);
+        var collection = source == "qualification" ? "requests" : "Days";
+        Assert.Equal(JsonValueKind.Array, document.RootElement.GetProperty("payload").GetProperty(collection).ValueKind);
         Assert.Equal(expectedPath, upstream.Path);
         Assert.Equal("employee-session-access-token", upstream.Token);
         Assert.Contains("fromUtc=2026-08-25T17%3A00%3A00.0000000Z", upstream.Query, StringComparison.Ordinal);
@@ -111,6 +114,7 @@ public sealed class AggregateOutcomeReadbackTests
     [Theory]
     [InlineData("quotation")]
     [InlineData("invoice")]
+    [InlineData("qualification")]
     public async Task SourceSpecificReadPermissionIsRequiredBeforeProducerCall(string source)
     {
         var upstream = new RecordingHandler(Fixture(source), HttpStatusCode.OK);
@@ -206,6 +210,68 @@ public sealed class AggregateOutcomeReadbackTests
         Assert.Equal(JsonValueKind.Null, document.RootElement.GetProperty("payload").ValueKind);
     }
 
+    [Theory]
+    [InlineData("null")]
+    [InlineData("true")]
+    [InlineData("1")]
+    [InlineData("\"private\"")]
+    public async Task QualificationScalarRowsFailClosedWithoutLeakingProducerBody(string row)
+    {
+        var body = Fixture("qualification").Replace("\"requests\":[]", $"\"requests\":[{row}]", StringComparison.Ordinal);
+        var upstream = new RecordingHandler(body, HttpStatusCode.OK);
+        await using var factory = new OutcomeBffFactory(upstream, PermissionsFor("qualification"));
+        using var client = factory.CreateClient(ClientOptions());
+
+        using var response = await client.GetAsync(Route("qualification"));
+        var json = await response.Content.ReadAsStringAsync();
+        using var document = JsonDocument.Parse(json);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal(502, document.RootElement.GetProperty("httpStatus").GetInt32());
+        Assert.Equal(JsonValueKind.Null, document.RootElement.GetProperty("payload").ValueKind);
+        Assert.DoesNotContain("private", json, StringComparison.Ordinal);
+        Assert.Equal("no-store", response.Headers.CacheControl?.ToString());
+    }
+
+    [Theory]
+    [InlineData("\"transactionId\":\"request-7\",\"journeyId\":\"5cda380d-fd95-4fe4-bd5c-b378f7515160\"", "\"transactionId\":\"request-999\",\"journeyId\":\"5cda380d-fd95-4fe4-bd5c-b378f7515160\"")]
+    [InlineData("\"state\":\"qualified\"", "\"state\":\"customer_won\"")]
+    [InlineData("\"requestId\":7", "\"requestId\":0")]
+    [InlineData("\"createdUtc\":\"2026-08-26T09:00:00Z\"", "\"createdUtc\":\"2026-08-25T16:59:59Z\"")]
+    public async Task QualificationMalformedRowsFailClosed(string original, string replacement)
+    {
+        var body = Fixture("qualification-mixed").Replace(original, replacement, StringComparison.Ordinal);
+        var upstream = new RecordingHandler(body, HttpStatusCode.OK);
+        await using var factory = new OutcomeBffFactory(upstream, PermissionsFor("qualification"));
+        using var client = factory.CreateClient(ClientOptions());
+
+        using var response = await client.GetAsync(Route("qualification"));
+        using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+
+        Assert.Equal(502, document.RootElement.GetProperty("httpStatus").GetInt32());
+        Assert.Equal(JsonValueKind.Null, document.RootElement.GetProperty("payload").ValueKind);
+    }
+
+    [Theory]
+    [InlineData("\"journeyId\":\"5cda380d-fd95-4fe4-bd5c-b378f7515160\",", "")]
+    [InlineData("\"state\":\"qualified\"", "\"state\":\"qualified\",\"email\":\"private@example.invalid\"")]
+    [InlineData("\"requestId\":8,\"createdUtc\":\"2026-08-26T10:00:00Z\"", "\"requestId\":7,\"createdUtc\":\"2026-08-26T08:00:00Z\"")]
+    public async Task QualificationIdentityAndOrderingViolationsFailClosed(string original, string replacement)
+    {
+        var body = Fixture("qualification-mixed").Replace(original, replacement, StringComparison.Ordinal);
+        var upstream = new RecordingHandler(body, HttpStatusCode.OK);
+        await using var factory = new OutcomeBffFactory(upstream, PermissionsFor("qualification"));
+        using var client = factory.CreateClient(ClientOptions());
+
+        using var response = await client.GetAsync(Route("qualification"));
+        var json = await response.Content.ReadAsStringAsync();
+        using var document = JsonDocument.Parse(json);
+
+        Assert.Equal(502, document.RootElement.GetProperty("httpStatus").GetInt32());
+        Assert.Equal(JsonValueKind.Null, document.RootElement.GetProperty("payload").ValueKind);
+        Assert.DoesNotContain("private@example.invalid", json, StringComparison.Ordinal);
+    }
+
     private static WebApplicationFactoryClientOptions ClientOptions() => new()
     {
         AllowAutoRedirect = false,
@@ -215,12 +281,21 @@ public sealed class AggregateOutcomeReadbackTests
     private static string Route(string source) =>
         $"/Operations/OutcomeReadback?source={source}&fromUtc={Uri.EscapeDataString(From)}&toUtc={Uri.EscapeDataString(To)}";
 
-    private static string[] PermissionsFor(string source) =>
-        source == "quotation" ? [LegacyEmployeePermissions.QuotationsRead] : [LegacyEmployeePermissions.AccountingRead];
+    private static string[] PermissionsFor(string source) => source switch
+    {
+        "quotation" => [LegacyEmployeePermissions.QuotationsRead],
+        "qualification" => [LegacyEmployeePermissions.QuotationRequestsRead],
+        _ => [LegacyEmployeePermissions.AccountingRead],
+    };
 
-    private static string Fixture(string source) => source == "quotation"
-        ? """{"FromUtc":"2026-08-25T17:00:00Z","ToUtc":"2026-09-01T17:00:00Z","Days":[{"DayUtc":"2026-08-26T00:00:00","PersistedQuotationCount":3,"AcceptedQuotationCount":2,"SourceAttributedPersistedQuotationCount":1,"SourceAttributedAcceptedQuotationCount":1,"UnattributedPersistedQuotationCount":2,"UnattributedAcceptedQuotationCount":1,"AcceptedQuotedAmountsByCurrency":[{"CurrencyId":1,"QuotedAmount":123.4500,"AcceptedQuotationCount":1},{"CurrencyId":2,"QuotedAmount":9876543210.12345678,"AcceptedQuotationCount":1}]}],"TechnicalConversionAvailability":"unavailable","QualifiedCustomerAvailability":"unavailable","RevenueAvailability":"unavailable"}"""
-        : """{"FromUtc":"2026-08-25T17:00:00Z","ToUtc":"2026-09-01T17:00:00Z","Days":[{"DayUtc":"2026-08-26T00:00:00","PaidInvoiceCount":3,"SourceAttributedPaidInvoiceCount":1,"UnattributedPaidInvoiceCount":2,"PaidInvoiceAmountsByCurrency":[{"Currency":"THB","PaidInvoiceTotal":120.5000,"PaidInvoiceCount":2},{"Currency":"USD","PaidInvoiceTotal":25.01,"PaidInvoiceCount":1}]}]}""";
+    private static string Fixture(string source) => source switch
+    {
+        "quotation" => """{"FromUtc":"2026-08-25T17:00:00Z","ToUtc":"2026-09-01T17:00:00Z","Days":[{"DayUtc":"2026-08-26T00:00:00","PersistedQuotationCount":3,"AcceptedQuotationCount":2,"SourceAttributedPersistedQuotationCount":1,"SourceAttributedAcceptedQuotationCount":1,"UnattributedPersistedQuotationCount":2,"UnattributedAcceptedQuotationCount":1,"AcceptedQuotedAmountsByCurrency":[{"CurrencyId":1,"QuotedAmount":123.4500,"AcceptedQuotationCount":1},{"CurrencyId":2,"QuotedAmount":9876543210.12345678,"AcceptedQuotationCount":1}]}],"TechnicalConversionAvailability":"unavailable","QualifiedCustomerAvailability":"unavailable","RevenueAvailability":"unavailable"}""",
+        "invoice" => """{"FromUtc":"2026-08-25T17:00:00Z","ToUtc":"2026-09-01T17:00:00Z","Days":[{"DayUtc":"2026-08-26T00:00:00","PaidInvoiceCount":3,"SourceAttributedPaidInvoiceCount":1,"UnattributedPaidInvoiceCount":2,"PaidInvoiceAmountsByCurrency":[{"Currency":"THB","PaidInvoiceTotal":120.5000,"PaidInvoiceCount":2},{"Currency":"USD","PaidInvoiceTotal":25.01,"PaidInvoiceCount":1}]}]}""",
+        "qualification" => """{"fromUtc":"2026-08-25T17:00:00Z","toUtc":"2026-09-01T17:00:00Z","requests":[]}""",
+        "qualification-mixed" => """{"fromUtc":"2026-08-25T17:00:00Z","toUtc":"2026-09-01T17:00:00Z","requests":[{"requestId":7,"createdUtc":"2026-08-26T09:00:00Z","transactionId":"request-7","journeyId":"5cda380d-fd95-4fe4-bd5c-b378f7515160","state":"qualified"},{"requestId":8,"createdUtc":"2026-08-26T10:00:00Z","state":"unreviewed"}]}""",
+        _ => throw new ArgumentOutOfRangeException(nameof(source)),
+    };
 
     private sealed class OutcomeBffFactory(
         RecordingHandler upstream,

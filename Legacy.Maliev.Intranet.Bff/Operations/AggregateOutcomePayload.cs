@@ -13,6 +13,10 @@ internal static partial class AggregateOutcomePayload
         "QualifiedCustomerAvailability",
         "RevenueAvailability",
     ];
+    private static readonly IReadOnlySet<string> QualificationStates = new HashSet<string>(StringComparer.Ordinal)
+    {
+        "unreviewed", "qualified", "not_qualified", "duplicate", "stale", "incomplete",
+    };
 
     /// <summary>Parses an explicit UTC timestamp without local-time inference.</summary>
     internal static bool TryUtc(string? value, out DateTime utc)
@@ -39,7 +43,7 @@ internal static partial class AggregateOutcomePayload
         try
         {
             if (body.Length > OutcomeReadbackEndpointMapper.MaximumPayloadBytes ||
-                source is not ("quotation" or "invoice"))
+                source is not ("quotation" or "invoice" or "qualification"))
             {
                 return false;
             }
@@ -52,6 +56,17 @@ internal static partial class AggregateOutcomePayload
                 MaxDepth = 16,
             });
             var root = document.RootElement;
+            if (source == "qualification")
+            {
+                if (!ValidateQualification(root, fromUtc, toUtc))
+                {
+                    return false;
+                }
+
+                payload = root.Clone();
+                return true;
+            }
+
             var quotation = source == "quotation";
             var rootKeys = quotation
                 ? new[] { "FromUtc", "ToUtc", "Days" }.Concat(QuotationAvailabilityKeys).ToArray()
@@ -86,6 +101,64 @@ internal static partial class AggregateOutcomePayload
         {
             return false;
         }
+    }
+
+    private static bool ValidateQualification(JsonElement root, DateTime fromUtc, DateTime toUtc)
+    {
+        if (!HasExactKeys(root, ["fromUtc", "toUtc", "requests"]) ||
+            !TryUtc(GetString(root, "fromUtc"), out var actualFrom) || actualFrom != fromUtc ||
+            !TryUtc(GetString(root, "toUtc"), out var actualTo) || actualTo != toUtc ||
+            !root.TryGetProperty("requests", out var requests) || requests.ValueKind != JsonValueKind.Array)
+        {
+            return false;
+        }
+
+        DateTime? previousCreated = null;
+        int previousId = 0;
+        var seenIds = new HashSet<int>();
+        foreach (var request in requests.EnumerateArray())
+        {
+            // A scalar row must fail before any property lookup, including null and strings.
+            if (request.ValueKind != JsonValueKind.Object)
+            {
+                return false;
+            }
+
+            bool attributed = request.TryGetProperty("transactionId", out _);
+            if (attributed != request.TryGetProperty("journeyId", out _))
+            {
+                return false;
+            }
+            string[] expectedKeys = attributed
+                ? ["requestId", "createdUtc", "transactionId", "journeyId", "state"]
+                : ["requestId", "createdUtc", "state"];
+            if (!HasExactKeys(request, expectedKeys) ||
+                !TryCount(request, "requestId", out int requestId) || requestId == 0 || !seenIds.Add(requestId) ||
+                !TryUtc(GetString(request, "createdUtc"), out var createdUtc) ||
+                createdUtc < fromUtc || createdUtc >= toUtc ||
+                previousCreated.HasValue && (createdUtc < previousCreated.Value ||
+                    createdUtc == previousCreated.Value && requestId <= previousId) ||
+                !QualificationStates.Contains(GetString(request, "state") ?? string.Empty))
+            {
+                return false;
+            }
+
+            previousCreated = createdUtc;
+            previousId = requestId;
+            if (attributed)
+            {
+                string? transactionId = GetString(request, "transactionId");
+                string? journeyText = GetString(request, "journeyId");
+                if (transactionId != $"request-{requestId}" ||
+                    !Guid.TryParse(journeyText, out var journeyId) || journeyId == Guid.Empty ||
+                    journeyId.ToString("D") != journeyText)
+                {
+                    return false;
+                }
+            }
+        }
+
+        return true;
     }
 
     private static bool ValidateDay(
