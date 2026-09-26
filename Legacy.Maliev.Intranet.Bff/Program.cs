@@ -824,6 +824,8 @@ app.MapStaticAssets().AllowAnonymous();
 
 app.MapGet("/Operations/OutcomeReadback", OutcomeReadbackEndpointMapper.GetAsync)
     .RequireAuthorization();
+app.MapGet("/Analytics/OutcomeReadback", OutcomeReadbackEndpointMapper.GetAsync)
+    .RequireAuthorization();
 
 app.MapGet("/bff/session", (HttpContext context, IAntiforgery antiforgery) =>
 {
