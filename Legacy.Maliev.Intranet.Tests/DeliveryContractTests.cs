@@ -76,6 +76,8 @@ public sealed class DeliveryContractTests
             var dockerfile = File.ReadAllText(path);
             Assert.Contains("dotnet/sdk:10.0-alpine", dockerfile, StringComparison.Ordinal);
             Assert.Contains("dotnet/aspnet:10.0-alpine", dockerfile, StringComparison.Ordinal);
+            Assert.Contains("dotnet/sdk:10.0-alpine@sha256:3cc3bbbbf93d82104892f42aa9106b6be4d120346dea0649643a97c801525256", dockerfile, StringComparison.Ordinal);
+            Assert.Contains("dotnet/aspnet:10.0-alpine@sha256:f62a272ac1b46e83f56b8ed0416572f31cd1128e2c4a5e63eb34d348e4a36095", dockerfile, StringComparison.Ordinal);
             Assert.Contains("USER $APP_UID", dockerfile, StringComparison.Ordinal);
             Assert.Contains("Legacy.Maliev.ServiceDefaults.git", dockerfile, StringComparison.Ordinal);
             Assert.Contains("checkout 9c4ac9d44a08bcd0aa2088348790ab863814669c", dockerfile, StringComparison.Ordinal);
@@ -83,7 +85,31 @@ public sealed class DeliveryContractTests
             Assert.Contains("checkout 78e48ffc4ee000df0510cba5e7c7a3c4c4d539d7", dockerfile, StringComparison.Ordinal);
             Assert.DoesNotContain("Maliev.Aspire.git", dockerfile, StringComparison.Ordinal);
             Assert.DoesNotContain("Maliev.MessagingContracts.git", dockerfile, StringComparison.Ordinal);
+            Assert.Contains("dotnet restore ", dockerfile, StringComparison.Ordinal);
+            Assert.Contains("--locked-mode", dockerfile, StringComparison.Ordinal);
+            Assert.Contains("--no-restore", dockerfile, StringComparison.Ordinal);
+            Assert.Contains("build/nuget-locks/Legacy.Maliev.ServiceDefaults/packages.lock.json", dockerfile, StringComparison.Ordinal);
+            Assert.Contains("build/nuget-locks/Legacy.Maliev.CompatibilityContracts/packages.lock.json", dockerfile, StringComparison.Ordinal);
         });
+    }
+
+    [Fact]
+    public void ImageRestore_LocksEveryLocalProjectAndVerifiesBothDockerBuildsInCi()
+    {
+        var root = FindRoot();
+        var projects = Directory.GetFiles(root, "*.csproj", SearchOption.AllDirectories)
+            .Where(path => !path.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}", StringComparison.OrdinalIgnoreCase))
+            .Where(path => !path.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}", StringComparison.OrdinalIgnoreCase))
+            .Where(path => !Path.GetFileNameWithoutExtension(path).EndsWith("Tests", StringComparison.OrdinalIgnoreCase));
+
+        Assert.All(projects, path =>
+            Assert.True(File.Exists(Path.Combine(Path.GetDirectoryName(path)!, "packages.lock.json")), $"Missing image restore lock for {path}"));
+        Assert.True(File.Exists(Path.Combine(root, "build", "nuget-locks", "Legacy.Maliev.ServiceDefaults", "packages.lock.json")));
+        Assert.True(File.Exists(Path.Combine(root, "build", "nuget-locks", "Legacy.Maliev.CompatibilityContracts", "packages.lock.json")));
+
+        var workflow = File.ReadAllText(Path.Combine(root, ".github", "workflows", "_build-and-test.yml"));
+        Assert.Contains("docker build --file Legacy.Maliev.Intranet/Dockerfile --target build", workflow, StringComparison.Ordinal);
+        Assert.Contains("docker build --file Legacy.Maliev.Intranet.Bff/Dockerfile --target build", workflow, StringComparison.Ordinal);
     }
 
     [Fact]
