@@ -42,6 +42,10 @@
             @if (!string.IsNullOrWhiteSpace(operationError))
             {
                 <ShadcnAlert Variant="ShadcnAlertVariant.Destructive" AlertRole="ShadcnAlertRole.Alert"><ShadcnAlertDescription>@operationError</ShadcnAlertDescription></ShadcnAlert>
+                @if (operationConflict)
+                {
+                    <ShadcnButton OnClick="LoadAsync">@Text["ReloadLatest"]</ShadcnButton>
+                }
             }
 
             <div class="customer-detail__tabs" role="region" aria-label="@Text["CustomerWorkspaceTabs"]">
@@ -180,6 +184,8 @@
     private bool submitting;
     private string? loadError;
     private string? operationError;
+    private string? customerRevision;
+    private bool operationConflict;
     private bool loading;
     private bool notFound;
     private int loadedCustomerId;
@@ -275,6 +281,8 @@
         customer = null;
         loadError = null;
         operationError = null;
+        operationConflict = false;
+        customerRevision = null;
         notFound = false;
         editing = false;
         submitting = false;
@@ -301,7 +309,7 @@
         try
         {
             using var response = await Http.GetForPresentationAsync(
-                $"/bff/customers/{request.CustomerId}",
+                $"/bff/customers/{request.CustomerId}/versioned",
                 request.CancellationToken);
             if (!customerLoadGate.IsCurrent(request)) return;
             if (response.StatusCode == HttpStatusCode.Unauthorized)
@@ -345,13 +353,19 @@
                 cancellationToken: request.CancellationToken);
             if (!customerLoadGate.IsCurrent(request)) return;
             customer = loadedCustomer;
-            if (customer is null || customer.Id != request.CustomerId)
+            var revision = response.Headers.ETag?.ToString();
+            if (customer is null || customer.Id != request.CustomerId ||
+                string.IsNullOrWhiteSpace(revision) ||
+                !System.Text.RegularExpressions.Regex.IsMatch(
+                    revision, "^\"[0-9a-f]{8}\"$",
+                    System.Text.RegularExpressions.RegexOptions.IgnoreCase | System.Text.RegularExpressions.RegexOptions.CultureInvariant))
             {
                 customer = null;
                 loadError = Text["InvalidResponse"];
             }
             else
             {
+                customerRevision = revision;
                 CopyToEditModel(customer);
                 await LoadInternalRemarkAsync();
             }
@@ -586,6 +600,7 @@
         if (!canEdit || customer is null) return;
         CopyToEditModel(customer);
         operationError = null;
+        operationConflict = false;
         editing = true;
     }
 
@@ -593,6 +608,7 @@
     {
         editing = false;
         operationError = null;
+        operationConflict = false;
     }
 
     private async Task LoadInternalRemarkAsync()
@@ -704,6 +720,11 @@
     private async Task SaveAsync()
     {
         if (!canEdit || !editing || submitting) return;
+        if (string.IsNullOrWhiteSpace(customerRevision))
+        {
+            operationError = Text["InvalidResponse"];
+            return;
+        }
 
         if (!editContext.Validate())
         {
@@ -730,13 +751,20 @@
                 return;
             }
 
-            using var request = new HttpRequestMessage(HttpMethod.Put, $"/bff/customers/{Id}") { Content = JsonContent.Create(editModel) };
+            using var request = new HttpRequestMessage(HttpMethod.Put, $"/bff/customers/{Id}/versioned") { Content = JsonContent.Create(editModel) };
             request.Headers.Add("X-CSRF-TOKEN", session.CsrfToken);
+            request.Headers.TryAddWithoutValidation("If-Match", customerRevision);
             using var response = await Http.SendAsync(request);
             if (response.StatusCode == HttpStatusCode.Unauthorized) { NavigateToLogin(); return; }
             if (response.StatusCode == HttpStatusCode.Forbidden) { operationError = Text["ForbiddenUpdate"]; return; }
             if (response.StatusCode == HttpStatusCode.BadRequest) { operationError = Text["ValidationFailed"]; return; }
             if (response.StatusCode == HttpStatusCode.NotFound) { operationError = Text["NotFound"]; return; }
+            if (response.StatusCode == HttpStatusCode.PreconditionFailed)
+            {
+                operationError = Text["ConflictReload"];
+                operationConflict = true;
+                return;
+            }
             if (response.StatusCode == HttpStatusCode.Conflict) { operationError = Text["Conflict"]; return; }
             if (response.StatusCode == HttpStatusCode.TooManyRequests) { operationError = Text["RateLimited"]; return; }
             if (!response.IsSuccessStatusCode) { operationError = Text["SaveFailed"]; return; }

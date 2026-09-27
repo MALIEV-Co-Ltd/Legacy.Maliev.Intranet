@@ -873,6 +873,117 @@ public sealed class BffCustomersProxyContractTests
     }
 
     [Fact]
+    public async Task Update_TwoSessionsWithStaleProfile_RejectsSecondWrite()
+    {
+        var downstream = new ConcurrentCustomerHandler();
+        await using var factory = new CustomersBffFactory(
+            downstream,
+            hasPermission: true,
+            hasReadPermission: true,
+            hasUpdatePermission: true);
+        using var firstClient = CreateClient(factory);
+        using var secondClient = CreateClient(factory);
+        await SignInAsync(firstClient, "first@maliev.com");
+        await SignInAsync(secondClient, "second@maliev.com");
+
+        using var firstRead = await firstClient.GetAsync("/bff/customers/42/versioned");
+        using var secondRead = await secondClient.GetAsync("/bff/customers/42/versioned");
+        firstRead.EnsureSuccessStatusCode();
+        secondRead.EnsureSuccessStatusCode();
+        Assert.Equal("\"00000001\"", firstRead.Headers.ETag?.ToString());
+        Assert.Equal(firstRead.Headers.ETag, secondRead.Headers.ETag);
+        Assert.Equal("no-store", firstRead.Headers.CacheControl?.ToString());
+        var stale = ValidUpdateRequest();
+        stale.FirstName = "Ada";
+        var winner = ValidUpdateRequest();
+        winner.FirstName = "First session";
+        using var firstWrite = await SendUpdateAsync(firstClient, winner, includeCsrf: true, revision: firstRead.Headers.ETag!.ToString(), versioned: true);
+        using var secondWrite = await SendUpdateAsync(secondClient, stale, includeCsrf: true, revision: secondRead.Headers.ETag!.ToString(), versioned: true);
+
+        Assert.Equal(HttpStatusCode.NoContent, firstWrite.StatusCode);
+        Assert.Equal(HttpStatusCode.PreconditionFailed, secondWrite.StatusCode);
+        Assert.Equal("First session", downstream.FirstName);
+        Assert.Equal(1, downstream.SuccessfulWrites);
+        Assert.Equal("\"00000001\"", downstream.LastIfMatch);
+        Assert.Equal(7, downstream.CompanyId);
+        Assert.Equal(13, downstream.BillingAddressId);
+        Assert.Equal(14, downstream.ShippingAddressId);
+    }
+
+    [Fact]
+    public async Task UpdateVersioned_RequiresRevisionAfterAuthorizationAndCsrf()
+    {
+        var downstream = new ConcurrentCustomerHandler();
+        await using var factory = new CustomersBffFactory(
+            downstream, hasPermission: true, hasReadPermission: true, hasUpdatePermission: true);
+        using var client = CreateClient(factory);
+        await SignInAsync(client);
+
+        using var missing = await SendUpdateAsync(client, ValidUpdateRequest(), includeCsrf: true, versioned: true);
+        using var malformed = await SendUpdateAsync(client, ValidUpdateRequest(), includeCsrf: true, "W/\"00000001\"", versioned: true);
+        using var noCsrf = await SendUpdateAsync(client, ValidUpdateRequest(), includeCsrf: false, "\"00000001\"", versioned: true);
+
+        Assert.Equal((HttpStatusCode)428, missing.StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, malformed.StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, noCsrf.StatusCode);
+        Assert.Equal(0, downstream.RequestCount);
+    }
+
+    [Fact]
+    public async Task VersionedReadAndWrite_RequireTheirExactEmployeePermissions()
+    {
+        var downstream = new ConcurrentCustomerHandler();
+        await using var factory = new CustomersBffFactory(
+            downstream, hasPermission: true, hasReadPermission: false, hasUpdatePermission: false);
+        using var client = CreateClient(factory);
+        await SignInAsync(client);
+
+        using var read = await client.GetAsync("/bff/customers/42/versioned");
+        using var write = await SendUpdateAsync(client, ValidUpdateRequest(), includeCsrf: true, "\"00000001\"", versioned: true);
+
+        Assert.Equal(HttpStatusCode.Forbidden, read.StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, write.StatusCode);
+        Assert.Equal(0, downstream.RequestCount);
+    }
+
+    [Fact]
+    public async Task VersionedReadAndWrite_AnonymousCaller_IsRejectedBeforeDownstream()
+    {
+        var downstream = new ConcurrentCustomerHandler();
+        await using var factory = new CustomersBffFactory(
+            downstream, hasPermission: true, hasReadPermission: true, hasUpdatePermission: true);
+        using var client = CreateClient(factory);
+
+        using var read = await client.GetAsync("/bff/customers/42/versioned");
+        using var write = await client.PutAsJsonAsync("/bff/customers/42/versioned", ValidUpdateRequest());
+
+        Assert.Equal(HttpStatusCode.Unauthorized, read.StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, write.StatusCode);
+        Assert.Equal(0, downstream.RequestCount);
+    }
+
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, true)]
+    public async Task VersionedRead_InvalidRevisionOrNestedProfile_FailsClosed(bool invalidNestedProfile, bool includeRevision)
+    {
+        var profile = invalidNestedProfile
+            ? CustomerDetailJson.Replace("\"AddressLine1\":\"1 Logic Road\"", "\"AddressLine1\":\"\"", StringComparison.Ordinal)
+            : CustomerDetailJson;
+        var downstream = new ConcurrentCustomerHandler(profile, includeRevision);
+        await using var factory = new CustomersBffFactory(
+            downstream, hasPermission: true, hasReadPermission: true);
+        using var client = CreateClient(factory);
+        await SignInAsync(client);
+
+        using var response = await client.GetAsync("/bff/customers/42/versioned");
+
+        Assert.Equal(HttpStatusCode.BadGateway, response.StatusCode);
+        Assert.Null(response.Headers.ETag);
+        Assert.Equal(1, downstream.RequestCount);
+    }
+
+    [Fact]
     public async Task InternalRemark_AuthorizedEmployee_ReadsOnlyTheDedicatedPrivateContract()
     {
         var profile = new RecordingCustomerHandler(HttpStatusCode.OK, CustomerDetailJson);
@@ -1077,12 +1188,15 @@ public sealed class BffCustomersProxyContractTests
     private static async Task<HttpResponseMessage> SendUpdateAsync(
         HttpClient client,
         CustomerUpdateRequest requestBody,
-        bool includeCsrf)
+        bool includeCsrf,
+        string? revision = null,
+        bool versioned = false)
     {
-        using var request = new HttpRequestMessage(HttpMethod.Put, "/bff/customers/42")
+        using var request = new HttpRequestMessage(HttpMethod.Put, versioned ? "/bff/customers/42/versioned" : "/bff/customers/42")
         {
             Content = JsonContent.Create(requestBody),
         };
+        if (revision is not null) request.Headers.TryAddWithoutValidation("If-Match", revision);
         if (includeCsrf)
         {
             using var sessionResponse = await client.GetAsync("/bff/session");
@@ -1217,6 +1331,48 @@ public sealed class BffCustomersProxyContractTests
             }
 
             return Task.FromResult(response);
+        }
+    }
+
+    private sealed class ConcurrentCustomerHandler(string? profile = null, bool includeRevision = true) : HttpMessageHandler
+    {
+        public string FirstName { get; private set; } = "Ada";
+        public int RequestCount { get; private set; }
+        public int SuccessfulWrites { get; private set; }
+        public string? LastIfMatch { get; private set; }
+        public int? CompanyId { get; private set; }
+        public int? BillingAddressId { get; private set; }
+        public int? ShippingAddressId { get; private set; }
+        private uint revision = 1;
+
+        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            RequestCount++;
+            Assert.Equal("/customers/42/versioned", request.RequestUri?.AbsolutePath);
+            if (request.Method == HttpMethod.Get)
+            {
+                var response = new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = new StringContent(
+                        (profile ?? CustomerDetailJson).Replace("\"FirstName\":\"Ada\"", $"\"FirstName\":\"{FirstName}\"", StringComparison.Ordinal),
+                        Encoding.UTF8,
+                        "application/json"),
+                };
+                if (includeRevision) response.Headers.ETag = new($"\"{revision:x8}\"");
+                return response;
+            }
+
+            LastIfMatch = request.Headers.TryGetValues("If-Match", out var values) ? Assert.Single(values) : null;
+            if (LastIfMatch != $"\"{revision:x8}\"") return new HttpResponseMessage(HttpStatusCode.PreconditionFailed);
+            using var body = await System.Text.Json.JsonDocument.ParseAsync(
+                await request.Content!.ReadAsStreamAsync(cancellationToken), cancellationToken: cancellationToken);
+            FirstName = body.RootElement.GetProperty("firstName").GetString()!;
+            CompanyId = body.RootElement.GetProperty("companyId").GetInt32();
+            BillingAddressId = body.RootElement.GetProperty("billingAddressId").GetInt32();
+            ShippingAddressId = body.RootElement.GetProperty("shippingAddressId").GetInt32();
+            SuccessfulWrites++;
+            revision++;
+            return new HttpResponseMessage(HttpStatusCode.NoContent);
         }
     }
 

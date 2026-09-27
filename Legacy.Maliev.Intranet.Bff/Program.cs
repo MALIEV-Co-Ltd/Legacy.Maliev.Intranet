@@ -1992,6 +1992,13 @@ app.MapPut("/bff/customers/{id:int}", (
     .AddEndpointFilter<AntiforgeryValidationFilter>()
     .RequireAuthorization(LegacyEmployeePermissions.CustomersUpdate);
 
+app.MapGet("/bff/customers/{id:int}/versioned", CustomerVersionedEndpointMapper.GetAsync)
+    .RequireAuthorization(LegacyEmployeePermissions.CustomersRead);
+
+app.MapPut("/bff/customers/{id:int}/versioned", CustomerVersionedEndpointMapper.UpdateAsync)
+    .AddEndpointFilter<AntiforgeryValidationFilter>()
+    .RequireAuthorization(LegacyEmployeePermissions.CustomersUpdate);
+
 app.MapGet("/bff/customers/{id:int}/internal-remark", (
     int id,
     CustomerUpdateProxy remarks,

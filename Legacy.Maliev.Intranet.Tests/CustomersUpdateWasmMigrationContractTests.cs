@@ -12,10 +12,25 @@ public sealed class CustomersUpdateWasmMigrationContractTests
         var proxy = File.ReadAllText(Path.Combine(root, "Legacy.Maliev.Intranet.Bff", "Customers", "CustomerUpdateProxy.cs"));
         var mapper = File.ReadAllText(Path.Combine(root, "Legacy.Maliev.Intranet.Bff", "Customers", "CustomerUpdateEndpointMapper.cs"));
         var auth = File.ReadAllText(Path.Combine(root, "Legacy.Maliev.Intranet.Server", "Auth", "AuthContracts.cs"));
+        var english = File.ReadAllText(Path.Combine(root, "Legacy.Maliev.Intranet.Client.Features.Customers", "Pages", "CustomerView.resx"));
+        var thai = File.ReadAllText(Path.Combine(root, "Legacy.Maliev.Intranet.Client.Features.Customers", "Pages", "CustomerView.th.resx"));
 
         Assert.Contains("CustomerUpdateRequest", view, StringComparison.Ordinal);
         Assert.Contains("HttpMethod.Put", view, StringComparison.Ordinal);
+        Assert.Contains("/bff/customers/{Id}/versioned", view, StringComparison.Ordinal);
+        Assert.Contains("response.Headers.ETag", view, StringComparison.Ordinal);
+        Assert.Contains("request.Headers.TryAddWithoutValidation(\"If-Match\", customerRevision)", view, StringComparison.Ordinal);
+        Assert.Contains("HttpStatusCode.PreconditionFailed", view, StringComparison.Ordinal);
+        Assert.Contains("ReloadLatest", view, StringComparison.Ordinal);
+        Assert.Contains("@if (operationConflict)", view, StringComparison.Ordinal);
+        Assert.Contains("<ShadcnButton OnClick=\"LoadAsync\">@Text[\"ReloadLatest\"]</ShadcnButton>", view, StringComparison.Ordinal);
+        Assert.Contains("operationConflict = true;\n                return;", view.Replace("\r\n", "\n", StringComparison.Ordinal), StringComparison.Ordinal);
+        Assert.Contains("name=\"ConflictReload\"", english, StringComparison.Ordinal);
+        Assert.Contains("name=\"ReloadLatest\"", english, StringComparison.Ordinal);
+        Assert.Contains("name=\"ConflictReload\"", thai, StringComparison.Ordinal);
+        Assert.Contains("name=\"ReloadLatest\"", thai, StringComparison.Ordinal);
         Assert.Contains("/bff/customers/{id:int}", bff, StringComparison.Ordinal);
+        Assert.Contains("/bff/customers/{id:int}/versioned", bff, StringComparison.Ordinal);
         Assert.Contains("CustomerUpdateEndpointMapper.UpdateAsync", bff, StringComparison.Ordinal);
         Assert.Contains("AddEndpointFilter<AntiforgeryValidationFilter>()", bff, StringComparison.Ordinal);
         Assert.Contains("LegacyEmployeePermissions.CustomersUpdate", bff, StringComparison.Ordinal);

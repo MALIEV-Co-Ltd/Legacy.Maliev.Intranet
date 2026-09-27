@@ -388,7 +388,7 @@ public sealed class CustomerComponentsBehaviorTests
                 await ReleaseCustomerA.Task;
             }
 
-            return new HttpResponseMessage(System.Net.HttpStatusCode.OK)
+            var response = new HttpResponseMessage(System.Net.HttpStatusCode.OK)
             {
                 Content = JsonContent.Create(new CustomerDetail(
                     id,
@@ -409,6 +409,8 @@ public sealed class CustomerComponentsBehaviorTests
                     null,
                     null)),
             };
+            response.Headers.ETag = new("\"00000001\"");
+            return response;
         }
     }
 

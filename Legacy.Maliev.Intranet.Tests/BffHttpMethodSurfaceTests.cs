@@ -60,10 +60,10 @@ public sealed class BffHttpMethodSurfaceTests
             .ToArray();
 
         Assert.Equal(ExpectedEndpointSurface, actual);
-        Assert.Equal(97, actual.Length);
-        Assert.Equal(54, actual.Count(value => value.StartsWith("GET ", StringComparison.Ordinal)));
+        Assert.Equal(99, actual.Length);
+        Assert.Equal(55, actual.Count(value => value.StartsWith("GET ", StringComparison.Ordinal)));
         Assert.Equal(23, actual.Count(value => value.StartsWith("POST ", StringComparison.Ordinal)));
-        Assert.Equal(11, actual.Count(value => value.StartsWith("PUT ", StringComparison.Ordinal)));
+        Assert.Equal(12, actual.Count(value => value.StartsWith("PUT ", StringComparison.Ordinal)));
         Assert.Equal(9, actual.Count(value => value.StartsWith("DELETE ", StringComparison.Ordinal)));
     }
 
@@ -264,6 +264,7 @@ public sealed class BffHttpMethodSurfaceTests
         GET /bff/customers/{customerId:int}/quotations
         GET /bff/customers/{id:int}
         GET /bff/customers/{id:int}/internal-remark
+        GET /bff/customers/{id:int}/versioned
         GET /bff/dashboard
         GET /bff/diagnostics/events
         GET /bff/employees
@@ -328,6 +329,7 @@ public sealed class BffHttpMethodSurfaceTests
         PUT /bff/catalog/materials/{id:int}
         PUT /bff/customers/{id:int}
         PUT /bff/customers/{id:int}/internal-remark
+        PUT /bff/customers/{id:int}/versioned
         PUT /bff/finances/{id:int}
         PUT /bff/invoices/{id:int}
         PUT /bff/orders/{id:int}

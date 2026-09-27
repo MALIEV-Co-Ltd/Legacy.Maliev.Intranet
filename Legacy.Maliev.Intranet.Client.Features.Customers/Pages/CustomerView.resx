@@ -56,6 +56,8 @@
   <data name="Unavailable" xml:space="preserve"><value>The customer profile is temporarily unavailable.</value></data>
   <data name="ValidationFailed" xml:space="preserve"><value>Check the highlighted customer fields.</value></data>
   <data name="Conflict" xml:space="preserve"><value>The customer profile changed before it could be saved.</value></data>
+  <data name="ConflictReload" xml:space="preserve"><value>Another employee updated this customer. Your changes were not saved. Reload the latest details, review them, and re-enter your changes.</value></data>
+  <data name="ReloadLatest" xml:space="preserve"><value>Reload latest details</value></data>
   <data name="SaveFailed" xml:space="preserve"><value>The customer profile could not be saved.</value></data>
   <data name="Retry" xml:space="preserve"><value>Try again</value></data>
   <data name="CustomerWorkspaceTabs" xml:space="preserve"><value>Customer workspace</value></data>

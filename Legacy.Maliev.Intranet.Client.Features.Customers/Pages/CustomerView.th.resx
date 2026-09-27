@@ -56,6 +56,8 @@
   <data name="Unavailable" xml:space="preserve"><value>ระบบข้อมูลลูกค้าไม่พร้อมใช้งานชั่วคราว</value></data>
   <data name="ValidationFailed" xml:space="preserve"><value>โปรดตรวจสอบข้อมูลลูกค้าในช่องที่ระบุ</value></data>
   <data name="Conflict" xml:space="preserve"><value>ข้อมูลลูกค้าถูกแก้ไขจากที่อื่น โปรดโหลดข้อมูลล่าสุดแล้วลองอีกครั้ง</value></data>
+  <data name="ConflictReload" xml:space="preserve"><value>พนักงานคนอื่นแก้ไขข้อมูลลูกค้ารายนี้แล้ว การเปลี่ยนแปลงของคุณยังไม่ถูกบันทึก โปรดโหลดข้อมูลล่าสุด ตรวจสอบ แล้วกรอกการเปลี่ยนแปลงอีกครั้ง</value></data>
+  <data name="ReloadLatest" xml:space="preserve"><value>โหลดข้อมูลล่าสุด</value></data>
   <data name="SaveFailed" xml:space="preserve"><value>บันทึกข้อมูลลูกค้าไม่สำเร็จ</value></data>
   <data name="Retry" xml:space="preserve"><value>ลองอีกครั้ง</value></data>
   <data name="CustomerWorkspaceTabs" xml:space="preserve"><value>พื้นที่ทำงานของลูกค้า</value></data>

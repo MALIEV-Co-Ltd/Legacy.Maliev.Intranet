@@ -40,6 +40,26 @@ public sealed class CustomerUpdateProxy(HttpClient httpClient)
         return SendAsync(request, cancellationToken);
     }
 
+    /// <summary>Writes an editable profile only if the browser's read revision still matches.</summary>
+    public Task<HttpResponseMessage> UpdateVersionedAsync(
+        int id,
+        CustomerUpdateRequest input,
+        CustomerDetail current,
+        string revision,
+        CancellationToken cancellationToken)
+    {
+        var payload = new UpsertCustomerPayload(
+            input.FirstName, input.LastName, input.Telephone, input.Mobile, input.Fax,
+            input.Email, input.DateOfBirth, current.CompanyId,
+            current.BillingAddressId, current.ShippingAddressId);
+        var request = new HttpRequestMessage(HttpMethod.Put, $"/customers/{id}/versioned")
+        {
+            Content = JsonContent.Create(payload),
+        };
+        request.Headers.TryAddWithoutValidation("If-Match", revision);
+        return SendAsync(request, cancellationToken);
+    }
+
     /// <summary>Replaces only the employee-only remark.</summary>
     public Task<HttpResponseMessage> UpdateInternalRemarkAsync(
         int id,
