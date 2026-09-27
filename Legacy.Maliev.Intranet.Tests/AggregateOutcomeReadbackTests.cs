@@ -199,6 +199,23 @@ public sealed class AggregateOutcomeReadbackTests
         Assert.DoesNotContain("customerId", json, StringComparison.OrdinalIgnoreCase);
     }
 
+    [Fact]
+    public async Task UnknownLengthProducerBodyIsRejectedBeforeReadingBeyondLimit()
+    {
+        using var stream = new CountingNonSeekableStream(new byte[2 * 1024 * 1024]);
+        var upstream = new RecordingHandler(string.Empty, HttpStatusCode.OK, () => new StreamContent(stream));
+        await using var factory = new OutcomeBffFactory(upstream, PermissionsFor("quotation"));
+        using var client = factory.CreateClient(ClientOptions());
+
+        using var response = await client.GetAsync(Route("quotation"));
+        using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal(502, document.RootElement.GetProperty("httpStatus").GetInt32());
+        Assert.Equal(JsonValueKind.Null, document.RootElement.GetProperty("payload").ValueKind);
+        Assert.True(stream.BytesRead <= 1024 * 1024 + 1, $"Read {stream.BytesRead} producer bytes.");
+    }
+
     [Theory]
     [InlineData("quotation", "\"PersistedQuotationCount\":3", "\"PersistedQuotationCount\":9")]
     [InlineData("quotation", "\"PersistedQuotationCount\":3", "\"JourneyId\":\"private\",\"PersistedQuotationCount\":3")]
@@ -385,7 +402,7 @@ public sealed class AggregateOutcomeReadbackTests
         public Task SignOutAsync(HttpContext context, string? scheme, AuthenticationProperties? properties) => Task.CompletedTask;
     }
 
-    private sealed class RecordingHandler(string body, HttpStatusCode status) : HttpMessageHandler
+    private sealed class RecordingHandler(string body, HttpStatusCode status, Func<HttpContent>? contentFactory = null) : HttpMessageHandler
     {
         public int Calls { get; private set; }
         public string? Path { get; private set; }
@@ -400,8 +417,53 @@ public sealed class AggregateOutcomeReadbackTests
             Token = request.Headers.Authorization?.Parameter;
             return Task.FromResult(new HttpResponseMessage(status)
             {
-                Content = new StringContent(body, Encoding.UTF8, "application/json"),
+                Content = contentFactory?.Invoke() ?? new StringContent(body, Encoding.UTF8, "application/json"),
             });
+        }
+    }
+
+    private sealed class CountingNonSeekableStream(byte[] data) : Stream
+    {
+        private readonly MemoryStream inner = new(data);
+
+        public long BytesRead { get; private set; }
+        public override bool CanRead => true;
+        public override bool CanSeek => false;
+        public override bool CanWrite => false;
+        public override long Length => throw new NotSupportedException();
+        public override long Position
+        {
+            get => throw new NotSupportedException();
+            set => throw new NotSupportedException();
+        }
+
+        public override int Read(byte[] buffer, int offset, int count)
+        {
+            var read = inner.Read(buffer, offset, count);
+            BytesRead += read;
+            return read;
+        }
+
+        public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
+        {
+            var read = await inner.ReadAsync(buffer, cancellationToken);
+            BytesRead += read;
+            return read;
+        }
+
+        public override void Flush() => throw new NotSupportedException();
+        public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
+        public override void SetLength(long value) => throw new NotSupportedException();
+        public override void Write(byte[] buffer, int offset, int count) => throw new NotSupportedException();
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                inner.Dispose();
+            }
+
+            base.Dispose(disposing);
         }
     }
 }
