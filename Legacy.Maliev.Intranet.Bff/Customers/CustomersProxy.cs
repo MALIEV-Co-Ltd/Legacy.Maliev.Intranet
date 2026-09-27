@@ -12,6 +12,13 @@ public sealed class CustomersProxy(HttpClient httpClient)
         return await httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
     }
 
+    /// <summary>Gets an uncached profile and revision for an opt-in editor.</summary>
+    public async Task<HttpResponseMessage> GetVersionedByIdAsync(int id, CancellationToken cancellationToken)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Get, $"/customers/{id}/versioned");
+        return await httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+    }
+
     /// <summary>Gets the requested customer page from CustomerService.</summary>
     public Task<HttpResponseMessage> GetAsync(
         CustomerListSort sort,

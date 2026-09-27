@@ -1184,10 +1184,11 @@ public sealed class OperationalTableMigrationBrowserTests(
                 currencyCodes = new Dictionary<int, string> { [764] = "THB" },
             }),
         }));
-        await page.RouteAsync("**/bff/customers/69738", route => route.FulfillAsync(new()
+        await page.RouteAsync("**/bff/customers/69738/versioned", route => route.FulfillAsync(new()
         {
             Status = 200,
             ContentType = "application/json",
+            Headers = new Dictionary<string, string> { ["etag"] = "\"00000001\"", ["cache-control"] = "no-store" },
             Body = JsonSerializer.Serialize(new
             {
                 id = 69738,

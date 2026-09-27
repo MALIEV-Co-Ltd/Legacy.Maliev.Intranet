@@ -149,6 +149,36 @@ public sealed class CustomerDetailBrowserTests(
     }
 
     [Fact]
+    public async Task StaleCustomerEditShowsWarningAndReloadsOnlyWhenEmployeeChooses()
+    {
+        await using var context = await playwright.Browser.NewContextAsync(new()
+        {
+            ViewportSize = new() { Width = 1280, Height = 900 },
+            ReducedMotion = ReducedMotion.Reduce
+        });
+        var page = await context.NewPageAsync();
+        var state = new CustomerBoundaryState { RejectNextProfileWrite = true };
+        await StubCustomerDetailBoundariesAsync(page, state: state);
+
+        await page.GotoAsync(new Uri(server.BaseUri, "Customers/View?id=69738").AbsoluteUri);
+        await page.GetByRole(AriaRole.Button, new() { Name = "Edit customer", Exact = true }).ClickAsync();
+        var firstName = page.GetByRole(AriaRole.Textbox, new() { Name = "First name", Exact = true });
+        await firstName.FillAsync("Changed by first employee");
+        await page.GetByRole(AriaRole.Button, new() { Name = "Save changes", Exact = true }).ClickAsync();
+
+        await page.GetByText("Another employee updated this customer. Your changes were not saved. Reload the latest details, review them, and re-enter your changes.", new() { Exact = true }).WaitForAsync();
+        Assert.Equal("Changed by first employee", await firstName.InputValueAsync());
+        Assert.Equal(1, state.CustomerLoads);
+        Assert.Equal(0, state.ProfileWrites);
+        Assert.Equal("\"00000001\"", state.LastIfMatch);
+
+        await page.GetByRole(AriaRole.Button, new() { Name = "Reload latest details", Exact = true }).ClickAsync();
+        await page.GetByRole(AriaRole.Button, new() { Name = "Edit customer", Exact = true }).WaitForAsync();
+        Assert.Equal(2, state.CustomerLoads);
+        Assert.Equal(0, await page.GetByText("Changed by first employee", new() { Exact = true }).CountAsync());
+    }
+
+    [Fact]
     public async Task InternalRemark_IsClearlyPrivateAndSavesThroughTheCsrfProtectedEmployeeFlow()
     {
         await using var context = await playwright.Browser.NewContextAsync(new()
@@ -714,13 +744,39 @@ public sealed class CustomerDetailBrowserTests(
             });
         });
 
-        await page.RouteAsync("**/bff/customers/69738", route =>
+        await page.RouteAsync("**/bff/customers/69738/versioned", async route =>
         {
+            if (string.Equals(route.Request.Method, "PUT", StringComparison.OrdinalIgnoreCase))
+            {
+                state.LastIfMatch = route.Request.Headers.TryGetValue("if-match", out var token) ? token : null;
+                if (state.RejectNextProfileWrite)
+                {
+                    state.RejectNextProfileWrite = false;
+                    state.CustomerRevision++;
+                    await route.FulfillAsync(new() { Status = 412 });
+                    return;
+                }
+                if (state.LastIfMatch != $"\"{state.CustomerRevision:x8}\"")
+                {
+                    await route.FulfillAsync(new() { Status = 412 });
+                    return;
+                }
+                Interlocked.Increment(ref state.ProfileWrites);
+                state.CustomerRevision++;
+                await route.FulfillAsync(new() { Status = 204 });
+                return;
+            }
+
             Interlocked.Increment(ref state.CustomerLoads);
-            return route.FulfillAsync(new()
+            await route.FulfillAsync(new()
             {
                 Status = 200,
                 ContentType = "application/json",
+                Headers = new Dictionary<string, string>
+                {
+                    ["etag"] = $"\"{state.CustomerRevision:x8}\"",
+                    ["cache-control"] = "no-store"
+                },
                 Body = JsonSerializer.Serialize(CreateCustomer())
             });
         });
@@ -767,6 +823,10 @@ public sealed class CustomerDetailBrowserTests(
     private sealed class CustomerBoundaryState
     {
         public int CustomerLoads;
+        public int CustomerRevision = 1;
+        public int ProfileWrites;
+        public string? LastIfMatch;
+        public bool RejectNextProfileWrite;
         public int ActivityLoads;
         public int OrderLoads;
         public int QuotationLoads;

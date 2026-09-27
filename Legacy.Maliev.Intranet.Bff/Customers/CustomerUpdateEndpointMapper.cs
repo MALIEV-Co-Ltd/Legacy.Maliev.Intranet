@@ -21,6 +21,39 @@ internal static class CustomerUpdateEndpointMapper
             return Results.BadRequest();
         }
 
+        var invalidInput = ValidateInput(input);
+        if (invalidInput is not null) return invalidInput;
+
+        try
+        {
+            using var currentResponse = await customers.GetByIdAsync(id, cancellationToken);
+            var currentFailure = MapReadFailure(currentResponse, context);
+            if (currentFailure is not null)
+            {
+                return currentFailure;
+            }
+
+            var current = await currentResponse.Content.ReadFromJsonAsync<CustomerDetail>(cancellationToken);
+            if (!ValidCustomer(current, id)) return InvalidResponse();
+
+            using var updateResponse = await updates.UpdateAsync(id, input, current!, cancellationToken);
+            return MapWrite(updateResponse, context);
+        }
+        catch (Exception exception) when (IsBoundedFailure(exception, cancellationToken))
+        {
+            return Unavailable();
+        }
+    }
+
+    internal static bool ValidCustomer(CustomerDetail? current, int id) =>
+        current is not null && current.Id == id &&
+        !string.IsNullOrWhiteSpace(current.FirstName) &&
+        !string.IsNullOrWhiteSpace(current.LastName) &&
+        !string.IsNullOrWhiteSpace(current.FullName) &&
+        !string.IsNullOrWhiteSpace(current.Email);
+
+    internal static IResult? ValidateInput(CustomerUpdateRequest input)
+    {
         var validationResults = new List<ValidationResult>();
         if (!Validator.TryValidateObject(input, new ValidationContext(input), validationResults, true))
         {
@@ -40,34 +73,10 @@ internal static class CustomerUpdateEndpointMapper
                     StringComparer.Ordinal);
             return Results.ValidationProblem(errors);
         }
-
-        try
-        {
-            using var currentResponse = await customers.GetByIdAsync(id, cancellationToken);
-            var currentFailure = MapReadFailure(currentResponse, context);
-            if (currentFailure is not null)
-            {
-                return currentFailure;
-            }
-
-            var current = await currentResponse.Content.ReadFromJsonAsync<CustomerDetail>(cancellationToken);
-            if (current is null || current.Id != id || string.IsNullOrWhiteSpace(current.FirstName) ||
-                string.IsNullOrWhiteSpace(current.LastName) || string.IsNullOrWhiteSpace(current.FullName) ||
-                string.IsNullOrWhiteSpace(current.Email))
-            {
-                return InvalidResponse();
-            }
-
-            using var updateResponse = await updates.UpdateAsync(id, input, current, cancellationToken);
-            return MapWrite(updateResponse, context);
-        }
-        catch (Exception exception) when (IsBoundedFailure(exception, cancellationToken))
-        {
-            return Unavailable();
-        }
+        return null;
     }
 
-    private static IResult? MapReadFailure(HttpResponseMessage response, HttpContext context)
+    internal static IResult? MapReadFailure(HttpResponseMessage response, HttpContext context)
     {
         if (response.StatusCode is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden or HttpStatusCode.NotFound)
         {
@@ -83,12 +92,14 @@ internal static class CustomerUpdateEndpointMapper
         return response.IsSuccessStatusCode ? null : Unavailable();
     }
 
-    private static IResult MapWrite(HttpResponseMessage response, HttpContext context)
+    internal static IResult MapWrite(HttpResponseMessage response, HttpContext context)
     {
         if (response.StatusCode == HttpStatusCode.BadRequest) return Results.BadRequest();
         if (response.StatusCode == HttpStatusCode.NotFound) return Results.NotFound();
         if (response.StatusCode is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden) return Results.StatusCode((int)response.StatusCode);
         if (response.StatusCode == HttpStatusCode.Conflict) return Results.Conflict();
+        if (response.StatusCode == HttpStatusCode.PreconditionFailed) return Results.StatusCode(StatusCodes.Status412PreconditionFailed);
+        if ((int)response.StatusCode == StatusCodes.Status428PreconditionRequired) return Results.StatusCode(StatusCodes.Status428PreconditionRequired);
         if (response.StatusCode == HttpStatusCode.TooManyRequests)
         {
             CopyRetryAfter(response, context);
@@ -106,10 +117,10 @@ internal static class CustomerUpdateEndpointMapper
         }
     }
 
-    private static bool IsBoundedFailure(Exception exception, CancellationToken cancellationToken) =>
+    internal static bool IsBoundedFailure(Exception exception, CancellationToken cancellationToken) =>
         exception is HttpRequestException or InvalidDataException or System.Text.Json.JsonException or Polly.Timeout.TimeoutRejectedException ||
         exception is OperationCanceledException && !cancellationToken.IsCancellationRequested;
 
-    private static IResult InvalidResponse() => Results.Problem(statusCode: StatusCodes.Status502BadGateway, title: "Invalid CustomerService response");
-    private static IResult Unavailable() => Results.Problem(statusCode: StatusCodes.Status503ServiceUnavailable, title: "CustomerService unavailable");
+    internal static IResult InvalidResponse() => Results.Problem(statusCode: StatusCodes.Status502BadGateway, title: "Invalid CustomerService response");
+    internal static IResult Unavailable() => Results.Problem(statusCode: StatusCodes.Status503ServiceUnavailable, title: "CustomerService unavailable");
 }
