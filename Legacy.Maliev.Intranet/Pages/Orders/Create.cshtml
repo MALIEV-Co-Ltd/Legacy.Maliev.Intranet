@@ -11,13 +11,13 @@
         {
             <p><strong>@Model.Customer.FullName</strong><br />@Model.Customer.Email</p>
         }
-        <label>Order name <input asp-for="Input.Name" /></label>
+        <div><label>Order name <input asp-for="Input.Name" maxlength="100" aria-describedby="order-create-name-hint order-create-name-error" /></label><small id="order-create-name-hint">Maximum 100 characters.</small><span id="order-create-name-error" asp-validation-for="Input.Name"></span></div>
         <label>Quantity <input asp-for="Input.Quantity" type="number" min="1" /></label>
         <label>Process <select asp-for="Input.ProcessId"><option value="">Select a process</option>@foreach (var item in Model.ReferenceData.Processes) { <option value="@item.Id">@item.Name</option> }</select></label>
         <label>Material <select asp-for="Input.MaterialId"><option value="">No material</option>@foreach (var item in Model.ReferenceData.Materials) { <option value="@item.Id">@item.Name</option> }</select></label>
         <label>Color <select asp-for="Input.ColorId"><option value="">No color</option>@foreach (var item in Model.ReferenceData.Colors) { <option value="@item.Id">@item.Name</option> }</select></label>
         <label>Surface finish <select asp-for="Input.SurfaceFinishId"><option value="">No surface finish</option>@foreach (var item in Model.ReferenceData.SurfaceFinishes) { <option value="@item.Id">@item.Name</option> }</select></label>
-        <label class="full-width">Requirements <textarea asp-for="Input.Description" rows="7" maxlength="500"></textarea></label>
+        <div class="full-width"><label>Requirements <textarea asp-for="Input.Description" rows="7" maxlength="250" aria-describedby="order-create-description-hint order-create-description-error"></textarea></label><small id="order-create-description-hint">Maximum 250 characters.</small><span id="order-create-description-error" asp-validation-for="Input.Description"></span></div>
         <label class="full-width">Files <input asp-for="Files" type="file" multiple /></label>
         <label><input asp-for="Input.SendConfirmationEmail" /> Send customer confirmation</label>
         <label><input asp-for="Input.AllowSocialMedia" /> Content may be published</label>
