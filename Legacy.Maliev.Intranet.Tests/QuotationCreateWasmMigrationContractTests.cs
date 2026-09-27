@@ -1,15 +1,29 @@
 using Legacy.Maliev.Intranet.Contracts;
 using Legacy.Maliev.Intranet.Server.Quotations;
+using System.Text.Json;
 
 namespace Legacy.Maliev.Intranet.Tests;
 
 public sealed class QuotationCreateWasmMigrationContractTests
 {
     [Fact]
+    public void LinkedCreate_BrowserContractAcceptsRequestIdButNotJourneyId()
+    {
+        var json = """{"customerId":3,"employeeId":2,"currencyId":1,"period":30,"withholdingTaxEnabled":false,"lines":[{"description":"Part","quantity":1,"unitPrice":10,"discountPercent":0}],"sourceRequestId":456,"sourceJourneyId":"11111111-2222-3333-4444-555555555555"}""";
+
+        var input = JsonSerializer.Deserialize<QuotationCreateRequest>(json, new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        using var serialized = JsonDocument.Parse(JsonSerializer.Serialize(input, new JsonSerializerOptions(JsonSerializerDefaults.Web)));
+
+        Assert.Null(input?.SourceJourneyId);
+        Assert.Equal(456, serialized.RootElement.GetProperty("sourceRequestId").GetInt32());
+        Assert.False(serialized.RootElement.TryGetProperty("sourceJourneyId", out _));
+    }
+
+    [Fact]
     public void CreateContracts_PreserveBrowserInputsAndKeepAuthoritativeTotalsServerOwned()
     {
         Assert.Equal(
-            ["Comment", "CurrencyId", "CustomerId", "EmployeeId", "Fob", "Lines", "Period", "ShippedVia", "Terms", "WithholdingTaxEnabled"],
+            ["Comment", "CurrencyId", "CustomerId", "EmployeeId", "Fob", "Lines", "Period", "ShippedVia", "SourceJourneyId", "SourceRequestId", "Terms", "WithholdingTaxEnabled"],
             typeof(QuotationCreateRequest).GetProperties().Select(property => property.Name).Order(StringComparer.Ordinal).ToArray());
         Assert.Equal(
             ["Description", "DiscountPercent", "OrderId", "Quantity", "UnitPrice"],

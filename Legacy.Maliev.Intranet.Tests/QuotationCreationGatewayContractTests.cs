@@ -2,6 +2,7 @@ extern alias Bff;
 
 using System.Net;
 using System.Text;
+using System.Text.Json;
 using Legacy.Maliev.Intranet.Contracts;
 using Legacy.Maliev.Intranet.Server.Quotations;
 using Microsoft.Extensions.Time.Testing;
@@ -12,6 +13,24 @@ namespace Legacy.Maliev.Intranet.Tests;
 public sealed class QuotationCreationGatewayContractTests
 {
     private static readonly DateTimeOffset Now = DateTimeOffset.Parse("2026-07-18T00:00:00Z");
+
+    [Fact]
+    public async Task LinkedCreate_SendsVerifiedSourceFieldsInQuotationBody()
+    {
+        var handler = new RecordingHandler(_ => Json("""{"id":77}""", HttpStatusCode.Created));
+        var gateway = new QuotationCreationGateway(new StubFactory(handler), new FakeTimeProvider(Now));
+        var input = Request() with
+        {
+            SourceRequestId = 456,
+            SourceJourneyId = Guid.Parse("11111111-2222-3333-4444-555555555555"),
+        };
+
+        await gateway.CreateQuotationAsync(input, QuotationPricing.Calculate(input, Now), "attempt:quotation", CancellationToken.None);
+
+        using var body = JsonDocument.Parse(Assert.Single(handler.Requests).Body);
+        Assert.Equal(456, body.RootElement.GetProperty("SourceRequestId").GetInt32());
+        Assert.Equal("11111111-2222-3333-4444-555555555555", body.RootElement.GetProperty("SourceJourneyId").GetString());
+    }
 
     [Fact]
     public async Task RequiredCreates_UseExactRoutesJsonAndStableIdempotencyKeys()

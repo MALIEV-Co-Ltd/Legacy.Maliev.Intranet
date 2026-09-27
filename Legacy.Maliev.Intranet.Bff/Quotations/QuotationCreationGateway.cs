@@ -65,7 +65,9 @@ public sealed class QuotationCreationGateway(
             input.Terms,
             null,
             now.UtcDateTime,
-            now.UtcDateTime);
+            now.UtcDateTime,
+            input.SourceRequestId,
+            input.SourceJourneyId);
         return PostForIdAsync(QuotationClient, "/quotations", payload, idempotencyKey, cancellationToken);
     }
 
@@ -318,7 +320,9 @@ public sealed class QuotationCreationGateway(
         string? Terms,
         bool? Accepted,
         DateTime CreatedDate,
-        DateTime ModifiedDate);
+        DateTime ModifiedDate,
+        int? SourceRequestId,
+        Guid? SourceJourneyId);
     private sealed record QuotationLineWrite(
         int QuotationId,
         int? OrderId,

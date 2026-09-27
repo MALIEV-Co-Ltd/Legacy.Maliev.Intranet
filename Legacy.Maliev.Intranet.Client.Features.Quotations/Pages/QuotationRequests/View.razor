@@ -19,6 +19,7 @@
     else if (detail is not null)
     {
         <header class="operations-page-header"><div><h1>@Text["Heading", detail.Request.Id]</h1><p>@Text["Description"]</p></div><LegacyLink Href="/QuotationRequests/Index" Role="LegacyLinkRole.Navigation" AriaLabel="@Text["Back"]">@Text["Back"]</LegacyLink></header>
+        <div class="quotation-request-actions"><LegacyLink Href="@($"/Quotations/Create?sourceRequestId={detail.Request.Id}")" Role="LegacyLinkRole.Navigation" AriaLabel="@Text["CreateLinkedQuotation"]">@Text["CreateLinkedQuotation"]</LegacyLink></div>
         @if (notice is not null) { <ShadcnAlert AlertRole="ShadcnAlertRole.Status"><ShadcnAlertDescription>@notice</ShadcnAlertDescription></ShadcnAlert> }
 
         <EditForm EditContext="@editContext" OnValidSubmit="SaveAsync" class="quotation-request-form" aria-busy="@submitting.ToString().ToLowerInvariant()">
