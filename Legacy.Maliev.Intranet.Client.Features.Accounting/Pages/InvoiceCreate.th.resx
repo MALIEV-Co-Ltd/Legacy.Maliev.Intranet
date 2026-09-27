@@ -56,7 +56,8 @@
   <data name="RateLimited" xml:space="preserve"><value>ระบบบัญชีมีคำขอจำนวนมาก โปรดลองอีกครั้งในอีกสักครู่</value></data>
   <data name="InvalidResponse" xml:space="preserve"><value>ระบบบัญชีส่งข้อมูลใบแจ้งหนี้กลับมาไม่ถูกต้อง</value></data>
   <data name="Unavailable" xml:space="preserve"><value>ระบบสร้างใบแจ้งหนี้ไม่พร้อมใช้งานชั่วคราว</value></data>
-  <data name="RetrySafe" xml:space="preserve"><value>ระบบกำลังตรวจสอบผลลัพธ์ โปรดส่งคำขอเดิมซ้ำเพื่อดำเนินการต่ออย่างปลอดภัย</value></data>
-  <data name="PendingRetry" xml:space="preserve"><value>ยังยืนยันผลคำขอก่อนหน้าไม่ได้ โปรดส่งข้อมูลเดิมพร้อมรหัสคำขอเดิมอีกครั้ง และโหลดใบเสนอราคาใหม่เมื่อยืนยันผลแล้วเท่านั้น</value></data>
+  <data name="RetrySafe" xml:space="preserve"><value>ยังยืนยันผลการสร้างใบแจ้งหนี้ไม่ได้ โปรดส่งคำขอเดิมซ้ำ หากยังไม่สำเร็จ ให้ติดต่อฝ่ายสนับสนุนก่อนเริ่มสร้างใบแจ้งหนี้ใหม่</value></data>
+  <data name="PendingRetry" xml:space="preserve"><value>ยังยืนยันผลการสร้างใบแจ้งหนี้ไม่ได้ ข้อมูลเดิมถูกล็อกไว้ โปรดส่งคำขอเดิมซ้ำเพื่อตรวจสอบผล และอย่าเพิ่งเริ่มสร้างใบแจ้งหนี้ใหม่</value></data>
+  <data name="RetryOriginal" xml:space="preserve"><value>ส่งคำขอใบแจ้งหนี้เดิมซ้ำ</value></data>
   <data name="OrderItemsTable" xml:space="preserve"><value>ตารางรายการสินค้าและยอดเงินจากใบเสนอราคา</value></data>
 </root>
