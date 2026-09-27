@@ -65,8 +65,26 @@ internal static class OutcomeReadbackEndpointMapper
                 return Receipt(source, StatusCodes.Status502BadGateway, null, timeProvider);
             }
 
-            var body = await response.Content.ReadAsByteArrayAsync(cancellationToken);
-            var payload = AggregateOutcomePayload.TryValidate(body, source, from, to, out var validated)
+            var body = new byte[MaximumPayloadBytes + 1];
+            using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
+            var length = 0;
+            while (length < body.Length)
+            {
+                var read = await stream.ReadAsync(body.AsMemory(length), cancellationToken);
+                if (read == 0)
+                {
+                    break;
+                }
+
+                length += read;
+            }
+
+            if (length > MaximumPayloadBytes)
+            {
+                return Receipt(source, StatusCodes.Status502BadGateway, null, timeProvider);
+            }
+
+            var payload = AggregateOutcomePayload.TryValidate(body.AsMemory(0, length), source, from, to, out var validated)
                 ? validated
                 : (JsonElement?)null;
             return Receipt(
