@@ -22,10 +22,11 @@ public sealed class InvoiceCreateRenderBrowserTests(
             ContentType = "application/json",
             Body = """{"isAuthenticated":true,"employeeId":"test-employee","displayName":"Test Employee","roles":["Employee"],"csrfToken":"test-csrf","legacyDatabaseId":1,"permissions":["legacy-accounting.invoices.create"]}""",
         }));
-        await page.RouteAsync("**/bff/invoices/from-quotation/*/preview", route =>
+        await page.RouteAsync("**/bff/invoices/from-quotation/*/preview", async route =>
         {
             var id = route.Request.Url.Contains("/85/", StringComparison.Ordinal) ? 85 : 84;
-            return route.FulfillAsync(new()
+            if (id == 85) await Task.Delay(100);
+            await route.FulfillAsync(new()
             {
                 Status = 200,
                 ContentType = "application/json",
@@ -55,7 +56,7 @@ public sealed class InvoiceCreateRenderBrowserTests(
         Assert.Equal("INV-84", await page.Locator("#invoice-number").InputValueAsync());
         await page.Locator("#invoice-quotation").FillAsync("85");
         await page.GetByRole(AriaRole.Button, new() { Name = "Get quotation data" }).ClickAsync();
-        Assert.Equal("INV-85", await page.Locator("#invoice-number").InputValueAsync());
+        await Assertions.Expect(page.Locator("#invoice-number")).ToHaveValueAsync("INV-85");
         Assert.True(await page.Locator("#blazor-error-ui").IsHiddenAsync());
         Assert.Empty(errors);
     }

@@ -1,23 +1,26 @@
 @page "/Invoices/Create"
 @page "/accounting/new"
 @using System.ComponentModel.DataAnnotations
+@using Microsoft.JSInterop
 @attribute [Authorize]
 @inject HttpClient Http
 @inject NavigationManager Navigation
 @inject IStringLocalizer<InvoiceCreate> Text
+@inject IJSRuntime JS
 
 <PageTitle>@Text["PageTitle"]</PageTitle>
 
 <main class="invoice-editor">
-    <div class="operations-page-header"><h1>@Text["Heading"]</h1>@if (pendingRequest is null) { <LegacyLink Href="/Invoices/Index" Role="LegacyLinkRole.Navigation" AriaLabel="@Text["Back"]">@Text["Back"]</LegacyLink> } else { <span aria-disabled="true">@Text["Back"]</span> }</div>
+    <div class="operations-page-header"><h1>@Text["Heading"]</h1>@if (pendingRequest is null || reloadBlocked) { <LegacyLink Href="/Invoices/Index" Role="LegacyLinkRole.Navigation" AriaLabel="@Text["Back"]">@Text["Back"]</LegacyLink> } else { <span aria-disabled="true">@Text["Back"]</span> }</div>
     @if (!string.IsNullOrWhiteSpace(error)) { <ShadcnAlert Variant="ShadcnAlertVariant.Destructive" AlertRole="ShadcnAlertRole.Alert"><ShadcnAlertDescription>@error</ShadcnAlertDescription></ShadcnAlert> }
     @if (pendingRequest is not null) { <ShadcnAlert AlertRole="ShadcnAlertRole.Status"><ShadcnAlertDescription>@Text["PendingRetry"]</ShadcnAlertDescription></ShadcnAlert> }
+    @if (reloadBlocked) { <ShadcnAlert Variant="ShadcnAlertVariant.Destructive" AlertRole="ShadcnAlertRole.Alert"><ShadcnAlertDescription>@Text["ReloadReconciliationRequired"]</ShadcnAlertDescription></ShadcnAlert> }
 
     <section class="invoice-editor__section" aria-labelledby="quotation-heading">
         <h2 id="quotation-heading">@Text["Quotation"]</h2>
         <div class="invoice-editor__lookup">
-            <AccountingInputField TValue="int" Id="invoice-quotation" Label="@Text["QuotationId"]" Type="number" InputMode="numeric" Min="1" Value="@quotationId" ValueChanged="@(value => quotationId = value)" Disabled="@(loading || submitting || pendingRequest is not null)" />
-            <ShadcnButton OnClick="LoadPreviewAsync" Disabled="@(loading || submitting || pendingRequest is not null || quotationId <= 0)">@(loading ? Text["Loading"] : Text["LoadQuotation"])</ShadcnButton>
+            <AccountingInputField TValue="int" Id="invoice-quotation" Label="@Text["QuotationId"]" Type="number" InputMode="numeric" Min="1" Value="@quotationId" ValueChanged="@(value => quotationId = value)" Disabled="@(loading || IntentLocked)" />
+            <ShadcnButton OnClick="LoadPreviewAsync" Disabled="@(loading || IntentLocked || quotationId <= 0)">@(loading ? Text["Loading"] : Text["LoadQuotation"])</ShadcnButton>
         </div>
         @if (loading) { <div role="status" aria-live="polite"><ShadcnSpinner Label="@Text["Loading"]" Size="1.25rem" /><span>@Text["Loading"]</span></div> }
     </section>
@@ -29,17 +32,17 @@
             <section class="invoice-editor__section" aria-labelledby="invoice-data-heading">
                 <h2 id="invoice-data-heading">@Text["InvoiceData"]</h2>
                 <div class="invoice-editor__grid invoice-editor__grid--three">
-                    <AccountingInputField TValue="string" Id="invoice-number" Label="@Text["InvoiceNumber"]" @bind-Value="model.InvoiceNumber" Required="true" MaxLength="100" Disabled="@(submitting || pendingRequest is not null)" />
+                    <AccountingInputField TValue="string" Id="invoice-number" Label="@Text["InvoiceNumber"]" @bind-Value="model.InvoiceNumber" Required="true" MaxLength="100" Disabled="@IntentLocked" />
                     <div class="invoice-editor__readout"><span>@Text["CustomerId"]</span><strong>@preview.CustomerId</strong></div>
                     <div class="invoice-editor__readout"><span>@Text["SalesPerson"]</span><strong>@preview.SalesPerson</strong></div>
-                    <AccountingInputField TValue="string" Id="invoice-purchase-order" Label="@Text["PurchaseOrderNumber"]" @bind-Value="model.PurchaseOrderNumber" MaxLength="250" Disabled="@(submitting || pendingRequest is not null)" />
-                    <AccountingInputField TValue="string" Id="invoice-requisitioner" Label="@Text["Requisitioner"]" @bind-Value="model.Requisitioner" MaxLength="250" Disabled="@(submitting || pendingRequest is not null)" />
-                    <AccountingInputField TValue="string" Id="invoice-shipped-via" Label="@Text["ShippedVia"]" @bind-Value="model.ShippedVia" MaxLength="250" Disabled="@(submitting || pendingRequest is not null)" />
-                    <AccountingInputField TValue="string" Id="invoice-fob" Label="@Text["Fob"]" @bind-Value="model.Fob" MaxLength="250" Disabled="@(submitting || pendingRequest is not null)" />
-                    <AccountingInputField TValue="string" Id="invoice-terms" Label="@Text["Terms"]" @bind-Value="model.Terms" MaxLength="250" Disabled="@(submitting || pendingRequest is not null)" />
+                    <AccountingInputField TValue="string" Id="invoice-purchase-order" Label="@Text["PurchaseOrderNumber"]" @bind-Value="model.PurchaseOrderNumber" MaxLength="250" Disabled="@IntentLocked" />
+                    <AccountingInputField TValue="string" Id="invoice-requisitioner" Label="@Text["Requisitioner"]" @bind-Value="model.Requisitioner" MaxLength="250" Disabled="@IntentLocked" />
+                    <AccountingInputField TValue="string" Id="invoice-shipped-via" Label="@Text["ShippedVia"]" @bind-Value="model.ShippedVia" MaxLength="250" Disabled="@IntentLocked" />
+                    <AccountingInputField TValue="string" Id="invoice-fob" Label="@Text["Fob"]" @bind-Value="model.Fob" MaxLength="250" Disabled="@IntentLocked" />
+                    <AccountingInputField TValue="string" Id="invoice-terms" Label="@Text["Terms"]" @bind-Value="model.Terms" MaxLength="250" Disabled="@IntentLocked" />
                     <div class="invoice-editor__readout"><span>@Text["Currency"]</span><strong>@preview.Currency</strong></div>
-                    <AccountingInputField TValue="string" Id="invoice-tax-id" Label="@Text["TaxIdentification"]" @bind-Value="model.TaxIdentification" MaxLength="250" Disabled="@(submitting || pendingRequest is not null)" />
-                    <AccountingInputField TValue="string" Id="invoice-registration" Label="@Text["CommercialRegistration"]" @bind-Value="model.CommercialRegistration" MaxLength="250" Disabled="@(submitting || pendingRequest is not null)" />
+                    <AccountingInputField TValue="string" Id="invoice-tax-id" Label="@Text["TaxIdentification"]" @bind-Value="model.TaxIdentification" MaxLength="250" Disabled="@IntentLocked" />
+                    <AccountingInputField TValue="string" Id="invoice-registration" Label="@Text["CommercialRegistration"]" @bind-Value="model.CommercialRegistration" MaxLength="250" Disabled="@IntentLocked" />
                 </div>
             </section>
             <div class="invoice-editor__addresses">@AddressSection("billing", Text["Billing"], model.BillingAddress, false)@AddressSection("shipping", Text["Shipping"], model.ShippingAddress, true)</div>
@@ -51,13 +54,13 @@
                 </ShadcnTable>
             </section>
             <section class="invoice-editor__section invoice-editor__summary">
-                <div><ShadcnFormField Id="invoice-comment" Label="@Text["Comment"]"><Control><ShadcnTextarea TValue="string" id="invoice-comment" @bind-Value="model.Comment" maxlength="2000" rows="7" Disabled="@(submitting || pendingRequest is not null)" /></Control></ShadcnFormField></div>
+                <div><ShadcnFormField Id="invoice-comment" Label="@Text["Comment"]"><Control><ShadcnTextarea TValue="string" id="invoice-comment" @bind-Value="model.Comment" maxlength="2000" rows="7" Disabled="@IntentLocked" /></Control></ShadcnFormField></div>
                 <div>
                     <dl class="invoice-editor__totals"><div><dt>@Text["Subtotal"]</dt><dd>@Money(preview.Subtotal)</dd></div><div><dt>@Text["Vat"]</dt><dd>@Money(preview.Vat)</dd></div><div><dt>@Text["Total"]</dt><dd>@Money(preview.Total)</dd></div><div><dt>@Text["WithholdingTax"]</dt><dd>@Money(model.DeductWithholdingTax ? preview.AvailableWithholdingTax : 0m)</dd></div><div><dt>@Text["Outstanding"]</dt><dd>@Money(Outstanding)</dd></div></dl>
-                    <div class="invoice-editor__checks"><AccountingCheckboxField Id="invoice-withholding" Label="@Text["DeductWithholdingTax"]" @bind-Value="model.DeductWithholdingTax" Disabled="@(submitting || pendingRequest is not null)" /><AccountingCheckboxField Id="invoice-email" Label="@Text["SendEmail"]" @bind-Value="model.SendEmail" Disabled="@(submitting || pendingRequest is not null)" /></div>
+                    <div class="invoice-editor__checks"><AccountingCheckboxField Id="invoice-withholding" Label="@Text["DeductWithholdingTax"]" @bind-Value="model.DeductWithholdingTax" Disabled="@IntentLocked" /><AccountingCheckboxField Id="invoice-email" Label="@Text["SendEmail"]" @bind-Value="model.SendEmail" Disabled="@IntentLocked" /></div>
                 </div>
             </section>
-            <ShadcnButton ButtonType="ShadcnButtonType.Submit" OperationFeedback="false" Disabled="@submitting" Class="invoice-editor__submit">@(submitting ? Text["Creating"] : pendingRequest is not null ? Text["RetryOriginal"] : Text["Create"])</ShadcnButton>
+            <ShadcnButton ButtonType="ShadcnButtonType.Submit" OperationFeedback="false" Disabled="@(submitting || !storageChecked || reloadBlocked)" Class="invoice-editor__submit">@(submitting ? Text["Creating"] : pendingRequest is not null ? Text["RetryOriginal"] : Text["Create"])</ShadcnButton>
         </EditForm>
     }
 </main>
@@ -71,16 +74,29 @@
     private int quotationId;
     private bool loading;
     private bool submitting;
+    private bool storageChecked;
+    private bool reloadBlocked;
     private string? error;
-    private Guid operationId = Guid.NewGuid();
+    private const string UnresolvedStorageKey = "maliev-invoice-create-unresolved";
+    private Guid operationId;
     private CreateInvoiceFromQuotationRequest? pendingRequest;
     private decimal Outstanding => preview is null ? 0m : preview.Total - (model.DeductWithholdingTax ? preview.AvailableWithholdingTax : 0m);
+    private bool IntentLocked => submitting || pendingRequest is not null || !storageChecked || reloadBlocked;
 
     protected override async Task OnInitializedAsync()
     {
         try { session = await Http.GetFromJsonForPresentationAsync<EmployeeSessionSummary>("/bff/session"); }
         catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException) { error = Text["Unavailable"]; }
         if (QuotationIdInput is > 0) { quotationId = QuotationIdInput.Value; await LoadPreviewAsync(); }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+        try { reloadBlocked = await JS.InvokeAsync<string?>("sessionStorage.getItem", UnresolvedStorageKey) is not null; }
+        catch (Exception exception) when (exception is JSException or InvalidOperationException) { reloadBlocked = true; }
+        storageChecked = true;
+        StateHasChanged();
     }
 
     private async Task LoadPreviewAsync()
@@ -95,7 +111,7 @@
             if (preview is null) { error = Text["InvalidResponse"]; return; }
             model = CreateModel.From(preview);
             editContext = new EditContext(model);
-            operationId = Guid.NewGuid();
+            operationId = Guid.Empty;
             pendingRequest = null;
         }
         catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException) { error = Text["Unavailable"]; }
@@ -104,32 +120,54 @@
 
     private async Task CreateAsync()
     {
-        if (session?.CsrfToken is null || preview is null || submitting) return;
+        if (session?.CsrfToken is null || preview is null || submitting || !storageChecked || reloadBlocked) return;
         var retryingOriginal = pendingRequest is not null;
         submitting = true; error = null;
         try
         {
             pendingRequest ??= model.ToRequest();
+            if (operationId == Guid.Empty) operationId = Guid.NewGuid();
+            try { await JS.InvokeVoidAsync("sessionStorage.setItem", UnresolvedStorageKey, "1"); }
+            catch (Exception exception) when (exception is JSException or InvalidOperationException)
+            {
+                reloadBlocked = true;
+                return;
+            }
             using var request = new HttpRequestMessage(HttpMethod.Post, $"/bff/invoices/from-quotation/{preview.QuotationId}") { Content = JsonContent.Create(pendingRequest) };
             request.Headers.Add("X-CSRF-TOKEN", session.CsrfToken);
             request.Headers.Add("Idempotency-Key", operationId.ToString("D"));
             using var response = await Http.SendAsync(request);
             if (!response.IsSuccessStatusCode)
             {
-                var uncertain = response.StatusCode is HttpStatusCode.BadGateway or HttpStatusCode.ServiceUnavailable or HttpStatusCode.GatewayTimeout or HttpStatusCode.RequestTimeout;
+                var uncertain = (int)response.StatusCode >= 500 || response.StatusCode is HttpStatusCode.RequestTimeout;
                 error = uncertain || retryingOriginal ? Text["RetrySafe"] : ErrorFor(response.StatusCode);
-                if (!uncertain && !retryingOriginal) { pendingRequest = null; operationId = Guid.NewGuid(); }
+                if (!uncertain && !retryingOriginal)
+                {
+                    if (!await ClearUnresolvedAsync()) return;
+                    pendingRequest = null; operationId = Guid.Empty;
+                }
                 return;
             }
             var result = await response.Content.ReadFromJsonAsync<InvoiceCreationResult>();
-            if (result is null) { error = Text["InvalidResponse"]; return; }
+            if (result is null || result.InvoiceId <= 0) { error = Text["InvalidResponse"]; return; }
+            if (!await ClearUnresolvedAsync()) return;
             Navigation.NavigateTo($"/Invoices/View?id={result.InvoiceId}");
         }
         catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException) { error = Text["RetrySafe"]; }
         finally { submitting = false; }
     }
 
-    private RenderFragment AddressSection(string id, string heading, AddressModel address, bool telephone) => @<section class="invoice-editor__section"><h2>@heading</h2><div class="invoice-editor__grid"><AccountingInputField TValue="string" Id="@($"{id}-recipient")" Label="@Text["Recipient"]" @bind-Value="address.Recipient" MaxLength="250" Disabled="@(submitting || pendingRequest is not null)" />@if (telephone) { <AccountingInputField TValue="string" Id="@($"{id}-telephone")" Label="@Text["Telephone"]" @bind-Value="address.Telephone" MaxLength="250" Disabled="@(submitting || pendingRequest is not null)" /> }<AccountingInputField TValue="string" Id="@($"{id}-company")" Label="@Text["Company"]" @bind-Value="address.Company" MaxLength="250" Disabled="@(submitting || pendingRequest is not null)" /><AccountingInputField TValue="string" Id="@($"{id}-building")" Label="@Text["Building"]" @bind-Value="address.Building" MaxLength="250" Disabled="@(submitting || pendingRequest is not null)" /><AccountingInputField TValue="string" Id="@($"{id}-line1")" Label="@Text["Line1"]" @bind-Value="address.Line1" MaxLength="250" Disabled="@(submitting || pendingRequest is not null)" /><AccountingInputField TValue="string" Id="@($"{id}-line2")" Label="@Text["Line2"]" @bind-Value="address.Line2" MaxLength="250" Disabled="@(submitting || pendingRequest is not null)" /><AccountingInputField TValue="string" Id="@($"{id}-city")" Label="@Text["City"]" @bind-Value="address.City" MaxLength="250" Disabled="@(submitting || pendingRequest is not null)" /><AccountingInputField TValue="string" Id="@($"{id}-state")" Label="@Text["State"]" @bind-Value="address.State" MaxLength="250" Disabled="@(submitting || pendingRequest is not null)" /><AccountingInputField TValue="string" Id="@($"{id}-postal")" Label="@Text["PostalCode"]" @bind-Value="address.PostalCode" MaxLength="250" Disabled="@(submitting || pendingRequest is not null)" /><AccountingInputField TValue="string" Id="@($"{id}-country")" Label="@Text["Country"]" @bind-Value="address.Country" MaxLength="250" Disabled="@(submitting || pendingRequest is not null)" /></div></section>;
+    private async Task<bool> ClearUnresolvedAsync()
+    {
+        try { await JS.InvokeVoidAsync("sessionStorage.removeItem", UnresolvedStorageKey); return true; }
+        catch (Exception exception) when (exception is JSException or InvalidOperationException)
+        {
+            reloadBlocked = true;
+            return false;
+        }
+    }
+
+    private RenderFragment AddressSection(string id, string heading, AddressModel address, bool telephone) => @<section class="invoice-editor__section"><h2>@heading</h2><div class="invoice-editor__grid"><AccountingInputField TValue="string" Id="@($"{id}-recipient")" Label="@Text["Recipient"]" @bind-Value="address.Recipient" MaxLength="250" Disabled="@IntentLocked" />@if (telephone) { <AccountingInputField TValue="string" Id="@($"{id}-telephone")" Label="@Text["Telephone"]" @bind-Value="address.Telephone" MaxLength="250" Disabled="@IntentLocked" /> }<AccountingInputField TValue="string" Id="@($"{id}-company")" Label="@Text["Company"]" @bind-Value="address.Company" MaxLength="250" Disabled="@IntentLocked" /><AccountingInputField TValue="string" Id="@($"{id}-building")" Label="@Text["Building"]" @bind-Value="address.Building" MaxLength="250" Disabled="@IntentLocked" /><AccountingInputField TValue="string" Id="@($"{id}-line1")" Label="@Text["Line1"]" @bind-Value="address.Line1" MaxLength="250" Disabled="@IntentLocked" /><AccountingInputField TValue="string" Id="@($"{id}-line2")" Label="@Text["Line2"]" @bind-Value="address.Line2" MaxLength="250" Disabled="@IntentLocked" /><AccountingInputField TValue="string" Id="@($"{id}-city")" Label="@Text["City"]" @bind-Value="address.City" MaxLength="250" Disabled="@IntentLocked" /><AccountingInputField TValue="string" Id="@($"{id}-state")" Label="@Text["State"]" @bind-Value="address.State" MaxLength="250" Disabled="@IntentLocked" /><AccountingInputField TValue="string" Id="@($"{id}-postal")" Label="@Text["PostalCode"]" @bind-Value="address.PostalCode" MaxLength="250" Disabled="@IntentLocked" /><AccountingInputField TValue="string" Id="@($"{id}-country")" Label="@Text["Country"]" @bind-Value="address.Country" MaxLength="250" Disabled="@IntentLocked" /></div></section>;
 
     private string Money(decimal? value) => value is null ? "-" : $"{value:N2} {preview?.Currency}";
     private string ErrorFor(HttpStatusCode status) => status switch { HttpStatusCode.BadRequest => Text["InvalidRequest"], HttpStatusCode.Forbidden => Text["Forbidden"], HttpStatusCode.NotFound => Text["NotFound"], HttpStatusCode.Conflict => Text["Conflict"], HttpStatusCode.TooManyRequests => Text["RateLimited"], _ => Text["Unavailable"] };

@@ -59,5 +59,6 @@
   <data name="RetrySafe" xml:space="preserve"><value>ยังยืนยันผลการสร้างใบแจ้งหนี้ไม่ได้ โปรดส่งคำขอเดิมซ้ำ หากยังไม่สำเร็จ ให้ติดต่อฝ่ายสนับสนุนก่อนเริ่มสร้างใบแจ้งหนี้ใหม่</value></data>
   <data name="PendingRetry" xml:space="preserve"><value>ยังยืนยันผลการสร้างใบแจ้งหนี้ไม่ได้ ข้อมูลเดิมถูกล็อกไว้ โปรดส่งคำขอเดิมซ้ำเพื่อตรวจสอบผล และอย่าเพิ่งเริ่มสร้างใบแจ้งหนี้ใหม่</value></data>
   <data name="RetryOriginal" xml:space="preserve"><value>ส่งคำขอใบแจ้งหนี้เดิมซ้ำ</value></data>
+  <data name="ReloadReconciliationRequired" xml:space="preserve"><value>โปรดตรวจสอบก่อนว่าใบแจ้งหนี้ถูกสร้างแล้วหรือไม่ หลังโหลดหน้านี้ซ้ำจะไม่สามารถส่งคำขอเดิมซ้ำอย่างปลอดภัยได้ โปรดติดต่อฝ่ายสนับสนุนเพื่อตรวจสอบผล และอย่าเริ่มสร้างใบแจ้งหนี้ใหม่ในแท็บนี้</value></data>
   <data name="OrderItemsTable" xml:space="preserve"><value>ตารางรายการสินค้าและยอดเงินจากใบเสนอราคา</value></data>
 </root>
