@@ -383,6 +383,52 @@ public sealed class OperationalTableMigrationBrowserTests(
         Assert.NotEqual(key, changedKey);
     }
 
+    [Fact]
+    public async Task CustomerCreate_DoubleSubmitWhileRequestIsPending_SendsOneCreate()
+    {
+        await using var context = await playwright.Browser.NewContextAsync(new()
+        {
+            ViewportSize = new() { Width = 1280, Height = 900 },
+            ReducedMotion = ReducedMotion.Reduce,
+        });
+        var page = await context.NewPageAsync();
+        await StubSalesBoundariesAsync(page);
+        var createStarted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var releaseCreate = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var createCount = 0;
+        await page.RouteAsync("**/bff/customers", async route =>
+        {
+            Interlocked.Increment(ref createCount);
+            createStarted.TrySetResult();
+            await releaseCreate.Task;
+            await route.FulfillAsync(new()
+            {
+                Status = 503,
+                ContentType = "application/problem+json",
+                Body = "{\"title\":\"Customer creation unavailable\",\"status\":503}",
+            });
+        });
+
+        try
+        {
+            await page.GotoAsync(new Uri(server.BaseUri, "customers/new").AbsoluteUri);
+            await page.Locator("#customer-create-first-name").FillAsync("Ada");
+            await page.Locator("#customer-create-last-name").FillAsync("Lovelace");
+            await page.Locator("#customer-create-email").FillAsync("ada@example.test");
+            await page.Locator("#customer-create-telephone").FillAsync("021234567");
+            var submit = page.Locator("button[type='submit']");
+
+            await submit.EvaluateAsync("button => { button.click(); button.click(); }");
+            await createStarted.Task.WaitAsync(TimeSpan.FromSeconds(10));
+            await Assertions.Expect(submit).ToBeDisabledAsync();
+            Assert.Equal(1, Volatile.Read(ref createCount));
+        }
+        finally
+        {
+            releaseCreate.TrySetResult();
+        }
+    }
+
     [Theory]
     [MemberData(nameof(OperationalWavePages))]
     public async Task OperationalWaveUsesContainedTablesExactRoutesAndSingleQuickView(
