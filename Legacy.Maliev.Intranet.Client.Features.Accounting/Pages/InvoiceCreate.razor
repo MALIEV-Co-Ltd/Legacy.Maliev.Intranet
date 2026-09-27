@@ -16,7 +16,7 @@
     <section class="invoice-editor__section" aria-labelledby="quotation-heading">
         <h2 id="quotation-heading">@Text["Quotation"]</h2>
         <div class="invoice-editor__lookup">
-            <AccountingInputField TValue="int" Id="invoice-quotation" Label="@Text["QuotationId"]" Type="number" InputMode="numeric" Min="1" @bind-Value="quotationId" Disabled="@(loading || submitting)" />
+            <AccountingInputField TValue="int" Id="invoice-quotation" Label="@Text["QuotationId"]" Type="number" InputMode="numeric" Min="1" Value="@quotationId" ValueChanged="@(value => quotationId = value)" Disabled="@(loading || submitting)" />
             <ShadcnButton OnClick="LoadPreviewAsync" Disabled="@(loading || submitting || quotationId <= 0)">@(loading ? Text["Loading"] : Text["LoadQuotation"])</ShadcnButton>
         </div>
         @if (loading) { <div role="status" aria-live="polite"><ShadcnSpinner Label="@Text["Loading"]" Size="1.25rem" /><span>@Text["Loading"]</span></div> }
