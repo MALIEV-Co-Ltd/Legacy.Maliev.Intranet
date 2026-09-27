@@ -9,6 +9,56 @@ public sealed class InvoiceCreateRetryBrowserTests(
     IntranetClientServerFixture server,
     PlaywrightFixture playwright)
 {
+    [Theory]
+    [InlineData(503)]
+    [InlineData(500)]
+    public async Task UncertainCreate_ReloadBlocksFreshCreateWithoutPersistingInvoiceIntent(int status)
+    {
+        await using var context = await playwright.Browser.NewContextAsync();
+        var page = await context.NewPageAsync();
+        var writes = new List<(string? Key, string? Body)>();
+        await StubAsync(page, writes, (status, "{}"));
+
+        await page.GotoAsync(new Uri(server.BaseUri, "Invoices/Create?quotationId=84").AbsoluteUri);
+        await page.Locator("#invoice-number").WaitForAsync();
+        await page.GetByRole(AriaRole.Button, new() { Name = "Create invoice" }).ClickAsync();
+        await page.GetByText("The invoice outcome is uncertain.", new() { Exact = false }).WaitForAsync();
+        Assert.Single(writes);
+        Assert.True(Guid.TryParse(writes[0].Key, out var originalOperationId));
+        Assert.NotEqual(Guid.Empty, originalOperationId);
+
+        await page.ReloadAsync();
+        await page.GetByText("Check whether the invoice was created", new() { Exact = false }).WaitForAsync();
+        Assert.True(await page.GetByRole(AriaRole.Button, new() { Name = "Create invoice" }).IsDisabledAsync());
+        Assert.True(await page.Locator("#invoice-number").IsDisabledAsync());
+        Assert.True(await page.GetByRole(AriaRole.Link, new() { Name = "Back to invoices" }).IsVisibleAsync());
+        Assert.Equal("1", await page.EvaluateAsync<string>("sessionStorage.getItem('maliev-invoice-create-unresolved')"));
+        Assert.Single(writes);
+    }
+
+    [Fact]
+    public async Task DefinitiveValidationFailure_ReloadAllowsCorrectedCreate()
+    {
+        await using var context = await playwright.Browser.NewContextAsync();
+        var page = await context.NewPageAsync();
+        var writes = new List<(string? Key, string? Body)>();
+        await StubAsync(page, writes, (400, "{}"), (503, "{}"));
+
+        await page.GotoAsync(new Uri(server.BaseUri, "Invoices/Create?quotationId=84").AbsoluteUri);
+        await page.Locator("#invoice-number").WaitForAsync();
+        await page.GetByRole(AriaRole.Button, new() { Name = "Create invoice" }).ClickAsync();
+        await page.GetByText("Check the invoice fields and try again.").WaitForAsync();
+        Assert.Null(await page.EvaluateAsync<string?>("sessionStorage.getItem('maliev-invoice-create-unresolved')"));
+
+        await page.ReloadAsync();
+        await page.Locator("#invoice-number").WaitForAsync();
+        Assert.True(await page.GetByRole(AriaRole.Button, new() { Name = "Create invoice" }).IsEnabledAsync());
+        await page.GetByRole(AriaRole.Button, new() { Name = "Create invoice" }).ClickAsync();
+
+        Assert.Equal(2, writes.Count);
+        Assert.NotEqual(writes[0].Key, writes[1].Key);
+    }
+
     [Fact]
     public async Task UncertainCreate_LocksOriginalIntentAndRetriesSameOperation()
     {
@@ -69,15 +119,17 @@ public sealed class InvoiceCreateRetryBrowserTests(
         });
     }
 
-    [Fact]
-    public async Task UncertainCreate_MalformedSuccessResponseKeepsOriginalOperationFrozen()
+    [Theory]
+    [InlineData("not-json")]
+    [InlineData("{\"invoiceId\":0,\"state\":0,\"emailState\":0,\"providerMessageId\":null}")]
+    public async Task UncertainCreate_MalformedSuccessResponseKeepsOriginalOperationFrozen(string malformedResponse)
     {
         await using var context = await playwright.Browser.NewContextAsync();
         var page = await context.NewPageAsync();
         var writes = new List<(string? Key, string? Body)>();
         var errors = new List<string>();
         page.PageError += (_, error) => errors.Add(error);
-        await StubAsync(page, writes, (200, "not-json"), (503, "{}"));
+        await StubAsync(page, writes, (200, malformedResponse), (503, "{}"));
 
         await page.GotoAsync(new Uri(server.BaseUri, "Invoices/Create?quotationId=84").AbsoluteUri);
         await page.Locator("#invoice-number").WaitForAsync();
