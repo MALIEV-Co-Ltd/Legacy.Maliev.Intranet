@@ -15,6 +15,7 @@ using CatalogMaterialsProxy = Bff::Legacy.Maliev.Intranet.Bff.Catalog.CatalogMat
 using CustomersProxy = Bff::Legacy.Maliev.Intranet.Bff.Customers.CustomersProxy;
 using EmployeesProxy = Bff::Legacy.Maliev.Intranet.Bff.Employees.EmployeesProxy;
 using OrdersProxy = Bff::Legacy.Maliev.Intranet.Bff.Orders.OrdersProxy;
+using QuotationRequestsProxy = Bff::Legacy.Maliev.Intranet.Bff.Quotations.QuotationRequestsProxy;
 
 namespace Legacy.Maliev.Intranet.Tests;
 
@@ -86,6 +87,105 @@ public sealed class BffQuotationCreationContractTests
     }
 
     [Fact]
+    public async Task MissingLinkedRequest_RejectsCreateBeforeAnyQuotationWrite()
+    {
+        var handler = new ReferenceHandler();
+        var gateway = new Gateway();
+        await using var factory = new Factory(handler, gateway, [.. CreatePermissions, LegacyEmployeePermissions.QuotationRequestsRead]);
+        using var client = CreateClient(factory);
+        var csrf = await SignInAsync(client);
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/bff/quotations") { Content = JsonContent.Create(ValidRequest with { SourceRequestId = 999 }) };
+        request.Headers.Add("X-CSRF-TOKEN", csrf);
+        request.Headers.Add("Idempotency-Key", Guid.NewGuid().ToString("D"));
+
+        using var response = await client.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Contains("/quotationrequests/999/qualification-receipt", handler.Paths);
+        Assert.Equal(0, gateway.RootCreates);
+    }
+
+    [Fact]
+    public async Task LinkedCreateWithoutRequestReadPermission_IsForbiddenBeforeDownstreamCalls()
+    {
+        var handler = new ReferenceHandler();
+        var gateway = new Gateway();
+        await using var factory = new Factory(handler, gateway, CreatePermissions);
+        using var client = CreateClient(factory);
+        var csrf = await SignInAsync(client);
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/bff/quotations") { Content = JsonContent.Create(ValidRequest with { SourceRequestId = 456 }) };
+        request.Headers.Add("X-CSRF-TOKEN", csrf);
+        request.Headers.Add("Idempotency-Key", Guid.NewGuid().ToString("D"));
+
+        using var response = await client.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+        Assert.Equal(0, handler.Calls);
+        Assert.Equal(0, gateway.RootCreates);
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    public async Task InvalidLinkedRequestId_IsRejectedBeforeDownstreamCalls(int sourceRequestId)
+    {
+        var handler = new ReferenceHandler();
+        var gateway = new Gateway();
+        await using var factory = new Factory(handler, gateway, [.. CreatePermissions, LegacyEmployeePermissions.QuotationRequestsRead]);
+        using var client = CreateClient(factory);
+        var csrf = await SignInAsync(client);
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/bff/quotations") { Content = JsonContent.Create(ValidRequest with { SourceRequestId = sourceRequestId }) };
+        request.Headers.Add("X-CSRF-TOKEN", csrf);
+        request.Headers.Add("Idempotency-Key", Guid.NewGuid().ToString("D"));
+
+        using var response = await client.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal(0, handler.Calls);
+        Assert.Equal(0, gateway.RootCreates);
+    }
+
+    [Theory]
+    [InlineData(457, HttpStatusCode.BadGateway)]
+    [InlineData(500, HttpStatusCode.ServiceUnavailable)]
+    public async Task InvalidLinkedSourceResponse_DoesNotCreateQuotation(int sourceRequestId, HttpStatusCode expected)
+    {
+        var handler = new ReferenceHandler();
+        var gateway = new Gateway();
+        await using var factory = new Factory(handler, gateway, [.. CreatePermissions, LegacyEmployeePermissions.QuotationRequestsRead]);
+        using var client = CreateClient(factory);
+        var csrf = await SignInAsync(client);
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/bff/quotations") { Content = JsonContent.Create(ValidRequest with { SourceRequestId = sourceRequestId }) };
+        request.Headers.Add("X-CSRF-TOKEN", csrf);
+        request.Headers.Add("Idempotency-Key", Guid.NewGuid().ToString("D"));
+
+        using var response = await client.SendAsync(request);
+
+        Assert.Equal(expected, response.StatusCode);
+        Assert.Equal(0, gateway.RootCreates);
+    }
+
+    [Fact]
+    public async Task LinkedCreate_UsesServerResolvedJourneyForQuotationWrite()
+    {
+        var handler = new ReferenceHandler();
+        var gateway = new Gateway();
+        await using var factory = new Factory(handler, gateway, [.. CreatePermissions, LegacyEmployeePermissions.QuotationRequestsRead]);
+        using var client = CreateClient(factory);
+        var csrf = await SignInAsync(client);
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/bff/quotations") { Content = JsonContent.Create(ValidRequest with { SourceRequestId = 456 }) };
+        request.Headers.Add("X-CSRF-TOKEN", csrf);
+        request.Headers.Add("Idempotency-Key", Guid.NewGuid().ToString("D"));
+
+        using var response = await client.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        Assert.Contains("/quotationrequests/456/qualification-receipt", handler.Paths);
+        Assert.Equal(456, gateway.LastInput?.SourceRequestId);
+        Assert.Equal(Guid.Parse("11111111-2222-3333-4444-555555555555"), gateway.LastInput?.SourceJourneyId);
+    }
+
+    [Fact]
     public async Task AuthorizedCreate_ValidatesOwnershipAndReturnsSafeCreatedResult()
     {
         var handler = new ReferenceHandler();
@@ -109,6 +209,9 @@ public sealed class BffQuotationCreationContractTests
         Assert.Equal(1, gateway.LinkCreates);
         Assert.Equal(1, gateway.StatusCreates);
         Assert.Equal(1, gateway.Finalizations);
+        Assert.Null(gateway.LastInput?.SourceRequestId);
+        Assert.Null(gateway.LastInput?.SourceJourneyId);
+        Assert.DoesNotContain(handler.Paths, path => path.Contains("quotationrequests", StringComparison.Ordinal));
     }
 
     private static readonly QuotationCreateRequest ValidRequest = new(
@@ -165,6 +268,7 @@ public sealed class BffQuotationCreationContractTests
                 services.RemoveAll<EmployeesProxy>(); services.AddSingleton(new EmployeesProxy(http));
                 services.RemoveAll<CatalogMaterialsProxy>(); services.AddSingleton(new CatalogMaterialsProxy(http));
                 services.RemoveAll<OrdersProxy>(); services.AddSingleton(new OrdersProxy(http));
+                services.RemoveAll<QuotationRequestsProxy>(); services.AddSingleton(new QuotationRequestsProxy(http));
             });
         }
     }
@@ -188,6 +292,10 @@ public sealed class BffQuotationCreationContractTests
         {
             Calls++;
             Paths.Add(request.RequestUri!.AbsolutePath);
+            if (request.RequestUri.AbsolutePath == "/quotationrequests/999/qualification-receipt")
+                return Task.FromResult(new HttpResponseMessage(HttpStatusCode.NotFound));
+            if (request.RequestUri.AbsolutePath == "/quotationrequests/500/qualification-receipt")
+                return Task.FromResult(new HttpResponseMessage(HttpStatusCode.ServiceUnavailable));
             var body = request.RequestUri!.AbsolutePath switch
             {
                 "/customers/3" => CustomerJson,
@@ -195,6 +303,8 @@ public sealed class BffQuotationCreationContractTests
                 "/employees" => "{\"items\":[{\"id\":2,\"roleId\":1,\"firstName\":\"Grace\",\"lastName\":\"Hopper\",\"fullName\":\"Grace Hopper\",\"phoneNumber\":\"081\",\"email\":\"grace@example.test\"}],\"pageIndex\":1,\"totalPages\":1,\"totalRecords\":1,\"hasNextPage\":false,\"hasPreviousPage\":false}",
                 "/Currencies" => "[{\"id\":1,\"shortName\":\"THB\",\"longName\":\"Thai Baht\"}]",
                 "/Orders/customers/3" => "{\"items\":[{\"id\":42,\"customerId\":3,\"employeeId\":2,\"name\":\"Order\",\"processId\":1,\"quantity\":2,\"manufactured\":0,\"remaining\":2,\"subtotal\":95,\"promisedDate\":null,\"allowSocialMedia\":false,\"description\":\"Thai tone mark น้ำ\",\"unitPrice\":50,\"discountPercent\":5,\"leadTime\":3}],\"pageIndex\":1,\"totalPages\":1,\"totalRecords\":1,\"hasNextPage\":false,\"hasPreviousPage\":false}",
+                "/quotationrequests/456/qualification-receipt" => "{\"requestId\":456,\"journeyId\":\"11111111-2222-3333-4444-555555555555\",\"transactionId\":\"request-456\",\"state\":\"unreviewed\",\"stateChangedUtc\":null,\"version\":0,\"events\":[]}",
+                "/quotationrequests/457/qualification-receipt" => "{\"requestId\":456,\"journeyId\":\"11111111-2222-3333-4444-555555555555\",\"transactionId\":\"request-456\",\"state\":\"unreviewed\",\"stateChangedUtc\":null,\"version\":0,\"events\":[]}",
                 _ => "{}",
             };
             return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(body, Encoding.UTF8, "application/json") });
@@ -203,12 +313,13 @@ public sealed class BffQuotationCreationContractTests
 
     private sealed class Gateway : IQuotationCreationGateway
     {
+        public QuotationCreateRequest? LastInput { get; private set; }
         public int RootCreates { get; private set; }
         public int LineCreates { get; private set; }
         public int LinkCreates { get; private set; }
         public int StatusCreates { get; private set; }
         public int Finalizations { get; private set; }
-        public Task<int> CreateQuotationAsync(QuotationCreateRequest input, PricedQuotation priced, string idempotencyKey, CancellationToken cancellationToken) { RootCreates++; return Task.FromResult(77); }
+        public Task<int> CreateQuotationAsync(QuotationCreateRequest input, PricedQuotation priced, string idempotencyKey, CancellationToken cancellationToken) { RootCreates++; LastInput = input; return Task.FromResult(77); }
         public Task<int> CreateLineAsync(int quotationId, PricedQuotationLine line, string idempotencyKey, CancellationToken cancellationToken) { LineCreates++; return Task.FromResult(101); }
         public Task<int> CreateOrderLinkAsync(int quotationId, int orderId, string idempotencyKey, CancellationToken cancellationToken) { LinkCreates++; return Task.FromResult(201); }
         public Task MarkOrderQuotedAsync(int orderId, string idempotencyKey, CancellationToken cancellationToken) { StatusCreates++; return Task.CompletedTask; }

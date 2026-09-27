@@ -120,7 +120,13 @@ public sealed record QuotationCreateRequest(
     [property: System.ComponentModel.DataAnnotations.StringLength(1000)] string? Terms,
     [property: System.ComponentModel.DataAnnotations.StringLength(4000)] string? Comment,
     bool WithholdingTaxEnabled,
-    [property: System.ComponentModel.DataAnnotations.Required, System.ComponentModel.DataAnnotations.MinLength(1)] IReadOnlyList<QuotationCreateLine> Lines);
+    [property: System.ComponentModel.DataAnnotations.Required, System.ComponentModel.DataAnnotations.MinLength(1)] IReadOnlyList<QuotationCreateLine> Lines,
+    [property: System.ComponentModel.DataAnnotations.Range(1, int.MaxValue)] int? SourceRequestId = null)
+{
+    /// <summary>Journey resolved by the BFF; never accepted from browser JSON.</summary>
+    [System.Text.Json.Serialization.JsonIgnore]
+    public Guid? SourceJourneyId { get; init; }
+}
 
 /// <summary>Safe result returned after the durable server workflow commits a quotation.</summary>
 public sealed record QuotationCreatedResult(int Id, string? Warning);

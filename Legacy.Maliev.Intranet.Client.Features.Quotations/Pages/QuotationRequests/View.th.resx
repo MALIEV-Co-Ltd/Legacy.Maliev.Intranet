@@ -59,4 +59,5 @@
   <data name="QualificationNotFound" xml:space="preserve"><value>ยังไม่มีข้อมูลการประเมินสำหรับคำขอนี้</value></data>
   <data name="QualificationHistory" xml:space="preserve"><value>ประวัติการเปลี่ยนแปลง</value></data>
   <data name="QualificationHistoryEmpty" xml:space="preserve"><value>ยังไม่มีการเปลี่ยนแปลงผลการประเมิน</value></data>
+  <data name="CreateLinkedQuotation" xml:space="preserve"><value>สร้างใบเสนอราคาที่เชื่อมโยงกับคำขอนี้</value></data>
 </root>

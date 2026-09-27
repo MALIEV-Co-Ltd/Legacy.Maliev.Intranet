@@ -7,6 +7,17 @@ namespace Legacy.Maliev.Intranet.Tests;
 public sealed class QuotationCreationWorkflowTests
 {
     [Fact]
+    public void CreateFingerprint_SeparatesLinkedRequestAttemptsWithoutTrustingJourney()
+    {
+        var first = Request() with { SourceRequestId = 456 };
+        var differentSource = first with { SourceRequestId = 457 };
+        var serverResolvedJourney = first with { SourceJourneyId = Guid.Parse("11111111-2222-3333-4444-555555555555") };
+
+        Assert.NotEqual(QuotationCreationWorkflow.CreateFingerprint(first), QuotationCreationWorkflow.CreateFingerprint(differentSource));
+        Assert.Equal(QuotationCreationWorkflow.CreateFingerprint(first), QuotationCreationWorkflow.CreateFingerprint(serverResolvedJourney));
+    }
+
+    [Fact]
     public async Task CreateAsync_SameWorkflowAndFingerprint_ReplaysCommittedResult()
     {
         var gateway = new RecordingGateway();

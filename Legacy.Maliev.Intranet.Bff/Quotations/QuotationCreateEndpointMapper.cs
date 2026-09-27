@@ -119,6 +119,7 @@ internal static class QuotationCreateEndpointMapper
         EmployeesProxy employees,
         CatalogMaterialsProxy catalog,
         OrdersProxy orders,
+        QuotationRequestsProxy quotationRequests,
         TimeProvider clock,
         CancellationToken cancellationToken)
     {
@@ -135,6 +136,21 @@ internal static class QuotationCreateEndpointMapper
 
         try
         {
+            if (input.SourceRequestId is int sourceRequestId)
+            {
+                if (!context.User.HasClaim("permissions", LegacyEmployeePermissions.QuotationRequestsRead))
+                    return Results.Forbid();
+                using var sourceResponse = await quotationRequests.GetQualificationReceiptAsync(sourceRequestId, cancellationToken);
+                if (sourceResponse.StatusCode == HttpStatusCode.NotFound)
+                    return Results.ValidationProblem(new Dictionary<string, string[]> { [nameof(input.SourceRequestId)] = ["The source quotation request no longer exists."] });
+                var sourceFailure = MapFailure(sourceResponse);
+                if (sourceFailure is not null) return sourceFailure;
+                QuotationQualificationReceipt? sourceReceipt;
+                try { sourceReceipt = await sourceResponse.Content.ReadFromJsonAsync<QuotationQualificationReceipt>(cancellationToken); }
+                catch (System.Text.Json.JsonException) { return InvalidResponse(); }
+                if (sourceReceipt?.RequestId != sourceRequestId || sourceReceipt.JourneyId == Guid.Empty) return InvalidResponse();
+                input = input with { SourceJourneyId = sourceReceipt.JourneyId };
+            }
             var referenceFailure = await ValidateReferencesAsync(input, customers, employees, catalog, orders, cancellationToken);
             if (referenceFailure is not null) return referenceFailure;
             var subject = context.User.FindFirstValue(ClaimTypes.NameIdentifier);
