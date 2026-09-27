@@ -1,0 +1,16 @@
+{
+  "sourceRepository": "\\\\maliev\\repository\\maliev-web",
+  "sourceCommit": "4198baa6b0e7903f2b9b6e3d5d68f9d2c2b5b0db",
+  "targetCommit": "0bb08d38a7064ba28701fa6c7bbd518f689ae19f",
+  "routes": [
+    { "source": "/Customers/Create", "target": "/Customers/Create", "owner": "Legacy.Maliev.Intranet.Client.Features.Customers/Pages/CustomerCreate.razor", "status": "route-mapped-browser-unverified" },
+    { "source": "/Customers/Index", "target": "/Customers/Index", "owner": "Legacy.Maliev.Intranet.Client.Features.Customers/Pages/Customers.razor", "status": "route-mapped-browser-unverified" },
+    { "source": "/Customers/View", "target": "/Customers/View", "owner": "Legacy.Maliev.Intranet.Client.Features.Customers/Pages/CustomerView.razor", "status": "route-mapped-browser-unverified" },
+    { "source": "/QuotationRequests/Index", "target": "/QuotationRequests/Index", "owner": "Legacy.Maliev.Intranet.Client.Features.Quotations/Pages/QuotationRequests/Index.razor", "status": "route-mapped-browser-unverified" },
+    { "source": "/QuotationRequests/View", "target": "/QuotationRequests/View", "owner": "Legacy.Maliev.Intranet.Client.Features.Quotations/Pages/QuotationRequests/View.razor", "status": "route-mapped-browser-unverified" },
+    { "source": "/Quotations/Create", "target": "/Quotations/Create", "owner": "Legacy.Maliev.Intranet.Client.Features.Quotations/Pages/Quotations/Create.razor", "status": "route-mapped-browser-unverified" },
+    { "source": "/Quotations/Estimate", "target": "/Quotations/Estimate", "owner": "Legacy.Maliev.Intranet.Client.Features.Quotations/Pages/Quotations/Estimate.razor", "status": "route-mapped-browser-unverified" },
+    { "source": "/Quotations/Index", "target": "/Quotations/Index", "owner": "Legacy.Maliev.Intranet.Client.Features.Quotations/Pages/Quotations/Index.razor", "status": "route-mapped-browser-unverified" },
+    { "source": "/Quotations/View", "target": "/Quotations/View", "owner": "Legacy.Maliev.Intranet.Client.Features.Quotations/Pages/Quotations/View.razor", "status": "route-mapped-browser-unverified" }
+  ]
+}

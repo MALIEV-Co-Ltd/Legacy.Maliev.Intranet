@@ -1,8 +1,12 @@
 # Legacy Intranet parity matrix
 
-This matrix is the cutover checklist for the .NET 10 Blazor migration. It is
-generated from the current source route inventory in `B:\maliev\Maliev.Intranet`
-(baseline `d8e943b`) and the legacy route/feature inventory in this repository.
+This matrix is the cutover checklist for the .NET 10 Blazor migration. The
+53-route inventory below is a historical snapshot of the separate
+`B:\maliev\Maliev.Intranet` Blazor workspace at `d8e943b`; it is not an
+inventory of the original `maliev-web` Razor Pages application at its current
+committed main. The original customer and quotation route cluster is audited
+separately below. Neither source inspection nor a compatibility alias proves
+authenticated browser acceptance.
 It deliberately distinguishes a tested compatibility alias from a domain that
 has not been migrated; an alias must never be used to make an unrelated page
 look complete.
@@ -26,6 +30,40 @@ look complete.
 Historical PascalCase routes remain supported and are tracked by
 `LegacyRoutes.All`. The aliases above are loaded through the same lazy feature
 assemblies and do not create a second API contract.
+
+## Original Razor Pages customer and quotation cluster (2026-09-27)
+
+The committed original source is `\\maliev\repository\maliev-web` at
+`4198baa6b0e7903f2b9b6e3d5d68f9d2c2b5b0db`; the audited target is
+`Legacy.Maliev.Intranet` main at
+`0bb08d38a7064ba28701fa6c7bbd518f689ae19f`. The nine source `@page`
+directives below use their Razor Pages file paths as routes. The corresponding
+Blazor owners and English/Thai resources are locked by
+`docs/original-intranet-customer-quotation-routes.json` and its contract test.
+Every row is **route-mapped, browser-unverified**: the route and selected BFF
+boundary have code/test evidence, but complete source handler behavior and
+authenticated Aspire behavior are not certified by this inventory.
+
+| Original source route | Target Blazor route | Code/contract evidence | Status |
+| --- | --- | --- | --- |
+| `/Customers/Create` | `/Customers/Create` | `CustomerCreate.razor`; `/bff/customers` CSRF/profile-and-identity workflow | Route-mapped; browser unverified |
+| `/Customers/Index` | `/Customers/Index` | `Customers.razor`; permission-gated `/bff/customers` list | Route-mapped; browser unverified |
+| `/Customers/View` | `/Customers/View` | `CustomerView.razor`; customer detail/update BFF contracts | Route-mapped; browser unverified |
+| `/QuotationRequests/Index` | `/QuotationRequests/Index` | `QuotationRequests/Index.razor`; `/bff/quotation-requests` read contract | Route-mapped; browser unverified |
+| `/QuotationRequests/View` | `/QuotationRequests/View` | `QuotationRequests/View.razor`; detail, file, qualification receipt/update BFF contracts | Route-mapped; browser unverified |
+| `/Quotations/Create` | `/Quotations/Create` | `Quotations/Create.razor`; CSRF/idempotent `/bff/quotations` create contract | Route-mapped; browser unverified |
+| `/Quotations/Estimate` | `/Quotations/Estimate` | `Quotations/Estimate.razor`; localized route owner; full handler parity unverified | Route-mapped; browser unverified |
+| `/Quotations/Index` | `/Quotations/Index` | `Quotations/Index.razor`; permission-gated quotation list contract | Route-mapped; browser unverified |
+| `/Quotations/View` | `/Quotations/View` | `Quotations/View.razor`; quotation detail/decision BFF contracts | Route-mapped; browser unverified |
+
+The source has page handlers beyond the route directives (including customer
+identity/address edits, quotation-request qualification, and quotation PDF/order
+side effects). Their complete action-level parity is not inferred from these
+nine route mappings. Before cutover, exercise authorized and unauthorized
+employee roles through exact-main Aspire with reconciled data, including
+customer create/detail, qualification retry/readback, and quotation create/
+decision/file behavior; record localized loading, empty, success, and failure
+states without using production accounts or writes.
 
 ## Still requiring a real domain migration before cutover
 
@@ -57,7 +95,7 @@ are available.
   optional local Google client/hosted-domain values and the dedicated
   `legacy-auth.google-identity.exchange` permission (`da3c0dd`, with the
   formatter-only follow-up `259fbee`).
-- The current-source route baseline is machine-checked in
+- The historical separate-workspace route baseline is machine-checked in
   `docs/current-intranet-route-parity.json` at `Maliev.Intranet` commit
   `d8e943b`: 53 current routes are classified exactly once (18 exact legacy
   owners, 35 explicit blockers). When `MALIEV_CURRENT_INTRANET_ROOT` is set,
