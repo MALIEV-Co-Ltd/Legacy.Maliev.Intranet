@@ -3,6 +3,29 @@ namespace Legacy.Maliev.Intranet.Tests;
 public sealed class LegacyServiceDefaultsIdentityContractTests
 {
     private const string DotNetPatchVersion = "10.0.12";
+    private const string NativeLoggingReplacementCommit = "d22f0e6f95254b10cf4fe891c8dce5df7c419f3f";
+
+    [Fact]
+    public void HostsAndDeliveryPinSharedNativeLoggingReplacement()
+    {
+        var root = FindRoot();
+        var workflow = File.ReadAllText(Path.Combine(root, ".github", "workflows", "_build-and-test.yml"));
+        Assert.Contains($"ref: {NativeLoggingReplacementCommit}", workflow, StringComparison.Ordinal);
+
+        foreach (var host in new[] { "Legacy.Maliev.Intranet", "Legacy.Maliev.Intranet.Bff" })
+        {
+            var program = File.ReadAllText(Path.Combine(root, host, "Program.cs"));
+            var project = File.ReadAllText(Path.Combine(root, host, $"{host}.csproj"));
+            var dockerfile = File.ReadAllText(Path.Combine(root, host, "Dockerfile"));
+
+            Assert.Contains("builder.AddServiceDefaults();", program, StringComparison.Ordinal);
+            Assert.Contains("app.UseStandardMiddleware();", program, StringComparison.Ordinal);
+            Assert.DoesNotContain("Maliev.NativeLogging", program, StringComparison.Ordinal);
+            Assert.DoesNotContain("Maliev.NativeLogging", project, StringComparison.Ordinal);
+            Assert.Contains($"checkout {NativeLoggingReplacementCommit}", dockerfile, StringComparison.Ordinal);
+            Assert.DoesNotContain("Maliev.NativeLogging", dockerfile, StringComparison.Ordinal);
+        }
+    }
 
     [Fact]
     public void HostsConsumeLegacyServiceDefaultsWithoutNewPlatformRepositoryCollision()
@@ -24,7 +47,7 @@ public sealed class LegacyServiceDefaultsIdentityContractTests
         var workflow = File.ReadAllText(Path.Combine(root, ".github", "workflows", "_build-and-test.yml"));
         Assert.Contains("repository: MALIEV-Co-Ltd/Legacy.Maliev.ServiceDefaults", workflow, StringComparison.Ordinal);
         Assert.Contains("path: .dependencies/Legacy.Maliev.ServiceDefaults", workflow, StringComparison.Ordinal);
-        Assert.Contains("ref: 9c4ac9d44a08bcd0aa2088348790ab863814669c", workflow, StringComparison.Ordinal);
+        Assert.Contains($"ref: {NativeLoggingReplacementCommit}", workflow, StringComparison.Ordinal);
         Assert.Contains("repository: MALIEV-Co-Ltd/Legacy.Maliev.CompatibilityContracts", workflow, StringComparison.Ordinal);
         Assert.Contains("path: .dependencies/Legacy.Maliev.CompatibilityContracts", workflow, StringComparison.Ordinal);
         Assert.DoesNotContain("repository: MALIEV-Co-Ltd/Maliev.Aspire", workflow, StringComparison.Ordinal);
