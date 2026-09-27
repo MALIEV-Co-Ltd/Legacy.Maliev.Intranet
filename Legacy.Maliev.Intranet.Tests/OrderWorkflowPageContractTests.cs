@@ -17,6 +17,92 @@ namespace Legacy.Maliev.Intranet.Tests;
 
 public sealed partial class OrderWorkflowPageContractTests
 {
+    [Theory]
+    [InlineData(100, 250, true)]
+    [InlineData(101, 250, false)]
+    [InlineData(100, 251, false)]
+    public async Task CreateOrder_EnforcesPersistedTextLimitsBeforeOrderWrite(
+        int nameLength, int descriptionLength, bool accepted)
+    {
+        var boundaries = new WorkflowBoundaries();
+        await using var factory = new WorkflowFactory(boundaries);
+        using var client = factory.CreateClient(new() { AllowAutoRedirect = false, HandleCookies = true, BaseAddress = new Uri("https://localhost") });
+        await LoginAsync(client);
+        var page = await client.GetStringAsync("/Orders/Create?customerId=42");
+        var token = AntiForgeryToken().Match(page).Groups[1].Value;
+        using var form = new FormUrlEncodedContent(new Dictionary<string, string>
+        {
+            ["Input.CustomerId"] = "42",
+            ["Input.Name"] = new string('N', nameLength),
+            ["Input.Description"] = new string('D', descriptionLength),
+            ["Input.ProcessId"] = "3",
+            ["Input.Quantity"] = "1",
+            ["__RequestVerificationToken"] = token,
+        });
+
+        using var response = await client.PostAsync("/Orders/Create", form);
+
+        if (accepted)
+        {
+            Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
+            Assert.Equal(nameLength, boundaries.Orders.CreatedRequest?.Name?.Length);
+            Assert.Equal(descriptionLength, boundaries.Orders.CreatedRequest?.Description?.Length);
+        }
+        else
+        {
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            Assert.Null(boundaries.Orders.CreatedRequest);
+            Assert.Null(boundaries.Orders.NewStatusOrderId);
+            Assert.Null(boundaries.Notifications.Email);
+            var html = await response.Content.ReadAsStringAsync();
+            Assert.Contains(nameLength > 100 ? "100 characters" : "250 characters", html, StringComparison.Ordinal);
+        }
+        Assert.Contains("maxlength=\"100\"", page, StringComparison.Ordinal);
+        Assert.Contains("maxlength=\"250\"", page, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData(100, 250, true)]
+    [InlineData(101, 250, false)]
+    [InlineData(100, 251, false)]
+    public async Task UpdateOrder_EnforcesPersistedTextLimitsBeforeOrderWrite(
+        int nameLength, int descriptionLength, bool accepted)
+    {
+        var boundaries = new WorkflowBoundaries();
+        await using var factory = new WorkflowFactory(boundaries);
+        using var client = factory.CreateClient(new() { AllowAutoRedirect = false, HandleCookies = true, BaseAddress = new Uri("https://localhost") });
+        await LoginAsync(client);
+        var page = await client.GetStringAsync("/Orders/View?id=84");
+        var token = AntiForgeryToken().Match(page).Groups[1].Value;
+        using var form = new FormUrlEncodedContent(new Dictionary<string, string>
+        {
+            ["Input.CustomerId"] = "42",
+            ["Input.Name"] = new string('N', nameLength),
+            ["Input.Description"] = new string('D', descriptionLength),
+            ["Input.ProcessId"] = "3",
+            ["Input.Quantity"] = "1",
+            ["__RequestVerificationToken"] = token,
+        });
+
+        using var response = await client.PostAsync("/Orders/View?id=84&handler=Update", form);
+
+        if (accepted)
+        {
+            Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
+            Assert.Equal(nameLength, boundaries.Orders.UpdatedRequest?.Name?.Length);
+            Assert.Equal(descriptionLength, boundaries.Orders.UpdatedRequest?.Description?.Length);
+        }
+        else
+        {
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            Assert.Null(boundaries.Orders.UpdatedRequest);
+            var html = await response.Content.ReadAsStringAsync();
+            Assert.Contains(nameLength > 100 ? "100 characters" : "250 characters", html, StringComparison.Ordinal);
+        }
+        Assert.Contains("maxlength=\"100\"", page, StringComparison.Ordinal);
+        Assert.Contains("maxlength=\"250\"", page, StringComparison.Ordinal);
+    }
+
     [Fact]
     public async Task CreateAndView_PreserveOrderStatusNotificationAndConcurrencyWorkflow()
     {

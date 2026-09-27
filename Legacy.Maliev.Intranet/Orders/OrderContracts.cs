@@ -36,9 +36,9 @@ public sealed class OrderInput
     /// <summary>Assigned employee identifier.</summary>
     [Range(1, int.MaxValue)] public int? EmployeeId { get; set; }
     /// <summary>Order name.</summary>
-    [Required, StringLength(256)] public string Name { get; set; } = string.Empty;
+    [Required, StringLength(100, ErrorMessage = "Order name must not exceed 100 characters.")] public string Name { get; set; } = string.Empty;
     /// <summary>Manufacturing requirements.</summary>
-    [StringLength(500)] public string? Description { get; set; }
+    [StringLength(250, ErrorMessage = "Requirements must not exceed 250 characters.")] public string? Description { get; set; }
     /// <summary>Process identifier.</summary>
     [Range(1, int.MaxValue)] public int ProcessId { get; set; }
     /// <summary>Material identifier.</summary>

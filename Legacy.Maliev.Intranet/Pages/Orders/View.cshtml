@@ -11,7 +11,7 @@
         <input name="Input.ModifiedDate" value="@Model.Input.ModifiedDate?.ToUniversalTime().ToString("O")" type="hidden" />
         <label>Customer ID <input asp-for="Input.CustomerId" type="number" min="1" /></label>
         <label>Assigned employee <select asp-for="Input.EmployeeId"><option value="">Unassigned</option>@foreach (var item in Model.ReferenceData.Employees) { <option value="@item.Id">@item.FullName</option> }</select></label>
-        <label>Order name <input asp-for="Input.Name" /></label>
+        <div><label>Order name <input asp-for="Input.Name" maxlength="100" aria-describedby="order-edit-name-hint order-edit-name-error" /></label><small id="order-edit-name-hint">Maximum 100 characters.</small><span id="order-edit-name-error" asp-validation-for="Input.Name"></span></div>
         <label>Process <select asp-for="Input.ProcessId">@foreach (var item in Model.ReferenceData.Processes) { <option value="@item.Id">@item.Name</option> }</select></label>
         <label>Quantity <input asp-for="Input.Quantity" type="number" min="1" /></label>
         <label>Manufactured <input asp-for="Input.Manufactured" type="number" min="0" /></label>
@@ -25,7 +25,7 @@
         <label>Promised date <input asp-for="Input.PromisedDate" type="date" /></label>
         <label>Finished date <input asp-for="Input.FinishedDate" type="date" /></label>
         <label>Tracking number <input asp-for="Input.TrackingNumber" /></label>
-        <label class="full-width">Requirements <textarea asp-for="Input.Description" rows="5"></textarea></label>
+        <div class="full-width"><label>Requirements <textarea asp-for="Input.Description" rows="5" maxlength="250" aria-describedby="order-edit-description-hint order-edit-description-error"></textarea></label><small id="order-edit-description-hint">Maximum 250 characters.</small><span id="order-edit-description-error" asp-validation-for="Input.Description"></span></div>
         <label class="full-width">Internal comment <textarea asp-for="Input.Comment" rows="4"></textarea></label>
         <label><input asp-for="Input.AllowSocialMedia" /> Content may be published</label>
         <label><input asp-for="Input.AllowCancellation" /> Customer may cancel</label>
