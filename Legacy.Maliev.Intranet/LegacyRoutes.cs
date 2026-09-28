@@ -46,6 +46,7 @@ public static class LegacyRoutes
         "/Suppliers/Create",
         "/Suppliers/Index",
         "/Suppliers/View",
+        "/Travelers",
         "/Travelers/Create",
         "/Travelers/Index",
     ];
@@ -64,6 +65,7 @@ public static class LegacyRoutes
     /// <summary>Historical routes proven to have no implementation or owning service contract.</summary>
     public static IReadOnlySet<string> Retired { get; } = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
     {
+        "/Travelers",
         "/Travelers/Create",
         "/Travelers/Index",
     };

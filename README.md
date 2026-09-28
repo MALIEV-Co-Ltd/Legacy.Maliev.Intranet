@@ -47,7 +47,7 @@ WebAssembly.
 
 Migration rules:
 
-- preserve all 42 historical staff routes and validated workflows (40 active and 2 intentionally retired);
+- preserve all 43 historical staff routes and validated workflows (40 active and 3 intentionally retired);
 - use `Legacy.Maliev.AuthService` for employee authentication and keep access/refresh tokens server-side;
 - call independently deployed legacy services through typed HTTP clients only;
 - never reference employee or domain DbContexts;
@@ -82,8 +82,9 @@ The customer, employee, material, supplier, purchase-order, and order-list domai
 - failed create workflows compensate in reverse order so metadata, cloud objects, line items, and the parent order are not orphaned.
 
 Remaining active route workflows render an explicit migration state until their domain
-workflow is fully wired and tested. `/Travelers/Create` and `/Travelers/Index` are retained
-only in the historical inventory and return `410 Gone`: the legacy PageModels were inert
+workflow is fully wired and tested. The effective source routes `/Travelers` and
+`/Travelers/Create`, plus the historical `/Travelers/Index` target path, return
+`410 Gone` after employee authentication: the legacy PageModels were inert
 stubs, and no Traveler entity, repository, controller, DTO, persistence, or wire contract
 exists to migrate. Any future manufacturing-traveler capability requires a separately
 designed bounded context; it is intentionally not fabricated in this legacy migration.
