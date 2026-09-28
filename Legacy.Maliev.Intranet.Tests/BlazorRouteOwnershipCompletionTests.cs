@@ -23,9 +23,9 @@ public sealed partial class BlazorRouteOwnershipCompletionTests
     {
         var owners = DiscoverRouteOwners();
 
-        Assert.Equal(42, LegacyRoutes.All.Count);
+        Assert.Equal(43, LegacyRoutes.All.Count);
         Assert.Equal(40, LegacyRoutes.ActiveMigrationCandidates.Count);
-        Assert.Equal(2, LegacyRoutes.Retired.Count);
+        Assert.Equal(3, LegacyRoutes.Retired.Count);
 
         foreach (var route in LegacyRoutes.ActiveMigrationCandidates)
         {
