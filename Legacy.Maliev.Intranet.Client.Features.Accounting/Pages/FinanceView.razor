@@ -151,7 +151,7 @@
         using var content = new MultipartFormDataContent("----maliev-finance-upload");
         foreach (var upload in uploads)
         {
-            var file = new StreamContent(upload.OpenReadStream(200 * 1024 * 1024));
+            var file = new StreamContent(upload.OpenReadStream(100 * 1024 * 1024));
             file.Headers.ContentType = new(upload.ContentType);
             content.Add(file, "files", upload.Name);
         }

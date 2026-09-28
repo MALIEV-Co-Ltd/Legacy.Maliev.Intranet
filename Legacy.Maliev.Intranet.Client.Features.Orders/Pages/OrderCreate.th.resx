@@ -23,7 +23,7 @@
   <data name="AllowSocialMedia" xml:space="preserve"><value>อนุญาตให้เผยแพร่ผลงานบนสื่อสังคมออนไลน์</value></data>
   <data name="Files" xml:space="preserve"><value>ไฟล์ที่จะอัปโหลดและสแกนมัลแวร์</value></data>
   <data name="SelectedFiles" xml:space="preserve"><value>เลือกแล้ว {0} ไฟล์</value></data>
-  <data name="FilesTooLarge" xml:space="preserve"><value>ขนาดไฟล์รวมต้องไม่เกิน 200 MB</value></data>
+  <data name="FilesTooLarge" xml:space="preserve"><value>ขนาดไฟล์รวมต้องไม่เกิน 100 MB</value></data>
   <data name="Create" xml:space="preserve"><value>สร้างใบสั่งผลิต</value></data>
   <data name="Creating" xml:space="preserve"><value>กำลังสร้างใบสั่งผลิต…</value></data>
   <data name="ViewOrder" xml:space="preserve"><value>ดูใบสั่งผลิตที่สร้างแล้ว</value></data>

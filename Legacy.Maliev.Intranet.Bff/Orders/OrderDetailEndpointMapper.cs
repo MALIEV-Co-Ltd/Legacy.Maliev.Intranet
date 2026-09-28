@@ -93,7 +93,7 @@ internal static class OrderDetailEndpointMapper
         {
             var form = await request.ReadFormAsync(cancellationToken);
             var uploads = form.Files.Where(file => file.Length > 0).ToArray();
-            if (uploads.Length == 0 || uploads.Sum(file => file.Length) > 200L * 1024 * 1024) return Results.BadRequest();
+            if (uploads.Length == 0 || uploads.Sum(file => file.Length) > 100L * 1024 * 1024) return Results.BadRequest();
             using var orderResponse = await orders.GetAsync(id, cancellationToken);
             if (orderResponse.StatusCode == HttpStatusCode.NotFound) return Results.NotFound();
             orderResponse.EnsureSuccessStatusCode();

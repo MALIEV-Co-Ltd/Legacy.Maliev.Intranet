@@ -40,7 +40,7 @@ internal static class FinanceCreateEndpointMapper
         catch (JsonException) { return Results.BadRequest(); }
         if (input is null || input.EmployeeId <= 0 || input.PaymentDirectionId <= 0 || input.PaymentTypeId <= 0 || input.PaymentMethodId <= 0 || input.CurrencyId <= 0 || input.Amount < 0 || string.IsNullOrWhiteSpace(input.Description)) return Results.BadRequest();
         var uploads = form.Files.Where(x => x.Length > 0).ToArray();
-        if (uploads.Sum(x => x.Length) > 200L * 1024 * 1024) return Results.BadRequest();
+        if (uploads.Sum(x => x.Length) > 100L * 1024 * 1024) return Results.BadRequest();
         int? paymentId = null;
         try
         {
