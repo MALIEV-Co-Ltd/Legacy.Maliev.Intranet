@@ -64,6 +64,10 @@
         <section class="finance-files" aria-labelledby="finance-files-heading">
             <h2 id="finance-files-heading">@Text["Files"]</h2>
             <div class="finance-files__upload"><InputFile OnChange="SelectFiles" multiple disabled="@submitting" /><ShadcnButton OnClick="UploadAsync" Disabled="@(submitting || uploads.Count == 0)">@Text["Upload"]</ShadcnButton></div>
+            @if (!string.IsNullOrWhiteSpace(uploadError))
+            {
+                <ShadcnAlert Variant="ShadcnAlertVariant.Destructive" AlertRole="ShadcnAlertRole.Alert"><ShadcnAlertDescription>@uploadError</ShadcnAlertDescription></ShadcnAlert>
+            }
             @if (page.Files.Count == 0)
             {
                 <p>@Text["NoFiles"]</p>
@@ -106,6 +110,7 @@
     private bool deleteArmed;
     private int? fileRemoveArmedId;
     private string? error;
+    private string? uploadError;
     private string? notice;
     private IReadOnlyList<ShadcnSelectOption<int?>> EmployeeOptions => page?.Employees.Select(item => new ShadcnSelectOption<int?>(item.Id, item.Name)).ToArray() ?? [];
     private IReadOnlyList<ShadcnSelectOption<int>> DirectionOptions => page?.Directions.Select(item => new ShadcnSelectOption<int>(item.Id, item.Name)).ToArray() ?? [];
@@ -144,10 +149,12 @@
         await SendAsync(request, Text["Saved"]);
     }
 
-    private void SelectFiles(InputFileChangeEventArgs args) { uploads.Clear(); uploads.AddRange(args.GetMultipleFiles()); uploadAttemptId = Guid.NewGuid(); }
+    private void SelectFiles(InputFileChangeEventArgs args) { uploads.Clear(); uploads.AddRange(args.GetMultipleFiles()); uploadAttemptId = Guid.NewGuid(); uploadError = null; }
     private async Task UploadAsync()
     {
         if (page is null || uploads.Count == 0) return;
+        if (UploadAggregateLimit.Exceeds(uploads.Select(file => file.Size))) { uploadError = Text["FilesTooLarge"]; return; }
+        uploadError = null;
         using var content = new MultipartFormDataContent("----maliev-finance-upload");
         foreach (var upload in uploads)
         {

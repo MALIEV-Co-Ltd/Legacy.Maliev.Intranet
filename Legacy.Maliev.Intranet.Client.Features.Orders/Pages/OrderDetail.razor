@@ -103,6 +103,10 @@ else if (page is not null)
     <section class="order-files-panel">
         <h2>@Text["Files"]</h2>
         <div class="order-upload-actions"><InputFile OnChange="SelectFiles" multiple /><ShadcnButton OnClick="UploadAsync" Disabled="@(submitting || uploads.Count == 0)">@Text["Upload"]</ShadcnButton></div>
+        @if (!string.IsNullOrWhiteSpace(uploadError))
+        {
+            <ShadcnAlert Variant="ShadcnAlertVariant.Destructive" AlertRole="ShadcnAlertRole.Alert"><ShadcnAlertDescription>@uploadError</ShadcnAlertDescription></ShadcnAlert>
+        }
         <ShadcnItemGroup>
             @foreach (var file in page.Files)
             {
@@ -123,6 +127,7 @@ else if (page is not null)
     private bool loading = true;
     private bool submitting;
     private string? error;
+    private string? uploadError;
     private string? notice;
     private IReadOnlyCollection<string> openSections = ["details", "process"];
     private static readonly ShadcnIconData DeleteIcon = LucideIconCatalog.Instance.Get(LucideIconNames.Trash2);
@@ -177,11 +182,13 @@ else if (page is not null)
         await SendAsync(request, Text["StatusSaved"]);
     }
 
-    private void SelectFiles(InputFileChangeEventArgs args) { uploads.Clear(); uploads.AddRange(args.GetMultipleFiles()); }
+    private void SelectFiles(InputFileChangeEventArgs args) { uploads.Clear(); uploads.AddRange(args.GetMultipleFiles()); uploadError = null; }
 
     private async Task UploadAsync()
     {
         if (page is null || session?.CsrfToken is null || uploads.Count == 0) return;
+        if (UploadAggregateLimit.Exceeds(uploads.Select(file => file.Size))) { uploadError = Text["FilesTooLarge"]; return; }
+        uploadError = null;
         using var content = new MultipartFormDataContent("----maliev-order-upload");
         foreach (var upload in uploads)
         {
