@@ -76,8 +76,8 @@ public sealed class OrdersCreateWasmMigrationContractTests
         Assert.Contains("MapPost(\"/bff/orders\"", program, StringComparison.Ordinal);
         Assert.Contains("AddEndpointFilter<AntiforgeryValidationFilter>()", program, StringComparison.Ordinal);
         Assert.Contains("LegacyEmployeePermissions.OrdersCreate", program, StringComparison.Ordinal);
-        Assert.Contains("RequestSizeLimitAttribute(201L * 1024 * 1024)", program, StringComparison.Ordinal);
-        Assert.Contains("uploads.Sum(file => file.Length) > 200L * 1024 * 1024", File.ReadAllText(Path.Combine(root, "Legacy.Maliev.Intranet.Bff", "Orders", "OrderCreateEndpointMapper.cs")), StringComparison.Ordinal);
+        Assert.Contains("RequestSizeLimitAttribute(101L * 1024 * 1024)", program, StringComparison.Ordinal);
+        Assert.Contains("uploads.Sum(file => file.Length) > 100L * 1024 * 1024", File.ReadAllText(Path.Combine(root, "Legacy.Maliev.Intranet.Bff", "Orders", "OrderCreateEndpointMapper.cs")), StringComparison.Ordinal);
         Assert.Contains("RequestFormLimitsAttribute", program, StringComparison.Ordinal);
     }
 

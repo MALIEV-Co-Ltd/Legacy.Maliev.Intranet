@@ -1580,8 +1580,8 @@ app.MapPost("/bff/orders", (
         logger,
         cancellationToken))
     .AddEndpointFilter<AntiforgeryValidationFilter>()
-    .WithMetadata(new Microsoft.AspNetCore.Mvc.RequestSizeLimitAttribute(201L * 1024 * 1024))
-    .WithMetadata(new Microsoft.AspNetCore.Mvc.RequestFormLimitsAttribute { MultipartBodyLengthLimit = 201L * 1024 * 1024 })
+    .WithMetadata(new Microsoft.AspNetCore.Mvc.RequestSizeLimitAttribute(101L * 1024 * 1024))
+    .WithMetadata(new Microsoft.AspNetCore.Mvc.RequestFormLimitsAttribute { MultipartBodyLengthLimit = 101L * 1024 * 1024 })
     .RequireAuthorization(LegacyEmployeePermissions.OrdersCreate);
 
 app.MapGet("/bff/orders/{id:int}", (
@@ -1637,8 +1637,8 @@ app.MapPost("/bff/orders/{id:int}/files", (
     CancellationToken cancellationToken) =>
     OrderDetailEndpointMapper.UploadAsync(id, request, orders, files, workflow, logger, cancellationToken))
     .AddEndpointFilter<AntiforgeryValidationFilter>()
-    .WithMetadata(new Microsoft.AspNetCore.Mvc.RequestSizeLimitAttribute(200L * 1024 * 1024))
-    .WithMetadata(new Microsoft.AspNetCore.Mvc.RequestFormLimitsAttribute { MultipartBodyLengthLimit = 200L * 1024 * 1024 })
+    .WithMetadata(new Microsoft.AspNetCore.Mvc.RequestSizeLimitAttribute(101L * 1024 * 1024))
+    .WithMetadata(new Microsoft.AspNetCore.Mvc.RequestFormLimitsAttribute { MultipartBodyLengthLimit = 101L * 1024 * 1024 })
     .RequireAuthorization(LegacyEmployeePermissions.OrderFilesWrite);
 
 app.MapDelete("/bff/orders/{id:int}/files/{fileId:int}", (

@@ -99,7 +99,7 @@ internal static class OrderCreateEndpointMapper
             }
 
             var uploads = form.Files.Where(file => file.Length > 0).ToArray();
-            if (uploads.Sum(file => file.Length) > 200L * 1024 * 1024) return Results.BadRequest();
+            if (uploads.Sum(file => file.Length) > 100L * 1024 * 1024) return Results.BadRequest();
             var referenceFailure = await ValidateReferencesAsync(input, orderReferences, catalog, cancellationToken);
             if (referenceFailure is not null) return referenceFailure;
 

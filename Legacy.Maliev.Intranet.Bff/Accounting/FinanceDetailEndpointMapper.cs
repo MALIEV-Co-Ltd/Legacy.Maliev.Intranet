@@ -50,7 +50,7 @@ internal static class FinanceDetailEndpointMapper
         {
             var form = await request.ReadFormAsync(cancellationToken);
             var uploads = form.Files.Where(file => file.Length > 0).ToArray();
-            if (uploads.Length == 0 || uploads.Sum(file => file.Length) > 200L * 1024 * 1024) return Results.BadRequest();
+            if (uploads.Length == 0 || uploads.Sum(file => file.Length) > 100L * 1024 * 1024) return Results.BadRequest();
             using var payment = await finances.GetAsync(id, cancellationToken);
             if (payment.StatusCode == HttpStatusCode.NotFound) return Results.NotFound();
             payment.EnsureSuccessStatusCode();

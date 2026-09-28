@@ -12,9 +12,9 @@ using Microsoft.AspNetCore.Http.Features;
 using System.Globalization;
 
 var builder = WebApplication.CreateBuilder(args);
-const long maximumUploadBytes = 200L * 1024L * 1024L;
-builder.Services.Configure<FormOptions>(options => options.MultipartBodyLengthLimit = maximumUploadBytes);
-builder.WebHost.ConfigureKestrel(options => options.Limits.MaxRequestBodySize = maximumUploadBytes);
+const long maximumRequestBytes = 101L * 1024L * 1024L;
+builder.Services.Configure<FormOptions>(options => options.MultipartBodyLengthLimit = maximumRequestBytes);
+builder.WebHost.ConfigureKestrel(options => options.Limits.MaxRequestBodySize = maximumRequestBytes);
 
 builder.AddServiceDefaults();
 builder.AddStandardMiddleware(options => options.EnableRequestLogging = true);
