@@ -1,5 +1,7 @@
 using System.Text.Json;
+using Legacy.Maliev.Intranet.Auth;
 using Legacy.Maliev.Intranet.Contracts;
+using Microsoft.Extensions.Options;
 
 namespace Legacy.Maliev.Intranet.Bff.Accounting;
 
@@ -14,11 +16,34 @@ public static class InvoiceCreationEndpointMapper
         ExecuteAsync<InvoiceCreationPreview>(token => invoices.PreviewAsync(quotationId, token), cancellationToken);
 
     /// <summary>Validates and forwards one replay-safe creation attempt.</summary>
-    public static Task<IResult> CreateAsync(int quotationId, CreateInvoiceFromQuotationRequest input, HttpContext context, InvoiceCreationProxy invoices, CancellationToken cancellationToken)
+    public static async Task<IResult> CreateAsync(
+        int quotationId, CreateInvoiceFromQuotationRequest input, HttpContext context,
+        InvoiceCreationProxy invoices, EmployeeSessionService sessions,
+        IInvoiceDelegationClient delegations, IOptions<InvoiceDelegationOptions> options,
+        CancellationToken cancellationToken)
     {
         var key = context.Request.Headers["Idempotency-Key"].ToString();
-        if (!Guid.TryParseExact(key, "D", out var operationId) || operationId == Guid.Empty) return Task.FromResult(Results.BadRequest() as IResult);
-        return ExecuteAsync<InvoiceCreationResult>(token => invoices.CreateAsync(quotationId, input, operationId, token), cancellationToken);
+        if (quotationId <= 0 || !Guid.TryParseExact(key, "D", out var operationId) || operationId == Guid.Empty)
+            return Results.BadRequest();
+
+        string? delegation = null;
+        if (options.Value.Enabled)
+        {
+            var employeeAccessToken = await sessions.GetAccessTokenAsync(context, cancellationToken);
+            if (string.IsNullOrWhiteSpace(employeeAccessToken)) return Results.Unauthorized();
+            try
+            {
+                delegation = await delegations.IssueAsync(employeeAccessToken, quotationId, operationId, cancellationToken);
+            }
+            catch (HttpRequestException) { return Results.StatusCode(StatusCodes.Status503ServiceUnavailable); }
+            catch (IOException) { return Results.StatusCode(StatusCodes.Status503ServiceUnavailable); }
+            catch (TaskCanceledException) when (!cancellationToken.IsCancellationRequested)
+            { return Results.StatusCode(StatusCodes.Status503ServiceUnavailable); }
+            if (delegation is null) return Results.StatusCode(StatusCodes.Status503ServiceUnavailable);
+        }
+
+        return await ExecuteAsync<InvoiceCreationResult>(
+            token => invoices.CreateAsync(quotationId, input, operationId, token, delegation), cancellationToken);
     }
 
     private static async Task<IResult> ExecuteAsync<T>(Func<CancellationToken, Task<HttpResponseMessage>> send, CancellationToken cancellationToken)

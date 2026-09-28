@@ -4,6 +4,7 @@ using System.Net;
 using System.Reflection;
 using Legacy.Maliev.Intranet.Contracts;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Options;
 using InvoiceCreationEndpointMapper = Bff::Legacy.Maliev.Intranet.Bff.Accounting.InvoiceCreationEndpointMapper;
 using InvoiceCreationProxy = Bff::Legacy.Maliev.Intranet.Bff.Accounting.InvoiceCreationProxy;
 
@@ -31,6 +32,7 @@ public sealed class InvoicesCreateWasmMigrationContractTests
         Assert.DoesNotContain("<Mud", page, StringComparison.Ordinal);
         Assert.Contains("AddEndpointFilter<AntiforgeryValidationFilter>()", program, StringComparison.Ordinal);
         Assert.Contains("LegacyEmployeePermissions.AccountingCreate", program, StringComparison.Ordinal);
+        Assert.Contains("AllowAutoRedirect = false", program, StringComparison.Ordinal);
         Assert.DoesNotContain("jquery", page, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("access_token", page, StringComparison.OrdinalIgnoreCase);
 
@@ -65,7 +67,8 @@ public sealed class InvoicesCreateWasmMigrationContractTests
         var proxy = new InvoiceCreationProxy(new HttpClient(handler) { BaseAddress = new("http://accounting") });
         var context = new DefaultHttpContext();
 
-        var result = await InvoiceCreationEndpointMapper.CreateAsync(84, Request(), context, proxy, CancellationToken.None);
+        var result = await InvoiceCreationEndpointMapper.CreateAsync(84, Request(), context, proxy,
+            null!, null!, Options.Create(new Bff::Legacy.Maliev.Intranet.Bff.Accounting.InvoiceDelegationOptions { Enabled = true }), CancellationToken.None);
 
         Assert.Equal(StatusCodes.Status400BadRequest, Assert.IsAssignableFrom<IStatusCodeHttpResult>(result).StatusCode);
         Assert.Empty(handler.Requests);

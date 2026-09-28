@@ -14,6 +14,8 @@ using BffProgram = Bff::Program;
 using FinanceDetailAggregator = Bff::Legacy.Maliev.Intranet.Bff.Accounting.FinanceDetailAggregator;
 using FinanceFileProxy = Bff::Legacy.Maliev.Intranet.Bff.Accounting.FinanceFileProxy;
 using FinancesProxy = Bff::Legacy.Maliev.Intranet.Bff.Accounting.FinancesProxy;
+using IInvoiceDelegationClient = Bff::Legacy.Maliev.Intranet.Bff.Accounting.IInvoiceDelegationClient;
+using InvoiceDelegationClient = Bff::Legacy.Maliev.Intranet.Bff.Accounting.InvoiceDelegationClient;
 using InvoiceCreationProxy = Bff::Legacy.Maliev.Intranet.Bff.Accounting.InvoiceCreationProxy;
 using InvoiceDetailAggregator = Bff::Legacy.Maliev.Intranet.Bff.Accounting.InvoiceDetailAggregator;
 using InvoiceDetailProxy = Bff::Legacy.Maliev.Intranet.Bff.Accounting.InvoiceDetailProxy;
@@ -338,12 +340,16 @@ internal static class AccountingBehaviorTestHost
         RecordingRouteHandler accounting,
         RecordingRouteHandler? files = null,
         RecordingRouteHandler? employees = null,
-        RecordingRouteHandler? catalog = null) =>
+        RecordingRouteHandler? catalog = null,
+        RecordingRouteHandler? auth = null,
+        bool delegationEnabled = false) =>
         new Factory(
             accounting,
             files ?? Routes(_ => new(HttpStatusCode.NotFound)),
             employees ?? Routes(_ => Json("""{"items":[{"id":7,"fullName":"Natthapol V."}]}""")),
-            catalog ?? Routes(_ => Json("""[{"id":1,"shortName":"THB"}]""")));
+            catalog ?? Routes(_ => Json("""[{"id":1,"shortName":"THB"}]""")),
+            auth ?? Routes(_ => new(HttpStatusCode.NotFound)),
+            delegationEnabled);
 
     public static HttpClient CreateClient(WebApplicationFactory<BffProgram> factory) =>
         factory.CreateClient(new()
@@ -402,7 +408,8 @@ internal static class AccountingBehaviorTestHost
                 request.Headers.Authorization?.ToString(),
                 request.Headers.TryGetValues("Idempotency-Key", out var keys) ? keys.Single() : null,
                 request.Headers.TryGetValues("If-Unmodified-Since", out var versions) ? versions.Single() : null,
-                body);
+                body,
+                request.Headers.TryGetValues("X-Maliev-Employee-Delegation", out var delegations) ? delegations.Single() : null);
             lock (sync)
             {
                 requests.Add(record);
@@ -418,18 +425,22 @@ internal static class AccountingBehaviorTestHost
         string? Authorization,
         string? IdempotencyKey,
         string? IfUnmodifiedSince,
-        string? Body);
+        string? Body,
+        string? InvoiceDelegation);
 
     private sealed class Factory(
         RecordingRouteHandler accounting,
         RecordingRouteHandler files,
         RecordingRouteHandler employees,
-        RecordingRouteHandler catalog) : WebApplicationFactory<BffProgram>
+        RecordingRouteHandler catalog,
+        RecordingRouteHandler auth,
+        bool delegationEnabled) : WebApplicationFactory<BffProgram>
     {
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
             builder.UseEnvironment("Testing");
             TestJwtConfiguration.Configure(builder);
+            builder.UseSetting("InvoiceDelegation:Enabled", delegationEnabled.ToString());
             builder.ConfigureServices(services =>
             {
                 services.RemoveAll<ILegacyAuthClient>();
@@ -454,6 +465,7 @@ internal static class AccountingBehaviorTestHost
                 services.RemoveAll<InvoiceDetailProxy>();
                 services.RemoveAll<InvoiceFileProxy>();
                 services.RemoveAll<InvoiceCreationProxy>();
+                services.RemoveAll<IInvoiceDelegationClient>();
                 services.RemoveAll<InvoiceDetailAggregator>();
                 services.AddSingleton(finances);
                 services.AddSingleton(financeFiles);
@@ -463,6 +475,7 @@ internal static class AccountingBehaviorTestHost
                 services.AddSingleton(invoiceDetails);
                 services.AddSingleton(invoiceFiles);
                 services.AddSingleton(invoiceCreation);
+                services.AddSingleton<IInvoiceDelegationClient>(new InvoiceDelegationClient(Client(auth, "http://auth/", tokenProvider)));
                 services.AddSingleton(new InvoiceDetailAggregator(invoiceDetails, invoiceFiles));
             });
         }

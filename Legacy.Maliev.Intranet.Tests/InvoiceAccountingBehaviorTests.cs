@@ -60,16 +60,98 @@ public sealed class InvoiceAccountingBehaviorTests
         Assert.Equal("POST", forwarded.Method);
         Assert.Equal("/invoices/from-quotation/84", forwarded.Path);
         Assert.Equal(operationId.ToString("D"), forwarded.IdempotencyKey);
+        Assert.Null(forwarded.InvoiceDelegation);
         using var expected = JsonDocument.Parse(CreateInvoiceJson);
         using var actual = JsonDocument.Parse(forwarded.Body!);
         Assert.True(JsonElement.DeepEquals(expected.RootElement, actual.RootElement));
     }
 
     [Fact]
+    public async Task DelegatedCreation_UsesServerHeldEmployeeTokenAndBindsAccountingHeaderToRouteAndKey()
+    {
+        const string delegationToken = "eyJ.eyJ.signature";
+        var auth = AccountingBehaviorTestHost.Routes(request =>
+            request.RequestUri?.AbsolutePath == "/auth/v1/exchange/invoice-create"
+                ? AccountingBehaviorTestHost.Json("""{"accessToken":"eyJ.eyJ.signature","tokenType":"Bearer","expiresIn":120}""")
+                : new(HttpStatusCode.NotFound));
+        var accounting = AccountingBehaviorTestHost.Routes(request =>
+            request.RequestUri?.AbsolutePath == "/invoices/from-quotation/84/preview"
+                ? AccountingBehaviorTestHost.Json(PreviewJson)
+                : request.RequestUri?.AbsolutePath == "/invoices/from-quotation/84"
+                    ? AccountingBehaviorTestHost.Json("""{"invoiceId":55,"state":1,"emailState":0,"providerMessageId":null}""")
+                    : new(HttpStatusCode.NotFound));
+        await using var factory = AccountingBehaviorTestHost.CreateFactory(accounting, auth: auth, delegationEnabled: true);
+        using var client = AccountingBehaviorTestHost.CreateClient(factory);
+        var csrf = await AccountingBehaviorTestHost.SignInAsync(client);
+        using var preview = await client.GetAsync("/bff/invoices/from-quotation/84/preview");
+        Assert.Equal(HttpStatusCode.OK, preview.StatusCode);
+        Assert.Empty(auth.Requests);
+
+        var operationId = Guid.Parse("2cdf7ca3-0a11-45e2-92f5-1d25292777a9");
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/bff/invoices/from-quotation/84")
+        {
+            Content = new StringContent(CreateInvoiceJson, Encoding.UTF8, "application/json"),
+        };
+        request.Headers.Add("X-CSRF-TOKEN", csrf);
+        request.Headers.Add("Idempotency-Key", operationId.ToString("D"));
+        request.Headers.Add("X-Maliev-Employee-Delegation", "Bearer browser-spoof");
+
+        using var response = await client.SendAsync(request);
+        var responseBody = await response.Content.ReadAsStringAsync();
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.DoesNotContain(delegationToken, responseBody, StringComparison.Ordinal);
+        Assert.DoesNotContain("server-access-token", responseBody, StringComparison.Ordinal);
+        var exchange = Assert.Single(auth.Requests);
+        Assert.Equal("POST", exchange.Method);
+        Assert.Equal("/auth/v1/exchange/invoice-create", exchange.Path);
+        Assert.Equal("Bearer signed-service-token", exchange.Authorization);
+        using var exchangeBody = JsonDocument.Parse(exchange.Body!);
+        Assert.Equal("server-access-token", exchangeBody.RootElement.GetProperty("employeeAccessToken").GetString());
+        Assert.Equal(84, exchangeBody.RootElement.GetProperty("quotationId").GetInt32());
+        Assert.Equal(operationId.ToString("D"), exchangeBody.RootElement.GetProperty("operationId").GetString());
+        var create = Assert.Single(accounting.Requests, item => item.Method == "POST");
+        Assert.Equal("Bearer signed-service-token", create.Authorization);
+        Assert.Equal(operationId.ToString("D"), create.IdempotencyKey);
+        Assert.Equal("Bearer " + delegationToken, create.InvoiceDelegation);
+        Assert.DoesNotContain("server-access-token", create.Body, StringComparison.Ordinal);
+        Assert.DoesNotContain("browser-spoof", create.InvoiceDelegation, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData(HttpStatusCode.Forbidden, "{}")]
+    [InlineData(HttpStatusCode.TemporaryRedirect, "{}")]
+    [InlineData(HttpStatusCode.OK, "{}")]
+    [InlineData(HttpStatusCode.OK, "{\"accessToken\":\"eyJ.eyJ.signature\",\"tokenType\":\"Bearer\",\"expiresIn\":0}")]
+    [InlineData(HttpStatusCode.OK, "{\"accessToken\":\"eyJ.eyJ.signature\",\"tokenType\":\"Bearer\",\"expiresIn\":121}")]
+    [InlineData(HttpStatusCode.OK, "{\"accessToken\":\"expired\",\"tokenType\":\"Bearer\",\"expiresIn\":120}")]
+    public async Task DelegatedCreation_InvalidIssuerOutcome_FailsClosedBeforeAccounting(HttpStatusCode authStatus, string authBody)
+    {
+        var auth = AccountingBehaviorTestHost.Routes(_ => AccountingBehaviorTestHost.Json(authBody, authStatus));
+        var accounting = AccountingBehaviorTestHost.Routes(_ => AccountingBehaviorTestHost.Json("{}"));
+        await using var factory = AccountingBehaviorTestHost.CreateFactory(accounting, auth: auth, delegationEnabled: true);
+        using var client = AccountingBehaviorTestHost.CreateClient(factory);
+        var csrf = await AccountingBehaviorTestHost.SignInAsync(client);
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/bff/invoices/from-quotation/84")
+        {
+            Content = new StringContent(CreateInvoiceJson, Encoding.UTF8, "application/json"),
+        };
+        request.Headers.Add("X-CSRF-TOKEN", csrf);
+        request.Headers.Add("Idempotency-Key", Guid.NewGuid().ToString("D"));
+
+        using var response = await client.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
+        Assert.Single(auth.Requests);
+        Assert.Empty(accounting.Requests);
+    }
+
+    [Fact]
     public async Task Creation_WithoutCsrf_IsRejectedBeforeAccountingCall()
     {
         var accounting = AccountingBehaviorTestHost.Routes(_ => AccountingBehaviorTestHost.Json("{}"));
-        await using var factory = AccountingBehaviorTestHost.CreateFactory(accounting);
+        var auth = AccountingBehaviorTestHost.Routes(_ => AccountingBehaviorTestHost.Json("{}"));
+        await using var factory = AccountingBehaviorTestHost.CreateFactory(accounting, auth: auth, delegationEnabled: true);
         using var client = AccountingBehaviorTestHost.CreateClient(factory);
         await AccountingBehaviorTestHost.SignInAsync(client);
         using var request = new HttpRequestMessage(HttpMethod.Post, "/bff/invoices/from-quotation/84")
@@ -82,6 +164,7 @@ public sealed class InvoiceAccountingBehaviorTests
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         Assert.Empty(accounting.Requests);
+        Assert.Empty(auth.Requests);
     }
 
     [Fact]
