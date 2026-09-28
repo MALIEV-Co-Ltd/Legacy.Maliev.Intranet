@@ -196,6 +196,29 @@ public sealed class FinanceAccountingBehaviorTests
     }
 
     [Fact]
+    public async Task Create_CombinedFilesOver100MiB_AreRejectedBeforeAccountingOrFileServiceCall()
+    {
+        var accounting = AccountingBehaviorTestHost.Routes(_ => new(HttpStatusCode.InternalServerError));
+        var files = AccountingBehaviorTestHost.Routes(_ => new(HttpStatusCode.InternalServerError));
+        await using var factory = AccountingBehaviorTestHost.CreateFactory(accounting, files);
+        using var client = AccountingBehaviorTestHost.CreateClient(factory);
+        var csrf = await AccountingBehaviorTestHost.SignInAsync(client);
+        using var form = new MultipartFormDataContent();
+        form.Add(new StringContent(PaymentCreateJson, Encoding.UTF8, "application/json"), "payment");
+        form.Add(new ByteArrayContent(new byte[50 * 1024 * 1024]), "files", "part-a.pdf");
+        form.Add(new ByteArrayContent(new byte[50 * 1024 * 1024 + 1]), "files", "part-b.pdf");
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/bff/finances") { Content = form };
+        request.Headers.Add("Idempotency-Key", Guid.NewGuid().ToString("D"));
+        request.Headers.Add("X-CSRF-TOKEN", csrf);
+
+        using var response = await client.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Empty(accounting.Requests);
+        Assert.Empty(files.Requests);
+    }
+
+    [Fact]
     public async Task Upload_RetryUsesStableDistinctUploadAndLinkOperations()
     {
         var accounting = AccountingBehaviorTestHost.Routes(request => request.RequestUri?.AbsolutePath switch
@@ -244,6 +267,67 @@ public sealed class FinanceAccountingBehaviorTests
         Assert.Equal(links[0].IdempotencyKey, links[1].IdempotencyKey);
         Assert.NotEqual(operationId.ToString("D"), uploads[0].IdempotencyKey);
         Assert.NotEqual(uploads[0].IdempotencyKey, links[0].IdempotencyKey);
+    }
+
+    [Fact]
+    public async Task FileUpload_CombinedFilesOver100MiB_AreRejectedBeforeAccountingOrFileServiceCall()
+    {
+        var accounting = AccountingBehaviorTestHost.Routes(_ => new(HttpStatusCode.InternalServerError));
+        var files = AccountingBehaviorTestHost.Routes(_ => new(HttpStatusCode.InternalServerError));
+        await using var factory = AccountingBehaviorTestHost.CreateFactory(accounting, files);
+        using var client = AccountingBehaviorTestHost.CreateClient(factory);
+        var csrf = await AccountingBehaviorTestHost.SignInAsync(client);
+        using var form = new MultipartFormDataContent();
+        form.Add(new ByteArrayContent(new byte[50 * 1024 * 1024]), "files", "part-a.pdf");
+        form.Add(new ByteArrayContent(new byte[50 * 1024 * 1024 + 1]), "files", "part-b.pdf");
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/bff/finances/84/files") { Content = form };
+        request.Headers.Add("Idempotency-Key", Guid.NewGuid().ToString("D"));
+        request.Headers.Add("X-CSRF-TOKEN", csrf);
+
+        using var response = await client.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Empty(accounting.Requests);
+        Assert.Empty(files.Requests);
+    }
+
+    [Fact]
+    public async Task FileUpload_WithoutCsrf_IsRejectedBeforeAccountingOrFileServiceCall()
+    {
+        var accounting = AccountingBehaviorTestHost.Routes(_ => new(HttpStatusCode.InternalServerError));
+        var files = AccountingBehaviorTestHost.Routes(_ => new(HttpStatusCode.InternalServerError));
+        await using var factory = AccountingBehaviorTestHost.CreateFactory(accounting, files);
+        using var client = AccountingBehaviorTestHost.CreateClient(factory);
+        await AccountingBehaviorTestHost.SignInAsync(client);
+        using var form = new MultipartFormDataContent();
+        form.Add(new ByteArrayContent([1]), "files", "fixture.pdf");
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/bff/finances/84/files") { Content = form };
+        request.Headers.Add("Idempotency-Key", Guid.NewGuid().ToString("D"));
+
+        using var response = await client.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Empty(accounting.Requests);
+        Assert.Empty(files.Requests);
+    }
+
+    [Fact]
+    public async Task FileUpload_WithoutEmployeeSession_IsUnauthorizedBeforeAccountingOrFileServiceCall()
+    {
+        var accounting = AccountingBehaviorTestHost.Routes(_ => new(HttpStatusCode.InternalServerError));
+        var files = AccountingBehaviorTestHost.Routes(_ => new(HttpStatusCode.InternalServerError));
+        await using var factory = AccountingBehaviorTestHost.CreateFactory(accounting, files);
+        using var client = AccountingBehaviorTestHost.CreateClient(factory);
+        using var form = new MultipartFormDataContent();
+        form.Add(new ByteArrayContent([1]), "files", "fixture.pdf");
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/bff/finances/84/files") { Content = form };
+        request.Headers.Add("Idempotency-Key", Guid.NewGuid().ToString("D"));
+
+        using var response = await client.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        Assert.Empty(accounting.Requests);
+        Assert.Empty(files.Requests);
     }
 
     [Fact]
