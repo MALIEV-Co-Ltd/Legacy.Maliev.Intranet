@@ -35,7 +35,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           repository: MALIEV-Co-Ltd/Legacy.Maliev.CustomerService
-          ref: def78a74147e4e6fad6b6d4cc35e07fae16fa5f8
+          ref: cebf45e8e1eeb600d760a565f8b0970c7f434148
           path: .dependencies/Legacy.Maliev.CustomerService
           persist-credentials: false
       - name: Verify Docker integration-test runtime

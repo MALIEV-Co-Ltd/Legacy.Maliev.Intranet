@@ -16,7 +16,7 @@ sibling CustomerService checkout. The PR validation workflow explicitly checks
 out the audited producer SHA and runs this test; ordinary solution builds do
 not need the producer repository. For the #197 exact-revision local run, use
 Intranet `7378a4b65ad6b7023b5baa53839772bb51a1e687` and CustomerService
-`def78a74147e4e6fad6b6d4cc35e07fae16fa5f8`; verify both SHAs before
+`cebf45e8e1eeb600d760a565f8b0970c7f434148`; verify both SHAs before
 testing. Prepare an isolated workspace root containing read-only
 source copies of `Legacy.Maliev.CustomerService`,
 `Legacy.Maliev.ServiceDefaults`, and `Legacy.Maliev.CompatibilityContracts`.
