@@ -274,6 +274,16 @@ builder.Services.AddHttpClient<InvoiceCreationProxy>(client =>
     client.Timeout = TimeSpan.FromSeconds(45);
 }).RemoveAllResilienceHandlers()
     .AddHttpMessageHandler<LegacyServiceAuthenticationHandler>();
+builder.Services.AddOptions<InvoiceDelegationOptions>()
+    .Bind(builder.Configuration.GetSection("InvoiceDelegation"));
+builder.Services.AddHttpClient<IInvoiceDelegationClient, InvoiceDelegationClient>(client =>
+{
+    client.BaseAddress = new Uri(builder.Configuration["Services:Auth"]
+        ?? throw new InvalidOperationException("Services:Auth is required."));
+    client.Timeout = TimeSpan.FromSeconds(10);
+}).ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler { AllowAutoRedirect = false })
+    .RemoveAllResilienceHandlers()
+    .AddHttpMessageHandler<LegacyServiceAuthenticationHandler>();
 builder.Services.AddHttpClient<InvoiceFileProxy>(client =>
 {
     client.BaseAddress = new Uri(builder.Configuration["Services:File"]

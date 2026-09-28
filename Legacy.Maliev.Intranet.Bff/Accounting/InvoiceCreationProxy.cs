@@ -11,10 +11,12 @@ public sealed class InvoiceCreationProxy(HttpClient httpClient)
         SendAsync(new(HttpMethod.Get, $"/invoices/from-quotation/{quotationId}/preview"), cancellationToken);
 
     /// <summary>Forwards editable intent with its stable operation identity.</summary>
-    public Task<HttpResponseMessage> CreateAsync(int quotationId, CreateInvoiceFromQuotationRequest input, Guid operationId, CancellationToken cancellationToken)
+    public Task<HttpResponseMessage> CreateAsync(int quotationId, CreateInvoiceFromQuotationRequest input, Guid operationId, CancellationToken cancellationToken, string? delegation = null)
     {
         var request = new HttpRequestMessage(HttpMethod.Post, $"/invoices/from-quotation/{quotationId}") { Content = JsonContent.Create(input) };
         request.Headers.Add("Idempotency-Key", operationId.ToString("D"));
+        if (delegation is not null)
+            request.Headers.Add("X-Maliev-Employee-Delegation", "Bearer " + delegation);
         return SendAsync(request, cancellationToken);
     }
 

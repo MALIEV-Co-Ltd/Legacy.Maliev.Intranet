@@ -94,3 +94,24 @@ designed bounded context; it is intentionally not fabricated in this legacy migr
 The BFF's customer-create workflow uses the existing AuthService identity-create route by default. After AuthService's service-only `reconcile-create` endpoint and its PostgreSQL receipt migration are available, set `CustomerIdentityReconciliation:Enabled=true` and project a dedicated, protected 32-byte base64 `CustomerIdentityReconciliation:BootstrapKeyBase64` into every BFF replica. Grant the BFF service identity `legacy-auth.customer-identities.reconcile-create` separately from the existing identity-create permission. Do not put this key in Git, logs, browser configuration, or a URL. An enabled workflow without a valid key fails before creating a customer profile.
 
 For one employee-scoped create operation and customer ID, the BFF derives a stable high-entropy bootstrap password using a domain-separated HMAC. AuthService receives the same payload and operation key on retry and can distinguish a replay from a conflicting create. The bootstrap password is never sent to the employee or stored in the BFF; customers use the separate single-use password-setup challenge. Keep the dedicated key stable across replicas and deployments for at least the full profile/identity retry and receipt retention window. Rotating it while an operation is unresolved changes the derived password and makes that operation conflict; reconcile outstanding operations before rotation. This feature gate does not authorize application deployment or database migration.
+
+# Invoice-create employee delegation rollout
+
+`InvoiceDelegation:Enabled` defaults to `false`. With it disabled, the BFF keeps the existing
+service-only invoice-create call, without claiming employee attribution. Before enabling it,
+deploy AuthService's invoice-create exchange (merged PR #99) and AccountingService's signed
+delegation verifier plus additive admission migration (merged PR #31), then separately authorize
+`service:legacy-intranet` for `legacy-auth.invoice-delegation.issue`. This repository does not
+grant that permission or change traffic.
+
+When enabled, the CSRF- and employee-permission-protected BFF POST reads the employee access token
+only from its server-side session. It calls AuthService POST `/auth/v1/exchange/invoice-create`
+using its separate service Bearer and JSON `{employeeAccessToken,quotationId,operationId}`. Only
+a bounded Bearer delegation with a positive lifetime of at most 120 seconds is forwarded to
+Accounting as `X-Maliev-Employee-Delegation: Bearer <JWT>` along with the same canonical
+`Idempotency-Key`. The browser never receives either token and cannot supply the delegation.
+Missing session credentials or a failed/malformed exchange stops before Accounting; the enabled
+path never falls back to an unattributed service-only create. Accounting remains responsible for
+cryptographic claim validation and durable actor/intent admission. This switch does not implement
+invoice status/resume or lost-response recovery; issue #203 remains open until those separate
+Accounting and NotificationService contracts are proven.
