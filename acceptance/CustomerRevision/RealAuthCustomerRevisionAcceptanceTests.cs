@@ -2,6 +2,7 @@ extern alias Bff;
 extern alias AuthApi;
 
 using System.Net;
+using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
@@ -10,6 +11,7 @@ using BffProgram = Bff::Program;
 using CustomersProxy = Bff::Legacy.Maliev.Intranet.Bff.Customers.CustomersProxy;
 using CustomerUpdateProxy = Bff::Legacy.Maliev.Intranet.Bff.Customers.CustomerUpdateProxy;
 using Legacy.Maliev.AuthService.Infrastructure;
+using Legacy.Maliev.AuthService.Application;
 using Legacy.Maliev.CustomerService.Application.Models;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Identity;
@@ -44,7 +46,24 @@ public sealed partial class CustomerRevisionAcceptanceTests
 
         await using var customer = await StartCustomerAsync(publicKey);
         using var customerClient = customer.GetTestClient();
+        using var unauthenticated = await customerClient.GetAsync("/customers/1/versioned");
+        Assert.Equal(HttpStatusCode.Unauthorized, unauthenticated.StatusCode);
         customerClient.DefaultRequestHeaders.Add("Test-Identity", "allowed");
+        using var spoofed = await customerClient.GetAsync("/customers/1/versioned");
+        Assert.Equal(HttpStatusCode.Unauthorized, spoofed.StatusCode);
+        customerClient.DefaultRequestHeaders.Remove("Test-Identity");
+        var serviceToken = await ServiceTokenAsync(authClient, "legacy-intranet", "disposable-service-secret");
+        var tokenParts = serviceToken.Split('.');
+        var invalidSignature = tokenParts[2].ToCharArray();
+        invalidSignature[0] = invalidSignature[0] == 'A' ? 'B' : 'A';
+        using (var forgedClient = customer.GetTestClient())
+        {
+            forgedClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer",
+                $"{tokenParts[0]}.{tokenParts[1]}.{new string(invalidSignature)}");
+            using var forged = await forgedClient.GetAsync("/customers/1/versioned");
+            Assert.Equal(HttpStatusCode.Unauthorized, forged.StatusCode);
+        }
+        customerClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", serviceToken);
         using var created = await customerClient.PostAsJsonAsync("/customers", InitialProfile());
         Assert.Equal(HttpStatusCode.Created, created.StatusCode);
         var id = (await created.Content.ReadFromJsonAsync<CustomerResponse>())!.Id;
@@ -85,6 +104,11 @@ public sealed partial class CustomerRevisionAcceptanceTests
         using var missingCsrf = await UpdateAsync(first, id, Profile("Rejected"), staleRevision, false);
         Assert.Equal(HttpStatusCode.BadRequest, missingCsrf.StatusCode);
         Assert.Equal("Initial", (await ReadPersistedAsync(customerClient, id)).FirstName);
+        using var missingRevision = await UpdateAsync(first, id, Profile("Rejected"), null, true);
+        using var malformedRevision = await UpdateAsync(first, id, Profile("Rejected"), "W/\"00000001\"", true);
+        Assert.Equal((HttpStatusCode)428, missingRevision.StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, malformedRevision.StatusCode);
+        Assert.Equal("Initial", (await ReadPersistedAsync(customerClient, id)).FirstName);
         using var winner = await UpdateAsync(first, id, Profile("Winner"), staleRevision, true);
         using var loser = await UpdateAsync(second, id, Profile("Loser"), staleRevision, true);
         Assert.Equal(HttpStatusCode.NoContent, winner.StatusCode);
@@ -99,6 +123,28 @@ public sealed partial class CustomerRevisionAcceptanceTests
         using var fresh = await UpdateAsync(second, id, Profile("Fresh"), freshRevision, true);
         Assert.Equal(HttpStatusCode.NoContent, fresh.StatusCode);
         Assert.Equal("Fresh", (await ReadPersistedAsync(customerClient, id)).FirstName);
+
+        using var readOnlyClient = customer.GetTestClient();
+        readOnlyClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer",
+            await ServiceTokenAsync(authClient, "revision-readonly", "disposable-readonly-secret"));
+        using var allowedRead = await readOnlyClient.GetAsync($"/customers/{id}/versioned");
+        Assert.Equal(HttpStatusCode.OK, allowedRead.StatusCode);
+        using var deniedRequest = new HttpRequestMessage(HttpMethod.Put, $"/customers/{id}/versioned")
+        {
+            Content = JsonContent.Create(InitialProfile()),
+        };
+        deniedRequest.Headers.TryAddWithoutValidation("If-Match", allowedRead.Headers.ETag?.ToString());
+        using var deniedWrite = await readOnlyClient.SendAsync(deniedRequest);
+        Assert.Equal(HttpStatusCode.Forbidden, deniedWrite.StatusCode);
+        Assert.Equal("Fresh", (await ReadPersistedAsync(customerClient, id)).FirstName);
+    }
+
+    private static async Task<string> ServiceTokenAsync(HttpClient authClient, string clientId, string secret)
+    {
+        using var response = await authClient.PostAsJsonAsync("/auth/v1/service/login",
+            new ServiceLoginRequest(clientId, secret));
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        return (await response.Content.ReadFromJsonAsync<ServiceTokenResponse>())!.AccessToken;
     }
 
     private async Task<string> CreateAuthDatabaseAsync()
@@ -165,6 +211,10 @@ public sealed partial class CustomerRevisionAcceptanceTests
                 ServiceClientCredential.HashSecret("disposable-service-secret"));
             builder.UseSetting("ServiceClients:Clients:legacy-intranet:Permissions:0", "legacy-customer.customers.read");
             builder.UseSetting("ServiceClients:Clients:legacy-intranet:Permissions:1", "legacy-customer.customers.update");
+            builder.UseSetting("ServiceClients:Clients:legacy-intranet:Permissions:2", "legacy-customer.customers.create");
+            builder.UseSetting("ServiceClients:Clients:revision-readonly:SecretSha256",
+                ServiceClientCredential.HashSecret("disposable-readonly-secret"));
+            builder.UseSetting("ServiceClients:Clients:revision-readonly:Permissions:0", "legacy-customer.customers.read");
         }
     }
 
