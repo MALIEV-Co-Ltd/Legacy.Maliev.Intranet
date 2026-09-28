@@ -30,8 +30,8 @@ public sealed class BffOrderDetailContractTests
         var csrf = await SignInAsync(client);
         downstream.Requests.Clear();
         using var form = new MultipartFormDataContent();
-        form.Add(new ByteArrayContent(new byte[50 * 1024 * 1024]), "files", "part-a.stl");
-        form.Add(new ByteArrayContent(new byte[50 * 1024 * 1024 + 1]), "files", "part-b.stl");
+        form.Add(SparseUploadContent.Create(50L * 1024 * 1024), "files", "part-a.stl");
+        form.Add(SparseUploadContent.Create(50L * 1024 * 1024 + 1), "files", "part-b.stl");
         using var request = new HttpRequestMessage(HttpMethod.Post, "/bff/orders/84/files") { Content = form };
         request.Headers.Add("X-CSRF-TOKEN", csrf);
 

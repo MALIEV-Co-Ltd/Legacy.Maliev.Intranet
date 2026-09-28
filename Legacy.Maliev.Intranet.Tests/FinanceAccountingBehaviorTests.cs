@@ -205,8 +205,8 @@ public sealed class FinanceAccountingBehaviorTests
         var csrf = await AccountingBehaviorTestHost.SignInAsync(client);
         using var form = new MultipartFormDataContent();
         form.Add(new StringContent(PaymentCreateJson, Encoding.UTF8, "application/json"), "payment");
-        form.Add(new ByteArrayContent(new byte[50 * 1024 * 1024]), "files", "part-a.pdf");
-        form.Add(new ByteArrayContent(new byte[50 * 1024 * 1024 + 1]), "files", "part-b.pdf");
+        form.Add(SparseUploadContent.Create(50L * 1024 * 1024), "files", "part-a.pdf");
+        form.Add(SparseUploadContent.Create(50L * 1024 * 1024 + 1), "files", "part-b.pdf");
         using var request = new HttpRequestMessage(HttpMethod.Post, "/bff/finances") { Content = form };
         request.Headers.Add("Idempotency-Key", Guid.NewGuid().ToString("D"));
         request.Headers.Add("X-CSRF-TOKEN", csrf);
@@ -278,8 +278,8 @@ public sealed class FinanceAccountingBehaviorTests
         using var client = AccountingBehaviorTestHost.CreateClient(factory);
         var csrf = await AccountingBehaviorTestHost.SignInAsync(client);
         using var form = new MultipartFormDataContent();
-        form.Add(new ByteArrayContent(new byte[50 * 1024 * 1024]), "files", "part-a.pdf");
-        form.Add(new ByteArrayContent(new byte[50 * 1024 * 1024 + 1]), "files", "part-b.pdf");
+        form.Add(SparseUploadContent.Create(50L * 1024 * 1024), "files", "part-a.pdf");
+        form.Add(SparseUploadContent.Create(50L * 1024 * 1024 + 1), "files", "part-b.pdf");
         using var request = new HttpRequestMessage(HttpMethod.Post, "/bff/finances/84/files") { Content = form };
         request.Headers.Add("Idempotency-Key", Guid.NewGuid().ToString("D"));
         request.Headers.Add("X-CSRF-TOKEN", csrf);

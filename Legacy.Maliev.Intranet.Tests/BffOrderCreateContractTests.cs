@@ -77,8 +77,8 @@ public sealed class BffOrderCreateContractTests
         downstream.Requests.Clear();
         using var content = new MultipartFormDataContent();
         content.Add(JsonContent.Create(new OrderCreateRequest(42, "Thai fixture", null, 3, 5, 6, 4, 2, false, false)), "request");
-        content.Add(new ByteArrayContent(new byte[50 * 1024 * 1024]), "files", "part-a.stl");
-        content.Add(new ByteArrayContent(new byte[50 * 1024 * 1024 + 1]), "files", "part-b.stl");
+        content.Add(SparseUploadContent.Create(50L * 1024 * 1024), "files", "part-a.stl");
+        content.Add(SparseUploadContent.Create(50L * 1024 * 1024 + 1), "files", "part-b.stl");
         using var request = new HttpRequestMessage(HttpMethod.Post, "/bff/orders") { Content = content };
         request.Headers.Add("Idempotency-Key", Guid.NewGuid().ToString("D"));
         request.Headers.Add("X-CSRF-TOKEN", csrf);
