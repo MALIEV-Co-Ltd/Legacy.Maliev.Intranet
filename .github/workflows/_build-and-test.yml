@@ -57,7 +57,7 @@ jobs:
           pwsh -NoProfile -File Legacy.Maliev.Intranet.BrowserTests/bin/Release/net10.0/playwright.ps1 \
             install --with-deps chromium
       - name: Validate .NET solution
-        uses: MALIEV-Co-Ltd/Legacy.Maliev.Workflows/actions/dotnet-validate@6017816fa67f369d785ed30794f002cfd6299af7
+        uses: MALIEV-Co-Ltd/Legacy.Maliev.Workflows/actions/dotnet-validate@d7efac266bc66273bc45eab583618871292ecbd6
         env:
           # The shared action tests solution projects concurrently by default. Keep the
           # Playwright fixture isolated from the long-running integration test host.
