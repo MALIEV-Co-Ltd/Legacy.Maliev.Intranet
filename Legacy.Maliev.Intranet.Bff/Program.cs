@@ -774,6 +774,11 @@ var app = builder.Build();
 app.UseStandardMiddleware();
 app.Use(async (context, next) =>
 {
+    if (string.Equals(context.Request.Path.Value, "/Error", StringComparison.OrdinalIgnoreCase))
+    {
+        context.Response.Headers.CacheControl = "no-store";
+    }
+
     context.Response.OnStarting(() =>
     {
         context.Response.Headers["Content-Security-Policy"] =
@@ -821,6 +826,14 @@ app.UseAntiforgery();
 app.UseMiddleware<DiagnosticEventMiddleware>();
 app.MapDefaultEndpoints("intranet-bff");
 app.MapStaticAssets().AllowAnonymous();
+
+// A reference for this page visit only; never accept a client-supplied incident ID.
+app.MapGet("/bff/error-context", (HttpContext context) =>
+{
+    context.Response.Headers.CacheControl = "no-store";
+    return Results.Ok(new { pageReference = context.TraceIdentifier });
+})
+    .RequireAuthorization();
 
 app.MapGet("/Operations/OutcomeReadback", OutcomeReadbackEndpointMapper.GetAsync)
     .RequireAuthorization();

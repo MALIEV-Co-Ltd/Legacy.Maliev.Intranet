@@ -1,0 +1,17 @@
+@page
+@model ErrorModel
+@inject Microsoft.Extensions.Localization.IStringLocalizer<ErrorModel> Text
+@{
+    ViewData["Title"] = Text["PageTitle"];
+}
+<section class="panel" role="alert" aria-labelledby="error-heading">
+    <p class="eyebrow">@Text["Eyebrow"]</p>
+    <h1 id="error-heading">@Text["Heading"]</h1>
+    <p>@Text["Description"]</p>
+    @if (Model.DisplayCode is int code)
+    {
+        <p>@Text["StatusLabel"] <code>@code</code></p>
+    }
+    <p class="correlation">@Text["PageReferenceLabel"] <code>@Model.PageReference</code></p>
+    <a asp-page="/Dashboard">@Text["Dashboard"]</a>
+</section>

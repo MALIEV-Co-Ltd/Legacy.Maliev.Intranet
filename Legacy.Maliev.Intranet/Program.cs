@@ -20,6 +20,7 @@ builder.AddServiceDefaults();
 builder.AddStandardMiddleware(options => options.EnableRequestLogging = true);
 builder.AddLegacyIntranetDataProtection();
 builder.Services.AddProblemDetails();
+builder.Services.AddLocalization();
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddLegacyAccessTokenValidation(
     builder.Configuration,
@@ -135,7 +136,7 @@ builder.Services.AddRazorPages(options =>
                  !route.StartsWith("/Orders/", StringComparison.OrdinalIgnoreCase) &&
                  !route.StartsWith("/PurchaseOrders/", StringComparison.OrdinalIgnoreCase) &&
                  !route.StartsWith("/Suppliers/", StringComparison.OrdinalIgnoreCase) &&
-                 route is not "/Dashboard" and not "/AccessDenied"))
+                 route is not "/Dashboard" and not "/AccessDenied" and not "/Error"))
     {
         options.Conventions.AddPageRoute("/LegacyRoute", route);
     }
