@@ -60,7 +60,7 @@ public sealed class LegacyServiceDefaultsIdentityContractTests
         var root = FindRoot();
         var projectSources = Directory
             .GetFiles(root, "*.csproj", SearchOption.AllDirectories)
-            .Where(path => !Path.GetRelativePath(root, path).StartsWith($".worktrees{Path.DirectorySeparatorChar}", StringComparison.OrdinalIgnoreCase))
+            .Where(path => IsIntranetProject(root, path))
             .Select(File.ReadAllText)
             .ToArray();
 
@@ -86,6 +86,15 @@ public sealed class LegacyServiceDefaultsIdentityContractTests
     }
 
     [Fact]
+    public void FrameworkPackageScanExcludesCheckedOutDependencies()
+    {
+        var root = FindRoot();
+        Assert.False(IsIntranetProject(root, Path.Combine(root, ".dependencies", "Legacy.Maliev.CustomerService", "CustomerService.Tests.csproj")));
+        Assert.False(IsIntranetProject(root, Path.Combine(root, ".worktrees", "another-checkout", "Another.csproj")));
+        Assert.True(IsIntranetProject(root, Path.Combine(root, "Legacy.Maliev.Intranet.Tests", "Legacy.Maliev.Intranet.Tests.csproj")));
+    }
+
+    [Fact]
     public void CompatibilityNamespaceRemainsStableWhileAssemblyAndPackageOwnershipChange()
     {
         var root = FindRoot();
@@ -102,5 +111,12 @@ public sealed class LegacyServiceDefaultsIdentityContractTests
         var directory = new DirectoryInfo(AppContext.BaseDirectory);
         while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "Legacy.Maliev.Intranet.slnx"))) directory = directory.Parent;
         return directory?.FullName ?? throw new DirectoryNotFoundException("Could not find repository root.");
+    }
+
+    private static bool IsIntranetProject(string root, string projectPath)
+    {
+        var relativePath = Path.GetRelativePath(root, projectPath);
+        return !relativePath.StartsWith($".worktrees{Path.DirectorySeparatorChar}", StringComparison.OrdinalIgnoreCase)
+            && !relativePath.StartsWith($".dependencies{Path.DirectorySeparatorChar}", StringComparison.OrdinalIgnoreCase);
     }
 }
