@@ -44,4 +44,5 @@
   <data name="RemoveFileConfirmation" xml:space="preserve"><value>ยืนยันการนำไฟล์ {0} ออก</value></data>
   <data name="ConfirmRemoveFile" xml:space="preserve"><value>ยืนยันการนำไฟล์ออก</value></data>
   <data name="Retry" xml:space="preserve"><value>ลองอีกครั้ง</value></data>
+  <data name="FilesTooLarge" xml:space="preserve"><value>ขนาดไฟล์แนบรวมต้องไม่เกิน 100 MB</value></data>
 </root>

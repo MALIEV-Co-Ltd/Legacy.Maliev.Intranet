@@ -22,6 +22,65 @@ namespace Legacy.Maliev.Intranet.Tests;
 public sealed class BffOrderDetailContractTests
 {
     [Fact]
+    public async Task FileUpload_CombinedFilesOver100MiB_AreRejectedBeforeOrderOrFileServiceCall()
+    {
+        var downstream = new OrderDetailHandler();
+        await using var factory = new OrderDetailBffFactory(downstream, AllPermissions);
+        using var client = CreateClient(factory);
+        var csrf = await SignInAsync(client);
+        downstream.Requests.Clear();
+        using var form = new MultipartFormDataContent();
+        form.Add(SparseUploadContent.Create(50L * 1024 * 1024), "files", "part-a.stl");
+        form.Add(SparseUploadContent.Create(50L * 1024 * 1024 + 1), "files", "part-b.stl");
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/bff/orders/84/files") { Content = form };
+        request.Headers.Add("X-CSRF-TOKEN", csrf);
+
+        using var response = await client.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Empty(downstream.Requests);
+    }
+
+    [Fact]
+    public async Task FileUpload_WithoutCsrf_IsRejectedBeforeDownstreamCall()
+    {
+        var downstream = new OrderDetailHandler();
+        await using var factory = new OrderDetailBffFactory(downstream, AllPermissions);
+        using var client = CreateClient(factory);
+        await SignInAsync(client);
+        downstream.Requests.Clear();
+        using var form = new MultipartFormDataContent();
+        form.Add(new ByteArrayContent([1]), "files", "fixture.stl");
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/bff/orders/84/files") { Content = form };
+
+        using var response = await client.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Empty(downstream.Requests);
+    }
+
+    [Fact]
+    public async Task FileUpload_WithoutWritePermission_IsForbiddenBeforeDownstreamCall()
+    {
+        var downstream = new OrderDetailHandler();
+        await using var factory = new OrderDetailBffFactory(
+            downstream,
+            AllPermissions.Where(permission => permission != LegacyEmployeePermissions.OrderFilesWrite).ToArray());
+        using var client = CreateClient(factory);
+        var csrf = await SignInAsync(client);
+        downstream.Requests.Clear();
+        using var form = new MultipartFormDataContent();
+        form.Add(new ByteArrayContent([1]), "files", "fixture.stl");
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/bff/orders/84/files") { Content = form };
+        request.Headers.Add("X-CSRF-TOKEN", csrf);
+
+        using var response = await client.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+        Assert.Empty(downstream.Requests);
+    }
+
+    [Fact]
     public async Task AuthorizedEmployee_GetsCompleteAggregateWithServerOnlyCredentials()
     {
         var downstream = new OrderDetailHandler();

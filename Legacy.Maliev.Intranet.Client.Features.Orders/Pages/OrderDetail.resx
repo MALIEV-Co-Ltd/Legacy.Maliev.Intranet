@@ -8,4 +8,5 @@
   <data name="StatusNew" xml:space="preserve"><value>New</value></data><data name="StatusReviewing" xml:space="preserve"><value>Reviewing</value></data><data name="StatusReviewed" xml:space="preserve"><value>Reviewed</value></data><data name="StatusQuoted" xml:space="preserve"><value>Quoted</value></data><data name="StatusAccepted" xml:space="preserve"><value>Accepted</value></data><data name="StatusPaid" xml:space="preserve"><value>Paid</value></data><data name="StatusInProgress" xml:space="preserve"><value>In progress</value></data><data name="StatusCompleted" xml:space="preserve"><value>Completed</value></data><data name="StatusCancelled" xml:space="preserve"><value>Cancelled</value></data><data name="StatusShipped" xml:space="preserve"><value>Shipped</value></data><data name="StatusDelivered" xml:space="preserve"><value>Delivered</value></data>
   <data name="OrderDetails" xml:space="preserve"><value>Order details</value></data>
   <data name="RemoveFile" xml:space="preserve"><value>Remove {0}</value></data>
+  <data name="FilesTooLarge" xml:space="preserve"><value>The combined file size cannot exceed 100 MB.</value></data>
 </root>

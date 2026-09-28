@@ -67,6 +67,28 @@ public sealed class BffOrderCreateContractTests
         Assert.Empty(downstream.Requests);
     }
 
+    [Fact]
+    public async Task CombinedFilesOver100MiB_AreRejectedBeforeAnyOrderOrFileServiceCall()
+    {
+        var downstream = new OrderCreateHandler();
+        await using var factory = new OrderCreateBffFactory(downstream, [LegacyEmployeePermissions.OrdersCreate]);
+        using var client = CreateClient(factory);
+        var csrf = await SignInAsync(client);
+        downstream.Requests.Clear();
+        using var content = new MultipartFormDataContent();
+        content.Add(JsonContent.Create(new OrderCreateRequest(42, "Thai fixture", null, 3, 5, 6, 4, 2, false, false)), "request");
+        content.Add(SparseUploadContent.Create(50L * 1024 * 1024), "files", "part-a.stl");
+        content.Add(SparseUploadContent.Create(50L * 1024 * 1024 + 1), "files", "part-b.stl");
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/bff/orders") { Content = content };
+        request.Headers.Add("Idempotency-Key", Guid.NewGuid().ToString("D"));
+        request.Headers.Add("X-CSRF-TOKEN", csrf);
+
+        using var response = await client.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Empty(downstream.Requests);
+    }
+
     [Theory]
     [InlineData(101, 1)]
     [InlineData(1, 251)]

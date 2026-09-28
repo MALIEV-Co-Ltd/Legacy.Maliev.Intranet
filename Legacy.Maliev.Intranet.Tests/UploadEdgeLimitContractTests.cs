@@ -32,6 +32,8 @@ public sealed class UploadEdgeLimitContractTests
     [InlineData("Legacy.Maliev.Intranet.Client.Features.Orders", "Pages/OrderCreate", "FilesTooLarge")]
     [InlineData("Legacy.Maliev.Intranet.Client.Features.Accounting", "Pages/FinanceCreate", "SelectedFiles")]
     [InlineData("Legacy.Maliev.Intranet.Client.Features.Accounting", "Pages/FinanceCreate", "FilesTooLarge")]
+    [InlineData("Legacy.Maliev.Intranet.Client.Features.Orders", "Pages/OrderDetail", "FilesTooLarge")]
+    [InlineData("Legacy.Maliev.Intranet.Client.Features.Accounting", "Pages/FinanceView", "FilesTooLarge")]
     public void EmployeeForms_Advertise100MBInEnglishAndThai(string project, string page, string resourceKey)
     {
         var root = FindRoot();
