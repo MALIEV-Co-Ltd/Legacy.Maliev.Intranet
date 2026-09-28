@@ -36,7 +36,7 @@ public sealed class BffHttpMethodSurfaceTests
     {
         { "Workspace authentication", ["/bff/session", "/bff/login", "/bff/logout", "/bff/google"], ["GET", "POST"] },
         { "Dashboard", ["/bff/dashboard"], ["GET"] },
-        { "Diagnostics", ["/bff/diagnostics"], ["GET"] },
+        { "Diagnostics", ["/bff/diagnostics", "/bff/error-context"], ["GET"] },
         { "Employee management and recovery", ["/bff/employees", "/bff/profile", "/bff/employee-recovery"], ["GET", "POST", "PUT"] },
         { "Customers", ["/bff/customers"], ["GET", "POST", "PUT"] },
         { "Catalog", ["/bff/catalog"], ["DELETE", "GET", "POST", "PUT"] },
@@ -60,8 +60,8 @@ public sealed class BffHttpMethodSurfaceTests
             .ToArray();
 
         Assert.Equal(ExpectedEndpointSurface, actual);
-        Assert.Equal(99, actual.Length);
-        Assert.Equal(55, actual.Count(value => value.StartsWith("GET ", StringComparison.Ordinal)));
+        Assert.Equal(100, actual.Length);
+        Assert.Equal(56, actual.Count(value => value.StartsWith("GET ", StringComparison.Ordinal)));
         Assert.Equal(23, actual.Count(value => value.StartsWith("POST ", StringComparison.Ordinal)));
         Assert.Equal(12, actual.Count(value => value.StartsWith("PUT ", StringComparison.Ordinal)));
         Assert.Equal(9, actual.Count(value => value.StartsWith("DELETE ", StringComparison.Ordinal)));
@@ -269,6 +269,7 @@ public sealed class BffHttpMethodSurfaceTests
         GET /bff/diagnostics/events
         GET /bff/employees
         GET /bff/employees/{id:int}
+        GET /bff/error-context
         GET /bff/finances
         GET /bff/finances/create
         GET /bff/finances/summaries/monthly

@@ -47,7 +47,7 @@ WebAssembly.
 
 Migration rules:
 
-- preserve all 41 historical staff routes and validated workflows (39 active and 2 intentionally retired);
+- preserve all 42 historical staff routes and validated workflows (40 active and 2 intentionally retired);
 - use `Legacy.Maliev.AuthService` for employee authentication and keep access/refresh tokens server-side;
 - call independently deployed legacy services through typed HTTP clients only;
 - never reference employee or domain DbContexts;

@@ -11,6 +11,7 @@ public static class LegacyRoutes
         "/Customers/Index",
         "/Customers/View",
         "/Dashboard",
+        "/Error",
         "/Employees/Create",
         "/Employees/EmailConfirmation",
         "/Employees/ForgotPassword",

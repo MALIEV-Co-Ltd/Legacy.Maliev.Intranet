@@ -1,0 +1,59 @@
+@page "/Error"
+@attribute [Authorize]
+@using Legacy.Maliev.Intranet.Client.Shared.Components
+@inject IStringLocalizer<Error> Text
+@inject HttpClient Http
+
+<PageTitle>@Text["PageTitle"]</PageTitle>
+
+<div class="legacy-content-container legacy-content-container--small py-8">
+    <ShadcnAlert Variant="ShadcnAlertVariant.Destructive" AlertRole="ShadcnAlertRole.Alert">
+        <ShadcnAlertTitle><ShadcnTypography Variant="ShadcnTypographyVariant.H1" Class="mb-2">@Text["Heading"]</ShadcnTypography></ShadcnAlertTitle>
+        <ShadcnAlertDescription>
+            <ShadcnTypography Class="mb-4">@Text["Description"]</ShadcnTypography>
+            @if (DisplayCode is int code)
+            {
+                <ShadcnTypography Class="mb-2">@Text["StatusLabel"] <code>@(code)</code></ShadcnTypography>
+            }
+            @if (!string.IsNullOrEmpty(_pageReference))
+            {
+                <ShadcnTypography Class="mb-4">@Text["PageReferenceLabel"] <code>@_pageReference</code></ShadcnTypography>
+            }
+        </ShadcnAlertDescription>
+        <ShadcnAlertAction><LegacyLink Href="/Dashboard" Role="LegacyLinkRole.Navigation" AriaLabel="@Text["Dashboard"]">@Text["Dashboard"]</LegacyLink></ShadcnAlertAction>
+    </ShadcnAlert>
+</div>
+
+@code {
+    [Parameter]
+    [SupplyParameterFromQuery(Name = "code")]
+    public string? Code { get; set; }
+
+    private int? DisplayCode => ErrorPageStatus.DisplayCode(Code);
+    private string? _pageReference;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _pageReference = await ErrorContextClient.GetPageReferenceAsync(Http);
+        }
+        catch (HttpRequestException)
+        {
+            // The safe error page must remain usable when the BFF is unavailable.
+        }
+        catch (System.Text.Json.JsonException)
+        {
+            // A malformed response must not replace the safe error page.
+        }
+        catch (OperationCanceledException)
+        {
+            // Keep the page available when the reference request times out.
+        }
+        catch (IOException)
+        {
+            // Keep the page available when the reference response is interrupted.
+        }
+    }
+
+}

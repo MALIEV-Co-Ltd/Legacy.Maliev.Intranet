@@ -12,7 +12,7 @@ public sealed partial class RoutedPageLocalizationParityTests
         var pages = EnumerateOwnedRoutedPages(root).ToArray();
 
         Assert.NotEmpty(pages);
-        Assert.Equal(43, pages.Length);
+        Assert.Equal(44, pages.Length);
 
         foreach (var page in pages)
         {

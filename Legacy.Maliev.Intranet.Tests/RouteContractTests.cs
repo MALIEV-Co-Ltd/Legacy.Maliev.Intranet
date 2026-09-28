@@ -14,10 +14,11 @@ public sealed class RouteContractTests : IClassFixture<IntranetFactory>
     [Fact]
     public void Inventory_PreservesEveryHistoricalRouteExactlyOnce()
     {
-        Assert.Equal(41, LegacyRoutes.All.Count);
+        Assert.Equal(42, LegacyRoutes.All.Count);
         Assert.Equal(LegacyRoutes.All.Count, LegacyRoutes.All.Distinct(StringComparer.OrdinalIgnoreCase).Count());
         Assert.Contains("/QuotationRequests/View", LegacyRoutes.All);
         Assert.Contains("/Finances/YearlyActivityChart", LegacyRoutes.All);
+        Assert.Contains("/Error", LegacyRoutes.All);
         Assert.Contains("/Travelers/Create", LegacyRoutes.All);
         Assert.Equal(["/Travelers/Create", "/Travelers/Index"], LegacyRoutes.Retired);
         Assert.DoesNotContain("/Travelers/Create", LegacyRoutes.ActiveMigrationCandidates);
@@ -44,6 +45,7 @@ public sealed class RouteContractTests : IClassFixture<IntranetFactory>
     [InlineData("/Suppliers/Index")]
     [InlineData("/Orders/View?id=1")]
     [InlineData("/Server/ErrorReport")]
+    [InlineData("/Error")]
     public async Task StaffRoutes_RequireEmployeeSession(string route)
     {
         using var client = factory.CreateClient(new WebApplicationFactoryClientOptions
