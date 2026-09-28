@@ -41,16 +41,20 @@
             ? "Legacy.Maliev.Intranet.Client.Features.Catalog.wasm"
             : path.StartsWith("Server/", StringComparison.OrdinalIgnoreCase)
                 ? "Legacy.Maliev.Intranet.Client.Features.Diagnostics.wasm"
-                : path.StartsWith("Finances/", StringComparison.OrdinalIgnoreCase)
+                : path.Equals("Finances", StringComparison.OrdinalIgnoreCase) ||
+                    path.StartsWith("Finances/", StringComparison.OrdinalIgnoreCase)
                     ? "Legacy.Maliev.Intranet.Client.Features.Accounting.wasm"
-                    : path.StartsWith("Invoices/", StringComparison.OrdinalIgnoreCase) ||
+                : path.Equals("Invoices", StringComparison.OrdinalIgnoreCase) ||
+                    path.StartsWith("Invoices/", StringComparison.OrdinalIgnoreCase) ||
                         path.Equals("accounting", StringComparison.OrdinalIgnoreCase) ||
                         path.StartsWith("accounting/", StringComparison.OrdinalIgnoreCase) ||
                         path.Equals("finance/invoices", StringComparison.OrdinalIgnoreCase)
                         ? "Legacy.Maliev.Intranet.Client.Features.Accounting.wasm"
-                    : path.StartsWith("QuotationRequests/", StringComparison.OrdinalIgnoreCase)
+                    : path.Equals("QuotationRequests", StringComparison.OrdinalIgnoreCase) ||
+                        path.StartsWith("QuotationRequests/", StringComparison.OrdinalIgnoreCase)
                         ? "Legacy.Maliev.Intranet.Client.Features.Quotations.wasm"
-                        : path.StartsWith("Quotations/", StringComparison.OrdinalIgnoreCase)
+                        : path.Equals("Quotations", StringComparison.OrdinalIgnoreCase) ||
+                            path.StartsWith("Quotations/", StringComparison.OrdinalIgnoreCase)
                             ? "Legacy.Maliev.Intranet.Client.Features.Quotations.wasm"
                     : path.StartsWith("Customers/", StringComparison.OrdinalIgnoreCase) ||
                         path.StartsWith("customers", StringComparison.OrdinalIgnoreCase) ||
