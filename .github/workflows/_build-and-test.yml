@@ -62,6 +62,7 @@ jobs:
       - name: Validate joined customer revision contract
         shell: bash
         run: |
+          export GITHUB_ACTIONS=false
           dotnet build acceptance/CustomerRevision/CustomerRevision.AcceptanceTests.csproj \
             --configuration Release \
             -p:UseLocalMalievDependencies=true \

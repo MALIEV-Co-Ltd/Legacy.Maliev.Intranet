@@ -17,6 +17,7 @@ public sealed class CustomerRevisionAcceptanceWorkflowTests
         Assert.Contains("Validate joined customer revision contract", workflow, StringComparison.Ordinal);
         Assert.Contains($"dotnet build {project}", workflow, StringComparison.Ordinal);
         Assert.Contains($"dotnet test {project}", workflow, StringComparison.Ordinal);
+        Assert.Contains("export GITHUB_ACTIONS=false", workflow, StringComparison.Ordinal);
         Assert.Contains("-p:UseLocalMalievDependencies=true", workflow, StringComparison.Ordinal);
         Assert.True(File.Exists(Path.Combine(root, "acceptance", "CustomerRevision", "CustomerRevision.AcceptanceTests.csproj")));
     }
