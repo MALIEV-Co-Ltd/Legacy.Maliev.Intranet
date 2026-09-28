@@ -31,6 +31,13 @@ jobs:
           ref: 78e48ffc4ee000df0510cba5e7c7a3c4c4d539d7
           path: .dependencies/Legacy.Maliev.CompatibilityContracts
           persist-credentials: false
+      - name: Check out exact CustomerService revision contract
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: MALIEV-Co-Ltd/Legacy.Maliev.CustomerService
+          ref: def78a74147e4e6fad6b6d4cc35e07fae16fa5f8
+          path: .dependencies/Legacy.Maliev.CustomerService
+          persist-credentials: false
       - name: Verify Docker integration-test runtime
         run: docker info
       - name: Install Playwright Chromium
@@ -52,6 +59,18 @@ jobs:
         with:
           solution: Legacy.Maliev.Intranet.slnx
           use-local-maliev-dependencies: 'true'
+      - name: Validate joined customer revision contract
+        shell: bash
+        run: |
+          dotnet build acceptance/CustomerRevision/CustomerRevision.AcceptanceTests.csproj \
+            --configuration Release \
+            -p:UseLocalMalievDependencies=true \
+            --nologo
+          dotnet test acceptance/CustomerRevision/CustomerRevision.AcceptanceTests.csproj \
+            --configuration Release \
+            --no-build \
+            -p:UseLocalMalievDependencies=true \
+            --nologo
       - name: Verify compatibility and BFF image restore
         shell: bash
         run: |
