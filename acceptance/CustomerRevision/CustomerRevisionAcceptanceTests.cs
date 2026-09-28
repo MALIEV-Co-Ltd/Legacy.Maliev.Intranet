@@ -3,6 +3,7 @@ extern alias CustomerApi;
 
 using System.Net;
 using System.Net.Http.Json;
+using System.IdentityModel.Tokens.Jwt;
 using System.Reflection;
 using System.Security.Claims;
 using System.Security.Cryptography;
@@ -32,11 +33,12 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Microsoft.IdentityModel.Tokens;
 using Testcontainers.PostgreSql;
 
 namespace CustomerRevision.Acceptance;
 
-public sealed class CustomerRevisionAcceptanceTests : IAsyncLifetime
+public sealed partial class CustomerRevisionAcceptanceTests : IAsyncLifetime
 {
     private readonly PostgreSqlContainer postgres = new PostgreSqlBuilder("postgres:18-alpine").Build();
 
@@ -113,7 +115,7 @@ public sealed class CustomerRevisionAcceptanceTests : IAsyncLifetime
     private CustomerDbContext CreateDb() => new(new DbContextOptionsBuilder<CustomerDbContext>()
         .UseNpgsql(postgres.GetConnectionString()).Options);
 
-    private async Task<WebApplication> StartCustomerAsync()
+    private async Task<WebApplication> StartCustomerAsync(string? servicePublicKey = null)
     {
         var builder = WebApplication.CreateBuilder(new WebApplicationOptions { EnvironmentName = "Testing" });
         builder.WebHost.UseTestServer();
@@ -130,6 +132,7 @@ public sealed class CustomerRevisionAcceptanceTests : IAsyncLifetime
         });
         builder.Services.AddAuthentication("Test")
             .AddScheme<AuthenticationSchemeOptions, TestAuthenticationHandler>("Test", _ => { });
+        builder.Services.AddSingleton(new TestServiceJwtOptions(servicePublicKey));
         builder.Services.AddAuthorization(options =>
         {
             foreach (var permission in typeof(CustomerApi::Legacy.Maliev.CustomerService.Api.Controllers.CustomersController)
@@ -252,15 +255,45 @@ public sealed class CustomerRevisionAcceptanceTests : IAsyncLifetime
         public void Invalidate(string token) { }
     }
 
+    private sealed record TestServiceJwtOptions(string? PublicKey);
+
     private sealed class TestAuthenticationHandler(
-        IOptionsMonitor<AuthenticationSchemeOptions> options, ILoggerFactory logger, UrlEncoder encoder)
+        IOptionsMonitor<AuthenticationSchemeOptions> options, ILoggerFactory logger, UrlEncoder encoder,
+        TestServiceJwtOptions serviceJwt)
         : AuthenticationHandler<AuthenticationSchemeOptions>(options, logger, encoder)
     {
         protected override Task<AuthenticateResult> HandleAuthenticateAsync()
         {
             var identity = Request.Headers["Test-Identity"].ToString();
-            if (string.IsNullOrEmpty(identity) &&
-                Request.Headers.Authorization.ToString() == "Bearer integration-service-token") identity = "allowed";
+            var authorization = Request.Headers.Authorization.ToString();
+            if (string.IsNullOrEmpty(identity) && authorization == "Bearer integration-service-token")
+                identity = "allowed";
+            else if (string.IsNullOrEmpty(identity) && serviceJwt.PublicKey is not null &&
+                authorization.StartsWith("Bearer ", StringComparison.Ordinal))
+            {
+                using var rsa = RSA.Create();
+                rsa.ImportFromPem(serviceJwt.PublicKey);
+                try
+                {
+                    var principal = new JwtSecurityTokenHandler { MapInboundClaims = false }.ValidateToken(
+                        authorization[7..], new TokenValidationParameters
+                        {
+                            ValidateIssuer = true,
+                            ValidIssuer = "https://disposable-auth.test",
+                            ValidateAudience = true,
+                            ValidAudience = "disposable-intranet",
+                            ValidateLifetime = true,
+                            ValidateIssuerSigningKey = true,
+                            IssuerSigningKey = new RsaSecurityKey(rsa),
+                            ValidAlgorithms = [SecurityAlgorithms.RsaSha256],
+                        }, out _);
+                    if (principal.HasClaim("identity_kind", "service") &&
+                        principal.HasClaim("permissions", "legacy-customer.customers.read") &&
+                        principal.HasClaim("permissions", "legacy-customer.customers.update"))
+                        identity = "allowed";
+                }
+                catch (SecurityTokenException) { }
+            }
             return Task.FromResult(string.IsNullOrEmpty(identity) ? AuthenticateResult.NoResult() :
                 AuthenticateResult.Success(new AuthenticationTicket(new ClaimsPrincipal(new ClaimsIdentity(
                     [new Claim("test-access", identity), new Claim(ClaimTypes.NameIdentifier, "test-employee")],

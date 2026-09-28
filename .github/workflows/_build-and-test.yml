@@ -38,6 +38,13 @@ jobs:
           ref: cebf45e8e1eeb600d760a565f8b0970c7f434148
           path: .dependencies/Legacy.Maliev.CustomerService
           persist-credentials: false
+      - name: Check out exact AuthService login contract
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: MALIEV-Co-Ltd/Legacy.Maliev.AuthService
+          ref: 8319b23e8ffab0c85b66c886a0109f7dac034c6f
+          path: .dependencies/Legacy.Maliev.AuthService
+          persist-credentials: false
       - name: Verify Docker integration-test runtime
         run: docker info
       - name: Install Playwright Chromium

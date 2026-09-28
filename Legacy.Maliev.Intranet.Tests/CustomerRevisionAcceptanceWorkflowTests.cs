@@ -13,6 +13,11 @@ public sealed class CustomerRevisionAcceptanceWorkflowTests
         Assert.Contains("repository: MALIEV-Co-Ltd/Legacy.Maliev.CustomerService", workflow, StringComparison.Ordinal);
         Assert.Contains($"ref: {producerCommit}", workflow, StringComparison.Ordinal);
         Assert.Contains("path: .dependencies/Legacy.Maliev.CustomerService", workflow, StringComparison.Ordinal);
+        Assert.Contains("repository: MALIEV-Co-Ltd/Legacy.Maliev.AuthService", workflow, StringComparison.Ordinal);
+        Assert.Matches(
+            @"repository: MALIEV-Co-Ltd/Legacy\.Maliev\.AuthService\s+ref: [a-f0-9]{40}",
+            workflow);
+        Assert.Contains("path: .dependencies/Legacy.Maliev.AuthService", workflow, StringComparison.Ordinal);
         Assert.Contains("persist-credentials: false", workflow, StringComparison.Ordinal);
         Assert.Contains("Validate joined customer revision contract", workflow, StringComparison.Ordinal);
         Assert.Contains($"dotnet build {project}", workflow, StringComparison.Ordinal);

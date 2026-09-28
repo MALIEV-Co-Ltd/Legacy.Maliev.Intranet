@@ -2,24 +2,29 @@
 
 This opt-in test project hosts the Intranet BFF endpoint map and the actual
 CustomerService controllers, application service, and repository against a
-Testcontainers PostgreSQL database. Two independent authenticated BFF cookie
-clients read one ETag; one edit wins, the stale edit receives 412 without
-altering the stored profile, and a reload with a fresh ETag succeeds. It also
-checks CSRF, precondition, permission, and anonymous failure paths. The
-CustomerService transport uses a test-only service identity; employee login is
-isolated in memory. No AuthService, Redis, persistent Aspire database, or
-external side-effect service is contacted. This is joined producer/consumer
-contract evidence, **not** full running-AppHost acceptance.
+Testcontainers PostgreSQL database. The original test checks the exact
+producer/consumer contract with test-only employee identities, including CSRF,
+precondition, permission, and anonymous failure paths. The additional test
+hosts the pinned real AuthService API, seeds two disposable employee identities,
+uses its HTTP login and service-login endpoints, and persists BFF tickets and
+Data Protection keys in a disposable Redis container. It proves two distinct
+AuthService refresh sessions and Redis-backed cookies, shared ETag, winning
+write, stale 412 without overwrite, and successful fresh reload/write. The
+CustomerService authorization transport remains test-only; its controller,
+application, repository, and PostgreSQL persistence are real. This is a
+running multi-service TestServer composition, **not** full Aspire AppHost or
+browser acceptance.
 
 The project is outside the ordinary Intranet solution because it requires a
-sibling CustomerService checkout. The PR validation workflow explicitly checks
-out the audited producer SHA and runs this test; ordinary solution builds do
-not need the producer repository. For the #197 exact-revision local run, use
-Intranet `7378a4b65ad6b7023b5baa53839772bb51a1e687` and CustomerService
-`cebf45e8e1eeb600d760a565f8b0970c7f434148`; verify both SHAs before
-testing. Prepare an isolated workspace root containing read-only
-source copies of `Legacy.Maliev.CustomerService`,
-`Legacy.Maliev.ServiceDefaults`, and `Legacy.Maliev.CompatibilityContracts`.
+sibling CustomerService and AuthService checkouts. PR validation checks out
+the audited producer SHAs and runs both tests; ordinary solution builds do
+not need those repositories. For this #197 slice, use Intranet base
+`374bd8aca80018d4b159889913c10c0154214852`, CustomerService
+`cebf45e8e1eeb600d760a565f8b0970c7f434148`, and AuthService
+`8319b23e8ffab0c85b66c886a0109f7dac034c6f`. Prepare an isolated
+workspace root containing source copies of `Legacy.Maliev.CustomerService`,
+`Legacy.Maliev.AuthService`, `Legacy.Maliev.ServiceDefaults`, and
+`Legacy.Maliev.CompatibilityContracts` at the workflow-pinned SHAs.
 Build artifacts stay in those copies, not the canonical checkouts. Then run:
 
 ```powershell
@@ -27,6 +32,6 @@ dotnet build .\acceptance\CustomerRevision\CustomerRevision.AcceptanceTests.cspr
 dotnet test .\acceptance\CustomerRevision\CustomerRevision.AcceptanceTests.csproj -c Release --no-build -p:MalievWorkspaceRoot='<isolated-workspace-root>'
 ```
 
-Do not infer production-derived data parity or close #197 solely from this
-test. A separately isolated running-app test with AuthService-issued sessions,
-service login, Redis/DataProtection, and disposable PostgreSQL is still needed.
+Do not infer production-derived data parity or close #197 solely from these
+tests. A separately isolated full AppHost/browser run with real CustomerService
+service-JWT validation and UI interaction remains necessary.

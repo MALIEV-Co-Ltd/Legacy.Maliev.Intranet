@@ -12,6 +12,7 @@
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
     <PackageReference Include="SSH.NET" Version="2026.0.0" PrivateAssets="all" />
     <PackageReference Include="Testcontainers.PostgreSql" Version="4.10.0" />
+    <PackageReference Include="Testcontainers.Redis" Version="4.10.0" />
     <PackageReference Include="xunit" Version="2.9.3" />
     <PackageReference Include="xunit.runner.visualstudio" Version="3.1.4" />
   </ItemGroup>
@@ -21,5 +22,7 @@
     <ProjectReference Include="$(MalievWorkspaceRoot)\Legacy.Maliev.CustomerService\Legacy.Maliev.CustomerService.Api\Legacy.Maliev.CustomerService.Api.csproj" Aliases="CustomerApi" />
     <ProjectReference Include="$(MalievWorkspaceRoot)\Legacy.Maliev.CustomerService\Legacy.Maliev.CustomerService.Application\Legacy.Maliev.CustomerService.Application.csproj" />
     <ProjectReference Include="$(MalievWorkspaceRoot)\Legacy.Maliev.CustomerService\Legacy.Maliev.CustomerService.Data\Legacy.Maliev.CustomerService.Data.csproj" />
+    <ProjectReference Include="$(MalievWorkspaceRoot)\Legacy.Maliev.AuthService\Legacy.Maliev.AuthService.Api\Legacy.Maliev.AuthService.Api.csproj" Aliases="AuthApi" />
+    <ProjectReference Include="$(MalievWorkspaceRoot)\Legacy.Maliev.AuthService\Legacy.Maliev.AuthService.Infrastructure\Legacy.Maliev.AuthService.Infrastructure.csproj" />
   </ItemGroup>
 </Project>
