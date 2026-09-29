@@ -33,4 +33,5 @@
   <data name="Completing Google sign-in..." xml:space="preserve"><value>Completing Google sign-in...</value></data>
   <data name="Google sign-in could not be completed. Reloading..." xml:space="preserve"><value>Google sign-in could not be completed. Reloading...</value></data>
   <data name="Google sign-in is temporarily unavailable. You can still use your work email." xml:space="preserve"><value>Google sign-in is temporarily unavailable. You can still use your work email.</value></data>
+  <data name="Resend confirmation email" xml:space="preserve"><value>Resend confirmation email</value></data>
 </root>

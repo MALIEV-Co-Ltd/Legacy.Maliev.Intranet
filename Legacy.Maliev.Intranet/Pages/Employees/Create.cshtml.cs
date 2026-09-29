@@ -9,6 +9,7 @@ namespace Legacy.Maliev.Intranet.Pages.Employees;
 public sealed class CreateModel(
     ILegacyEmployeeClient employees,
     ILegacyAuthClient auth,
+    LegacyEmployeeConfirmationDelivery confirmation,
     EmployeeSessionService sessions,
     ILogger<CreateModel> logger) : PageModel
 {
@@ -38,10 +39,17 @@ public sealed class CreateModel(
                 cancellationToken);
             var identity = await auth.CreateEmployeeIdentityAsync(
                 profile.Id,
-                new(Input.Email, Input.Email, Input.Password, true, Input.PhoneNumber),
+                new(Input.Email, Input.Email, Input.Password, false, Input.PhoneNumber),
                 token,
                 cancellationToken);
             if (identity is null) throw new InvalidOperationException("An employee identity already exists for this profile.");
+
+            if (!await confirmation.SendAsync(Input.Email, cancellationToken))
+            {
+                TempData["Warning"] = System.Globalization.CultureInfo.CurrentUICulture.TwoLetterISOLanguageName == "th"
+                    ? "สร้างบัญชีพนักงานแล้ว แต่ส่งอีเมลยืนยันไม่สำเร็จ อย่าสร้างซ้ำ โปรดขอลิงก์ยืนยันใหม่"
+                    : "The employee was created, but the confirmation email could not be sent. Do not create it again; request a new confirmation link.";
+            }
 
             return RedirectToPage("/Employees/View", new { id = profile.Id });
         }

@@ -6,6 +6,15 @@ namespace Legacy.Maliev.Intranet.Bff.Employees;
 /// <summary>Forwards employee confirmation and recovery actions to AuthService.</summary>
 public sealed class EmployeeRecoveryAuthProxy(HttpClient httpClient)
 {
+    /// <summary>Requests an employee email-confirmation challenge for trusted BFF delivery.</summary>
+    public Task<HttpResponseMessage> RequestEmailConfirmationAsync(
+        EmployeeRecoveryEmailRequest request,
+        CancellationToken cancellationToken) =>
+        httpClient.PostAsJsonAsync(
+            "/auth/v1/employee-self-service/email-confirmation/request",
+            request,
+            cancellationToken);
+
     /// <summary>Requests an employee password-reset challenge for trusted BFF delivery.</summary>
     public Task<HttpResponseMessage> RequestPasswordResetAsync(
         EmployeeRecoveryEmailRequest request,
@@ -37,6 +46,24 @@ public sealed class EmployeeRecoveryAuthProxy(HttpClient httpClient)
 /// <summary>Sends employee recovery messages through NotificationService.</summary>
 public sealed class EmployeeRecoveryNotificationProxy(HttpClient httpClient)
 {
+    /// <summary>Sends a one-time employee confirmation link from the trusted BFF.</summary>
+    public Task<HttpResponseMessage> SendEmailConfirmationAsync(
+        string email,
+        string callbackUrl,
+        CancellationToken cancellationToken) =>
+        httpClient.PostAsJsonAsync(
+            "/notifications/v1/email/NoReply",
+            new
+            {
+                To = email,
+                Subject = "Confirm your MALIEV Intranet email",
+                Body = $"<p>Confirm your MALIEV employee email address.</p><p><a href=\"{System.Net.WebUtility.HtmlEncode(callbackUrl)}\">Confirm email</a></p><p>This single-use link expires in 24 hours. If you did not expect this message, you can ignore it.</p>",
+                ReplyTo = (string?)null,
+                Cc = (IReadOnlyList<string>?)null,
+                Bcc = (IReadOnlyList<string>?)null,
+            },
+            cancellationToken);
+
     /// <summary>Sends a provider-independent no-reply password recovery message.</summary>
     public Task<HttpResponseMessage> SendPasswordResetAsync(
         string email,

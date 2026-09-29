@@ -33,4 +33,5 @@
   <data name="Completing Google sign-in..." xml:space="preserve"><value>กำลังเข้าสู่ระบบด้วย Google...</value></data>
   <data name="Google sign-in could not be completed. Reloading..." xml:space="preserve"><value>เข้าสู่ระบบด้วย Google ไม่สำเร็จ กำลังโหลดหน้าใหม่...</value></data>
   <data name="Google sign-in is temporarily unavailable. You can still use your work email." xml:space="preserve"><value>ขณะนี้เข้าสู่ระบบด้วย Google ไม่ได้ คุณยังใช้อีเมลที่ทำงานเข้าสู่ระบบได้</value></data>
+  <data name="Resend confirmation email" xml:space="preserve"><value>ส่งอีเมลยืนยันอีกครั้ง</value></data>
 </root>

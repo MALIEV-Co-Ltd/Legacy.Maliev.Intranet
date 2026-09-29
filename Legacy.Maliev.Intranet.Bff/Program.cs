@@ -965,6 +965,10 @@ app.MapPost("/bff/employee-recovery/email-confirmation/complete", EmployeeRecove
     .AddEndpointFilter<AntiforgeryValidationFilter>()
     .RequireRateLimiting("employee-recovery")
     .AllowAnonymous();
+app.MapPost("/bff/employee-recovery/email-confirmation/request", EmployeeRecoveryEndpointMapper.RequestEmailConfirmationAsync)
+    .AddEndpointFilter<AntiforgeryValidationFilter>()
+    .RequireRateLimiting("employee-recovery")
+    .AllowAnonymous();
 
 app.MapGet("/bff/invoices", (
     InvoiceListSort? sort,
@@ -2159,6 +2163,10 @@ app.MapPost("/bff/employees", async (
     CreateEmployeeAccountRequest request,
     HttpContext context,
     Legacy.Maliev.Intranet.Employees.EmployeeAccountCreationService workflow,
+    EmployeeRecoveryAuthProxy confirmationAuth,
+    EmployeeRecoveryNotificationProxy confirmationNotifications,
+    IConfiguration configuration,
+    ILoggerFactory loggerFactory,
     CancellationToken cancellationToken) =>
 {
     var validationResults = new List<ValidationResult>();
@@ -2188,10 +2196,15 @@ app.MapPost("/bff/employees", async (
         context.Response.Headers.RetryAfter = ((int)Math.Ceiling(retryAfter.TotalSeconds)).ToString(CultureInfo.InvariantCulture);
     }
 
+    var confirmationEmailSent = result.Status == Legacy.Maliev.Intranet.Employees.EmployeeAccountCreationStatus.Created
+        && await EmployeeRecoveryEndpointMapper.SendEmailConfirmationAsync(
+            request.Email, configuration, confirmationAuth, confirmationNotifications,
+            loggerFactory.CreateLogger("EmployeeCreation"), cancellationToken);
+
     return result.Status switch
     {
         Legacy.Maliev.Intranet.Employees.EmployeeAccountCreationStatus.Created when result.EmployeeId is { } employeeId =>
-            Results.Created($"/Employees/View?id={employeeId}", new CreatedEmployeeAccount(employeeId)),
+            Results.Created($"/Employees/View?id={employeeId}", new CreatedEmployeeAccount(employeeId, confirmationEmailSent)),
         Legacy.Maliev.Intranet.Employees.EmployeeAccountCreationStatus.BadRequest =>
             Results.Problem(statusCode: StatusCodes.Status400BadRequest, title: "Employee data was rejected"),
         Legacy.Maliev.Intranet.Employees.EmployeeAccountCreationStatus.Unauthorized =>

@@ -49,7 +49,7 @@ public sealed class EmployeeIdentityCreationClient(HttpClient httpClient) : IEmp
         using var message = new HttpRequestMessage(HttpMethod.Post, $"/auth/v1/employee-identities/{employeeId}")
         {
             Content = JsonContent.Create(new EmployeeIdentityRequest(
-                request.Email, request.Email, request.Password, true, request.PhoneNumber)),
+                request.Email, request.Email, request.Password, false, request.PhoneNumber)),
         };
         return await httpClient.SendAsync(message, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
     }

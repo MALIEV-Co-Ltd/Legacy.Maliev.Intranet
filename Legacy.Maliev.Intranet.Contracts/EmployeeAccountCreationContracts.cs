@@ -16,4 +16,4 @@ public sealed class CreateEmployeeAccountRequest
 }
 
 /// <summary>Browser-safe identifier returned after both employee records are created.</summary>
-public sealed record CreatedEmployeeAccount(int Id);
+public sealed record CreatedEmployeeAccount(int Id, bool ConfirmationEmailSent);

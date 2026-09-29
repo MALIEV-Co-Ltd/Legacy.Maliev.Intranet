@@ -1,0 +1,82 @@
+@page "/Employees/ResendConfirmation"
+@attribute [AllowAnonymous]
+@inject HttpClient Http
+@inject IStringLocalizer<EmployeeResendConfirmation> Text
+@using Microsoft.AspNetCore.Components.Forms
+
+<PageTitle>@Text["PageTitle"]</PageTitle>
+
+<main class="employee-recovery">
+    <section class="employee-recovery__card" aria-labelledby="employee-resend-heading">
+        <h1 id="employee-resend-heading">@Text["Heading"]</h1>
+        <p class="employee-recovery__introduction">@Text["Introduction"]</p>
+        @if (!string.IsNullOrWhiteSpace(notice))
+        {
+            <ShadcnAlert Variant="@noticeVariant" AlertRole="@(noticeVariant == ShadcnAlertVariant.Destructive ? ShadcnAlertRole.Alert : ShadcnAlertRole.Status)"><ShadcnAlertDescription>@notice</ShadcnAlertDescription></ShadcnAlert>
+        }
+        <EditForm Model="@form" OnSubmit="SubmitAsync" Class="employee-recovery__form">
+            <ShadcnFormField Id="employee-confirmation-email" Label="@Text["Email"]" Error="@emailError" Required="true" Disabled="@submitting">
+                <Control><ShadcnInput TValue="string" id="employee-confirmation-email" Type="email" @bind-Value="form.Email" autocomplete="email" Required="true" Disabled="@submitting" /></Control>
+            </ShadcnFormField>
+            <ShadcnButton ButtonType="ShadcnButtonType.Submit" OperationFeedback="false" Disabled="@submitting" Class="employee-recovery__primary">@Text["Submit"]</ShadcnButton>
+        </EditForm>
+        <LegacyLink Href="/Login" Role="LegacyLinkRole.Navigation" AriaLabel="@Text["BackToLogin"]" Class="employee-recovery__link">@Text["BackToLogin"]</LegacyLink>
+    </section>
+</main>
+
+@code {
+    private readonly ConfirmationEmailForm form = new();
+    private bool submitting;
+    private string? emailError;
+    private string? notice;
+    private ShadcnAlertVariant noticeVariant = ShadcnAlertVariant.Default;
+
+    private async Task SubmitAsync()
+    {
+        if (submitting) return;
+        emailError = string.IsNullOrWhiteSpace(form.Email) ? Text["EmailRequired"].Value : null;
+        if (emailError is not null) return;
+
+        submitting = true;
+        notice = null;
+        try
+        {
+            using var session = await Http.GetForPresentationAsync("/bff/session");
+            if (!session.IsSuccessStatusCode) { ShowUnavailable(); return; }
+            var csrf = (await session.Content.ReadFromJsonAsync<EmployeeSessionSummary>())?.CsrfToken;
+            if (string.IsNullOrWhiteSpace(csrf)) { ShowUnavailable(); return; }
+            using var request = new HttpRequestMessage(HttpMethod.Post, "/bff/employee-recovery/email-confirmation/request")
+            {
+                Content = JsonContent.Create(new EmployeeRecoveryEmailRequest(form.Email.Trim())),
+            };
+            request.Headers.Add("X-CSRF-TOKEN", csrf);
+            using var response = await Http.SendAsync(request);
+            if (response.StatusCode == HttpStatusCode.Accepted)
+            {
+                noticeVariant = ShadcnAlertVariant.Default;
+                notice = Text["Accepted"];
+            }
+            else
+            {
+                noticeVariant = ShadcnAlertVariant.Destructive;
+                notice = response.StatusCode == HttpStatusCode.TooManyRequests ? Text["RateLimited"] : Text["Unavailable"];
+            }
+        }
+        catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException)
+        {
+            ShowUnavailable();
+        }
+        finally { submitting = false; }
+    }
+
+    private void ShowUnavailable()
+    {
+        noticeVariant = ShadcnAlertVariant.Destructive;
+        notice = Text["Unavailable"];
+    }
+
+    private sealed class ConfirmationEmailForm
+    {
+        public string Email { get; set; } = string.Empty;
+    }
+}

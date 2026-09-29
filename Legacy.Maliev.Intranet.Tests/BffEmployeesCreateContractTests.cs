@@ -11,6 +11,8 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using BffProgram = Bff::Program;
+using EmployeeRecoveryAuthProxy = Bff::Legacy.Maliev.Intranet.Bff.Employees.EmployeeRecoveryAuthProxy;
+using EmployeeRecoveryNotificationProxy = Bff::Legacy.Maliev.Intranet.Bff.Employees.EmployeeRecoveryNotificationProxy;
 
 namespace Legacy.Maliev.Intranet.Tests;
 
@@ -36,8 +38,30 @@ public sealed class BffEmployeesCreateContractTests
         Assert.Equal("/auth/v1/employee-identities/42", identities.Requests.Single().PathAndQuery);
         Assert.Equal("Bearer signed-service-token", identities.Requests.Single().Authorization);
         Assert.Contains("\"password\":\"correct horse battery staple\"", identities.Requests.Single().Body, StringComparison.Ordinal);
+        Assert.Contains("\"emailConfirmed\":false", identities.Requests.Single().Body, StringComparison.Ordinal);
         Assert.Contains("\"id\":42", body, StringComparison.Ordinal);
+        Assert.Contains("\"confirmationEmailSent\":true", body, StringComparison.Ordinal);
         Assert.DoesNotContain("password", body, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("opaque-confirm-token", body, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task NotificationFailure_AfterIdentityCommit_ReturnsCreatedWithResendRequired()
+    {
+        var profiles = new RecordingHandler((HttpStatusCode.Created, "{\"Id\":42}"));
+        var identities = new RecordingHandler((HttpStatusCode.Created, "{\"databaseID\":42}"));
+        await using var factory = new EmployeesCreateBffFactory(profiles, identities, hasCreatePermission: true, notificationStatus: HttpStatusCode.ServiceUnavailable);
+        using var client = CreateClient(factory);
+        await SignInAsync(client);
+
+        using var response = await SendCreateAsync(client, includeCsrf: true);
+        var body = await response.Content.ReadAsStringAsync();
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        Assert.Contains("\"id\":42", body, StringComparison.Ordinal);
+        Assert.Contains("\"confirmationEmailSent\":false", body, StringComparison.Ordinal);
+        Assert.Single(profiles.Requests);
+        Assert.Single(identities.Requests);
     }
 
     [Fact]
@@ -132,7 +156,7 @@ public sealed class BffEmployeesCreateContractTests
         DateOfBirth = new DateTime(1815, 12, 10),
     };
 
-    private sealed class EmployeesCreateBffFactory(RecordingHandler profiles, RecordingHandler identities, bool hasCreatePermission)
+    private sealed class EmployeesCreateBffFactory(RecordingHandler profiles, RecordingHandler identities, bool hasCreatePermission, HttpStatusCode notificationStatus = HttpStatusCode.Accepted)
         : WebApplicationFactory<BffProgram>
     {
         protected override void ConfigureWebHost(IWebHostBuilder builder)
@@ -143,6 +167,7 @@ public sealed class BffEmployeesCreateContractTests
             builder.UseSetting("Services:Catalog", "http://catalog/");
             builder.UseSetting("Services:Customer", "http://customer/");
             builder.UseSetting("Services:Employee", "http://employee/");
+            builder.UseSetting("EmployeeConfirmation:PublicOrigin", "https://intranet.example.com/");
             builder.ConfigureServices(services =>
             {
                 services.RemoveAll<ILegacyAuthClient>();
@@ -155,6 +180,14 @@ public sealed class BffEmployeesCreateContractTests
                 services.RemoveAll<IEmployeeIdentityCreationClient>();
                 services.AddHttpClient<IEmployeeIdentityCreationClient, EmployeeIdentityCreationClient>()
                     .ConfigurePrimaryHttpMessageHandler(() => identities);
+                services.RemoveAll<EmployeeRecoveryAuthProxy>();
+                services.RemoveAll<EmployeeRecoveryNotificationProxy>();
+                services.AddSingleton(new EmployeeRecoveryAuthProxy(new HttpClient(new RecordingHandler(
+                    (HttpStatusCode.OK, "{\"accepted\":true,\"token\":\"opaque-confirm-token-0123456789012345678901\"}")))
+                { BaseAddress = new("http://auth/") }));
+                services.AddSingleton(new EmployeeRecoveryNotificationProxy(new HttpClient(new RecordingHandler(
+                    (notificationStatus, "{}")))
+                { BaseAddress = new("http://notification/") }));
             });
         }
     }

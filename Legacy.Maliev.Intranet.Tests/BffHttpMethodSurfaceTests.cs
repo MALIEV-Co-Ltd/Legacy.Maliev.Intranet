@@ -60,9 +60,9 @@ public sealed class BffHttpMethodSurfaceTests
             .ToArray();
 
         Assert.Equal(ExpectedEndpointSurface, actual);
-        Assert.Equal(100, actual.Length);
+        Assert.Equal(101, actual.Length);
         Assert.Equal(56, actual.Count(value => value.StartsWith("GET ", StringComparison.Ordinal)));
-        Assert.Equal(23, actual.Count(value => value.StartsWith("POST ", StringComparison.Ordinal)));
+        Assert.Equal(24, actual.Count(value => value.StartsWith("POST ", StringComparison.Ordinal)));
         Assert.Equal(12, actual.Count(value => value.StartsWith("PUT ", StringComparison.Ordinal)));
         Assert.Equal(9, actual.Count(value => value.StartsWith("DELETE ", StringComparison.Ordinal)));
     }
@@ -84,6 +84,7 @@ public sealed class BffHttpMethodSurfaceTests
         [
             "GET /bff/session",
             "POST /bff/employee-recovery/email-confirmation/complete",
+            "POST /bff/employee-recovery/email-confirmation/request",
             "POST /bff/employee-recovery/password-reset/complete",
             "POST /bff/employee-recovery/password-reset/request",
             "POST /bff/google",
@@ -309,6 +310,7 @@ public sealed class BffHttpMethodSurfaceTests
         POST /bff/catalog/materials/{id:int}/surface-finishes/{surfaceFinishId:int}
         POST /bff/customers
         POST /bff/employee-recovery/email-confirmation/complete
+        POST /bff/employee-recovery/email-confirmation/request
         POST /bff/employee-recovery/password-reset/complete
         POST /bff/employee-recovery/password-reset/request
         POST /bff/employees
