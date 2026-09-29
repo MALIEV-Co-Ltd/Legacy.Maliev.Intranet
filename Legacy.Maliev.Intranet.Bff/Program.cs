@@ -2189,6 +2189,12 @@ app.MapPost("/bff/employees", async (
         return Results.ValidationProblem(errors);
     }
 
+    if (!EmployeeRecoveryEndpointMapper.HasTrustedCallbackOrigin(configuration))
+    {
+        return Results.Problem(statusCode: StatusCodes.Status503ServiceUnavailable,
+            title: "Employee confirmation unavailable");
+    }
+
     var result = await workflow.CreateAsync(request, cancellationToken);
     if (result.Status == Legacy.Maliev.Intranet.Employees.EmployeeAccountCreationStatus.RateLimited &&
         result.RetryAfter is { } retryAfter)

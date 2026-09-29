@@ -30,6 +30,15 @@ public sealed class CreateModel(
         var token = await sessions.GetAccessTokenAsync(HttpContext, cancellationToken);
         if (string.IsNullOrWhiteSpace(token)) return RedirectToPage("/Login");
 
+        if (!confirmation.HasTrustedCallbackOrigin())
+        {
+            ModelState.AddModelError(string.Empty,
+                System.Globalization.CultureInfo.CurrentUICulture.TwoLetterISOLanguageName == "th"
+                    ? "ยังไม่สามารถสร้างพนักงานได้ เนื่องจากระบบยืนยันอีเมลไม่พร้อมใช้งาน"
+                    : "The employee cannot be created while email confirmation is unavailable.");
+            return Page();
+        }
+
         EmployeeResponse? profile = null;
         try
         {

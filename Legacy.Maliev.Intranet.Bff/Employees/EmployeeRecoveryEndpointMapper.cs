@@ -16,6 +16,10 @@ public static class EmployeeRecoveryEndpointMapper
         message = "If the employee account exists, recovery instructions will be sent.",
     };
 
+    /// <summary>Whether a trusted callback origin is available before creating an unconfirmed account.</summary>
+    public static bool HasTrustedCallbackOrigin(IConfiguration configuration) =>
+        TryGetTrustedOrigin(configuration, out _);
+
     /// <summary>Requests and delivers a confirmation challenge after an identity is committed.</summary>
     public static async Task<bool> SendEmailConfirmationAsync(
         string email,

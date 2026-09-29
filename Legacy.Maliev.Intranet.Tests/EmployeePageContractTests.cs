@@ -98,6 +98,35 @@ public sealed partial class EmployeePageContractTests
         Assert.Contains("created, but the confirmation email could not be sent", html, StringComparison.OrdinalIgnoreCase);
     }
 
+    [Fact]
+    public async Task CreateEmployee_MissingTrustedOrigin_DoesNotCreateProfileOrIdentity()
+    {
+        var employees = new StubEmployeeClient();
+        var auth = new StubAuthClient();
+        await using var factory = new EmployeeIntranetFactory(employees, auth, publicOrigin: null);
+        using var client = factory.CreateClient(new() { AllowAutoRedirect = false, HandleCookies = true, BaseAddress = new Uri("https://localhost") });
+        await LoginAsync(client);
+        var createPage = await client.GetStringAsync("/Employees/Create");
+        var antiForgery = AntiForgeryToken().Match(createPage).Groups[1].Value;
+        using var form = new FormUrlEncodedContent(new Dictionary<string, string>
+        {
+            ["Input.FirstName"] = "Ada",
+            ["Input.LastName"] = "Lovelace",
+            ["Input.Email"] = "ada@example.com",
+            ["Input.Password"] = "secret / ?",
+            ["Input.ConfirmPassword"] = "secret / ?",
+            ["__RequestVerificationToken"] = antiForgery,
+        });
+
+        using var response = await client.PostAsync("/Employees/Create", form);
+        var html = await response.Content.ReadAsStringAsync();
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Contains("email confirmation is unavailable", html, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal(0, employees.CreatedEmployeeCount);
+        Assert.Null(auth.EmployeeIdentityRequest);
+    }
+
     private static async Task LoginAsync(HttpClient client)
     {
         var loginPage = await client.GetStringAsync("/Login");
@@ -115,7 +144,7 @@ public sealed partial class EmployeePageContractTests
     [GeneratedRegex("name=\"__RequestVerificationToken\"[^>]*value=\"([^\"]+)\"", RegexOptions.CultureInvariant)]
     private static partial Regex AntiForgeryToken();
 
-    private sealed class EmployeeIntranetFactory(ILegacyEmployeeClient employees, ILegacyAuthClient auth, HttpStatusCode notificationStatus = HttpStatusCode.Accepted) : WebApplicationFactory<Program>
+    private sealed class EmployeeIntranetFactory(ILegacyEmployeeClient employees, ILegacyAuthClient auth, HttpStatusCode notificationStatus = HttpStatusCode.Accepted, string? publicOrigin = "https://intranet.example.com/") : WebApplicationFactory<Program>
     {
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
@@ -129,7 +158,7 @@ public sealed partial class EmployeePageContractTests
                 services.RemoveAll<LegacyEmployeeConfirmationDelivery>();
                 var configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
                 {
-                    ["EmployeeConfirmation:PublicOrigin"] = "https://intranet.example.com/",
+                    ["EmployeeConfirmation:PublicOrigin"] = publicOrigin,
                 }).Build();
                 services.AddSingleton(new LegacyEmployeeConfirmationDelivery(
                     new ConfirmationClientFactory(notificationStatus), configuration,
@@ -165,6 +194,7 @@ public sealed partial class EmployeePageContractTests
 
         public string? LastAccessToken { get; private set; }
         public int? DeletedEmployeeId { get; private set; }
+        public int CreatedEmployeeCount { get; private set; }
 
         public Task<PaginatedResponse<EmployeeResponse>?> GetEmployeesAsync(EmployeeSortType sort, string? search, int index, int size, string accessToken, CancellationToken cancellationToken)
         {
@@ -180,6 +210,7 @@ public sealed partial class EmployeePageContractTests
 
         public Task<EmployeeResponse> CreateEmployeeAsync(UpsertEmployeeRequest request, string accessToken, CancellationToken cancellationToken)
         {
+            CreatedEmployeeCount++;
             LastAccessToken = accessToken;
             return Task.FromResult(Ada);
         }

@@ -10,15 +10,13 @@ public sealed class LegacyEmployeeConfirmationDelivery(
     IConfiguration configuration,
     ILogger<LegacyEmployeeConfirmationDelivery> logger)
 {
+    /// <summary>Whether a trusted callback origin is configured before profile creation.</summary>
+    public bool HasTrustedCallbackOrigin() => TryGetTrustedOrigin(out _);
+
     /// <summary>Requests a single-use challenge and sends it to the new employee.</summary>
     public async Task<bool> SendAsync(string email, CancellationToken cancellationToken)
     {
-        if (!Uri.TryCreate(configuration["EmployeeConfirmation:PublicOrigin"], UriKind.Absolute, out var origin)
-            || origin.Scheme != Uri.UriSchemeHttps
-            || !string.IsNullOrEmpty(origin.UserInfo)
-            || !string.IsNullOrEmpty(origin.Query)
-            || !string.IsNullOrEmpty(origin.Fragment)
-            || origin.AbsolutePath != "/")
+        if (!TryGetTrustedOrigin(out var origin))
         {
             logger.LogError("Employee confirmation callback origin is not configured safely");
             return false;
@@ -51,6 +49,23 @@ public sealed class LegacyEmployeeConfirmationDelivery(
             logger.LogWarning("Employee confirmation delivery was unavailable");
             return false;
         }
+    }
+
+    private bool TryGetTrustedOrigin(out Uri origin)
+    {
+        if (Uri.TryCreate(configuration["EmployeeConfirmation:PublicOrigin"], UriKind.Absolute, out var parsed)
+            && parsed.Scheme == Uri.UriSchemeHttps
+            && string.IsNullOrEmpty(parsed.UserInfo)
+            && string.IsNullOrEmpty(parsed.Query)
+            && string.IsNullOrEmpty(parsed.Fragment)
+            && parsed.AbsolutePath == "/")
+        {
+            origin = parsed;
+            return true;
+        }
+
+        origin = null!;
+        return false;
     }
 
     private sealed record ConfirmationChallenge(bool Accepted, string? Token);

@@ -65,6 +65,22 @@ public sealed class BffEmployeesCreateContractTests
     }
 
     [Fact]
+    public async Task MissingTrustedOrigin_RejectsCreationBeforeEitherDownstreamWrite()
+    {
+        var profiles = new RecordingHandler((HttpStatusCode.Created, "{\"Id\":42}"));
+        var identities = new RecordingHandler((HttpStatusCode.Created, "{\"databaseID\":42}"));
+        await using var factory = new EmployeesCreateBffFactory(profiles, identities, hasCreatePermission: true, publicOrigin: null);
+        using var client = CreateClient(factory);
+        await SignInAsync(client);
+
+        using var response = await SendCreateAsync(client, includeCsrf: true);
+
+        Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
+        Assert.Empty(profiles.Requests);
+        Assert.Empty(identities.Requests);
+    }
+
+    [Fact]
     public async Task MissingCsrf_IsRejectedBeforeDownstreamCalls()
     {
         var profiles = new RecordingHandler((HttpStatusCode.Created, "{\"Id\":42}"));
@@ -156,7 +172,7 @@ public sealed class BffEmployeesCreateContractTests
         DateOfBirth = new DateTime(1815, 12, 10),
     };
 
-    private sealed class EmployeesCreateBffFactory(RecordingHandler profiles, RecordingHandler identities, bool hasCreatePermission, HttpStatusCode notificationStatus = HttpStatusCode.Accepted)
+    private sealed class EmployeesCreateBffFactory(RecordingHandler profiles, RecordingHandler identities, bool hasCreatePermission, HttpStatusCode notificationStatus = HttpStatusCode.Accepted, string? publicOrigin = "https://intranet.example.com/")
         : WebApplicationFactory<BffProgram>
     {
         protected override void ConfigureWebHost(IWebHostBuilder builder)
@@ -167,7 +183,7 @@ public sealed class BffEmployeesCreateContractTests
             builder.UseSetting("Services:Catalog", "http://catalog/");
             builder.UseSetting("Services:Customer", "http://customer/");
             builder.UseSetting("Services:Employee", "http://employee/");
-            builder.UseSetting("EmployeeConfirmation:PublicOrigin", "https://intranet.example.com/");
+            if (publicOrigin is not null) builder.UseSetting("EmployeeConfirmation:PublicOrigin", publicOrigin);
             builder.ConfigureServices(services =>
             {
                 services.RemoveAll<ILegacyAuthClient>();
