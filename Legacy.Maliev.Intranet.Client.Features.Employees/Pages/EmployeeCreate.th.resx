@@ -26,4 +26,8 @@
   <data name="InvalidResponse" xml:space="preserve"><value>บริการข้อมูลพนักงานส่งข้อมูลกลับมาไม่ถูกต้อง</value></data>
   <data name="AccountDetails" xml:space="preserve"><value>บัญชีพนักงาน</value></data>
   <data name="EmploymentDetails" xml:space="preserve"><value>ข้อมูลการทำงาน</value></data>
+  <data name="CreatedPendingConfirmation" xml:space="preserve"><value>สร้างบัญชีพนักงานแล้ว และส่งลิงก์ยืนยันไปยังอีเมลแล้ว พนักงานต้องยืนยันอีเมลก่อนเข้าสู่ระบบ</value></data>
+  <data name="CreatedEmailNotSent" xml:space="preserve"><value>สร้างบัญชีพนักงานแล้ว แต่ส่งอีเมลยืนยันไม่สำเร็จ อย่าสร้างบัญชีซ้ำ โปรดขอลิงก์ยืนยันใหม่</value></data>
+  <data name="ViewEmployee" xml:space="preserve"><value>ดูข้อมูลพนักงาน</value></data>
+  <data name="ResendConfirmation" xml:space="preserve"><value>ขอลิงก์ยืนยันใหม่</value></data>
 </root>

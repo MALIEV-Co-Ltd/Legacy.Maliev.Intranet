@@ -1,5 +1,6 @@
 @page
 @model Legacy.Maliev.Intranet.Pages.Employees.ViewModel
+@if (TempData["Warning"] is string warning) { <p role="alert">@warning</p> }
 @{
     ViewData["Title"] = Model.Employee.FullName;
 }

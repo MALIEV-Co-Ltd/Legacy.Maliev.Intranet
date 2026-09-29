@@ -14,6 +14,14 @@
     {
         <ShadcnAlert Variant="ShadcnAlertVariant.Destructive" AlertRole="ShadcnAlertRole.Alert" Class="employee-create__alert"><ShadcnAlertDescription>@error</ShadcnAlertDescription></ShadcnAlert>
     }
+    @if (createdId is { } id)
+    {
+        <ShadcnAlert AlertRole="ShadcnAlertRole.Status"><ShadcnAlertDescription>@(confirmationEmailSent ? Text["CreatedPendingConfirmation"] : Text["CreatedEmailNotSent"])</ShadcnAlertDescription></ShadcnAlert>
+        <LegacyLink Href="@($"/Employees/View?id={id}")" Role="LegacyLinkRole.Navigation" AriaLabel="@Text["ViewEmployee"]">@Text["ViewEmployee"]</LegacyLink>
+        <LegacyLink Href="/Employees/ResendConfirmation" Role="LegacyLinkRole.Navigation" AriaLabel="@Text["ResendConfirmation"]">@Text["ResendConfirmation"]</LegacyLink>
+    }
+    else
+    {
     <EditForm EditContext="@editContext" OnValidSubmit="SubmitAsync" OnInvalidSubmit="HandleInvalidSubmit" Class="employee-create__form">
         <DataAnnotationsValidator />
         <section class="employee-create__section" aria-labelledby="employee-account-heading">
@@ -42,6 +50,7 @@
             <LegacyLink Href="/Employees/Index" Role="LegacyLinkRole.Navigation" Disabled="@submitting" AriaLabel="@Text["Cancel"]">@Text["Cancel"]</LegacyLink>
         </div>
     </EditForm>
+    }
 </main>
 
 @code {
@@ -49,6 +58,8 @@
     private EditContext editContext = null!;
     private bool submitting;
     private string? error;
+    private int? createdId;
+    private bool confirmationEmailSent;
 
     protected override void OnInitialized() => editContext = new EditContext(model);
 
@@ -89,7 +100,8 @@
 
             var created = await response.Content.ReadFromJsonAsync<CreatedEmployeeAccount>();
             if (created is null || created.Id <= 0) { error = Text["InvalidResponse"]; return; }
-            Navigation.NavigateTo($"/Employees/View?id={created.Id}");
+            createdId = created.Id;
+            confirmationEmailSent = created.ConfirmationEmailSent;
         }
         catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException)
         {

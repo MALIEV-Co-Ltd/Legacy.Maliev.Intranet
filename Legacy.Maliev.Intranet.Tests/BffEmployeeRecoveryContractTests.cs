@@ -145,6 +145,69 @@ public sealed class BffEmployeeRecoveryContractTests
     }
 
     [Fact]
+    public async Task ConfirmationRequest_KnownAndUnknownReturnSameBodyAndNeverExposeToken()
+    {
+        var downstream = new RecoveryDownstreamHandler();
+        await using var factory = new RecoveryBffFactory(downstream);
+        using var client = CreateClient(factory);
+        var csrf = await GetCsrfTokenAsync(client);
+
+        using var unknown = await SendAsync(client, "/bff/employee-recovery/email-confirmation/request",
+            new { email = "missing@example.com" }, csrf);
+        var unknownBody = await unknown.Content.ReadAsStringAsync();
+        downstream.ChallengeToken = "opaque-confirm-token-0123456789012345678901";
+        using var known = await SendAsync(client, "/bff/employee-recovery/email-confirmation/request",
+            new { email = "employee@example.com" }, csrf);
+        var knownBody = await known.Content.ReadAsStringAsync();
+
+        Assert.Equal(HttpStatusCode.Accepted, unknown.StatusCode);
+        Assert.Equal(HttpStatusCode.Accepted, known.StatusCode);
+        Assert.Equal(unknownBody, knownBody);
+        Assert.DoesNotContain(downstream.ChallengeToken, knownBody, StringComparison.Ordinal);
+        Assert.Equal(2, downstream.Requests.Count(request => request.Path ==
+            "/auth/v1/employee-self-service/email-confirmation/request"));
+        var notification = Assert.Single(downstream.Requests, request => request.Path == "/notifications/v1/email/NoReply");
+        Assert.Contains("https://intranet.example.com/Employees/EmailConfirmation", notification.Body, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task ConfirmationRequest_UntrustedHostCannotControlEmailLink()
+    {
+        var downstream = new RecoveryDownstreamHandler { ChallengeToken = "opaque-confirm-token-0123456789012345678901" };
+        await using var factory = new RecoveryBffFactory(downstream);
+        using var client = CreateClient(factory);
+        var csrf = await GetCsrfTokenAsync(client);
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/bff/employee-recovery/email-confirmation/request")
+        {
+            Content = JsonContent.Create(new { email = "employee@example.com" }),
+        };
+        request.Headers.Host = "attacker.example";
+        request.Headers.Add("X-CSRF-TOKEN", csrf);
+
+        using var response = await client.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.Accepted, response.StatusCode);
+        var notification = Assert.Single(downstream.Requests, item => item.Path == "/notifications/v1/email/NoReply");
+        Assert.DoesNotContain("attacker.example", notification.Body, StringComparison.Ordinal);
+        Assert.Contains("intranet.example.com", notification.Body, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task ConfirmationRequest_UnsafeOriginFailsBeforeChallenge()
+    {
+        var downstream = new RecoveryDownstreamHandler { ChallengeToken = "opaque-confirm-token-0123456789012345678901" };
+        await using var factory = new RecoveryBffFactory(downstream, "http://attacker.example/");
+        using var client = CreateClient(factory);
+        var csrf = await GetCsrfTokenAsync(client);
+
+        using var response = await SendAsync(client, "/bff/employee-recovery/email-confirmation/request",
+            new { email = "employee@example.com" }, csrf);
+
+        Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
+        Assert.Empty(downstream.Requests);
+    }
+
+    [Fact]
     public async Task PasswordResetComplete_MismatchedPasswordsIsRejectedBeforeAuthService()
     {
         var downstream = new RecoveryDownstreamHandler();
@@ -200,13 +263,14 @@ public sealed class BffEmployeeRecoveryContractTests
         return await client.SendAsync(request);
     }
 
-    private sealed class RecoveryBffFactory(RecoveryDownstreamHandler downstream)
+    private sealed class RecoveryBffFactory(RecoveryDownstreamHandler downstream, string publicOrigin = "https://intranet.example.com/")
         : WebApplicationFactory<BffProgram>
     {
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
             builder.UseEnvironment("Testing");
             TestJwtConfiguration.Configure(builder);
+            builder.UseSetting("EmployeeConfirmation:PublicOrigin", publicOrigin);
             builder.ConfigureServices(services =>
             {
                 services.RemoveAll<EmployeeRecoveryAuthProxy>();
@@ -243,6 +307,9 @@ public sealed class BffEmployeeRecoveryContractTests
             return request.RequestUri.AbsolutePath switch
             {
                 "/auth/v1/employee-self-service/password-reset/request" => Json(
+                    HttpStatusCode.OK,
+                    new { accepted = true, token = ChallengeToken }),
+                "/auth/v1/employee-self-service/email-confirmation/request" => Json(
                     HttpStatusCode.OK,
                     new { accepted = true, token = ChallengeToken }),
                 "/auth/v1/employee-self-service/password-reset/complete" =>

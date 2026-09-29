@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
+  <data name="PageTitle" xml:space="preserve"><value>ส่งอีเมลยืนยันพนักงานอีกครั้ง - MALIEV Intranet</value></data>
+  <data name="Heading" xml:space="preserve"><value>ขอลิงก์ยืนยันใหม่</value></data>
+  <data name="Introduction" xml:space="preserve"><value>กรอกอีเมลที่ใช้ทำงาน หากมีบัญชีพนักงานที่ยังไม่ยืนยัน เราจะส่งลิงก์ใหม่ให้</value></data>
+  <data name="Email" xml:space="preserve"><value>อีเมล</value></data>
+  <data name="EmailRequired" xml:space="preserve"><value>กรุณากรอกอีเมล</value></data>
+  <data name="Submit" xml:space="preserve"><value>ส่งลิงก์ยืนยัน</value></data>
+  <data name="Accepted" xml:space="preserve"><value>หากมีบัญชีพนักงานที่ยังไม่ยืนยัน ระบบจะส่งลิงก์ยืนยันให้</value></data>
+  <data name="RateLimited" xml:space="preserve"><value>มีคำขอมากเกินไป โปรดรอแล้วลองอีกครั้ง</value></data>
+  <data name="Unavailable" xml:space="preserve"><value>ระบบยืนยันไม่พร้อมใช้งานชั่วคราว โปรดลองอีกครั้งภายหลัง</value></data>
+  <data name="BackToLogin" xml:space="preserve"><value>กลับไปเข้าสู่ระบบ</value></data>
+</root>

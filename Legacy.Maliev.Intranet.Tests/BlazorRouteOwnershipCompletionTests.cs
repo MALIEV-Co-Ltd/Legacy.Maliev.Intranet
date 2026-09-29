@@ -15,6 +15,7 @@ public sealed partial class BlazorRouteOwnershipCompletionTests
         "/Invoices",
         "/QuotationRequests",
         "/Quotations",
+        "/Employees/ResendConfirmation",
         .. LegacyRoutes.CompatibilityAliases,
     ];
 

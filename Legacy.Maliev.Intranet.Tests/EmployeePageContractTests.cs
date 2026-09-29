@@ -4,7 +4,10 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging.Abstractions;
 using System.Net;
+using System.Net.Http.Json;
 using System.Text.RegularExpressions;
 
 namespace Legacy.Maliev.Intranet.Tests;
@@ -58,10 +61,70 @@ public sealed partial class EmployeePageContractTests
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Equal("secret / ?", auth.EmployeeIdentityRequest?.Password);
+        Assert.False(auth.EmployeeIdentityRequest?.EmailConfirmed);
         Assert.Equal("employee-access-token", auth.IdentityAccessToken);
         Assert.Equal(42, employees.DeletedEmployeeId);
         Assert.DoesNotContain("secret / ?", html, StringComparison.Ordinal);
         Assert.Contains("could not be created", html, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task CreateEmployee_NotificationFailurePreservesCreatedIdentityAndShowsWarning()
+    {
+        var employees = new StubEmployeeClient();
+        var auth = new StubAuthClient();
+        await using var factory = new EmployeeIntranetFactory(employees, auth, HttpStatusCode.ServiceUnavailable);
+        using var client = factory.CreateClient(new() { AllowAutoRedirect = false, HandleCookies = true, BaseAddress = new Uri("https://localhost") });
+        await LoginAsync(client);
+        var createPage = await client.GetStringAsync("/Employees/Create");
+        var antiForgery = AntiForgeryToken().Match(createPage).Groups[1].Value;
+        using var form = new FormUrlEncodedContent(new Dictionary<string, string>
+        {
+            ["Input.FirstName"] = "Ada",
+            ["Input.LastName"] = "Lovelace",
+            ["Input.Email"] = "ada@example.com",
+            ["Input.Password"] = "secret / ?",
+            ["Input.ConfirmPassword"] = "secret / ?",
+            ["__RequestVerificationToken"] = antiForgery,
+        });
+
+        using var response = await client.PostAsync("/Employees/Create", form);
+        using var view = await client.GetAsync(response.Headers.Location);
+        var html = await view.Content.ReadAsStringAsync();
+
+        Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
+        Assert.False(auth.EmployeeIdentityRequest?.EmailConfirmed);
+        Assert.Null(employees.DeletedEmployeeId);
+        Assert.Contains("created, but the confirmation email could not be sent", html, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task CreateEmployee_MissingTrustedOrigin_DoesNotCreateProfileOrIdentity()
+    {
+        var employees = new StubEmployeeClient();
+        var auth = new StubAuthClient();
+        await using var factory = new EmployeeIntranetFactory(employees, auth, publicOrigin: null);
+        using var client = factory.CreateClient(new() { AllowAutoRedirect = false, HandleCookies = true, BaseAddress = new Uri("https://localhost") });
+        await LoginAsync(client);
+        var createPage = await client.GetStringAsync("/Employees/Create");
+        var antiForgery = AntiForgeryToken().Match(createPage).Groups[1].Value;
+        using var form = new FormUrlEncodedContent(new Dictionary<string, string>
+        {
+            ["Input.FirstName"] = "Ada",
+            ["Input.LastName"] = "Lovelace",
+            ["Input.Email"] = "ada@example.com",
+            ["Input.Password"] = "secret / ?",
+            ["Input.ConfirmPassword"] = "secret / ?",
+            ["__RequestVerificationToken"] = antiForgery,
+        });
+
+        using var response = await client.PostAsync("/Employees/Create", form);
+        var html = await response.Content.ReadAsStringAsync();
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Contains("email confirmation is unavailable", html, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal(0, employees.CreatedEmployeeCount);
+        Assert.Null(auth.EmployeeIdentityRequest);
     }
 
     private static async Task LoginAsync(HttpClient client)
@@ -81,7 +144,7 @@ public sealed partial class EmployeePageContractTests
     [GeneratedRegex("name=\"__RequestVerificationToken\"[^>]*value=\"([^\"]+)\"", RegexOptions.CultureInvariant)]
     private static partial Regex AntiForgeryToken();
 
-    private sealed class EmployeeIntranetFactory(ILegacyEmployeeClient employees, ILegacyAuthClient auth) : WebApplicationFactory<Program>
+    private sealed class EmployeeIntranetFactory(ILegacyEmployeeClient employees, ILegacyAuthClient auth, HttpStatusCode notificationStatus = HttpStatusCode.Accepted, string? publicOrigin = "https://intranet.example.com/") : WebApplicationFactory<Program>
     {
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
@@ -92,8 +155,35 @@ public sealed partial class EmployeePageContractTests
                 services.RemoveAll<ILegacyAuthClient>();
                 services.AddSingleton(employees);
                 services.AddSingleton(auth);
+                services.RemoveAll<LegacyEmployeeConfirmationDelivery>();
+                var configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+                {
+                    ["EmployeeConfirmation:PublicOrigin"] = publicOrigin,
+                }).Build();
+                services.AddSingleton(new LegacyEmployeeConfirmationDelivery(
+                    new ConfirmationClientFactory(notificationStatus), configuration,
+                    NullLogger<LegacyEmployeeConfirmationDelivery>.Instance));
             });
         }
+    }
+
+    private sealed class ConfirmationClientFactory(HttpStatusCode notificationStatus) : IHttpClientFactory
+    {
+        public HttpClient CreateClient(string name) => new(new ConfirmationHandler(notificationStatus), disposeHandler: true)
+        {
+            BaseAddress = new(name == "employee-confirmation-auth" ? "http://auth/" : "http://notification/"),
+        };
+    }
+
+    private sealed class ConfirmationHandler(HttpStatusCode notificationStatus) : HttpMessageHandler
+    {
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) =>
+            Task.FromResult(request.RequestUri!.AbsolutePath == "/auth/v1/employee-self-service/email-confirmation/request"
+                ? new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = JsonContent.Create(new { accepted = true, token = "opaque-confirm-token-0123456789012345678901" }),
+                }
+                : new HttpResponseMessage(notificationStatus));
     }
 
     private sealed class StubEmployeeClient : ILegacyEmployeeClient
@@ -104,6 +194,7 @@ public sealed partial class EmployeePageContractTests
 
         public string? LastAccessToken { get; private set; }
         public int? DeletedEmployeeId { get; private set; }
+        public int CreatedEmployeeCount { get; private set; }
 
         public Task<PaginatedResponse<EmployeeResponse>?> GetEmployeesAsync(EmployeeSortType sort, string? search, int index, int size, string accessToken, CancellationToken cancellationToken)
         {
@@ -119,6 +210,7 @@ public sealed partial class EmployeePageContractTests
 
         public Task<EmployeeResponse> CreateEmployeeAsync(UpsertEmployeeRequest request, string accessToken, CancellationToken cancellationToken)
         {
+            CreatedEmployeeCount++;
             LastAccessToken = accessToken;
             return Task.FromResult(Ada);
         }

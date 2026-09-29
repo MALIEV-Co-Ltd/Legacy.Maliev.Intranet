@@ -26,4 +26,8 @@
   <data name="InvalidResponse" xml:space="preserve"><value>The employee services returned an invalid response.</value></data>
   <data name="AccountDetails" xml:space="preserve"><value>Employee account</value></data>
   <data name="EmploymentDetails" xml:space="preserve"><value>Employment details</value></data>
+  <data name="CreatedPendingConfirmation" xml:space="preserve"><value>The employee was created. A confirmation link was sent to their email address. They must confirm it before signing in.</value></data>
+  <data name="CreatedEmailNotSent" xml:space="preserve"><value>The employee was created, but the confirmation email could not be sent. Do not create the account again; request a new confirmation link.</value></data>
+  <data name="ViewEmployee" xml:space="preserve"><value>View employee</value></data>
+  <data name="ResendConfirmation" xml:space="preserve"><value>Request a new confirmation link</value></data>
 </root>

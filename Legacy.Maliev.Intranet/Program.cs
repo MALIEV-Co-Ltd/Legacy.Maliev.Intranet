@@ -31,6 +31,7 @@ builder.Services.AddSingleton<IServiceAccessTokenProvider, ServiceAccessTokenPro
 builder.Services.AddTransient<LegacyServiceAuthenticationHandler>();
 builder.Services.AddSingleton<DistributedTicketStore>();
 builder.Services.AddScoped<EmployeeSessionService>();
+builder.Services.AddScoped<LegacyEmployeeConfirmationDelivery>();
 builder.Services.AddScoped<OrderReferenceDataLoader>();
 builder.Services.AddHttpClient<ILegacyAuthClient, LegacyAuthClient>(client =>
 {
@@ -44,6 +45,18 @@ builder.Services.AddHttpClient("service-auth", client =>
         ?? throw new InvalidOperationException("Services:Auth is required."));
     client.Timeout = TimeSpan.FromSeconds(10);
 }).AddStandardResilienceHandler();
+builder.Services.AddHttpClient("employee-confirmation-auth", client =>
+{
+    client.BaseAddress = new Uri(builder.Configuration["Services:Auth"]
+        ?? throw new InvalidOperationException("Services:Auth is required."));
+    client.Timeout = TimeSpan.FromSeconds(10);
+}).AddHttpMessageHandler<LegacyServiceAuthenticationHandler>();
+builder.Services.AddHttpClient("employee-confirmation-notification", client =>
+{
+    client.BaseAddress = new Uri(builder.Configuration["Services:Notification"]
+        ?? throw new InvalidOperationException("Services:Notification is required."));
+    client.Timeout = TimeSpan.FromSeconds(10);
+}).AddHttpMessageHandler<LegacyServiceAuthenticationHandler>();
 builder.Services.AddHttpClient<ILegacyCustomerClient, LegacyCustomerClient>(client =>
 {
     client.BaseAddress = new Uri(builder.Configuration["Services:Customer"]

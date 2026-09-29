@@ -66,7 +66,10 @@ The customer, employee, material, supplier, purchase-order, and order-list domai
 - `/Customers/Create` creates the profile in CustomerService and the identity in AuthService, sends the password only in JSON, and compensates by deleting the profile if identity creation fails.
 - `/Employees/Index` preserves employee search, sorting, bounded pagination, and profile links;
 - `/Employees/View` reads profile, role, and address projections from EmployeeService;
-- `/Employees/Create` creates the profile in EmployeeService and the identity directly in AuthService, sends the password only in JSON, and compensates by deleting the profile if identity creation fails.
+- `/Employees/Create` creates the profile in EmployeeService and an unconfirmed identity in AuthService, sends the password only in JSON, compensates by deleting the profile if identity creation fails, then requests and emails a single-use confirmation challenge. A notification failure after commit is reported as a created account requiring resend, never as a retryable creation failure.
+- `/Employees/ResendConfirmation` accepts an enumeration-safe resend request; the challenge stays server-side and only the confirmation email contains its one-time link.
+
+Set `EmployeeConfirmation:PublicOrigin` to the externally reachable HTTPS origin of the Intranet (for example via `EmployeeConfirmation__PublicOrigin`). It must contain only the origin with a trailing `/`, with no path, credentials, query, or fragment. Both BFF and legacy Razor hosts need this value if both are deployed. Missing or unsafe origin rejects employee creation before either downstream write and disables password-reset delivery; callback links never use the request `Host` header. Grant each host's service identity `legacy-auth.employee-self-service` and `legacy.notifications.send` permissions before enabling onboarding. The configured origin must serve `/Employees/EmailConfirmation` and `/Employees/ResendConfirmation`; verify this with the actual deployment hostname.
 - `/Materials/Index` preserves material search, sorting, and bounded pagination through CatalogService;
 - `/Materials/Create` preserves the complete material property payload and Catalog reference lookups;
 - `/Materials/View` edits the complete material and differentially synchronizes color and surface-finish associations.

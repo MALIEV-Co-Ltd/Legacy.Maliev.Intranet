@@ -16,10 +16,79 @@ public static class EmployeeRecoveryEndpointMapper
         message = "If the employee account exists, recovery instructions will be sent.",
     };
 
+    /// <summary>Whether a trusted callback origin is available before creating an unconfirmed account.</summary>
+    public static bool HasTrustedCallbackOrigin(IConfiguration configuration) =>
+        TryGetTrustedOrigin(configuration, out _);
+
+    /// <summary>Requests and delivers a confirmation challenge after an identity is committed.</summary>
+    public static async Task<bool> SendEmailConfirmationAsync(
+        string email,
+        IConfiguration configuration,
+        EmployeeRecoveryAuthProxy auth,
+        EmployeeRecoveryNotificationProxy notifications,
+        ILogger logger,
+        CancellationToken cancellationToken)
+    {
+        if (!TryGetTrustedOrigin(configuration, out var origin))
+        {
+            logger.LogError("Employee confirmation callback origin is not configured safely");
+            return false;
+        }
+
+        try
+        {
+            using var response = await auth.RequestEmailConfirmationAsync(new(email), cancellationToken);
+            if (!response.IsSuccessStatusCode)
+            {
+                logger.LogWarning("Employee confirmation challenge failed with HTTP {StatusCode}", (int)response.StatusCode);
+                return false;
+            }
+
+            var challenge = await response.Content.ReadFromJsonAsync<EmployeeRecoveryChallenge>(cancellationToken);
+            if (challenge?.Accepted != true || string.IsNullOrWhiteSpace(challenge.Token))
+            {
+                logger.LogWarning("Employee confirmation challenge was not available");
+                return false;
+            }
+
+            var callback = QueryHelpers.AddQueryString(
+                new Uri(origin, "/Employees/EmailConfirmation").ToString(),
+                new Dictionary<string, string?> { ["email"] = email.Trim(), ["token"] = challenge.Token });
+            using var notification = await notifications.SendEmailConfirmationAsync(email.Trim(), callback, cancellationToken);
+            if (notification.IsSuccessStatusCode) return true;
+
+            logger.LogWarning("Employee confirmation notification failed with HTTP {StatusCode}", (int)notification.StatusCode);
+            return false;
+        }
+        catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException)
+        {
+            logger.LogWarning("Employee confirmation challenge or notification was unavailable");
+            return false;
+        }
+    }
+
+    /// <summary>Accepts a resend request without revealing whether an employee identity exists.</summary>
+    public static async Task<IResult> RequestEmailConfirmationAsync(
+        EmployeeRecoveryEmailRequest request,
+        IConfiguration configuration,
+        EmployeeRecoveryAuthProxy auth,
+        EmployeeRecoveryNotificationProxy notifications,
+        ILoggerFactory loggerFactory,
+        CancellationToken cancellationToken)
+    {
+        if (ValidationProblem(request) is { } validation) return validation;
+        if (!TryGetTrustedOrigin(configuration, out _)) return ServiceUnavailable();
+
+        await SendEmailConfirmationAsync(request.Email, configuration, auth, notifications,
+            loggerFactory.CreateLogger("EmployeeRecovery"), cancellationToken);
+        return Results.Accepted(value: AcceptedResponse);
+    }
+
     /// <summary>Requests a password-reset challenge and delivers it without exposing the token to the browser.</summary>
     public static async Task<IResult> RequestPasswordResetAsync(
         EmployeeRecoveryEmailRequest request,
         HttpContext context,
+        IConfiguration configuration,
         EmployeeRecoveryAuthProxy auth,
         EmployeeRecoveryNotificationProxy notifications,
         ILoggerFactory loggerFactory,
@@ -29,6 +98,7 @@ public static class EmployeeRecoveryEndpointMapper
         {
             return validation;
         }
+        if (!TryGetTrustedOrigin(configuration, out var origin)) return ServiceUnavailable();
 
         try
         {
@@ -46,7 +116,7 @@ public static class EmployeeRecoveryEndpointMapper
 
             if (!string.IsNullOrWhiteSpace(challenge.Token))
             {
-                var callback = BuildCallbackUrl(context.Request, request.Email, challenge.Token);
+                var callback = BuildCallbackUrl(origin, "/Employees/ResetPassword", request.Email, challenge.Token);
                 try
                 {
                     using var notification = await notifications.SendPasswordResetAsync(
@@ -183,13 +253,31 @@ public static class EmployeeRecoveryEndpointMapper
         title: "Employee recovery unavailable",
         detail: "Employee recovery is temporarily unavailable.");
 
-    private static string BuildCallbackUrl(HttpRequest request, string email, string token)
+    private static string BuildCallbackUrl(Uri origin, string path, string email, string token)
     {
-        var baseUrl = $"{request.Scheme}://{request.Host}{request.PathBase}/Employees/ResetPassword";
+        var baseUrl = new Uri(origin, path).ToString();
         return QueryHelpers.AddQueryString(baseUrl, new Dictionary<string, string?>
         {
             ["email"] = email.Trim(),
             ["token"] = token,
         });
+    }
+
+    private static bool TryGetTrustedOrigin(IConfiguration configuration, out Uri origin)
+    {
+        var value = configuration["EmployeeConfirmation:PublicOrigin"];
+        if (Uri.TryCreate(value, UriKind.Absolute, out var parsed)
+            && parsed.Scheme == Uri.UriSchemeHttps
+            && string.IsNullOrEmpty(parsed.UserInfo)
+            && string.IsNullOrEmpty(parsed.Query)
+            && string.IsNullOrEmpty(parsed.Fragment)
+            && parsed.AbsolutePath == "/")
+        {
+            origin = parsed;
+            return true;
+        }
+
+        origin = null!;
+        return false;
     }
 }
