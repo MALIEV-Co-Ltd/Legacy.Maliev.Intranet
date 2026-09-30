@@ -56,6 +56,9 @@ public sealed class InvoiceAccountingBehaviorTests
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Equal(55, result.GetProperty("invoiceId").GetInt32());
+        Assert.Equal(1, result.GetProperty("state").GetInt32());
+        Assert.Equal(2, result.GetProperty("emailState").GetInt32());
+        Assert.Equal("msg-1", result.GetProperty("providerMessageId").GetString());
         var forwarded = Assert.Single(accounting.Requests);
         Assert.Equal("POST", forwarded.Method);
         Assert.Equal("/invoices/from-quotation/84", forwarded.Path);

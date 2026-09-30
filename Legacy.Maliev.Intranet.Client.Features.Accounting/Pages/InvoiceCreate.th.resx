@@ -61,4 +61,8 @@
   <data name="RetryOriginal" xml:space="preserve"><value>ส่งคำขอใบแจ้งหนี้เดิมซ้ำ</value></data>
   <data name="ReloadReconciliationRequired" xml:space="preserve"><value>โปรดตรวจสอบก่อนว่าใบแจ้งหนี้ถูกสร้างแล้วหรือไม่ หลังโหลดหน้านี้ซ้ำจะไม่สามารถส่งคำขอเดิมซ้ำอย่างปลอดภัยได้ โปรดติดต่อฝ่ายสนับสนุนเพื่อตรวจสอบผล และอย่าเริ่มสร้างใบแจ้งหนี้ใหม่ในแท็บนี้</value></data>
   <data name="OrderItemsTable" xml:space="preserve"><value>ตารางรายการสินค้าและยอดเงินจากใบเสนอราคา</value></data>
+  <data name="EmailReconciliationRequired" xml:space="preserve"><value>มีใบแจ้งหนี้แล้ว แต่ต้องตรวจสอบการส่งอีเมลให้ชัดเจน โปรดเปิดใบแจ้งหนี้เดิมและติดต่อฝ่ายสนับสนุนก่อนส่งอีเมล อย่าสร้างใบแจ้งหนี้ใหม่</value></data>
+  <data name="UnconfirmedReceipt" xml:space="preserve"><value>ระบบบัญชีส่งผลการสร้างใบแจ้งหนี้ที่ยังยืนยันไม่ได้ โปรดเปิดใบแจ้งหนี้เดิมและติดต่อฝ่ายสนับสนุนก่อนดำเนินการต่อ อย่าสร้างใบแจ้งหนี้ใหม่หรือส่งคำขอนี้ซ้ำ</value></data>
+  <data name="OpenExistingInvoice" xml:space="preserve"><value>เปิดใบแจ้งหนี้เดิม</value></data>
+  <data name="AmbiguousInvoiceReceipt" xml:space="preserve"><value>ระบบบัญชีส่งผลการสร้างใบแจ้งหนี้ที่ยังยืนยันไม่ได้และมีเลขอ้างอิงใบแจ้งหนี้ที่กำกวม โปรดติดต่อฝ่ายสนับสนุนก่อนดำเนินการต่อ อย่าสร้างใบแจ้งหนี้ใหม่หรือส่งคำขอนี้ซ้ำ</value></data>
 </root>
