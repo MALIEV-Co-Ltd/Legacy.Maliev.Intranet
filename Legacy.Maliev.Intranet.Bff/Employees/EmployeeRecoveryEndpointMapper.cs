@@ -27,12 +27,25 @@ public static class EmployeeRecoveryEndpointMapper
         EmployeeRecoveryAuthProxy auth,
         EmployeeRecoveryNotificationProxy notifications,
         ILogger logger,
+        CancellationToken cancellationToken) =>
+        (await RequestAndDeliverConfirmationAsync(email, configuration, auth, notifications, logger, cancellationToken)).EmailSent;
+
+    private enum ConfirmationRequestStatus { Accepted, SourceUnavailable, SourceThrottled }
+    private sealed record ConfirmationRequestResult(ConfirmationRequestStatus Status, bool EmailSent = false, TimeSpan? RetryAfter = null);
+
+    private static async Task<ConfirmationRequestResult> RequestAndDeliverConfirmationAsync(
+        string email,
+        IConfiguration configuration,
+        EmployeeRecoveryAuthProxy auth,
+        EmployeeRecoveryNotificationProxy notifications,
+        ILogger logger,
         CancellationToken cancellationToken)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         if (!TryGetTrustedOrigin(configuration, out var origin))
         {
             logger.LogError("Employee confirmation callback origin is not configured safely");
-            return false;
+            return new(ConfirmationRequestStatus.SourceUnavailable);
         }
 
         try
@@ -41,35 +54,47 @@ public static class EmployeeRecoveryEndpointMapper
             if (!response.IsSuccessStatusCode)
             {
                 logger.LogWarning("Employee confirmation challenge failed with HTTP {StatusCode}", (int)response.StatusCode);
-                return false;
+                return response.StatusCode == HttpStatusCode.TooManyRequests
+                    ? new(ConfirmationRequestStatus.SourceThrottled, RetryAfter: BoundedRetryAfter(response))
+                    : new(ConfirmationRequestStatus.SourceUnavailable);
             }
 
             var challenge = await response.Content.ReadFromJsonAsync<EmployeeRecoveryChallenge>(cancellationToken);
-            if (challenge?.Accepted != true || string.IsNullOrWhiteSpace(challenge.Token))
+            if (challenge?.Accepted != true)
             {
                 logger.LogWarning("Employee confirmation challenge was not available");
-                return false;
+                return new(ConfirmationRequestStatus.SourceUnavailable);
             }
+            if (string.IsNullOrWhiteSpace(challenge.Token)) return new(ConfirmationRequestStatus.Accepted);
 
             var callback = QueryHelpers.AddQueryString(
                 new Uri(origin, "/Employees/EmailConfirmation").ToString(),
                 new Dictionary<string, string?> { ["email"] = email.Trim(), ["token"] = challenge.Token });
-            using var notification = await notifications.SendEmailConfirmationAsync(email.Trim(), callback, cancellationToken);
-            if (notification.IsSuccessStatusCode) return true;
-
-            logger.LogWarning("Employee confirmation notification failed with HTTP {StatusCode}", (int)notification.StatusCode);
-            return false;
+            try
+            {
+                using var notification = await notifications.SendEmailConfirmationAsync(email.Trim(), callback, cancellationToken);
+                if (notification.IsSuccessStatusCode) return new(ConfirmationRequestStatus.Accepted, EmailSent: true);
+                logger.LogWarning("Employee confirmation notification failed with HTTP {StatusCode}", (int)notification.StatusCode);
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { throw; }
+            catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException)
+            {
+                logger.LogWarning("Employee confirmation notification was unavailable");
+            }
+            return new(ConfirmationRequestStatus.Accepted);
         }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { throw; }
         catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException)
         {
-            logger.LogWarning("Employee confirmation challenge or notification was unavailable");
-            return false;
+            logger.LogWarning("Employee confirmation challenge was unavailable");
+            return new(ConfirmationRequestStatus.SourceUnavailable);
         }
     }
 
     /// <summary>Accepts a resend request without revealing whether an employee identity exists.</summary>
     public static async Task<IResult> RequestEmailConfirmationAsync(
         EmployeeRecoveryEmailRequest request,
+        HttpContext context,
         IConfiguration configuration,
         EmployeeRecoveryAuthProxy auth,
         EmployeeRecoveryNotificationProxy notifications,
@@ -79,9 +104,14 @@ public static class EmployeeRecoveryEndpointMapper
         if (ValidationProblem(request) is { } validation) return validation;
         if (!TryGetTrustedOrigin(configuration, out _)) return ServiceUnavailable();
 
-        await SendEmailConfirmationAsync(request.Email, configuration, auth, notifications,
+        var result = await RequestAndDeliverConfirmationAsync(request.Email, configuration, auth, notifications,
             loggerFactory.CreateLogger("EmployeeRecovery"), cancellationToken);
-        return Results.Accepted(value: AcceptedResponse);
+        return result.Status switch
+        {
+            ConfirmationRequestStatus.Accepted => Results.Accepted(value: AcceptedResponse),
+            ConfirmationRequestStatus.SourceThrottled => Throttled(context, result.RetryAfter),
+            _ => ServiceUnavailable(),
+        };
     }
 
     /// <summary>Requests a password-reset challenge and delivers it without exposing the token to the browser.</summary>
@@ -94,6 +124,7 @@ public static class EmployeeRecoveryEndpointMapper
         ILoggerFactory loggerFactory,
         CancellationToken cancellationToken)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         if (ValidationProblem(request) is { } validation)
         {
             return validation;
@@ -129,6 +160,7 @@ public static class EmployeeRecoveryEndpointMapper
                                 (int)notification.StatusCode);
                     }
                 }
+                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { throw; }
                 catch (Exception exception) when (
                     exception is HttpRequestException or TaskCanceledException)
                 {
@@ -139,6 +171,7 @@ public static class EmployeeRecoveryEndpointMapper
 
             return Results.Accepted(value: AcceptedResponse);
         }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { throw; }
         catch (Exception exception) when (
             exception is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException)
         {
@@ -177,6 +210,7 @@ public static class EmployeeRecoveryEndpointMapper
         CancellationToken cancellationToken)
         where TRequest : class
     {
+        cancellationToken.ThrowIfCancellationRequested();
         if (ValidationProblem(request) is { } validation)
         {
             return validation;
@@ -195,6 +229,7 @@ public static class EmployeeRecoveryEndpointMapper
                 _ => DownstreamFailure(response, context),
             };
         }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { throw; }
         catch (Exception exception) when (
             exception is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException)
         {
@@ -228,24 +263,20 @@ public static class EmployeeRecoveryEndpointMapper
 
     private static IResult DownstreamFailure(HttpResponseMessage response, HttpContext context)
     {
-        if (response.StatusCode == HttpStatusCode.TooManyRequests)
-        {
-            var retryAfter = response.Headers.RetryAfter?.Delta;
-            if (retryAfter.HasValue
-                && retryAfter.Value > TimeSpan.Zero
-                && retryAfter.Value <= TimeSpan.FromHours(1))
-            {
-                context.Response.Headers.RetryAfter = Math.Ceiling(retryAfter.Value.TotalSeconds)
-                    .ToString(CultureInfo.InvariantCulture);
-            }
+        return response.StatusCode == HttpStatusCode.TooManyRequests
+            ? Throttled(context, BoundedRetryAfter(response)) : ServiceUnavailable();
+    }
 
-            return Results.Problem(
-                statusCode: StatusCodes.Status429TooManyRequests,
-                title: "Employee recovery throttled",
-                detail: "Too many recovery attempts. Wait and try again.");
-        }
+    private static TimeSpan? BoundedRetryAfter(HttpResponseMessage response) =>
+        response.Headers.RetryAfter?.Delta is { } delta && delta > TimeSpan.Zero && delta <= TimeSpan.FromHours(1)
+            ? delta : null;
 
-        return ServiceUnavailable();
+    private static IResult Throttled(HttpContext context, TimeSpan? retryAfter)
+    {
+        if (retryAfter is { } delta)
+            context.Response.Headers.RetryAfter = Math.Ceiling(delta.TotalSeconds).ToString(CultureInfo.InvariantCulture);
+        return Results.Problem(statusCode: StatusCodes.Status429TooManyRequests,
+            title: "Employee recovery throttled", detail: "Too many recovery attempts. Wait and try again.");
     }
 
     private static IResult ServiceUnavailable() => Results.Problem(
