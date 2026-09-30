@@ -223,8 +223,8 @@ public sealed class InvoiceCreateRetryBrowserTests(
         await page.GetByRole(AriaRole.Button, new() { Name = "Create invoice" }).ClickAsync();
         await page.GetByRole(AriaRole.Button, new() { Name = "Retry original invoice" }).ClickAsync();
         Assert.True(await page.Locator("#invoice-number").IsDisabledAsync());
-        Assert.True(await page.GetByText("contact support before starting another invoice", new() { Exact = false }).IsVisibleAsync());
-        Assert.True(await page.GetByRole(AriaRole.Button, new() { Name = "Retry original invoice" }).IsEnabledAsync());
+        await Assertions.Expect(page.GetByText("contact support before starting another invoice", new() { Exact = false })).ToBeVisibleAsync();
+        await Assertions.Expect(page.GetByRole(AriaRole.Button, new() { Name = "Retry original invoice" })).ToBeEnabledAsync();
         await page.GetByRole(AriaRole.Button, new() { Name = "Retry original invoice" }).ClickAsync();
 
         Assert.Equal(3, writes.Count);

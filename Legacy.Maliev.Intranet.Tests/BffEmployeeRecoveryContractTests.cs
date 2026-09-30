@@ -12,11 +12,192 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using BffProgram = Bff::Program;
 using EmployeeRecoveryAuthProxy = Bff::Legacy.Maliev.Intranet.Bff.Employees.EmployeeRecoveryAuthProxy;
 using EmployeeRecoveryNotificationProxy = Bff::Legacy.Maliev.Intranet.Bff.Employees.EmployeeRecoveryNotificationProxy;
+using EmployeeRecoveryEndpointMapper = Bff::Legacy.Maliev.Intranet.Bff.Employees.EmployeeRecoveryEndpointMapper;
 
 namespace Legacy.Maliev.Intranet.Tests;
 
 public sealed class BffEmployeeRecoveryContractTests
 {
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task PasswordResetRequest_CallerAbortDuringAcquisitionOrDeliveryPropagates(bool delivery)
+    {
+        using var cancellation = new CancellationTokenSource();
+        var downstream = new RecoveryDownstreamHandler
+        {
+            ChallengeToken = "opaque-reset-token-012345678901234567890123",
+            CancelAtNotification = delivery ? cancellation : null,
+        };
+        await using var factory = new RecoveryBffFactory(downstream);
+        using var client = CreateClient(factory);
+        if (!delivery) cancellation.Cancel();
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
+            EmployeeRecoveryEndpointMapper.RequestPasswordResetAsync(
+                new Legacy.Maliev.Intranet.Contracts.EmployeeRecoveryEmailRequest("employee@example.com"),
+                new Microsoft.AspNetCore.Http.DefaultHttpContext(),
+                factory.Services.GetRequiredService<Microsoft.Extensions.Configuration.IConfiguration>(),
+                factory.Services.GetRequiredService<EmployeeRecoveryAuthProxy>(),
+                factory.Services.GetRequiredService<EmployeeRecoveryNotificationProxy>(),
+                factory.Services.GetRequiredService<Microsoft.Extensions.Logging.ILoggerFactory>(),
+                cancellation.Token));
+        if (!delivery) Assert.Empty(downstream.Requests);
+        else Assert.Single(downstream.Requests, item => item.Path == "/notifications/v1/email/NoReply");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task RecoveryCompletion_CallerAbortPropagates(bool confirmation)
+    {
+        var downstream = new RecoveryDownstreamHandler();
+        await using var factory = new RecoveryBffFactory(downstream);
+        using var client = CreateClient(factory);
+        using var cancellation = new CancellationTokenSource();
+        cancellation.Cancel();
+        var context = new Microsoft.AspNetCore.Http.DefaultHttpContext();
+        var auth = factory.Services.GetRequiredService<EmployeeRecoveryAuthProxy>();
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => confirmation
+            ? EmployeeRecoveryEndpointMapper.CompleteEmailConfirmationAsync(
+                new("employee@example.com", "opaque-token-012345678901234567890123"), context, auth, cancellation.Token)
+            : EmployeeRecoveryEndpointMapper.CompletePasswordResetAsync(
+                new("employee@example.com", "opaque-token-012345678901234567890123", "new-password", "new-password"),
+                context, auth, cancellation.Token));
+        Assert.Empty(downstream.Requests);
+    }
+
+    [Theory]
+    [InlineData(12, "12")]
+    [InlineData(3601, null)]
+    public async Task ConfirmationResend_SourceThrottlingPreservesOnlyBoundedRetryAfter(int seconds, string? expected)
+    {
+        var downstream = new RecoveryDownstreamHandler
+        {
+            ChallengeStatusCode = HttpStatusCode.TooManyRequests,
+            ChallengeRetryAfterSeconds = seconds,
+        };
+        await using var factory = new RecoveryBffFactory(downstream);
+        using var client = CreateClient(factory);
+        var csrf = await GetCsrfTokenAsync(client);
+        using var response = await SendAsync(client, "/bff/employee-recovery/email-confirmation/request",
+            new { email = "employee@example.com" }, csrf);
+
+        Assert.Equal(HttpStatusCode.TooManyRequests, response.StatusCode);
+        Assert.Equal(expected, response.Headers.TryGetValues("Retry-After", out var values) ? Assert.Single(values) : null);
+        Assert.DoesNotContain(await response.Content.ReadAsStringAsync(), "employee@example.com", StringComparison.Ordinal);
+        Assert.DoesNotContain(downstream.Requests, item => item.Path == "/notifications/v1/email/NoReply");
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task ConfirmationResend_InvalidChallengeEnvelopeIsGenericUnavailable(bool malformedJson)
+    {
+        var downstream = new RecoveryDownstreamHandler
+        {
+            ChallengeMalformed = malformedJson,
+            ChallengeAccepted = false,
+        };
+        await using var factory = new RecoveryBffFactory(downstream);
+        using var client = CreateClient(factory);
+        var csrf = await GetCsrfTokenAsync(client);
+        using var response = await SendAsync(client, "/bff/employee-recovery/email-confirmation/request",
+            new { email = "employee@example.com" }, csrf);
+
+        Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
+        var body = await response.Content.ReadAsStringAsync();
+        Assert.DoesNotContain("employee@example.com", body, StringComparison.Ordinal);
+        Assert.DoesNotContain("controlled-sensitive", body, StringComparison.Ordinal);
+        Assert.DoesNotContain(downstream.Requests, item => item.Path == "/notifications/v1/email/NoReply");
+    }
+
+    [Fact]
+    public async Task ConfirmationResend_CallerCancellationIsNotTranslatedToAcceptedOrUnavailable()
+    {
+        var downstream = new RecoveryDownstreamHandler();
+        await using var factory = new RecoveryBffFactory(downstream);
+        using var client = CreateClient(factory);
+        using var cancellation = new CancellationTokenSource();
+        cancellation.Cancel();
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
+            EmployeeRecoveryEndpointMapper.RequestEmailConfirmationAsync(
+                new Legacy.Maliev.Intranet.Contracts.EmployeeRecoveryEmailRequest("employee@example.com"),
+                new Microsoft.AspNetCore.Http.DefaultHttpContext(),
+                factory.Services.GetRequiredService<Microsoft.Extensions.Configuration.IConfiguration>(),
+                factory.Services.GetRequiredService<EmployeeRecoveryAuthProxy>(),
+                factory.Services.GetRequiredService<EmployeeRecoveryNotificationProxy>(),
+                factory.Services.GetRequiredService<Microsoft.Extensions.Logging.ILoggerFactory>(),
+                cancellation.Token));
+        Assert.Empty(downstream.Requests);
+    }
+
+    [Theory]
+    [InlineData(HttpStatusCode.ServiceUnavailable)]
+    [InlineData(HttpStatusCode.Unauthorized)]
+    [InlineData(HttpStatusCode.Forbidden)]
+    public async Task ConfirmationResend_AuthInfrastructureFailureIsGenericUnavailable(HttpStatusCode status)
+    {
+        var downstream = new RecoveryDownstreamHandler { ChallengeStatusCode = status };
+        await using var factory = new RecoveryBffFactory(downstream);
+        using var client = CreateClient(factory);
+        var csrf = await GetCsrfTokenAsync(client);
+
+        using var response = await SendAsync(client, "/bff/employee-recovery/email-confirmation/request",
+            new { email = "employee@example.com" }, csrf);
+
+        Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
+        var body = await response.Content.ReadAsStringAsync();
+        Assert.DoesNotContain("employee@example.com", body, StringComparison.Ordinal);
+        Assert.DoesNotContain("opaque", body, StringComparison.Ordinal);
+        Assert.Single(downstream.Requests);
+        Assert.DoesNotContain(downstream.Requests, item => item.Path == "/notifications/v1/email/NoReply");
+    }
+
+    [Fact]
+    public async Task ConfirmationResend_AuthTransportFailureIsGenericUnavailable()
+    {
+        var downstream = new RecoveryDownstreamHandler { ChallengeThrows = true };
+        await using var factory = new RecoveryBffFactory(downstream);
+        using var client = CreateClient(factory);
+        var csrf = await GetCsrfTokenAsync(client);
+
+        using var response = await SendAsync(client, "/bff/employee-recovery/email-confirmation/request",
+            new { email = "employee@example.com" }, csrf);
+
+        Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
+        var body = await response.Content.ReadAsStringAsync();
+        Assert.DoesNotContain("employee@example.com", body, StringComparison.Ordinal);
+        Assert.Single(downstream.Requests);
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task ConfirmationResend_NotificationFailureIsIndistinguishableFromUnknownEmployee(bool notificationThrows)
+    {
+        var downstream = new RecoveryDownstreamHandler
+        {
+            ChallengeToken = "opaque-confirmation-token-012345678901234567890123",
+            NotificationThrows = notificationThrows,
+            NotificationStatusCode = HttpStatusCode.ServiceUnavailable,
+        };
+        await using var factory = new RecoveryBffFactory(downstream);
+        using var client = CreateClient(factory);
+        var csrf = await GetCsrfTokenAsync(client);
+        using var known = await SendAsync(client, "/bff/employee-recovery/email-confirmation/request",
+            new { email = "employee@example.com" }, csrf);
+        var knownBody = await known.Content.ReadAsStringAsync();
+        downstream.ChallengeToken = null;
+        using var unknown = await SendAsync(client, "/bff/employee-recovery/email-confirmation/request",
+            new { email = "missing@example.com" }, csrf);
+
+        Assert.Equal(HttpStatusCode.Accepted, known.StatusCode);
+        Assert.Equal(HttpStatusCode.Accepted, unknown.StatusCode);
+        Assert.Equal(await unknown.Content.ReadAsStringAsync(), knownBody);
+        Assert.DoesNotContain("opaque-confirmation", knownBody, StringComparison.Ordinal);
+        Assert.Single(downstream.Requests, item => item.Path == "/notifications/v1/email/NoReply");
+    }
+
     [Fact]
     public async Task PasswordResetRequest_UnknownAndKnownEmployeesReturnSameGenericAcceptedContract()
     {
@@ -392,8 +573,14 @@ public sealed class BffEmployeeRecoveryContractTests
     private sealed class RecoveryDownstreamHandler : HttpMessageHandler
     {
         public string? ChallengeToken { get; set; }
+        public HttpStatusCode ChallengeStatusCode { get; set; } = HttpStatusCode.OK;
+        public bool ChallengeThrows { get; set; }
+        public bool ChallengeAccepted { get; set; } = true;
+        public bool ChallengeMalformed { get; set; }
+        public int? ChallengeRetryAfterSeconds { get; set; }
         public HttpStatusCode ConfirmationStatusCode { get; set; } = HttpStatusCode.NoContent;
         public bool NotificationThrows { get; set; }
+        public CancellationTokenSource? CancelAtNotification { get; set; }
         public HttpStatusCode NotificationStatusCode { get; set; } = HttpStatusCode.OK;
         public List<CapturedRequest> Requests { get; } = [];
 
@@ -405,20 +592,32 @@ public sealed class BffEmployeeRecoveryContractTests
                 ? string.Empty
                 : await request.Content.ReadAsStringAsync(cancellationToken);
             Requests.Add(new(request.Method.Method, request.RequestUri!.AbsolutePath, body));
+            if (CancelAtNotification is { } abort && request.RequestUri.AbsolutePath == "/notifications/v1/email/NoReply")
+            {
+                abort.Cancel();
+                throw new TaskCanceledException("Controlled caller abort", null, cancellationToken);
+            }
+            if (ChallengeThrows && request.RequestUri.AbsolutePath.EndsWith("/request", StringComparison.Ordinal))
+                throw new HttpRequestException("controlled challenge transport failure");
+            if (ChallengeMalformed && request.RequestUri.AbsolutePath.EndsWith("/request", StringComparison.Ordinal))
+                return new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = new StringContent("controlled-sensitive-malformed-envelope", Encoding.UTF8, "application/json"),
+                };
             if (NotificationThrows
                 && request.RequestUri.AbsolutePath == "/notifications/v1/email/NoReply")
             {
                 throw new HttpRequestException("notification unavailable");
             }
 
-            return request.RequestUri.AbsolutePath switch
+            var response = request.RequestUri.AbsolutePath switch
             {
                 "/auth/v1/employee-self-service/password-reset/request" => Json(
                     HttpStatusCode.OK,
                     new { accepted = true, token = ChallengeToken }),
                 "/auth/v1/employee-self-service/email-confirmation/request" => Json(
-                    HttpStatusCode.OK,
-                    new { accepted = true, token = ChallengeToken }),
+                    ChallengeStatusCode,
+                    new { accepted = ChallengeAccepted, token = ChallengeToken }),
                 "/auth/v1/employee-self-service/password-reset/complete" =>
                     new HttpResponseMessage(HttpStatusCode.NoContent),
                 "/auth/v1/employee-self-service/email-confirmation/complete" =>
@@ -428,6 +627,9 @@ public sealed class BffEmployeeRecoveryContractTests
                     new { providerMessageId = "test-message" }),
                 _ => new HttpResponseMessage(HttpStatusCode.NotFound),
             };
+            if (ChallengeRetryAfterSeconds is { } seconds && request.RequestUri.AbsolutePath.EndsWith("/request", StringComparison.Ordinal))
+                response.Headers.RetryAfter = new System.Net.Http.Headers.RetryConditionHeaderValue(TimeSpan.FromSeconds(seconds));
+            return response;
         }
 
         private static HttpResponseMessage Json(HttpStatusCode status, object value) => new(status)
