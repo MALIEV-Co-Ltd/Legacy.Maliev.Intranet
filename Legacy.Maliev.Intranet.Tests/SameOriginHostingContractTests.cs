@@ -172,7 +172,11 @@ public sealed class SameOriginHostingContractTests
 
     private sealed class SameOriginBffFactory : WebApplicationFactory<BffProgram>
     {
-        protected override void ConfigureWebHost(IWebHostBuilder builder) => builder.UseEnvironment("Testing");
+        protected override void ConfigureWebHost(IWebHostBuilder builder)
+        {
+            builder.UseEnvironment("Testing");
+            TestHostLifecycle.Configure(builder);
+        }
     }
 
     private static string FindRoot()
