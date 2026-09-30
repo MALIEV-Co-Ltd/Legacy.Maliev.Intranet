@@ -11,4 +11,8 @@
   <data name="RetryOriginal" xml:space="preserve"><value>Retry original invoice</value></data>
   <data name="ReloadReconciliationRequired" xml:space="preserve"><value>Check whether the invoice was created before trying again. This tab can no longer safely retry the original attempt after reloading. Contact support to reconcile its outcome; do not start another invoice here.</value></data>
   <data name="OrderItemsTable" xml:space="preserve"><value>Quotation line items and amounts</value></data>
+  <data name="EmailReconciliationRequired" xml:space="preserve"><value>The invoice exists, but its email delivery needs explicit reconciliation. Open the existing invoice and contact support before sending any email. Do not create another invoice.</value></data>
+  <data name="UnconfirmedReceipt" xml:space="preserve"><value>Accounting returned an unconfirmed invoice outcome. Open the existing invoice and contact support before any further action. Do not create another invoice or retry this operation.</value></data>
+  <data name="OpenExistingInvoice" xml:space="preserve"><value>Open existing invoice</value></data>
+  <data name="AmbiguousInvoiceReceipt" xml:space="preserve"><value>Accounting returned an unconfirmed invoice outcome with an ambiguous invoice reference. Contact support before any further action. Do not create another invoice or retry this operation.</value></data>
 </root>

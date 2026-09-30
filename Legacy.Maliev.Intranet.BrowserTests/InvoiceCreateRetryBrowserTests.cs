@@ -10,6 +10,122 @@ public sealed class InvoiceCreateRetryBrowserTests(
     PlaywrightFixture playwright)
 {
     [Theory]
+    [InlineData("en-TH", "light", 1440)]
+    [InlineData("en-TH", "dark", 1440)]
+    [InlineData("en-TH", "light", 375)]
+    [InlineData("en-TH", "dark", 375)]
+    [InlineData("th-TH", "light", 1440)]
+    [InlineData("th-TH", "dark", 1440)]
+    [InlineData("th-TH", "light", 375)]
+    [InlineData("th-TH", "dark", 375)]
+    public async Task ReconciledEmailRequiresRetry_ShowsNoticeAndExistingInvoiceWithoutAnotherCreate(string culture, string theme, int width)
+    {
+        await using var context = await playwright.Browser.NewContextAsync(new() { ViewportSize = new() { Width = width, Height = 850 }, ReducedMotion = ReducedMotion.Reduce });
+        await context.AddInitScriptAsync($"localStorage.setItem('maliev_theme','{theme}'); localStorage.setItem('maliev_culture','{culture}');");
+        var page = await context.NewPageAsync();
+        var thai = culture == "th-TH";
+        var createLabel = thai ? "สร้างใบแจ้งหนี้" : "Create invoice";
+        var writes = new List<(string? Key, string? Body)>();
+        await StubAsync(page, writes, (200, """{"invoiceId":55,"state":1,"emailState":2,"providerMessageId":null}"""));
+
+        await page.GotoAsync(new Uri(server.BaseUri, "Invoices/Create?quotationId=84").AbsoluteUri);
+        await page.Locator("#invoice-number").WaitForAsync();
+        var create = page.GetByRole(AriaRole.Button, new() { Name = createLabel, Exact = true });
+        await create.FocusAsync();
+        await create.PressAsync("Enter");
+
+        await Assertions.Expect(page.GetByText(thai ? "มีใบแจ้งหนี้แล้ว แต่ต้องตรวจสอบการส่งอีเมลให้ชัดเจน" : "The invoice exists, but its email delivery needs explicit reconciliation.", new() { Exact = false }))
+            .ToBeVisibleAsync(new() { Timeout = 5000 });
+        var existing = page.GetByRole(AriaRole.Link, new() { Name = thai ? "เปิดใบแจ้งหนี้เดิม" : "Open existing invoice" });
+        await Assertions.Expect(existing).ToHaveAttributeAsync("href", "/Invoices/View?id=55");
+        Assert.Contains("Invoices/Create", page.Url, StringComparison.Ordinal);
+        Assert.Single(writes);
+        Assert.True(await page.Locator("#invoice-number").IsDisabledAsync());
+        Assert.True(await create.IsDisabledAsync());
+        await create.PressAsync("Enter");
+        Assert.Single(writes);
+        await existing.FocusAsync();
+        Assert.True(await existing.EvaluateAsync<bool>("element => element === document.activeElement"));
+        Assert.Equal(theme, await page.EvaluateAsync<string>("document.documentElement.dataset.malievTheme"));
+        Assert.True(await page.EvaluateAsync<bool>("document.documentElement.scrollWidth <= window.innerWidth + 1"));
+        Assert.Equal("1", await page.EvaluateAsync<string>("sessionStorage.getItem('maliev-invoice-create-unresolved')"));
+    }
+
+    [Theory]
+    [InlineData(0, 0)]
+    [InlineData(0, 1)]
+    [InlineData(1, 0)]
+    [InlineData(1, 1)]
+    public async Task ConfirmedReceipt_NavigatesNormallyAndClearsReloadGuard(int state, int emailState)
+    {
+        await using var context = await playwright.Browser.NewContextAsync();
+        var page = await context.NewPageAsync();
+        var writes = new List<(string? Key, string? Body)>();
+        await StubAsync(page, writes, (200, $"{{\"invoiceId\":55,\"state\":{state},\"emailState\":{emailState},\"providerMessageId\":null}}"));
+        await page.RouteAsync("**/bff/invoices/55", route => route.FulfillAsync(new() { Status = 503, ContentType = "application/json", Body = "{}" }));
+        await page.GotoAsync(new Uri(server.BaseUri, "Invoices/Create?quotationId=84").AbsoluteUri);
+        await page.Locator("#invoice-number").WaitForAsync();
+        await page.GetByRole(AriaRole.Button, new() { Name = "Create invoice" }).ClickAsync();
+        await Assertions.Expect(page).ToHaveURLAsync(new System.Text.RegularExpressions.Regex("/Invoices/View\\?id=55$"));
+        Assert.Null(await page.EvaluateAsync<string?>("sessionStorage.getItem('maliev-invoice-create-unresolved')"));
+        Assert.Single(writes);
+    }
+
+    [Theory]
+    [InlineData("{\"invoiceId\":55,\"state\":99,\"emailState\":2,\"providerMessageId\":null}")]
+    [InlineData("{\"invoiceId\":55,\"state\":1,\"emailState\":99,\"providerMessageId\":null}")]
+    [InlineData("{\"invoiceId\":55,\"emailState\":0,\"providerMessageId\":null}")]
+    [InlineData("{\"invoiceId\":55,\"state\":1,\"providerMessageId\":null}")]
+    [InlineData("{\"invoiceId\":55,\"state\":\"reconciled\",\"emailState\":2,\"providerMessageId\":null}")]
+    [InlineData("{\"invoiceId\":55,\"state\":99,\"state\":0,\"emailState\":0}")]
+    [InlineData("{\"invoiceId\":55,\"state\":0,\"emailState\":2,\"emailState\":0}")]
+    public async Task UnconfirmedReceipt_KeepsKnownInvoiceLinkAndBlocksRepeatCreate(string receipt)
+    {
+        await using var context = await playwright.Browser.NewContextAsync();
+        var page = await context.NewPageAsync();
+        var writes = new List<(string? Key, string? Body)>();
+        await StubAsync(page, writes, (200, receipt));
+
+        await page.GotoAsync(new Uri(server.BaseUri, "Invoices/Create?quotationId=84").AbsoluteUri);
+        await page.Locator("#invoice-number").WaitForAsync();
+        await page.GetByRole(AriaRole.Button, new() { Name = "Create invoice" }).ClickAsync();
+
+        await Assertions.Expect(page.GetByText("Accounting returned an unconfirmed invoice outcome.", new() { Exact = false }))
+            .ToBeVisibleAsync(new() { Timeout = 5000 });
+        await Assertions.Expect(page.GetByRole(AriaRole.Link, new() { Name = "Open existing invoice" }))
+            .ToHaveAttributeAsync("href", "/Invoices/View?id=55");
+        Assert.Single(writes);
+        Assert.True(await page.Locator("#invoice-number").IsDisabledAsync());
+        Assert.Equal(0, await page.GetByRole(AriaRole.Button, new() { Name = "Retry original invoice" }).CountAsync());
+        Assert.True(await page.GetByRole(AriaRole.Button, new() { Name = "Create invoice" }).IsDisabledAsync());
+        Assert.Equal("1", await page.EvaluateAsync<string>("sessionStorage.getItem('maliev-invoice-create-unresolved')"));
+    }
+
+    [Theory]
+    [InlineData("{\"invoiceId\":54,\"invoiceId\":55,\"state\":0,\"emailState\":0}")]
+    [InlineData("{\"invoiceId\":55,\"invoiceId\":55,\"state\":0,\"emailState\":0}")]
+    public async Task AmbiguousInvoiceReference_BlocksRetryWithoutChoosingAnInvoice(string receipt)
+    {
+        await using var context = await playwright.Browser.NewContextAsync();
+        var page = await context.NewPageAsync();
+        var writes = new List<(string? Key, string? Body)>();
+        await StubAsync(page, writes, (200, receipt));
+        await page.GotoAsync(new Uri(server.BaseUri, "Invoices/Create?quotationId=84").AbsoluteUri);
+        await page.Locator("#invoice-number").WaitForAsync();
+        var create = page.GetByRole(AriaRole.Button, new() { Name = "Create invoice", Exact = true });
+        await create.ClickAsync();
+        await Assertions.Expect(page.GetByText("Accounting returned an unconfirmed invoice outcome with an ambiguous invoice reference.", new() { Exact = false })).ToBeVisibleAsync();
+        Assert.True(await create.IsDisabledAsync());
+        Assert.True(await page.Locator("#invoice-number").IsDisabledAsync());
+        Assert.Equal(0, await page.GetByRole(AriaRole.Link, new() { Name = "Open existing invoice" }).CountAsync());
+        Assert.Equal(0, await page.GetByRole(AriaRole.Button, new() { Name = "Retry original invoice" }).CountAsync());
+        Assert.Contains("Invoices/Create", page.Url, StringComparison.Ordinal);
+        Assert.Equal("1", await page.EvaluateAsync<string>("sessionStorage.getItem('maliev-invoice-create-unresolved')"));
+        await create.PressAsync("Enter");
+        Assert.Single(writes);
+    }
+
+    [Theory]
     [InlineData(503)]
     [InlineData(500)]
     public async Task UncertainCreate_ReloadBlocksFreshCreateWithoutPersistingInvoiceIntent(int status)

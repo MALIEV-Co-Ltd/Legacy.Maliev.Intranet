@@ -13,7 +13,15 @@
 <main class="invoice-editor">
     <div class="operations-page-header"><h1>@Text["Heading"]</h1>@if (pendingRequest is null || reloadBlocked) { <LegacyLink Href="/Invoices/Index" Role="LegacyLinkRole.Navigation" AriaLabel="@Text["Back"]">@Text["Back"]</LegacyLink> } else { <span aria-disabled="true">@Text["Back"]</span> }</div>
     @if (!string.IsNullOrWhiteSpace(error)) { <ShadcnAlert Variant="ShadcnAlertVariant.Destructive" AlertRole="ShadcnAlertRole.Alert"><ShadcnAlertDescription>@error</ShadcnAlertDescription></ShadcnAlert> }
-    @if (pendingRequest is not null) { <ShadcnAlert AlertRole="ShadcnAlertRole.Status"><ShadcnAlertDescription>@Text["PendingRetry"]</ShadcnAlertDescription></ShadcnAlert> }
+    @if (pendingRequest is not null && !ReceiptLocked) { <ShadcnAlert AlertRole="ShadcnAlertRole.Status"><ShadcnAlertDescription>@Text["PendingRetry"]</ShadcnAlertDescription></ShadcnAlert> }
+    @if (ReceiptLocked)
+    {
+        <ShadcnAlert AlertRole="ShadcnAlertRole.Status"><ShadcnAlertDescription>@receiptNotice</ShadcnAlertDescription></ShadcnAlert>
+    }
+    @if (knownInvoiceId is not null)
+    {
+        <LegacyLink Href="@($"/Invoices/View?id={knownInvoiceId}")" Role="LegacyLinkRole.Navigation" AriaLabel="@Text["OpenExistingInvoice"]">@Text["OpenExistingInvoice"]</LegacyLink>
+    }
     @if (reloadBlocked) { <ShadcnAlert Variant="ShadcnAlertVariant.Destructive" AlertRole="ShadcnAlertRole.Alert"><ShadcnAlertDescription>@Text["ReloadReconciliationRequired"]</ShadcnAlertDescription></ShadcnAlert> }
 
     <section class="invoice-editor__section" aria-labelledby="quotation-heading">
@@ -60,7 +68,7 @@
                     <div class="invoice-editor__checks"><AccountingCheckboxField Id="invoice-withholding" Label="@Text["DeductWithholdingTax"]" @bind-Value="model.DeductWithholdingTax" Disabled="@IntentLocked" /><AccountingCheckboxField Id="invoice-email" Label="@Text["SendEmail"]" @bind-Value="model.SendEmail" Disabled="@IntentLocked" /></div>
                 </div>
             </section>
-            <ShadcnButton ButtonType="ShadcnButtonType.Submit" OperationFeedback="false" Disabled="@(submitting || !storageChecked || reloadBlocked)" Class="invoice-editor__submit">@(submitting ? Text["Creating"] : pendingRequest is not null ? Text["RetryOriginal"] : Text["Create"])</ShadcnButton>
+            <ShadcnButton ButtonType="ShadcnButtonType.Submit" OperationFeedback="false" Disabled="@(submitting || !storageChecked || reloadBlocked || ReceiptLocked)" Class="invoice-editor__submit">@(submitting ? Text["Creating"] : pendingRequest is not null && !ReceiptLocked ? Text["RetryOriginal"] : Text["Create"])</ShadcnButton>
         </EditForm>
     }
 </main>
@@ -77,11 +85,15 @@
     private bool storageChecked;
     private bool reloadBlocked;
     private string? error;
+    private int? knownInvoiceId;
+    private string? receiptNotice;
+    private bool ambiguousInvoiceReference;
+    private bool ReceiptLocked => knownInvoiceId is not null || ambiguousInvoiceReference;
     private const string UnresolvedStorageKey = "maliev-invoice-create-unresolved";
     private Guid operationId;
     private CreateInvoiceFromQuotationRequest? pendingRequest;
     private decimal Outstanding => preview is null ? 0m : preview.Total - (model.DeductWithholdingTax ? preview.AvailableWithholdingTax : 0m);
-    private bool IntentLocked => submitting || pendingRequest is not null || !storageChecked || reloadBlocked;
+    private bool IntentLocked => submitting || pendingRequest is not null || !storageChecked || reloadBlocked || ReceiptLocked;
 
     protected override async Task OnInitializedAsync()
     {
@@ -101,7 +113,7 @@
 
     private async Task LoadPreviewAsync()
     {
-        if (quotationId <= 0 || submitting || pendingRequest is not null) return;
+        if (quotationId <= 0 || submitting || pendingRequest is not null || ReceiptLocked) return;
         loading = true; error = null;
         try
         {
@@ -120,7 +132,7 @@
 
     private async Task CreateAsync()
     {
-        if (session?.CsrfToken is null || preview is null || submitting || !storageChecked || reloadBlocked) return;
+        if (session?.CsrfToken is null || preview is null || submitting || !storageChecked || reloadBlocked || ReceiptLocked) return;
         var retryingOriginal = pendingRequest is not null;
         submitting = true; error = null;
         try
@@ -148,14 +160,46 @@
                 }
                 return;
             }
-            var result = await response.Content.ReadFromJsonAsync<InvoiceCreationResult>();
-            if (result is null || result.InvoiceId <= 0) { error = Text["InvalidResponse"]; return; }
+            using var receipt = await System.Text.Json.JsonDocument.ParseAsync(await response.Content.ReadAsStreamAsync());
+            if (ReceiptPropertyCount(receipt.RootElement, "invoiceId") > 1)
+            {
+                ambiguousInvoiceReference = true;
+                receiptNotice = Text["AmbiguousInvoiceReceipt"];
+                return;
+            }
+            if (!TryReceiptNumber(receipt.RootElement, "invoiceId", out var invoiceId) || invoiceId <= 0) { error = Text["InvalidResponse"]; return; }
+            knownInvoiceId = invoiceId;
+            receiptNotice = Text["UnconfirmedReceipt"];
+            if (!TryReceiptNumber(receipt.RootElement, "state", out var state) || state is not (0 or 1)
+                || !TryReceiptNumber(receipt.RootElement, "emailState", out var emailState) || emailState is not (0 or 1 or 2))
+            {
+                receiptNotice = Text["UnconfirmedReceipt"];
+                return;
+            }
+            if (emailState == 2)
+            {
+                receiptNotice = Text["EmailReconciliationRequired"];
+                return;
+            }
             if (!await ClearUnresolvedAsync()) return;
-            Navigation.NavigateTo($"/Invoices/View?id={result.InvoiceId}");
+            Navigation.NavigateTo($"/Invoices/View?id={invoiceId}");
         }
         catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException) { error = Text["RetrySafe"]; }
         finally { submitting = false; }
     }
+
+    private static bool TryReceiptNumber(System.Text.Json.JsonElement receipt, string name, out int value)
+    {
+        value = 0;
+        return receipt.ValueKind == System.Text.Json.JsonValueKind.Object
+            && ReceiptPropertyCount(receipt, name) == 1
+            && receipt.TryGetProperty(name, out var property)
+            && property.ValueKind == System.Text.Json.JsonValueKind.Number
+            && property.TryGetInt32(out value);
+    }
+
+    private static int ReceiptPropertyCount(System.Text.Json.JsonElement receipt, string name) => receipt.ValueKind == System.Text.Json.JsonValueKind.Object
+        ? receipt.EnumerateObject().Count(property => property.NameEquals(name)) : 0;
 
     private async Task<bool> ClearUnresolvedAsync()
     {
