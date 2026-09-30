@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Microsoft.Extensions.DependencyInjection;
 using System.Security.Claims;
 
 namespace Legacy.Maliev.Intranet.Auth;
@@ -47,12 +48,16 @@ public sealed class EmployeeSessionService(
     }
 
     /// <summary>Returns a fresh downstream access token, rotating the refresh token when required.</summary>
-    public async Task<string?> GetAccessTokenAsync(HttpContext context, CancellationToken cancellationToken)
+    public async Task<string?> GetAccessTokenAsync(HttpContext context, CancellationToken cancellationToken) =>
+        (await AcquireAccessTokenAsync(context, cancellationToken)).AccessToken;
+
+    /// <summary>Acquires a credential without conflating invalid sessions with temporary refresh failures.</summary>
+    public async Task<EmployeeAccessTokenAcquisition> AcquireAccessTokenAsync(HttpContext context, CancellationToken cancellationToken)
     {
         var result = await context.AuthenticateAsync(CookieAuthenticationDefaults.AuthenticationScheme);
         if (!result.Succeeded || result.Properties is null)
         {
-            return null;
+            return new(EmployeeAccessTokenStatus.Unauthenticated, null, []);
         }
 
         var accessToken = result.Properties.GetTokenValue(AccessToken);
@@ -60,19 +65,21 @@ public sealed class EmployeeSessionService(
         if (DateTimeOffset.TryParse(expiresText, out var expiresAt) &&
             expiresAt > timeProvider.GetUtcNow().AddMinutes(2))
         {
-            return accessToken;
+            return Available(accessToken, result.Principal);
         }
 
         var refreshToken = result.Properties.GetTokenValue(RefreshToken);
         if (string.IsNullOrWhiteSpace(refreshToken))
         {
             await context.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
-            return null;
+            return new(EmployeeAccessTokenStatus.Unauthenticated, null, []);
         }
 
         var expectedEmployeeId = result.Principal?.FindFirstValue(ClaimTypes.NameIdentifier);
         EmployeeRefreshResult? refreshed = null;
         var transientRefreshFailure = false;
+        var refreshThrottled = false;
+        int? retryAfterSeconds = null;
         try
         {
             refreshed = await authClient.RefreshAsync(refreshToken, cancellationToken);
@@ -80,6 +87,8 @@ public sealed class EmployeeSessionService(
         catch (LegacyAuthRateLimitedException exception)
         {
             transientRefreshFailure = true;
+            refreshThrottled = true;
+            retryAfterSeconds = exception.RetryAfterSeconds;
             logger.LogWarning(
                 exception,
                 "Employee session refresh was rate limited; preserving the opaque session for retry after {RetryAfterSeconds} seconds.",
@@ -98,26 +107,31 @@ public sealed class EmployeeSessionService(
             // AuthService refresh tokens are single-use. Another request may have won the
             // rotation between this request's ticket read and refresh attempt. Re-read the
             // distributed ticket before treating a null result as revocation.
-            var peerAccessToken = await TryReadRenewedAccessTokenAsync(context, refreshToken, expectedEmployeeId);
-            if (peerAccessToken is not null)
+            var reconciliation = await TryReadRenewedAccessTokenAsync(context, refreshToken, expectedEmployeeId, cancellationToken);
+            if (reconciliation.Result is not null)
             {
-                return peerAccessToken;
+                return reconciliation.Result;
             }
 
             if (transientRefreshFailure)
             {
-                return null;
+                return new(refreshThrottled ? EmployeeAccessTokenStatus.Throttled : EmployeeAccessTokenStatus.Unavailable,
+                    null, [], retryAfterSeconds);
             }
 
-            await context.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
-            return null;
+            if (reconciliation.MaySignOut)
+                await context.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+            return new(EmployeeAccessTokenStatus.Unauthenticated, null, []);
         }
 
         if (string.IsNullOrWhiteSpace(expectedEmployeeId) ||
             !string.Equals(refreshed.Identity.Id, expectedEmployeeId, StringComparison.Ordinal))
         {
-            await context.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
-            return null;
+            var reconciliation = await TryReadRenewedAccessTokenAsync(context, refreshToken, expectedEmployeeId, cancellationToken);
+            if (reconciliation.Result is not null) return reconciliation.Result;
+            if (reconciliation.MaySignOut)
+                await context.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+            return new(EmployeeAccessTokenStatus.Unauthenticated, null, []);
         }
 
         StoreTokens(result.Properties, refreshed.Tokens);
@@ -131,42 +145,67 @@ public sealed class EmployeeSessionService(
             CookieAuthenticationDefaults.AuthenticationScheme,
             refreshedPrincipal,
             result.Properties);
-        return refreshed.Tokens.AccessToken;
+        return Available(refreshed.Tokens.AccessToken, refreshedPrincipal);
     }
 
-    private async Task<string?> TryReadRenewedAccessTokenAsync(
+    private static EmployeeAccessTokenAcquisition Available(string? token, ClaimsPrincipal? principal) =>
+        new(EmployeeAccessTokenStatus.Available, token,
+            principal?.FindAll("permissions").Select(claim => claim.Value).Distinct(StringComparer.Ordinal).ToArray() ?? []);
+
+    private async Task<(EmployeeAccessTokenAcquisition? Result, bool MaySignOut)> TryReadRenewedAccessTokenAsync(
         HttpContext context,
         string previousRefreshToken,
-        string? expectedEmployeeId)
+        string? expectedEmployeeId,
+        CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(expectedEmployeeId))
         {
-            return null;
+            return (new(EmployeeAccessTokenStatus.Unauthenticated, null, []), false);
         }
 
-        var current = await context.AuthenticateAsync(CookieAuthenticationDefaults.AuthenticationScheme);
-        if (!current.Succeeded || current.Properties is null ||
+        AuthenticationTicket? current;
+        try
+        {
+            var tickets = context.RequestServices.GetService<DistributedTicketStore>();
+            // Non-store legacy/direct callers retain their existing facade semantics.
+            // Both actual hosts register the same concrete store used by cookie auth;
+            // cached AuthenticateAsync is not fresh-generation proof in those hosts.
+            current = tickets is not null
+                ? await tickets.RetrieveCurrentAsync(context, cancellationToken)
+                : (await context.AuthenticateAsync(CookieAuthenticationDefaults.AuthenticationScheme)).Ticket;
+            cancellationToken.ThrowIfCancellationRequested();
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException && !cancellationToken.IsCancellationRequested)
+        {
+            logger.LogWarning(exception, "Employee session reconciliation was unavailable; preserving the opaque session for retry.");
+            return (new(EmployeeAccessTokenStatus.Unavailable, null, []), false);
+        }
+        if (current is null || current.Properties.ExpiresUtc is not { } ticketExpiresAt ||
+            ticketExpiresAt <= timeProvider.GetUtcNow() ||
             !string.Equals(
                 current.Principal?.FindFirstValue(ClaimTypes.NameIdentifier),
                 expectedEmployeeId,
                 StringComparison.Ordinal))
         {
-            return null;
+            return (new(EmployeeAccessTokenStatus.Unauthenticated, null, []), false);
         }
 
         var currentRefreshToken = current.Properties.GetTokenValue(RefreshToken);
         var currentAccessToken = current.Properties.GetTokenValue(AccessToken);
         var expiresText = current.Properties.GetTokenValue(AccessExpiresAt);
+        // Only the freshly observed original generation may retain existing signout.
+        // Read -> remove is not atomic with a later peer write through IDistributedCache.
+        if (string.Equals(currentRefreshToken, previousRefreshToken, StringComparison.Ordinal))
+            return (null, true);
         if (string.IsNullOrWhiteSpace(currentRefreshToken) ||
-            string.Equals(currentRefreshToken, previousRefreshToken, StringComparison.Ordinal) ||
             string.IsNullOrWhiteSpace(currentAccessToken) ||
             !DateTimeOffset.TryParse(expiresText, out var expiresAt) ||
             expiresAt <= timeProvider.GetUtcNow().AddMinutes(2))
         {
-            return null;
+            return (new(EmployeeAccessTokenStatus.Unauthenticated, null, []), false);
         }
 
-        return currentAccessToken;
+        return (Available(currentAccessToken, current.Principal), false);
     }
 
     /// <summary>Revokes the refresh family and always clears the local session.</summary>
