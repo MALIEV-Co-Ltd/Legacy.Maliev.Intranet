@@ -222,3 +222,15 @@ The independent full browser run completed: 136 passed, zero failed/skipped;
 bounded seven-file candidate for a coherent commit and protected-main PR; CI
 and post-merge main remain separate gates. The underlying issue remains open
 for the separate release/UI/provider gates.
+
+### Required-CI browser synchronization repair
+
+Required run 36740367288 failed at the immediate conflict-message visibility
+assertion in InvoiceCreateRetryBrowserTests (135 passed, one failed); all
+1,264 unit tests passed. The click can complete before the response render.
+Two assertions now use Playwright's condition-based visibility/enabled waits,
+without sleeps, extended timeouts or weakened frozen-operation checks.
+Independent Release build passed with zero warnings/errors; the failing case
+passed and the full browser suite passed 136/136 with zero skips. Evidence:
+`TestResults/invoice-render-synchronization-browser-full`. Scoped formatting
+and whitespace verification passed. Fresh-head required CI is still required.
