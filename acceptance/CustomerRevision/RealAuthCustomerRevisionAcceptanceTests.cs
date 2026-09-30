@@ -19,6 +19,7 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Http;
 using Npgsql;
 using StackExchange.Redis;
 using Testcontainers.Redis;
@@ -28,7 +29,14 @@ namespace CustomerRevision.Acceptance;
 public sealed partial class CustomerRevisionAcceptanceTests
 {
     [Fact]
-    public async Task AuthIssuedEmployeeSessions_WithRedisTickets_RejectStaleCustomerEdit()
+    public Task AuthIssuedEmployeeSessions_WithRedisTickets_RejectStaleCustomerEdit() =>
+        ExerciseRealAuthAsync(renderBrowser: false);
+
+    [Fact]
+    public Task RenderedEmployeeEditors_WithRealAuthAndPersistence_RejectStaleEditAndReload() =>
+        ExerciseRealAuthAsync(renderBrowser: true);
+
+    private async Task ExerciseRealAuthAsync(bool renderBrowser)
     {
         await using var redis = new RedisBuilder("redis:7-alpine").Build();
         await redis.StartAsync();
@@ -91,6 +99,12 @@ public sealed partial class CustomerRevisionAcceptanceTests
             var redisServer = redisConnection.GetServer(redisConnection.GetEndPoints()[0]);
             Assert.Equal(2, redisServer.Keys(pattern: "*legacy-intranet:session:*").Count());
             Assert.NotEmpty(redisServer.Keys(pattern: "legacy:intranet:data-protection-keys"));
+        }
+
+        if (renderBrowser)
+        {
+            await ExerciseBrowserEditorsAsync(first, second, customerClient, id);
+            return;
         }
 
         using var firstRead = await first.GetAsync($"/bff/customers/{id}/versioned");
@@ -249,7 +263,26 @@ public sealed partial class CustomerRevisionAcceptanceTests
                     .ConfigurePrimaryHttpMessageHandler(() => customer.GetTestServer().CreateHandler());
                 services.AddHttpClient<CustomerUpdateProxy>()
                     .ConfigurePrimaryHttpMessageHandler(() => customer.GetTestServer().CreateHandler());
+                services.ConfigureAll<HttpClientFactoryOptions>(options =>
+                    options.HttpMessageHandlerBuilderActions.Add(handler =>
+                    {
+                        // Fail closed for every unrelated downstream; only the four
+                        // explicitly bridged in-process clients may make requests.
+                        var allowed = new[] { "service-auth", nameof(Legacy.Maliev.Intranet.Auth.ILegacyAuthClient),
+                            nameof(CustomersProxy), nameof(CustomerUpdateProxy) };
+                        if (!allowed.Contains(handler.Name))
+                            handler.PrimaryHandler = new BlockOutboundHandler();
+                    }));
             });
         }
+    }
+
+    private sealed class BlockOutboundHandler : HttpMessageHandler
+    {
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) =>
+            Task.FromResult(new HttpResponseMessage(HttpStatusCode.ServiceUnavailable)
+            {
+                Content = new StringContent("Unrelated outbound integration disabled in disposable acceptance."),
+            });
     }
 }
