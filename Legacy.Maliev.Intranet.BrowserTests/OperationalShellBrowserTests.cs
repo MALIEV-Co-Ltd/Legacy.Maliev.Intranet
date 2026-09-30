@@ -505,7 +505,8 @@ public sealed class OperationalShellBrowserTests(
         var errors = new List<string>();
         page.Console += (_, message) => { if (message.Type == "error") errors.Add(message.Text); };
         page.PageError += (_, error) => errors.Add(error);
-        await StubProductionBoundariesAsync(page);
+        var layoutSessionReady = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        await StubProductionBoundariesAsync(page, layoutSessionReady.Task);
 
         await page.GotoAsync(new Uri(server.BaseUri, "sales/orders").AbsoluteUri);
         try
@@ -520,6 +521,11 @@ public sealed class OperationalShellBrowserTests(
                 exception);
         }
 
+        // AuthorizeView can render the shell before MainLayout's separate session
+        // projection completes. Exercise that phase, then wait for authorized actions.
+        Assert.Equal(0, await page.Locator(".legacy-quick-action:is(a)").CountAsync());
+        layoutSessionReady.SetResult();
+        await Assertions.Expect(page.Locator(".legacy-quick-action:is(a)")).ToHaveCountAsync(2);
         Assert.Equal(1, await page.Locator("#legacy-sidebar-collapse:is(button)").CountAsync());
         Assert.Equal(1, await page.Locator(".legacy-profile:is(button)").CountAsync());
         Assert.Equal(2, await page.Locator(".legacy-quick-action:is(a)").CountAsync());
@@ -802,7 +808,7 @@ public sealed class OperationalShellBrowserTests(
         first.GetProperty("top").GetDouble() < second.GetProperty("bottom").GetDouble() - 0.5 &&
         first.GetProperty("bottom").GetDouble() > second.GetProperty("top").GetDouble() + 0.5;
 
-    private static async Task StubProductionBoundariesAsync(IPage page)
+    private static async Task StubProductionBoundariesAsync(IPage page, Task? layoutSessionReady = null)
     {
         var session = JsonSerializer.Serialize(new
         {
@@ -825,12 +831,18 @@ public sealed class OperationalShellBrowserTests(
             },
         });
 
-        await page.RouteAsync("**/bff/session", route => route.FulfillAsync(new()
+        var sessionReads = 0;
+        await page.RouteAsync("**/bff/session", async route =>
         {
-            Status = 200,
-            ContentType = "application/json",
-            Body = session,
-        }));
+            if (Interlocked.Increment(ref sessionReads) > 1 && layoutSessionReady is not null)
+                await layoutSessionReady;
+            await route.FulfillAsync(new()
+            {
+                Status = 200,
+                ContentType = "application/json",
+                Body = session,
+            });
+        });
         await page.RouteAsync("**/bff/orders?*", route => route.FulfillAsync(new()
         {
             Status = 200,
