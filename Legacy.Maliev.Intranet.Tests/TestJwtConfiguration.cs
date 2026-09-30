@@ -9,6 +9,7 @@ internal static class TestJwtConfiguration
 
     public static void Configure(IWebHostBuilder builder)
     {
+        TestHostLifecycle.Configure(builder);
         builder.UseSetting("Jwt:Issuer", "https://auth.test");
         builder.UseSetting("Jwt:Audience", "legacy-test");
         builder.UseSetting("Jwt:PublicKeyPem", PublicKeyPem);
