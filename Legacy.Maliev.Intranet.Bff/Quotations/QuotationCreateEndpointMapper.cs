@@ -119,7 +119,7 @@ internal static class QuotationCreateEndpointMapper
         EmployeesProxy employees,
         CatalogMaterialsProxy catalog,
         OrdersProxy orders,
-        QuotationRequestsProxy quotationRequests,
+        QuotationQualificationClient quotationRequests,
         TimeProvider clock,
         CancellationToken cancellationToken)
     {
@@ -140,9 +140,19 @@ internal static class QuotationCreateEndpointMapper
             {
                 if (!context.User.HasClaim("permissions", LegacyEmployeePermissions.QuotationRequestsRead))
                     return Results.Forbid();
-                using var sourceResponse = await quotationRequests.GetQualificationReceiptAsync(sourceRequestId, cancellationToken);
+                using var sourceResponse = await quotationRequests.GetQualificationReceiptAsync(sourceRequestId, context, cancellationToken,
+                    [LegacyEmployeePermissions.QuotationsCreate, LegacyEmployeePermissions.QuotationLinesWrite,
+                        LegacyEmployeePermissions.QuotationOrdersWrite, LegacyEmployeePermissions.CustomersRead,
+                        LegacyEmployeePermissions.EmployeesRead, LegacyEmployeePermissions.CatalogCurrenciesRead,
+                        LegacyEmployeePermissions.OrdersRead]);
                 if (sourceResponse.StatusCode == HttpStatusCode.NotFound)
                     return Results.ValidationProblem(new Dictionary<string, string[]> { [nameof(input.SourceRequestId)] = ["The source quotation request no longer exists."] });
+                if (sourceResponse.StatusCode == HttpStatusCode.TooManyRequests)
+                {
+                    if (sourceResponse.Headers.RetryAfter?.Delta is { } delay && delay > TimeSpan.Zero && delay <= TimeSpan.FromHours(1))
+                        context.Response.Headers.RetryAfter = ((int)Math.Ceiling(delay.TotalSeconds)).ToString(CultureInfo.InvariantCulture);
+                    return Results.StatusCode(StatusCodes.Status429TooManyRequests);
+                }
                 var sourceFailure = MapFailure(sourceResponse);
                 if (sourceFailure is not null) return sourceFailure;
                 QuotationQualificationReceipt? sourceReceipt;

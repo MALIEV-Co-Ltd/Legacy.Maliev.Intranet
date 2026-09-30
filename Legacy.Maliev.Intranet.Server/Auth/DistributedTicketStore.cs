@@ -12,6 +12,7 @@ public sealed class DistributedTicketStore : ITicketStore
 {
     private const string Prefix = "legacy-intranet:session:";
     private const string ProtectionPurpose = "Legacy.Maliev.Intranet.AuthenticationTicketStore.v1";
+    private static readonly object SessionKeyItem = new();
     private readonly IDistributedCache cache;
     private readonly TimeProvider timeProvider;
     private readonly IDataProtector protector;
@@ -58,10 +59,13 @@ public sealed class DistributedTicketStore : ITicketStore
         RetrieveAsync(key, new DefaultHttpContext(), default);
 
     /// <inheritdoc />
-    public async Task<AuthenticationTicket?> RetrieveAsync(
+    public Task<AuthenticationTicket?> RetrieveAsync(
         string key,
         HttpContext httpContext,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken) => ReadAsync(key, httpContext, cancellationToken, removeCorrupt: true);
+
+    private async Task<AuthenticationTicket?> ReadAsync(string key, HttpContext httpContext,
+        CancellationToken cancellationToken, bool removeCorrupt)
     {
         var bytes = await cache.GetAsync(key, cancellationToken);
         if (bytes is null)
@@ -71,14 +75,23 @@ public sealed class DistributedTicketStore : ITicketStore
 
         try
         {
-            return TicketSerializer.Default.Deserialize(protector.Unprotect(bytes));
+            var ticket = TicketSerializer.Default.Deserialize(protector.Unprotect(bytes));
+            if (removeCorrupt && ticket is not null) httpContext.Items[SessionKeyItem] = key;
+            return ticket;
         }
         catch (CryptographicException)
         {
-            await cache.RemoveAsync(key, cancellationToken);
+            if (removeCorrupt) await cache.RemoveAsync(key, cancellationToken);
             return null;
         }
     }
+
+    // The key comes only from the genuine cookie handler's protected opaque ticket.
+    // Fresh reads do not renew or recreate a missing session, and are not cache CAS.
+    internal Task<AuthenticationTicket?> RetrieveCurrentAsync(HttpContext context, CancellationToken token) =>
+        context.Items.TryGetValue(SessionKeyItem, out var value) && value is string key
+            ? ReadAsync(key, context, token, removeCorrupt: false)
+            : Task.FromResult<AuthenticationTicket?>(null);
 
     /// <inheritdoc />
     public Task RemoveAsync(string key) =>

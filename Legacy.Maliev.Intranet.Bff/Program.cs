@@ -292,6 +292,20 @@ builder.Services.AddHttpClient<InvoiceFileProxy>(client =>
 }).RemoveAllResilienceHandlers()
     .AddHttpMessageHandler<LegacyServiceAuthenticationHandler>();
 builder.Services.AddScoped<InvoiceDetailAggregator>();
+builder.Services.AddOptions<QuotationQualificationOptions>()
+    .Bind(builder.Configuration.GetSection("QuotationQualification"));
+builder.Services.AddHttpClient<QuotationQualificationClient>(client =>
+{
+    client.BaseAddress = new Uri(builder.Configuration["Services:Quotation"]
+        ?? "https+http://legacy-maliev-quotation-service");
+    client.Timeout = TimeSpan.FromSeconds(10);
+}).RemoveAllResilienceHandlers()
+    .ConfigurePrimaryHttpMessageHandler((handler, _) =>
+    {
+        if (handler is SocketsHttpHandler sockets) sockets.AllowAutoRedirect = false;
+        else if (handler is HttpClientHandler http) http.AllowAutoRedirect = false;
+        else throw new InvalidOperationException("Unsupported qualification transport handler.");
+    });
 builder.Services.AddHttpClient<QuotationRequestsProxy>(client =>
 {
     client.BaseAddress = new Uri(builder.Configuration["Services:Quotation"]

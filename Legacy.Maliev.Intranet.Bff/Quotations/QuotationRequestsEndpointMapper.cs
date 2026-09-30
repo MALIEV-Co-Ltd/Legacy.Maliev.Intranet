@@ -55,21 +55,22 @@ internal static class QuotationRequestsEndpointMapper
         catch (Exception exception) when (Bounded(exception, token)) { return Unavailable(); }
     }
 
-    public static async Task<IResult> QualificationReceiptAsync(int id, QuotationRequestsProxy requests, HttpContext context, CancellationToken token)
+    public static async Task<IResult> QualificationReceiptAsync(int id, QuotationQualificationClient requests, HttpContext context, CancellationToken token)
     {
         if (id <= 0) return Results.BadRequest();
         try
         {
-            using var response = await requests.GetQualificationReceiptAsync(id, token);
+            using var response = await requests.GetQualificationReceiptAsync(id, context, token);
             if (response.StatusCode == HttpStatusCode.NotFound) return Results.NotFound();
             var failure = Failure(response, context); if (failure is not null) return failure;
             var receipt = await response.Content.ReadFromJsonAsync<QuotationQualificationReceipt>(token);
             return receipt is null || receipt.RequestId != id ? Invalid() : Results.Ok(receipt);
         }
+        catch (System.Text.Json.JsonException) { return Invalid(); }
         catch (Exception exception) when (Bounded(exception, token)) { return Unavailable(); }
     }
 
-    public static async Task<IResult> UpdateQualificationAsync(int id, QuotationQualificationUpdate input, QuotationRequestsProxy requests, HttpContext context, CancellationToken token)
+    public static async Task<IResult> UpdateQualificationAsync(int id, QuotationQualificationUpdate input, QuotationQualificationClient requests, HttpContext context, CancellationToken token)
     {
         if (id <= 0
             || string.IsNullOrWhiteSpace(input.State)
@@ -83,13 +84,14 @@ internal static class QuotationRequestsEndpointMapper
 
         try
         {
-            using var response = await requests.UpdateQualificationAsync(id, input, token);
+            using var response = await requests.UpdateQualificationAsync(id, input, context, token);
             if (response.StatusCode == HttpStatusCode.NotFound) return Results.NotFound();
             if (response.StatusCode == HttpStatusCode.Conflict) return Results.Conflict();
             var failure = Failure(response, context); if (failure is not null) return failure;
             var receipt = await response.Content.ReadFromJsonAsync<QuotationQualificationReceipt>(token);
             return receipt is null || receipt.RequestId != id ? Invalid() : Results.Ok(receipt);
         }
+        catch (System.Text.Json.JsonException) { return Invalid(); }
         catch (Exception exception) when (Bounded(exception, token)) { return Unavailable(); }
     }
 
