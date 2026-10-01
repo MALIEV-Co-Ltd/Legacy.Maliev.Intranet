@@ -33,6 +33,7 @@ public static class LegacyDataProtection
         {
             builder.Services.AddDistributedMemoryCache();
             builder.Services.AddSingleton<IDataProtectionProvider>(new EphemeralDataProtectionProvider());
+            builder.Services.AddSingleton<ISessionTicketPersistence, TestingSessionTicketPersistence>();
             return builder;
         }
 
@@ -60,6 +61,7 @@ public static class LegacyDataProtection
         redisOptions.SyncTimeout = 10_000;
         var resources = CreateResources(certificatePfxBase64, certificatePassword, redisOptions);
         builder.Services.AddSingleton(_ => resources);
+        builder.Services.AddSingleton<ISessionTicketPersistence, RedisSessionTicketPersistence>();
         // The Data Protection multiplexer is also the shared Intranet session/cache
         // boundary. Register it in readiness so a disconnected Redis instance cannot
         // leave either host reporting healthy while cookie/session state is unavailable.

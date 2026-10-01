@@ -71,7 +71,7 @@ public sealed class EmployeeSessionService(
         var refreshToken = result.Properties.GetTokenValue(RefreshToken);
         if (string.IsNullOrWhiteSpace(refreshToken))
         {
-            await context.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+            await SignOutObservedAsync(context);
             return new(EmployeeAccessTokenStatus.Unauthenticated, null, []);
         }
 
@@ -120,7 +120,7 @@ public sealed class EmployeeSessionService(
             }
 
             if (reconciliation.MaySignOut)
-                await context.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+                await SignOutObservedAsync(context);
             return new(EmployeeAccessTokenStatus.Unauthenticated, null, []);
         }
 
@@ -130,21 +130,41 @@ public sealed class EmployeeSessionService(
             var reconciliation = await TryReadRenewedAccessTokenAsync(context, refreshToken, expectedEmployeeId, cancellationToken);
             if (reconciliation.Result is not null) return reconciliation.Result;
             if (reconciliation.MaySignOut)
-                await context.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+                await SignOutObservedAsync(context);
             return new(EmployeeAccessTokenStatus.Unauthenticated, null, []);
         }
 
-        StoreTokens(result.Properties, refreshed.Tokens);
+        var renewedProperties = new AuthenticationProperties(
+            new Dictionary<string, string?>(result.Properties.Items),
+            new Dictionary<string, object?>(result.Properties.Parameters));
+        StoreTokens(renewedProperties, refreshed.Tokens);
         var refreshedClaims = CreateIdentityClaims(refreshed.Identity);
         var refreshedPrincipal = new ClaimsPrincipal(new ClaimsIdentity(
             refreshedClaims,
             CookieAuthenticationDefaults.AuthenticationScheme,
             ClaimTypes.Name,
             ClaimTypes.Role));
-        await context.SignInAsync(
-            CookieAuthenticationDefaults.AuthenticationScheme,
-            refreshedPrincipal,
-            result.Properties);
+        try
+        {
+            await context.SignInAsync(
+                CookieAuthenticationDefaults.AuthenticationScheme,
+                refreshedPrincipal,
+                renewedProperties);
+            cancellationToken.ThrowIfCancellationRequested();
+        }
+        catch (SessionRenewalRejectedException)
+        {
+            var reconciliation = await TryReadRenewedAccessTokenAsync(context, refreshToken, expectedEmployeeId, cancellationToken);
+            return reconciliation.Result ?? new(EmployeeAccessTokenStatus.Unauthenticated, null, []);
+        }
+        catch (Exception) when (!cancellationToken.IsCancellationRequested)
+        {
+            // Lost acknowledgements and provider cancellation are not proof of renewal.
+            // Re-observe committed state without logging provider details or credentials.
+            logger.LogWarning("Employee session renewal was unavailable; checking committed session state.");
+            var reconciliation = await TryReadRenewedAccessTokenAsync(context, refreshToken, expectedEmployeeId, cancellationToken);
+            return reconciliation.Result ?? new(EmployeeAccessTokenStatus.Unavailable, null, []);
+        }
         return Available(refreshed.Tokens.AccessToken, refreshedPrincipal);
     }
 
@@ -175,9 +195,9 @@ public sealed class EmployeeSessionService(
                 : (await context.AuthenticateAsync(CookieAuthenticationDefaults.AuthenticationScheme)).Ticket;
             cancellationToken.ThrowIfCancellationRequested();
         }
-        catch (Exception exception) when (exception is not OperationCanceledException && !cancellationToken.IsCancellationRequested)
+        catch (Exception) when (!cancellationToken.IsCancellationRequested)
         {
-            logger.LogWarning(exception, "Employee session reconciliation was unavailable; preserving the opaque session for retry.");
+            logger.LogWarning("Employee session reconciliation was unavailable; preserving the opaque session for retry.");
             return (new(EmployeeAccessTokenStatus.Unavailable, null, []), false);
         }
         if (current is null || current.Properties.ExpiresUtc is not { } ticketExpiresAt ||
@@ -208,6 +228,17 @@ public sealed class EmployeeSessionService(
         return (Available(currentAccessToken, current.Principal), false);
     }
 
+    private static async Task SignOutObservedAsync(HttpContext context)
+    {
+        context.RequestServices.GetService<DistributedTicketStore>()?.MarkConditionalTeardown(context);
+        try { await context.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme); }
+        catch (SessionConditionalTeardownRejectedException)
+        {
+            // CookieHandler removes the session before emitting deletion. A lost comparison
+            // must preserve the same-key peer cookie and still leave this request unauthenticated.
+        }
+    }
+
     /// <summary>Revokes the refresh family and always clears the local session.</summary>
     public async Task SignOutAsync(HttpContext context, CancellationToken cancellationToken)
     {
@@ -225,6 +256,7 @@ public sealed class EmployeeSessionService(
             }
         }
 
+        context.RequestServices.GetService<DistributedTicketStore>()?.MarkExplicitRevocation(context);
         await context.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
     }
 
