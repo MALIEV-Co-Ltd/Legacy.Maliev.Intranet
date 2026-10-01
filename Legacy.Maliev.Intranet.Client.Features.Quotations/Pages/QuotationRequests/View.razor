@@ -22,6 +22,7 @@
         <header class="operations-page-header"><div><h1>@Text["Heading", detail.Request.Id]</h1><p>@Text["Description"]</p></div><LegacyLink Href="/QuotationRequests/Index" Role="LegacyLinkRole.Navigation" AriaLabel="@Text["Back"]">@Text["Back"]</LegacyLink></header>
         <div class="quotation-request-actions"><LegacyLink Href="@($"/Quotations/Create?sourceRequestId={detail.Request.Id}")" Role="LegacyLinkRole.Navigation" AriaLabel="@Text["CreateLinkedQuotation"]">@Text["CreateLinkedQuotation"]</LegacyLink></div>
         @if (notice is not null) { <ShadcnAlert AlertRole="ShadcnAlertRole.Status"><ShadcnAlertDescription>@notice</ShadcnAlertDescription></ShadcnAlert> }
+        @if (saveError is not null) { <ShadcnAlert Variant="ShadcnAlertVariant.Destructive" AlertRole="ShadcnAlertRole.Alert"><ShadcnAlertDescription>@saveError</ShadcnAlertDescription></ShadcnAlert> }
         @if (finderMetadata is not null)
         {
             <section data-service-finder-context aria-labelledby="finder-context-heading">
@@ -116,6 +117,7 @@
     private bool loading = true;
     private bool submitting;
     private string? error;
+    private string? saveError;
     private string? notice;
     private QuotationQualificationReceipt? qualification;
     private QualificationEdit qualificationEdit = new();
@@ -189,15 +191,15 @@
         if (detail is null || session?.CsrfToken is null || submitting) return;
         using var request = new HttpRequestMessage(HttpMethod.Put, $"/bff/quotation-requests/{detail.Request.Id}") { Content = JsonContent.Create(edit.ToRequest(detail.Request.InternalComment)) };
         request.Headers.Add("X-CSRF-TOKEN", session.CsrfToken);
-        submitting = true;
+        submitting = true; notice = null; saveError = null;
         try
         {
             using var response = await Http.SendAsync(request);
-            if (response.StatusCode == HttpStatusCode.Conflict) { error = Text["Conflict"]; return; }
-            if (!response.IsSuccessStatusCode) { error = ErrorFor(response.StatusCode); return; }
+            if (response.StatusCode == HttpStatusCode.Conflict) { saveError = Text["Conflict"]; return; }
+            if (!response.IsSuccessStatusCode) { saveError = ErrorFor(response.StatusCode); return; }
             notice = Text["Saved"]; await LoadAsync();
         }
-        catch (HttpRequestException) { error = Text["Unavailable"]; }
+        catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException) { saveError = Text["Unavailable"]; }
         finally { submitting = false; }
     }
 

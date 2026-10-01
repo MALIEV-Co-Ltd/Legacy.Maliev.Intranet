@@ -168,7 +168,7 @@ public sealed class QuotationRequestFinderEnvelopeHttpTests
         SetEditNote(view, "stale staff note");
         await InvokeTaskAsync(view, "SaveAsync");
 
-        Assert.Equal("Conflict", Field<string>(view, "error"));
+        Assert.Equal("Conflict", Field<string>(view, "saveError"));
         Assert.Null(Field<string?>(view, "notice"));
         Assert.Equal(Envelope, downstream.InternalComment);
         Assert.Equal(originalDetailCalls, downstream.DetailCalls);
@@ -187,7 +187,7 @@ public sealed class QuotationRequestFinderEnvelopeHttpTests
         SetEditNote(view, "unauthorized staff note");
         await InvokeTaskAsync(view, "SaveAsync");
 
-        Assert.Equal("Forbidden", Field<string>(view, "error"));
+        Assert.Equal("Forbidden", Field<string>(view, "saveError"));
         Assert.Equal(0, downstream.UpdateCalls);
         Assert.Equal(Envelope, downstream.InternalComment);
     }
