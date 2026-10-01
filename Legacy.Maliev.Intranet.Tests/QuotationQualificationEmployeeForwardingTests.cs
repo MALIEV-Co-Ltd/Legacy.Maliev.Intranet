@@ -542,7 +542,12 @@ public sealed class QuotationQualificationEmployeeForwardingTests
                 if (boundary == "expired-ticket") ticket.Properties.ExpiresUtc = scenario.Clock.GetUtcNow().AddMinutes(-1);
                 if (boundary == "expired-access") ticket.Properties.UpdateTokenValue("legacy_access_expires_at", scenario.Clock.GetUtcNow().AddMinutes(1).ToString("O"));
                 if (boundary == "blank-access") ticket.Properties.UpdateTokenValue("legacy_access_token", "");
-                await store.RenewAsync(key, ticket);
+                // Adversarial peer-state seeding, not an authorized renewal: production CAS
+                // correctly rejects unobserved/expired state. Keep the original reconciliation guards.
+                var protector = factory.Services.GetRequiredService<Microsoft.AspNetCore.DataProtection.IDataProtectionProvider>()
+                    .CreateProtector("Legacy.Maliev.Intranet.AuthenticationTicketStore.v1");
+                await cache.SetAsync(key, protector.Protect(TicketSerializer.Default.Serialize(ticket)),
+                    new DistributedCacheEntryOptions { AbsoluteExpirationRelativeToNow = TimeSpan.FromHours(1) });
             }
             var before = await cache.GetAsync(key);
             scenario.FailCacheRead = boundary == "cache-outage";
