@@ -60,4 +60,54 @@
   <data name="QualificationHistory" xml:space="preserve"><value>Audit history</value></data>
   <data name="QualificationHistoryEmpty" xml:space="preserve"><value>No qualification changes have been recorded.</value></data>
   <data name="CreateLinkedQuotation" xml:space="preserve"><value>Create linked quotation</value></data>
+  <data name="FinderContext" xml:space="preserve"><value>Service finder context</value></data>
+  <data name="FinderRecommended" xml:space="preserve"><value>Recommended</value></data>
+  <data name="FinderPath" xml:space="preserve"><value>Path</value></data>
+  <data name="Finder_files" xml:space="preserve"><value>Files</value></data>
+  <data name="Finder_service" xml:space="preserve"><value>Intent</value></data>
+  <data name="Finder_material" xml:space="preserve"><value>Material</value></data>
+  <data name="Finder_quantity" xml:space="preserve"><value>Quantity</value></data>
+  <data name="Finder_end-use" xml:space="preserve"><value>End use</value></data>
+  <data name="Finder_performance" xml:space="preserve"><value>Performance</value></data>
+  <data name="Finder_environment" xml:space="preserve"><value>Environment</value></data>
+  <data name="Finder_files-3d" xml:space="preserve"><value>3D model available</value></data>
+  <data name="Finder_files-2d" xml:space="preserve"><value>2D drawing available</value></data>
+  <data name="Finder_files-image" xml:space="preserve"><value>Reference image available</value></data>
+  <data name="Finder_files-none" xml:space="preserve"><value>No production file yet</value></data>
+  <data name="Finder_files-real-part" xml:space="preserve"><value>Physical part available</value></data>
+  <data name="Finder_service-machining" xml:space="preserve"><value>CNC machining</value></data>
+  <data name="Finder_service-3d" xml:space="preserve"><value>3D service</value></data>
+  <data name="Finder_service-molding" xml:space="preserve"><value>Molding</value></data>
+  <data name="Finder_service-unsure" xml:space="preserve"><value>Needs service guidance</value></data>
+  <data name="Finder_material-metal" xml:space="preserve"><value>Metal</value></data>
+  <data name="Finder_material-standard-plastic" xml:space="preserve"><value>Standard plastic</value></data>
+  <data name="Finder_material-resin" xml:space="preserve"><value>Resin</value></data>
+  <data name="Finder_material-plastic" xml:space="preserve"><value>Engineering plastic</value></data>
+  <data name="Finder_material-silicone" xml:space="preserve"><value>Silicone</value></data>
+  <data name="Finder_material-unsure" xml:space="preserve"><value>Material undecided</value></data>
+  <data name="Finder_quantity-1-10" xml:space="preserve"><value>1-10 units</value></data>
+  <data name="Finder_quantity-11-100" xml:space="preserve"><value>11-100 units</value></data>
+  <data name="Finder_quantity-101-1000" xml:space="preserve"><value>101-1,000 units</value></data>
+  <data name="Finder_quantity-over-1000" xml:space="preserve"><value>More than 1,000 units</value></data>
+  <data name="Finder_use-prototype" xml:space="preserve"><value>Prototype</value></data>
+  <data name="Finder_use-industrial" xml:space="preserve"><value>Industrial use</value></data>
+  <data name="Finder_use-replacement" xml:space="preserve"><value>Replacement part</value></data>
+  <data name="Finder_use-consumer" xml:space="preserve"><value>Consumer product</value></data>
+  <data name="Finder_performance-strength" xml:space="preserve"><value>Strength and durability</value></data>
+  <data name="Finder_performance-appearance" xml:space="preserve"><value>Appearance and fine detail</value></data>
+  <data name="Finder_performance-flexibility" xml:space="preserve"><value>Flexibility and soft touch</value></data>
+  <data name="Finder_performance-temperature" xml:space="preserve"><value>Heat or chemical resistance</value></data>
+  <data name="Finder_performance-unsure" xml:space="preserve"><value>Performance undecided</value></data>
+  <data name="Finder_environment-indoor" xml:space="preserve"><value>Indoor and controlled</value></data>
+  <data name="Finder_environment-outdoor" xml:space="preserve"><value>Outdoor or UV exposure</value></data>
+  <data name="Finder_environment-wet" xml:space="preserve"><value>Water or moisture</value></data>
+  <data name="Finder_environment-heat-chemical" xml:space="preserve"><value>Heat, chemicals, or harsh conditions</value></data>
+  <data name="Finder_environment-unsure" xml:space="preserve"><value>Environment undecided</value></data>
+  <data name="Finder_custom" xml:space="preserve"><value>Project review</value></data>
+  <data name="Finder_cnc" xml:space="preserve"><value>CNC machining</value></data>
+  <data name="Finder_printing" xml:space="preserve"><value>3D printing</value></data>
+  <data name="Finder_scanning" xml:space="preserve"><value>3D scanning</value></data>
+  <data name="Finder_design" xml:space="preserve"><value>3D design</value></data>
+  <data name="Finder_silicone" xml:space="preserve"><value>Silicone casting</value></data>
+  <data name="Finder_injection" xml:space="preserve"><value>Low-volume injection molding</value></data>
 </root>

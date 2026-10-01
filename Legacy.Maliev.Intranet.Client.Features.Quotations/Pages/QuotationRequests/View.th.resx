@@ -60,4 +60,54 @@
   <data name="QualificationHistory" xml:space="preserve"><value>ประวัติการเปลี่ยนแปลง</value></data>
   <data name="QualificationHistoryEmpty" xml:space="preserve"><value>ยังไม่มีการเปลี่ยนแปลงผลการประเมิน</value></data>
   <data name="CreateLinkedQuotation" xml:space="preserve"><value>สร้างใบเสนอราคาที่เชื่อมโยงกับคำขอนี้</value></data>
+  <data name="FinderContext" xml:space="preserve"><value>ข้อมูลจากตัวช่วยเลือกบริการ</value></data>
+  <data name="FinderRecommended" xml:space="preserve"><value>บริการที่แนะนำ</value></data>
+  <data name="FinderPath" xml:space="preserve"><value>ลำดับบริการ</value></data>
+  <data name="Finder_files" xml:space="preserve"><value>ไฟล์</value></data>
+  <data name="Finder_service" xml:space="preserve"><value>บริการที่ต้องการ</value></data>
+  <data name="Finder_material" xml:space="preserve"><value>วัสดุ</value></data>
+  <data name="Finder_quantity" xml:space="preserve"><value>จำนวน</value></data>
+  <data name="Finder_end-use" xml:space="preserve"><value>การใช้งาน</value></data>
+  <data name="Finder_performance" xml:space="preserve"><value>คุณสมบัติ</value></data>
+  <data name="Finder_environment" xml:space="preserve"><value>สภาพแวดล้อม</value></data>
+  <data name="Finder_files-3d" xml:space="preserve"><value>มีโมเดลสามมิติ</value></data>
+  <data name="Finder_files-2d" xml:space="preserve"><value>มีแบบสองมิติ</value></data>
+  <data name="Finder_files-image" xml:space="preserve"><value>มีภาพอ้างอิง</value></data>
+  <data name="Finder_files-none" xml:space="preserve"><value>ยังไม่มีไฟล์สำหรับผลิต</value></data>
+  <data name="Finder_files-real-part" xml:space="preserve"><value>มีชิ้นงานจริง</value></data>
+  <data name="Finder_service-machining" xml:space="preserve"><value>งานกัด CNC</value></data>
+  <data name="Finder_service-3d" xml:space="preserve"><value>บริการสามมิติ</value></data>
+  <data name="Finder_service-molding" xml:space="preserve"><value>งานแม่พิมพ์</value></data>
+  <data name="Finder_service-unsure" xml:space="preserve"><value>ต้องการคำแนะนำบริการ</value></data>
+  <data name="Finder_material-metal" xml:space="preserve"><value>โลหะ</value></data>
+  <data name="Finder_material-standard-plastic" xml:space="preserve"><value>พลาสติกทั่วไป</value></data>
+  <data name="Finder_material-resin" xml:space="preserve"><value>เรซิน</value></data>
+  <data name="Finder_material-plastic" xml:space="preserve"><value>พลาสติกวิศวกรรม</value></data>
+  <data name="Finder_material-silicone" xml:space="preserve"><value>ซิลิโคน</value></data>
+  <data name="Finder_material-unsure" xml:space="preserve"><value>ยังไม่เลือกวัสดุ</value></data>
+  <data name="Finder_quantity-1-10" xml:space="preserve"><value>1-10 ชิ้น</value></data>
+  <data name="Finder_quantity-11-100" xml:space="preserve"><value>11-100 ชิ้น</value></data>
+  <data name="Finder_quantity-101-1000" xml:space="preserve"><value>101-1,000 ชิ้น</value></data>
+  <data name="Finder_quantity-over-1000" xml:space="preserve"><value>มากกว่า 1,000 ชิ้น</value></data>
+  <data name="Finder_use-prototype" xml:space="preserve"><value>ชิ้นงานต้นแบบ</value></data>
+  <data name="Finder_use-industrial" xml:space="preserve"><value>ใช้งานในอุตสาหกรรม</value></data>
+  <data name="Finder_use-replacement" xml:space="preserve"><value>อะไหล่ทดแทน</value></data>
+  <data name="Finder_use-consumer" xml:space="preserve"><value>ผลิตภัณฑ์สำหรับผู้บริโภค</value></data>
+  <data name="Finder_performance-strength" xml:space="preserve"><value>ความแข็งแรงและความทนทาน</value></data>
+  <data name="Finder_performance-appearance" xml:space="preserve"><value>รูปลักษณ์และรายละเอียด</value></data>
+  <data name="Finder_performance-flexibility" xml:space="preserve"><value>ความยืดหยุ่นและสัมผัสนุ่ม</value></data>
+  <data name="Finder_performance-temperature" xml:space="preserve"><value>ทนความร้อนหรือสารเคมี</value></data>
+  <data name="Finder_performance-unsure" xml:space="preserve"><value>ยังไม่เลือกคุณสมบัติ</value></data>
+  <data name="Finder_environment-indoor" xml:space="preserve"><value>ภายในอาคารที่ควบคุมสภาพแวดล้อม</value></data>
+  <data name="Finder_environment-outdoor" xml:space="preserve"><value>กลางแจ้งหรือแสงยูวี</value></data>
+  <data name="Finder_environment-wet" xml:space="preserve"><value>น้ำหรือความชื้น</value></data>
+  <data name="Finder_environment-heat-chemical" xml:space="preserve"><value>ความร้อน สารเคมี หรือสภาพรุนแรง</value></data>
+  <data name="Finder_environment-unsure" xml:space="preserve"><value>ยังไม่เลือกสภาพแวดล้อม</value></data>
+  <data name="Finder_custom" xml:space="preserve"><value>ตรวจสอบโครงการ</value></data>
+  <data name="Finder_cnc" xml:space="preserve"><value>งานกัด CNC</value></data>
+  <data name="Finder_printing" xml:space="preserve"><value>พิมพ์สามมิติ</value></data>
+  <data name="Finder_scanning" xml:space="preserve"><value>สแกนสามมิติ</value></data>
+  <data name="Finder_design" xml:space="preserve"><value>ออกแบบสามมิติ</value></data>
+  <data name="Finder_silicone" xml:space="preserve"><value>หล่อซิลิโคน</value></data>
+  <data name="Finder_injection" xml:space="preserve"><value>ฉีดพลาสติกจำนวนน้อย</value></data>
 </root>
