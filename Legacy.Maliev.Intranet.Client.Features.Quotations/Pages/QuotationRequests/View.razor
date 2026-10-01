@@ -1,4 +1,5 @@
 @page "/QuotationRequests/View"
+@using Legacy.Maliev.Intranet.Client.Features.Quotations.Models
 @attribute [Authorize]
 @inject HttpClient Http
 @inject NavigationManager Navigation
@@ -21,6 +22,24 @@
         <header class="operations-page-header"><div><h1>@Text["Heading", detail.Request.Id]</h1><p>@Text["Description"]</p></div><LegacyLink Href="/QuotationRequests/Index" Role="LegacyLinkRole.Navigation" AriaLabel="@Text["Back"]">@Text["Back"]</LegacyLink></header>
         <div class="quotation-request-actions"><LegacyLink Href="@($"/Quotations/Create?sourceRequestId={detail.Request.Id}")" Role="LegacyLinkRole.Navigation" AriaLabel="@Text["CreateLinkedQuotation"]">@Text["CreateLinkedQuotation"]</LegacyLink></div>
         @if (notice is not null) { <ShadcnAlert AlertRole="ShadcnAlertRole.Status"><ShadcnAlertDescription>@notice</ShadcnAlertDescription></ShadcnAlert> }
+        @if (finderMetadata is not null)
+        {
+            <section data-service-finder-context aria-labelledby="finder-context-heading">
+                <ShadcnAlert AlertRole="ShadcnAlertRole.Status">
+                    <ShadcnAlertDescription>
+                        <h2 id="finder-context-heading">@Text["FinderContext"]</h2>
+                        <dl>
+                            @foreach (var answer in finderMetadata.Answers)
+                            {
+                                <dt>@Text[$"Finder_{answer.Key}"]</dt><dd>@Text[$"Finder_{answer.Value}"]</dd>
+                            }
+                            <dt>@Text["FinderRecommended"]</dt><dd>@string.Join(", ", finderMetadata.RecommendedServiceIds.Select(id => Text[$"Finder_{id}"].Value))</dd>
+                            <dt>@Text["FinderPath"]</dt><dd>@string.Join(" → ", finderMetadata.FinderPath.Select(id => Text[$"Finder_{id}"].Value))</dd>
+                        </dl>
+                    </ShadcnAlertDescription>
+                </ShadcnAlert>
+            </section>
+        }
 
         <EditForm EditContext="@editContext" OnValidSubmit="SaveAsync" class="quotation-request-form" aria-busy="@submitting.ToString().ToLowerInvariant()">
             <DataAnnotationsValidator />
@@ -90,6 +109,7 @@
 @code {
     [SupplyParameterFromQuery(Name = "id")] public int? Id { get; set; }
     private QuotationRequestDetail? detail;
+    private ServiceFinderMetadata? finderMetadata;
     private Edit edit = new();
     private EditContext editContext = null!;
     private EmployeeSessionSummary? session;
@@ -108,7 +128,7 @@
     protected override async Task OnParametersSetAsync() => await LoadAsync();
     private async Task LoadAsync()
     {
-        loading = true; error = null;
+        loading = true; error = null; finderMetadata = null;
         if (Id is not > 0) { error = Text["InvalidId"]; loading = false; return; }
         try
         {
@@ -120,6 +140,7 @@
             detail = await response.Content.ReadFromJsonAsync<QuotationRequestDetail>();
             if (detail is null) { error = Text["Invalid"]; return; }
             edit = Edit.From(detail.Request);
+            if (ServiceFinderMetadataEnvelope.TryRead(detail.Request.InternalComment, out finderMetadata)) edit.InternalComment = finderMetadata!.OperatorComment;
             editContext = new EditContext(edit);
             await LoadQualificationAsync(detail.Request.Id);
         }
@@ -166,7 +187,7 @@
     private async Task SaveAsync()
     {
         if (detail is null || session?.CsrfToken is null || submitting) return;
-        using var request = new HttpRequestMessage(HttpMethod.Put, $"/bff/quotation-requests/{detail.Request.Id}") { Content = JsonContent.Create(edit.ToRequest()) };
+        using var request = new HttpRequestMessage(HttpMethod.Put, $"/bff/quotation-requests/{detail.Request.Id}") { Content = JsonContent.Create(edit.ToRequest(detail.Request.InternalComment)) };
         request.Headers.Add("X-CSRF-TOKEN", session.CsrfToken);
         submitting = true;
         try
@@ -187,7 +208,7 @@
     {
         public string? FirstName { get; set; } public string? LastName { get; set; } public string? Email { get; set; } public string? TelephoneNumber { get; set; } public string? Country { get; set; } public string? CompanyName { get; set; } public string? TaxIdentification { get; set; } public string? Message { get; set; } public string? InternalComment { get; set; } public bool? Done { get; set; } public DateTime? ModifiedDate { get; set; }
         public static Edit From(QuotationRequestItem value) => new() { FirstName = value.FirstName, LastName = value.LastName, Email = value.Email, TelephoneNumber = value.TelephoneNumber, Country = value.Country, CompanyName = value.CompanyName, TaxIdentification = value.TaxIdentification, Message = value.Message, InternalComment = value.InternalComment, Done = value.Done, ModifiedDate = value.ModifiedDate };
-        public QuotationRequestUpdate ToRequest() => new(FirstName, LastName, Email, TelephoneNumber, Country, CompanyName, TaxIdentification, Message, InternalComment, Done, ModifiedDate);
+        public QuotationRequestUpdate ToRequest(string? originalComment) => new(FirstName, LastName, Email, TelephoneNumber, Country, CompanyName, TaxIdentification, Message, ServiceFinderMetadataEnvelope.MergeOperatorComment(originalComment, InternalComment), Done, ModifiedDate);
     }
     private sealed class QualificationEdit
     {
