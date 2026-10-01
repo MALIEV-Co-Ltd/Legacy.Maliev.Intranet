@@ -83,4 +83,8 @@ public sealed record OrderDetailPage(
     OrderStatusItem? CurrentStatus,
     IReadOnlyList<OrderStatusItem> AvailableStatuses,
     IReadOnlyList<OrderStatusHistoryItem> History,
-    IReadOnlyList<OrderFileItem> Files);
+    IReadOnlyList<OrderFileItem> Files)
+{
+    /// <summary>Initial display entry when history was not found; this is not a persisted history record.</summary>
+    public OrderStatusItem? InitialHistoryEntry { get; init; }
+}
