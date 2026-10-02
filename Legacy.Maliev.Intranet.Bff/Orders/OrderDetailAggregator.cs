@@ -42,7 +42,7 @@ public sealed class OrderDetailAggregator(
 
         using var latestResponse = await latestResponseTask;
         var latest = latestResponse.StatusCode == HttpStatusCode.NotFound
-            ? null
+            ? CreateInitialStatus(order.CreatedDate)
             : await ReadSuccessfulAsync<OrderStatusItem>(latestResponse, cancellationToken);
         IReadOnlyList<OrderStatusItem> available = [];
         if (latest is not null)
@@ -76,8 +76,15 @@ public sealed class OrderDetailAggregator(
             latest,
             latest is null ? available : available.Where(item => item.Id != latest.Id).ToArray(),
             history,
-            resolvedFiles.Where(item => item.Uri is not null).ToArray());
+            resolvedFiles.Where(item => item.Uri is not null).ToArray())
+        {
+            InitialHistoryEntry = historyResponse.StatusCode == HttpStatusCode.NotFound
+                ? CreateInitialStatus(order.CreatedDate)
+                : null,
+        };
     }
+
+    private static OrderStatusItem CreateInitialStatus(DateTime? createdDate) => new(1, "New", "New order", createdDate, null);
 
     /// <summary>Gets only the server-owned values required to compose an order label.</summary>
     public async Task<OrderLabelData?> GetLabelAsync(int id, CancellationToken cancellationToken)

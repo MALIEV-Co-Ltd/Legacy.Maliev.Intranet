@@ -93,6 +93,10 @@ else if (page is not null)
             <ShadcnButton OnClick="TransitionAsync" Disabled="@(submitting || selectedStatus is null)">@Text["ApplyStatus"]</ShadcnButton>
         </div>
         <div class="order-history" tabindex="0"><ShadcnItemGroup>
+            @if (page.InitialHistoryEntry is { } initial)
+            {
+                <ShadcnItem Size="ShadcnItemSize.Small"><ShadcnItemContent><ShadcnItemTitle>@StatusLabel(initial.Name)</ShadcnItemTitle><ShadcnItemDescription>@LegacyPresentation.FormatUtcDateTime(initial.CreatedDate, CultureInfo.CurrentCulture, "-")</ShadcnItemDescription></ShadcnItemContent></ShadcnItem>
+            }
             @foreach (var item in page.History.OrderByDescending(value => value.CreatedDate))
             {
                 <ShadcnItem Size="ShadcnItemSize.Small"><ShadcnItemContent><ShadcnItemTitle>@StatusLabel(item.Name)</ShadcnItemTitle><ShadcnItemDescription>@LegacyPresentation.FormatUtcDateTime(item.CreatedDate, CultureInfo.CurrentCulture, "-")</ShadcnItemDescription></ShadcnItemContent></ShadcnItem>
