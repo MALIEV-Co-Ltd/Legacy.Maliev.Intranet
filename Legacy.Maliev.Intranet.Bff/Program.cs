@@ -34,6 +34,7 @@ using Polly;
 var builder = WebApplication.CreateBuilder(args);
 builder.WebHost.UseStaticWebAssets();
 builder.AddServiceDefaults();
+builder.AddPrivateRequestObservation("intranet-bff");
 builder.AddStandardMiddleware(options => options.EnableRequestLogging = true);
 builder.AddLegacyIntranetDataProtection();
 var allowLocalTestIdentity =
@@ -197,6 +198,7 @@ builder.Services.AddHttpClient<OrdersProxy>(client =>
         ?? throw new InvalidOperationException("Services:Order is required."));
     client.Timeout = TimeSpan.FromSeconds(10);
 }).RemoveAllResilienceHandlers()
+    .AddPrivateFailureOperationObservation("OrderService")
     .AddHttpMessageHandler<LegacyServiceAuthenticationHandler>()
     .AddResilienceHandler("order-index", pipeline =>
 {

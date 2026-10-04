@@ -351,7 +351,7 @@ public sealed class BffEmployeeAuthenticationContractTests
         {
             LoginAttempts++;
             Email = email;
-            Password = password;
+            this.Password = password;
             if (LoginException is not null)
             {
                 return Task.FromException<EmployeeLoginResult>(LoginException);

@@ -17,6 +17,7 @@ builder.Services.Configure<FormOptions>(options => options.MultipartBodyLengthLi
 builder.WebHost.ConfigureKestrel(options => options.Limits.MaxRequestBodySize = maximumRequestBytes);
 
 builder.AddServiceDefaults();
+builder.AddPrivateRequestObservation("intranet");
 builder.AddStandardMiddleware(options => options.EnableRequestLogging = true);
 builder.AddLegacyIntranetDataProtection();
 builder.Services.AddProblemDetails();
@@ -74,7 +75,8 @@ builder.Services.AddHttpClient<ILegacyCatalogClient, LegacyCatalogClient>(client
     client.BaseAddress = new Uri(builder.Configuration["Services:Catalog"]
         ?? throw new InvalidOperationException("Services:Catalog is required."));
     client.Timeout = TimeSpan.FromSeconds(10);
-}).AddHttpMessageHandler<LegacyServiceAuthenticationHandler>().AddStandardResilienceHandler();
+}).AddPrivateFailureOperationObservation("CatalogService")
+    .AddHttpMessageHandler<LegacyServiceAuthenticationHandler>().AddStandardResilienceHandler();
 builder.Services.AddHttpClient<ILegacyProcurementClient, LegacyProcurementClient>(client =>
 {
     client.BaseAddress = new Uri(builder.Configuration["Services:Procurement"]
