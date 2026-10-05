@@ -186,17 +186,59 @@ public sealed class OrderInitialStatusHttpTests(ITestOutputHelper output)
         Assert.Equal(91, entry.GetProperty("id").GetInt32());
         Assert.Equal(2, entry.GetProperty("orderStatusId").GetInt32());
         Assert.Equal("2030-07-16T00:00:00Z", entry.GetProperty("createdDate").GetString());
-        using (var context = RenderContext(client))
+        var realStages = new PresentationStages();
+        using (var context = RenderContext(client, realStages))
         {
             var page = Render(context);
-            page.WaitForAssertion(() => Assert.Equal(label, page.Find(".operations-status-pill").TextContent));
-            Assert.Contains(label, page.Find(".order-history").TextContent, StringComparison.Ordinal);
+            try
+            {
+                page.WaitForAssertion(() => Assert.Equal(label, page.Find(".operations-status-pill").TextContent));
+                Assert.Contains(label, page.Find(".order-history").TextContent, StringComparison.Ordinal);
+            }
+            finally
+            {
+                EmitPresentationWitness(page, realStages, "real-history");
+            }
         }
         upstream.HistoryBody = "[]";
-        using var emptyContext = RenderContext(client);
+        var emptyStages = new PresentationStages();
+        using var emptyContext = RenderContext(client, emptyStages);
         var emptyPage = Render(emptyContext);
-        emptyPage.WaitForAssertion(() => Assert.NotEmpty(emptyPage.FindAll(".order-history")));
-        Assert.True(string.IsNullOrWhiteSpace(emptyPage.Find(".order-history").TextContent));
+        try
+        {
+            emptyPage.WaitForAssertion(() => Assert.NotEmpty(emptyPage.FindAll(".order-history")));
+            Assert.True(string.IsNullOrWhiteSpace(emptyPage.Find(".order-history").TextContent));
+        }
+        finally
+        {
+            EmitPresentationWitness(emptyPage, emptyStages, "empty-history");
+        }
+
+        void EmitPresentationWitness(IRenderedComponent<Router> page, PresentationStages stages, string phase)
+        {
+            // Synthetic counters/presence only; never emit markup, paths, bodies or identity.
+            var routeCount = -1;
+            var routeRenderCounts = "unavailable";
+            var loading = -1;
+            var error = -1;
+            var workflow = -1;
+            try
+            {
+                var routes = page.FindComponents<OrderView>();
+                routeCount = routes.Count;
+                routeRenderCounts = string.Join(',', routes.Select(route => route.RenderCount));
+                loading = page.FindAll(".order-detail__loading").Count;
+                error = page.FindAll("[role='alert']").Count;
+                workflow = page.FindAll(".order-workflow-panel").Count;
+            }
+            catch (Exception)
+            {
+                // Observation must not replace an original assertion failure.
+            }
+            output.WriteLine("Synthetic order presentation: phase={0}; route components={1}; route component render counts=[{2}]; loading/error/workflow={3}/{4}/{5}; session started/completed={6}/{7}; detail started/completed={8}/{9}; other started/completed={10}/{11}",
+                phase, routeCount, routeRenderCounts, loading, error, workflow,
+                stages.Started(0), stages.Completed(0), stages.Started(1), stages.Completed(1), stages.Started(2), stages.Completed(2));
+        }
     }
 
     [Theory]
