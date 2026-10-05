@@ -14,6 +14,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Xunit.Abstractions;
 using BffProgram = Bff::Program;
 using OrderCatalogReferenceProxy = Bff::Legacy.Maliev.Intranet.Bff.Orders.OrderCatalogReferenceProxy;
 using OrderDetailProxy = Bff::Legacy.Maliev.Intranet.Bff.Orders.OrderDetailProxy;
@@ -25,7 +26,7 @@ using OrderView = Legacy.Maliev.Intranet.Client.Features.Orders.Pages.OrderDetai
 namespace Legacy.Maliev.Intranet.Tests;
 
 /// <summary>Actual BFF cookies/aggregator and actual routed component with controlled external transports.</summary>
-public sealed class OrderInitialStatusHttpTests
+public sealed class OrderInitialStatusHttpTests(ITestOutputHelper output)
 {
     [Theory]
     [InlineData(false)]
@@ -118,14 +119,38 @@ public sealed class OrderInitialStatusHttpTests
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var json = await response.Content.ReadFromJsonAsync<JsonElement>();
         Assert.Empty(json.GetProperty("history").EnumerateArray());
-        using var context = RenderContext(client);
+        var stages = new PresentationStages();
+        using var context = RenderContext(client, stages);
         var page = Render(context);
-        page.WaitForAssertion(() => Assert.NotEmpty(page.FindAll(".order-workflow-panel")));
-        var history = page.Find(".order-history");
-        Assert.Contains(label, history.TextContent, StringComparison.Ordinal);
-        Assert.Contains(missingCreatedDate ? "-" : culture == "en" ? "15 Jul 2030, 07:00" : "15 ก.ค. 2573, 07:00", history.TextContent, StringComparison.Ordinal);
-        Assert.DoesNotContain("Reviewed", history.TextContent, StringComparison.Ordinal);
-        Assert.All(upstream.Requests, item => Assert.StartsWith("GET ", item, StringComparison.Ordinal));
+        try
+        {
+            page.WaitForAssertion(() => Assert.NotEmpty(page.FindAll(".order-workflow-panel")));
+            var history = page.Find(".order-history");
+            Assert.Contains(label, history.TextContent, StringComparison.Ordinal);
+            Assert.Contains(missingCreatedDate ? "-" : culture == "en" ? "15 Jul 2030, 07:00" : "15 ก.ค. 2573, 07:00", history.TextContent, StringComparison.Ordinal);
+            Assert.DoesNotContain("Reviewed", history.TextContent, StringComparison.Ordinal);
+            Assert.All(upstream.Requests, item => Assert.StartsWith("GET ", item, StringComparison.Ordinal));
+        }
+        finally
+        {
+            // Test-owned synthetic stages only: never emit request paths, bodies or identity.
+            var routeComponents = -1;
+            var workflowPanels = -1;
+            try
+            {
+                routeComponents = page.FindComponents<OrderView>().Count;
+                workflowPanels = page.FindAll(".order-workflow-panel").Count;
+            }
+            catch (Exception)
+            {
+                // Observation is secondary and must not replace the original assertion failure.
+                routeComponents = -1;
+                workflowPanels = -1;
+            }
+            output.WriteLine("Synthetic presentation stages: route components={0}; workflow panels={1}; session started/completed={2}/{3}; detail started/completed={4}/{5}; other started/completed={6}/{7}",
+                routeComponents, workflowPanels,
+                stages.Started(0), stages.Completed(0), stages.Started(1), stages.Completed(1), stages.Started(2), stages.Completed(2));
+        }
     }
 
     [Theory]
@@ -310,11 +335,11 @@ public sealed class OrderInitialStatusHttpTests
         Assert.All(upstream.Requests, item => Assert.StartsWith("GET ", item, StringComparison.Ordinal));
     }
 
-    private static BunitContext RenderContext(HttpClient client)
+    private static BunitContext RenderContext(HttpClient client, PresentationStages? stages = null)
     {
         var context = new BunitContext();
         context.Services.AddLocalization();
-        context.Services.AddSingleton(new HttpClient(new BrowserBoundary(client)) { BaseAddress = new("https://localhost/") });
+        context.Services.AddSingleton(new HttpClient(new BrowserBoundary(client, stages)) { BaseAddress = new("https://localhost/") });
         context.JSInterop.Mode = JSRuntimeMode.Loose;
         context.Services.GetRequiredService<NavigationManager>().NavigateTo("/Orders/View?id=84");
         return context;
@@ -342,9 +367,29 @@ public sealed class OrderInitialStatusHttpTests
         public void Dispose() { CultureInfo.CurrentCulture = previous; CultureInfo.CurrentUICulture = previousUi; }
     }
 
-    private sealed class BrowserBoundary(HttpClient client) : HttpMessageHandler
+    private sealed class PresentationStages
     {
-        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) => client.GetAsync(request.RequestUri!.PathAndQuery, cancellationToken);
+        private readonly int[] started = new int[3];
+        private readonly int[] completed = new int[3];
+        public void Start(int stage) => Interlocked.Increment(ref started[stage]);
+        public void Complete(int stage) => Interlocked.Increment(ref completed[stage]);
+        public int Started(int stage) => Volatile.Read(ref started[stage]);
+        public int Completed(int stage) => Volatile.Read(ref completed[stage]);
+    }
+
+    private sealed class BrowserBoundary(HttpClient client, PresentationStages? stages = null) : HttpMessageHandler
+    {
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) =>
+            stages is null ? client.GetAsync(request.RequestUri!.PathAndQuery, cancellationToken) : SendObservedAsync(request, cancellationToken);
+
+        private async Task<HttpResponseMessage> SendObservedAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            var stage = request.RequestUri!.AbsolutePath switch { "/bff/session" => 0, "/bff/orders/84" => 1, _ => 2 };
+            stages?.Start(stage);
+            var response = await client.GetAsync(request.RequestUri.PathAndQuery, cancellationToken);
+            stages?.Complete(stage);
+            return response;
+        }
     }
 
     private static HttpClient Client(Factory factory) => factory.CreateClient(new() { BaseAddress = new("https://localhost/"), AllowAutoRedirect = false });
