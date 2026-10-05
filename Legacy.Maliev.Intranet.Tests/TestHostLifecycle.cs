@@ -70,17 +70,43 @@ internal static class TestHostLifecycle
 
         private void CaptureCore(RequestDelegate middleware)
         {
-            if (middleware.Target is not { } target || !visited.Add(target)) return;
+            if (middleware.Target is { } target) CaptureTarget(target);
+        }
+
+        private void CaptureTarget(object target)
+        {
+            if (!visited.Add(target)) return;
+            var type = target.GetType();
             // Minimal-host pipelines are already composed before the startup filter runs.
-            // Follow request delegates only, including Map/MapWhen branches, not arbitrary DI graphs.
-            foreach (var nested in target.GetType().GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
+            // The reviewed conventional-middleware binder stores the middleware instance
+            // as object; its instance owns the next RequestDelegate. Follow only that
+            // exact framework edge and request delegates, never arbitrary DI graphs.
+            if (type.DeclaringType?.FullName == "Microsoft.AspNetCore.Builder.UseMiddlewareExtensions+ReflectionMiddlewareBinder"
+                && type.Name.StartsWith("<>c__DisplayClass", StringComparison.Ordinal))
+            {
+                RequireReviewedVersion(type);
+                var instanceField = type.GetField("instance", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
+                    ?? throw new InvalidOperationException("Rate-limiter lifecycle workaround needs review for the binder instance field.");
+                if (instanceField.FieldType != typeof(object) || instanceField.GetValue(target) is not { } instance)
+                    throw new InvalidOperationException("Cannot capture the real middleware instance behind the reviewed binder.");
+                CaptureTarget(instance);
+            }
+            foreach (var nested in type.GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
                 .Select(field => field.GetValue(target)).OfType<RequestDelegate>()) Capture(nested);
-            if (target.GetType().FullName != "Microsoft.AspNetCore.RateLimiting.RateLimitingMiddleware") return;
-            var field = middleware.Target.GetType().GetField("_endpointLimiter", BindingFlags.Instance | BindingFlags.NonPublic)
+            if (type.FullName != "Microsoft.AspNetCore.RateLimiting.RateLimitingMiddleware") return;
+            RequireReviewedVersion(type);
+            var field = type.GetField("_endpointLimiter", BindingFlags.Instance | BindingFlags.NonPublic)
                 ?? throw new InvalidOperationException("Rate-limiter lifecycle workaround needs review for this ASP.NET Core version.");
-            if (field.GetValue(middleware.Target) is not PartitionedRateLimiter<HttpContext> limiter)
+            if (field.GetValue(target) is not PartitionedRateLimiter<HttpContext> limiter)
                 throw new InvalidOperationException("Cannot capture the real endpoint limiter for test-host disposal.");
             limiters.Add(limiter);
+        }
+
+        private static void RequireReviewedVersion(Type type)
+        {
+            var version = type.Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion;
+            if (version != "10.0.12" && version?.StartsWith("10.0.12+", StringComparison.Ordinal) != true)
+                throw new InvalidOperationException("Rate-limiter lifecycle workaround needs review for this ASP.NET Core version.");
         }
 
         public void Dispose()
