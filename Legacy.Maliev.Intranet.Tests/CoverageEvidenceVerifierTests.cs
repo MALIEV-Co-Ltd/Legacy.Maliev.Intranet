@@ -158,6 +158,36 @@ public sealed class CoverageEvidenceVerifierTests(ITestOutputHelper output)
     }
 
     [Fact]
+    public async Task Verify_IdenticalFreshRawAttachmentCopy_IsOneLogicalReport()
+    {
+        using var fixture = new EvidenceFixture(output);
+        Assert.Equal(0, (await fixture.RunAsync("Capture")).ExitCode);
+        fixture.WriteResults();
+        var attachment = Path.Combine(fixture.ResultsPath, "synthetic-run", "In", "synthetic-runner", "coverage.cobertura.xml");
+        Directory.CreateDirectory(Path.GetDirectoryName(attachment)!);
+        File.Copy(fixture.CoveragePath, attachment);
+        Assert.Equal(0, (await fixture.RunAsync("Verify")).ExitCode);
+        Assert.True(File.Exists(fixture.SummaryPath));
+    }
+
+    [Theory]
+    [InlineData("divergent")]
+    [InlineData("old")]
+    public async Task Verify_ContradictoryOrOldRawAttachmentCopy_IsRejected(string condition)
+    {
+        using var fixture = new EvidenceFixture(output);
+        Assert.Equal(0, (await fixture.RunAsync("Capture")).ExitCode);
+        fixture.WriteResults();
+        var attachment = Path.Combine(fixture.ResultsPath, "synthetic-run", "In", "synthetic-runner", "coverage.cobertura.xml");
+        Directory.CreateDirectory(Path.GetDirectoryName(attachment)!);
+        File.Copy(fixture.CoveragePath, attachment);
+        if (condition == "old") File.SetLastWriteTimeUtc(attachment, fixture.BuildStartedUtc.AddSeconds(-1));
+        else File.AppendAllText(attachment, "\n<!-- Synthetic contradictory bytes. -->");
+        Assert.NotEqual(0, (await fixture.RunAsync("Verify")).ExitCode);
+        Assert.False(File.Exists(fixture.SummaryPath));
+    }
+
+    [Fact]
     public async Task Verify_RawFileAbsentFromReleasePdb_IsRejected()
     {
         using var fixture = new EvidenceFixture(output);

@@ -233,8 +233,13 @@ try {
     $script:Stage = 'trx-execution'
     $trxFiles = @(Get-ChildItem -LiteralPath $results -Filter '*.trx' -File -Recurse)
     $rawFiles = @(Get-ChildItem -LiteralPath $results -Filter 'coverage.cobertura.xml' -File -Recurse)
-    Require ($trxFiles.Count -eq 1 -and $rawFiles.Count -eq 1)
-    foreach ($file in @($trxFiles[0], $rawFiles[0])) { Require ($file.LastWriteTimeUtc -ge $capturedUtc) }
+    Require ($trxFiles.Count -eq 1 -and $rawFiles.Count -gt 0)
+    foreach ($file in @($trxFiles[0]) + $rawFiles) { Require ($file.LastWriteTimeUtc -ge $capturedUtc) }
+    $rawHash = $null
+    foreach ($file in $rawFiles) {
+        $hash = Sha (Bytes ([IO.Path]::GetRelativePath($script:Root, $file.FullName)))
+        if ($null -eq $rawHash) { $rawHash = $hash } else { Require ($hash -ceq $rawHash) }
+    }
     $trx = Xml ([IO.Path]::GetRelativePath($script:Root, $trxFiles[0].FullName))
     $ns = [Xml.XmlNamespaceManager]::new($trx.NameTable)
     $ns.AddNamespace('t', 'http://microsoft.com/schemas/VisualStudio/TeamTest/2010')
