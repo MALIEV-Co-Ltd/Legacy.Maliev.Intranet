@@ -30,7 +30,7 @@ public sealed class InvoiceAccountingBehaviorTests
                 request.Method == HttpMethod.Get && request.RequestUri?.AbsolutePath == "/invoices/from-quotation/84/preview"
                     ? AccountingBehaviorTestHost.Json(PreviewJson)
                     : request.Method == HttpMethod.Post && request.RequestUri?.AbsolutePath == "/invoices/from-quotation/84"
-                        ? AccountingBehaviorTestHost.Json($$"""{"InvoiceId":55,"State":{{state}},"EmailState":3,"StoredFile":{"Bucket":"fixture","ObjectName":"invoices/55.pdf"}}""")
+                        ? AccountingBehaviorTestHost.Json($$"""{"InvoiceId":55,"State":{{state}},"EmailState":3,"StoredFile":{"Bucket":"fixture","ObjectName":"invoices/55.pdf"} }""")
                         : new(HttpStatusCode.NotFound));
             await using var factory = AccountingBehaviorTestHost.CreateFactory(accounting);
             using var client = AccountingBehaviorTestHost.CreateClient(factory);
