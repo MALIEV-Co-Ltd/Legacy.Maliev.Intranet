@@ -56,7 +56,7 @@ public sealed class InvoiceAccountingBehaviorTests
             cut.WaitForAssertion(() =>
             {
                 Assert.Contains("The email provider accepted the message, but recipient delivery is not confirmed.", cut.Markup, StringComparison.Ordinal);
-                Assert.Equal("Open existing invoice", cut.Find("a[href='/Invoices/View?id=55']").TextContent);
+                Assert.Equal("Open existing invoice", cut.Find("a[href='/Invoices/View?id=55'] .legacy-link__label").TextContent);
                 Assert.True(cut.Find("button[type='submit']").HasAttribute("disabled"));
                 Assert.True(cut.Find("#invoice-number").HasAttribute("disabled"));
                 Assert.Contains("/Invoices/Create?quotationId=84", navigation.Uri, StringComparison.Ordinal);
