@@ -22,6 +22,28 @@ public sealed class CoverageEvidenceVerifierTests
         Assert.Equal(2, summary.RootElement.GetProperty("executedTests").GetInt32());
     }
 
+    [Theory]
+    [InlineData("Etc/UTC", "Z")]
+    [InlineData("Etc/UTC", "+00:00")]
+    [InlineData("Asia/Bangkok", "Z")]
+    [InlineData("Asia/Bangkok", "+00:00")]
+    public async Task Capture_ExplicitUtcTimestamp_BindsAcrossTimeZones(string timeZone, string suffix)
+    {
+        using var fixture = new EvidenceFixture();
+        var timestamp = fixture.BuildStartedUtc.ToString("yyyy-MM-dd'T'HH:mm:ss.fffffff", System.Globalization.CultureInfo.InvariantCulture) + suffix;
+        Assert.Equal(0, (await fixture.RunAsync("Capture", timeZone, timestamp)).ExitCode);
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("+07:00")]
+    public async Task Capture_OffsetlessOrNonUtcTimestamp_IsRejected(string suffix)
+    {
+        using var fixture = new EvidenceFixture();
+        var timestamp = fixture.BuildStartedUtc.ToString("yyyy-MM-dd'T'HH:mm:ss.fffffff", System.Globalization.CultureInfo.InvariantCulture) + suffix;
+        Assert.NotEqual(0, (await fixture.RunAsync("Capture", "Asia/Bangkok", timestamp)).ExitCode);
+    }
+
     [Fact]
     public async Task Capture_UnrebuiltAssemblyBeforeBuildStart_IsRejected()
     {
@@ -44,6 +66,16 @@ public sealed class CoverageEvidenceVerifierTests
         using var fixture = new EvidenceFixture();
         File.Copy(Path.Combine(AppContext.BaseDirectory, "Legacy.Maliev.Intranet.Server.pdb"), fixture.PdbPath, overwrite: true);
         File.SetLastWriteTimeUtc(fixture.PdbPath, DateTime.UtcNow);
+        Assert.NotEqual(0, (await fixture.RunAsync("Capture")).ExitCode);
+    }
+
+    [Theory]
+    [InlineData("dll")]
+    [InlineData("pdb")]
+    public async Task Capture_RuntimeCopyDifferentFromProducedAssembly_IsRejected(string extension)
+    {
+        using var fixture = new EvidenceFixture();
+        using (var stream = new FileStream(Path.Combine(fixture.RuntimeDirectory, EvidenceFixture.Project + "." + extension), FileMode.Append, FileAccess.Write)) stream.WriteByte(0);
         Assert.NotEqual(0, (await fixture.RunAsync("Capture")).ExitCode);
     }
 
@@ -150,7 +182,6 @@ public sealed class CoverageEvidenceVerifierTests
         private readonly string _repository;
         private readonly string _revision;
         private readonly XDocument _coverage;
-        private readonly string _fallbackCoverage;
         private bool _preserveRoot;
         internal string Root { get; } = Path.Combine(Path.GetTempPath(), "intranet-coverage-evidence-" + Guid.NewGuid().ToString("N"));
         internal DateTime BuildStartedUtc { get; } = DateTime.UtcNow.AddMinutes(-1);
@@ -160,6 +191,7 @@ public sealed class CoverageEvidenceVerifierTests
         internal string CapturePath => Path.Combine(ResultsPath, "coverage-capture.json");
         internal string DllPath => Path.Combine(Root, Project, "bin", "Release", "net10.0", Project + ".dll");
         internal string PdbPath => Path.ChangeExtension(DllPath, ".pdb");
+        internal string RuntimeDirectory => Path.Combine(Root, "Legacy.Maliev.Intranet.Tests", "bin", "Release", "net10.0");
         internal string AuthoredSourcePath { get; }
         internal string ExecutableGeneratedSourcePath { get; }
 
@@ -175,6 +207,9 @@ public sealed class CoverageEvidenceVerifierTests
                 File.Copy(Path.Combine(AppContext.BaseDirectory, Project + ".pdb"), PdbPath);
                 File.SetLastWriteTimeUtc(DllPath, DateTime.UtcNow);
                 File.SetLastWriteTimeUtc(PdbPath, DateTime.UtcNow);
+                Directory.CreateDirectory(RuntimeDirectory);
+                File.Copy(DllPath, Path.Combine(RuntimeDirectory, Project + ".dll"));
+                File.Copy(PdbPath, Path.Combine(RuntimeDirectory, Project + ".pdb"));
                 using var git = Process.Start(new ProcessStartInfo("git") { WorkingDirectory = _repository, RedirectStandardOutput = true, ArgumentList = { "rev-parse", "HEAD" } })!;
                 _revision = git.StandardOutput.ReadToEnd().Trim();
                 git.WaitForExit();
@@ -224,8 +259,6 @@ public sealed class CoverageEvidenceVerifierTests
                     new XElement("package", new XAttribute("name", Project), new XAttribute("line-rate", 1), classes),
                     new XElement("package", new XAttribute("name", "Legacy.Maliev.Intranet.Server"), new XAttribute("line-rate", 1)),
                     new XElement("package", new XAttribute("name", "Legacy.Maliev.Intranet.Contracts"), new XAttribute("line-rate", 1)))));
-                _fallbackCoverage = Path.Combine(Root, "controlled-coverage.xml");
-                _coverage.Save(_fallbackCoverage);
             }
             catch
             {
@@ -251,23 +284,15 @@ public sealed class CoverageEvidenceVerifierTests
             trx.Save(Path.Combine(ResultsPath, "coverage.trx"));
         }
 
-        internal async Task<(int ExitCode, string Output)> RunAsync(string mode)
+        internal async Task<(int ExitCode, string Output)> RunAsync(string mode, string? timeZone = null, string? buildStartedText = null)
         {
             var script = Path.Combine(_repository, "scripts", "verify-coverage-evidence.ps1");
             var start = new ProcessStartInfo("pwsh") { RedirectStandardOutput = true, RedirectStandardError = true, UseShellExecute = false };
+            if (timeZone is not null) start.Environment["TZ"] = timeZone;
             start.ArgumentList.Add("-NoProfile");
             start.ArgumentList.Add("-File");
-            start.ArgumentList.Add(File.Exists(script) ? script : Path.Combine(_repository, "scripts", "verify-test-coverage.ps1"));
-            if (File.Exists(script))
-            {
-                foreach (var argument in new[] { "-Mode", mode, "-WorkspaceRoot", Root, "-SourceRepositoryRoot", _repository, "-ExpectedSourceRevision", _revision, "-ResultsDirectory", "TestResults", "-Projects", Project, "-BuildStartedUtc", BuildStartedUtc.ToString("O", System.Globalization.CultureInfo.InvariantCulture) }) start.ArgumentList.Add(argument);
-            }
-            else
-            {
-                // Tests-first fallback exercises today's actual rate-only guard; it cannot validate provenance.
-                start.ArgumentList.Add("-CoverageFile");
-                start.ArgumentList.Add(_fallbackCoverage);
-            }
+            start.ArgumentList.Add(script);
+            foreach (var argument in new[] { "-Mode", mode, "-WorkspaceRoot", Root, "-SourceRepositoryRoot", _repository, "-ExpectedSourceRevision", _revision, "-ResultsDirectory", "TestResults", "-Projects", Project, "-BuildStartedUtc", buildStartedText ?? BuildStartedUtc.ToString("O", System.Globalization.CultureInfo.InvariantCulture) }) start.ArgumentList.Add(argument);
             using var process = Process.Start(start)!;
             var output = process.StandardOutput.ReadToEndAsync();
             var error = process.StandardError.ReadToEndAsync();
