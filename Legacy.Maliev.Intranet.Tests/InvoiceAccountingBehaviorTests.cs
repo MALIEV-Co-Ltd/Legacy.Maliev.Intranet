@@ -28,7 +28,7 @@ public sealed class InvoiceAccountingBehaviorTests
             Content = new StringContent(CreateInvoiceJson, Encoding.UTF8, "application/json"),
         };
         request.Headers.Add("X-CSRF-TOKEN", csrf);
-        request.Headers.Add("Idempotency-Key", "ee1cda3e-4cf5-4131-b47b-163739ce9e76");
+        request.Headers.Add("Idempotency-Key", Guid.NewGuid().ToString("D"));
 
         using var response = await client.SendAsync(request);
         var result = await response.Content.ReadFromJsonAsync<JsonElement>();
