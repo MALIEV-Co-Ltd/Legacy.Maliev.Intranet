@@ -76,7 +76,22 @@ def verified_sdk_environment(dotnet, version):
     return expected
 
 
-def verify_target_environment(target, allowed):
+def launch_environment_expectations(dotnet):
+    """Exact SDK/VMR launch literals for this Linux x64, clean-environment lane."""
+    require(dotnet.is_absolute() and dotnet.name == "dotnet", "launch-dotnet-identity")
+    # SDK v10.0.401 Program.cs:59 and VSTestForwardingApp.cs:50-51;
+    # VMR 981be135... XMake.cs:787,2254. No inherited operator settings consulted.
+    fixed = {b"MSBUILDFAILONDRIVEENUMERATINGWILDCARD": b"1",
+             b"MSBUILDENSURESTDOUTFORTASKPROCESSES": b"1",
+             b"MSBuildLoadMicrosoftTargetsReadOnly": b"true",
+             b"VSTEST_DOTNET_ROOT_PATH": str(dotnet.parent).encode(),
+             b"VSTEST_DOTNET_ROOT_ARCHITECTURE": b"X64"}
+    # XMake writes precisely these two literals according to the chosen logger.
+    enumerated = {b"_MSBUILDTLENABLED": frozenset((b"0", b"1"))}
+    return fixed, enumerated
+
+
+def verify_target_environment(target, allowed, enumerated=None):
     # Classification grants no permission: anything outside exact expected values fails closed.
     # Exact SDK v10.0.401 launch sources: Program, MSBuildForwardingApp[WithoutLogging],
     # Commands/Test/VSTest/{TestCommand,VSTestForwardingApp}. Its bundled MSBuild
@@ -92,14 +107,26 @@ def verify_target_environment(target, allowed):
              b"DOTNET_CLI_TELEMETRY_SESSIONID": "sdk-telemetry-session",
              b"MSBuildLoadMicrosoftTargetsReadOnly": "msbuild-readonly-targets",
              b"_MSBUILDTLENABLED": "msbuild-terminal-logger",
-             b"MSBUILD_EXE_PATH": "msbuild-executable-path"}
+             b"MSBUILD_EXE_PATH": "msbuild-executable-path",
+             # Exact read-only identities from pinned VSTestTask/Task2 and SDK UI flow.
+             # Classification only, including debug keys; never permission to enable them.
+             b"VSTEST_BUILD_TRACE": "vstest-build-trace",
+             b"VSTEST_BUILD_DEBUG": "vstest-build-debug",
+             b"VSTEST_DISABLE_UTF8_CONSOLE_ENCODING": "vstest-encoding-toggle",
+             b"DOTNET_SYSTEM_CONSOLE_ALLOW_ANSI_COLOR_REDIRECTION": "runtime-ansi-redirection",
+             b"DOTNET_CLI_UI_LANGUAGE": "sdk-ui-language",
+             b"VSLANG": "sdk-vs-language", b"PreferredUILang": "sdk-preferred-ui-language"}
     require(len(target) <= 256 and sum(len(k) + len(v) for k, v in target.items()) <= 64 * 1024,
             "target-environment-bound")
     counts = {}
+    enumerated = enumerated or {}
     for key, value in target.items():
         if key in allowed and allowed[key] == value:
             continue
-        category = "allowlisted-value-changed" if key in allowed else known.get(key, "unknown-addition")
+        if key in enumerated and value in enumerated[key]:
+            continue
+        category = ("allowlisted-value-changed" if key in allowed or key in enumerated
+                    else known.get(key, "unknown-addition"))
         counts[category] = counts.get(category, 0) + 1
     if counts:
         raise EnvironmentUnavailable(counts)
@@ -463,7 +490,9 @@ def capture(args, private):
             allowed[b"DOTNET_HOST_PATH"] = str(dotnet).encode()
             allowed[b"DOTNET_ROOT_X64"] = str(dotnet.parent).encode()
             allowed.update(sdk_expected)
-            verify_target_environment(target_env, allowed)
+            launch_fixed, launch_enumerated = launch_environment_expectations(dotnet)
+            allowed.update(launch_fixed)
+            verify_target_environment(target_env, allowed, launch_enumerated)
             core_paths = {line.split()[-1] for line in (proc / "maps").read_text().splitlines()
                           if line.endswith("/libcoreclr.so")}
             require(len(core_paths) == 1, "runtime-map-identity")
@@ -580,7 +609,13 @@ class ParserControls(unittest.TestCase):
                      b"DOTNET_CLI_TELEMETRY_SESSIONID": "sdk-telemetry-session",
                      b"MSBuildLoadMicrosoftTargetsReadOnly": "msbuild-readonly-targets",
                      b"_MSBUILDTLENABLED": "msbuild-terminal-logger",
-                     b"MSBUILD_EXE_PATH": "msbuild-executable-path"}
+                     b"MSBUILD_EXE_PATH": "msbuild-executable-path",
+                     b"VSTEST_BUILD_TRACE": "vstest-build-trace",
+                     b"VSTEST_BUILD_DEBUG": "vstest-build-debug",
+                     b"VSTEST_DISABLE_UTF8_CONSOLE_ENCODING": "vstest-encoding-toggle",
+                     b"DOTNET_SYSTEM_CONSOLE_ALLOW_ANSI_COLOR_REDIRECTION": "runtime-ansi-redirection",
+                     b"DOTNET_CLI_UI_LANGUAGE": "sdk-ui-language",
+                     b"VSLANG": "sdk-vs-language", b"PreferredUILang": "sdk-preferred-ui-language"}
         for name, category in additions.items():
             # Even source-known keys with synthetic malicious values must still reject.
             with self.assertRaises(EnvironmentUnavailable) as caught:
@@ -623,6 +658,26 @@ class ParserControls(unittest.TestCase):
                 self.rejects(verified_sdk_environment, dotnet, SDK_VERSION)
             (sdk_dir / "MSBuild.dll").unlink()
             self.rejects(verified_sdk_environment, dotnet, SDK_VERSION)
+
+    def test_exact_launch_values(self):
+        dotnet = Path(tempfile.gettempdir()).resolve() / "synthetic-root" / "dotnet"
+        fixed, enumerated = launch_environment_expectations(dotnet)
+        self.assertEqual(fixed[b"VSTEST_DOTNET_ROOT_PATH"], str(dotnet.parent).encode())
+        self.assertEqual(fixed[b"VSTEST_DOTNET_ROOT_ARCHITECTURE"], b"X64")
+        for terminal in (b"0", b"1"):
+            verify_target_environment({**fixed, b"_MSBUILDTLENABLED": terminal}, fixed, enumerated)
+        for key, value in fixed.items():
+            for bad in (value + b" ", value + b"\n", b"synthetic-secret", value + b"/../escape"):
+                self.rejects(verify_target_environment, {key: bad}, fixed, enumerated)
+        for bad in (b"true", b"false", b"2", b"01", b"1 ", b"1\n"):
+            self.rejects(verify_target_environment, {b"_MSBUILDTLENABLED": bad}, fixed, enumerated)
+        for key, bad in ((b"MSBuildLoadMicrosoftTargetsReadOnly", b"TRUE"),
+                         (b"VSTEST_DOTNET_ROOT_ARCHITECTURE", b"x64"),
+                         (b"VSTEST_DOTNET_ROOT_PATH", str(dotnet.parent).encode() + b"/")):
+            self.rejects(verify_target_environment, {key: bad}, fixed, enumerated)
+        for key in (b"MSBUILDUSESERVER", b"DOTNET_CLI_TELEMETRY_SESSIONID", b"UNKNOWN_PRIVATE_NAME"):
+            self.rejects(verify_target_environment, {key: b"synthetic-secret"}, fixed, enumerated)
+        self.rejects(launch_environment_expectations, Path("relative/dotnet"))
 
     def test_checkout_provenance(self):
         head, checkout, base = "a" * 40, "b" * 40, "c" * 40
