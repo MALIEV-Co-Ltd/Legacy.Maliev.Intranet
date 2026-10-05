@@ -65,4 +65,5 @@
   <data name="UnconfirmedReceipt" xml:space="preserve"><value>ระบบบัญชีส่งผลการสร้างใบแจ้งหนี้ที่ยังยืนยันไม่ได้ โปรดเปิดใบแจ้งหนี้เดิมและติดต่อฝ่ายสนับสนุนก่อนดำเนินการต่อ อย่าสร้างใบแจ้งหนี้ใหม่หรือส่งคำขอนี้ซ้ำ</value></data>
   <data name="OpenExistingInvoice" xml:space="preserve"><value>เปิดใบแจ้งหนี้เดิม</value></data>
   <data name="AmbiguousInvoiceReceipt" xml:space="preserve"><value>ระบบบัญชีส่งผลการสร้างใบแจ้งหนี้ที่ยังยืนยันไม่ได้และมีเลขอ้างอิงใบแจ้งหนี้ที่กำกวม โปรดติดต่อฝ่ายสนับสนุนก่อนดำเนินการต่อ อย่าสร้างใบแจ้งหนี้ใหม่หรือส่งคำขอนี้ซ้ำ</value></data>
+  <data name="ProviderAcceptedReceipt" xml:space="preserve"><value>มีใบแจ้งหนี้แล้ว ผู้ให้บริการยอมรับอีเมลแล้ว แต่ยังไม่ได้ยืนยันว่าผู้รับได้รับอีเมล โปรดเปิดใบแจ้งหนี้เดิม อย่าส่งอีเมลซ้ำหรือสร้างใบแจ้งหนี้ใหม่</value></data>
 </root>

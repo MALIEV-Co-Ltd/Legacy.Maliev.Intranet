@@ -52,6 +52,7 @@ public sealed class InvoiceCreateRetryBrowserTests(
     [InlineData("not-json")]
     [InlineData("{\"invoiceId\":0,\"quotationId\":84}")]
     [InlineData("{\"invoiceId\":55,\"quotationId\":85}")]
+    [InlineData("{\"invoiceId\":55,\"quotationId\":0}")]
     [InlineData("{\"invoiceId\":55,\"invoiceId\":56,\"quotationId\":84}")]
     [InlineData("{\"invoiceId\":55,\"quotationId\":84,\"emailState\":3}")]
     public async Task ProviderAccepted_InvalidSavedGuardNeverUnlocksCreationOrInventsInvoiceLink(string savedReceipt)
@@ -69,6 +70,32 @@ public sealed class InvoiceCreateRetryBrowserTests(
         Assert.Equal(0, await page.GetByRole(AriaRole.Link, new() { Name = "Open existing invoice" }).CountAsync());
         Assert.Equal("1", await page.EvaluateAsync<string>("sessionStorage.getItem('maliev-invoice-create-unresolved')"));
         Assert.Empty(writes);
+    }
+
+    [Fact]
+    public async Task ProviderAccepted_StorageWriteFailureKeepsKnownInvoiceAndUnresolvedReloadGuard()
+    {
+        await using var context = await playwright.Browser.NewContextAsync();
+        await context.AddInitScriptAsync("""
+            const originalSetItem = Storage.prototype.setItem;
+            Storage.prototype.setItem = function(key, value) {
+                if (key === 'maliev-invoice-create-provider-accepted') throw new Error('fixture storage unavailable');
+                return originalSetItem.call(this, key, value);
+            };
+            """);
+        var page = await context.NewPageAsync();
+        var writes = new List<(string? Key, string? Body)>();
+        await StubAsync(page, writes, (200, """{"invoiceId":55,"state":0,"emailState":3}"""));
+        await page.GotoAsync(new Uri(server.BaseUri, "Invoices/Create?quotationId=84").AbsoluteUri);
+        await page.Locator("#invoice-number").WaitForAsync();
+        await page.GetByRole(AriaRole.Button, new() { Name = "Create invoice", Exact = true }).ClickAsync();
+        await Assertions.Expect(page.GetByRole(AriaRole.Link, new() { Name = "Open existing invoice" })).ToHaveAttributeAsync("href", "/Invoices/View?id=55");
+        await Assertions.Expect(page.GetByText("Check whether the invoice was created", new() { Exact = false })).ToBeVisibleAsync();
+        Assert.Equal("1", await page.EvaluateAsync<string>("sessionStorage.getItem('maliev-invoice-create-unresolved')"));
+        await page.ReloadAsync();
+        await Assertions.Expect(page.GetByText("Check whether the invoice was created", new() { Exact = false })).ToBeVisibleAsync();
+        Assert.True(await page.GetByRole(AriaRole.Button, new() { Name = "Create invoice", Exact = true }).IsDisabledAsync());
+        Assert.Single(writes);
     }
 
     [Theory]
