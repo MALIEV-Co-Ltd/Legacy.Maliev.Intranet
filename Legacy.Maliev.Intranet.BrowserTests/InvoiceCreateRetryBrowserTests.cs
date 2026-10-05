@@ -10,6 +10,95 @@ public sealed class InvoiceCreateRetryBrowserTests(
     PlaywrightFixture playwright)
 {
     [Theory]
+    [InlineData("en-TH", 0)]
+    [InlineData("en-TH", 1)]
+    [InlineData("th-TH", 0)]
+    [InlineData("th-TH", 1)]
+    public async Task ProviderAccepted_PreservesTruthfulReceiptAndInvoiceLinkAcrossReloadWithoutAnotherCreate(string culture, int state)
+    {
+        await using var context = await playwright.Browser.NewContextAsync(new() { ViewportSize = new() { Width = 375, Height = 850 } });
+        await context.AddInitScriptAsync($"localStorage.setItem('maliev_culture','{culture}');");
+        var page = await context.NewPageAsync();
+        var thai = culture == "th-TH";
+        var createLabel = thai ? "สร้างใบแจ้งหนี้" : "Create invoice";
+        var linkLabel = thai ? "เปิดใบแจ้งหนี้เดิม" : "Open existing invoice";
+        var notice = thai ? "ผู้ให้บริการยอมรับอีเมลแล้ว แต่ยังไม่ได้ยืนยันว่าผู้รับได้รับอีเมล" : "The email provider accepted the message, but recipient delivery is not confirmed.";
+        var writes = new List<(string? Key, string? Body)>();
+        await StubAsync(page, writes, (200, $"{{\"invoiceId\":55,\"state\":{state},\"emailState\":3}}"));
+        await page.GotoAsync(new Uri(server.BaseUri, "Invoices/Create?quotationId=84").AbsoluteUri);
+        await page.Locator("#invoice-number").WaitForAsync();
+        await page.GetByRole(AriaRole.Button, new() { Name = createLabel, Exact = true }).ClickAsync();
+
+        await Assertions.Expect(page.GetByText(notice, new() { Exact = false })).ToBeVisibleAsync();
+        await Assertions.Expect(page.GetByRole(AriaRole.Link, new() { Name = linkLabel })).ToHaveAttributeAsync("href", "/Invoices/View?id=55");
+        Assert.True(await page.GetByRole(AriaRole.Button, new() { Name = createLabel, Exact = true }).IsDisabledAsync());
+        Assert.Equal(0, await page.GetByRole(AriaRole.Button, new() { Name = thai ? "ส่งคำขอใบแจ้งหนี้เดิมซ้ำ" : "Retry original invoice" }).CountAsync());
+        Assert.Equal("1", await page.EvaluateAsync<string>("sessionStorage.getItem('maliev-invoice-create-unresolved')"));
+        using var saved = JsonDocument.Parse(await page.EvaluateAsync<string>("sessionStorage.getItem('maliev-invoice-create-provider-accepted')"));
+        Assert.Equal(55, saved.RootElement.GetProperty("invoiceId").GetInt32());
+        Assert.Equal(84, saved.RootElement.GetProperty("quotationId").GetInt32());
+        Assert.Equal(2, saved.RootElement.EnumerateObject().Count());
+
+        await page.ReloadAsync();
+        await Assertions.Expect(page.GetByText(notice, new() { Exact = false })).ToBeVisibleAsync();
+        await Assertions.Expect(page.GetByRole(AriaRole.Link, new() { Name = linkLabel })).ToHaveAttributeAsync("href", "/Invoices/View?id=55");
+        Assert.True(await page.GetByRole(AriaRole.Button, new() { Name = createLabel, Exact = true }).IsDisabledAsync());
+        Assert.True(await page.Locator("#invoice-number").IsDisabledAsync());
+        Assert.Single(writes);
+        Assert.True(await page.EvaluateAsync<bool>("document.documentElement.scrollWidth <= window.innerWidth + 1"));
+    }
+
+    [Theory]
+    [InlineData("not-json")]
+    [InlineData("{\"invoiceId\":0,\"quotationId\":84}")]
+    [InlineData("{\"invoiceId\":55,\"quotationId\":85}")]
+    [InlineData("{\"invoiceId\":55,\"quotationId\":0}")]
+    [InlineData("{\"invoiceId\":55,\"invoiceId\":56,\"quotationId\":84}")]
+    [InlineData("{\"invoiceId\":55,\"quotationId\":84,\"emailState\":3}")]
+    public async Task ProviderAccepted_InvalidSavedGuardNeverUnlocksCreationOrInventsInvoiceLink(string savedReceipt)
+    {
+        await using var context = await playwright.Browser.NewContextAsync();
+        var page = await context.NewPageAsync();
+        var writes = new List<(string? Key, string? Body)>();
+        await StubAsync(page, writes);
+        await page.GotoAsync(new Uri(server.BaseUri, "Invoices/Create?quotationId=84").AbsoluteUri);
+        await page.Locator("#invoice-number").WaitForAsync();
+        await page.EvaluateAsync("value => { sessionStorage.setItem('maliev-invoice-create-provider-accepted', value); sessionStorage.setItem('maliev-invoice-create-unresolved', '1'); }", savedReceipt);
+        await page.ReloadAsync();
+        await page.GetByText("Check whether the invoice was created", new() { Exact = false }).WaitForAsync();
+        Assert.True(await page.GetByRole(AriaRole.Button, new() { Name = "Create invoice", Exact = true }).IsDisabledAsync());
+        Assert.Equal(0, await page.GetByRole(AriaRole.Link, new() { Name = "Open existing invoice" }).CountAsync());
+        Assert.Equal("1", await page.EvaluateAsync<string>("sessionStorage.getItem('maliev-invoice-create-unresolved')"));
+        Assert.Empty(writes);
+    }
+
+    [Fact]
+    public async Task ProviderAccepted_StorageWriteFailureKeepsKnownInvoiceAndUnresolvedReloadGuard()
+    {
+        await using var context = await playwright.Browser.NewContextAsync();
+        await context.AddInitScriptAsync("""
+            const originalSetItem = Storage.prototype.setItem;
+            Storage.prototype.setItem = function(key, value) {
+                if (key === 'maliev-invoice-create-provider-accepted') throw new Error('fixture storage unavailable');
+                return originalSetItem.call(this, key, value);
+            };
+            """);
+        var page = await context.NewPageAsync();
+        var writes = new List<(string? Key, string? Body)>();
+        await StubAsync(page, writes, (200, """{"invoiceId":55,"state":0,"emailState":3}"""));
+        await page.GotoAsync(new Uri(server.BaseUri, "Invoices/Create?quotationId=84").AbsoluteUri);
+        await page.Locator("#invoice-number").WaitForAsync();
+        await page.GetByRole(AriaRole.Button, new() { Name = "Create invoice", Exact = true }).ClickAsync();
+        await Assertions.Expect(page.GetByRole(AriaRole.Link, new() { Name = "Open existing invoice" })).ToHaveAttributeAsync("href", "/Invoices/View?id=55");
+        await Assertions.Expect(page.GetByText("Check whether the invoice was created", new() { Exact = false })).ToBeVisibleAsync();
+        Assert.Equal("1", await page.EvaluateAsync<string>("sessionStorage.getItem('maliev-invoice-create-unresolved')"));
+        await page.ReloadAsync();
+        await Assertions.Expect(page.GetByText("Check whether the invoice was created", new() { Exact = false })).ToBeVisibleAsync();
+        Assert.True(await page.GetByRole(AriaRole.Button, new() { Name = "Create invoice", Exact = true }).IsDisabledAsync());
+        Assert.Single(writes);
+    }
+
+    [Theory]
     [InlineData("en-TH", "light", 1440)]
     [InlineData("en-TH", "dark", 1440)]
     [InlineData("en-TH", "light", 375)]
