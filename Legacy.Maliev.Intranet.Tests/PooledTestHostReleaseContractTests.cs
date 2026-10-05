@@ -40,13 +40,57 @@ public sealed class PooledTestHostReleaseContractTests(ITestOutputHelper output)
         GC.Collect();
         GC.WaitForPendingFinalizers();
         GC.Collect();
+        var factoryAlive = roots.Factory.IsAlive;
+        var providerAlive = roots.Provider.IsAlive;
+        var transportAlive = roots.Transport.IsAlive;
+        var transportDisposals = Volatile.Read(ref roots.Disposal.Count);
         output.WriteLine("Observed handler lifetime: {0}; release elapsed: {1}; factory/provider/transport alive: {2}/{3}/{4}; transport disposals: {5}; managed bytes: {6}",
-            roots.HandlerLifetime, elapsed.Elapsed, roots.Factory.IsAlive, roots.Provider.IsAlive,
-            roots.Transport.IsAlive, Volatile.Read(ref roots.Disposal.Count), GC.GetTotalMemory(false));
-        Assert.False(roots.Factory.IsAlive, "Disposed ordinary BFF factory remained rooted beyond observed handler expiry and cleanup.");
-        Assert.False(roots.Provider.IsAlive, "Disposed host service provider remained rooted beyond observed handler expiry and cleanup.");
-        Assert.False(roots.Transport.IsAlive, "Expired ordinary factory transport remained rooted beyond its cleanup window.");
-        Assert.Equal(1, Volatile.Read(ref roots.Disposal.Count));
+            roots.HandlerLifetime, elapsed.Elapsed, factoryAlive, providerAlive,
+            transportAlive, transportDisposals, GC.GetTotalMemory(false));
+        // Capture only after the original observation. Extra diagnostic time must never
+        // turn that observation into a pass, and the hook must not retain weak targets.
+        if (factoryAlive || providerAlive || transportAlive) await SignalRootCaptureAsync();
+        GC.KeepAlive(roots); // Preserve the weak-witness record for offline identification only.
+        Assert.False(factoryAlive, "Disposed ordinary BFF factory remained rooted beyond observed handler expiry and cleanup.");
+        Assert.False(providerAlive, "Disposed host service provider remained rooted beyond observed handler expiry and cleanup.");
+        Assert.False(transportAlive, "Expired ordinary factory transport remained rooted beyond its cleanup window.");
+        Assert.Equal(1, transportDisposals);
+    }
+
+    private async Task SignalRootCaptureAsync()
+    {
+        if (Environment.GetEnvironmentVariable("MALIEV_POOLED_HOST_ROOT_DIAGNOSTICS") != "synthetic-isolated-v1") return;
+        var head = Environment.GetEnvironmentVariable("MALIEV_POOLED_HOST_ROOT_HEAD");
+        if (Environment.GetEnvironmentVariable("RUNNER_OS") != "Linux"
+            || Environment.GetEnvironmentVariable("GITHUB_ACTIONS") != "false"
+            || !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("GITHUB_TOKEN"))
+            || Environment.GetEnvironmentVariable("DOTNET_PROCESSOR_COUNT") != "1"
+            || head is null || head.Length != 40 || !head.All(char.IsAsciiHexDigit))
+        {
+            output.WriteLine("Synthetic root capture unavailable: hosted diagnostic prerequisites were not satisfied.");
+            return;
+        }
+
+        var pid = Environment.ProcessId;
+        var signal = Path.Combine(Path.GetTempPath(), $"maliev-intranet-pooled-root-{pid}.ready");
+        try
+        {
+            File.WriteAllLines(signal,
+            [
+                $"pid={pid}",
+                $"head={head}",
+                "factory=Microsoft.AspNetCore.Mvc.Testing.WebApplicationFactory`1+DelegatedWebApplicationFactory",
+                "provider=Microsoft.Extensions.DependencyInjection.ServiceProvider",
+                "witness=Legacy.Maliev.Intranet.Tests.PooledTestHostReleaseContractTests+RetainedHost"
+            ]);
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        {
+            output.WriteLine("Synthetic root capture unavailable: signal file could not be written.");
+            return;
+        }
+        output.WriteLine("Synthetic root capture signalled for PID {0}, head {1}; post-observation wait: 45 seconds.", pid, head);
+        await Task.Delay(TimeSpan.FromSeconds(45)).ConfigureAwait(false);
     }
 
     [MethodImpl(MethodImplOptions.NoInlining)]
