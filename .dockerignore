@@ -1,9 +1,23 @@
-.git
-.github
+**/.git
+**/.github
 **/bin
 **/obj
 **/TestResults
 *.user
 *.suo
-.vs
-.idea
+**/.vs
+**/.idea
+**/.vscode
+**/.worktrees
+**/.codex
+**/.codex-staging-*
+**/.superpowers
+**/.agents
+**/.qwen
+**/node_modules
+**/*.log
+**/*.bak
+**/*.backup
+
+# Required immutable dependency locks are source, not disposable build output.
+# Do not add **/build: both production Dockerfiles explicitly COPY these files.
