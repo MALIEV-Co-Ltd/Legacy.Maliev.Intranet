@@ -31,7 +31,7 @@ public sealed class LoginModel(ILegacyAuthClient authClient, EmployeeSessionServ
         }
 
         var login = await authClient.LoginAsync(Email.Trim(), Password, cancellationToken);
-        Password = string.Empty;
+        this.Password = string.Empty;
         if (!login.Succeeded)
         {
             ModelState.AddModelError(string.Empty, "The email or password is invalid.");
