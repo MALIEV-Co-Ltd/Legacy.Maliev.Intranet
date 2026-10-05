@@ -472,7 +472,7 @@ public sealed partial class EmployeeSessionContractTests
             CancellationToken cancellationToken)
         {
             Email = email;
-            Password = password;
+            this.Password = password;
             return Task.FromResult(new EmployeeLoginResult(
                 true,
                 new AuthTokenResponse(AccessToken, RefreshToken, "Bearer", 900, Now.AddDays(14)),
