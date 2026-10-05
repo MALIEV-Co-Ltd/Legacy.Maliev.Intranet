@@ -73,6 +73,24 @@ public sealed class CoverageEvidenceVerifierTests(ITestOutputHelper output)
         Assert.NotEqual(0, (await fixture.RunAsync("Capture")).ExitCode);
     }
 
+    [Fact]
+    public async Task Capture_FreshChildPreservesExistingParentProofAndRejectsReuse()
+    {
+        using var fixture = new EvidenceFixture(output);
+        Directory.CreateDirectory(fixture.ResultsPath);
+        var priorProof = Path.Combine(fixture.ResultsPath, "prior-browser-proof.txt");
+        const string proof = "Synthetic earlier browser evidence.";
+        File.WriteAllText(priorProof, proof);
+        fixture.ResultsDirectory = "TestResults/coverage-native";
+        Assert.Equal(0, (await fixture.RunAsync("Capture")).ExitCode);
+        Assert.Equal(proof, File.ReadAllText(priorProof));
+        fixture.WriteResults();
+        Assert.Equal(0, (await fixture.RunAsync("Verify")).ExitCode);
+        Assert.True(File.Exists(fixture.SummaryPath));
+        Assert.NotEqual(0, (await fixture.RunAsync("Capture")).ExitCode);
+        Assert.Equal(proof, File.ReadAllText(priorProof));
+    }
+
     [Theory]
     [InlineData("dll")]
     [InlineData("pdb")]
@@ -190,7 +208,8 @@ public sealed class CoverageEvidenceVerifierTests(ITestOutputHelper output)
         private bool _preserveRoot;
         internal string Root { get; } = Path.Combine(Path.GetTempPath(), "intranet-coverage-evidence-" + Guid.NewGuid().ToString("N"));
         internal DateTime BuildStartedUtc { get; } = DateTime.UtcNow.AddMinutes(-1);
-        internal string ResultsPath => Path.Combine(Root, "TestResults");
+        internal string ResultsDirectory { get; set; } = "TestResults";
+        internal string ResultsPath => Path.Combine(Root, ResultsDirectory);
         internal string CoveragePath => Path.Combine(ResultsPath, "coverage.cobertura.xml");
         internal string SummaryPath => Path.Combine(ResultsPath, "coverage-evidence.json");
         internal string CapturePath => Path.Combine(ResultsPath, "coverage-capture.json");
@@ -298,7 +317,7 @@ public sealed class CoverageEvidenceVerifierTests(ITestOutputHelper output)
             start.ArgumentList.Add("-NoProfile");
             start.ArgumentList.Add("-File");
             start.ArgumentList.Add(script);
-            foreach (var argument in new[] { "-Mode", mode, "-WorkspaceRoot", Root, "-SourceRepositoryRoot", _repository, "-ExpectedSourceRevision", _revision, "-ResultsDirectory", "TestResults", "-Projects", Project, "-BuildStartedUtc", buildStartedText ?? BuildStartedUtc.ToString("O", System.Globalization.CultureInfo.InvariantCulture) }) start.ArgumentList.Add(argument);
+            foreach (var argument in new[] { "-Mode", mode, "-WorkspaceRoot", Root, "-SourceRepositoryRoot", _repository, "-ExpectedSourceRevision", _revision, "-ResultsDirectory", ResultsDirectory, "-Projects", Project, "-BuildStartedUtc", buildStartedText ?? BuildStartedUtc.ToString("O", System.Globalization.CultureInfo.InvariantCulture) }) start.ArgumentList.Add(argument);
             using var process = Process.Start(start)!;
             var output = process.StandardOutput.ReadToEndAsync();
             var error = process.StandardError.ReadToEndAsync();

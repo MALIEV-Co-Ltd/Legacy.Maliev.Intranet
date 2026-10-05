@@ -34,7 +34,7 @@ public sealed class ValidationEvidenceCallerContractTests
         Assert.Contains("dotnet test Legacy.Maliev.Intranet.Tests/Legacy.Maliev.Intranet.Tests.csproj", collector, StringComparison.Ordinal);
         Assert.Contains("--collect:\"XPlat Code Coverage\"", collector, StringComparison.Ordinal);
         Assert.Contains("--settings coverage.runsettings", collector, StringComparison.Ordinal);
-        Assert.Contains("--results-directory TestResults", collector, StringComparison.Ordinal);
+        Assert.Contains("--results-directory TestResults/coverage-native", collector, StringComparison.Ordinal);
         Assert.Contains("--logger \"trx;LogFileName=coverage.trx\"", collector, StringComparison.Ordinal);
         Assert.DoesNotContain("--filter", collector, StringComparison.Ordinal);
         Assert.DoesNotContain("continue-on-error", workflow, StringComparison.Ordinal);

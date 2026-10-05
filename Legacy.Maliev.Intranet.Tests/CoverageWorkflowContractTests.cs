@@ -41,6 +41,9 @@ public sealed class CoverageWorkflowContractTests
         var verify = workflow.IndexOf("-Mode Verify", test, StringComparison.Ordinal);
         Assert.True(capture < test && test < verify);
         Assert.Contains("--no-build", workflow[capture..verify], StringComparison.Ordinal);
+        Assert.Equal(2, workflow.Split("-ResultsDirectory TestResults/coverage-native", StringSplitOptions.None).Length - 1);
+        Assert.Contains("--results-directory TestResults/coverage-native", workflow, StringComparison.Ordinal);
+        Assert.Contains("find TestResults/coverage-native -name coverage.cobertura.xml", workflow, StringComparison.Ordinal);
         Assert.Contains("'$(EnableCoverageSymbols)' != 'true'", contractsProject, StringComparison.Ordinal);
     }
 
