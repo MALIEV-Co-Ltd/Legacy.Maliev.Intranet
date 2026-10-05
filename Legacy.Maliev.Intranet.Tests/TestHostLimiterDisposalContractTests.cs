@@ -7,9 +7,12 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Xunit.Abstractions;
+using BffDiagnosticEventMiddleware = Bff::Legacy.Maliev.Intranet.Bff.Diagnostics.DiagnosticEventMiddleware;
+using BffDiagnosticEventStore = Bff::Legacy.Maliev.Intranet.Bff.Diagnostics.DiagnosticEventStore;
 using BffProgram = Bff::Program;
 
 namespace Legacy.Maliev.Intranet.Tests;
@@ -24,10 +27,89 @@ public sealed class TestHostLimiterDisposalContractTests(ITestOutputHelper outpu
     [Fact]
     public Task DisposeAsync_DisposesActualRegisteredEndpointLimiter() => VerifyAsync(true);
 
-    private async Task VerifyAsync(bool asynchronous)
+    [Fact]
+    public Task Dispose_OrdinaryDelegatedFactoryDisposesActualEndpointLimiter() => VerifyAsync(false, true);
+
+    [Fact]
+    public Task DisposeAsync_OrdinaryDelegatedFactoryDisposesActualEndpointLimiter() => VerifyAsync(true, true);
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Shutdown_OwnsActualLimiterBehindFrameworkReflectionBinder(bool asynchronous)
     {
         var capture = new CaptureStartupFilter();
-        var factory = new ProbeFactory(capture);
+        using var host = new HostBuilder().ConfigureWebHost(builder =>
+        {
+            builder.UseTestServer();
+            TestHostLifecycle.Configure(builder);
+            builder.ConfigureServices(services =>
+            {
+                services.AddRateLimiter(_ => { });
+                services.AddSingleton(TimeProvider.System);
+                services.AddSingleton<BffDiagnosticEventStore>();
+            });
+            builder.Configure(application =>
+            {
+                // Build with the actual framework builder, not the tracking wrapper.
+                // The shutdown owner sees only the already-composed binder delegate.
+                var branch = new ApplicationBuilder(application.ApplicationServices);
+                // This real BFF middleware's DI-injected InvokeAsync parameter uses
+                // the framework ReflectionMiddlewareBinder, hiding its next delegate
+                // behind the reviewed instance field rather than a delegate field.
+                branch.UseMiddleware<BffDiagnosticEventMiddleware>();
+                branch.UseRateLimiter();
+                branch.Run(_ => Task.CompletedTask);
+                var pipeline = branch.Build();
+                Assert.Equal("Microsoft.AspNetCore.Builder.UseMiddlewareExtensions+ReflectionMiddlewareBinder",
+                    pipeline.Target?.GetType().DeclaringType?.FullName);
+                capture.Observe(pipeline);
+                application.Use(_ => pipeline);
+            });
+        }).Build();
+        try
+        {
+            await host.StartAsync();
+            var limiter = Assert.Single(capture.Limiters);
+            using (var lease = limiter.AttemptAcquire(new DefaultHttpContext())) Assert.True(lease.IsAcquired);
+            if (asynchronous)
+            {
+                await host.StopAsync();
+                await Assert.IsAssignableFrom<IAsyncDisposable>(host).DisposeAsync();
+            }
+            else
+            {
+                await host.StopAsync();
+                host.Dispose();
+            }
+            Assert.Throws<ObjectDisposedException>(() =>
+            {
+                using var lease = limiter.AttemptAcquire(new DefaultHttpContext());
+            });
+        }
+        finally
+        {
+            try { host.Dispose(); }
+            finally { capture.Cleanup(); }
+        }
+    }
+
+    private async Task VerifyAsync(bool asynchronous, bool ordinary = false)
+    {
+        var capture = new CaptureStartupFilter();
+        WebApplicationFactory<BffProgram>? parentFactory = null;
+        WebApplicationFactory<BffProgram> factory;
+        if (ordinary)
+        {
+            parentFactory = new WebApplicationFactory<BffProgram>();
+            factory = parentFactory.WithWebHostBuilder(builder =>
+            {
+                builder.UseEnvironment("Testing");
+                TestJwtConfiguration.Configure(builder);
+                builder.ConfigureServices(services => services.AddSingleton<IStartupFilter>(capture));
+            });
+        }
+        else factory = new ProbeFactory(capture);
         int ownerCount = 0;
         int capturedBefore = 0;
         bool matchesBefore = false;
@@ -95,7 +177,11 @@ public sealed class TestHostLimiterDisposalContractTests(ITestOutputHelper outpu
             finally
             {
                 try { WriteSnapshot(2, ownerCount, capturedBefore, matchesBefore, diagnostics, stopped); }
-                finally { capture.Cleanup(); }
+                finally
+                {
+                    try { if (parentFactory is not null) await parentFactory.DisposeAsync(); }
+                    finally { capture.Cleanup(); }
+                }
             }
         }
     }
@@ -170,6 +256,8 @@ public sealed class TestHostLimiterDisposalContractTests(ITestOutputHelper outpu
         }
 
         public void ClearVisited() => visited.Clear();
+
+        public void Observe(RequestDelegate middleware) => Capture(middleware);
 
         public void Cleanup()
         {
