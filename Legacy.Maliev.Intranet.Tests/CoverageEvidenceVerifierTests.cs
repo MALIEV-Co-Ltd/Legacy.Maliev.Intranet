@@ -4,15 +4,16 @@ using System.Reflection.Metadata;
 using System.Security.Cryptography;
 using System.Text.Json;
 using System.Xml.Linq;
+using Xunit.Abstractions;
 
 namespace Legacy.Maliev.Intranet.Tests;
 
-public sealed class CoverageEvidenceVerifierTests
+public sealed class CoverageEvidenceVerifierTests(ITestOutputHelper output)
 {
     [Fact]
     public async Task CompleteEvidence_VerifiesActualAssemblyPdbSourcesAndControlledResults()
     {
-        using var fixture = new EvidenceFixture();
+        using var fixture = new EvidenceFixture(output);
         Assert.Equal(0, (await fixture.RunAsync("Capture")).ExitCode);
         fixture.WriteResults();
         Assert.Equal(0, (await fixture.RunAsync("Verify")).ExitCode);
@@ -29,9 +30,12 @@ public sealed class CoverageEvidenceVerifierTests
     [InlineData("Asia/Bangkok", "+00:00")]
     public async Task Capture_ExplicitUtcTimestamp_BindsAcrossTimeZones(string timeZone, string suffix)
     {
-        using var fixture = new EvidenceFixture();
+        using var fixture = new EvidenceFixture(output);
         var timestamp = fixture.BuildStartedUtc.ToString("yyyy-MM-dd'T'HH:mm:ss.fffffff", System.Globalization.CultureInfo.InvariantCulture) + suffix;
         Assert.Equal(0, (await fixture.RunAsync("Capture", timeZone, timestamp)).ExitCode);
+        fixture.WriteResults();
+        Assert.Equal(0, (await fixture.RunAsync("Verify", timeZone, timestamp)).ExitCode);
+        Assert.True(File.Exists(fixture.SummaryPath));
     }
 
     [Theory]
@@ -39,7 +43,7 @@ public sealed class CoverageEvidenceVerifierTests
     [InlineData("+07:00")]
     public async Task Capture_OffsetlessOrNonUtcTimestamp_IsRejected(string suffix)
     {
-        using var fixture = new EvidenceFixture();
+        using var fixture = new EvidenceFixture(output);
         var timestamp = fixture.BuildStartedUtc.ToString("yyyy-MM-dd'T'HH:mm:ss.fffffff", System.Globalization.CultureInfo.InvariantCulture) + suffix;
         Assert.NotEqual(0, (await fixture.RunAsync("Capture", "Asia/Bangkok", timestamp)).ExitCode);
     }
@@ -47,7 +51,7 @@ public sealed class CoverageEvidenceVerifierTests
     [Fact]
     public async Task Capture_UnrebuiltAssemblyBeforeBuildStart_IsRejected()
     {
-        using var fixture = new EvidenceFixture();
+        using var fixture = new EvidenceFixture(output);
         File.SetLastWriteTimeUtc(fixture.DllPath, fixture.BuildStartedUtc.AddSeconds(-1));
         Assert.NotEqual(0, (await fixture.RunAsync("Capture")).ExitCode);
     }
@@ -55,7 +59,7 @@ public sealed class CoverageEvidenceVerifierTests
     [Fact]
     public async Task Capture_PreexistingResultsDirectory_IsRejected()
     {
-        using var fixture = new EvidenceFixture();
+        using var fixture = new EvidenceFixture(output);
         Directory.CreateDirectory(fixture.ResultsPath);
         Assert.NotEqual(0, (await fixture.RunAsync("Capture")).ExitCode);
     }
@@ -63,7 +67,7 @@ public sealed class CoverageEvidenceVerifierTests
     [Fact]
     public async Task Capture_DifferentActualAssemblyPdb_IsRejected()
     {
-        using var fixture = new EvidenceFixture();
+        using var fixture = new EvidenceFixture(output);
         File.Copy(Path.Combine(AppContext.BaseDirectory, "Legacy.Maliev.Intranet.Server.pdb"), fixture.PdbPath, overwrite: true);
         File.SetLastWriteTimeUtc(fixture.PdbPath, DateTime.UtcNow);
         Assert.NotEqual(0, (await fixture.RunAsync("Capture")).ExitCode);
@@ -74,7 +78,7 @@ public sealed class CoverageEvidenceVerifierTests
     [InlineData("pdb")]
     public async Task Capture_RuntimeCopyDifferentFromProducedAssembly_IsRejected(string extension)
     {
-        using var fixture = new EvidenceFixture();
+        using var fixture = new EvidenceFixture(output);
         using (var stream = new FileStream(Path.Combine(fixture.RuntimeDirectory, EvidenceFixture.Project + "." + extension), FileMode.Append, FileAccess.Write)) stream.WriteByte(0);
         Assert.NotEqual(0, (await fixture.RunAsync("Capture")).ExitCode);
     }
@@ -85,7 +89,7 @@ public sealed class CoverageEvidenceVerifierTests
     [InlineData("source")]
     public async Task Verify_ReplacedCapturedIdentity_IsRejected(string identity)
     {
-        using var fixture = new EvidenceFixture();
+        using var fixture = new EvidenceFixture(output);
         Assert.Equal(0, (await fixture.RunAsync("Capture")).ExitCode);
         fixture.WriteResults();
         var path = identity switch { "dll" => fixture.DllPath, "pdb" => fixture.PdbPath, _ => fixture.AuthoredSourcePath };
@@ -96,7 +100,7 @@ public sealed class CoverageEvidenceVerifierTests
     [Fact]
     public async Task Capture_MissingActualExecutableGeneratedSource_IsRejected()
     {
-        using var fixture = new EvidenceFixture();
+        using var fixture = new EvidenceFixture(output);
         Assert.True(File.Exists(fixture.ExecutableGeneratedSourcePath));
         File.Delete(fixture.ExecutableGeneratedSourcePath);
         Assert.NotEqual(0, (await fixture.RunAsync("Capture")).ExitCode);
@@ -105,7 +109,7 @@ public sealed class CoverageEvidenceVerifierTests
     [Fact]
     public async Task Verify_DebugSourceCandidate_IsNotReleaseMembership()
     {
-        using var fixture = new EvidenceFixture();
+        using var fixture = new EvidenceFixture(output);
         var debug = Path.Combine(fixture.Root, EvidenceFixture.Project, "obj", "Debug", "net10.0", "Unrelated.g.cs");
         Directory.CreateDirectory(Path.GetDirectoryName(debug)!);
         File.WriteAllText(debug, "// Synthetic Debug candidate, not a Release PDB document.\n");
@@ -124,7 +128,7 @@ public sealed class CoverageEvidenceVerifierTests
     [InlineData("inconsistent")]
     public async Task Verify_IncompleteOrOtherExecutionTrx_IsRejected(string condition)
     {
-        using var fixture = new EvidenceFixture();
+        using var fixture = new EvidenceFixture(output);
         Assert.Equal(0, (await fixture.RunAsync("Capture")).ExitCode);
         fixture.WriteResults();
         var trx = Path.Combine(fixture.ResultsPath, "coverage.trx");
@@ -138,7 +142,7 @@ public sealed class CoverageEvidenceVerifierTests
     [Fact]
     public async Task Verify_RawFileAbsentFromReleasePdb_IsRejected()
     {
-        using var fixture = new EvidenceFixture();
+        using var fixture = new EvidenceFixture(output);
         Assert.Equal(0, (await fixture.RunAsync("Capture")).ExitCode);
         fixture.WriteResults();
         var document = XDocument.Load(fixture.CoveragePath);
@@ -150,7 +154,7 @@ public sealed class CoverageEvidenceVerifierTests
     [Fact]
     public async Task Verify_ExecutableGeneratedDocumentMissingRaw_IsRejected()
     {
-        using var fixture = new EvidenceFixture();
+        using var fixture = new EvidenceFixture(output);
         Assert.Equal(0, (await fixture.RunAsync("Capture")).ExitCode);
         fixture.WriteResults();
         var document = XDocument.Load(fixture.CoveragePath);
@@ -162,7 +166,7 @@ public sealed class CoverageEvidenceVerifierTests
     [Fact]
     public async Task Verify_ContradictoryNormalizedSourceIdentity_IsRejected()
     {
-        using var fixture = new EvidenceFixture();
+        using var fixture = new EvidenceFixture(output);
         Assert.Equal(0, (await fixture.RunAsync("Capture")).ExitCode);
         fixture.WriteResults();
         Assert.True(File.Exists(fixture.CapturePath));
@@ -182,6 +186,7 @@ public sealed class CoverageEvidenceVerifierTests
         private readonly string _repository;
         private readonly string _revision;
         private readonly XDocument _coverage;
+        private readonly ITestOutputHelper _output;
         private bool _preserveRoot;
         internal string Root { get; } = Path.Combine(Path.GetTempPath(), "intranet-coverage-evidence-" + Guid.NewGuid().ToString("N"));
         internal DateTime BuildStartedUtc { get; } = DateTime.UtcNow.AddMinutes(-1);
@@ -195,8 +200,9 @@ public sealed class CoverageEvidenceVerifierTests
         internal string AuthoredSourcePath { get; }
         internal string ExecutableGeneratedSourcePath { get; }
 
-        internal EvidenceFixture()
+        internal EvidenceFixture(ITestOutputHelper output)
         {
+            _output = output;
             var directory = new DirectoryInfo(AppContext.BaseDirectory);
             while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "Legacy.Maliev.Intranet.slnx"))) directory = directory.Parent;
             _repository = directory?.FullName ?? throw new DirectoryNotFoundException("Repository root unavailable.");
@@ -313,7 +319,13 @@ public sealed class CoverageEvidenceVerifierTests
                 }
                 throw;
             }
-            return (process.ExitCode, await output + await error);
+            var text = await output + await error;
+            if (process.ExitCode != 0)
+            {
+                var diagnostic = System.Text.RegularExpressions.Regex.Match(text, @"(?m)^\[coverage-evidence\] FAILED: stage=[a-z-]+; type=[A-Za-z0-9_.+`]+; line=[0-9]+\r?$");
+                _output.WriteLine(diagnostic.Success ? diagnostic.Value.TrimEnd('\r') : "[coverage-evidence] FAILED: sanitized diagnostic unavailable");
+            }
+            return (process.ExitCode, text);
         }
 
         private static byte[] ReadEmbeddedSource(MetadataReader reader, DocumentHandle handle)
