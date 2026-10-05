@@ -45,6 +45,32 @@ class Unavailable(Exception):
     """Only fixed stage codes, never raw exception messages, leave this program."""
 
 
+class EnvironmentUnavailable(Unavailable):
+    """Fixed enum counts only; never retain observed environment names or values."""
+
+    def __init__(self, counts):
+        super().__init__("target-environment-not-allowlisted")
+        self.counts = counts
+
+
+def verify_target_environment(target, allowed):
+    # Classification is NOT permission to accept these additions. All still fail closed.
+    # SDK v10.0.401 MSBuildForwardingAppWithoutLogging sets the two path names;
+    # its server key is conditional, so no value (including 0) is assumed here.
+    known = {b"MSBuildExtensionsPath": "sdk-extensions-path",
+             b"MSBuildSDKsPath": "sdk-sdks-path", b"MSBUILDUSESERVER": "sdk-build-server"}
+    require(len(target) <= 256 and sum(len(k) + len(v) for k, v in target.items()) <= 64 * 1024,
+            "target-environment-bound")
+    counts = {}
+    for key, value in target.items():
+        if key in allowed and allowed[key] == value:
+            continue
+        category = "allowlisted-value-changed" if key in allowed else known.get(key, "unknown-addition")
+        counts[category] = counts.get(category, 0) + 1
+    if counts:
+        raise EnvironmentUnavailable(counts)
+
+
 def require(condition, code):
     if not condition:
         raise Unavailable(code)
@@ -399,7 +425,7 @@ def capture(args, private):
             allowed = {k.encode(): v.encode() for k, v in env.items()}
             allowed[b"DOTNET_HOST_PATH"] = str(dotnet).encode()
             allowed[b"DOTNET_ROOT_X64"] = str(dotnet.parent).encode()
-            require(all(k in allowed and allowed[k] == v for k, v in target_env.items()), "target-environment-not-allowlisted")
+            verify_target_environment(target_env, allowed)
             core_paths = {line.split()[-1] for line in (proc / "maps").read_text().splitlines()
                           if line.endswith("/libcoreclr.so")}
             require(len(core_paths) == 1, "runtime-map-identity")
@@ -487,6 +513,26 @@ class ParserControls(unittest.TestCase):
     def rejects(self, function, *args):
         with self.assertRaises(Unavailable):
             function(*args)
+
+    def test_environment_classification_privacy(self):
+        allowed = {b"HOME": b"/private/home", b"GITHUB_TOKEN": b""}
+        verify_target_environment(dict(allowed), allowed)
+        target = dict(allowed)
+        target.update({b"MSBuildExtensionsPath": b"sensitive SDK path",
+                       b"MSBuildSDKsPath": b"sensitive SDK path", b"MSBUILDUSESERVER": b"0"})
+        target[b"GITHUB_TOKEN"] = b"synthetic-secret-value"
+        target[b"UNKNOWN_SYNTHETIC_SECRET_NAME"] = b"synthetic-secret-value"
+        with self.assertRaises(EnvironmentUnavailable) as caught:
+            verify_target_environment(target, allowed)
+        self.assertEqual(caught.exception.counts,
+                         {"sdk-extensions-path": 1, "sdk-sdks-path": 1, "sdk-build-server": 1,
+                          "allowlisted-value-changed": 1, "unknown-addition": 1})
+        payload = json.dumps({"stage": str(caught.exception), "environment_issues": caught.exception.counts})
+        for sensitive in ("sensitive SDK path", "synthetic-secret-value", "UNKNOWN_SYNTHETIC_SECRET_NAME",
+                          "MSBuildExtensionsPath", "MSBuildSDKsPath", "GITHUB_TOKEN"):
+            self.assertNotIn(sensitive, payload)
+        self.rejects(verify_target_environment, {b"x": b"x" * (64 * 1024)}, {})
+        self.rejects(verify_target_environment, {str(i).encode(): b"" for i in range(257)}, {})
 
     def test_checkout_provenance(self):
         head, checkout, base = "a" * 40, "b" * 40, "c" * 40
@@ -619,6 +665,9 @@ def main():
                 and private.stat().st_mode & 0o777 == 0o700, "private-temp-ownership")
         try:
             report = capture(args, private)
+        except EnvironmentUnavailable as failure:
+            report = {"status": "diagnostic-unavailable", "stage": str(failure),
+                      "environment_issues": failure.counts}
         except Unavailable as failure:
             report = {"status": "diagnostic-unavailable", "stage": str(failure)}
         except Exception:
