@@ -35,7 +35,7 @@ function NormalizedPath([string] $Relative) {
 function Bytes([string] $Relative) {
     $path = OwnedPath $Relative
     Require ([IO.File]::Exists($path))
-    Require ((Get-Item -LiteralPath $path).Length -gt 0 -and (Get-Item -LiteralPath $path).Length -le 32MB)
+    Require ((Get-Item -LiteralPath $path -Force).Length -gt 0 -and (Get-Item -LiteralPath $path -Force).Length -le 32MB)
     return ,([IO.File]::ReadAllBytes($path))
 }
 
