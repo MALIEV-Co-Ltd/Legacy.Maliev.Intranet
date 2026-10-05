@@ -88,14 +88,28 @@ jobs:
         shell: bash
         run: |
           export GITHUB_ACTIONS=false
-          dotnet test Legacy.Maliev.Intranet.Tests/Legacy.Maliev.Intranet.Tests.csproj \
+          build_started_utc="$(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)"
+          dotnet build Legacy.Maliev.Intranet.Tests/Legacy.Maliev.Intranet.Tests.csproj \
             --configuration Release \
             --no-restore \
+            --no-incremental \
+            -warnaserror \
             -p:EnableCoverageSymbols=true \
+            -p:EmitCompilerGeneratedFiles=true
+          pwsh -NoProfile -File scripts/verify-coverage-evidence.ps1 \
+            -Mode Capture -ExpectedSourceRevision "$(git rev-parse HEAD)" \
+            -BuildStartedUtc "$build_started_utc" -ResultsDirectory TestResults/coverage-native
+          dotnet test Legacy.Maliev.Intranet.Tests/Legacy.Maliev.Intranet.Tests.csproj \
+            --configuration Release \
+            --no-build \
+            --logger "trx;LogFileName=coverage.trx" \
             --collect:"XPlat Code Coverage" \
             --settings coverage.runsettings \
-            --results-directory TestResults
-          coverage_file="$(find TestResults -name coverage.cobertura.xml -print -quit)"
+            --results-directory TestResults/coverage-native
+          pwsh -NoProfile -File scripts/verify-coverage-evidence.ps1 \
+            -Mode Verify -ExpectedSourceRevision "$(git rev-parse HEAD)" \
+            -BuildStartedUtc "$build_started_utc" -ResultsDirectory TestResults/coverage-native
+          coverage_file="$(find TestResults/coverage-native -name coverage.cobertura.xml -print -quit)"
           if [[ -z "$coverage_file" ]]; then
             echo "The Intranet coverage collector did not produce coverage.cobertura.xml." >&2
             exit 1

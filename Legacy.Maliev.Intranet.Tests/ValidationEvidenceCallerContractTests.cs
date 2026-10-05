@@ -27,18 +27,19 @@ public sealed class ValidationEvidenceCallerContractTests
     }
 
     [Fact]
-    public void Preservation_DoesNotChangeExistingCollectorExclusionOrCoverageFloors()
+    public void Preservation_RetainsSameCoverageRunWithoutWeakeningCoverageFloors()
     {
         var workflow = Read(".github", "workflows", "_build-and-test.yml");
         var collector = workflow[workflow.IndexOf("      - name: Collect and gate Intranet coverage", StringComparison.Ordinal)..workflow.IndexOf("      - name: Preserve actual runner validation evidence", StringComparison.Ordinal)];
         Assert.Contains("dotnet test Legacy.Maliev.Intranet.Tests/Legacy.Maliev.Intranet.Tests.csproj", collector, StringComparison.Ordinal);
         Assert.Contains("--collect:\"XPlat Code Coverage\"", collector, StringComparison.Ordinal);
         Assert.Contains("--settings coverage.runsettings", collector, StringComparison.Ordinal);
-        Assert.Contains("--results-directory TestResults", collector, StringComparison.Ordinal);
-        Assert.DoesNotContain("--logger", collector, StringComparison.Ordinal);
+        Assert.Contains("--results-directory TestResults/coverage-native", collector, StringComparison.Ordinal);
+        Assert.Contains("--logger \"trx;LogFileName=coverage.trx\"", collector, StringComparison.Ordinal);
         Assert.DoesNotContain("--filter", collector, StringComparison.Ordinal);
         Assert.DoesNotContain("continue-on-error", workflow, StringComparison.Ordinal);
-        Assert.Contains("<ExcludeByFile>**/obj/**</ExcludeByFile>", Read("coverage.runsettings"), StringComparison.Ordinal);
+        Assert.DoesNotContain("<ExcludeByFile>", Read("coverage.runsettings"), StringComparison.Ordinal);
+        Assert.Contains("<SkipAutoProps>false</SkipAutoProps>", Read("coverage.runsettings"), StringComparison.Ordinal);
         var guard = Read("scripts", "verify-test-coverage.ps1");
         Assert.Contains("'Legacy.Maliev.Intranet.Bff' = 0.80", guard, StringComparison.Ordinal);
         Assert.Contains("'Legacy.Maliev.Intranet.Server' = 0.85", guard, StringComparison.Ordinal);
