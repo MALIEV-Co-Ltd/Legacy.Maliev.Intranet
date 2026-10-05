@@ -1,8 +1,8 @@
 """Opt-in hosted synthetic diagnosis; never publish a heap or unparsed SOS output.
 
-Review before activation. --self-test uses synthetic inputs and one isolated Python
-entrypoint subprocess, without dotnet, network, or heap collection. Normal execution
-retains the original failing Fact.
+Review before activation. --self-test uses synthetic inputs, disposable synthetic
+files, and one isolated Python entrypoint subprocess, without dotnet, network, or
+heap collection. Normal execution retains the original failing Fact.
 Official pin: github.com/dotnet/diagnostics/releases/tag/v10.0.745401.
 The SHA512 below is the immutable NuGet catalog packageHash, retrieved 2026-10-05.
 """
@@ -21,6 +21,7 @@ import sys
 import tempfile
 import time
 import unittest
+from unittest import mock
 import urllib.request
 import xml.etree.ElementTree as ET
 
@@ -39,6 +40,7 @@ HEX = r"[0-9a-fA-F]{1,16}"
 FAMILIES = ("System.", "Microsoft.", "Legacy.Maliev.", "Maliev.Aspire.ServiceDefaults.",
             "Polly.", "OpenTelemetry.", "Xunit.", "xunit.", "Grpc.", "Program+")
 MAX_TEXT = 1024 * 1024
+SDK_VERSION = "10.0.401"
 
 
 class Unavailable(Exception):
@@ -53,12 +55,44 @@ class EnvironmentUnavailable(Unavailable):
         self.counts = counts
 
 
+def sdk_environment_paths(dotnet, sdk_dir, version):
+    """Exact path values only; never normalize an observed environment value."""
+    require(version == SDK_VERSION, "selected-sdk-version")
+    require(dotnet.is_absolute() and dotnet.name == "dotnet"
+            and sdk_dir == dotnet.parent / "sdk" / SDK_VERSION, "sdk-root-layout")
+    return {b"MSBuildExtensionsPath": (str(sdk_dir) + "/").encode(),
+            b"MSBuildSDKsPath": str(sdk_dir / "Sdks").encode()}
+
+
+def verified_sdk_environment(dotnet, version):
+    sdk_dir = dotnet.parent / "sdk" / SDK_VERSION
+    expected = sdk_environment_paths(dotnet, sdk_dir, version)
+    directories = (dotnet.parent, sdk_dir.parent, sdk_dir, sdk_dir / "Sdks")
+    files = (dotnet, sdk_dir / "dotnet.dll", sdk_dir / "MSBuild.dll")
+    require(all(path.is_dir() for path in directories) and all(path.is_file() for path in files),
+            "sdk-installed-layout")
+    for path in directories + files:
+        require(not path.is_symlink() and path.resolve(strict=True) == path, "sdk-link-escape")
+    return expected
+
+
 def verify_target_environment(target, allowed):
-    # Classification is NOT permission to accept these additions. All still fail closed.
-    # SDK v10.0.401 MSBuildForwardingAppWithoutLogging sets the two path names;
-    # its server key is conditional, so no value (including 0) is assumed here.
+    # Classification grants no permission: anything outside exact expected values fails closed.
+    # Exact SDK v10.0.401 launch sources: Program, MSBuildForwardingApp[WithoutLogging],
+    # Commands/Test/VSTest/{TestCommand,VSTestForwardingApp}. Its bundled MSBuild
+    # XMake and BuildEnvironmentHelper at dotnet/dotnet 981be135426277fabd550b94fa14cdaf7271b9c2
+    # set/read the remaining exact identities. Conditional/read-only identities are
+    # classified too, never treated as proof that their values are safe or expected.
     known = {b"MSBuildExtensionsPath": "sdk-extensions-path",
-             b"MSBuildSDKsPath": "sdk-sdks-path", b"MSBUILDUSESERVER": "sdk-build-server"}
+             b"MSBuildSDKsPath": "sdk-sdks-path", b"MSBUILDUSESERVER": "sdk-build-server",
+             b"MSBUILDFAILONDRIVEENUMERATINGWILDCARD": "sdk-drive-wildcard",
+             b"MSBUILDENSURESTDOUTFORTASKPROCESSES": "sdk-task-stdout",
+             b"VSTEST_DOTNET_ROOT_PATH": "vstest-root-path",
+             b"VSTEST_DOTNET_ROOT_ARCHITECTURE": "vstest-root-architecture",
+             b"DOTNET_CLI_TELEMETRY_SESSIONID": "sdk-telemetry-session",
+             b"MSBuildLoadMicrosoftTargetsReadOnly": "msbuild-readonly-targets",
+             b"_MSBUILDTLENABLED": "msbuild-terminal-logger",
+             b"MSBUILD_EXE_PATH": "msbuild-executable-path"}
     require(len(target) <= 256 and sum(len(k) + len(v) for k, v in target.items()) <= 64 * 1024,
             "target-environment-bound")
     counts = {}
@@ -351,6 +385,9 @@ def capture(args, private):
     assembly = project.parent / "bin/Release/net10.0/Legacy.Maliev.Intranet.Tests.dll"
     require(project.is_file() and assembly.is_file(), "built-release-prerequisite")
     env = clean_environment(private, dotnet, workspace, args.head)
+    selected_sdk = run_private([str(dotnet), "--version"], env, workspace, private,
+                               "selected-sdk", seconds=15).strip()
+    sdk_expected = verified_sdk_environment(dotnet, selected_sdk)
     checkout = run_private(["/usr/bin/git", "rev-parse", "HEAD"], env, workspace, private, "checkout").strip()
     require(re.fullmatch(r"[0-9a-f]{40}", checkout), "checkout-format")
     commit = run_private(["/usr/bin/git", "cat-file", "-p", checkout],
@@ -425,6 +462,7 @@ def capture(args, private):
             allowed = {k.encode(): v.encode() for k, v in env.items()}
             allowed[b"DOTNET_HOST_PATH"] = str(dotnet).encode()
             allowed[b"DOTNET_ROOT_X64"] = str(dotnet.parent).encode()
+            allowed.update(sdk_expected)
             verify_target_environment(target_env, allowed)
             core_paths = {line.split()[-1] for line in (proc / "maps").read_text().splitlines()
                           if line.endswith("/libcoreclr.so")}
@@ -533,6 +571,58 @@ class ParserControls(unittest.TestCase):
             self.assertNotIn(sensitive, payload)
         self.rejects(verify_target_environment, {b"x": b"x" * (64 * 1024)}, {})
         self.rejects(verify_target_environment, {str(i).encode(): b"" for i in range(257)}, {})
+
+    def test_fixed_launch_environment_categories(self):
+        additions = {b"MSBUILDFAILONDRIVEENUMERATINGWILDCARD": "sdk-drive-wildcard",
+                     b"MSBUILDENSURESTDOUTFORTASKPROCESSES": "sdk-task-stdout",
+                     b"VSTEST_DOTNET_ROOT_PATH": "vstest-root-path",
+                     b"VSTEST_DOTNET_ROOT_ARCHITECTURE": "vstest-root-architecture",
+                     b"DOTNET_CLI_TELEMETRY_SESSIONID": "sdk-telemetry-session",
+                     b"MSBuildLoadMicrosoftTargetsReadOnly": "msbuild-readonly-targets",
+                     b"_MSBUILDTLENABLED": "msbuild-terminal-logger",
+                     b"MSBUILD_EXE_PATH": "msbuild-executable-path"}
+        for name, category in additions.items():
+            # Even source-known keys with synthetic malicious values must still reject.
+            with self.assertRaises(EnvironmentUnavailable) as caught:
+                verify_target_environment({name: b"synthetic-secret-value"}, {})
+            self.assertEqual(caught.exception.counts, {category: 1})
+            self.assertNotIn(name.decode(), json.dumps(caught.exception.counts))
+            with self.assertRaises(EnvironmentUnavailable) as unknown:
+                verify_target_environment({name + b"_UNREVIEWED_SUFFIX": b"synthetic-secret-value"}, {})
+            self.assertEqual(unknown.exception.counts, {"unknown-addition": 1})
+        with self.assertRaises(EnvironmentUnavailable) as changed:
+            verify_target_environment({b"DOTNET_HOST_PATH": b"/untrusted/dotnet"},
+                                      {b"DOTNET_HOST_PATH": b"/verified/dotnet"})
+        self.assertEqual(changed.exception.counts, {"allowlisted-value-changed": 1})
+
+    def test_exact_sdk_path_values(self):
+        with tempfile.TemporaryDirectory(prefix="synthetic-sdk-control-") as directory:
+            root = Path(directory).resolve()
+            dotnet = root / "dotnet"
+            sdk_dir = root / "sdk" / SDK_VERSION
+            (sdk_dir / "Sdks").mkdir(parents=True)
+            for path in (dotnet, sdk_dir / "dotnet.dll", sdk_dir / "MSBuild.dll"):
+                path.write_bytes(b"synthetic, never executed")
+            expected = verified_sdk_environment(dotnet, SDK_VERSION)
+            self.assertEqual(expected[b"MSBuildExtensionsPath"], (str(sdk_dir) + "/").encode())
+            self.assertEqual(expected[b"MSBuildSDKsPath"], str(sdk_dir / "Sdks").encode())
+            verify_target_environment(expected, expected)
+            for key, value in expected.items():
+                for mutation in (value + b"/", value + b"../escape", b"/untrusted/path", value + b"\n"):
+                    self.rejects(verify_target_environment, {key: mutation}, expected)
+            self.rejects(verify_target_environment,
+                         {b"MSBuildExtensionsPath": str(sdk_dir).encode()}, expected)
+            self.rejects(sdk_environment_paths, dotnet, root.parent / "sdk" / SDK_VERSION, SDK_VERSION)
+            self.rejects(sdk_environment_paths, dotnet, sdk_dir, "10.0.400")
+            self.rejects(sdk_environment_paths, dotnet, sdk_dir / ".." / SDK_VERSION, SDK_VERSION)
+            self.rejects(sdk_environment_paths, Path("relative/dotnet"), sdk_dir, SDK_VERSION)
+            # A selected executable from another root cannot authorize this SDK directory.
+            self.rejects(sdk_environment_paths, root.parent / "dotnet", sdk_dir, SDK_VERSION)
+            # Pure link-negative control avoids platform-dependent symlink privileges.
+            with mock.patch.object(Path, "is_symlink", return_value=True):
+                self.rejects(verified_sdk_environment, dotnet, SDK_VERSION)
+            (sdk_dir / "MSBuild.dll").unlink()
+            self.rejects(verified_sdk_environment, dotnet, SDK_VERSION)
 
     def test_checkout_provenance(self):
         head, checkout, base = "a" * 40, "b" * 40, "c" * 40
