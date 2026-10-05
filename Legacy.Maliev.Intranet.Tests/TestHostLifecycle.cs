@@ -46,7 +46,7 @@ internal static class TestHostLifecycle
         {
             // ApplicationStopped is a shutdown boundary, not a DI-disposal completion
             // guarantee. Join actual cleanup before this callback returns.
-            stoppedCleanup = lifetime.ApplicationStopped.Register(static state =>
+            stoppedCleanup = lifetime.ApplicationStopped.UnsafeRegister(static state =>
                 ((LimiterDisposalStartupFilter)state!).JoinCleanup(), this);
         }
 
