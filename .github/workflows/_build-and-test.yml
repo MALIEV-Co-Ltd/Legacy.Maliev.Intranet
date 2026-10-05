@@ -57,6 +57,7 @@ jobs:
           pwsh -NoProfile -File Legacy.Maliev.Intranet.BrowserTests/bin/Release/net10.0/playwright.ps1 \
             install --with-deps chromium
       - name: Validate .NET solution
+        id: solution-validation
         uses: MALIEV-Co-Ltd/Legacy.Maliev.Workflows/actions/dotnet-validate@e3a6093324a24968876782153286f52db8b29fd8
         env:
           # The shared action tests solution projects concurrently by default. Keep the
@@ -66,6 +67,35 @@ jobs:
         with:
           solution: Legacy.Maliev.Intranet.slnx
           use-local-maliev-dependencies: 'true'
+      - name: Characterize isolated pooled-host retention after validation failure
+        if: failure() && !cancelled() && steps.solution-validation.outcome == 'failure'
+        shell: bash
+        env:
+          DOTNET_PROCESSOR_COUNT: '1'
+          GITHUB_ACTIONS: 'false'
+          GITHUB_TOKEN: ''
+        run: |
+          test_assembly="Legacy.Maliev.Intranet.Tests/bin/Release/net10.0/Legacy.Maliev.Intranet.Tests.dll"
+          if [[ ! -f "$test_assembly" ]]; then
+            echo "No built test assembly; isolated characterization unavailable."
+            exit 1
+          fi
+          timeout --signal=TERM --kill-after=30s 6m dotnet test Legacy.Maliev.Intranet.Tests/Legacy.Maliev.Intranet.Tests.csproj \
+            --configuration Release \
+            --no-build \
+            --no-restore \
+            -p:UseLocalMalievDependencies=true \
+            --filter 'FullyQualifiedName=Legacy.Maliev.Intranet.Tests.PooledTestHostReleaseContractTests.DisposedOrdinaryBffHost_ReleasesProviderAndTransportAfterObservedPoolExpiry' \
+            --logger 'trx;LogFileName=isolated-pooled-host.trx' \
+            --results-directory isolated-pool-results
+      - name: Preserve isolated synthetic pooled-host result
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: intranet-isolated-pool-${{ github.sha }}
+          path: isolated-pool-results/*.trx
+          retention-days: 3
+          if-no-files-found: warn
       - name: Validate joined customer revision contract
         shell: bash
         run: |
