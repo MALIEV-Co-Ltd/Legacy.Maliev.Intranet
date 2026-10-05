@@ -82,6 +82,7 @@
     private int quotationId;
     private bool loading;
     private bool submitting;
+    private bool initializationCompleted;
     private bool storageChecked;
     private bool reloadBlocked;
     private string? error;
@@ -101,11 +102,12 @@
         try { session = await Http.GetFromJsonForPresentationAsync<EmployeeSessionSummary>("/bff/session"); }
         catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException) { error = Text["Unavailable"]; }
         if (QuotationIdInput is > 0) { quotationId = QuotationIdInput.Value; await LoadPreviewAsync(); }
+        initializationCompleted = true;
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (!firstRender) return;
+        if (!initializationCompleted || storageChecked) return;
         try
         {
             reloadBlocked = await JS.InvokeAsync<string?>("sessionStorage.getItem", UnresolvedStorageKey) is not null;
