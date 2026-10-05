@@ -282,7 +282,7 @@ try {
     }
     Require ((SourceRevision) -ceq $revision)
     $script:Stage = 'summary-publication'
-    WriteNewJson (OwnedPath ($ResultsDirectory + '/coverage-evidence.json')) ([ordered]@{ schemaVersion = 1; sourceRevision = $revision; complete = $true; executedTests = $executed; nonMemberSourceCandidates = ($pairs.nonMemberSourceCandidates | Measure-Object -Sum).Sum; rawUnion = $reports; compiledMembershipCertified = $false })
+    WriteNewJson (OwnedPath ($ResultsDirectory + '/coverage-evidence.json')) ([ordered]@{ schemaVersion = 1; sourceRevision = $revision; complete = $true; executedTests = $executed; nonMemberSourceCandidates = [int] ($pairs.nonMemberSourceCandidates | Measure-Object -Sum).Sum; rawUnion = $reports; compiledMembershipCertified = $false })
     Write-Host "[coverage-evidence] VERIFIED: executed=$executed; selected assembly/source/raw identities consistent"
 }
 catch {
