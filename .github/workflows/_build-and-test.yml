@@ -101,3 +101,12 @@ jobs:
             exit 1
           fi
           pwsh -NoProfile -File scripts/verify-test-coverage.ps1 -CoverageFile "$coverage_file"
+      - name: Preserve actual runner validation evidence
+        if: always()
+        uses: MALIEV-Co-Ltd/Legacy.Maliev.Workflows/actions/preserve-validation-evidence@55bd69d959d22d242dae3d6aba8de1878e44d9d8
+        with:
+          results-directory: TestResults
+          production-projects: |
+            Legacy.Maliev.Intranet.Bff
+            Legacy.Maliev.Intranet.Server
+            Legacy.Maliev.Intranet.Contracts
