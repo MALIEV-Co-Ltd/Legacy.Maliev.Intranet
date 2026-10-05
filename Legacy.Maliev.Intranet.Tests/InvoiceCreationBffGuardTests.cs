@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Net;
 using Bunit;
 using Legacy.Maliev.Intranet.Client.Features.Accounting.Pages;
@@ -18,6 +19,7 @@ public sealed class InvoiceCreationBffGuardTests
     [InlineData("{\"invoiceId\":55,\"state\":0,\"emailState\":99}")]
     public async Task Create_RealBffCannotTurnUnconfirmedUpstreamReceiptIntoBrowserSuccess(string receipt)
     {
+        using var culture = new EnglishCultureScope();
         using var upstream = AccountingBehaviorTestHost.Routes(request =>
             request.Method == HttpMethod.Get && request.RequestUri?.AbsolutePath == "/invoices/from-quotation/84/preview"
                 ? AccountingBehaviorTestHost.Json(InvoiceCreationUpstreamReceiptTests.PreviewJson)
@@ -54,5 +56,23 @@ public sealed class InvoiceCreationBffGuardTests
             Assert.DoesNotContain(context.JSInterop.Invocations, invocation => invocation.Identifier == "sessionStorage.removeItem");
             Assert.Contains(context.JSInterop.Invocations, invocation => invocation.Identifier == "sessionStorage.setItem");
         });
+    }
+
+    private sealed class EnglishCultureScope : IDisposable
+    {
+        private readonly CultureInfo previous = CultureInfo.CurrentCulture;
+        private readonly CultureInfo previousUi = CultureInfo.CurrentUICulture;
+
+        public EnglishCultureScope()
+        {
+            CultureInfo.CurrentCulture = CultureInfo.GetCultureInfo("en-US");
+            CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo("en-US");
+        }
+
+        public void Dispose()
+        {
+            CultureInfo.CurrentCulture = previous;
+            CultureInfo.CurrentUICulture = previousUi;
+        }
     }
 }

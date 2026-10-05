@@ -34,6 +34,8 @@ public sealed class InvoiceCreationUpstreamReceiptTests
     [InlineData("{\"invoiceId\":55,\"state\":0,\"emailState\":2,\"emailState\":0}")]
     [InlineData("{\"invoiceId\":55,\"state\":0,\"EmailState\":2,\"emailState\":0}")]
     [InlineData("{\"invoiceId\":55,\"state\":0,\"emailState\":0,\"providerMessageId\":42}")]
+    [InlineData("{\"invoiceId\":55,\"state\":0,\"emailState\":0,\"providerMessageId\":\"\\uD800\"}")]
+    [InlineData("{\"invoiceId\":55,\"state\":0,\"emailState\":0,\"\\uD800\":null}")]
     [InlineData("{\"invoiceId\":55,\"state\":0,\"emailState\":0,\"ProviderMessageId\":null,\"providerMessageId\":\"synthetic-message\"}")]
     public async Task Create_InvalidUpstreamReceipt_ReturnsGenericBadGateway(string receipt)
     {
@@ -58,6 +60,7 @@ public sealed class InvoiceCreationUpstreamReceiptTests
     [InlineData("{\"InvoiceId\":55,\"State\":1,\"EmailState\":2,\"ProviderMessageId\":\"synthetic-message\",\"StoredFile\":{\"Bucket\":\"synthetic-bucket\",\"ObjectName\":\"invoices/55/invoice.pdf\"}}", 1, 2, "synthetic-message")]
     [InlineData("{\"invoiceId\":55,\"State\":1,\"emailState\":1,\"providerMessageId\":null}", 1, 1, null)]
     [InlineData("{\"InvoiceId\":55,\"State\":99,\"EmailState\":0}", 99, 0, null)]
+    [InlineData("{\"InvoiceId\":55,\"State\":0,\"EmailState\":3,\"StoredFile\":{\"Bucket\":\"synthetic-bucket\",\"ObjectName\":\"invoices/55/invoice.pdf\"}}", 0, 3, null)]
     [InlineData("{\"invoiceId\":55,\"state\":0,\"emailState\":99}", 0, 99, null)]
     public async Task Create_CompleteNumericReceipt_PreservesValuesAndBrowserCasing(string receipt, int state, int emailState, string? message)
     {
