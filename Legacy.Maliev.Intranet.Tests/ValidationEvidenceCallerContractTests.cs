@@ -10,7 +10,7 @@ public sealed class ValidationEvidenceCallerContractTests
         {
             "      - name: Preserve actual runner validation evidence",
             "        if: always()",
-            "        uses: MALIEV-Co-Ltd/Legacy.Maliev.Workflows/actions/preserve-validation-evidence@55bd69d959d22d242dae3d6aba8de1878e44d9d8",
+            "        uses: MALIEV-Co-Ltd/Legacy.Maliev.Workflows/actions/preserve-validation-evidence@45ced0919a604459c7bb5baf7f38d7bc53d708ba",
             "        with:",
             "          results-directory: TestResults",
             "          production-projects: |",
@@ -30,8 +30,7 @@ public sealed class ValidationEvidenceCallerContractTests
     public void Preservation_DoesNotChangeExistingCollectorExclusionOrCoverageFloors()
     {
         var workflow = Read(".github", "workflows", "_build-and-test.yml");
-        var collector = workflow[workflow.IndexOf("      - name: Collect and gate Intranet coverage", StringComparison.Ordinal)..
-            workflow.IndexOf("      - name: Preserve actual runner validation evidence", StringComparison.Ordinal)];
+        var collector = workflow[workflow.IndexOf("      - name: Collect and gate Intranet coverage", StringComparison.Ordinal)..workflow.IndexOf("      - name: Preserve actual runner validation evidence", StringComparison.Ordinal)];
         Assert.Contains("dotnet test Legacy.Maliev.Intranet.Tests/Legacy.Maliev.Intranet.Tests.csproj", collector, StringComparison.Ordinal);
         Assert.Contains("--collect:\"XPlat Code Coverage\"", collector, StringComparison.Ordinal);
         Assert.Contains("--settings coverage.runsettings", collector, StringComparison.Ordinal);
