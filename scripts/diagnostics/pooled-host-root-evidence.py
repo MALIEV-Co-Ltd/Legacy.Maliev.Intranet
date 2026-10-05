@@ -58,6 +58,29 @@ def verify_checkout(head, checkout, parents):
             "checkout-head-provenance")
 
 
+def commit_parents(text):
+    """Read immutable object headers, unaffected by Git's shallow traversal boundary."""
+    require(len(text.encode("utf-8")) <= MAX_TEXT and "\x00" not in text,
+            "commit-output-bound")
+    header, separator, _ = text.partition("\n\n")
+    require(separator, "commit-header-boundary")
+    rows = header.split("\n")
+    require(re.fullmatch(r"tree [0-9a-f]{40}", rows[0]), "commit-tree-header")
+    parents = []
+    other_headers = False
+    for row in rows[1:]:
+        if row.startswith("parent"):
+            require(not other_headers and re.fullmatch(r"parent [0-9a-f]{40}", row),
+                    "commit-parent-header")
+            parents.append(row[7:])
+        else:
+            require(re.fullmatch(r"[a-z][a-z0-9-]* .+", row) or (other_headers and row.startswith(" ")),
+                    "commit-header-format")
+            require(not row.startswith("tree "), "commit-tree-header")
+            other_headers = True
+    return parents
+
+
 def metadata(value):
     require(len(value) <= 2048 and (value == "Program" or value.startswith(FAMILIES)), "unknown-metadata-identity")
     require(re.fullmatch(r"[A-Za-z0-9_.$`+<>\[\](), =!&?*\-]+", value) is not None,
@@ -304,10 +327,9 @@ def capture(args, private):
     env = clean_environment(private, dotnet, workspace, args.head)
     checkout = run_private(["/usr/bin/git", "rev-parse", "HEAD"], env, workspace, private, "checkout").strip()
     require(re.fullmatch(r"[0-9a-f]{40}", checkout), "checkout-format")
-    revision = run_private(["/usr/bin/git", "rev-list", "--parents", "-n", "1", checkout],
-                           env, workspace, private, "head-provenance").strip().split()
-    require(revision and revision[0] == checkout, "checkout-record")
-    verify_checkout(args.head, checkout, revision[1:])
+    commit = run_private(["/usr/bin/git", "cat-file", "-p", checkout],
+                         env, workspace, private, "head-provenance")
+    verify_checkout(args.head, checkout, commit_parents(commit))
     catalog = json.loads(download(CATALOG, 128 * 1024))
     require(catalog["id"] == "dotnet-dump" and catalog["version"] == PIN
             and catalog["authors"] == "Microsoft" and catalog["packageHashAlgorithm"] == "SHA512"
@@ -475,6 +497,28 @@ class ParserControls(unittest.TestCase):
                                    ("invalid", [base, head]), (checkout, ["invalid", head])):
             self.rejects(verify_checkout, head, candidate, parents)
         self.rejects(verify_checkout, "invalid", head, [])
+
+    def test_commit_object_headers(self):
+        head, checkout, base, tree = "a" * 40, "b" * 40, "c" * 40, "d" * 40
+        identities = "author Synthetic <synthetic@example.invalid> 1 +0000\ncommitter Synthetic <synthetic@example.invalid> 1 +0000"
+        # The raw two-parent object retains parents even when traversal sees a shallow root.
+        text = f"tree {tree}\nparent {base}\nparent {head}\n{identities}\n\nSynthetic merge\n"
+        self.assertEqual(commit_parents(text), [base, head])
+        verify_checkout(head, checkout, commit_parents(text))
+        exact = f"tree {tree}\n{identities}\n\nSynthetic head\n"
+        verify_checkout(head, head, commit_parents(exact))
+        extra = text.replace(f"parent {head}\n", f"parent {base}\nparent {head}\n")
+        self.rejects(verify_checkout, head, checkout, commit_parents(extra))
+        for bad in (text.replace(f"parent {head}", "parent invalid"),
+                    text.replace(f"tree {tree}", "tree invalid"),
+                    text.replace(f"tree {tree}\n", ""), "", text.replace("\n\n", "\n"),
+                    text.replace(f"parent {head}\n", "").replace("\n\n", f"\nparent {head}\n\n")):
+            self.rejects(commit_parents, bad)
+        # Neither a body 'parent' line nor a body 'head' line can prove provenance.
+        for body in (f"parent {head}", f"head {head}"):
+            spoof = exact + body + "\n"
+            self.assertEqual(commit_parents(spoof), [])
+            self.rejects(verify_checkout, head, checkout, commit_parents(spoof))
 
     def test_actual_entrypoint_generic_failure(self):
         # Trigger the actual __main__ outer catch without invoking capture or tooling.
