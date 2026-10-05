@@ -9,6 +9,40 @@ namespace Legacy.Maliev.Intranet.Tests;
 
 public sealed class InvoiceAccountingBehaviorTests
 {
+    [Theory]
+    [InlineData(0)]
+    [InlineData(1)]
+    [InlineData(2)]
+    [InlineData(3)]
+    public async Task Creation_ProjectsProducerPascalCaseNumericEmailStateWithoutExposingStoredFile(int emailState)
+    {
+        var accounting = AccountingBehaviorTestHost.Routes(request =>
+            request.RequestUri?.AbsolutePath == "/invoices/from-quotation/84"
+                ? AccountingBehaviorTestHost.Json($$"""{"InvoiceId":55,"State":0,"EmailState":{{emailState}},"StoredFile":{"Bucket":"fixture","ObjectName":"invoices/55.pdf"} }""")
+                : new(HttpStatusCode.NotFound));
+        await using var factory = AccountingBehaviorTestHost.CreateFactory(accounting);
+        using var client = AccountingBehaviorTestHost.CreateClient(factory);
+        var csrf = await AccountingBehaviorTestHost.SignInAsync(client);
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/bff/invoices/from-quotation/84")
+        {
+            Content = new StringContent(CreateInvoiceJson, Encoding.UTF8, "application/json"),
+        };
+        request.Headers.Add("X-CSRF-TOKEN", csrf);
+        request.Headers.Add("Idempotency-Key", "ee1cda3e-4cf5-4131-b47b-163739ce9e76");
+
+        using var response = await client.SendAsync(request);
+        var result = await response.Content.ReadFromJsonAsync<JsonElement>();
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal(55, result.GetProperty("invoiceId").GetInt32());
+        Assert.Equal(0, result.GetProperty("state").GetInt32());
+        Assert.Equal(emailState, result.GetProperty("emailState").GetInt32());
+        Assert.True(!result.TryGetProperty("providerMessageId", out var provider) || provider.ValueKind == JsonValueKind.Null);
+        Assert.False(result.TryGetProperty("StoredFile", out _));
+        Assert.False(result.TryGetProperty("storedFile", out _));
+        Assert.Single(accounting.Requests);
+    }
+
     [Fact]
     public async Task CreationPreview_ReturnsAuthoritativeAccountingProjection()
     {
