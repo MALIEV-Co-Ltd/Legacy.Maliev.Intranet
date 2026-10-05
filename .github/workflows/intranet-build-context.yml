@@ -1,0 +1,41 @@
+name: Intranet actual build context admission
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: intranet-context-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  context-admission:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - name: Check out exact Intranet candidate
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Verify offline rejection controls
+        env:
+          PYTHONDONTWRITEBYTECODE: '1'
+        run: python3 -B tests/fixtures/intranet-build-context/test_context_admission.py
+      - name: Admit actual context and build both immutable-pinned consumers
+        env:
+          PYTHONDONTWRITEBYTECODE: '1'
+          DOCKER_BUILDKIT: '1'
+        run: python3 -B scripts/verify-intranet-build-context.py --evidence context-admission-evidence
+      - name: Retain actual consumer admission evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: intranet-context-admission-${{ github.sha }}
+          path: context-admission-evidence/
+          if-no-files-found: error
+          retention-days: 7
