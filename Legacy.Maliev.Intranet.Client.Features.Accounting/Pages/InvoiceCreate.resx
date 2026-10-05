@@ -15,4 +15,5 @@
   <data name="UnconfirmedReceipt" xml:space="preserve"><value>Accounting returned an unconfirmed invoice outcome. Open the existing invoice and contact support before any further action. Do not create another invoice or retry this operation.</value></data>
   <data name="OpenExistingInvoice" xml:space="preserve"><value>Open existing invoice</value></data>
   <data name="AmbiguousInvoiceReceipt" xml:space="preserve"><value>Accounting returned an unconfirmed invoice outcome with an ambiguous invoice reference. Contact support before any further action. Do not create another invoice or retry this operation.</value></data>
+  <data name="ProviderAcceptedReceipt" xml:space="preserve"><value>The invoice exists. The email provider accepted the message, but recipient delivery is not confirmed. Open the existing invoice. Do not resend the email or create another invoice.</value></data>
 </root>
