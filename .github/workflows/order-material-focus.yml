@@ -1,0 +1,78 @@
+name: Order material named UI regression proof
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: order-material-focus-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  order-material-focus:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      MalievWorkspaceRoot: ${{ github.workspace }}/.dependencies
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - name: Check out exact Intranet candidate
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Check out exact ServiceDefaults
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: MALIEV-Co-Ltd/Legacy.Maliev.ServiceDefaults
+          ref: 7edcd961024868513fd5f373cab3dcb261197f77
+          path: .dependencies/Legacy.Maliev.ServiceDefaults
+          persist-credentials: false
+      - name: Check out exact CompatibilityContracts
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: MALIEV-Co-Ltd/Legacy.Maliev.CompatibilityContracts
+          ref: 78e48ffc4ee000df0510cba5e7c7a3c4c4d539d7
+          path: .dependencies/Legacy.Maliev.CompatibilityContracts
+          persist-credentials: false
+      - name: Set up the same .NET runtime
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68
+        with:
+          dotnet-version: 10.0.x
+      - name: Cache NuGet packages
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+        with:
+          path: ~/.nuget/packages
+          key: ${{ runner.os }}-nuget-${{ hashFiles('**/packages.lock.json', '**/*.csproj', '**/*.props') }}
+          restore-keys: |
+            ${{ runner.os }}-nuget-
+      - name: Verify focused evidence rejection controls
+        run: python3 -B tests/fixtures/order-material-focus/test_focus_retainer.py
+      - name: Build before genuine focused execution
+        shell: bash
+        run: |
+          export GITHUB_ACTIONS=false
+          dotnet restore Legacy.Maliev.Intranet.Tests/Legacy.Maliev.Intranet.Tests.csproj -p:UseLocalMalievDependencies=true
+          dotnet build Legacy.Maliev.Intranet.Tests/Legacy.Maliev.Intranet.Tests.csproj --configuration Release --no-restore --warnaserror -p:UseLocalMalievDependencies=true -p:EnableCoverageSymbols=true
+      - name: Execute only the actual Order material UI regression class
+        shell: bash
+        run: |
+          export GITHUB_ACTIONS=false
+          dotnet test Legacy.Maliev.Intranet.Tests/Legacy.Maliev.Intranet.Tests.csproj --configuration Release --no-build --no-restore -p:UseLocalMalievDependencies=true -p:EnableCoverageSymbols=true --filter 'FullyQualifiedName~Legacy.Maliev.Intranet.Tests.OrderDetailMaterialChoicesUiTests' --logger 'trx;LogFileName=order-material.trx' --results-directory "$RUNNER_TEMP/order-material-results"
+      - name: Verify and retain sanitized named execution evidence
+        env:
+          EXPECTED_SOURCE_REVISION: ${{ github.sha }}
+          FOCUS_RESULTS: ${{ runner.temp }}/order-material-results
+          FOCUS_EVIDENCE: ${{ runner.temp }}/order-material-evidence
+        run: python3 -B scripts/verify-order-material-focus.py
+      - name: Upload the bounded focused proof
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: order-material-focus-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/order-material-evidence/
+          if-no-files-found: error
+          retention-days: 7

@@ -37,6 +37,10 @@
                     <h1>@customer.FullName</h1>
                     <p class="customer-detail__number">@Text["CustomerNumber", customer.Id]</p>
                 </div>
+                @if (canAdminister)
+                {
+                    <LegacyLink Href="@($"/Customers/Edit?id={Id}")" Role="LegacyLinkRole.Navigation" AriaLabel="@Text["EditCustomer"]">@Text["EditCustomer"]</LegacyLink>
+                }
             </header>
 
             @if (!string.IsNullOrWhiteSpace(operationError))
@@ -177,6 +181,7 @@
     private bool internalRemarkSaved;
     private CancellationTokenSource? internalRemarkLoadCts;
     private bool canEdit;
+    private bool canAdminister;
     private bool canReadOrders;
     private bool canReadQuotations;
     private bool canReadInvoices;
@@ -294,6 +299,9 @@
         if (!customerLoadGate.IsCurrent(request)) return;
         var user = authenticationState.User;
         canEdit = LegacyNavigationAuthorization.IsEnabled(user, "legacy-customer.customers.update");
+        canAdminister = user.Identity?.IsAuthenticated == true && new[] { "legacy-customer.customers.read", "legacy-customer.customers.update",
+            "legacy-auth.customer-identities.read", "legacy-auth.customer-identities.update" }
+            .All(permission => user.HasClaim("permissions", permission));
         canReadOrders = LegacyNavigationAuthorization.IsEnabled(user, "legacy.orders.read");
         canReadQuotations = LegacyNavigationAuthorization.IsEnabled(user, "legacy.quotations.read");
         canReadInvoices = LegacyNavigationAuthorization.IsEnabled(user, "legacy.accounting.read");
