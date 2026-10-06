@@ -22,15 +22,17 @@ public sealed class ValidationEvidenceCallerContractTests
 
         Assert.EndsWith(expected, workflow, StringComparison.Ordinal);
         Assert.Equal(1, workflow.Split("actions/preserve-validation-evidence@", StringSplitOptions.None).Length - 1);
-        Assert.Contains("          pwsh -NoProfile -File scripts/verify-test-coverage.ps1 -CoverageFile \"$coverage_file\"\n" + expected,
-            workflow, StringComparison.Ordinal);
+        var collector = Step(workflow, "Collect and gate Intranet coverage");
+        Assert.EndsWith("          pwsh -NoProfile -File scripts/verify-test-coverage.ps1 -CoverageFile \"$coverage_file\"\n",
+            collector, StringComparison.Ordinal);
+        Assert.True(workflow.IndexOf(collector, StringComparison.Ordinal) < workflow.IndexOf(expected, StringComparison.Ordinal));
     }
 
     [Fact]
     public void Preservation_RetainsSameCoverageRunWithoutWeakeningCoverageFloors()
     {
         var workflow = Read(".github", "workflows", "_build-and-test.yml");
-        var collector = workflow[workflow.IndexOf("      - name: Collect and gate Intranet coverage", StringComparison.Ordinal)..workflow.IndexOf("      - name: Preserve actual runner validation evidence", StringComparison.Ordinal)];
+        var collector = Step(workflow, "Collect and gate Intranet coverage");
         Assert.Contains("dotnet test Legacy.Maliev.Intranet.Tests/Legacy.Maliev.Intranet.Tests.csproj", collector, StringComparison.Ordinal);
         Assert.Contains("--collect:\"XPlat Code Coverage\"", collector, StringComparison.Ordinal);
         Assert.Contains("--settings coverage.runsettings", collector, StringComparison.Ordinal);
@@ -44,6 +46,39 @@ public sealed class ValidationEvidenceCallerContractTests
         Assert.Contains("'Legacy.Maliev.Intranet.Bff' = 0.80", guard, StringComparison.Ordinal);
         Assert.Contains("'Legacy.Maliev.Intranet.Server' = 0.85", guard, StringComparison.Ordinal);
         Assert.Contains("'Legacy.Maliev.Intranet.Contracts' = 0.95", guard, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("name: Focused proof")]
+    [InlineData("id: focused_proof")]
+    [InlineData("uses: reviewed/action@pin")]
+    public void CollectorBoundary_StopsAtAnyFollowingYamlStep(string nextStep)
+    {
+        var collector = "      - name: Collect and gate Intranet coverage\n        run: |\n          echo '      - name: shell text'\n          dotnet test --collect:coverage\n";
+        var workflow = collector + "      - " + nextStep + "\n        run: dotnet test --filter Focused\n";
+
+        Assert.Equal(collector, Step(workflow, "Collect and gate Intranet coverage"));
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void CollectorBoundary_RejectsMissingOrDuplicateCollector(bool duplicate)
+    {
+        var collector = "      - name: Collect and gate Intranet coverage\n        run: dotnet test\n";
+        var workflow = duplicate ? collector + collector : "      - name: Other step\n";
+
+        Assert.ThrowsAny<Xunit.Sdk.XunitException>(() => Step(workflow, "Collect and gate Intranet coverage"));
+    }
+
+    private static string Step(string workflow, string name)
+    {
+        var marker = "      - name: " + name + "\n";
+        var start = workflow.IndexOf(marker, StringComparison.Ordinal);
+        Assert.True(start >= 0, "The required coverage step must exist.");
+        Assert.Equal(-1, workflow.IndexOf(marker, start + marker.Length, StringComparison.Ordinal));
+        var end = workflow.IndexOf("\n      - ", start + marker.Length, StringComparison.Ordinal);
+        return end < 0 ? workflow[start..] : workflow[start..(end + 1)];
     }
 
     private static string Read(params string[] parts)
