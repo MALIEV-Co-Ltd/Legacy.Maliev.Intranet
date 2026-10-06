@@ -179,7 +179,6 @@ builder.Services.AddHttpClient<EmployeesProxy>(client =>
     });
 });
 // Administrative writes use acting employee credentials and never inherit automatic retries.
-#pragma warning disable EXTEXP0001
 builder.Services.AddHttpClient<CustomerAdministrationIdentityClient>(client =>
 {
     client.BaseAddress = new Uri(builder.Configuration["Services:Auth"]
@@ -196,7 +195,6 @@ builder.Services.AddHttpClient<CustomerAdministrationProfileClient>(client =>
     client.MaxResponseContentBufferSize = 65536;
 }).RemoveAllResilienceHandlers()
     .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler { AllowAutoRedirect = false });
-#pragma warning restore EXTEXP0001
 builder.Services.AddHttpClient<EmployeeRecoveryAuthProxy>(client =>
 {
     client.BaseAddress = new Uri(builder.Configuration["Services:Auth"]
