@@ -48,11 +48,12 @@ class Unavailable(Exception):
 
 
 class EnvironmentUnavailable(Unavailable):
-    """Fixed enum counts only; never retain observed environment names or values."""
+    """Fixed enum counts and name-only digests; never retain names or any values."""
 
-    def __init__(self, counts):
+    def __init__(self, counts, unknown_name_sha256=()):
         super().__init__("target-environment-not-allowlisted")
         self.counts = counts
+        self.unknown_name_sha256 = sorted(set(unknown_name_sha256))
 
 
 def sdk_environment_paths(dotnet, sdk_dir, version):
@@ -119,6 +120,7 @@ def verify_target_environment(target, allowed, enumerated=None):
     require(len(target) <= 256 and sum(len(k) + len(v) for k, v in target.items()) <= 64 * 1024,
             "target-environment-bound")
     counts = {}
+    unknown_name_sha256 = []
     enumerated = enumerated or {}
     for key, value in target.items():
         if key in allowed and allowed[key] == value:
@@ -128,8 +130,10 @@ def verify_target_environment(target, allowed, enumerated=None):
         category = ("allowlisted-value-changed" if key in allowed or key in enumerated
                     else known.get(key, "unknown-addition"))
         counts[category] = counts.get(category, 0) + 1
+        if category == "unknown-addition":
+            unknown_name_sha256.append(hashlib.sha256(key).hexdigest())
     if counts:
-        raise EnvironmentUnavailable(counts)
+        raise EnvironmentUnavailable(counts, unknown_name_sha256)
 
 
 def require(condition, code):
@@ -659,6 +663,24 @@ class ParserControls(unittest.TestCase):
             (sdk_dir / "MSBuild.dll").unlink()
             self.rejects(verified_sdk_environment, dotnet, SDK_VERSION)
 
+    def test_unknown_environment_diagnosis_retains_name_digests_only(self):
+        name = b"SYNTHETIC_UNKNOWN_NAME"
+        value = b"synthetic-secret-value"
+        with self.assertRaises(EnvironmentUnavailable) as caught:
+            verify_target_environment({name: value}, {})
+        failure = caught.exception
+        self.assertEqual(failure.counts, {"unknown-addition": 1})
+        self.assertEqual(failure.unknown_name_sha256, [hashlib.sha256(name).hexdigest()])
+        exported = json.dumps({"counts": failure.counts, "names": failure.unknown_name_sha256})
+        self.assertNotIn(name.decode(), exported)
+        self.assertNotIn(value.decode(), exported)
+        self.assertNotIn(hashlib.sha256(value).hexdigest(), exported)
+        # Known rejected values remain fixed categories and acquire no unknown-name digest.
+        with self.assertRaises(EnvironmentUnavailable) as known:
+            verify_target_environment({b"VSTEST_BUILD_DEBUG": value}, {})
+        self.assertEqual(known.exception.counts, {"vstest-build-debug": 1})
+        self.assertEqual(known.exception.unknown_name_sha256, [])
+
     def test_exact_launch_values(self):
         dotnet = Path(tempfile.gettempdir()).resolve() / "synthetic-root" / "dotnet"
         fixed, enumerated = launch_environment_expectations(dotnet)
@@ -812,7 +834,8 @@ def main():
             report = capture(args, private)
         except EnvironmentUnavailable as failure:
             report = {"status": "diagnostic-unavailable", "stage": str(failure),
-                      "environment_issues": failure.counts}
+                      "environment_issues": failure.counts,
+                      "unknown_environment_name_sha256": failure.unknown_name_sha256}
         except Unavailable as failure:
             report = {"status": "diagnostic-unavailable", "stage": str(failure)}
         except Exception:
