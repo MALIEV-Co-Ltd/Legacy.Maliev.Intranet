@@ -27,6 +27,8 @@ public sealed class LookupSupplierBrowserTests(IntranetClientServerFixture serve
         await page.Locator("#supplier-address-2").FillAsync("Floor 2");
         await page.Locator("#supplier-country-id").FillAsync("66");
         await page.Locator("#supplier-address-lookup-enabled").ClickAsync();
+        await page.Locator("#supplier-address-lookup-postcode-first").FillAsync("๑");
+        await Assertions.Expect(page.Locator("#supplier-address-lookup-combination-results")).ToBeDisabledAsync();
         await page.Locator("#supplier-address-lookup-postcode-first").FillAsync("๑๐๑๑๐");
         var result = page.Locator("#supplier-address-lookup-combination-results");
         await Assertions.Expect(result).ToBeEnabledAsync();
@@ -64,8 +66,8 @@ public sealed class LookupSupplierBrowserTests(IntranetClientServerFixture serve
         ContentType = "application/json", Body = JsonSerializer.Serialize(new
         { isAuthenticated = true, employeeId = "staff", displayName = "Staff", roles = new[] { "Employee" }, csrfToken = "csrf", permissions = new[] { "legacy-catalog.locations.read", "legacy-catalog.companies.read" } })
     }));
-    private const string Province = """{"code":"10","nameTh":"กรุงเทพมหานคร","nameEn":"Bangkok","parentCode":null}""";
-    private const string District = """{"code":"1033","nameTh":"คลองเตย","nameEn":"Khlong Toei","parentCode":"10"}""";
-    private const string Subdistrict = """{"code":"103301","nameTh":"คลองเตย","nameEn":"Khlong Toei","parentCode":"1033"}""";
+    private const string Province = """{"code":"10","nameTh":"กรุงเทพมหานคร","nameEn":"Bangkok","provinceCode":null,"districtCode":null}""";
+    private const string District = """{"code":"1033","nameTh":"คลองเตย","nameEn":"Khlong Toei","provinceCode":"10","districtCode":null}""";
+    private const string Subdistrict = """{"code":"103301","nameTh":"คลองเตย","nameEn":"Khlong Toei","provinceCode":null,"districtCode":"1033"}""";
     private const string Combination = "{\"province\":" + Province + ",\"district\":" + District + ",\"subdistrict\":" + Subdistrict + ",\"postcode\":\"10110\"}";
 }

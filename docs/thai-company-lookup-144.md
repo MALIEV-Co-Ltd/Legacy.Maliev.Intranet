@@ -1,6 +1,6 @@
 # Intranet lookup integration — AppHost #144
 
-Status: draft implementation, not build-validated or release-ready. Scoped draft publication for hosted validation was explicitly authorized; no merge,
+Status: hosted build validated at 79042229; feature acceptance and startup handoff remain incomplete. Scoped draft publication for hosted validation was explicitly authorized; no merge,
 deployment, migration, live provider call or production permission change has
 been performed by this lane.
 
@@ -39,8 +39,10 @@ Branch: `feature/thai-lookup-intranet`.
 Catalog proposals: issues #44 comment 6010129894, #45 comment 6010135057,
 #46 comment 6010135306. These are not released APIs.
 
+Catalog source revision inspected: `6b591f86a720ae4953d9bd33c93724f4b5703b89`.
+
 The authored Catalog LookupModels.cs and ThaiAddressesController/CompaniesController
-were read. The consumer DTOs match their `parentCode` administrative-area shape,
+were read. The consumer DTOs match their final `provinceCode`/`districtCode` administrative-area wire shape,
 string conflict fields, string codes/postcodes, version-bound pages, and suggestion
 capability with nullable unavailable company facts. Final producer revision/OpenAPI
 confirmation and joined HTTP tests remain required. No prototype replacement was used.
@@ -108,7 +110,7 @@ successful parser check used the version already loaded by PowerShell. These che
 do not validate Razor generation, references, compilation, runtime or persistence.
 
 Authored tests cover debounce/stale failure rejection/disposal, parent invalidation,
-detail preservation, truthful company mapping, same-origin filters and parentCode,
+detail preservation, truthful company mapping, same-origin filters and parent relationships,
 session CSRF for parsing, malformed success and explicit provider errors. Component
 tests cover manual foreign addresses and accessible failure feedback. Normal-cookie
 BFF tests cover exact permissions, unauthorized access, filters, CSRF, upstream
@@ -116,12 +118,30 @@ failure status, no retries and payload leakage. Playwright tests exercise render
 postcode-first keyboard selection/detail preservation and company manual fallback
 using controlled responses. Mocked responses are not real joined acceptance.
 
-Build, focused tests, affected full suites, dotnet format, native coverage and real
-joined Catalog/domain persistence/browser tests have **not** run. The coordinator's
-resource mandate prohibits local builds/test hosts/browser workers/containers; hosted
-validation needs an authorized publication route. A scoped push/draft-PR permission
-request was approved. The initial publication is a draft snapshot for hosted testing, not a validated slice. NuGet project-reference lock
-updates must be regenerated and reviewed during authorized hosted restore.
+Hosted evidence at commit `7904222967830a4e785966a4f16ee50b6d9327a6`:
+
+- Finance focus run `37428447475`: Release build with warnings as errors passed,
+  **zero warnings and zero errors**. Existing finance regression passed **35/35**,
+  zero failed and zero skipped. This is not focused lookup-feature acceptance.
+- Context admission run `37428447348`: both locked restore and image builds passed.
+  Project-reference lock edges were updated without changing package versions or hashes.
+- Normal PR validation run `37428447751`: solution build passed with zero warnings/errors.
+  Browser suite passed **167/167**. Main suite: **1592 passed, 13 failed, 0 skipped**
+  (1605 total). All failures are the normal-startup LookupBffProxyTests: absent routes
+  returned 404 for GET and 405 for POST instead of the expected boundary responses.
+  Formatting, vulnerability audit, joined customer acceptance and native coverage were
+  skipped after test failure. Preserved evidence is explicitly partial with no TRX or
+  coverage certification; console results and partial binaries were retained.
+- GitGuardian check passed. Static parsing and diff checks described above passed.
+
+The solution suites ran on the published head, with failures limited to missing BFF startup
+routes. A separate focused lookup pass, formatting, native coverage and real joined
+Catalog/domain persistence/browser acceptance remain outstanding. The normal
+BFF tests intentionally use the real startup and will expose absent startup hooks;
+no test-only route registration masks that dependency. Local builds/test hosts/browser
+workers/containers remain prohibited by the coordinator resource mandate. PR #266
+stays draft; no merge or deployment. The partial-postcode correction and browser
+regression are awaiting hosted validation on their own next published head.
 
 After startup integration, execute on an admitted hosted runner:
 

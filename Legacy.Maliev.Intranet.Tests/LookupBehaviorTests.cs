@@ -97,10 +97,15 @@ public sealed class LookupBehaviorTests
     [Fact]
     public async Task SameOriginClientPreservesAllFiltersAndDecodesParentCodeAndLeadingZeros()
     {
-        using var handler = new Handler(request => new(HttpStatusCode.OK) { Content = JsonContent.Create(new LookupAddressPage("v1", [Combination], true, "opaque+cursor")) });
+        const string wire = """
+        {"datasetVersion":"v1","items":[{"province":{"code":"10","nameTh":"กรุงเทพมหานคร","nameEn":"Bangkok","provinceCode":null,"districtCode":null},"district":{"code":"1033","nameTh":"คลองเตย","nameEn":"Khlong Toei","provinceCode":"10","districtCode":null},"subdistrict":{"code":"103301","nameTh":"คลองเตย","nameEn":"Khlong Toei","provinceCode":null,"districtCode":"1033"},"postcode":"10110"}],"hasMore":true,"nextCursor":"opaque+cursor"}
+        """;
+        using var handler = new Handler(request => new(HttpStatusCode.OK) { Content = new StringContent(wire, System.Text.Encoding.UTF8, "application/json") });
         using var http = new HttpClient(handler) { BaseAddress = new("https://intranet.test") };
         var result = await new LookupClient(http).SearchAddressesAsync("คลองเตย", new("10", "1033", "103301", "10110"), "a+b", CancellationToken.None);
         Assert.Contains("provinceCode=10&districtCode=1033&subdistrictCode=103301&postcode=10110&cursor=a%2Bb", handler.Path);
+        Assert.Equal("10", result.Items[0].District.ProvinceCode);
+        Assert.Equal("1033", result.Items[0].Subdistrict.DistrictCode);
         Assert.Equal("1033", result.Items[0].Subdistrict.ParentCode);
         Assert.Equal("opaque+cursor", result.NextCursor);
         Assert.True(result.HasMore);
@@ -157,7 +162,7 @@ public sealed class LookupBehaviorTests
     }
 
     internal static readonly LookupAddressCombination Combination = new(new("10", "กรุงเทพมหานคร", "Bangkok"),
-        new("1033", "คลองเตย", "Khlong Toei", "10"), new("103301", "คลองเตย", "Khlong Toei", "1033"), "10110");
+        new("1033", "คลองเตย", "Khlong Toei", "10"), new("103301", "คลองเตย", "Khlong Toei", DistrictCode: "1033"), "10110");
 
     private sealed class Handler(Func<HttpRequestMessage, HttpResponseMessage> response) : HttpMessageHandler
     {

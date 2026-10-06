@@ -1,7 +1,13 @@
+using System.Text.Json.Serialization;
+
 namespace Legacy.Maliev.Intranet.Contracts;
 
 /// <summary>Catalog v1 lookup projections. Codes remain strings, including leading zeroes.</summary>
-public sealed record LookupArea(string Code, string NameTh, string? NameEn, string? ParentCode = null);
+public sealed record LookupArea(string Code, string NameTh, string? NameEn,
+    string? ProvinceCode = null, string? DistrictCode = null)
+{
+    [JsonIgnore] public string? ParentCode => DistrictCode ?? ProvinceCode;
+}
 public sealed record LookupPage<T>(string DatasetVersion, IReadOnlyList<T> Items, bool HasMore, string? NextCursor);
 public sealed record LookupAddressCombination(LookupArea Province, LookupArea District,
     LookupArea Subdistrict, string Postcode);

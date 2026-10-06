@@ -17,10 +17,11 @@
         <ShadcnFormField Id="@(Id + "-postcode-first")" Label="@Text["PostcodeFirst"]" Disabled="@Disabled">
             <Control><ShadcnInput TValue="string" id="@(Id + "-postcode-first")" Value="@postcodeQuery" ValueChanged="PostcodeChangedAsync" Disabled="@Disabled" maxlength="5" InputMode="numeric" /></Control>
         </ShadcnFormField>
-        <LookupSearchField TItem="LookupArea" Id="@(Id + "-province")" Label="@Text["Province"]" Value="@(selection.Province!)" ValueChanged="ProvinceChangedAsync" Display="AreaName" Search="SearchProvincesAsync" ScopeKey="@ProvinceScope" Disabled="@Disabled" />
-        <LookupSearchField TItem="LookupArea" Id="@(Id + "-district")" Label="@Text["District"]" Value="@(selection.District!)" ValueChanged="DistrictChangedAsync" Display="AreaName" Search="SearchDistrictsAsync" ScopeKey="@DistrictScope" Disabled="@(Disabled || selection.Province is null)" />
-        <LookupSearchField TItem="LookupArea" Id="@(Id + "-subdistrict")" Label="@Text["Subdistrict"]" Value="@(selection.Subdistrict!)" ValueChanged="SubdistrictChangedAsync" Display="AreaName" Search="SearchSubdistrictsAsync" ScopeKey="@SubdistrictScope" Disabled="@(Disabled || selection.District is null)" />
-        <LookupSearchField TItem="LookupAddressCombination" Id="@(Id + "-combination")" Label="@Text["Combination"]" Value="@(combination!)" ValueChanged="CombinationChangedAsync" Display="CombinationName" Search="SearchCombinationsAsync" ScopeKey="@CombinationScope" Disabled="@Disabled" />
+        @if (InvalidPostcode) { <p role="status" aria-live="polite">@Text["Invalid"]</p> }
+        <LookupSearchField TItem="LookupArea" Id="@(Id + "-province")" Label="@Text["Province"]" Value="@(selection.Province!)" ValueChanged="ProvinceChangedAsync" Display="AreaName" Search="SearchProvincesAsync" ScopeKey="@ProvinceScope" Disabled="@(Disabled || InvalidPostcode)" />
+        <LookupSearchField TItem="LookupArea" Id="@(Id + "-district")" Label="@Text["District"]" Value="@(selection.District!)" ValueChanged="DistrictChangedAsync" Display="AreaName" Search="SearchDistrictsAsync" ScopeKey="@DistrictScope" Disabled="@(Disabled || InvalidPostcode || selection.Province is null)" />
+        <LookupSearchField TItem="LookupArea" Id="@(Id + "-subdistrict")" Label="@Text["Subdistrict"]" Value="@(selection.Subdistrict!)" ValueChanged="SubdistrictChangedAsync" Display="AreaName" Search="SearchSubdistrictsAsync" ScopeKey="@SubdistrictScope" Disabled="@(Disabled || InvalidPostcode || selection.District is null)" />
+        <LookupSearchField TItem="LookupAddressCombination" Id="@(Id + "-combination")" Label="@Text["Combination"]" Value="@(combination!)" ValueChanged="CombinationChangedAsync" Display="CombinationName" Search="SearchCombinationsAsync" ScopeKey="@CombinationScope" Disabled="@(Disabled || InvalidPostcode)" />
         <ShadcnButton ButtonType="ShadcnButtonType.Button" Disabled="@Disabled" OnClick="@(_ => ResetAsync())">@Text["Reset"]</ShadcnButton>
         <ShadcnFormField Id="@(Id + "-paste")" Label="@Text["Paste"]" Disabled="@Disabled">
             <Control><ShadcnTextarea TValue="string" id="@(Id + "-paste")" Value="@paste" ValueChanged="PasteChangedAsync" Disabled="@Disabled" maxlength="2048" /></Control>
@@ -57,6 +58,7 @@
     private string? country, feedback;
     private long generation;
     private LookupClient Client => new(Http);
+    private bool InvalidPostcode => postcodeQuery.Length > 0 && (postcodeQuery.Length != 5 || !postcodeQuery.All(char.IsAsciiDigit));
     private string ProvinceScope => $"{generation}|{selection.Postcode}";
     private string DistrictScope => $"{ProvinceScope}|{selection.Province?.Code}";
     private string SubdistrictScope => $"{DistrictScope}|{selection.District?.Code}";
