@@ -85,18 +85,18 @@
         await ChangeAsync(LookupAddressSelection.From(value));
         combination = value; postcodeQuery = value.Postcode;
     }
-    private async Task ChangeAsync(LookupAddressSelection value)
+    private async Task ChangeAsync(LookupAddressSelection value, bool apply = true)
     {
         if (Disabled || !enabled) return;
         resolver.Invalidate(); resolution = null; resolving = false;
         selection = value; combination = null;
-        await SelectionChanged.InvokeAsync(selection);
+        if (apply) await SelectionChanged.InvokeAsync(selection);
     }
     private async Task PostcodeChangedAsync(string value)
     {
         postcodeQuery = new string(value.Select(c => c is >= '๐' and <= '๙' ? (char)('0' + c - '๐') : c).ToArray());
         // Partial typing invalidates prior responses but never sends an invalid five-digit filter.
-        await ChangeAsync(selection.WithPostcode(postcodeQuery.Length == 5 && postcodeQuery.All(char.IsAsciiDigit) ? postcodeQuery : null));
+        await ChangeAsync(selection.WithPostcode(postcodeQuery.Length == 5 && postcodeQuery.All(char.IsAsciiDigit) ? postcodeQuery : null), apply: false);
     }
     private Task ResetAsync() { postcodeQuery = string.Empty; generation++; return ChangeAsync(new()); }
     private async Task<LookupSearchPage<LookupArea>> AreasAsync(string level, string query, LookupAddressConstraints constraints, string? cursor, CancellationToken ct)

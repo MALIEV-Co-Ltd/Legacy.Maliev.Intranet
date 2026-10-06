@@ -26,12 +26,18 @@ public sealed class LookupSupplierBrowserTests(IntranetClientServerFixture serve
         await page.Locator("#supplier-address-1").FillAsync("1 Main Road");
         await page.Locator("#supplier-address-2").FillAsync("Floor 2");
         await page.Locator("#supplier-country-id").FillAsync("66");
+        await page.Locator("#supplier-city").FillAsync("Manual city");
+        await page.Locator("#supplier-state").FillAsync("Manual province");
+        await page.Locator("#supplier-postal-code").FillAsync("99999");
         await page.Locator("#supplier-address-lookup-enabled").ClickAsync();
         await page.Locator("#supplier-address-lookup-postcode-first").FillAsync("๑");
         await Assertions.Expect(page.Locator("#supplier-address-lookup-combination-results")).ToBeDisabledAsync();
         await page.Locator("#supplier-address-lookup-postcode-first").FillAsync("๑๐๑๑๐");
         var result = page.Locator("#supplier-address-lookup-combination-results");
         await Assertions.Expect(result).ToBeEnabledAsync();
+        await Assertions.Expect(page.Locator("#supplier-city")).ToHaveValueAsync("Manual city");
+        await Assertions.Expect(page.Locator("#supplier-state")).ToHaveValueAsync("Manual province");
+        await Assertions.Expect(page.Locator("#supplier-postal-code")).ToHaveValueAsync("99999");
         await result.FocusAsync();
         await result.PressAsync("ArrowDown");
         await result.PressAsync("Enter");

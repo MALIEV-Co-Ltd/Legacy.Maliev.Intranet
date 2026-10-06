@@ -11,7 +11,8 @@ discard late responses even when a provider ignores cancellation. Administrative
 and postcode filters combine with AND. Province/district/subdistrict changes
 invalidate dependent suggestions; street, building and country fields remain
 editable. Postcode-first matching offers complete combinations without selecting
-the first row. Pagination preserves the query and rejects dataset-version changes.
+the first row. Typing a postcode changes search constraints only; manual domain fields
+remain unchanged until an explicit administrative selection. Pagination preserves the query and rejects dataset-version changes.
 
 Pasted addresses retain their original text, show exact/ambiguous/not-found/conflict
 outcomes, and require a reviewed candidate and an explicit apply action before
@@ -134,7 +135,11 @@ Hosted evidence at commit `7904222967830a4e785966a4f16ee50b6d9327a6`:
   coverage certification; console results and partial binaries were retained.
 - GitGuardian check passed. Static parsing and diff checks described above passed.
 
-The solution suites ran on the published head, with failures limited to missing BFF startup
+At `11e7388f`, finance run `37432706730` again built with zero warnings/errors and
+passed 35/35 existing finance regressions; context admission `37432706781` passed.
+The additional manual-field preservation correction requires its own hosted result.
+
+The solution suites ran on the earlier published head, with failures limited to missing BFF startup
 routes. A separate focused lookup pass, formatting, native coverage and real joined
 Catalog/domain persistence/browser acceptance remain outstanding. The normal
 BFF tests intentionally use the real startup and will expose absent startup hooks;
