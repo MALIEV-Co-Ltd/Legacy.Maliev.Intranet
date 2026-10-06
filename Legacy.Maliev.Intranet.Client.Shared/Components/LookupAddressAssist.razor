@@ -1,0 +1,139 @@
+@implements IDisposable
+@using System.Globalization
+@using Legacy.Maliev.Intranet.Contracts
+@using Legacy.Maliev.Intranet.Client.Shared.Infrastructure
+@inject HttpClient Http
+@inject IStringLocalizer<LookupResources> Text
+
+<section class="lookup-address-assist" aria-labelledby="@(Id + "-heading")">
+    <h3 id="@(Id + "-heading")">@Text["ThaiAddress"]</h3>
+    <ShadcnField Orientation="ShadcnFieldOrientation.Horizontal" Disabled="@Disabled">
+        <ShadcnCheckbox id="@(Id + "-enabled")" Value="@enabled" ValueChanged="ToggleAsync" Disabled="@Disabled" />
+        <ShadcnFieldLabel For="@(Id + "-enabled")">@Text["EnableThai"]</ShadcnFieldLabel>
+    </ShadcnField>
+    @if (enabled)
+    {
+        <p>@Text["ManualAddress"]</p>
+        <ShadcnFormField Id="@(Id + "-postcode-first")" Label="@Text["PostcodeFirst"]" Disabled="@Disabled">
+            <Control><ShadcnInput TValue="string" id="@(Id + "-postcode-first")" Value="@postcodeQuery" ValueChanged="PostcodeChangedAsync" Disabled="@Disabled" maxlength="5" InputMode="numeric" /></Control>
+        </ShadcnFormField>
+        <LookupSearchField TItem="LookupArea" Id="@(Id + "-province")" Label="@Text["Province"]" Value="@(selection.Province!)" ValueChanged="ProvinceChangedAsync" Display="AreaName" Search="SearchProvincesAsync" ScopeKey="@ProvinceScope" Disabled="@Disabled" />
+        <LookupSearchField TItem="LookupArea" Id="@(Id + "-district")" Label="@Text["District"]" Value="@(selection.District!)" ValueChanged="DistrictChangedAsync" Display="AreaName" Search="SearchDistrictsAsync" ScopeKey="@DistrictScope" Disabled="@(Disabled || selection.Province is null)" />
+        <LookupSearchField TItem="LookupArea" Id="@(Id + "-subdistrict")" Label="@Text["Subdistrict"]" Value="@(selection.Subdistrict!)" ValueChanged="SubdistrictChangedAsync" Display="AreaName" Search="SearchSubdistrictsAsync" ScopeKey="@SubdistrictScope" Disabled="@(Disabled || selection.District is null)" />
+        <LookupSearchField TItem="LookupAddressCombination" Id="@(Id + "-combination")" Label="@Text["Combination"]" Value="@(combination!)" ValueChanged="CombinationChangedAsync" Display="CombinationName" Search="SearchCombinationsAsync" ScopeKey="@CombinationScope" Disabled="@Disabled" />
+        <ShadcnButton ButtonType="ShadcnButtonType.Button" Disabled="@Disabled" OnClick="@(_ => ResetAsync())">@Text["Reset"]</ShadcnButton>
+        <ShadcnFormField Id="@(Id + "-paste")" Label="@Text["Paste"]" Disabled="@Disabled">
+            <Control><ShadcnTextarea TValue="string" id="@(Id + "-paste")" Value="@paste" ValueChanged="PasteChangedAsync" Disabled="@Disabled" maxlength="2048" /></Control>
+        </ShadcnFormField>
+        <ShadcnButton ButtonType="ShadcnButtonType.Button" Disabled="@(Disabled || resolving || string.IsNullOrWhiteSpace(paste))" OnClick="@(_ => ResolveAsync())">@Text["Resolve"]</ShadcnButton>
+        <p role="status" aria-live="polite">@feedback</p>
+        @if (resolution is not null)
+        {
+            <p>@Text["Outcome-" + resolution.Outcome]</p>
+            @if (resolution.HasMore) { <p>@Text["Narrow"]</p> }
+            @if (resolution.Conflicts.Count > 0) { <p role="alert">@Text["ConflictFields"] @string.Join(", ", resolution.Conflicts)</p> }
+            <ShadcnFormField Id="@(Id + "-preview-detail")" Label="@Text["ReviewDetail"]" Disabled="@Disabled">
+                <Control><ShadcnTextarea TValue="string" id="@(Id + "-preview-detail")" @bind-Value="previewDetail" Disabled="@Disabled" /></Control>
+            </ShadcnFormField>
+            <ShadcnSelect TValue="LookupAddressCombination" Value="@(previewCombination!)" ValueChanged="PreviewChangedAsync" Options="@PreviewOptions" Placeholder="@Text["Choose"]" Disabled="@Disabled" aria-label="@Text["Combination"]" />
+            <ShadcnButton ButtonType="ShadcnButtonType.Button" Disabled="@(Disabled || previewCombination is null)" OnClick="@(_ => ApplyPreviewAsync())">@Text["ApplyPreview"]</ShadcnButton>
+            <p>@Text["ReviewWarning"]</p>
+        }
+    }
+</section>
+
+@code {
+    [Parameter, EditorRequired] public string Id { get; set; } = default!;
+    [Parameter] public bool Disabled { get; set; }
+    [Parameter] public string CountryKey { get; set; } = string.Empty;
+    [Parameter] public EventCallback<LookupAddressSelection> SelectionChanged { get; set; }
+    [Parameter] public EventCallback<string> DetailConfirmed { get; set; }
+    private readonly LookupSearchController<LookupResolveResponse> resolver = new();
+    private LookupAddressSelection selection = new();
+    private LookupAddressCombination? combination, previewCombination;
+    private LookupResolveResponse? resolution;
+    private bool enabled, resolving, wasDisabled;
+    private string postcodeQuery = string.Empty, paste = string.Empty, previewDetail = string.Empty;
+    private string? country, feedback;
+    private long generation;
+    private LookupClient Client => new(Http);
+    private string ProvinceScope => $"{generation}|{selection.Postcode}";
+    private string DistrictScope => $"{ProvinceScope}|{selection.Province?.Code}";
+    private string SubdistrictScope => $"{DistrictScope}|{selection.District?.Code}";
+    private string CombinationScope => $"{SubdistrictScope}|{selection.Subdistrict?.Code}";
+    private IReadOnlyList<ShadcnSelectOption<LookupAddressCombination>> PreviewOptions => resolution?.Candidates
+        .Select(value => new ShadcnSelectOption<LookupAddressCombination>(value, CombinationName(value))).ToArray() ?? [];
+
+    protected override void OnParametersSet()
+    {
+        if (country != CountryKey || wasDisabled != Disabled)
+        {
+            resolver.Invalidate(); resolving = false; resolution = null; previewCombination = null;
+            if (country != CountryKey) { enabled = false; selection = new(); combination = null; postcodeQuery = string.Empty; generation++; }
+            country = CountryKey; wasDisabled = Disabled;
+        }
+    }
+
+    private Task ToggleAsync(bool? value) { if (Disabled) return Task.CompletedTask; enabled = value == true; resolver.Invalidate(); resolving = false; resolution = null; generation++; return Task.CompletedTask; }
+    private Task ProvinceChangedAsync(LookupArea value) { postcodeQuery = string.Empty; return ChangeAsync(selection.WithProvince(value)); }
+    private Task DistrictChangedAsync(LookupArea value) { postcodeQuery = string.Empty; return ChangeAsync(selection.WithDistrict(value)); }
+    private Task SubdistrictChangedAsync(LookupArea value) { postcodeQuery = string.Empty; return ChangeAsync(selection.WithSubdistrict(value)); }
+    private async Task CombinationChangedAsync(LookupAddressCombination value)
+    {
+        await ChangeAsync(LookupAddressSelection.From(value));
+        combination = value; postcodeQuery = value.Postcode;
+    }
+    private async Task ChangeAsync(LookupAddressSelection value)
+    {
+        if (Disabled || !enabled) return;
+        resolver.Invalidate(); resolution = null; resolving = false;
+        selection = value; combination = null;
+        await SelectionChanged.InvokeAsync(selection);
+    }
+    private async Task PostcodeChangedAsync(string value)
+    {
+        postcodeQuery = new string(value.Select(c => c is >= '๐' and <= '๙' ? (char)('0' + c - '๐') : c).ToArray());
+        // Partial typing invalidates prior responses but never sends an invalid five-digit filter.
+        await ChangeAsync(selection.WithPostcode(postcodeQuery.Length == 5 && postcodeQuery.All(char.IsAsciiDigit) ? postcodeQuery : null));
+    }
+    private Task ResetAsync() { postcodeQuery = string.Empty; generation++; return ChangeAsync(new()); }
+    private async Task<LookupSearchPage<LookupArea>> AreasAsync(string level, string query, LookupAddressConstraints constraints, string? cursor, CancellationToken ct)
+    {
+        var page = await Client.SearchAreasAsync(level, query, constraints, cursor, ct);
+        return new(page.Items, page.DatasetVersion, page.HasMore, page.NextCursor);
+    }
+    private Task<LookupSearchPage<LookupArea>> SearchProvincesAsync(string q, string? cursor, CancellationToken ct) => AreasAsync("provinces", q, new(Postcode: selection.Postcode), cursor, ct);
+    private Task<LookupSearchPage<LookupArea>> SearchDistrictsAsync(string q, string? cursor, CancellationToken ct) => AreasAsync("districts", q, new(selection.Province?.Code, Postcode: selection.Postcode), cursor, ct);
+    private Task<LookupSearchPage<LookupArea>> SearchSubdistrictsAsync(string q, string? cursor, CancellationToken ct) => AreasAsync("subdistricts", q, new(selection.Province?.Code, selection.District?.Code, Postcode: selection.Postcode), cursor, ct);
+    private async Task<LookupSearchPage<LookupAddressCombination>> SearchCombinationsAsync(string q, string? cursor, CancellationToken ct)
+    {
+        var page = await Client.SearchAddressesAsync(q, selection.Constraints, cursor, ct);
+        return new(page.Items, page.DatasetVersion, page.HasMore, page.NextCursor);
+    }
+    private Task PasteChangedAsync(string value) { paste = value; resolver.Invalidate(); resolution = null; resolving = false; return Task.CompletedTask; }
+    private async Task ResolveAsync()
+    {
+        if (Disabled || !enabled) return;
+        var input = new LookupResolveRequest(paste, selection.Constraints);
+        resolving = true; resolution = null; feedback = Text["Loading"];
+        await resolver.SearchAsync(ct => Client.ResolveAsync(input, ct), result =>
+        {
+            resolving = false; feedback = null; resolution = result; previewDetail = result.DetailText;
+            // Even an exact match needs deliberate review; never choose candidate zero.
+            previewCombination = null;
+        }, error => { resolving = false; feedback = LookupFeedback.For(error, Text); }, TimeSpan.Zero);
+    }
+    private Task PreviewChangedAsync(LookupAddressCombination value) { previewCombination = value; return Task.CompletedTask; }
+    private async Task ApplyPreviewAsync()
+    {
+        if (Disabled || !enabled || previewCombination is null) return;
+        var selected = previewCombination;
+        var detail = previewDetail;
+        await CombinationChangedAsync(selected);
+        await DetailConfirmed.InvokeAsync(detail);
+    }
+    private string AreaName(LookupArea value) => CultureInfo.CurrentUICulture.TwoLetterISOLanguageName == "th"
+        ? $"{value.NameTh} ({value.NameEn})" : $"{value.NameEn ?? value.NameTh} ({value.NameTh})";
+    private string CombinationName(LookupAddressCombination value) => $"{AreaName(value.Subdistrict)}, {AreaName(value.District)}, {AreaName(value.Province)} {value.Postcode}";
+    public void Dispose() => resolver.Dispose();
+}

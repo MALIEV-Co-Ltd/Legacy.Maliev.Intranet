@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
+  <data name="Search" xml:space="preserve"><value>ค้นหา</value></data>
+  <data name="Results" xml:space="preserve"><value>ผลการค้นหา{0}</value></data>
+  <data name="Choose" xml:space="preserve"><value>เลือกผลการค้นหา</value></data>
+  <data name="More" xml:space="preserve"><value>แสดงเพิ่มเติม</value></data>
+  <data name="Loading" xml:space="preserve"><value>กำลังค้นหาข้อมูล…</value></data>
+  <data name="Empty" xml:space="preserve"><value>ไม่พบข้อมูล สามารถกรอกเองได้</value></data>
+  <data name="Count" xml:space="preserve"><value>มีผลการค้นหา {0} รายการ</value></data>
+  <data name="Minimum" xml:space="preserve"><value>กรอกอย่างน้อย {0} ตัวอักษร</value></data>
+  <data name="Changed" xml:space="preserve"><value>ข้อมูลเปลี่ยนแปลง กรุณาค้นหาอีกครั้ง</value></data>
+  <data name="Narrow" xml:space="preserve"><value>ยังมีผลลัพธ์เพิ่มเติม กรุณาระบุข้อมูลให้ชัดเจน ระบบยังไม่ได้เลือกให้อัตโนมัติ</value></data>
+  <data name="Unauthorized" xml:space="preserve"><value>กรุณาเข้าสู่ระบบอีกครั้งเพื่อค้นหา ยังสามารถกรอกเองได้</value></data>
+  <data name="Forbidden" xml:space="preserve"><value>คุณไม่มีสิทธิ์ค้นหาข้อมูล ยังสามารถกรอกเองได้</value></data>
+  <data name="Invalid" xml:space="preserve"><value>ตรวจสอบคำค้นหาหรือรหัสไปรษณีย์ แล้วลองอีกครั้ง</value></data>
+  <data name="RateLimited" xml:space="preserve"><value>คำขอมากเกินไป กรุณารอแล้วลองใหม่ หรือกรอกเอง</value></data>
+  <data name="Unsupported" xml:space="preserve"><value>ไม่รองรับการค้นหาประเภทนี้ กรุณาค้นหาด้วยชื่อหรือกรอกเอง</value></data>
+  <data name="Unavailable" xml:space="preserve"><value>ไม่สามารถค้นหาข้อมูลได้ กรุณาลองอีกครั้งหรือกรอกเอง</value></data>
+  <data name="ThaiAddress" xml:space="preserve"><value>ค้นหาที่อยู่ในประเทศไทย</value></data>
+  <data name="EnableThai" xml:space="preserve"><value>ใช้ข้อมูลแนะนำสำหรับที่อยู่ในประเทศไทย</value></data>
+  <data name="ManualAddress" xml:space="preserve"><value>สามารถแก้ไขถนน อาคาร และประเทศได้ ข้อมูลแนะนำจะไม่เปลี่ยนประเทศ</value></data>
+  <data name="PostcodeFirst" xml:space="preserve"><value>เริ่มด้วยรหัสไปรษณีย์ (ไม่บังคับ)</value></data>
+  <data name="Province" xml:space="preserve"><value>จังหวัด</value></data>
+  <data name="District" xml:space="preserve"><value>อำเภอ / เขต</value></data>
+  <data name="Subdistrict" xml:space="preserve"><value>ตำบล / แขวง</value></data>
+  <data name="Combination" xml:space="preserve"><value>ที่อยู่และรหัสไปรษณีย์ที่ตรงกัน</value></data>
+  <data name="Reset" xml:space="preserve"><value>ล้างข้อมูลเขตการปกครอง</value></data>
+  <data name="Paste" xml:space="preserve"><value>วางที่อยู่เต็มเพื่อทบทวน</value></data>
+  <data name="Resolve" xml:space="preserve"><value>แยกข้อมูลที่อยู่</value></data>
+  <data name="Outcome-exact" xml:space="preserve"><value>พบเขตการปกครองที่ตรงกันหนึ่งรายการ กรุณาทบทวนก่อนใช้</value></data>
+  <data name="Outcome-ambiguous" xml:space="preserve"><value>พบหลายรายการ กรุณาเลือกหรือระบุข้อมูลเพิ่ม</value></data>
+  <data name="Outcome-not-found" xml:space="preserve"><value>ไม่พบเขตการปกครองที่ตรงกัน สามารถกรอกเองต่อได้</value></data>
+  <data name="Outcome-conflict" xml:space="preserve"><value>ข้อมูลที่อยู่ขัดแย้งกัน กรุณาทบทวนและแก้ไข</value></data>
+  <data name="ConflictFields" xml:space="preserve"><value>ข้อมูลที่ขัดแย้ง:</value></data>
+  <data name="ReviewDetail" xml:space="preserve"><value>ทบทวนรายละเอียดถนนและอาคาร</value></data>
+  <data name="ApplyPreview" xml:space="preserve"><value>ใช้ที่อยู่ที่ทบทวนแล้ว</value></data>
+  <data name="ReviewWarning" xml:space="preserve"><value>การใช้ข้อมูลจะเปลี่ยนรายละเอียดที่อยู่ตามตัวอย่างที่แก้ไขได้ กรุณาบันทึกแบบฟอร์มเพื่อเก็บการเปลี่ยนแปลง</value></data>
+  <data name="CompanyLookup" xml:space="preserve"><value>ค้นหาบริษัทจาก Creden</value></data>
+  <data name="SearchTaxId" xml:space="preserve"><value>ค้นหาด้วยเลขประจำตัวผู้เสียภาษี</value></data>
+  <data name="CompanySearch" xml:space="preserve"><value>ชื่อบริษัทหรือเลขประจำตัวผู้เสียภาษี</value></data>
+  <data name="CompanyManual" xml:space="preserve"><value>สามารถกรอกเองได้เสมอ ใช้เฉพาะชื่อและเลขประจำตัวผู้เสียภาษีที่ได้รับเท่านั้น ข้อมูลบริษัทที่ไม่มีจะไม่ถูกคาดเดา</value></data>
+  <data name="SuggestionOnly" xml:space="preserve"><value>เป็นข้อมูลแนะนำเท่านั้น ยังไม่ได้ตรวจสอบสถานะบริษัทและที่อยู่จดทะเบียน</value></data>
+  <data name="Retrieved" xml:space="preserve"><value>ค้นหาเมื่อ:</value></data>
+</root>

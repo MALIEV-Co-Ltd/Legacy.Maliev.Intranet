@@ -1,0 +1,40 @@
+@using System.Globalization
+@using Legacy.Maliev.Intranet.Contracts
+@using Legacy.Maliev.Intranet.Client.Shared.Infrastructure
+@inject HttpClient Http
+@inject IStringLocalizer<LookupResources> Text
+
+<section aria-labelledby="@(Id + "-heading")">
+    <h3 id="@(Id + "-heading")">@Text["CompanyLookup"]</h3>
+    <ShadcnField Orientation="ShadcnFieldOrientation.Horizontal" Disabled="@Disabled">
+        <ShadcnCheckbox id="@(Id + "-tax-id")" Value="@taxId" ValueChanged="ChangeTypeAsync" Disabled="@Disabled" />
+        <ShadcnFieldLabel For="@(Id + "-tax-id")">@Text["SearchTaxId"]</ShadcnFieldLabel>
+    </ShadcnField>
+    <LookupSearchField TItem="LookupCompany" Id="@Id" Label="@Text["CompanySearch"]" Value="@(selected!)" ValueChanged="ChooseAsync" Display="Display" Search="SearchAsync" MinimumLength="@(taxId ? 13 : 2)" ScopeKey="@(taxId.ToString())" Disabled="@Disabled" />
+    <p>@Text["CompanyManual"]</p>
+    @if (selected is not null)
+    {
+        <p>@Text["SuggestionOnly"]</p>
+        <p>@Text["Retrieved"] @selected.RetrievedAt?.ToString("g", CultureInfo.CurrentUICulture)</p>
+    }
+</section>
+
+@code {
+    [Parameter, EditorRequired] public string Id { get; set; } = default!;
+    [Parameter] public bool Disabled { get; set; }
+    [Parameter] public EventCallback<LookupCompany> Selected { get; set; }
+    private bool taxId;
+    private LookupCompany? selected;
+    private Task ChangeTypeAsync(bool? value) { if (!Disabled) { taxId = value == true; selected = null; } return Task.CompletedTask; }
+    private async Task<LookupSearchPage<LookupCompany>> SearchAsync(string q, string? cursor, CancellationToken ct)
+    {
+        var page = await new LookupClient(Http).SearchCompaniesAsync(q, taxId,
+            CultureInfo.CurrentUICulture.TwoLetterISOLanguageName == "th" ? "th" : "en", ct);
+        if (page.Outcome is "unavailable" or "unsupported") throw new LookupRequestException(page.Outcome == "unsupported"
+            ? System.Net.HttpStatusCode.UnprocessableEntity : System.Net.HttpStatusCode.ServiceUnavailable);
+        return new(page.Items, page.Provider + ":" + page.Capability, page.HasMore, null);
+    }
+    private async Task ChooseAsync(LookupCompany value) { if (Disabled) return; selected = value; await Selected.InvokeAsync(value); }
+    private string Display(LookupCompany value) => string.Join(" · ", new[]
+        { CultureInfo.CurrentUICulture.TwoLetterISOLanguageName == "th" ? value.NameTh ?? value.NameEn : value.NameEn ?? value.NameTh, value.TaxId }.Where(x => !string.IsNullOrWhiteSpace(x)));
+}
