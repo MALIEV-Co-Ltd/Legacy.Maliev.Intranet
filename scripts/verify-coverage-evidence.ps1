@@ -131,6 +131,7 @@ function Pair([string] $Project, [bool] $Fresh) {
         $codeView = $pe.ReadCodeViewDebugDirectoryData($entries[0])
         Require ($codeView.Guid -eq $id.Guid -and $entries[0].Stamp -eq $id.Stamp -and $codeView.Age -eq 1)
         $documents = [Collections.Generic.Dictionary[string, object]]::new([StringComparer]::Ordinal)
+        $documentPaths = [Collections.Generic.Dictionary[Reflection.Metadata.DocumentHandle, string]]::new()
         $script:Stage = 'pdb-source-checksum'
         foreach ($handle in $reader.Documents) {
             $document = $reader.GetDocument($handle)
@@ -143,6 +144,7 @@ function Pair([string] $Project, [bool] $Fresh) {
             $hash = Sha (Bytes $path)
             Require ($hash -ceq [Convert]::ToHexString($reader.GetBlobBytes($document.Hash)).ToLowerInvariant())
             $documents.Add($path, [ordered]@{ path = $path; sha256 = $hash; visibleSequencePoints = 0; generated = $path.Contains('/obj/', [StringComparison]::Ordinal) })
+            $documentPaths.Add($handle, $path)
         }
         foreach ($handle in $reader.MethodDebugInformation) {
             $script:Stage = 'pdb-sequence-points'
@@ -152,14 +154,17 @@ function Pair([string] $Project, [bool] $Fresh) {
                 $documentHandle = $point.Document
                 if ($documentHandle.IsNil) { $documentHandle = $method.Document }
                 if ($documentHandle.IsNil) { continue }
-                $document = $reader.GetDocument($documentHandle)
-                $name = $reader.GetString($document.Name).Replace('\', '/')
-                $index = $name.IndexOf($Project + '/', [StringComparison]::Ordinal)
-                Require ($index -ge 0)
-                $path = NormalizedPath $name.Substring($index)
-                Require ($documents.ContainsKey($path))
+                Require ($documentPaths.ContainsKey($documentHandle))
+                $path = $documentPaths[$documentHandle]
                 $documents[$path].visibleSequencePoints++
             }
+        }
+        # Rebind each already validated document after counting points. Filesystem
+        # and checksum guards remain active without repeating them per point.
+        $script:Stage = 'pdb-source-checksum'
+        foreach ($path in $documentPaths.Values) {
+            Require ((NormalizedPath $path) -ceq $path)
+            Require ((Sha (Bytes $path)) -ceq $documents[$path].sha256)
         }
         $nonmembers = 0
         $script:Stage = 'physical-source-inventory'

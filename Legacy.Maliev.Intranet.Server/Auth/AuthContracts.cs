@@ -50,6 +50,10 @@ public static class LegacyEmployeePermissions
     public const string EmployeesCreate = "legacy-employee.employees.create";
     /// <summary>Allows reading one complete legacy employee profile.</summary>
     public const string EmployeesRead = "legacy-employee.employees.read";
+    /// <summary>Allows updating employee-owned administrative scalar fields.</summary>
+    public const string EmployeesUpdate = "legacy-employee.employees.update";
+    /// <summary>Allows updating safe administrative employee identity fields.</summary>
+    public const string EmployeeIdentitiesUpdate = "legacy-auth.employee-identities.update";
     /// <summary>Allows an authenticated employee to read legacy orders.</summary>
     public const string OrdersRead = "legacy.orders.read";
     /// <summary>

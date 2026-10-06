@@ -1,0 +1,97 @@
+name: Joined employee administration acceptance
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: employee-administration-join-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  employee-administration-join:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      MalievWorkspaceRoot: ${{ github.workspace }}/.dependencies
+      LEGACY_DEPLOY_ENABLED: 'false'
+    steps:
+      - name: Check out exact consumer
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Check out exact ServiceDefaults
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: MALIEV-Co-Ltd/Legacy.Maliev.ServiceDefaults
+          ref: 7edcd961024868513fd5f373cab3dcb261197f77
+          path: .dependencies/Legacy.Maliev.ServiceDefaults
+          persist-credentials: false
+      - name: Check out exact CompatibilityContracts
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: MALIEV-Co-Ltd/Legacy.Maliev.CompatibilityContracts
+          ref: 78e48ffc4ee000df0510cba5e7c7a3c4c4d539d7
+          path: .dependencies/Legacy.Maliev.CompatibilityContracts
+          persist-credentials: false
+      - name: Check out exact Auth issuer
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: MALIEV-Co-Ltd/Legacy.Maliev.AuthService
+          # Proposed current issuer; its hash is not joined execution acceptance.
+          ref: ef74d99f56cb53b600efc7f85819d9adc28f8935
+          path: .dependencies/Legacy.Maliev.AuthService
+          persist-credentials: false
+      - name: Check out exact Employee coupled writer
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: MALIEV-Co-Ltd/Legacy.Maliev.EmployeeService
+          ref: 8a8a619b021e9dc71607fa279aa12257844b6359
+          path: .dependencies/Legacy.Maliev.EmployeeService
+          persist-credentials: false
+      - name: Set up .NET
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68
+        with:
+          dotnet-version: 10.0.x
+      - name: Verify owned hosted integration runtime
+        run: |
+          test "$RUNNER_ENVIRONMENT" = github-hosted
+          docker info
+      - name: Verify immutable producer and dependency identities before build
+        run: |
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test "$(git -C .dependencies/Legacy.Maliev.AuthService rev-parse HEAD)" = ef74d99f56cb53b600efc7f85819d9adc28f8935
+          test "$(git -C .dependencies/Legacy.Maliev.EmployeeService rev-parse HEAD)" = 8a8a619b021e9dc71607fa279aa12257844b6359
+          test "$(git -C .dependencies/Legacy.Maliev.ServiceDefaults rev-parse HEAD)" = 7edcd961024868513fd5f373cab3dcb261197f77
+          test "$(git -C .dependencies/Legacy.Maliev.CompatibilityContracts rev-parse HEAD)" = 78e48ffc4ee000df0510cba5e7c7a3c4c4d539d7
+      - name: Build joined project before tests
+        run: |
+          export GITHUB_ACTIONS=false
+          dotnet build acceptance/EmployeeAdministration/EmployeeAdministration.AcceptanceTests.csproj --configuration Release --warnaserror -p:UseLocalMalievDependencies=true --nologo
+      - name: Verify sanitized proof parser controls
+        run: python3 -B -m unittest discover -s acceptance/EmployeeAdministration -p test_verify_join.py
+      - name: Execute real issuer and writers with independent readbacks
+        run: |
+          export GITHUB_ACTIONS=false
+          dotnet test acceptance/EmployeeAdministration/EmployeeAdministration.AcceptanceTests.csproj --configuration Release --no-build --no-restore -p:UseLocalMalievDependencies=true --logger 'trx;LogFileName=employee-administration.trx' --results-directory "$RUNNER_TEMP/employee-administration-results" --nologo
+      - name: Verify all six actual executions and retain sanitized immutable graph
+        id: employee_join_proof
+        env:
+          JOIN_RESULTS: ${{ runner.temp }}/employee-administration-results
+          JOIN_EVIDENCE: ${{ runner.temp }}/employee-administration-evidence
+          JOIN_CONSUMER_SHA: ${{ github.sha }}
+        run: python3 -B acceptance/EmployeeAdministration/verify_join.py
+      - name: Preserve sanitized join proof only
+        if: ${{ always() && steps.employee_join_proof.outcome == 'success' }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: employee-administration-${{ github.run_id }}-${{ github.run_attempt }}
+          # Never upload raw TRX, assertion snapshots, stdout or parameter values.
+          path: ${{ runner.temp }}/employee-administration-evidence/
+          if-no-files-found: error
+          retention-days: 7

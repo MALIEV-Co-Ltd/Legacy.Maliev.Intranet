@@ -50,6 +50,8 @@ builder.Services.AddLegacyAccessTokenValidation(
     validateOnStart: !builder.Environment.IsEnvironment("Testing"));
 builder.Services.AddSingleton<DistributedTicketStore>();
 builder.Services.AddScoped<EmployeeSessionService>();
+builder.Services.AddScoped<EmployeeAdministrationCredentialSender>();
+builder.Services.AddScoped<EmployeeAdministrationCoordinator>();
 builder.Services.AddScoped<CustomerAdministrationCoordinator>();
 builder.Services.AddOptions<LegacyEmployeeCompatibilityOptions>()
     .Bind(builder.Configuration.GetSection(LegacyEmployeeCompatibilityOptions.SectionName));
@@ -195,6 +197,30 @@ builder.Services.AddHttpClient<CustomerAdministrationProfileClient>(client =>
         ?? throw new InvalidOperationException("Services:Customer is required."));
     client.Timeout = LegacyPresentation.RequestTimeout;
     client.MaxResponseContentBufferSize = 65536;
+}).RemoveAllResilienceHandlers()
+    .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler { AllowAutoRedirect = false });
+builder.Services.AddHttpClient<EmployeeAdministrationCountryClient>(client =>
+{
+    client.BaseAddress = new Uri(builder.Configuration["Services:Catalog"]
+        ?? throw new InvalidOperationException("Services:Catalog is required."));
+    client.Timeout = TimeSpan.FromSeconds(10);
+    client.MaxResponseContentBufferSize = 262144;
+}).RemoveAllResilienceHandlers()
+    .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler { AllowAutoRedirect = false });
+builder.Services.AddHttpClient<EmployeeAdministrationIdentityClient>(client =>
+{
+    client.BaseAddress = new Uri(builder.Configuration["Services:Auth"]
+        ?? throw new InvalidOperationException("Services:Auth is required."));
+    client.Timeout = TimeSpan.FromSeconds(10);
+    client.MaxResponseContentBufferSize = 262144;
+}).RemoveAllResilienceHandlers()
+    .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler { AllowAutoRedirect = false });
+builder.Services.AddHttpClient<EmployeeAdministrationProfileClient>(client =>
+{
+    client.BaseAddress = new Uri(builder.Configuration["Services:Employee"]
+        ?? throw new InvalidOperationException("Services:Employee is required."));
+    client.Timeout = TimeSpan.FromSeconds(10);
+    client.MaxResponseContentBufferSize = 262144;
 }).RemoveAllResilienceHandlers()
     .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler { AllowAutoRedirect = false });
 builder.Services.AddHttpClient<EmployeeRecoveryAuthProxy>(client =>
@@ -734,6 +760,12 @@ builder.Services.AddAuthorizationBuilder()
     .AddPolicy(LegacyEmployeePermissions.EmployeesRead, policy => policy
         .RequireAuthenticatedUser()
         .RequireClaim("permissions", LegacyEmployeePermissions.EmployeesRead))
+    .AddPolicy(LegacyEmployeePermissions.EmployeesUpdate, policy => policy
+        .RequireAuthenticatedUser()
+        .RequireClaim("permissions", LegacyEmployeePermissions.EmployeesUpdate))
+    .AddPolicy(LegacyEmployeePermissions.EmployeeIdentitiesUpdate, policy => policy
+        .RequireAuthenticatedUser()
+        .RequireClaim("permissions", LegacyEmployeePermissions.EmployeeIdentitiesUpdate))
     .AddPolicy(LegacyEmployeePermissions.OrdersRead, policy => policy
         .RequireAuthenticatedUser()
         .RequireAssertion(context => LegacyNavigationAuthorization.IsEnabled(
@@ -869,6 +901,7 @@ app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
 app.UseAntiforgery();
+app.MapEmployeeAdministrationEndpoints();
 app.MapCustomerAdministrationEndpoints();
 app.UseMiddleware<DiagnosticEventMiddleware>();
 app.MapDefaultEndpoints("intranet-bff");

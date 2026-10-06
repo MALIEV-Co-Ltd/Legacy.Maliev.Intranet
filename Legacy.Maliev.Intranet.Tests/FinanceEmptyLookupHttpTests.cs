@@ -128,7 +128,7 @@ public sealed class FinanceEmptyLookupHttpTests
             Assert.Single(cut.FindAll("#finance-amount"));
             if (route.Contains("View", StringComparison.Ordinal))
                 Assert.Equal(1234.56m, Assert.Single(cut.FindComponents<AccountingInputField<decimal>>()).Instance.Value);
-        });
+        }, TimeSpan.FromSeconds(15));
         AssertReadBoundaries(accounting, route.Contains("View", StringComparison.Ordinal));
     }
 

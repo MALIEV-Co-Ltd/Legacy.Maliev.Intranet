@@ -30,7 +30,7 @@ namespace Legacy.Maliev.Intranet.Tests.Integration;
 /// <summary>Real two-provider Redis/crypto/cookie races; only external primary Auth transport is controlled.</summary>
 public sealed class SessionGenerationFenceTests : IAsyncLifetime
 {
-    private readonly RedisContainer redis = new RedisBuilder("redis:7.4.5-alpine").Build();
+    private readonly RedisContainer redis = ValidationContainers.Redis();
     public Task InitializeAsync() => redis.StartAsync();
     public Task DisposeAsync() => redis.DisposeAsync().AsTask();
 

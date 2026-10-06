@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
+  <data name="BackToEmployees" xml:space="preserve"><value>Back to employees</value></data>
+  <data name="DateOfBirth" xml:space="preserve"><value>Date of birth</value></data>
+  <data name="EditAccount" xml:space="preserve"><value>Account administration</value></data>
+  <data name="EditAddAddress" xml:space="preserve"><value>Add a home address</value></data>
+  <data name="EditAddressLine1" xml:space="preserve"><value>Street address</value></data>
+  <data name="EditAddressLine2" xml:space="preserve"><value>Address line 2</value></data>
+  <data name="EditBackToProfile" xml:space="preserve"><value>Back to employee profile</value></data>
+  <data name="EditBuilding" xml:space="preserve"><value>Building</value></data>
+  <data name="EditCapturedAddress" xml:space="preserve"><value>Editing the employee's linked address #{0}. Its identifier cannot be changed here.</value></data>
+  <data name="EditCity" xml:space="preserve"><value>City</value></data>
+  <data name="EditCountryId" xml:space="preserve"><value>Country</value></data>
+  <data name="EditDescription" xml:space="preserve"><value>Update the account, home address and employee profile in order. Saves are never retried automatically.</value></data>
+  <data name="EditDisabled" xml:space="preserve"><value>Disabled</value></data>
+  <data name="EditEmailConfirmed" xml:space="preserve"><value>Email address confirmed</value></data>
+  <data name="EditEnabled" xml:space="preserve"><value>Enabled</value></data>
+  <data name="EditFirstName" xml:space="preserve"><value>First name</value></data>
+  <data name="EditForbidden" xml:space="preserve"><value>You do not have permission to load the employee administration form.</value></data>
+  <data name="EditForbiddenSave" xml:space="preserve"><value>The session, permission or request verification rejected the save. Reload current data before continuing.</value></data>
+  <data name="EditHeading" xml:space="preserve"><value>Edit employee</value></data>
+  <data name="EditHomeAddress" xml:space="preserve"><value>Home address</value></data>
+  <data name="EditInvalidCountry" xml:space="preserve"><value>Select a country from the current options.</value></data>
+  <data name="EditInvalidEmail" xml:space="preserve"><value>Enter a valid email address.</value></data>
+  <data name="EditInvalidLength" xml:space="preserve"><value>This value exceeds the field's maximum length.</value></data>
+  <data name="EditInvalidPhone" xml:space="preserve"><value>Enter a valid phone number.</value></data>
+  <data name="EditInvalidRole" xml:space="preserve"><value>Select a role available in the current options, or clear the role.</value></data>
+  <data name="EditLastName" xml:space="preserve"><value>Last name</value></data>
+  <data name="EditLoading" xml:space="preserve"><value>Loading employee edit data</value></data>
+  <data name="EditLockoutEnabled" xml:space="preserve"><value>Enable lockout after repeated failed sign-ins</value></data>
+  <data name="EditLockoutEnd" xml:space="preserve"><value>Lockout end</value></data>
+  <data name="EditNavigationChanged" xml:space="preserve"><value>The selected employee changed during the save attempt. Its outcome has not been applied to this page. Reload the selected employee explicitly; review the previous employee separately if a save was sent.</value></data>
+  <data name="EditNoRole" xml:space="preserve"><value>No role selected</value></data>
+  <data name="EditOptionalAddress" xml:space="preserve"><value>An address is optional when none is linked. Leave this unchecked, or leave the street address or country unselected, to save without creating an address.</value></data>
+  <data name="EditPartialCompletion" xml:space="preserve"><value>Only some save steps completed. Changes were not rolled back. Reload current data and review it manually before saving again.</value></data>
+  <data name="EditPhoneConfirmed" xml:space="preserve"><value>Phone number confirmed</value></data>
+  <data name="EditPostalCode" xml:space="preserve"><value>Postal code</value></data>
+  <data name="EditProfile" xml:space="preserve"><value>Employee details</value></data>
+  <data name="EditProtectedSettings" xml:space="preserve"><value>Two-factor authentication and the lockout end are protected, read-only settings on this form.</value></data>
+  <data name="EditReload" xml:space="preserve"><value>Reload current data (discard edits)</value></data>
+  <data name="EditReloadRequired" xml:space="preserve"><value>Saving is disabled. Reload current data explicitly and review it before making another change.</value></data>
+  <data name="EditRequired" xml:space="preserve"><value>This field is required.</value></data>
+  <data name="EditRoleNumber" xml:space="preserve"><value>Role #{0}</value></data>
+  <data name="EditSave" xml:space="preserve"><value>Save changes</value></data>
+  <data name="EditSaved" xml:space="preserve"><value>All requested save steps completed. Reload current data to review the stored values before another save.</value></data>
+  <data name="EditSaving" xml:space="preserve"><value>Saving once…</value></data>
+  <data name="EditSelectCountry" xml:space="preserve"><value>Select a country</value></data>
+  <data name="EditSessionUnavailable" xml:space="preserve"><value>The session could not be verified. No save was sent.</value></data>
+  <data name="EditSharedEmail" xml:space="preserve"><value>This email will also be the account username and the employee contact email.</value></data>
+  <data name="EditStale" xml:space="preserve"><value>The captured data is no longer current. Reload and review the latest values; your edits have not been retried.</value></data>
+  <data name="EditState" xml:space="preserve"><value>State / province</value></data>
+  <data name="EditTwoFactor" xml:space="preserve"><value>Two-factor authentication</value></data>
+  <data name="EditUnknownOutcome" xml:space="preserve"><value>The save outcome is unknown. Some changes may already be stored. Do not resend; reload current data and review it manually.</value></data>
+  <data name="EditValidationFailed" xml:space="preserve"><value>Review the highlighted fields. Server validation remains authoritative.</value></data>
+  <data name="Email" xml:space="preserve"><value>Email</value></data>
+  <data name="InvalidResponse" xml:space="preserve"><value>EmployeeService returned an invalid employee profile.</value></data>
+  <data name="NotFound" xml:space="preserve"><value>The employee profile could not be found.</value></data>
+  <data name="NotProvided" xml:space="preserve"><value>Not provided</value></data>
+  <data name="PageTitle" xml:space="preserve"><value>Edit employee - MALIEV Intranet</value></data>
+  <data name="PhoneNumber" xml:space="preserve"><value>Phone number</value></data>
+  <data name="RateLimited" xml:space="preserve"><value>Employee requests are temporarily limited. Wait and try again.</value></data>
+  <data name="Role" xml:space="preserve"><value>Role</value></data>
+  <data name="Unavailable" xml:space="preserve"><value>The employee profile is temporarily unavailable.</value></data>
+  <data name="EditStoredIdentityEmail" xml:space="preserve"><value>Stored account email</value></data>
+  <data name="EditStoredIdentityUserName" xml:space="preserve"><value>Stored account username</value></data>
+  <data name="EditStoredProfileEmail" xml:space="preserve"><value>Stored profile email</value></data>
+  <data name="EditStoredEmailDivergence" xml:space="preserve"><value>Stored account and profile emails differ. Review both values before saving again.</value></data>
+</root>

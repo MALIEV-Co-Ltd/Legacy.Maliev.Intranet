@@ -124,7 +124,7 @@ public sealed class OrderInitialStatusHttpTests(ITestOutputHelper output)
         var page = Render(context).FindComponent<OrderView>();
         try
         {
-            page.WaitForAssertion(() => Assert.NotEmpty(page.FindAll(".order-workflow-panel")));
+            await page.WaitForAssertionAsync(() => Assert.NotEmpty(page.FindAll(".order-workflow-panel")));
             var history = page.Find(".order-history");
             Assert.Contains(label, history.TextContent, StringComparison.Ordinal);
             Assert.Contains(missingCreatedDate ? "-" : culture == "en" ? "15 Jul 2030, 07:00" : "15 ก.ค. 2573, 07:00", history.TextContent, StringComparison.Ordinal);
@@ -176,8 +176,16 @@ public sealed class OrderInitialStatusHttpTests(ITestOutputHelper output)
         {
             await stages.DetailEntered.Task.WaitAsync(TimeSpan.FromSeconds(5));
             Assert.Empty(detail.FindAll(".order-workflow-panel"));
+            // The default deadline still rejects a response that remains held.
+            // Awaiting the same helper lets this test release the pending HTTP work.
+            var heldAssertion = detail.WaitForAssertionAsync(() => Assert.NotEmpty(detail.FindAll(".order-workflow-panel")));
+            Assert.False(heldAssertion.IsCompleted);
+            await Assert.ThrowsAsync<Bunit.Extensions.WaitForHelpers.WaitForFailedException>(() => heldAssertion);
+            Assert.Empty(detail.FindAll(".order-workflow-panel"));
+            var readyAssertion = detail.WaitForAssertionAsync(() => Assert.NotEmpty(detail.FindAll(".order-workflow-panel")));
+            Assert.False(readyAssertion.IsCompleted);
             stages.DetailReleased.TrySetResult();
-            detail.WaitForAssertion(() => Assert.NotEmpty(detail.FindAll(".order-workflow-panel")));
+            await readyAssertion;
             Assert.Contains("งานใหม่", detail.Find(".order-history").TextContent, StringComparison.Ordinal);
             Assert.Contains("-", detail.Find(".order-history").TextContent, StringComparison.Ordinal);
             // bUnit updates/notifies the child before refreshing its parents' DOM.
@@ -204,7 +212,7 @@ public sealed class OrderInitialStatusHttpTests(ITestOutputHelper output)
         await LoginAsync(client);
         using var context = RenderContext(client);
         var page = Render(context).FindComponent<OrderView>();
-        page.WaitForAssertion(() => Assert.NotEmpty(page.FindAll(".operations-status-pill")));
+        await page.WaitForAssertionAsync(() => Assert.NotEmpty(page.FindAll(".operations-status-pill")));
         Assert.Equal(label, page.Find(".operations-status-pill").TextContent);
         Assert.DoesNotContain(label, page.Find(".order-history").TextContent, StringComparison.Ordinal);
     }
@@ -231,7 +239,7 @@ public sealed class OrderInitialStatusHttpTests(ITestOutputHelper output)
             var page = Render(context).FindComponent<OrderView>();
             try
             {
-                page.WaitForAssertion(() => Assert.Equal(label, page.Find(".operations-status-pill").TextContent));
+                await page.WaitForAssertionAsync(() => Assert.Equal(label, page.Find(".operations-status-pill").TextContent));
                 Assert.Contains(label, page.Find(".order-history").TextContent, StringComparison.Ordinal);
             }
             finally
@@ -245,7 +253,7 @@ public sealed class OrderInitialStatusHttpTests(ITestOutputHelper output)
         var emptyPage = Render(emptyContext).FindComponent<OrderView>();
         try
         {
-            emptyPage.WaitForAssertion(() => Assert.NotEmpty(emptyPage.FindAll(".order-history")));
+            await emptyPage.WaitForAssertionAsync(() => Assert.NotEmpty(emptyPage.FindAll(".order-history")));
             Assert.True(string.IsNullOrWhiteSpace(emptyPage.Find(".order-history").TextContent));
         }
         finally
@@ -370,7 +378,7 @@ public sealed class OrderInitialStatusHttpTests(ITestOutputHelper output)
         Assert.DoesNotContain(upstream.Requests, item => item.Contains("/available", StringComparison.Ordinal));
         using var context = RenderContext(client);
         var page = Render(context).FindComponent<OrderView>();
-        page.WaitForAssertion(() => Assert.Equal("-", page.Find(".operations-status-pill").TextContent));
+        await page.WaitForAssertionAsync(() => Assert.Equal("-", page.Find(".operations-status-pill").TextContent));
     }
 
     [Fact]
