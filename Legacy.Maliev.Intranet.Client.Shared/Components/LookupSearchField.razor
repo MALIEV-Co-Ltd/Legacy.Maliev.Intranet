@@ -1,0 +1,91 @@
+@typeparam TItem
+@implements IDisposable
+@using Legacy.Maliev.Intranet.Client.Shared.Infrastructure
+@inject IStringLocalizer<LookupResources> Text
+
+<div class="lookup-search-field">
+    <ShadcnFormField Id="@Id" Label="@Label" Disabled="@Disabled">
+        <Control><ShadcnInput TValue="string" id="@Id" Value="@query" ValueChanged="ChangeQueryAsync" Disabled="@Disabled" Placeholder="@Text["Search"]" maxlength="128" /></Control>
+    </ShadcnFormField>
+    <ShadcnFormField Id="@(Id + "-results")" Label="@Text["Results", Label]" Disabled="@Disabled">
+        <Control><ShadcnSelect TValue="TItem" id="@(Id + "-results")" Value="@Value" ValueChanged="ChooseAsync" Options="@Options" Placeholder="@Text["Choose"]" Disabled="@(Disabled || loading)" /></Control>
+    </ShadcnFormField>
+    <p role="status" aria-live="polite">@Status</p>
+    @if (nextCursor is not null)
+    {
+        <ShadcnButton ButtonType="ShadcnButtonType.Button" Disabled="@(Disabled || loading)" OnClick="@(_ => LoadAsync(true))">@Text["More"]</ShadcnButton>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public string Id { get; set; } = default!;
+    [Parameter, EditorRequired] public string Label { get; set; } = default!;
+    [Parameter, EditorRequired] public Func<string, string?, CancellationToken, Task<LookupSearchPage<TItem>>> Search { get; set; } = default!;
+    [Parameter, EditorRequired] public Func<TItem, string> Display { get; set; } = default!;
+    [Parameter] public TItem Value { get; set; } = default!;
+    [Parameter] public EventCallback<TItem> ValueChanged { get; set; }
+    [Parameter] public string ScopeKey { get; set; } = string.Empty;
+    [Parameter] public bool Disabled { get; set; }
+    [Parameter] public int MinimumLength { get; set; }
+    private readonly LookupSearchController<LookupSearchPage<TItem>> controller = new();
+    private List<TItem> items = [];
+    private string query = string.Empty;
+    private string? nextCursor, version, scope, error;
+    private bool loading, initialized, wasDisabled;
+    private IReadOnlyList<ShadcnSelectOption<TItem>> Options => items
+        .Concat(Value is null ? [] : new[] { Value }).Distinct()
+        .Select(item => new ShadcnSelectOption<TItem>(item, Display(item))).ToArray();
+    private string Status => error ?? (loading ? Text["Loading"] : query.Trim().Length < MinimumLength
+        ? Text["Minimum", MinimumLength] : items.Count == 0 ? Text["Empty"] : Text["Count", items.Count]);
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (!initialized || scope != ScopeKey || wasDisabled != Disabled)
+        {
+            initialized = true;
+            scope = ScopeKey;
+            wasDisabled = Disabled;
+            controller.Invalidate();
+            items.Clear();
+            query = string.Empty;
+            nextCursor = version = error = null;
+            loading = false;
+            if (!Disabled && MinimumLength == 0) await LoadAsync(false);
+        }
+    }
+
+    private async Task ChangeQueryAsync(string value)
+    {
+        query = value;
+        await LoadAsync(false);
+    }
+
+    private async Task LoadAsync(bool more)
+    {
+        if (Disabled) return;
+        var requestedQuery = query.Trim();
+        var cursor = more ? nextCursor : null;
+        var oldItems = more ? items.ToArray() : [];
+        if (!more) { items.Clear(); nextCursor = null; version = null; }
+        error = null;
+        if (requestedQuery.Length < MinimumLength)
+        {
+            controller.Invalidate();
+            loading = false;
+            return;
+        }
+        loading = true;
+        await controller.SearchAsync(ct => Search(requestedQuery, cursor, ct), page =>
+        {
+            loading = false;
+            if (more && page.DatasetVersion != version) { items.Clear(); nextCursor = null; error = Text["Changed"]; return; }
+            items = oldItems.Concat(page.Items).Distinct().ToList();
+            version = page.DatasetVersion;
+            nextCursor = page.NextCursor;
+            if (page.HasMore && page.NextCursor is null) error = Text["Narrow"];
+        }, exception => { loading = false; error = LookupFeedback.For(exception, Text); });
+    }
+
+    private Task ChooseAsync(TItem value) => Disabled || loading ? Task.CompletedTask : ValueChanged.InvokeAsync(value);
+    public void Dispose() => controller.Dispose();
+}

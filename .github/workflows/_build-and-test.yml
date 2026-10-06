@@ -10,6 +10,7 @@ jobs:
   validate:
     name: validate
     runs-on: ubuntu-latest
+    timeout-minutes: 120
     env:
       MalievWorkspaceRoot: ${{ github.workspace }}/.dependencies
     steps:
@@ -45,6 +46,14 @@ jobs:
           ref: 8319b23e8ffab0c85b66c886a0109f7dac034c6f
           path: .dependencies/Legacy.Maliev.AuthService
           persist-credentials: false
+      - name: Verify exact Customers validation dependency identities
+        shell: bash
+        run: |
+          test "$(git rev-parse HEAD)" = "${{ github.sha }}"
+          test "$(git -C .dependencies/Legacy.Maliev.ServiceDefaults rev-parse HEAD)" = 7edcd961024868513fd5f373cab3dcb261197f77
+          test "$(git -C .dependencies/Legacy.Maliev.CompatibilityContracts rev-parse HEAD)" = 78e48ffc4ee000df0510cba5e7c7a3c4c4d539d7
+          test "$(git -C .dependencies/Legacy.Maliev.CustomerService rev-parse HEAD)" = cebf45e8e1eeb600d760a565f8b0970c7f434148
+          test "$(git -C .dependencies/Legacy.Maliev.AuthService rev-parse HEAD)" = 8319b23e8ffab0c85b66c886a0109f7dac034c6f
       - name: Verify Docker integration-test runtime
         run: docker info
       - name: Install Playwright Chromium
@@ -161,6 +170,39 @@ jobs:
             exit 1
           fi
           pwsh -NoProfile -File scripts/verify-test-coverage.ps1 -CoverageFile "$coverage_file"
+      - name: Verify Customers private failure proof rejection controls
+        shell: bash
+        run: python3 -B tests/fixtures/customers-private-failure/test_focus_retainer.py
+      - name: Execute actual normal Program Customers private failure regression
+        shell: bash
+        env:
+          DOTNET_PROCESSOR_COUNT: '1'
+        run: |
+          export GITHUB_ACTIONS=false
+          # The reviewed shared action and strict coverage build above must succeed first.
+          # Do not replace the full-suite action test command with a filtered invocation.
+          test ! -e TestResults/customers-private-failure
+          dotnet test Legacy.Maliev.Intranet.Tests/Legacy.Maliev.Intranet.Tests.csproj \
+            --configuration Release --no-build --no-restore \
+            -p:UseLocalMalievDependencies=true -p:EnableCoverageSymbols=true \
+            --filter 'FullyQualifiedName~Legacy.Maliev.Intranet.Tests.BffCustomersPrivateFailureObservationTests' \
+            --logger 'trx;LogFileName=customers-private-failure.trx' \
+            --results-directory TestResults/customers-private-failure
+      - name: Verify exact eight actual Customers executions
+        id: customers_private_failure_proof
+        env:
+          EXPECTED_SOURCE_REVISION: ${{ github.sha }}
+          FOCUS_RESULTS: ${{ github.workspace }}/TestResults/customers-private-failure
+          FOCUS_EVIDENCE: ${{ runner.temp }}/customers-private-failure-evidence
+        run: python3 -B scripts/verify-customers-private-failure-focus.py
+      - name: Preserve sanitized Customers named proof
+        if: ${{ always() && steps.customers_private_failure_proof.outcome == 'success' }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: customers-private-failure-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/customers-private-failure-evidence/
+          if-no-files-found: error
+          retention-days: 7
       - name: Preserve actual runner validation evidence
         if: always()
         uses: MALIEV-Co-Ltd/Legacy.Maliev.Workflows/actions/preserve-validation-evidence@45ced0919a604459c7bb5baf7f38d7bc53d708ba
