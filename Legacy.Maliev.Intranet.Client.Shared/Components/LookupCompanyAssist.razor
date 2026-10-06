@@ -15,7 +15,10 @@
     @if (selected is not null)
     {
         <p>@Text["SuggestionOnly"]</p>
-        <p>@Text["Retrieved"] @selected.RetrievedAt?.ToString("g", CultureInfo.CurrentUICulture)</p>
+        @if (selected.RetrievedAt is { } retrievedAt)
+        {
+            <p>@Text["Retrieved"] @retrievedAt.ToLocalTime().ToString("g", CultureInfo.CurrentUICulture)</p>
+        }
     }
 </section>
 

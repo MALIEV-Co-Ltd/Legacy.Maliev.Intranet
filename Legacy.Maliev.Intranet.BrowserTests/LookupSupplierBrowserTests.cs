@@ -68,6 +68,36 @@ public sealed class LookupSupplierBrowserTests(IntranetClientServerFixture serve
     }
 
     [Fact]
+    public async Task CompanySelectionPreservesManualTaxAndUsesLocalRetrievalTime()
+    {
+        await using var context = await playwright.Browser.NewContextAsync(new() { TimezoneId = "Asia/Bangkok" });
+        var page = await context.NewPageAsync();
+        await SessionAsync(page);
+        await page.RouteAsync("**/bff/lookups/companies/search?**", route => route.FulfillAsync(new()
+        {
+            ContentType = "application/json", Body = """
+            {"outcome":"matches","provider":"creden","capability":"suggestion","hasMore":false,"items":[{"nameTh":"บริษัท ใหม่","nameEn":"New company","taxId":null,"retrievedAt":"2026-10-06T01:00:00+00:00"}]}
+            """
+        }));
+        await page.GotoAsync(new Uri(server.BaseUri, "/Suppliers/Create").AbsoluteUri);
+        await page.Locator("#supplier-name").FillAsync("Manual company");
+        await page.Locator("#supplier-tax-number").FillAsync("0123456789012");
+        await page.Locator("#supplier-website").FillAsync("https://manual.test");
+        await page.RunAndWaitForResponseAsync(() => page.Locator("#supplier-company-lookup").FillAsync("New company"),
+            response => response.Url.Contains("/bff/lookups/companies/search", StringComparison.Ordinal));
+        var result = page.Locator("#supplier-company-lookup-results");
+        await Assertions.Expect(result).ToBeEnabledAsync();
+        await result.FocusAsync();
+        await result.PressAsync("ArrowDown");
+        await result.PressAsync("Enter");
+        await Assertions.Expect(page.Locator("#supplier-name")).ToHaveValueAsync("New company");
+        await Assertions.Expect(page.Locator("#supplier-tax-number")).ToHaveValueAsync("0123456789012");
+        await Assertions.Expect(page.Locator("#supplier-website")).ToHaveValueAsync("https://manual.test");
+        await Assertions.Expect(page.Locator("section[aria-labelledby='supplier-company-lookup-heading']")).ToContainTextAsync("8:00");
+        await Assertions.Expect(page.Locator("#blazor-error-ui")).ToBeHiddenAsync();
+    }
+
+    [Fact]
     public async Task PastedAddressRequiresCandidateReviewAndExplicitApply()
     {
         await using var context = await playwright.Browser.NewContextAsync();
