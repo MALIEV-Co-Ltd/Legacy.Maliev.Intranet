@@ -17,6 +17,7 @@ public static class LookupEndpointExtensions
 
     public static IServiceCollection AddCatalogLookups(this IServiceCollection services, IConfiguration configuration)
     {
+#pragma warning disable EXTEXP0001 // Use the existing explicit no-retry BFF boundary API.
         services.AddHttpClient<LookupCatalogProxy>(client =>
         {
             client.BaseAddress = new Uri(configuration["Services:Catalog"]
@@ -26,6 +27,7 @@ public static class LookupEndpointExtensions
         }).RemoveAllLoggers().RemoveAllResilienceHandlers()
             .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler { AllowAutoRedirect = false })
             .AddHttpMessageHandler<LegacyServiceAuthenticationHandler>();
+#pragma warning restore EXTEXP0001
         services.AddRateLimiter(options => options.AddFixedWindowLimiter(Limiter, limiter =>
         {
             limiter.PermitLimit = 120;
