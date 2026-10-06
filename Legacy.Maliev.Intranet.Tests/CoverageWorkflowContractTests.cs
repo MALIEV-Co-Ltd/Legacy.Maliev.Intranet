@@ -28,7 +28,22 @@ public sealed class CoverageWorkflowContractTests
         Assert.Contains("'Legacy.Maliev.Intranet.Server' = 0.85", gate, StringComparison.Ordinal);
         Assert.Contains("'Legacy.Maliev.Intranet.Contracts' = 0.95", gate, StringComparison.Ordinal);
         Assert.Contains("line coverage is", gate, StringComparison.Ordinal);
-        Assert.Contains("<ExcludeByFile>**/obj/**</ExcludeByFile>", settings, StringComparison.Ordinal);
+        Assert.DoesNotContain("<ExcludeByFile>", settings, StringComparison.Ordinal);
+        Assert.Contains("<SkipAutoProps>false</SkipAutoProps>", settings, StringComparison.Ordinal);
+        Assert.Contains("--no-incremental", workflow, StringComparison.Ordinal);
+        Assert.Contains("-warnaserror", workflow, StringComparison.Ordinal);
+        Assert.Contains("-p:EmitCompilerGeneratedFiles=true", workflow, StringComparison.Ordinal);
+        Assert.Contains("--logger \"trx;LogFileName=coverage.trx\"", workflow, StringComparison.Ordinal);
+        Assert.Contains("-Mode Capture", workflow, StringComparison.Ordinal);
+        Assert.Contains("-Mode Verify", workflow, StringComparison.Ordinal);
+        var capture = workflow.IndexOf("-Mode Capture", StringComparison.Ordinal);
+        var test = workflow.IndexOf("dotnet test Legacy.Maliev.Intranet.Tests/", capture, StringComparison.Ordinal);
+        var verify = workflow.IndexOf("-Mode Verify", test, StringComparison.Ordinal);
+        Assert.True(capture < test && test < verify);
+        Assert.Contains("--no-build", workflow[capture..verify], StringComparison.Ordinal);
+        Assert.Equal(2, workflow.Split("-ResultsDirectory TestResults/coverage-native", StringSplitOptions.None).Length - 1);
+        Assert.Contains("--results-directory TestResults/coverage-native", workflow, StringComparison.Ordinal);
+        Assert.Contains("find TestResults/coverage-native -name coverage.cobertura.xml", workflow, StringComparison.Ordinal);
         Assert.Contains("'$(EnableCoverageSymbols)' != 'true'", contractsProject, StringComparison.Ordinal);
     }
 
