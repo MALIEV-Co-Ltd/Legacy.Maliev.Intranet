@@ -32,6 +32,10 @@ CATALOG = "https://api.nuget.org/v3/catalog0/data/2026.09.10.18.35.53/dotnet-dum
 PACKAGE_SHA512 = "oxVrDv0pAVHe5+wIbu71GFssgX7+DefQwAoTyDt6oweR7GY72zjg/ObH7otpqK6NRZjrtyzFIbmVeMUzaj5EUw=="
 PACKAGE_SIZE = 10453685
 FACT = "Legacy.Maliev.Intranet.Tests.PooledTestHostReleaseContractTests.DisposedOrdinaryBffHost_ReleasesProviderAndTransportAfterObservedPoolExpiry"
+COHORT_CLASSES = tuple("Legacy.Maliev.Intranet.Tests." + name for name in (
+    "PooledTestHostReleaseContractTests", "TestHostLimiterDisposalContractTests", "OrderInitialStatusHttpTests"))
+COHORT_FILTER = "|".join("FullyQualifiedName~" + name for name in COHORT_CLASSES)
+COHORT_TOTAL = 48
 WITNESS = "Legacy.Maliev.Intranet.Tests.PooledTestHostReleaseContractTests+RetainedHost"
 FACTORY = "Microsoft.AspNetCore.Mvc.Testing.WebApplicationFactory`1+DelegatedWebApplicationFactory"
 PROVIDER = "Microsoft.Extensions.DependencyInjection.ServiceProvider"
@@ -41,6 +45,7 @@ FAMILIES = ("System.", "Microsoft.", "Legacy.Maliev.", "Maliev.Aspire.ServiceDef
             "Polly.", "OpenTelemetry.", "Xunit.", "xunit.", "Grpc.", "Program+")
 MAX_TEXT = 1024 * 1024
 SDK_VERSION = "10.0.401"
+CAPTURE_DEADLINE = None
 
 
 class Unavailable(Exception):
@@ -54,6 +59,14 @@ class EnvironmentUnavailable(Unavailable):
         super().__init__("target-environment-not-allowlisted")
         self.counts = counts
         self.unknown_name_sha256 = sorted(set(unknown_name_sha256))
+
+
+class ObservationUnavailable(Unavailable):
+    """Actual bounded TRX counters and fixed reason codes, never test output."""
+
+    def __init__(self, observation, reason):
+        super().__init__(reason)
+        self.observation = observation
 
 
 def sdk_environment_paths(dotnet, sdk_dir, version):
@@ -392,20 +405,63 @@ def public_root_paths(parsed):
         for p in parsed["paths"]]}
 
 
-def verify_original_trx(trx_bytes):
+def observed_trx(trx_bytes, cohort=False):
     require(len(trx_bytes) < 128 * 1024 and b"<!DOCTYPE" not in trx_bytes, "trx-bound")
     xml = ET.fromstring(trx_bytes)
     ns = {"t": "http://microsoft.com/schemas/VisualStudio/TeamTest/2010"}
-    counts = xml.find(".//t:Counters", ns).attrib
-    expected = dict.fromkeys(("passed", "error", "timeout", "aborted", "inconclusive",
+    counters = xml.findall(".//t:Counters", ns)
+    require(len(counters) == 1, "trx-counter-identity")
+    counts = counters[0].attrib
+    zero = dict.fromkeys(("error", "timeout", "aborted", "inconclusive",
                               "passedButRunAborted", "notRunnable", "notExecuted", "disconnected",
                               "warning", "completed", "inProgress", "pending"), "0")
-    expected.update(total="1", executed="1", failed="1")
-    require(counts == expected, "trx-counts")
+    total = COHORT_TOTAL if cohort else 1
+    require(set(counts) == set(zero) | {"total", "executed", "passed", "failed"}
+            and all(counts[key] == value for key, value in zero.items())
+            and counts["total"] == counts["executed"] == str(total)
+            and all(re.fullmatch(r"0|[1-9]\d{0,3}", counts[key]) for key in ("passed", "failed"))
+            and int(counts["passed"]) + int(counts["failed"]) == total, "trx-counts")
     results = xml.findall(".//t:UnitTestResult", ns)
-    require(len(results) == 1 and results[0].attrib["testName"] == FACT
-            and results[0].attrib["outcome"] == "Failed"
-            and results[0].find(".//t:Message", ns).text == FAILURE, "trx-failure-identity")
+    require(len(results) == total
+            and all(result.attrib.get("outcome") in ("Passed", "Failed") for result in results)
+            and sum(result.attrib["outcome"] == "Failed" for result in results) == int(counts["failed"]),
+            "trx-result-counts")
+    require(all(result.attrib.get("testName", "").startswith(tuple(name + "." for name in COHORT_CLASSES))
+                if cohort else result.attrib.get("testName") == FACT for result in results), "trx-class-identity")
+    original = [result for result in results if result.attrib.get("testName") == FACT]
+    require(len(original) == 1, "trx-original-identity")
+    outcome = original[0].attrib["outcome"]
+    if outcome == "Failed":
+        messages = original[0].findall(".//t:Message", ns)
+        require(len(messages) == 1 and messages[0].text == FAILURE, "trx-failure-identity")
+    class_counts = {}
+    for name in COHORT_CLASSES:
+        selected = [result for result in results if result.attrib["testName"].startswith(name + ".")]
+        if selected:
+            class_counts[name] = {"executed": len(selected),
+                                 "passed": sum(result.attrib["outcome"] == "Passed" for result in selected),
+                                 "failed": sum(result.attrib["outcome"] == "Failed" for result in selected)}
+    return {"total": total, "executed": total, "passed": int(counts["passed"]),
+            "failed": int(counts["failed"]), "original_outcome": outcome,
+            "class_counts": class_counts}
+
+
+def verify_original_trx(trx_bytes, cohort=False):
+    observed = observed_trx(trx_bytes, cohort)
+    require(observed["original_outcome"] == "Failed" and observed["failed"] == 1,
+            "trx-original-failure-not-preserved")
+    return observed
+
+
+def no_signal_reason(observation, text):
+    if observation["original_outcome"] == "Passed":
+        return "isolated-no-reproduction" if observation["total"] == 1 else "cohort-no-reproduction"
+    reasons = {"exact weak-handle ownership metadata was not available.": "weak-handle-guard-unavailable",
+               "hosted diagnostic prerequisites were not satisfied.": "diagnostic-prerequisite-unavailable",
+               "signal file could not be written.": "diagnostic-signal-write-unavailable"}
+    found = [code for message, code in reasons.items()
+             if "Synthetic root capture unavailable: " + message in text]
+    return found[0] if len(found) == 1 else "failed-without-diagnostic-signal"
 
 
 def run_private(args, env, cwd, private, label, seconds=60):
@@ -415,6 +471,8 @@ def run_private(args, env, cwd, private, label, seconds=60):
                                    stderr=subprocess.STDOUT, start_new_session=True)
         try:
             deadline = time.monotonic() + seconds
+            if CAPTURE_DEADLINE is not None:
+                deadline = min(deadline, CAPTURE_DEADLINE)
             while process.poll() is None:
                 if log.stat().st_size > MAX_TEXT:
                     raise Unavailable(label + "-output-bound")
@@ -465,7 +523,7 @@ def clean_environment(private, dotnet, workspace, head):
     }
 
 
-def capture(args, private):
+def capture(args, private, cohort=False):
     require(platform.system() == "Linux" and platform.machine() == "x86_64", "runner-platform")
     require(re.fullmatch(r"[0-9a-f]{40}", args.head), "head-format")
     workspace, dotnet = Path(args.workspace).resolve(), Path(args.dotnet).resolve()
@@ -506,13 +564,13 @@ def capture(args, private):
     with log.open("wb") as output:
         test = subprocess.Popen([str(dotnet), "test", str(project), "--configuration", "Release",
                                  "--no-build", "--no-restore", "-p:UseLocalMalievDependencies=true",
-                                 "--filter", "FullyQualifiedName=" + FACT,
+                                 "--filter", COHORT_FILTER if cohort else "FullyQualifiedName=" + FACT,
                                  "--logger", "trx;LogFileName=isolated-pooled-host.trx",
                                  "--results-directory", str(trx_dir)],
                                 env=env, cwd=workspace, stdout=output, stderr=subprocess.STDOUT,
                                 start_new_session=True)
         try:
-            deadline = time.monotonic() + 360
+            deadline = min(time.monotonic() + 360, CAPTURE_DEADLINE)
             ready = None
             while time.monotonic() < deadline and test.poll() is None:
                 require(log.stat().st_size <= MAX_TEXT, "isolated-test-output-bound")
@@ -522,7 +580,14 @@ def capture(args, private):
                     ready = markers[0]
                     break
                 time.sleep(0.2)
-            require(ready is not None, "no-post-observation-signal")
+            if ready is None:
+                require(test.poll() is not None, "diagnostic-test-timeout")
+                trx = trx_dir / "isolated-pooled-host.trx"
+                require(trx.is_file(), "no-signal-trx-unavailable")
+                observation = observed_trx(trx.read_bytes(), cohort)
+                require(test.returncode == (1 if observation["failed"] else 0), "trx-exit-consistency")
+                raise ObservationUnavailable(observation, no_signal_reason(
+                    observation, log.read_text(encoding="utf-8", errors="strict")))
             require(ready.stat().st_size <= 4096, "signal-size-bound")
             # File.WriteAllLines may still be completing when the marker first appears.
             for _ in range(5):
@@ -611,12 +676,13 @@ def capture(args, private):
                        "non_stack": public_root_paths(root_paths(sections[commands[1]], target, non_stack=True))}
     trx = trx_dir / "isolated-pooled-host.trx"
     require(trx.stat().st_size < 128 * 1024, "trx-bound")
-    verify_original_trx(trx.read_bytes())
+    observation = verify_original_trx(trx.read_bytes(), cohort)
     return {"status": "evidence", "head": args.head, "checkout": checkout, "pid": pid,
             "tool": PIN, "package_source": PACKAGE, "package_sha512": PACKAGE_SHA512,
             "runtime": "10.0.12", "dac_sha256": hashlib.sha256(dac.read_bytes()).hexdigest(),
             "test_assembly_sha256": hashlib.sha256(assembly.read_bytes()).hexdigest(),
-            "original_test": {"executed": 1, "failed": 1}, "witness_count": len(witness_ids),
+            "original_test": {"executed": 1, "failed": 1}, "observed_test_counts": observation,
+            "capture_filter": "focused-cohort" if cohort else "original-fact", "witness_count": len(witness_ids),
             "mappings": mappings, "roots": roots}
 
 
@@ -892,8 +958,49 @@ class ParserControls(unittest.TestCase):
                     '<!DOCTYPE unsafe>' + text):
             self.rejects(verify_original_trx, bad.encode())
 
+    def test_no_signal_actual_results_and_reason_privacy(self):
+        zero = ("error", "timeout", "aborted", "inconclusive", "passedButRunAborted",
+                "notRunnable", "notExecuted", "disconnected", "warning", "completed",
+                "inProgress", "pending")
+        attributes = 'total="1" executed="1" passed="1" failed="0" ' + " ".join(f'{key}="0"' for key in zero)
+        text = (f'<TestRun xmlns="http://microsoft.com/schemas/VisualStudio/TeamTest/2010">'
+                f'<Counters {attributes}/><UnitTestResult testName="{FACT}" outcome="Passed"/></TestRun>')
+        observation = observed_trx(text.encode())
+        self.assertEqual(observation, {"total": 1, "executed": 1, "passed": 1, "failed": 0,
+                                      "original_outcome": "Passed", "class_counts": {
+                                          COHORT_CLASSES[0]: {"executed": 1, "passed": 1, "failed": 0}}})
+        self.assertEqual(no_signal_reason(observation, "synthetic-private-value"), "isolated-no-reproduction")
+        self.rejects(verify_original_trx, text.encode())
+        failed = text.replace('passed="1" failed="0"', 'passed="0" failed="1"').replace(
+            'outcome="Passed"/>', f'outcome="Failed"><Message>{FAILURE}</Message></UnitTestResult>')
+        observation = observed_trx(failed.encode())
+        reason = no_signal_reason(observation, "Synthetic root capture unavailable: exact weak-handle ownership metadata was not available. synthetic-private-value")
+        self.assertEqual(reason, "weak-handle-guard-unavailable")
+        self.assertNotIn("synthetic-private-value", json.dumps({"reason": reason, "counts": observation}))
+        for bad in (text.replace('outcome="Passed"', 'outcome="Failed"'),
+                    text.replace('executed="1"', 'executed="0"'), text.replace(FACT, "Unknown.Test"),
+                    text.replace('failed="0"', 'failed="01"')):
+            self.rejects(observed_trx, bad.encode())
+
+    def test_focused_cohort_preserves_original_failure(self):
+        zero = ("error", "timeout", "aborted", "inconclusive", "passedButRunAborted",
+                "notRunnable", "notExecuted", "disconnected", "warning", "completed",
+                "inProgress", "pending")
+        attributes = f'total="{COHORT_TOTAL}" executed="{COHORT_TOTAL}" passed="{COHORT_TOTAL - 1}" failed="1" ' + " ".join(f'{key}="0"' for key in zero)
+        results = f'<UnitTestResult testName="{FACT}" outcome="Failed"><Message>{FAILURE}</Message></UnitTestResult>'
+        results += "".join(f'<UnitTestResult testName="{COHORT_CLASSES[index % 3]}.Synthetic{index}" outcome="Passed"/>'
+                           for index in range(COHORT_TOTAL - 1))
+        text = f'<TestRun xmlns="http://microsoft.com/schemas/VisualStudio/TeamTest/2010"><Counters {attributes}/>{results}</TestRun>'
+        observed = verify_original_trx(text.encode(), cohort=True)
+        self.assertEqual((observed["total"], observed["passed"], observed["failed"]), (48, 47, 1))
+        for bad in (text.replace(FACT, "Unknown.Test"), text.replace(FAILURE, "Different failure"),
+                    text.replace(COHORT_CLASSES[0] + ".Synthetic", "Unknown.Synthetic"),
+                    text.replace('total="48"', 'total="47"')):
+            self.rejects(verify_original_trx, bad.encode(), True)
+
 
 def main():
+    global CAPTURE_DEADLINE
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--self-test", action="store_true")
     parser.add_argument("--workspace")
@@ -914,12 +1021,30 @@ def main():
     parent = Path(runner_temp).resolve()
     require(parent.is_dir() and parent != Path("/"), "runner-temp")
     report = {"status": "diagnostic-unavailable", "stage": "unexpected-failure"}
+    isolated_control = None
+    # Shared finite lease covers both sequential test attempts and every helper.
+    # The workflow retains its eight-minute bound; leave time for finally cleanup.
+    CAPTURE_DEADLINE = time.monotonic() + 430
     with tempfile.TemporaryDirectory(prefix="maliev-pooled-root-", dir=parent) as directory:
         private = Path(directory).resolve()
         require(private.parent == parent and private.stat().st_uid == os.getuid()
                 and private.stat().st_mode & 0o777 == 0o700, "private-temp-ownership")
         try:
-            report = capture(args, private)
+            try:
+                report = capture(args, private)
+            except ObservationUnavailable as failure:
+                if (str(failure) != "isolated-no-reproduction"
+                        or failure.observation["failed"] != 0):
+                    raise
+                isolated_control = failure.observation
+                # The first owned process has exited and capture's finally ran.
+                # Reproduce the same focused cohort before attributing its root.
+                cohort_private = private / "focused-cohort"
+                cohort_private.mkdir(mode=0o700)
+                report = capture(args, cohort_private, cohort=True)
+        except ObservationUnavailable as failure:
+            report = {"status": "diagnostic-unavailable", "stage": str(failure),
+                      "observed_test_counts": failure.observation}
         except EnvironmentUnavailable as failure:
             report = {"status": "diagnostic-unavailable", "stage": str(failure),
                       "environment_issues": failure.counts,
@@ -929,6 +1054,8 @@ def main():
         except Exception:
             # Never expose exception details, unfiltered logs, or partial root results.
             pass
+        if isolated_control is not None:
+            report["isolated_control"] = isolated_control
     payload = json.dumps(report, sort_keys=True)
     require(len(payload.encode()) <= 128 * 1024, "report-bound")
     print(payload)

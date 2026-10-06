@@ -77,22 +77,34 @@ public sealed class PooledTestHostReleaseContractTests(ITestOutputHelper output)
     [Theory]
     [InlineData("10.0.13")]
     [InlineData("10.0.12-unreviewed")]
+    [InlineData("10.0.12+unreviewed")]
     [InlineData("")]
     public void DiagnosticWeakHandle_RejectsUnreviewedRuntime(string version)
     {
-        Assert.Null(ReadDiagnosticWeakHandle(new WeakReference(new object()), version));
+        Assert.True(ReadDiagnosticWeakHandle(new WeakReference(new object()), version) is null,
+            "Unreviewed runtime must reject weak-handle metadata.");
+    }
+
+    [Fact]
+    public void DiagnosticWeakHandle_BindsSourceGeneratedRuntimeIdentity()
+    {
+        var witness = new WeakReference(new object());
+        Assert.True(ReadDiagnosticWeakHandle(witness, Environment.Version.ToString()) is not null,
+            "Exact runtime must expose the reviewed test-owned weak handle.");
     }
 
     private static string? ReadDiagnosticWeakHandle(WeakReference witness, string? version)
     {
         // Exact runtime source v10.0.12 WeakReference.cs:40,84-86. Read the
         // test-owned weak handle itself, never Target or arbitrary host fields.
-        if (version != "10.0.12" && version?.StartsWith("10.0.12+", StringComparison.Ordinal) != true) return null;
+        if (version != "10.0.12") return null;
         if (witness.GetType() != typeof(WeakReference) || witness.TrackResurrection) return null;
         var field = typeof(WeakReference).GetField("_taggedHandle", BindingFlags.Instance | BindingFlags.NonPublic);
         if (field is null || field.FieldType != typeof(nint) || field.GetValue(witness) is not nint handle || handle == 0
             || (handle & 3) != 0) return null;
-        return unchecked((ulong)handle).ToString("x16", System.Globalization.CultureInfo.InvariantCulture);
+        var identity = unchecked((ulong)handle).ToString("x16", System.Globalization.CultureInfo.InvariantCulture);
+        GC.KeepAlive(witness);
+        return identity;
     }
 
     private async Task SignalRootCaptureAsync(RetainedHost roots)
@@ -111,7 +123,9 @@ public sealed class PooledTestHostReleaseContractTests(ITestOutputHelper output)
 
         var pid = Environment.ProcessId;
         var signal = Path.Combine(Path.GetTempPath(), $"maliev-intranet-pooled-root-{pid}.ready");
-        var version = typeof(WeakReference).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion;
+        // ProductVersionInfoGenerator emits this API from the exact product version;
+        // CoreLib need not carry an AssemblyInformationalVersionAttribute.
+        var version = Environment.Version.ToString();
         var factoryHandle = ReadDiagnosticWeakHandle(roots.Factory, version);
         var providerHandle = ReadDiagnosticWeakHandle(roots.Provider, version);
         if (factoryHandle is null || providerHandle is null || factoryHandle == providerHandle)
