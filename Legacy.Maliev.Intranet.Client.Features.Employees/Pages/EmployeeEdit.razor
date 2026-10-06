@@ -1,0 +1,382 @@
+@page "/Employees/Edit"
+@attribute [Authorize]
+@using System.ComponentModel.DataAnnotations
+@using System.Text.Json
+@using Microsoft.AspNetCore.Components.Forms
+@inject HttpClient Http
+@inject NavigationManager Navigation
+@inject IStringLocalizer<EmployeeEdit> Text
+
+<PageTitle>@Text["PageTitle"]</PageTitle>
+
+<main class="employee-edit" aria-busy="@((loading || saving).ToString().ToLowerInvariant())">
+    <header class="operations-page-header">
+        <div><h1>@Text["EditHeading"]</h1><p>@Text["EditDescription"]</p></div>
+        <ShadcnButton ButtonType="ShadcnButtonType.Button" Variant="ShadcnButtonVariant.Outline" OnClick="ReloadAsync" Disabled="@(loading || saving)">@Text["EditReload"]</ShadcnButton>
+    </header>
+    @if (!string.IsNullOrWhiteSpace(error))
+    {
+        <ShadcnAlert Variant="ShadcnAlertVariant.Destructive" AlertRole="ShadcnAlertRole.Alert"><ShadcnAlertDescription>@error</ShadcnAlertDescription></ShadcnAlert>
+    }
+    @if (!string.IsNullOrWhiteSpace(notice))
+    {
+        <ShadcnAlert AlertRole="ShadcnAlertRole.Status"><ShadcnAlertDescription>@notice</ShadcnAlertDescription></ShadcnAlert>
+    }
+    @if (loading)
+    {
+        <div class="employee-edit__loading" role="status" aria-live="polite"><ShadcnSpinner Label="@Text["EditLoading"]" Size="1.25rem" /><span>@Text["EditLoading"]</span></div>
+    }
+    else if (captured is not null && captured.Profile.Id == Id)
+    {
+        @if (saveLocked)
+        {
+            <p class="employee-edit__help" role="status">@Text["EditReloadRequired"]</p>
+        }
+        <dl class="employee-edit__stored">
+            <dt>@Text["EditStoredIdentityEmail"]</dt><dd id="employee-edit-stored-identity-email">@(captured.Identity.Email ?? Text["NotProvided"])</dd>
+            <dt>@Text["EditStoredIdentityUserName"]</dt><dd id="employee-edit-stored-identity-username">@(captured.Identity.UserName ?? Text["NotProvided"])</dd>
+            <dt>@Text["EditStoredProfileEmail"]</dt><dd id="employee-edit-stored-profile-email">@(captured.Profile.Email ?? Text["NotProvided"])</dd>
+        </dl>
+        @if (!string.Equals(captured.Identity.Email, captured.Profile.Email, StringComparison.Ordinal))
+        {
+            <p id="employee-edit-identity-profile-divergence" class="employee-edit__help" role="status">@Text["EditStoredEmailDivergence"]</p>
+        }
+        <EditForm EditContext="@editContext" OnSubmit="HandleSubmitAsync" Class="employee-edit__form" data-save-locked="@saveLocked.ToString().ToLowerInvariant()" data-employee-id="@captured.Profile.Id">
+            <section class="employee-edit__section" aria-labelledby="employee-edit-profile">
+                <h2 id="employee-edit-profile">@Text["EditProfile"]</h2>
+                <div class="employee-edit__grid">
+                    <ShadcnFormField Id="employee-edit-first" Label="@Text["EditFirstName"]" Error="@ValidationFor(nameof(Model.FirstName))" Required="true"><Control><ShadcnInput TValue="string" id="employee-edit-first" @bind-Value="model.FirstName" maxlength="256" Required="true" Disabled="@FieldsDisabled" /></Control></ShadcnFormField>
+                    <ShadcnFormField Id="employee-edit-last" Label="@Text["EditLastName"]" Error="@ValidationFor(nameof(Model.LastName))" Required="true"><Control><ShadcnInput TValue="string" id="employee-edit-last" @bind-Value="model.LastName" maxlength="256" Required="true" Disabled="@FieldsDisabled" /></Control></ShadcnFormField>
+                    <ShadcnFormField Id="employee-edit-email" Label="@Text["Email"]" Error="@ValidationFor(nameof(Model.Email))" Required="true"><Control><ShadcnInput TValue="string" id="employee-edit-email" Type="email" @bind-Value="model.Email" maxlength="256" Required="true" Disabled="@FieldsDisabled" /></Control></ShadcnFormField>
+                    <ShadcnFormField Id="employee-edit-phone" Label="@Text["PhoneNumber"]" Error="@ValidationFor(nameof(Model.PhoneNumber))"><Control><ShadcnInput TValue="string" id="employee-edit-phone" Type="tel" @bind-Value="model.PhoneNumber" maxlength="64" Disabled="@FieldsDisabled" /></Control></ShadcnFormField>
+                    <ShadcnFormField Id="employee-edit-dob" Label="@Text["DateOfBirth"]"><Control><ShadcnDatePicker id="employee-edit-dob" @bind-Value="DateOfBirth" Clearable="true" CalendarLabel="@Text["DateOfBirth"]" Disabled="@FieldsDisabled" /></Control></ShadcnFormField>
+                    <ShadcnFormField Id="employee-edit-role" Label="@Text["Role"]" Error="@ValidationFor(nameof(Model.RoleId))"><Control><ShadcnSelect TValue="int?" id="employee-edit-role" @bind-Value="model.RoleId" Options="@RoleOptions" Placeholder="@Text["EditNoRole"]" Clearable="true" Disabled="@FieldsDisabled" /></Control></ShadcnFormField>
+                </div>
+                <p class="employee-edit__help">@Text["EditSharedEmail"]</p>
+            </section>
+            <section class="employee-edit__section" aria-labelledby="employee-edit-account">
+                <h2 id="employee-edit-account">@Text["EditAccount"]</h2>
+                <div class="employee-edit__checks">
+                    <ShadcnField Orientation="ShadcnFieldOrientation.Horizontal" Disabled="@FieldsDisabled"><ShadcnCheckbox id="employee-edit-email-confirmed" Value="@model.EmailConfirmed" ValueChanged="@(value => model.EmailConfirmed = value.GetValueOrDefault())" Disabled="@FieldsDisabled" /><ShadcnFieldLabel For="employee-edit-email-confirmed">@Text["EditEmailConfirmed"]</ShadcnFieldLabel></ShadcnField>
+                    <ShadcnField Orientation="ShadcnFieldOrientation.Horizontal" Disabled="@FieldsDisabled"><ShadcnCheckbox id="employee-edit-phone-confirmed" Value="@model.PhoneNumberConfirmed" ValueChanged="@(value => model.PhoneNumberConfirmed = value.GetValueOrDefault())" Disabled="@FieldsDisabled" /><ShadcnFieldLabel For="employee-edit-phone-confirmed">@Text["EditPhoneConfirmed"]</ShadcnFieldLabel></ShadcnField>
+                    <ShadcnField Orientation="ShadcnFieldOrientation.Horizontal" Disabled="@FieldsDisabled"><ShadcnCheckbox id="employee-edit-lockout" Value="@model.LockoutEnabled" ValueChanged="@(value => model.LockoutEnabled = value.GetValueOrDefault())" Disabled="@FieldsDisabled" /><ShadcnFieldLabel For="employee-edit-lockout">@Text["EditLockoutEnabled"]</ShadcnFieldLabel></ShadcnField>
+                </div>
+                <p class="employee-edit__help">@Text["EditProtectedSettings"]</p>
+                <dl class="employee-edit__protected">
+                    <dt>@Text["EditTwoFactor"]</dt><dd>@(captured.Identity.TwoFactorEnabled ? Text["EditEnabled"] : Text["EditDisabled"])</dd>
+                    <dt>@Text["EditLockoutEnd"]</dt><dd>@(captured.Identity.LockoutEnd?.ToString("g", System.Globalization.CultureInfo.CurrentCulture) ?? Text["NotProvided"])</dd>
+                </dl>
+            </section>
+            <section class="employee-edit__section" aria-labelledby="employee-edit-address">
+                <h2 id="employee-edit-address">@Text["EditHomeAddress"]</h2>
+                @if (captured.Profile.HomeAddressId is { } addressId)
+                {
+                    <p class="employee-edit__help">@Text["EditCapturedAddress", addressId]</p>
+                }
+                else
+                {
+                    <ShadcnField Orientation="ShadcnFieldOrientation.Horizontal" Disabled="@FieldsDisabled"><ShadcnCheckbox id="employee-edit-add-address" Value="@model.IncludeAddress" ValueChanged="@(value => model.IncludeAddress = value.GetValueOrDefault())" Disabled="@FieldsDisabled" /><ShadcnFieldLabel For="employee-edit-add-address">@Text["EditAddAddress"]</ShadcnFieldLabel></ShadcnField>
+                    <p class="employee-edit__help">@Text["EditOptionalAddress"]</p>
+                }
+                @if (model.IncludeAddress)
+                {
+                    <div class="employee-edit__grid">
+                        <ShadcnFormField Id="employee-edit-building" Label="@Text["EditBuilding"]" Error="@ValidationFor(nameof(Model.Building))"><Control><ShadcnInput TValue="string" id="employee-edit-building" @bind-Value="model.Building" maxlength="256" Disabled="@FieldsDisabled" /></Control></ShadcnFormField>
+                        <ShadcnFormField Id="employee-edit-line1" Label="@Text["EditAddressLine1"]" Error="@ValidationFor(nameof(Model.AddressLine1))" Required="@(captured.Profile.HomeAddressId is not null)"><Control><ShadcnInput TValue="string" id="employee-edit-line1" @bind-Value="model.AddressLine1" maxlength="256" Required="@(captured.Profile.HomeAddressId is not null)" Disabled="@FieldsDisabled" /></Control></ShadcnFormField>
+                        <ShadcnFormField Id="employee-edit-line2" Label="@Text["EditAddressLine2"]" Error="@ValidationFor(nameof(Model.AddressLine2))"><Control><ShadcnInput TValue="string" id="employee-edit-line2" @bind-Value="model.AddressLine2" maxlength="256" Disabled="@FieldsDisabled" /></Control></ShadcnFormField>
+                        <ShadcnFormField Id="employee-edit-city" Label="@Text["EditCity"]" Error="@ValidationFor(nameof(Model.City))"><Control><ShadcnInput TValue="string" id="employee-edit-city" @bind-Value="model.City" maxlength="256" Disabled="@FieldsDisabled" /></Control></ShadcnFormField>
+                        <ShadcnFormField Id="employee-edit-state" Label="@Text["EditState"]" Error="@ValidationFor(nameof(Model.State))"><Control><ShadcnInput TValue="string" id="employee-edit-state" @bind-Value="model.State" maxlength="256" Disabled="@FieldsDisabled" /></Control></ShadcnFormField>
+                        <ShadcnFormField Id="employee-edit-postal" Label="@Text["EditPostalCode"]" Error="@ValidationFor(nameof(Model.PostalCode))"><Control><ShadcnInput TValue="string" id="employee-edit-postal" @bind-Value="model.PostalCode" maxlength="256" Disabled="@FieldsDisabled" /></Control></ShadcnFormField>
+                        <ShadcnFormField Id="employee-edit-country" Label="@Text["EditCountryId"]" Error="@ValidationFor(nameof(Model.CountryId))" Required="@(captured.Profile.HomeAddressId is not null)"><Control><ShadcnSelect TValue="int" id="employee-edit-country" @bind-Value="model.CountryId" Options="@CountryOptions" Placeholder="@Text["EditSelectCountry"]" Disabled="@FieldsDisabled" /></Control></ShadcnFormField>
+                    </div>
+                }
+            </section>
+            <div class="employee-edit__actions">
+                <ShadcnButton ButtonType="ShadcnButtonType.Submit" OperationFeedback="false" Disabled="@FieldsDisabled">@(saving ? Text["EditSaving"] : Text["EditSave"])</ShadcnButton>
+                <LegacyLink Href="@($"/Employees/View?id={Id}")" Role="LegacyLinkRole.Navigation" Disabled="@saving" AriaLabel="@Text["EditBackToProfile"]">@Text["EditBackToProfile"]</LegacyLink>
+            </div>
+        </EditForm>
+    }
+    else if (!loading && string.IsNullOrWhiteSpace(error))
+    {
+        <ShadcnAlert AlertRole="ShadcnAlertRole.Status"><ShadcnAlertDescription>@Text["NotFound"]</ShadcnAlertDescription></ShadcnAlert>
+    }
+    <LegacyLink Href="/Employees/Index" Role="LegacyLinkRole.Navigation" AriaLabel="@Text["BackToEmployees"]">@Text["BackToEmployees"]</LegacyLink>
+</main>
+
+@code {
+    [SupplyParameterFromQuery(Name = "id")]
+    public int Id { get; set; }
+
+    private EmployeeAdministrationEdit? captured;
+    private Model model = new();
+    private EditContext editContext = null!;
+    private ValidationMessageStore validation = null!;
+    private bool loading;
+    private bool saving;
+    private bool saveLocked = true;
+    private string? error;
+    private string? notice;
+    private int loadSequence;
+    private bool FieldsDisabled => loading || saving || saveLocked || captured?.Profile.Id != Id;
+    private static readonly System.Text.Json.JsonSerializerOptions ResponseJson = new(System.Text.Json.JsonSerializerDefaults.Web);
+    private IReadOnlyList<ShadcnSelectOption<int?>> RoleOptions => captured?.Roles
+        .Select(role => new ShadcnSelectOption<int?>(role.Id, role.Name ?? Text["EditRoleNumber", role.Id])).ToArray() ?? [];
+    private IReadOnlyList<ShadcnSelectOption<int>> CountryOptions => captured?.Countries
+        .Select(country => new ShadcnSelectOption<int>(country.Id, country.Name)).ToArray() ?? [];
+
+    protected override Task OnParametersSetAsync()
+    {
+        if (saving)
+        {
+            ++loadSequence;
+            saveLocked = true;
+            notice = null;
+            error = Text["EditNavigationChanged"];
+            return Task.CompletedTask;
+        }
+        return ReloadAsync();
+    }
+
+    private async Task ReloadAsync()
+    {
+        if (saving) return;
+        var sequence = ++loadSequence;
+        var employeeId = Id;
+        loading = true;
+        saveLocked = true;
+        captured = null;
+        error = null;
+        notice = null;
+        try
+        {
+            if (employeeId <= 0) { error = Text["NotFound"]; return; }
+            using var response = await Http.GetForPresentationAsync($"/bff/employees/{employeeId}/edit");
+            if (sequence != loadSequence || employeeId != Id) return;
+            if (response.StatusCode == HttpStatusCode.Unauthorized) { RedirectToLogin(); return; }
+            if (!response.IsSuccessStatusCode) { error = StatusMessage(response.StatusCode); return; }
+            var edit = await response.Content.ReadFromJsonAsync<EmployeeAdministrationEdit>();
+            if (sequence != loadSequence || employeeId != Id) return;
+            if (edit is null || edit.Profile is null || edit.Identity is null || edit.Roles is null || edit.Countries is null
+                || edit.Profile.Id != employeeId || edit.Identity.DatabaseID != employeeId
+                || edit.Roles.Any(role => role is null || role.Id <= 0)
+                || edit.Roles.Select(role => role.Id).Distinct().Count() != edit.Roles.Count
+                || edit.Countries.Any(country => country is null || country.Id <= 0 || string.IsNullOrWhiteSpace(country.Name))
+                || edit.Countries.Select(country => country.Id).Distinct().Count() != edit.Countries.Count
+                || !EmployeeAdministrationVersion.IsEmployee(edit.ProfileVersion)
+                || !EmployeeAdministrationVersion.IsIdentity(edit.IdentityVersion)
+                || (edit.Profile.HomeAddressId is { } addressId
+                    ? edit.Address?.Id != addressId || !EmployeeAdministrationVersion.IsEmployee(edit.AddressVersion)
+                    : edit.Address is not null || edit.AddressVersion is not null))
+            {
+                error = Text["InvalidResponse"];
+                return;
+            }
+            captured = edit;
+            model = new Model
+            {
+                FirstName = edit.Profile.FirstName, LastName = edit.Profile.LastName,
+                Email = edit.Profile.Email, PhoneNumber = edit.Profile.PhoneNumber,
+                DateOfBirth = edit.Profile.DateOfBirth, RoleId = edit.Profile.RoleId,
+                EmailConfirmed = edit.Identity.EmailConfirmed, PhoneNumberConfirmed = edit.Identity.PhoneNumberConfirmed,
+                LockoutEnabled = edit.Identity.LockoutEnabled, IncludeAddress = edit.Address is not null,
+                Building = edit.Address?.Building, AddressLine1 = edit.Address?.AddressLine1,
+                AddressLine2 = edit.Address?.AddressLine2, City = edit.Address?.City,
+                State = edit.Address?.State, PostalCode = edit.Address?.PostalCode, CountryId = edit.Address?.CountryId ?? 0,
+            };
+            editContext = new EditContext(model);
+            validation = new ValidationMessageStore(editContext);
+            saveLocked = false;
+        }
+        catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException)
+        {
+            if (sequence == loadSequence && employeeId == Id) error = Text["Unavailable"];
+        }
+        finally { if (sequence == loadSequence) loading = false; }
+    }
+
+    private Task HandleSubmitAsync(EditContext _) => SaveAsync();
+
+    private async Task SaveAsync()
+    {
+        if (FieldsDisabled || captured is null || !Validate()) return;
+        var employeeId = Id;
+        var sequence = loadSequence;
+        var input = new EmployeeAdministrationSaveRequest(model.FirstName, model.LastName, model.Email,
+            model.PhoneNumber, model.DateOfBirth, model.RoleId, model.EmailConfirmed,
+            model.PhoneNumberConfirmed, model.LockoutEnabled, captured.Profile.HomeAddressId,
+            captured.ProfileVersion, captured.IdentityVersion, captured.AddressVersion,
+            model.IncludeAddress ? new(model.Building, model.AddressLine1, model.AddressLine2,
+                model.City, model.State, model.PostalCode, model.CountryId) : null);
+        var addressExpected = input.Address is { } address && (input.CapturedHomeAddressId is not null
+            || (!string.IsNullOrEmpty(address.AddressLine1) && address.CountryId != 0));
+        saving = true;
+        error = null;
+        notice = null;
+        var dispatched = false;
+        try
+        {
+            using var sessionResponse = await Http.GetForPresentationAsync("/bff/session");
+            if (sessionResponse.StatusCode == HttpStatusCode.Unauthorized) { RedirectToLogin(); return; }
+            if (!sessionResponse.IsSuccessStatusCode) { error = Text["EditSessionUnavailable"]; return; }
+            var session = await sessionResponse.Content.ReadFromJsonAsync<EmployeeSessionSummary>();
+            if (string.IsNullOrWhiteSpace(session?.CsrfToken)) { error = Text["EditSessionUnavailable"]; return; }
+            using var request = new HttpRequestMessage(HttpMethod.Put, $"/bff/employees/{employeeId}/edit")
+            {
+                Content = JsonContent.Create(input),
+            };
+            request.Headers.Add("X-CSRF-TOKEN", session.CsrfToken);
+            if (sequence != loadSequence || employeeId != Id) { saveLocked = true; error = Text["EditNavigationChanged"]; return; }
+            // Once dispatched, an absent or malformed receipt is uncertain. Never replay or auto-reload.
+            dispatched = true;
+            saveLocked = true;
+            using var response = await Http.SendAsync(request);
+            if (sequence != loadSequence || employeeId != Id) { error = Text["EditNavigationChanged"]; return; }
+            EmployeeAdministrationSaveResult? result;
+            try
+            {
+                result = await ReadSaveResultAsync(response.Content);
+            }
+            catch (System.Text.Json.JsonException) when (response.StatusCode is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden)
+            {
+                // Middleware may reject without a coordinator receipt; remain locked without assuming write effects.
+                error = Text["EditForbiddenSave"];
+                return;
+            }
+            if (sequence != loadSequence || employeeId != Id) { error = Text["EditNavigationChanged"]; return; }
+            if (result is null || result.CompletedStages is null || result.StatusCode != (int)response.StatusCode)
+            {
+                error = Text["EditUnknownOutcome"];
+                return;
+            }
+            if (result.OutcomeUnknown) { error = Text["EditUnknownOutcome"]; return; }
+            if (response.StatusCode == HttpStatusCode.OK && result.Stage == "complete"
+                && result.CompletedStages.SequenceEqual(addressExpected
+                    ? new[] { "identity", "address", "profile" } : new[] { "identity", "profile" }))
+            {
+                notice = Text["EditSaved"];
+                return;
+            }
+            if (result.CompletedStages.Count != 0)
+            {
+                error = Text["EditPartialCompletion"];
+                return;
+            }
+            if (response.StatusCode == HttpStatusCode.PreconditionFailed || response.StatusCode == HttpStatusCode.Conflict)
+            {
+                error = Text["EditStale"];
+                return;
+            }
+            if (response.IsSuccessStatusCode) { error = Text["EditUnknownOutcome"]; return; }
+            error = response.StatusCode is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden
+                ? Text["EditForbiddenSave"] : StatusMessage(response.StatusCode);
+            // Only an explicit validation-stage, no-effect receipt allows a manual corrected submission.
+            saveLocked = result.Stage != "validation";
+        }
+        catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException)
+        {
+            error = Text[dispatched ? "EditUnknownOutcome" : "EditSessionUnavailable"];
+        }
+        finally
+        {
+            saving = false;
+            if (sequence != loadSequence || employeeId != Id)
+            {
+                saveLocked = true;
+                notice = null;
+                error = Text["EditNavigationChanged"];
+            }
+        }
+    }
+
+    private static async Task<EmployeeAdministrationSaveResult?> ReadSaveResultAsync(HttpContent content)
+    {
+        var json = await content.ReadFromJsonAsync<System.Text.Json.JsonElement>();
+        if (json.ValueKind != System.Text.Json.JsonValueKind.Object) return null;
+        var fields = new Dictionary<string, System.Text.Json.JsonElement>(StringComparer.OrdinalIgnoreCase);
+        foreach (var field in json.EnumerateObject())
+            if (!fields.TryAdd(field.Name, field.Value)) return null;
+        if (!fields.TryGetValue("Stage", out var stage) || stage.ValueKind != System.Text.Json.JsonValueKind.String
+            || stage.GetString() is not ("validation" or "identity" or "address" or "profile" or "complete")
+            || !fields.TryGetValue("CompletedStages", out var completed) || completed.ValueKind != System.Text.Json.JsonValueKind.Array
+            || completed.EnumerateArray().Any(value => value.ValueKind != System.Text.Json.JsonValueKind.String)
+            || !fields.TryGetValue("OutcomeUnknown", out var unknown) || unknown.ValueKind is not (System.Text.Json.JsonValueKind.True or System.Text.Json.JsonValueKind.False)
+            || !fields.TryGetValue("StatusCode", out var status) || status.ValueKind != System.Text.Json.JsonValueKind.Number
+            || !status.TryGetInt32(out _)) return null;
+        return json.Deserialize<EmployeeAdministrationSaveResult>(ResponseJson);
+    }
+
+    private bool Validate()
+    {
+        validation.Clear();
+        void Add(string field, string key) => validation.Add(new FieldIdentifier(model, field), Text[key]);
+        void Length(string field, string? value, int maximum)
+        {
+            if (value?.Length > maximum) Add(field, "EditInvalidLength");
+        }
+        if (string.IsNullOrWhiteSpace(model.FirstName)) Add(nameof(Model.FirstName), "EditRequired");
+        if (string.IsNullOrWhiteSpace(model.LastName)) Add(nameof(Model.LastName), "EditRequired");
+        if (string.IsNullOrWhiteSpace(model.Email) || !new EmailAddressAttribute().IsValid(model.Email)) Add(nameof(Model.Email), "EditInvalidEmail");
+        if (!string.IsNullOrEmpty(model.PhoneNumber) && !new PhoneAttribute().IsValid(model.PhoneNumber)) Add(nameof(Model.PhoneNumber), "EditInvalidPhone");
+        Length(nameof(Model.FirstName), model.FirstName, 256); Length(nameof(Model.LastName), model.LastName, 256);
+        Length(nameof(Model.Email), model.Email, 256); Length(nameof(Model.PhoneNumber), model.PhoneNumber, 64);
+        if (model.RoleId is { } roleId && !captured!.Roles.Any(role => role.Id == roleId)) Add(nameof(Model.RoleId), "EditInvalidRole");
+        if (model.IncludeAddress)
+        {
+            // Original optional-new-address behavior: missing line or country zero means no address write.
+            var writesAddress = captured!.Profile.HomeAddressId is not null
+                || (!string.IsNullOrEmpty(model.AddressLine1) && model.CountryId != 0);
+            if (writesAddress)
+            {
+                if (string.IsNullOrWhiteSpace(model.AddressLine1)) Add(nameof(Model.AddressLine1), "EditRequired");
+                if (model.CountryId <= 0 || !captured.Countries.Any(country => country.Id == model.CountryId)) Add(nameof(Model.CountryId), "EditInvalidCountry");
+            }
+            Length(nameof(Model.Building), model.Building, 256); Length(nameof(Model.AddressLine1), model.AddressLine1, 256);
+            Length(nameof(Model.AddressLine2), model.AddressLine2, 256); Length(nameof(Model.City), model.City, 256);
+            Length(nameof(Model.State), model.State, 256); Length(nameof(Model.PostalCode), model.PostalCode, 256);
+        }
+        editContext.NotifyValidationStateChanged();
+        var valid = !editContext.GetValidationMessages().Any();
+        if (!valid) error = Text["EditValidationFailed"];
+        return valid;
+    }
+
+    private string StatusMessage(HttpStatusCode status) => status switch
+    {
+        HttpStatusCode.Forbidden => Text["EditForbidden"],
+        HttpStatusCode.NotFound => Text["NotFound"],
+        HttpStatusCode.BadRequest => Text["EditValidationFailed"],
+        HttpStatusCode.TooManyRequests => Text["RateLimited"],
+        HttpStatusCode.BadGateway => Text["InvalidResponse"],
+        _ => Text["Unavailable"],
+    };
+
+    private string? ValidationFor(string field) => editContext.GetValidationMessages(new FieldIdentifier(model, field)).FirstOrDefault();
+    private DateOnly? DateOfBirth
+    {
+        get => model.DateOfBirth is { } date ? DateOnly.FromDateTime(date) : null;
+        set => model.DateOfBirth = value?.ToDateTime(TimeOnly.MinValue);
+    }
+    private void RedirectToLogin() => Navigation.NavigateTo($"/Login?returnUrl={Uri.EscapeDataString(Navigation.ToBaseRelativePath(Navigation.Uri))}");
+
+    private sealed class Model
+    {
+        public string FirstName { get; set; } = string.Empty;
+        public string LastName { get; set; } = string.Empty;
+        public string Email { get; set; } = string.Empty;
+        public string? PhoneNumber { get; set; }
+        public DateTime? DateOfBirth { get; set; }
+        public int? RoleId { get; set; }
+        public bool EmailConfirmed { get; set; }
+        public bool PhoneNumberConfirmed { get; set; }
+        public bool LockoutEnabled { get; set; }
+        public bool IncludeAddress { get; set; }
+        public string? Building { get; set; }
+        public string? AddressLine1 { get; set; }
+        public string? AddressLine2 { get; set; }
+        public string? City { get; set; }
+        public string? State { get; set; }
+        public string? PostalCode { get; set; }
+        public int CountryId { get; set; }
+    }
+}
