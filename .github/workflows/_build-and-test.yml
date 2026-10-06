@@ -67,7 +67,6 @@ jobs:
             install --with-deps chromium
       - name: Diagnose current-main pooled lifecycle and order presentation
         id: current_main_diagnostics
-        continue-on-error: true
         timeout-minutes: 20
         shell: bash
         env:
@@ -78,11 +77,10 @@ jobs:
             --configuration Release -warnaserror -p:UseLocalMalievDependencies=true --nologo
           dotnet test Legacy.Maliev.Intranet.Tests/Legacy.Maliev.Intranet.Tests.csproj \
             --configuration Release --no-build --no-restore -p:UseLocalMalievDependencies=true \
-            --filter 'FullyQualifiedName~PooledTestHostReleaseContractTests|FullyQualifiedName~TestHostLimiterDisposalContractTests|FullyQualifiedName~OrderInitialStatusHttpTests|FullyQualifiedName~HostOwnedTimeProviderTests' \
+            --filter 'FullyQualifiedName~PooledTestHostReleaseContractTests|FullyQualifiedName~TestHostLimiterDisposalContractTests|FullyQualifiedName~OrderInitialStatusHttpTests|FullyQualifiedName~HostOwnedTimeProviderTests|FullyQualifiedName~ValidationEvidenceCallerContractTests' \
             --logger 'console;verbosity=normal'
       - name: Capture bounded synthetic pooled-host root metadata after validation failure
         if: ${{ !cancelled() && github.event_name == 'pull_request' && steps.current_main_diagnostics.outcome == 'failure' }}
-        continue-on-error: true
         timeout-minutes: 8
         shell: bash
         env:

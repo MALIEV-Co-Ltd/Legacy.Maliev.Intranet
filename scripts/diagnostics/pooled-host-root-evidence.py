@@ -33,9 +33,10 @@ PACKAGE_SHA512 = "oxVrDv0pAVHe5+wIbu71GFssgX7+DefQwAoTyDt6oweR7GY72zjg/ObH7otpqK
 PACKAGE_SIZE = 10453685
 FACT = "Legacy.Maliev.Intranet.Tests.PooledTestHostReleaseContractTests.DisposedOrdinaryBffHost_ReleasesProviderAndTransportAfterObservedPoolExpiry"
 COHORT_CLASSES = tuple("Legacy.Maliev.Intranet.Tests." + name for name in (
-    "PooledTestHostReleaseContractTests", "TestHostLimiterDisposalContractTests", "OrderInitialStatusHttpTests", "HostOwnedTimeProviderTests"))
+    "PooledTestHostReleaseContractTests", "TestHostLimiterDisposalContractTests", "OrderInitialStatusHttpTests", "HostOwnedTimeProviderTests",
+    "ValidationEvidenceCallerContractTests"))
 COHORT_FILTER = "|".join("FullyQualifiedName~" + name for name in COHORT_CLASSES)
-COHORT_TOTAL = 60
+COHORT_TOTAL = 67
 WITNESS = "Legacy.Maliev.Intranet.Tests.PooledTestHostReleaseContractTests+RetainedHost"
 FACTORY = "Microsoft.AspNetCore.Mvc.Testing.WebApplicationFactory`1+DelegatedWebApplicationFactory"
 PROVIDER = "Microsoft.Extensions.DependencyInjection.ServiceProvider"
