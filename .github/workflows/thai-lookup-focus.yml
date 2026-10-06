@@ -1,0 +1,112 @@
+name: Thai lookup focused acceptance
+
+on:
+  pull_request:
+    branches: [main, develop, staging]
+    paths:
+      - '**/Lookup*'
+      - 'scripts/verify-thai-lookup-focus.py'
+      - 'tests/fixtures/thai-lookup-focus/**'
+      - '.github/workflows/thai-lookup-focus.yml'
+      - 'Legacy.Maliev.Intranet.Bff/Program.cs'
+      - 'Legacy.Maliev.Intranet.Tests/BffHttpMethodSurfaceTests.cs'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: thai-lookup-focus-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  thai-lookup-focus:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      MalievWorkspaceRoot: ${{ github.workspace }}/.dependencies
+      DOTNET_PROCESSOR_COUNT: '2'
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - name: Initialize isolated focused evidence paths
+        env:
+          LOOKUP_RESULTS: ${{ runner.temp }}/lookup-focus-${{ github.run_id }}-${{ github.run_attempt }}/results
+          LOOKUP_EVIDENCE: ${{ runner.temp }}/lookup-focus-${{ github.run_id }}-${{ github.run_attempt }}/evidence
+        run: |
+          printf 'LOOKUP_RESULTS=%s\n' "$LOOKUP_RESULTS" >> "$GITHUB_ENV"
+          printf 'LOOKUP_EVIDENCE=%s\n' "$LOOKUP_EVIDENCE" >> "$GITHUB_ENV"
+      - name: Check out exact Intranet candidate
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Check out exact ServiceDefaults
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: MALIEV-Co-Ltd/Legacy.Maliev.ServiceDefaults
+          ref: 7edcd961024868513fd5f373cab3dcb261197f77
+          path: .dependencies/Legacy.Maliev.ServiceDefaults
+          persist-credentials: false
+      - name: Check out exact CompatibilityContracts
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: MALIEV-Co-Ltd/Legacy.Maliev.CompatibilityContracts
+          ref: 78e48ffc4ee000df0510cba5e7c7a3c4c4d539d7
+          path: .dependencies/Legacy.Maliev.CompatibilityContracts
+          persist-credentials: false
+      - name: Set up .NET 10
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68
+        with:
+          dotnet-version: 10.0.x
+      - name: Cache NuGet packages
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+        with:
+          path: ~/.nuget/packages
+          key: ${{ runner.os }}-nuget-${{ hashFiles('**/packages.lock.json', '**/*.csproj', '**/*.props') }}
+          restore-keys: |
+            ${{ runner.os }}-nuget-
+      - name: Validate retainer rejection controls
+        run: python3 -B tests/fixtures/thai-lookup-focus/test_retainer.py
+      - name: Build before all focused execution
+        id: build
+        run: |
+          export GITHUB_ACTIONS=false
+          dotnet restore Legacy.Maliev.Intranet.Tests/Legacy.Maliev.Intranet.Tests.csproj --locked-mode -p:UseLocalMalievDependencies=true
+          dotnet restore Legacy.Maliev.Intranet.BrowserTests/Legacy.Maliev.Intranet.BrowserTests.csproj --locked-mode -p:UseLocalMalievDependencies=true
+          dotnet build Legacy.Maliev.Intranet.Tests/Legacy.Maliev.Intranet.Tests.csproj -c Release --no-restore --warnaserror -p:UseLocalMalievDependencies=true -p:EnableCoverageSymbols=true
+          dotnet build Legacy.Maliev.Intranet.BrowserTests/Legacy.Maliev.Intranet.BrowserTests.csproj -c Release --no-restore --warnaserror -p:UseLocalMalievDependencies=true -p:EnableCoverageSymbols=true
+      - name: Execute lookup behavior and components
+        if: ${{ always() && steps.build.outcome == 'success' }}
+        timeout-minutes: 5
+        run: |
+          export GITHUB_ACTIONS=false
+          dotnet test Legacy.Maliev.Intranet.Tests/Legacy.Maliev.Intranet.Tests.csproj -c Release --no-build --no-restore -p:UseLocalMalievDependencies=true --filter 'FullyQualifiedName~LookupBehaviorTests|FullyQualifiedName~LookupComponentTests' --logger 'trx;LogFileName=lookup-unit.trx' --results-directory "$LOOKUP_RESULTS"
+      - name: Install Chromium for the focused browser cases
+        id: chromium
+        if: ${{ always() && steps.build.outcome == 'success' }}
+        run: pwsh -NoProfile -File Legacy.Maliev.Intranet.BrowserTests/bin/Release/net10.0/playwright.ps1 install --with-deps chromium
+      - name: Execute rendered lookup cases
+        if: ${{ always() && steps.build.outcome == 'success' && steps.chromium.outcome == 'success' }}
+        timeout-minutes: 5
+        run: |
+          export GITHUB_ACTIONS=false
+          dotnet test Legacy.Maliev.Intranet.BrowserTests/Legacy.Maliev.Intranet.BrowserTests.csproj -c Release --no-build --no-restore -p:UseLocalMalievDependencies=true --filter 'FullyQualifiedName~LookupSupplierBrowserTests' --logger 'trx;LogFileName=lookup-browser.trx' --results-directory "$LOOKUP_RESULTS"
+      - name: Execute normal cookie and CSRF lookup boundaries
+        if: ${{ always() && steps.build.outcome == 'success' }}
+        timeout-minutes: 5
+        run: |
+          export GITHUB_ACTIONS=false
+          dotnet test Legacy.Maliev.Intranet.Tests/Legacy.Maliev.Intranet.Tests.csproj -c Release --no-build --no-restore -p:UseLocalMalievDependencies=true --filter 'FullyQualifiedName~LookupBffProxyTests|FullyQualifiedName~BffHttpMethodSurfaceTests.RuntimeEndpointSurface_EveryBffMethodAndRouteMatchesTheReviewedContract' --logger 'trx;LogFileName=lookup-bff.trx' --results-directory "$LOOKUP_RESULTS"
+      - name: Retain bounded actual named results
+        if: always()
+        env:
+          EXPECTED_SOURCE_REVISION: ${{ github.sha }}
+          CANDIDATE_HEAD: ${{ github.event.pull_request.head.sha }}
+          BUILD_OUTCOME: ${{ steps.build.outcome }}
+        run: python3 -B scripts/verify-thai-lookup-focus.py
+      - name: Upload actual lookup proof including explicit failures
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: thai-lookup-focus-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ env.LOOKUP_EVIDENCE }}/lookup-focus.json
+          if-no-files-found: error
+          retention-days: 7

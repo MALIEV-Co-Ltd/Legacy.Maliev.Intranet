@@ -813,6 +813,7 @@ builder.Services.AddAuthorizationBuilder()
         .RequireAuthenticatedUser()
         .Build());
 
+builder.Services.AddCatalogLookups(builder.Configuration);
 var app = builder.Build();
 app.UseStandardMiddleware();
 app.Use(async (context, next) =>
@@ -2799,6 +2800,7 @@ app.MapPut("/bff/catalog/materials/{id:int}", async (
     .AddEndpointFilter<AntiforgeryValidationFilter>()
     .RequireAuthorization("legacy-catalog.materials.update");
 
+app.MapCatalogLookups();
 app.MapFallbackToFile("index.html").AllowAnonymous();
 
 await app.RunAsync();

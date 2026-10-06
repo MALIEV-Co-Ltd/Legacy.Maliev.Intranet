@@ -16,6 +16,7 @@
         <DataAnnotationsValidator />
         <section class="supplier-editor-section" aria-labelledby="supplier-details-heading">
             <h2 id="supplier-details-heading">@Text["Supplier"]</h2>
+                <LookupCompanyAssist Id="supplier-company-lookup" Selected="ApplyCompanySuggestion" Disabled="@submitting" />
             <div class="supplier-editor-grid">
                 <ProcurementInputField TValue="string" Id="supplier-name" Label="@Text["Name"]" @bind-Value="model.Name" Required="true" MaxLength="256" />
                 <ProcurementInputField TValue="string" Id="supplier-website" Label="@Text["Website"]" Type="url" @bind-Value="model.Website" />
@@ -30,6 +31,7 @@
 
         <section class="supplier-editor-section" aria-labelledby="supplier-address-heading">
             <h2 id="supplier-address-heading">@Text["Address"]</h2>
+                <LookupAddressAssist Id="supplier-address-lookup" SelectionChanged="ApplyAddressSuggestion" DetailConfirmed="ApplyAddressDetail" CountryKey="@(model.CountryId.ToString(CultureInfo.InvariantCulture))" Disabled="@submitting" />
             <div class="supplier-editor-grid">
                 <ProcurementInputField TValue="string" Id="supplier-building" Label="@Text["Building"]" @bind-Value="model.Building" />
                 <ProcurementInputField TValue="string" Id="supplier-address-1" Label="@Text["Address1"]" @bind-Value="model.Address1" Required="true" />
@@ -49,6 +51,26 @@
 </main>
 
 @code {
+    private void ApplyCompanySuggestion(LookupCompany value)
+    {
+        if (submitting) return;
+        LookupSupplierSuggestions.ApplyCompany(model, value, CultureInfo.CurrentUICulture.TwoLetterISOLanguageName == "th");
+        editContext.NotifyFieldChanged(new FieldIdentifier(model, nameof(model.Name)));
+        editContext.NotifyFieldChanged(new FieldIdentifier(model, nameof(model.TaxNumber)));
+    }
+    private void ApplyAddressSuggestion(LookupAddressSelection value)
+    {
+        if (submitting) return;
+        LookupSupplierSuggestions.ApplyAddress(model, value);
+        foreach (var field in new[] { nameof(model.City), nameof(model.State), nameof(model.PostalCode) })
+            editContext.NotifyFieldChanged(new FieldIdentifier(model, field));
+    }
+    private void ApplyAddressDetail(string value)
+    {
+        if (submitting) return;
+        model.Address1 = value;
+        editContext.NotifyFieldChanged(new FieldIdentifier(model, nameof(model.Address1)));
+    }
     private readonly SupplierCreateRequest model = new();
     private EditContext editContext = null!;
     private bool submitting;
