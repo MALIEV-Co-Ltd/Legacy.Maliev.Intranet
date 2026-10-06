@@ -52,6 +52,8 @@ FRAME_NAMES = frozenset(("GCFrame", "InlinedCallFrame", "TailCallFrame", "Resuma
     "HijackFrame", "PrestubMethodFrame", "CallCountingHelperFrame", "StubDispatchFrame",
     "ExternalMethodFrame", "DynamicHelperFrame", "ProtectValueClassFrame", "DebuggerClassInitMarkFrame",
     "DebuggerExitFrame", "DebuggerU2MCatchHandlerFrame", "ExceptionFilterFrame", "InterpreterFrame"))
+PRIMITIVES = frozenset(("Void", "Boolean", "SByte", "Byte", "Int16", "UInt16", "Char", "IntPtr",
+                       "UIntPtr", "Int32", "UInt32", "Int64", "UInt64", "Single", "Double", "TypedReference"))
 
 
 class Unavailable(Exception):
@@ -73,6 +75,19 @@ class ObservationUnavailable(Unavailable):
     def __init__(self, observation, reason):
         super().__init__(reason)
         self.observation = observation
+
+
+class MetadataUnavailable(Unavailable):
+    """Fixed source context and numeric grammar discriminators, never rejected text."""
+
+    def __init__(self, code, context, value):
+        super().__init__(code)
+        self.context = context
+        self.shape = {"length": min(len(value), 2049), "spaces": min(value.count(" "), 2049),
+                      "equals": min(value.count("="), 2049),
+                      "leading_space": value.startswith(" "), "trailing_space": value.endswith(" "),
+                      "assembly_attributes": "Version=" in value,
+                      "byref_suffix": " ByRef" in value, "function_pointer_separator": " (" in value}
 
 
 def sdk_environment_paths(dotnet, sdk_dir, version):
@@ -195,15 +210,43 @@ def commit_parents(text):
     return parents
 
 
-def metadata(value):
-    require(len(value) <= 2048 and (value == "Program" or value.startswith(FAMILIES)), "unknown-metadata-identity")
-    require(re.fullmatch(r"[A-Za-z0-9_.$`+<>\[\](), =!&?*\-]+", value) is not None,
-            "unknown-metadata-grammar")
-    canonical = re.sub(r", Version=\d+(?:\.\d+){3}", "", value)
-    canonical = re.sub(r", Culture=neutral", "", canonical)
-    canonical = re.sub(r", PublicKeyToken=(?:[0-9a-fA-F]{16}|null)", "", canonical)
-    require("=" not in canonical and " " not in canonical.replace(", ", ""), "metadata-value-injection")
-    return value
+def signature_type(value):
+    value = value.removesuffix(" ByRef")
+    base = re.sub(r"(?:\[,*\]|[&*])+$", "", value)
+    if base not in PRIMITIVES:
+        metadata(value, "signature-type")
+
+
+def metadata(value, context="type"):
+    try:
+        require(len(value) <= 2048, "unknown-metadata-identity")
+        require(re.fullmatch(r"[A-Za-z0-9_.$`+<>\[\](), =!&?*\-]+", value) is not None,
+                "unknown-metadata-grammar")
+        canonical = re.sub(r", Version=\d+(?:\.\d+){3}", "", value)
+        canonical = re.sub(r", Culture=neutral", "", canonical)
+        canonical = re.sub(r", PublicKeyToken=(?:[0-9a-fA-F]{16}|null)", "", canonical)
+        canonical = canonical.replace(", ", ",")
+        identity = canonical
+        if context == "stack-method":
+            # DAC GetMethodDescName -> TypeString.AppendMethodInternal ->
+            # SigFormat.GetCStringParmsOnly: ordinary return prefixes are absent.
+            # Only source-defined spacing inside parameter types is admitted.
+            # AddTypeString emits exactly ' ByRef'; no local/argument names.
+            canonical = re.sub(r"(?<=[A-Za-z0-9_\]>*&]) ByRef(?=[,\)\]>*&]|$)", "&", canonical)
+            # ELEMENT_TYPE_FNPTR emits its validated return type plus ' ('.
+            def function_pointer(match):
+                signature_type(match.group(1))
+                return match.group(1) + "("
+            canonical = re.sub(r"([A-Za-z0-9_.$`+<>\[\],!&?*\-]+) \(", function_pointer, canonical)
+            require(canonical.endswith(")"), "stack-method-signature")
+        require(identity == "Program" or identity.startswith(FAMILIES)
+                or (context == "stack-method" and identity.startswith("Program.")), "unknown-metadata-identity")
+        require("=" not in canonical and " " not in canonical, "metadata-value-injection")
+        return value
+    except MetadataUnavailable:
+        raise
+    except Unavailable as failure:
+        raise MetadataUnavailable(str(failure), context, value) from None
 
 
 def lines(text):
@@ -268,14 +311,14 @@ def weak_handles(text):
             if kind in ("<error>", "<free>"):
                 require(size == "0", "handle-sentinel-size")
             else:
-                metadata(kind)
+                metadata(kind, "weak-handle-type")
             result[handle.lower()] = (target.lower(), kind)
         elif in_statistics and (re.fullmatch(r"MT\s+Count\s+TotalSize\s+Class Name", row)
                                 or re.fullmatch(r"Total\s+\d+ objects", row)):
             pass
         elif in_statistics and (match := re.fullmatch(rf"{HEX}\s+\d+\s+\d+\s+(.+)", row)):
             if match.group(1) not in ("Free", "UNKNOWN"):
-                metadata(match.group(1))
+                metadata(match.group(1), "weak-handle-stat-type")
         else:
             raise Unavailable("unknown-handle-output")
     require(result and len(result) <= 10000, "handle-count")
@@ -328,7 +371,7 @@ def root_paths(text, target, non_stack=False):
                 if method is not None and method.startswith("(") and method.endswith(")"):
                     method = method[1:-1]
             if method is not None:
-                context["method"] = metadata(method)
+                context["method"] = metadata(method, "stack-method")
         elif match := re.fullmatch(rf"(r(?:[abcd]x|[sd]i|[sb]p|[89]|1[0-5])|\?\?\?)([+-]{HEX})?:\s*({HEX})?", row):
             require(context is not None and context.get("kind") == "stack" and ("method" in context or "frame" in context),
                     "stack-register-context")
@@ -352,8 +395,8 @@ def root_paths(text, target, non_stack=False):
                 kind, edge = kind[:-19], "dependent"
             elif " (static variable: " in kind and kind.endswith(")"):
                 kind, edge = kind[:-1].split(" (static variable: ", 1)
-                edge = metadata(edge)
-            current["nodes"].append({"id": match.group(1).lower(), "type": metadata(kind), "edge": edge})
+                edge = metadata(edge, "static-edge")
+            current["nodes"].append({"id": match.group(1).lower(), "type": metadata(kind, "root-node-type"), "edge": edge})
         elif match := re.fullmatch(r"Found (\d+) unique roots\.", row):
             require(summary is None, "duplicate-root-summary")
             summary = int(match.group(1))
@@ -905,6 +948,36 @@ class ParserControls(unittest.TestCase):
         self.assertEqual(metadata("System.List`1[[System.String, System.Private.CoreLib, Version=10.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]"),
                          "System.List`1[[System.String, System.Private.CoreLib, Version=10.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]")
 
+    def test_pinned_runtime_signature_types_and_spacing(self):
+        signatures = (
+            "System.Threading.Timer.Callback(System.Int32 ByRef, Boolean)",
+            "System.Threading.Timer.Callback(Void (System.String, Int32))",
+            "System.Threading.Timer.Callback(System.List`1[[System.String, System.Private.CoreLib, Version=10.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]] ByRef)")
+        for value in signatures:
+            self.assertEqual(metadata(value, "stack-method"), value)
+            self.rejects(metadata, value, "root-node-type")
+        for bad in ("secret System.Threading.Timer.Callback()",
+                    "System.String token System.Threading.Timer.Callback()",
+                    "Void Unknown.Timer.Callback()", "System.Threading.Timer.Callback(System.String token)",
+                    "System.Threading.Timer.Callback(bool arg)",
+                    "System.Threading.Timer.Callback(System.String ByRef secret)",
+                    "System.Threading.Timer.Callback(secret (System.String))",
+                    "System.Threading.Tasks.Task System.Threading.Timer.Callback(System.Object)",
+                    "System.Threading.Timer.Callback(token=value)"):
+            self.rejects(metadata, bad, "stack-method")
+
+    def test_metadata_context_shape_excludes_rejected_text(self):
+        value = "System.String synthetic-sensitive-value"
+        with self.assertRaises(MetadataUnavailable) as caught:
+            metadata(value, "root-node-type")
+        failure = caught.exception
+        self.assertEqual(failure.context, "root-node-type")
+        self.assertEqual(failure.shape["spaces"], 1)
+        serialized = json.dumps({"context": failure.context, "shape": failure.shape})
+        self.assertNotIn(value, serialized)
+        self.assertNotIn("synthetic-sensitive-value", serialized)
+        self.assertNotIn(hashlib.sha256(value.encode()).hexdigest(), serialized)
+
     def test_weak_field(self):
         text = "Name: System.WeakReference\nMethodTable: abc\nEEClass: def\nSize: 24(0x18) bytes\nFile: /runtime/System.Private.CoreLib.dll\nFields:\nMT Field Offset Type VT Attr Value Name\nabc 4000001 8 System.IntPtr 1 instance 1000 _taggedHandle"
         self.assertEqual(object_fields(text, "System.WeakReference", {"_taggedHandle"}, "System.Private.CoreLib.dll"), {"_taggedHandle": "1000"})
@@ -1109,6 +1182,9 @@ def main():
         except ObservationUnavailable as failure:
             report = {"status": "diagnostic-unavailable", "stage": str(failure),
                       "observed_test_counts": failure.observation}
+        except MetadataUnavailable as failure:
+            report = {"status": "diagnostic-unavailable", "stage": str(failure),
+                      "metadata_context": failure.context, "metadata_shape": failure.shape}
         except EnvironmentUnavailable as failure:
             report = {"status": "diagnostic-unavailable", "stage": str(failure),
                       "environment_issues": failure.counts,
