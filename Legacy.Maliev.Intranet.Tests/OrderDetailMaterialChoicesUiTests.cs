@@ -175,7 +175,7 @@ public sealed class OrderDetailMaterialChoicesUiTests
         try
         {
             await handler.Entered.Task.WaitAsync(TimeSpan.FromSeconds(5));
-            cut.Dispose();
+            await context.DisposeComponentsAsync().WaitAsync(TimeSpan.FromSeconds(5));
             Assert.True(handler.HeldToken.IsCancellationRequested);
         }
         finally

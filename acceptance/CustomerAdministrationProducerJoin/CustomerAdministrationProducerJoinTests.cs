@@ -579,7 +579,7 @@ public sealed class CustomerAdministrationProducerJoinTests(SharedContainers con
                     { InnerHandler = fixture.Customer.Server.CreateHandler() });
                     services.ConfigureAll<HttpClientFactoryOptions>(options => options.HttpMessageHandlerBuilderActions.Add(handler =>
                     {
-                        if (!new[] { nameof(Legacy.Maliev.Intranet.Auth.ILegacyAuthClient), nameof(IdentityClient), nameof(ProfileClient) }.Contains(handler.Name))
+                        if (!new[] { nameof(Legacy.Maliev.Intranet.Auth.ILegacyAuthClient), typeof(IdentityClient).Name, typeof(ProfileClient).Name }.Contains(handler.Name))
                             handler.PrimaryHandler = new BlockOutbound();
                     }));
                 });
