@@ -18,6 +18,17 @@ EXPECTED = {
     "EmptyProducerLookupsThroughRealBffRenderExistingEditorWithoutInventedOptions": 2,
 }
 SOURCE = "Legacy.Maliev.Intranet.Tests/FinanceEmptyLookupHttpTests.cs"
+SAFE_FAILURE_CODES = {
+    message: message.replace(" ", "_")
+    for message in (
+        "unsafe evidence path", "unsafe XML", "unexpected TRX namespace", "missing counters",
+        "incomplete run", "nonpassing counter", "invalid definition", "nonallowlisted test",
+        "conflicting definition", "duplicate or missing execution", "invalid execution identity",
+        "failed or skipped case", "method cardinality mismatch", "source identity mismatch",
+        "test source differs from exact commit", "evidence destination must be fresh",
+        "missing or ambiguous raw evidence", "missing actual raw hits", "invalid raw hits",
+    )
+}
 
 
 def read_xml(path):
@@ -115,9 +126,16 @@ def retain(repository, results, output, expected_revision):
     print("[finance-focus] actual 35 passed executions verified (30+2+1+2); sanitized evidence retained")
 
 
-if __name__ == "__main__":
+def main():
     try:
         retain(Path.cwd(), Path(os.environ["FOCUS_RESULTS"]), Path(os.environ["FOCUS_EVIDENCE"]), os.environ["EXPECTED_SOURCE_REVISION"])
-    except Exception:
-        print("[finance-focus] FAILED: complete safe focused evidence unavailable; details redacted")
-        raise SystemExit(1)
+        return 0
+    except Exception as error:
+        # Fixed code-owned categories only; never print external errors, XML, parameters or output.
+        code = SAFE_FAILURE_CODES.get(str(error), "unclassified_failure") if type(error) is ValueError else "unclassified_failure"
+        print(f"[finance-focus] FAILED: {code}; details redacted")
+        return 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

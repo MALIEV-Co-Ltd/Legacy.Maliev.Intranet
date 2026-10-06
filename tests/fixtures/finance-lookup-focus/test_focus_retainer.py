@@ -34,6 +34,25 @@ def valid_trx():
 
 
 class FocusRetainerControls(unittest.TestCase):
+    def test_failure_diagnostics_are_fixed_codes_and_never_external_details(self):
+        environment = {"FOCUS_RESULTS": "fixture-results", "FOCUS_EVIDENCE": "fixture-evidence", "EXPECTED_SOURCE_REVISION": REVISION}
+        failures = (
+            (ValueError("source identity mismatch"), "source_identity_mismatch"),
+            (ValueError("private-diagnostic-canary"), "unclassified_failure"),
+            (OSError("private-diagnostic-canary"), "unclassified_failure"),
+        )
+        for failure, code in failures:
+            with self.subTest(code=code), patch.dict(FOCUS.os.environ, environment), patch.object(FOCUS, "retain", side_effect=failure), patch("builtins.print") as output:
+                self.assertEqual(1, FOCUS.main())
+                output.assert_called_once_with(f"[finance-focus] FAILED: {code}; details redacted")
+                self.assertNotIn("private-diagnostic-canary", str(output.call_args))
+
+    def test_success_entrypoint_preserves_retention_result(self):
+        environment = {"FOCUS_RESULTS": "fixture-results", "FOCUS_EVIDENCE": "fixture-evidence", "EXPECTED_SOURCE_REVISION": REVISION}
+        with patch.dict(FOCUS.os.environ, environment), patch.object(FOCUS, "retain") as retain:
+            self.assertEqual(0, FOCUS.main())
+            retain.assert_called_once()
+
     def test_complete_method_matrix(self):
         records = FOCUS.verify_trx(valid_trx())
         self.assertEqual(35, len(records))
