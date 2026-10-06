@@ -19,7 +19,8 @@ outcomes, and require a reviewed candidate and an explicit apply action before
 replacing street detail. More-than-preview ambiguity is visibly flagged for further narrowing.
 Provider outcomes and lookup permission failures remain visible; manual input is
 available throughout. Company suggestions apply only returned names and tax IDs,
-with no invented status, website, contacts or registered address.
+with no invented status, website, contacts or registered address. Provided retrieval
+timestamps are displayed in the browser timezone; absent timestamps are omitted.
 
 Supplier create and edit use the existing supplier-owned persistence workflow.
 No lookup component writes domain data. Existing save/delete permissions, CSRF,
@@ -152,6 +153,17 @@ no test-only route registration masks that dependency. Local builds/test hosts/b
 workers/containers remain prohibited by the coordinator resource mandate. PR #266
 stays draft; no merge or deployment. The partial-postcode correction and browser
 regression are awaiting hosted validation on their own next published head.
+
+The additional `thai-lookup-focus.yml` lane builds both test targets with warnings as
+errors, then runs 16 behavior/component cases, 4 rendered browser cases and 17 real-
+startup cookie/CSRF cases independently. It has read-only repository permissions,
+a 20-minute job lease and five-minute limits for each test group. Failures remain
+failures; the full-suite and native coverage gates are unchanged. The retainer validates
+exact methods/cardinality and source identity, removes parameters/captured output,
+and emits only bounded actual results. It never certifies production coverage or
+joined acceptance. Its 13 synthetic rejection/control tests passed locally; YAML,
+Python syntax, workflow context availability, immutable action pins and real Git
+identity checks passed. These controls are not actual .NET lookup test results.
 
 After startup integration, execute on an admitted hosted runner:
 
