@@ -362,6 +362,36 @@ def verify_dump_version(text):
     require(found, "dump-runtime-version")
 
 
+def signal_handle_ids(rows, head):
+    require(len(rows) == 7 and rows[1:5] == [f"head={head}", f"factory={FACTORY}",
+            f"provider={PROVIDER}", f"witness={WITNESS}"], "signal-identity")
+    handles = {}
+    for name, row in zip(("Factory", "Provider"), rows[5:]):
+        match = re.fullmatch(name.lower() + r"-handle=([0-9a-f]{16})", row)
+        require(match is not None, "signal-weak-handle-format")
+        handle = match.group(1)
+        require(int(handle, 16) != 0 and int(handle, 16) & 3 == 0, "unsupported-weak-handle-tags")
+        handles[name] = handle
+    require(len(set(handles.values())) == 2, "signal-weak-handle-alias")
+    return handles
+
+
+def bind_weak_target(handle, table, expected):
+    require(handle in table, "weak-handle-not-found")
+    target, kind = table[handle]
+    require(kind == expected or (expected == FACTORY and kind.startswith(FACTORY + "[")), "weak-target-identity")
+    return target, kind
+
+
+def public_root_paths(parsed):
+    # Retain type/ownership relationships only. Addresses, thread IDs and stack
+    # slots remain in the private parser state and are never published.
+    return {"capped": parsed["capped"], "paths": [
+        {**{k: p[k] for k in ("kind", "handle_kind", "frame", "method", "register") if k in p},
+         "nodes": [{"type": n["type"], "edge": n["edge"]} for n in p["nodes"]]}
+        for p in parsed["paths"]]}
+
+
 def verify_original_trx(trx_bytes):
     require(len(trx_bytes) < 128 * 1024 and b"<!DOCTYPE" not in trx_bytes, "trx-bound")
     xml = ET.fromstring(trx_bytes)
@@ -496,12 +526,11 @@ def capture(args, private):
             require(ready.stat().st_size <= 4096, "signal-size-bound")
             # File.WriteAllLines may still be completing when the marker first appears.
             for _ in range(5):
-                if len(ready.read_text(encoding="utf-8").splitlines()) == 5:
+                if len(ready.read_text(encoding="utf-8").splitlines()) == 7:
                     break
                 time.sleep(0.1)
             rows = lines(ready.read_text(encoding="utf-8"))
-            require(len(rows) == 5 and rows[1:] == [f"head={args.head}", f"factory={FACTORY}",
-                                                   f"provider={PROVIDER}", f"witness={WITNESS}"], "signal-identity")
+            witness_handles = signal_handle_ids(rows, args.head)
             require(re.fullmatch(r"pid=[1-9]\d{0,9}", rows[0]), "signal-pid")
             pid = int(rows[0][4:])
             require(ready.name == f"maliev-intranet-pooled-root-{pid}.ready", "signal-filename")
@@ -570,28 +599,16 @@ def capture(args, private):
     verify_dump_version(initial["eeversion"])
     witness_ids = addresses(initial[f"dumpheap -type {WITNESS} -short"])
     require(len(witness_ids) == 1, "ambiguous-witness")
-    witness_id = witness_ids[0]
-    fields_command = "dumpobj " + witness_id
-    fields = object_fields(sos([fields_command], "sos-witness")[fields_command], WITNESS,
-                           {f"<{n}>k__BackingField" for n in ("Factory", "Provider", "Transport", "HandlerLifetime", "Disposal")},
-                           "Legacy.Maliev.Intranet.Tests.dll")
     handle_table = weak_handles(initial["gchandles -type WeakShort"])
     mappings = {}
     roots = {}
     for name, expected in (("Factory", FACTORY), ("Provider", PROVIDER)):
-        ref = fields[f"<{name}>k__BackingField"]
-        command = "dumpobj " + ref
-        handle = object_fields(sos([command], "sos-weak-" + name)[command], "System.WeakReference",
-                               {"_taggedHandle"}, "System.Private.CoreLib.dll")["_taggedHandle"]
-        require(int(handle, 16) != 0 and int(handle, 16) & 3 == 0, "unsupported-weak-handle-tags")
-        require(handle in handle_table, "weak-handle-not-found")
-        target, kind = handle_table[handle]
-        require(kind == expected or (name == "Factory" and kind.startswith(FACTORY + "[")), "weak-target-identity")
-        mappings[name] = {"weak_reference": ref, "weak_handle": handle, "target": target, "type": kind}
+        target, kind = bind_weak_target(witness_handles[name], handle_table, expected)
+        mappings[name] = {"type": kind}
         commands = ["gcroot -limit 32 " + target, "gcroot -nostacks -limit 32 " + target]
         sections = sos(commands, "sos-roots-" + name)
-        roots[name] = {"all": root_paths(sections[commands[0]], target),
-                       "non_stack": root_paths(sections[commands[1]], target, non_stack=True)}
+        roots[name] = {"all": public_root_paths(root_paths(sections[commands[0]], target)),
+                       "non_stack": public_root_paths(root_paths(sections[commands[1]], target, non_stack=True))}
     trx = trx_dir / "isolated-pooled-host.trx"
     require(trx.stat().st_size < 128 * 1024, "trx-bound")
     verify_original_trx(trx.read_bytes())
@@ -599,7 +616,7 @@ def capture(args, private):
             "tool": PIN, "package_source": PACKAGE, "package_sha512": PACKAGE_SHA512,
             "runtime": "10.0.12", "dac_sha256": hashlib.sha256(dac.read_bytes()).hexdigest(),
             "test_assembly_sha256": hashlib.sha256(assembly.read_bytes()).hexdigest(),
-            "original_test": {"executed": 1, "failed": 1}, "witness": witness_id,
+            "original_test": {"executed": 1, "failed": 1}, "witness_count": len(witness_ids),
             "mappings": mappings, "roots": roots}
 
 
@@ -839,6 +856,28 @@ class ParserControls(unittest.TestCase):
                     native + "\nsecret=value", "Workstation mode\nSOS Version: 10.0.745401",
                     "10.0.12 @Commit: secret=value"):
             self.rejects(verify_dump_version, bad)
+
+    def test_exact_signal_handles_and_target_binding(self):
+        head = "a" * 40
+        rows = ["pid=123", f"head={head}", f"factory={FACTORY}", f"provider={PROVIDER}", f"witness={WITNESS}",
+                "factory-handle=0000000000001000", "provider-handle=0000000000002000"]
+        handles = signal_handle_ids(rows, head)
+        table = {handles["Factory"]: ("3000", FACTORY), handles["Provider"]: ("4000", PROVIDER)}
+        self.assertEqual(bind_weak_target(handles["Factory"], table, FACTORY), ("3000", FACTORY))
+        for wrong in ("0000000000001001", "0000000000000000", "0000000000002000", "secret", "0000000000001000 secret=value"):
+            self.rejects(signal_handle_ids, rows[:5] + ["factory-handle=" + wrong, rows[6]], head)
+        self.rejects(signal_handle_ids, rows, "b" * 40)
+        self.rejects(signal_handle_ids, rows[:2] + ["factory=Unknown.Type"] + rows[3:], head)
+        self.rejects(bind_weak_target, "5000", table, FACTORY)
+        self.rejects(bind_weak_target, handles["Provider"], table, FACTORY)
+
+    def test_public_root_metadata_excludes_addresses(self):
+        text = "HandleTable:\n1000 (strong handle)\n-> 2000 System.Object[]\n-> 4000 Microsoft.Extensions.DependencyInjection.ServiceProvider\nFound 1 unique roots."
+        public = public_root_paths(root_paths(text, "4000"))
+        serialized = json.dumps(public)
+        for private in ("1000", "2000", "4000", '"id"', '"root"', '"stack_slot"', '"thread"'):
+            self.assertNotIn(private, serialized)
+        self.assertEqual(public["paths"][0]["nodes"][-1]["type"], PROVIDER)
 
     def test_original_trx_failure(self):
         zero = ("passed", "error", "timeout", "aborted", "inconclusive", "passedButRunAborted",
