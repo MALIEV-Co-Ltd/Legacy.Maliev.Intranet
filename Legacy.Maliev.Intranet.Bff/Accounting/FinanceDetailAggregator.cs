@@ -33,9 +33,9 @@ public sealed class FinanceDetailAggregator(
         using var typesResponse = await typesTask;
         using var methodsResponse = await methodsTask;
         using var metadataResponse = await metadataTask;
-        var directions = await ReadAsync<List<FinanceLookupItem>>(directionsResponse, cancellationToken) ?? [];
-        var types = await ReadAsync<List<FinanceLookupItem>>(typesResponse, cancellationToken) ?? [];
-        var methods = await ReadAsync<List<FinanceLookupItem>>(methodsResponse, cancellationToken) ?? [];
+        var directions = await ReadLookupAsync(directionsResponse, cancellationToken);
+        var types = await ReadLookupAsync(typesResponse, cancellationToken);
+        var methods = await ReadLookupAsync(methodsResponse, cancellationToken);
         var metadata = metadataResponse.StatusCode == HttpStatusCode.NotFound
             ? []
             : await ReadAsync<List<FinanceFileMetadata>>(metadataResponse, cancellationToken) ?? [];
@@ -75,6 +75,11 @@ public sealed class FinanceDetailAggregator(
             limiter.Release();
         }
     }
+
+    private static async Task<List<FinanceLookupItem>> ReadLookupAsync(HttpResponseMessage response, CancellationToken cancellationToken) =>
+        response.StatusCode == HttpStatusCode.NotFound
+            ? []
+            : await ReadAsync<List<FinanceLookupItem>>(response, cancellationToken) ?? [];
 
     private static async Task<T?> ReadAsync<T>(HttpResponseMessage response, CancellationToken cancellationToken)
     {
