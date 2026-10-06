@@ -450,7 +450,7 @@ public sealed class BffCustomerAdministrationCoordinatorTests
                 return new((HttpStatusCode)int.Parse(scenario.Failure!, System.Globalization.CultureInfo.InvariantCulture));
             }
             return stage == "profile" && scenario.CancelAfterProfileDispose
-                ? new CancelOnDisposeResponse(scenario.Cancellation) : new(HttpStatusCode.NoContent);
+                ? new CancelOnDisposeResponse(scenario.Cancellation) : new HttpResponseMessage(HttpStatusCode.NoContent);
         }
     }
 

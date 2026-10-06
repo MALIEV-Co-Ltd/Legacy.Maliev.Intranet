@@ -353,7 +353,7 @@ public sealed class CustomerAdministrationProducerJoinTests(SharedContainers con
             auth = new AuthFactory(this);
             using (var client = auth.CreateClient())
             {
-                using var login = await client.PostAsJsonAsync("/auth/v1/login", new { email = "actor@maliev.test", password = "disposable" });
+                using var login = await client.PostAsJsonAsync("/auth/v1/login", new { userName = "actor@maliev.test", password = "disposable", identityKind = 1 });
                 Assert.Equal(HttpStatusCode.OK, login.StatusCode);
                 using var body = JsonDocument.Parse(await login.Content.ReadAsStringAsync());
                 ActorToken = body.RootElement.GetProperty("accessToken").GetString()!;
