@@ -168,7 +168,9 @@ public sealed class IntranetNullableFinancialSourceAcceptanceTests
         {
             var client = factory.CreateClient(new()
             {
-                BaseAddress = new Uri("https://localhost"), AllowAutoRedirect = false, HandleCookies = true,
+                BaseAddress = new Uri("https://localhost"),
+                AllowAutoRedirect = false,
+                HandleCookies = true,
             });
             try
             {
@@ -262,8 +264,11 @@ public sealed class IntranetNullableFinancialSourceAcceptanceTests
                         Assert.Equal(1, login.RootElement.GetProperty("identityKind").GetInt32());
                         return Json(JsonSerializer.Serialize(new
                         {
-                            accessToken = owner.EmployeeToken(), refreshToken = owner.refreshToken,
-                            tokenType = "Bearer", expiresIn = 900, refreshExpiresAt = DateTimeOffset.UtcNow.AddDays(1),
+                            accessToken = owner.EmployeeToken(),
+                            refreshToken = owner.refreshToken,
+                            tokenType = "Bearer",
+                            expiresIn = 900,
+                            refreshExpiresAt = DateTimeOffset.UtcNow.AddDays(1),
                         }));
                     }
                     if (uri.AbsolutePath == "/auth/v1/service/login")

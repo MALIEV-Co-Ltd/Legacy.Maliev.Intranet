@@ -109,6 +109,14 @@ jobs:
         env:
           DIAGNOSTIC_OUTCOME: ${{ steps.current_main_diagnostics.outcome }}
         run: test "$DIAGNOSTIC_OUTCOME" = success
+      - name: Verify current candidate formatting before full validation
+        timeout-minutes: 8
+        shell: bash
+        env:
+          DOTNET_PROCESSOR_COUNT: '1'
+        run: |
+          export GITHUB_ACTIONS=false
+          dotnet format Legacy.Maliev.Intranet.slnx --verify-no-changes --no-restore
       - name: Validate .NET solution
         uses: MALIEV-Co-Ltd/Legacy.Maliev.Workflows/actions/dotnet-validate@d7efac266bc66273bc45eab583618871292ecbd6
         env:
