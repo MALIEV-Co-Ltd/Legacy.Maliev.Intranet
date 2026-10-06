@@ -640,7 +640,8 @@ public sealed class CustomerAdministrationProducerJoinTests(SharedContainers con
                 {
                     using var exchange = JsonDocument.Parse(await request.Content!.ReadAsStringAsync(token));
                     Assert.Equal("legacy-auth", exchange.RootElement.GetProperty("clientId").GetString());
-                    Assert.True(string.Equals(fixture.exchangeSecret, exchange.RootElement.GetProperty("clientSecret").GetString(), StringComparison.Ordinal));
+                    if (!string.Equals(fixture.exchangeSecret, exchange.RootElement.GetProperty("clientSecret").GetString(), StringComparison.Ordinal))
+                        throw new Xunit.Sdk.XunitException("Controlled IAM exchange credential mismatch.");
                     return Json(new { accessToken = "disposable-iam-workload-transport-only", tokenType = "Bearer", expiresIn = 900 });
                 }
                 Assert.Equal("/iam/v1/auth/check-permission", path);
@@ -658,7 +659,10 @@ public sealed class CustomerAdministrationProducerJoinTests(SharedContainers con
                 };
                 Assert.True(allowed, "Unexpected permission/resource tuple in controlled IAM transport.");
                 if (body.RootElement.GetProperty("bypassCache").GetBoolean())
-                    Assert.True(string.Equals(fixture.liveCredential, request.Headers.GetValues("X-Maliev-IAM-Live-Check-Key").Single(), StringComparison.Ordinal));
+                {
+                    if (!string.Equals(fixture.liveCredential, request.Headers.GetValues("X-Maliev-IAM-Live-Check-Key").Single(), StringComparison.Ordinal))
+                        throw new Xunit.Sdk.XunitException("Controlled IAM live-check credential mismatch.");
+                }
                 Interlocked.Increment(ref fixture.IamCalls);
                 return Json(new { principalId = Guid.Parse("11111111-1111-1111-1111-111111111111"), permissionId = permission,
                     resourcePath = resource, allowed = true, fromCache = false, latencyMs = 0 });
