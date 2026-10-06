@@ -255,10 +255,17 @@ def lines(text):
 
 
 def addresses(text):
-    result = lines(text)
-    require(result and all(re.fullmatch(HEX, row) for row in result), "heap-address-format")
+    rows = lines(text)
+    require(rows and all(re.fullmatch(HEX, row) for row in rows), "heap-address-format")
+    result = [pointer_id(row) for row in rows]
     require(len(result) == len(set(result)) and len(result) <= 64, "heap-address-count")
     return result
+
+
+def pointer_id(value, allow_zero=False):
+    require(re.fullmatch(HEX, value) is not None and (allow_zero or int(value, 16) != 0),
+            "pointer-identity-format")
+    return format(int(value, 16), "x")
 
 
 def object_fields(text, expected_type, expected_fields, module):
@@ -305,14 +312,16 @@ def weak_handles(text):
         elif match := re.fullmatch(rf"({HEX})\s+WeakShort\s+({HEX})\s+(\d+)\s+(.+)", row):
             require(not in_statistics, "handle-order")
             handle, target, size, kind = match.groups()
-            require(handle.lower() not in result, "duplicate-handle")
+            handle = pointer_id(handle)
+            target = pointer_id(target, allow_zero=True)
+            require(handle not in result, "duplicate-handle")
             # GCHandlesImpl emits literal sentinels for cleared/unreadable/free
             # weak targets. Never bind these rows as a reviewed live witness.
             if kind in ("<error>", "<free>"):
                 require(size == "0", "handle-sentinel-size")
             else:
                 metadata(kind, "weak-handle-type")
-            result[handle.lower()] = (target.lower(), kind)
+            result[handle] = (target, kind)
         elif in_statistics and (re.fullmatch(r"MT\s+Count\s+TotalSize\s+Class Name", row)
                                 or re.fullmatch(r"Total\s+\d+ objects", row)):
             pass
@@ -326,6 +335,7 @@ def weak_handles(text):
 
 
 def root_paths(text, target, non_stack=False):
+    target = pointer_id(target)
     paths = []
     current = None
     summary = None
@@ -347,7 +357,7 @@ def root_paths(text, target, non_stack=False):
             kind = match.group(2)
             if kind.startswith("ref counted handle RefCount:"):
                 kind = "ref counted handle"
-            current = {**context, "root": match.group(1).lower(), "handle_kind": kind, "nodes": []}
+            current = {**context, "root": pointer_id(match.group(1)), "handle_kind": kind, "nodes": []}
             paths.append(current)
         elif match := re.fullmatch(rf"({HEX})(?:\s+{HEX})?\s+(.+)", row):
             require(context is not None and context["kind"] == "stack", "stack-frame-context")
@@ -396,14 +406,17 @@ def root_paths(text, target, non_stack=False):
             elif " (static variable: " in kind and kind.endswith(")"):
                 kind, edge = kind[:-1].split(" (static variable: ", 1)
                 edge = metadata(edge, "static-edge")
-            current["nodes"].append({"id": match.group(1).lower(), "type": metadata(kind, "root-node-type"), "edge": edge})
+            current["nodes"].append({"id": pointer_id(match.group(1)), "type": metadata(kind, "root-node-type"), "edge": edge})
         elif match := re.fullmatch(r"Found (\d+) unique roots\.", row):
             require(summary is None, "duplicate-root-summary")
             summary = int(match.group(1))
         else:
             raise Unavailable("unknown-root-output")
     require(summary is not None and summary == len(paths) and summary <= 32, "root-summary")
-    require(all(p["nodes"] and p["nodes"][-1]["id"] == target.lower() for p in paths), "root-target")
+    # Native GCHandles ObjectPtr is x16; pinned managed Formats.Pointer uses x12
+    # on x64. Both represent the same pointer; bind numeric identity, never a
+    # textual prefix/suffix or a different target merely matching its type.
+    require(all(p["nodes"] and int(p["nodes"][-1]["id"], 16) == int(target, 16) for p in paths), "root-target")
     require(non_stack or paths, "no-retained-root")
     return {"paths": paths, "capped": summary == 32}
 
@@ -456,12 +469,13 @@ def signal_handle_ids(rows, head):
         require(match is not None, "signal-weak-handle-format")
         handle = match.group(1)
         require(int(handle, 16) != 0 and int(handle, 16) & 3 == 0, "unsupported-weak-handle-tags")
-        handles[name] = handle
+        handles[name] = pointer_id(handle)
     require(len(set(handles.values())) == 2, "signal-weak-handle-alias")
     return handles
 
 
 def bind_weak_target(handle, table, expected):
+    handle = pointer_id(handle)
     require(handle in table, "weak-handle-not-found")
     target, kind = table[handle]
     require(int(target, 16) != 0 and (kind == expected or (expected == FACTORY and kind.startswith(FACTORY + "["))),
@@ -936,8 +950,8 @@ class ParserControls(unittest.TestCase):
         self.assertEqual(result.stderr, "")
 
     def test_addresses(self):
-        self.assertEqual(addresses("000abc\n000def"), ["000abc", "000def"])
-        for bad in ("", "secret=value", "abc\nabc", "abc\nString: token"):
+        self.assertEqual(addresses("000abc\n000def"), ["abc", "def"])
+        for bad in ("", "secret=value", "abc\nabc", "abc\n000ABC", "abc\nString: token", "0"):
             self.rejects(addresses, bad)
 
     def test_metadata(self):
@@ -994,7 +1008,7 @@ class ParserControls(unittest.TestCase):
     def test_pinned_native_handle_sentinels_and_summary(self):
         text = "Handle Type Object Size Data Type\n1000 WeakShort 2000 24 System.WeakReference\n3000 WeakShort 0000 0 <error>\n5000 WeakShort 6000 0 <free>\nStatistics:\nMT Count TotalSize Class Name\nabc 1 24 System.WeakReference\ndef 1 16 Free\nfed 1 32 UNKNOWN\nTotal 3 objects"
         table = weak_handles(text)
-        self.assertEqual(table["3000"], ("0000", "<error>"))
+        self.assertEqual(table["3000"], ("0", "<error>"))
         self.rejects(bind_weak_target, "3000", table, FACTORY)
         for bad in (text.replace("0 <error>", "1 <error>"), text.replace("<free>", "<unreviewed>"),
                     text.replace("Total 3 objects", "Total 3 objects, 72 bytes"),
@@ -1007,6 +1021,21 @@ class ParserControls(unittest.TestCase):
         for bad in (text.replace("4000", "5000"), text + "\nString: secret", text.replace("System.Object[]", "Unknown.Root"), text.replace("Found 1", "Found 2"), text.replace("strong handle", "weak short handle")):
             self.rejects(root_paths, bad, "4000")
         self.assertEqual(root_paths(text.replace(" (static variable: System.Threading.TimerQueue.s_queue)", " (dependent handle)"), "4000")["paths"][0]["nodes"][1]["edge"], "dependent")
+
+    def test_native_and_managed_pointer_padding_preserves_identity(self):
+        text = "HandleTable:\n0000000000001000 (strong handle)\n-> 000000004000 Microsoft.Extensions.DependencyInjection.ServiceProvider\nFound 1 unique roots."
+        parsed = root_paths(text, "0000000000004000")
+        self.assertEqual(parsed["paths"][0]["nodes"][-1]["type"], PROVIDER)
+        for wrong in ("0000000000004001", "0000000100004000", "0000000000000000", "4000-secret"):
+            self.rejects(root_paths, text, wrong)
+        self.assertNotIn("000000004000", json.dumps(public_root_paths(parsed)))
+        table_text = f"Handle Type Object Size Data Type\n0000000000001000 WeakShort 000000004000 24 {PROVIDER}\nStatistics:\nMT Count TotalSize Class Name\nabc 1 24 {PROVIDER}\nTotal 1 objects"
+        table = weak_handles(table_text)
+        self.assertEqual(bind_weak_target("000000001000", table, PROVIDER), ("4000", PROVIDER))
+        self.rejects(bind_weak_target, "000000001001", table, PROVIDER)
+        self.rejects(bind_weak_target, "000000001000", table, FACTORY)
+        duplicate = table_text.replace("\nStatistics:", f"\n1000 WeakShort 4000 24 {PROVIDER}\nStatistics:")
+        self.rejects(weak_handles, duplicate)
 
     def test_stack_and_framing(self):
         text = "Thread ab:\n1000 2000 System.Threading.Timer.Callback()\nrdi:\n-> 4000 Microsoft.Extensions.DependencyInjection.ServiceProvider\nFound 1 unique roots."
