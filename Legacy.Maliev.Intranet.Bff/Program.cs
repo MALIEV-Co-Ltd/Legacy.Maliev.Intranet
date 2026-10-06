@@ -49,6 +49,7 @@ builder.Services.AddLegacyAccessTokenValidation(
     validateOnStart: !builder.Environment.IsEnvironment("Testing"));
 builder.Services.AddSingleton<DistributedTicketStore>();
 builder.Services.AddScoped<EmployeeSessionService>();
+builder.Services.AddScoped<CustomerAdministrationCoordinator>();
 builder.Services.AddOptions<LegacyEmployeeCompatibilityOptions>()
     .Bind(builder.Configuration.GetSection(LegacyEmployeeCompatibilityOptions.SectionName));
 builder.Services.AddOptions<ServiceAuthenticationOptions>()
@@ -177,6 +178,23 @@ builder.Services.AddHttpClient<EmployeesProxy>(client =>
                 (int)response.StatusCode >= StatusCodes.Status500InternalServerError),
     });
 });
+// Administrative writes use acting employee credentials and never inherit automatic retries.
+builder.Services.AddHttpClient<CustomerAdministrationIdentityClient>(client =>
+{
+    client.BaseAddress = new Uri(builder.Configuration["Services:Auth"]
+        ?? throw new InvalidOperationException("Services:Auth is required."));
+    client.Timeout = LegacyPresentation.RequestTimeout;
+    client.MaxResponseContentBufferSize = 65536;
+}).RemoveAllResilienceHandlers()
+    .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler { AllowAutoRedirect = false });
+builder.Services.AddHttpClient<CustomerAdministrationProfileClient>(client =>
+{
+    client.BaseAddress = new Uri(builder.Configuration["Services:Customer"]
+        ?? throw new InvalidOperationException("Services:Customer is required."));
+    client.Timeout = LegacyPresentation.RequestTimeout;
+    client.MaxResponseContentBufferSize = 65536;
+}).RemoveAllResilienceHandlers()
+    .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler { AllowAutoRedirect = false });
 builder.Services.AddHttpClient<EmployeeRecoveryAuthProxy>(client =>
 {
     client.BaseAddress = new Uri(builder.Configuration["Services:Auth"]
@@ -847,6 +865,7 @@ app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
 app.UseAntiforgery();
+app.MapCustomerAdministrationEndpoints();
 app.UseMiddleware<DiagnosticEventMiddleware>();
 app.MapDefaultEndpoints("intranet-bff");
 app.MapStaticAssets().AllowAnonymous();

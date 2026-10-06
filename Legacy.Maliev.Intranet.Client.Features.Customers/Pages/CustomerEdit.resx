@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <data name="PageTitle" xml:space="preserve"><value>Edit customer - MALIEV Intranet</value></data>
+  <data name="Heading" xml:space="preserve"><value>Edit customer</value></data>
+  <data name="Description" xml:space="preserve"><value>Update the customer profile, then the linked account flags. Changes across services are not atomic.</value></data>
+  <data name="Reload" xml:space="preserve"><value>Reload current data</value></data>
+  <data name="Loading" xml:space="preserve"><value>Loading customer and account.</value></data>
+  <data name="Profile" xml:space="preserve"><value>Customer profile</value></data>
+  <data name="FirstName" xml:space="preserve"><value>First name</value></data>
+  <data name="LastName" xml:space="preserve"><value>Last name</value></data>
+  <data name="Email" xml:space="preserve"><value>Email</value></data>
+  <data name="Telephone" xml:space="preserve"><value>Telephone</value></data>
+  <data name="Mobile" xml:space="preserve"><value>Mobile</value></data>
+  <data name="Fax" xml:space="preserve"><value>Fax</value></data>
+  <data name="DateOfBirth" xml:space="preserve"><value>Date of birth</value></data>
+  <data name="SharedEmail" xml:space="preserve"><value>Email is also the linked account username. Company and address relations are unchanged.</value></data>
+  <data name="Account" xml:space="preserve"><value>Linked account</value></data>
+  <data name="EmailConfirmed" xml:space="preserve"><value>Email confirmed</value></data>
+  <data name="PhoneConfirmed" xml:space="preserve"><value>Phone confirmed</value></data>
+  <data name="LockoutEnabled" xml:space="preserve"><value>Enable account lockout</value></data>
+  <data name="ProtectedSettings" xml:space="preserve"><value>Two-factor authentication and lockout end are read-only and preserved by the server.</value></data>
+  <data name="TwoFactor" xml:space="preserve"><value>Two-factor authentication</value></data>
+  <data name="LockoutEnd" xml:space="preserve"><value>Lockout end</value></data>
+  <data name="Enabled" xml:space="preserve"><value>Enabled</value></data>
+  <data name="Disabled" xml:space="preserve"><value>Disabled</value></data>
+  <data name="NotProvided" xml:space="preserve"><value>Not provided</value></data>
+  <data name="Save" xml:space="preserve"><value>Save customer and account</value></data>
+  <data name="Saving" xml:space="preserve"><value>Saving…</value></data>
+  <data name="Back" xml:space="preserve"><value>Back to customer</value></data>
+  <data name="ReloadRequired" xml:space="preserve"><value>Reload explicitly before another save. No write is automatically retried.</value></data>
+  <data name="Saved" xml:space="preserve"><value>Customer profile and account flags were saved. Reload before making another change.</value></data>
+  <data name="PartialCompletion" xml:space="preserve"><value>The customer profile was saved, but the account update did not complete. Reload to inspect current data; do not repeat the save.</value></data>
+  <data name="UnknownOutcome" xml:space="preserve"><value>The save outcome could not be confirmed. Reload to inspect current data before any further action.</value></data>
+  <data name="Stale" xml:space="preserve"><value>Customer or account data changed. Reload before saving again.</value></data>
+  <data name="NavigationChanged" xml:space="preserve"><value>The selected customer changed during a save. Reload this customer before continuing.</value></data>
+  <data name="SessionUnavailable" xml:space="preserve"><value>The current session could not be verified. No save was sent.</value></data>
+  <data name="Forbidden" xml:space="preserve"><value>You do not have permission to edit this customer and account.</value></data>
+  <data name="NotFound" xml:space="preserve"><value>Customer not found.</value></data>
+  <data name="Unavailable" xml:space="preserve"><value>Customer administration is temporarily unavailable.</value></data>
+  <data name="InvalidResponse" xml:space="preserve"><value>The server returned incomplete or invalid customer/account data.</value></data>
+  <data name="RateLimited" xml:space="preserve"><value>Too many requests. Wait before reloading.</value></data>
+  <data name="Required" xml:space="preserve"><value>This field is required.</value></data>
+  <data name="InvalidEmail" xml:space="preserve"><value>Enter a valid email address.</value></data>
+  <data name="InvalidPhone" xml:space="preserve"><value>Enter a valid telephone number.</value></data>
+  <data name="InvalidLength" xml:space="preserve"><value>This value exceeds the allowed length.</value></data>
+  <data name="ValidationFailed" xml:space="preserve"><value>Check the highlighted fields before saving.</value></data>
+  <data name="InvalidUsername" xml:space="preserve"><value>Email must use only ASCII letters, digits, period, underscore, @, plus or hyphen.</value></data>
+</root>
