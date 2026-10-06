@@ -1,6 +1,6 @@
 # Intranet lookup integration — AppHost #144
 
-Status: hosted build validated at 79042229; feature acceptance and startup handoff remain incomplete. Scoped draft publication for hosted validation was explicitly authorized; no merge,
+Status: the two startup calls are now authored as a separate isolated-branch review commit; hosted validation of that candidate is pending. Remaining form and joined acceptance handoffs are incomplete. Scoped draft publication for hosted validation was explicitly authorized; no merge,
 deployment, migration, live provider call or production permission change has
 been performed by this lane.
 
@@ -56,9 +56,9 @@ lookup claims are checked before downstream access. The new typed client has a
 HttpClient query logging. The BFF resolve request is bounded to 16 KiB of actual bytes
 and 2048 text characters, including chunked requests. Domain writes remain separate.
 
-## Startup-owner handoff (not yet integrated)
+## Startup-owner handoff (isolated draft calls authored)
 
-The existing migration owner retains Bff/Program.cs. Integrate the following
+Customer migration PR #265 merged at 1b2e6d32. The two minimal calls below are now authored only in this isolated draft branch for separate review; no owner checkout was modified and no merge was performed. The existing migration owner retains the shared startup merge boundary. Preserve the following
 independent extension hooks without replacing other registrations or mappings:
 
 ```csharp
@@ -76,8 +76,8 @@ Claims: `legacy-catalog.locations.read` and `legacy-catalog.companies.read`.
 The owner must confirm workload and employee provisioning; this lane has not granted
 permissions or weakened authorization to make lookups work.
 
-**Until these hooks are integrated, normal BFF lookup requests return 404 and the
-authored normal-cookie BFF tests are expected to fail.** Supplier manual entry stays
+**The last tested candidate bca88175 lacked these hooks: normal BFF lookup requests returned 404 and the
+authored normal-cookie BFF tests failed.** The new startup candidate needs fresh hosted evidence. Supplier manual entry stays
 available, but lookup availability is not accepted. This is a material integration
 blocker, not a completed slice.
 
@@ -103,6 +103,19 @@ quotation-request integration is complete. Shared-file reservations and existing
 owner handoffs are required before changing the remaining live editors.
 
 ## Validation and outstanding acceptance
+
+Latest completed evidence before the startup-only correction, candidate `bca88175`:
+
+- Focus run `37438623139`: both builds zero warnings/errors; behavior/components
+  **16/16 passed**, rendered browser **4/4 passed**, normal-startup BFF
+  **0 passed / 17 failed / 0 skipped**. Actual bounded artifact records `gate: failed`.
+- Finance `37438623194`: build zero warnings/errors and **35/35 passed**.
+  Context admission `37438622920` passed.
+- Full run `37438623243`: builds zero warnings/errors; browser **169/169 passed**;
+  main **1592 passed / 17 failed / 0 skipped** (1609 total). All 17 failures reached
+  absent startup routes (GET 404 / POST 405). Format, joined acceptance and coverage
+  were not accepted. These results do not certify the new startup correction.
+
 
 Actual checks performed: `git diff --check` passed; shared-project and both localization
 XML files parsed; localization keys matched 41/41 with zero differences. Static
