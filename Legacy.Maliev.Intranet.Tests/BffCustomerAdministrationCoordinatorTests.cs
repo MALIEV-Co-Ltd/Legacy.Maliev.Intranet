@@ -331,7 +331,9 @@ public sealed class BffCustomerAdministrationCoordinatorTests
 
     private static HttpClient Client(WebApplicationFactory<BffProgram> factory) => factory.CreateClient(new()
     {
-        BaseAddress = new("https://localhost"), AllowAutoRedirect = false, HandleCookies = true,
+        BaseAddress = new("https://localhost"),
+        AllowAutoRedirect = false,
+        HandleCookies = true,
     });
 
     private sealed record Login(string Csrf, string Cookie);
@@ -490,7 +492,8 @@ public sealed class BffCustomerAdministrationCoordinatorTests
     {
         var options = producerWire ? new JsonSerializerOptions(JsonSerializerDefaults.Web)
         {
-            PropertyNamingPolicy = null, DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
+            PropertyNamingPolicy = null,
+            DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
         } : JsonSerializerOptions.Web;
         var response = new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(value, options: options) };
         if (etag is not null) response.Headers.ETag = EntityTagHeaderValue.Parse(etag);

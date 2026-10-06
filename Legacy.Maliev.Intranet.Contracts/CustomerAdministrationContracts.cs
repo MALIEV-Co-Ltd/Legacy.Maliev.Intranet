@@ -49,8 +49,13 @@ public sealed record CustomerAdministrationSaveRequest(
     /// <summary>Maps only existing allowlisted profile fields; the producer/coordinator owns all relations.</summary>
     public CustomerUpdateRequest ToProfile() => new()
     {
-        FirstName = FirstName, LastName = LastName, Email = Email,
-        Telephone = Telephone, Mobile = Mobile, Fax = Fax, DateOfBirth = DateOfBirth,
+        FirstName = FirstName,
+        LastName = LastName,
+        Email = Email,
+        Telephone = Telephone,
+        Mobile = Mobile,
+        Fax = Fax,
+        DateOfBirth = DateOfBirth,
     };
 
     /// <summary>Preserves protected settings from the identity bound to this customer and captured version.</summary>
