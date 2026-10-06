@@ -132,6 +132,7 @@ builder.Services.AddHttpClient<CustomersProxy>(client =>
     client.Timeout = TimeSpan.FromSeconds(10);
 }).RemoveAllResilienceHandlers()
     .AddHttpMessageHandler<LegacyServiceAuthenticationHandler>()
+    .AddPrivateFailureOperationObservation("CustomerService")
     .AddResilienceHandler("customer-list", pipeline =>
 {
     pipeline.AddRetry(new Microsoft.Extensions.Http.Resilience.HttpRetryStrategyOptions
@@ -147,7 +148,7 @@ builder.Services.AddHttpClient<CustomersProxy>(client =>
             .HandleResult(response => response.StatusCode == System.Net.HttpStatusCode.RequestTimeout ||
             (int)response.StatusCode >= StatusCodes.Status500InternalServerError),
     });
-}).AddPrivateFailureOperationObservation("CustomerService");
+});
 builder.Services.AddHttpClient<CustomerUpdateProxy>(client =>
 {
     client.BaseAddress = new Uri(builder.Configuration["Services:Customer"]
