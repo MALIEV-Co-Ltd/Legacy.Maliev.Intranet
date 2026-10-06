@@ -205,7 +205,7 @@ public sealed class CustomerAdministrationUiTests
         await WithHeldCleanup(pending, handler.ReleasePut, async () =>
         {
             await handler.PutEntered.Task.WaitAsync(TimeSpan.FromSeconds(5));
-            cut.Dispose();
+            await context.DisposeComponentsAsync().WaitAsync(TimeSpan.FromSeconds(5));
             Assert.True(handler.PutToken.IsCancellationRequested);
         });
         Assert.Single(handler.Writes);
@@ -247,7 +247,7 @@ public sealed class CustomerAdministrationUiTests
         await WithHeldCleanup(pending, handler.ReleaseRead, async () =>
         {
             await handler.ReadEntered.Task.WaitAsync(TimeSpan.FromSeconds(5));
-            cut.Dispose();
+            await context.DisposeComponentsAsync().WaitAsync(TimeSpan.FromSeconds(5));
             Assert.True(handler.ReadToken.IsCancellationRequested);
         });
         Assert.Equal(0, handler.SessionReads);
