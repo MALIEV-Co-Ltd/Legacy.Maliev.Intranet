@@ -1,0 +1,15 @@
+.customer-edit { width: min(100%, 64rem); margin-inline: auto; display: grid; gap: 1rem; }
+.customer-edit form { display: grid; gap: 1rem; }
+.customer-edit__section { padding: 1rem; border: 1px solid var(--shadcn-border); border-radius: var(--shadcn-radius-lg); background: var(--shadcn-card); color: var(--shadcn-card-foreground); }
+.customer-edit__section h2 { margin: 0 0 1rem; font-size: 1rem; }
+.customer-edit__section p { color: var(--shadcn-muted-foreground); }
+.customer-edit__grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
+.customer-edit__checks, .customer-edit__actions, .customer-edit__loading { display: flex; align-items: center; flex-wrap: wrap; gap: .75rem; }
+.customer-edit__protected { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: .5rem 1rem; }
+.customer-edit__protected dd { margin: 0; overflow-wrap: anywhere; }
+.customer-edit__actions ::deep .shadcn-button, .customer-edit__actions ::deep .legacy-link { min-height: 44px; }
+@media (max-width: 640px) {
+    .customer-edit__grid, .customer-edit__protected { grid-template-columns: minmax(0, 1fr); }
+    .customer-edit__actions { align-items: stretch; flex-direction: column; }
+    .customer-edit__actions ::deep .shadcn-button, .customer-edit__actions ::deep .legacy-link { width: 100%; justify-content: center; }
+}

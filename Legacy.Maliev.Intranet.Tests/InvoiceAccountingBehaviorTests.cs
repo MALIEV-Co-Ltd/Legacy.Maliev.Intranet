@@ -1,14 +1,128 @@
 extern alias Bff;
 
+using System.Globalization;
 using System.Net;
 using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
+using Bunit;
+using Legacy.Maliev.Intranet.Client.Features.Accounting.Pages;
+using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Routing;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Legacy.Maliev.Intranet.Tests;
 
 public sealed class InvoiceAccountingBehaviorTests
 {
+    [Theory]
+    [InlineData(0)]
+    [InlineData(1)]
+    public async Task Creation_ProducerAcceptedReceiptThroughRealBffPreservesInvoiceWithoutRetry(int state)
+    {
+        var previousCulture = CultureInfo.CurrentCulture;
+        var previousUiCulture = CultureInfo.CurrentUICulture;
+        CultureInfo.CurrentCulture = CultureInfo.GetCultureInfo("en-US");
+        CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo("en-US");
+        try
+        {
+            using var accounting = AccountingBehaviorTestHost.Routes(request =>
+                request.Method == HttpMethod.Get && request.RequestUri?.AbsolutePath == "/invoices/from-quotation/84/preview"
+                    ? AccountingBehaviorTestHost.Json(PreviewJson)
+                    : request.Method == HttpMethod.Post && request.RequestUri?.AbsolutePath == "/invoices/from-quotation/84"
+                        ? AccountingBehaviorTestHost.Json($$"""{"InvoiceId":55,"State":{{state}},"EmailState":3,"StoredFile":{"Bucket":"fixture","ObjectName":"invoices/55.pdf"} }""")
+                        : new(HttpStatusCode.NotFound));
+            await using var factory = AccountingBehaviorTestHost.CreateFactory(accounting);
+            using var client = AccountingBehaviorTestHost.CreateClient(factory);
+            await AccountingBehaviorTestHost.SignInAsync(client);
+            using var context = new BunitContext();
+            context.Services.AddLocalization();
+            context.Services.AddSingleton(client);
+            context.JSInterop.Mode = JSRuntimeMode.Loose;
+            var navigation = context.Services.GetRequiredService<NavigationManager>();
+            navigation.NavigateTo("/Invoices/Create?quotationId=84");
+            var cut = context.Render<Router>(parameters => parameters
+                .Add(router => router.AppAssembly, typeof(InvoiceCreate).Assembly)
+                .Add(router => router.Found, (RenderFragment<RouteData>)(route => builder =>
+                {
+                    builder.OpenComponent<RouteView>(0);
+                    builder.AddAttribute(1, nameof(RouteView.RouteData), route);
+                    builder.CloseComponent();
+                })));
+            cut.WaitForAssertion(() => Assert.False(cut.Find("button[type='submit']").HasAttribute("disabled")));
+
+            await cut.Find("form").SubmitAsync();
+
+            cut.WaitForAssertion(() =>
+            {
+                Assert.Contains("The email provider accepted the message, but recipient delivery is not confirmed.", cut.Markup, StringComparison.Ordinal);
+                Assert.Equal("Open existing invoice", cut.Find("a[href='/Invoices/View?id=55'] .legacy-link__label").TextContent);
+                Assert.True(cut.Find("button[type='submit']").HasAttribute("disabled"));
+                Assert.True(cut.Find("#invoice-number").HasAttribute("disabled"));
+                Assert.Contains("/Invoices/Create?quotationId=84", navigation.Uri, StringComparison.Ordinal);
+                Assert.DoesNotContain("Retry original invoice", cut.Markup, StringComparison.Ordinal);
+                Assert.DoesNotContain(context.JSInterop.Invocations, invocation => invocation.Identifier == "sessionStorage.removeItem");
+                var savedReceipt = Assert.Single(context.JSInterop.Invocations, invocation =>
+                    invocation.Identifier == "sessionStorage.setItem"
+                    && Equals(invocation.Arguments[0], "maliev-invoice-create-provider-accepted"));
+                using var saved = JsonDocument.Parse(Assert.IsType<string>(savedReceipt.Arguments[1]));
+                Assert.Equal(2, saved.RootElement.EnumerateObject().Count());
+                Assert.Equal(55, saved.RootElement.GetProperty("invoiceId").GetInt32());
+                Assert.Equal(84, saved.RootElement.GetProperty("quotationId").GetInt32());
+            });
+
+            // Even a programmatic second submit cannot create or resend after this receipt.
+            await cut.Find("form").SubmitAsync();
+
+            var forwarded = Assert.Single(accounting.Requests, request => request.Method == "POST");
+            Assert.Equal("/invoices/from-quotation/84", forwarded.Path);
+            Assert.True(Guid.TryParse(forwarded.IdempotencyKey, out var operationId));
+            Assert.NotEqual(Guid.Empty, operationId);
+            using var intent = JsonDocument.Parse(forwarded.Body!);
+            Assert.True(intent.RootElement.GetProperty("sendEmail").GetBoolean());
+            Assert.Single(accounting.Requests, request => request.Method == "GET");
+        }
+        finally
+        {
+            CultureInfo.CurrentCulture = previousCulture;
+            CultureInfo.CurrentUICulture = previousUiCulture;
+        }
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(1)]
+    [InlineData(2)]
+    [InlineData(3)]
+    public async Task Creation_ProjectsProducerPascalCaseNumericEmailStateWithoutExposingStoredFile(int emailState)
+    {
+        var accounting = AccountingBehaviorTestHost.Routes(request =>
+            request.RequestUri?.AbsolutePath == "/invoices/from-quotation/84"
+                ? AccountingBehaviorTestHost.Json($$"""{"InvoiceId":55,"State":0,"EmailState":{{emailState}},"StoredFile":{"Bucket":"fixture","ObjectName":"invoices/55.pdf"} }""")
+                : new(HttpStatusCode.NotFound));
+        await using var factory = AccountingBehaviorTestHost.CreateFactory(accounting);
+        using var client = AccountingBehaviorTestHost.CreateClient(factory);
+        var csrf = await AccountingBehaviorTestHost.SignInAsync(client);
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/bff/invoices/from-quotation/84")
+        {
+            Content = new StringContent(CreateInvoiceJson, Encoding.UTF8, "application/json"),
+        };
+        request.Headers.Add("X-CSRF-TOKEN", csrf);
+        request.Headers.Add("Idempotency-Key", Guid.NewGuid().ToString("D"));
+
+        using var response = await client.SendAsync(request);
+        var result = await response.Content.ReadFromJsonAsync<JsonElement>();
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal(55, result.GetProperty("invoiceId").GetInt32());
+        Assert.Equal(0, result.GetProperty("state").GetInt32());
+        Assert.Equal(emailState, result.GetProperty("emailState").GetInt32());
+        Assert.True(!result.TryGetProperty("providerMessageId", out var provider) || provider.ValueKind == JsonValueKind.Null);
+        Assert.False(result.TryGetProperty("StoredFile", out _));
+        Assert.False(result.TryGetProperty("storedFile", out _));
+        Assert.Single(accounting.Requests);
+    }
+
     [Fact]
     public async Task CreationPreview_ReturnsAuthoritativeAccountingProjection()
     {

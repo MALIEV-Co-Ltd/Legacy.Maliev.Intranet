@@ -21,7 +21,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           repository: MALIEV-Co-Ltd/Legacy.Maliev.ServiceDefaults
-          ref: 041e9087d062b05c16dfb52e212f16148f8dd904
+          ref: 7edcd961024868513fd5f373cab3dcb261197f77
           path: .dependencies/Legacy.Maliev.ServiceDefaults
           persist-credentials: false
       - name: Check out Legacy.Maliev.CompatibilityContracts
@@ -56,19 +56,25 @@ jobs:
             --no-restore
           pwsh -NoProfile -File Legacy.Maliev.Intranet.BrowserTests/bin/Release/net10.0/playwright.ps1 \
             install --with-deps chromium
-      - name: Validate .NET solution
-        id: solution-validation
-        uses: MALIEV-Co-Ltd/Legacy.Maliev.Workflows/actions/dotnet-validate@e3a6093324a24968876782153286f52db8b29fd8
+      - name: Diagnose current-main pooled lifecycle and order presentation
+        id: current_main_diagnostics
+        continue-on-error: true
+        timeout-minutes: 20
+        shell: bash
         env:
-          # The shared action tests solution projects concurrently by default. Keep the
-          # Playwright fixture isolated from the long-running integration test host.
           DOTNET_PROCESSOR_COUNT: '1'
-          GITHUB_TOKEN: ${{ github.token }}
-        with:
-          solution: Legacy.Maliev.Intranet.slnx
-          use-local-maliev-dependencies: 'true'
+        run: |
+          export GITHUB_ACTIONS=false
+          dotnet build Legacy.Maliev.Intranet.Tests/Legacy.Maliev.Intranet.Tests.csproj \
+            --configuration Release -warnaserror -p:UseLocalMalievDependencies=true --nologo
+          dotnet test Legacy.Maliev.Intranet.Tests/Legacy.Maliev.Intranet.Tests.csproj \
+            --configuration Release --no-build --no-restore -p:UseLocalMalievDependencies=true \
+            --filter 'FullyQualifiedName~PooledTestHostReleaseContractTests|FullyQualifiedName~TestHostLimiterDisposalContractTests|FullyQualifiedName~OrderInitialStatusHttpTests' \
+            --logger 'console;verbosity=normal'
       - name: Capture bounded synthetic pooled-host root metadata after validation failure
-        if: failure() && !cancelled() && steps.solution-validation.outcome == 'failure'
+        if: ${{ !cancelled() && github.event_name == 'pull_request' && steps.current_main_diagnostics.outcome == 'failure' }}
+        continue-on-error: true
+        timeout-minutes: 8
         shell: bash
         env:
           DOTNET_PROCESSOR_COUNT: '1'
@@ -90,6 +96,16 @@ jobs:
           path: isolated-pool-results/root-metadata.json
           retention-days: 3
           if-no-files-found: warn
+      - name: Validate .NET solution
+        uses: MALIEV-Co-Ltd/Legacy.Maliev.Workflows/actions/dotnet-validate@d7efac266bc66273bc45eab583618871292ecbd6
+        env:
+          # The shared action tests solution projects concurrently by default. Keep the
+          # Playwright fixture isolated from the long-running integration test host.
+          DOTNET_PROCESSOR_COUNT: '1'
+          GITHUB_TOKEN: ${{ github.token }}
+        with:
+          solution: Legacy.Maliev.Intranet.slnx
+          use-local-maliev-dependencies: 'true'
       - name: Validate joined customer revision contract
         shell: bash
         run: |
@@ -112,24 +128,45 @@ jobs:
         shell: bash
         run: |
           export GITHUB_ACTIONS=false
-          dotnet test Legacy.Maliev.Intranet.Tests/Legacy.Maliev.Intranet.Tests.csproj \
+          build_started_utc="$(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)"
+          dotnet build Legacy.Maliev.Intranet.Tests/Legacy.Maliev.Intranet.Tests.csproj \
             --configuration Release \
             --no-restore \
+            --no-incremental \
+            -warnaserror \
             -p:EnableCoverageSymbols=true \
+            -p:EmitCompilerGeneratedFiles=true
+          pwsh -NoProfile -File scripts/verify-coverage-evidence.ps1 \
+            -Mode Capture -ExpectedSourceRevision "$(git rev-parse HEAD)" \
+            -BuildStartedUtc "$build_started_utc" -ResultsDirectory TestResults/coverage-native
+          dotnet test Legacy.Maliev.Intranet.Tests/Legacy.Maliev.Intranet.Tests.csproj \
+            --configuration Release \
+            --no-build \
+            --logger "trx;LogFileName=coverage.trx" \
             --collect:"XPlat Code Coverage" \
             --settings coverage.runsettings \
-            --results-directory TestResults
-          coverage_file="$(find TestResults -name coverage.cobertura.xml -print -quit)"
+            --results-directory TestResults/coverage-native
+          pwsh -NoProfile -File scripts/verify-coverage-evidence.ps1 \
+            -Mode Verify -ExpectedSourceRevision "$(git rev-parse HEAD)" \
+            -BuildStartedUtc "$build_started_utc" -ResultsDirectory TestResults/coverage-native
+          coverage_file="$(find TestResults/coverage-native -name coverage.cobertura.xml -print -quit)"
           if [[ -z "$coverage_file" ]]; then
             echo "The Intranet coverage collector did not produce coverage.cobertura.xml." >&2
             exit 1
           fi
           pwsh -NoProfile -File scripts/verify-test-coverage.ps1 -CoverageFile "$coverage_file"
-      - name: Preserve synthetic coverage evidence
+      - name: Require current-main diagnostic regressions
         if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        shell: bash
+        env:
+          DIAGNOSTIC_OUTCOME: ${{ steps.current_main_diagnostics.outcome }}
+        run: test "$DIAGNOSTIC_OUTCOME" = success
+      - name: Preserve actual runner validation evidence
+        if: always()
+        uses: MALIEV-Co-Ltd/Legacy.Maliev.Workflows/actions/preserve-validation-evidence@45ced0919a604459c7bb5baf7f38d7bc53d708ba
         with:
-          name: intranet-validation-${{ github.sha }}
-          path: TestResults
-          retention-days: 7
-          if-no-files-found: warn
+          results-directory: TestResults
+          production-projects: |
+            Legacy.Maliev.Intranet.Bff
+            Legacy.Maliev.Intranet.Server
+            Legacy.Maliev.Intranet.Contracts

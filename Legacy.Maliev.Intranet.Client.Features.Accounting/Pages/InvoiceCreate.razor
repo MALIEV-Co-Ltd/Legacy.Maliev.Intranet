@@ -82,6 +82,7 @@
     private int quotationId;
     private bool loading;
     private bool submitting;
+    private bool initializationCompleted;
     private bool storageChecked;
     private bool reloadBlocked;
     private string? error;
@@ -90,6 +91,7 @@
     private bool ambiguousInvoiceReference;
     private bool ReceiptLocked => knownInvoiceId is not null || ambiguousInvoiceReference;
     private const string UnresolvedStorageKey = "maliev-invoice-create-unresolved";
+    private const string ProviderAcceptedStorageKey = "maliev-invoice-create-provider-accepted";
     private Guid operationId;
     private CreateInvoiceFromQuotationRequest? pendingRequest;
     private decimal Outstanding => preview is null ? 0m : preview.Total - (model.DeductWithholdingTax ? preview.AvailableWithholdingTax : 0m);
@@ -100,12 +102,18 @@
         try { session = await Http.GetFromJsonForPresentationAsync<EmployeeSessionSummary>("/bff/session"); }
         catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException) { error = Text["Unavailable"]; }
         if (QuotationIdInput is > 0) { quotationId = QuotationIdInput.Value; await LoadPreviewAsync(); }
+        initializationCompleted = true;
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (!firstRender) return;
-        try { reloadBlocked = await JS.InvokeAsync<string?>("sessionStorage.getItem", UnresolvedStorageKey) is not null; }
+        if (!initializationCompleted || storageChecked) return;
+        try
+        {
+            reloadBlocked = await JS.InvokeAsync<string?>("sessionStorage.getItem", UnresolvedStorageKey) is not null;
+            var savedReceipt = await JS.InvokeAsync<string?>("sessionStorage.getItem", ProviderAcceptedStorageKey);
+            if (savedReceipt is not null) reloadBlocked = !RestoreProviderAcceptedReceipt(savedReceipt);
+        }
         catch (Exception exception) when (exception is JSException or InvalidOperationException) { reloadBlocked = true; }
         storageChecked = true;
         StateHasChanged();
@@ -171,7 +179,7 @@
             knownInvoiceId = invoiceId;
             receiptNotice = Text["UnconfirmedReceipt"];
             if (!TryReceiptNumber(receipt.RootElement, "state", out var state) || state is not (0 or 1)
-                || !TryReceiptNumber(receipt.RootElement, "emailState", out var emailState) || emailState is not (0 or 1 or 2))
+                || !TryReceiptNumber(receipt.RootElement, "emailState", out var emailState) || emailState is not (0 or 1 or 2 or 3))
             {
                 receiptNotice = Text["UnconfirmedReceipt"];
                 return;
@@ -179,6 +187,17 @@
             if (emailState == 2)
             {
                 receiptNotice = Text["EmailReconciliationRequired"];
+                return;
+            }
+            if (emailState == 3)
+            {
+                receiptNotice = Text["ProviderAcceptedReceipt"];
+                try
+                {
+                    await JS.InvokeVoidAsync("sessionStorage.setItem", ProviderAcceptedStorageKey,
+                        System.Text.Json.JsonSerializer.Serialize(new { invoiceId, quotationId = preview.QuotationId }));
+                }
+                catch (Exception exception) when (exception is JSException or InvalidOperationException) { reloadBlocked = true; }
                 return;
             }
             if (!await ClearUnresolvedAsync()) return;
@@ -196,6 +215,27 @@
             && receipt.TryGetProperty(name, out var property)
             && property.ValueKind == System.Text.Json.JsonValueKind.Number
             && property.TryGetInt32(out value);
+    }
+
+    private bool RestoreProviderAcceptedReceipt(string savedReceipt)
+    {
+        // This bounded tab history prevents another create; it is not server-status authentication.
+        if (savedReceipt.Length > 128) return false;
+        try
+        {
+            using var document = System.Text.Json.JsonDocument.Parse(savedReceipt);
+            var receipt = document.RootElement;
+            if (receipt.ValueKind != System.Text.Json.JsonValueKind.Object || receipt.EnumerateObject().Count() != 2
+                || !TryReceiptNumber(receipt, "invoiceId", out var invoiceId) || invoiceId <= 0
+                || !TryReceiptNumber(receipt, "quotationId", out var savedQuotationId) || savedQuotationId <= 0 || savedQuotationId != quotationId)
+            {
+                return false;
+            }
+            knownInvoiceId = invoiceId;
+            receiptNotice = Text["ProviderAcceptedReceipt"];
+            return true;
+        }
+        catch (System.Text.Json.JsonException) { return false; }
     }
 
     private static int ReceiptPropertyCount(System.Text.Json.JsonElement receipt, string name) => receipt.ValueKind == System.Text.Json.JsonValueKind.Object

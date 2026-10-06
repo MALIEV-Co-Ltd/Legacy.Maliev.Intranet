@@ -20,12 +20,11 @@ internal static class FinanceCreateEndpointMapper
             var currenciesTask = catalog.GetCurrenciesAsync(token);
             await Task.WhenAll(directionsTask, typesTask, methodsTask, employeesTask, currenciesTask);
             using var directions = await directionsTask; using var types = await typesTask; using var methods = await methodsTask;
-            directions.EnsureSuccessStatusCode(); types.EnsureSuccessStatusCode(); methods.EnsureSuccessStatusCode();
             return Results.Ok(new FinanceCreatePage(
                 (await employeesTask).Select(x => new FinanceLookupItem(x.Id, x.Name)).ToArray(),
-                await directions.Content.ReadFromJsonAsync<List<FinanceLookupItem>>(token) ?? [],
-                await types.Content.ReadFromJsonAsync<List<FinanceLookupItem>>(token) ?? [],
-                await methods.Content.ReadFromJsonAsync<List<FinanceLookupItem>>(token) ?? [],
+                await ReadLookupAsync(directions, token),
+                await ReadLookupAsync(types, token),
+                await ReadLookupAsync(methods, token),
                 (await currenciesTask).Select(x => new CatalogCurrency(x.Id, x.ShortName)).ToArray()));
         }
         catch (Exception ex) when (Bounded(ex, token)) { return Unavailable(); }
@@ -68,6 +67,13 @@ internal static class FinanceCreateEndpointMapper
             if (paymentId is not null) { using var cleanup = await finances.DeleteAsync(paymentId.Value, CancellationToken.None); }
             return Unavailable();
         }
+    }
+
+    private static async Task<List<FinanceLookupItem>> ReadLookupAsync(HttpResponseMessage response, CancellationToken token)
+    {
+        if (response.StatusCode == HttpStatusCode.NotFound) return [];
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<List<FinanceLookupItem>>(token) ?? [];
     }
 
     private static string Operation(Guid id, string step) { var h = System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes($"{id:D}:{step}")); return new Guid(h.AsSpan(0, 16)).ToString("D"); }
