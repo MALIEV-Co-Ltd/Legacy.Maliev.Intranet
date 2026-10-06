@@ -5,9 +5,11 @@ using System.Net;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using Legacy.Maliev.Intranet.Auth;
+using Legacy.Maliev.Intranet.Server.Infrastructure;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Http;
 using Microsoft.Extensions.Options;
 using Xunit.Abstractions;
@@ -56,6 +58,82 @@ public sealed class PooledTestHostReleaseContractTests(ITestOutputHelper output)
         Assert.False(providerAlive, "Disposed host service provider remained rooted beyond observed handler expiry and cleanup.");
         Assert.False(transportAlive, "Expired ordinary factory transport remained rooted beyond its cleanup window.");
         Assert.Equal(1, transportDisposals);
+    }
+
+    [Fact]
+    public async Task ExpiredNamedClient_ReleasesItsActualClocksWhileTheHostRemainsLive()
+    {
+        _ = await ExerciseAndDisposeAsync();
+        var witnesses = new ConditionalWeakTable<IServiceProvider, ScopeClocks>();
+        var disposal = new DisposalCount();
+        await using var parent = new WebApplicationFactory<BffProgram>();
+        await using var factory = parent.WithWebHostBuilder(builder =>
+        {
+            builder.UseEnvironment("Testing");
+            TestJwtConfiguration.Configure(builder);
+            builder.UseSetting("Services:Auth", "http://pool-auth.invalid/");
+            builder.ConfigureServices(services =>
+            {
+                // Preserve production's transient factory and normal clock/timers.
+                // CWT keys never own the host/scope; values own only weak clocks.
+                var descriptor = services.Last(service => service.ServiceType == typeof(TimeProvider));
+                Assert.Equal(ServiceLifetime.Transient, descriptor.Lifetime);
+                Assert.NotNull(descriptor.ImplementationFactory);
+                services.RemoveAll<TimeProvider>();
+                services.Add(new ServiceDescriptor(typeof(TimeProvider), scope =>
+                {
+                    var clock = Assert.IsType<HostOwnedTimeProvider>(descriptor.ImplementationFactory!(scope));
+                    witnesses.GetValue(scope, _ => new ScopeClocks()).Add(clock);
+                    return clock;
+                }, descriptor.Lifetime));
+                services.PostConfigure<HttpClientFactoryOptions>(nameof(ILegacyAuthClient), options =>
+                    options.HttpMessageHandlerBuilderActions.Add(handlerBuilder =>
+                    {
+                        disposal.Clocks = witnesses.GetValue(handlerBuilder.Services, _ => new ScopeClocks());
+                        var previous = handlerBuilder.PrimaryHandler;
+                        var transport = new ProbeTransport(disposal);
+                        disposal.Transport = new WeakReference(transport);
+                        handlerBuilder.PrimaryHandler = transport;
+                        previous.Dispose();
+                    }));
+            });
+        });
+        var lifetime = await ExerciseLiveNamedClientAsync(factory.Services);
+        var clocks = disposal.Clocks?.Snapshot()
+            ?? throw new InvalidOperationException("The actual named handler scope was not observed.");
+        Assert.NotEmpty(clocks);
+        var transport = disposal.Transport
+            ?? throw new InvalidOperationException("The actual named transport was not observed.");
+        Assert.InRange(lifetime, TimeSpan.FromSeconds(1), TimeSpan.FromMinutes(2));
+        var elapsed = Stopwatch.StartNew();
+        while (elapsed.Elapsed < lifetime + TimeSpan.FromSeconds(30))
+        {
+            GC.Collect();
+            GC.WaitForPendingFinalizers();
+            GC.Collect();
+            if (clocks.All(clock => !clock.IsAlive) && !transport.IsAlive) break;
+            await Task.Delay(TimeSpan.FromSeconds(1));
+        }
+        Assert.All(clocks, clock => Assert.False(clock.IsAlive,
+            "An expired actual named-client scope clock remained rooted while the host was live."));
+        Assert.False(transport.IsAlive);
+        Assert.Equal(1, Volatile.Read(ref disposal.Count));
+        // These owners deliberately remain alive throughout the expiry assertion.
+        GC.KeepAlive(factory);
+        GC.KeepAlive(parent);
+        output.WriteLine("Live-host named scope: clocks {0}; lifetime {1}; release elapsed {2}; transport disposals {3}",
+            clocks.Length, lifetime, elapsed.Elapsed, Volatile.Read(ref disposal.Count));
+    }
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static async Task<TimeSpan> ExerciseLiveNamedClientAsync(IServiceProvider provider)
+    {
+        var lifetime = provider.GetRequiredService<IOptionsMonitor<HttpClientFactoryOptions>>()
+            .Get(nameof(ILegacyAuthClient)).HandlerLifetime;
+        using var downstream = provider.GetRequiredService<IHttpClientFactory>().CreateClient(nameof(ILegacyAuthClient));
+        using var response = await downstream.GetAsync("/pool-release-probe");
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        return lifetime;
     }
 
     [Fact]
@@ -201,6 +279,13 @@ public sealed class PooledTestHostReleaseContractTests(ITestOutputHelper output)
     {
         public int Count;
         public WeakReference? Transport;
+        public ScopeClocks? Clocks;
+    }
+    private sealed class ScopeClocks
+    {
+        private readonly List<WeakReference> clocks = [];
+        public void Add(TimeProvider clock) { lock (clocks) clocks.Add(new WeakReference(clock)); }
+        public WeakReference[] Snapshot() { lock (clocks) return clocks.ToArray(); }
     }
     private sealed class ProbeTransport(DisposalCount disposal) : HttpMessageHandler
     {

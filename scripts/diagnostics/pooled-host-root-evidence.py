@@ -33,9 +33,9 @@ PACKAGE_SHA512 = "oxVrDv0pAVHe5+wIbu71GFssgX7+DefQwAoTyDt6oweR7GY72zjg/ObH7otpqK
 PACKAGE_SIZE = 10453685
 FACT = "Legacy.Maliev.Intranet.Tests.PooledTestHostReleaseContractTests.DisposedOrdinaryBffHost_ReleasesProviderAndTransportAfterObservedPoolExpiry"
 COHORT_CLASSES = tuple("Legacy.Maliev.Intranet.Tests." + name for name in (
-    "PooledTestHostReleaseContractTests", "TestHostLimiterDisposalContractTests", "OrderInitialStatusHttpTests"))
+    "PooledTestHostReleaseContractTests", "TestHostLimiterDisposalContractTests", "OrderInitialStatusHttpTests", "HostOwnedTimeProviderTests"))
 COHORT_FILTER = "|".join("FullyQualifiedName~" + name for name in COHORT_CLASSES)
-COHORT_TOTAL = 48
+COHORT_TOTAL = 60
 WITNESS = "Legacy.Maliev.Intranet.Tests.PooledTestHostReleaseContractTests+RetainedHost"
 FACTORY = "Microsoft.AspNetCore.Mvc.Testing.WebApplicationFactory`1+DelegatedWebApplicationFactory"
 PROVIDER = "Microsoft.Extensions.DependencyInjection.ServiceProvider"
@@ -1156,10 +1156,10 @@ class ParserControls(unittest.TestCase):
                            for index in range(COHORT_TOTAL - 1))
         text = f'<TestRun xmlns="http://microsoft.com/schemas/VisualStudio/TeamTest/2010"><Counters {attributes}/>{results}</TestRun>'
         observed = verify_original_trx(text.encode(), cohort=True)
-        self.assertEqual((observed["total"], observed["passed"], observed["failed"]), (48, 47, 1))
+        self.assertEqual((observed["total"], observed["passed"], observed["failed"]), (COHORT_TOTAL, COHORT_TOTAL - 1, 1))
         for bad in (text.replace(FACT, "Unknown.Test"), text.replace(FAILURE, "Different failure"),
                     text.replace(COHORT_CLASSES[0] + ".Synthetic", "Unknown.Synthetic"),
-                    text.replace('total="48"', 'total="47"')):
+                    text.replace(f'total="{COHORT_TOTAL}"', f'total="{COHORT_TOTAL - 1}"')):
             self.rejects(verify_original_trx, bad.encode(), True)
 
 

@@ -22,7 +22,7 @@ builder.AddStandardMiddleware(options => options.EnableRequestLogging = true);
 builder.AddLegacyIntranetDataProtection();
 builder.Services.AddProblemDetails();
 builder.Services.AddLocalization();
-builder.Services.AddSingleton(TimeProvider.System);
+builder.Services.AddTransient<TimeProvider>(_ => new Legacy.Maliev.Intranet.Server.Infrastructure.HostOwnedTimeProvider(TimeProvider.System));
 builder.Services.AddLegacyAccessTokenValidation(
     builder.Configuration,
     validateOnStart: !builder.Environment.IsEnvironment("Testing"));

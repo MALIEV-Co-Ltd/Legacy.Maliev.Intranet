@@ -69,7 +69,7 @@ jobs:
             --configuration Release -warnaserror -p:UseLocalMalievDependencies=true --nologo
           dotnet test Legacy.Maliev.Intranet.Tests/Legacy.Maliev.Intranet.Tests.csproj \
             --configuration Release --no-build --no-restore -p:UseLocalMalievDependencies=true \
-            --filter 'FullyQualifiedName~PooledTestHostReleaseContractTests|FullyQualifiedName~TestHostLimiterDisposalContractTests|FullyQualifiedName~OrderInitialStatusHttpTests' \
+            --filter 'FullyQualifiedName~PooledTestHostReleaseContractTests|FullyQualifiedName~TestHostLimiterDisposalContractTests|FullyQualifiedName~OrderInitialStatusHttpTests|FullyQualifiedName~HostOwnedTimeProviderTests' \
             --logger 'console;verbosity=normal'
       - name: Capture bounded synthetic pooled-host root metadata after validation failure
         if: ${{ !cancelled() && github.event_name == 'pull_request' && steps.current_main_diagnostics.outcome == 'failure' }}

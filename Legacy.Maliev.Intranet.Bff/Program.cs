@@ -41,7 +41,7 @@ var allowLocalTestIdentity =
     builder.Environment.IsDevelopment() &&
     builder.Configuration.GetValue("Workspace:AllowLocalTestDomain", false);
 builder.Services.AddProblemDetails();
-builder.Services.AddSingleton(TimeProvider.System);
+builder.Services.AddTransient<TimeProvider>(_ => new Legacy.Maliev.Intranet.Server.Infrastructure.HostOwnedTimeProvider(TimeProvider.System));
 builder.Services.AddSingleton<DiagnosticEventStore>();
 builder.Services.AddScoped<LegacyDashboardAggregator>();
 builder.Services.AddScoped<CustomerActivityAggregator>();
