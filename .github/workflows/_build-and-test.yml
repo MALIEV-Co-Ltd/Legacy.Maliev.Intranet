@@ -96,6 +96,12 @@ jobs:
           path: isolated-pool-results/root-metadata.json
           retention-days: 3
           if-no-files-found: warn
+      - name: Require current-main diagnostic regressions
+        if: always()
+        shell: bash
+        env:
+          DIAGNOSTIC_OUTCOME: ${{ steps.current_main_diagnostics.outcome }}
+        run: test "$DIAGNOSTIC_OUTCOME" = success
       - name: Validate .NET solution
         uses: MALIEV-Co-Ltd/Legacy.Maliev.Workflows/actions/dotnet-validate@d7efac266bc66273bc45eab583618871292ecbd6
         env:
@@ -155,12 +161,6 @@ jobs:
             exit 1
           fi
           pwsh -NoProfile -File scripts/verify-test-coverage.ps1 -CoverageFile "$coverage_file"
-      - name: Require current-main diagnostic regressions
-        if: always()
-        shell: bash
-        env:
-          DIAGNOSTIC_OUTCOME: ${{ steps.current_main_diagnostics.outcome }}
-        run: test "$DIAGNOSTIC_OUTCOME" = success
       - name: Preserve actual runner validation evidence
         if: always()
         uses: MALIEV-Co-Ltd/Legacy.Maliev.Workflows/actions/preserve-validation-evidence@45ced0919a604459c7bb5baf7f38d7bc53d708ba
