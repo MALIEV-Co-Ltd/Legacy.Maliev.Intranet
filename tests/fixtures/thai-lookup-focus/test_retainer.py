@@ -70,7 +70,7 @@ class RetainerTests(unittest.TestCase):
         code, receipt = self.run_receipt(failed=True)
         self.assertEqual(1, code)
         self.assertEqual("failed", receipt["gate"])
-        self.assertEqual({"Failed": 17}, receipt["groups"]["lookup-bff.trx"]["counts"])
+        self.assertEqual({"Failed": 18}, receipt["groups"]["lookup-bff.trx"]["counts"])
 
     def test_missing_browser_evidence_cannot_pass(self):
         code, receipt = self.run_receipt(missing=True)
@@ -97,7 +97,7 @@ class RetainerTests(unittest.TestCase):
     def test_failed_boundary_results_are_retained_as_failed(self):
         expected = GATE.EXPECTED["lookup-bff.trx"]
         records = GATE.verify_trx(fixture(expected, "Failed"), expected)
-        self.assertEqual(17, len(records))
+        self.assertEqual(18, len(records))
         self.assertTrue(all(record["outcome"] == "Failed" for record in records))
 
     def test_missing_execution_rejected(self):

@@ -40,6 +40,7 @@ public sealed class BffHttpMethodSurfaceTests
         { "Employee management and recovery", ["/bff/employees", "/bff/profile", "/bff/employee-recovery"], ["GET", "POST", "PUT"] },
         { "Customers", ["/bff/customers"], ["GET", "POST", "PUT"] },
         { "Catalog", ["/bff/catalog"], ["DELETE", "GET", "POST", "PUT"] },
+        { "Catalog lookups", ["/bff/lookups"], ["GET", "POST"] },
         { "Orders", ["/bff/orders", "/bff/order-processes"], ["DELETE", "GET", "POST", "PUT"] },
         { "Quotations and requests", ["/bff/quotations", "/bff/quotation-requests"], ["GET", "POST", "PUT"] },
         { "Accounting", ["/bff/finances", "/bff/invoices"], ["DELETE", "GET", "POST", "PUT"] },
@@ -60,6 +61,10 @@ public sealed class BffHttpMethodSurfaceTests
             .ToArray();
 
         Assert.Equal(ExpectedEndpointSurface, actual);
+        Assert.Equal(6, actual.Count(value => value.StartsWith("GET /bff/lookups/", StringComparison.Ordinal)));
+        Assert.Equal(1, actual.Count(value => value.StartsWith("POST /bff/lookups/", StringComparison.Ordinal)));
+        // Keep the existing core counts independent of the separately reviewed lookup surface.
+        actual = actual.Where(value => !value.Contains(" /bff/lookups/", StringComparison.Ordinal)).ToArray();
         Assert.Equal(101, actual.Length);
         Assert.Equal(56, actual.Count(value => value.StartsWith("GET ", StringComparison.Ordinal)));
         Assert.Equal(24, actual.Count(value => value.StartsWith("POST ", StringComparison.Ordinal)));
@@ -283,6 +288,12 @@ public sealed class BffHttpMethodSurfaceTests
         GET /bff/invoices
         GET /bff/invoices/from-quotation/{quotationId:int}/preview
         GET /bff/invoices/{id:int}
+        GET /bff/lookups/companies/search
+        GET /bff/lookups/thai-addresses/autocomplete
+        GET /bff/lookups/thai-addresses/districts
+        GET /bff/lookups/thai-addresses/postcodes
+        GET /bff/lookups/thai-addresses/provinces
+        GET /bff/lookups/thai-addresses/subdistricts
         GET /bff/order-processes
         GET /bff/orders
         GET /bff/orders/create
@@ -323,6 +334,7 @@ public sealed class BffHttpMethodSurfaceTests
         POST /bff/invoices/{id:int}/receipt/email
         POST /bff/login
         POST /bff/logout
+        POST /bff/lookups/thai-addresses/resolve
         POST /bff/orders
         POST /bff/orders/{id:int}/files
         POST /bff/orders/{id:int}/status/{statusId:int}

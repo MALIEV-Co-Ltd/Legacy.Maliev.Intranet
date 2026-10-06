@@ -39,6 +39,9 @@ EXPECTED = {
         },
     },
     "lookup-bff.trx": {
+        UNIT + "BffHttpMethodSurfaceTests": {
+            "RuntimeEndpointSurface_EveryBffMethodAndRouteMatchesTheReviewedContract": 1,
+        },
         UNIT + "LookupBffProxyTests": {
             "NormalCookieBoundaryForwardsAndFiltersWithOnlyServerServiceToken": 1,
             "MissingSessionOrPermissionStopsBeforeCatalog": 2,
