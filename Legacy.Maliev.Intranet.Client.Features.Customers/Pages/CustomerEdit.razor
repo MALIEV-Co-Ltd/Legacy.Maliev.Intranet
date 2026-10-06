@@ -118,7 +118,7 @@
         try
         {
             if (customerId <= 0) { error = Text["NotFound"]; return; }
-            using var response = await Http.GetAsync($"/bff/customers/{customerId}/edit", cancellation.Token);
+            using var response = await Http.GetForPresentationAsync($"/bff/customers/{customerId}/edit", cancellation.Token);
             if (!Current(sequence, customerId)) return;
             if (response.StatusCode == HttpStatusCode.Unauthorized) { RedirectToLogin(); return; }
             if (!response.IsSuccessStatusCode) { error = StatusMessage(response.StatusCode); return; }
@@ -170,7 +170,7 @@
         var dispatched = false;
         try
         {
-            using var sessionResponse = await Http.GetAsync("/bff/session", cancellation.Token);
+            using var sessionResponse = await Http.GetForPresentationAsync("/bff/session", cancellation.Token);
             if (!Current(sequence, customerId)) return;
             if (sessionResponse.StatusCode == HttpStatusCode.Unauthorized) { RedirectToLogin(); return; }
             if (!sessionResponse.IsSuccessStatusCode) { error = Text["SessionUnavailable"]; return; }
