@@ -107,7 +107,7 @@ public static class LookupEndpointExtensions
             q.Length is < 2 or > 128 || type == "tax-id" && !Digits(q, 13) || !ValidLimit(limit))
             return Task.FromResult<IResult>(Results.BadRequest());
         return ForwardAsync<LookupCompanyPage>(() => proxy.GetAsync("companies/search", new Dictionary<string, string?>
-            { ["q"] = q, ["queryType"] = type, ["language"] = language, ["limit"] = limit }, ct), context, ct);
+        { ["q"] = q, ["queryType"] = type, ["language"] = language, ["limit"] = limit }, ct), context, ct);
     }
 
     private static Dictionary<string, string?>? AddressQuery(HttpRequest request)

@@ -57,7 +57,7 @@ public sealed class LookupSupplierBrowserTests(IntranetClientServerFixture serve
         var page = await context.NewPageAsync();
         await SessionAsync(page);
         await page.RouteAsync("**/bff/lookups/companies/search?**", route => route.FulfillAsync(new()
-            { Status = 503, ContentType = "application/problem+json", Body = "{\"status\":503}" }));
+        { Status = 503, ContentType = "application/problem+json", Body = "{\"status\":503}" }));
         await page.GotoAsync(new Uri(server.BaseUri, "/Suppliers/Create").AbsoluteUri);
         await page.Locator("#supplier-company-lookup").FillAsync("test");
         await Assertions.Expect(page.GetByRole(AriaRole.Status).Filter(new() { HasText = "Suggestions are unavailable" })).ToBeVisibleAsync();
@@ -75,7 +75,8 @@ public sealed class LookupSupplierBrowserTests(IntranetClientServerFixture serve
         await SessionAsync(page);
         await page.RouteAsync("**/bff/lookups/companies/search?**", route => route.FulfillAsync(new()
         {
-            ContentType = "application/json", Body = """
+            ContentType = "application/json",
+            Body = """
             {"outcome":"matches","provider":"creden","capability":"suggestion","hasMore":false,"items":[{"nameTh":"บริษัท ใหม่","nameEn":"New company","taxId":null,"retrievedAt":"2026-10-06T01:00:00+00:00"}]}
             """
         }));
@@ -112,13 +113,23 @@ public sealed class LookupSupplierBrowserTests(IntranetClientServerFixture serve
                 return route.FulfillAsync(new() { ContentType = "application/json", Body = "{\"datasetVersion\":\"v1\",\"items\":[],\"hasMore\":false,\"nextCursor\":null}" });
             route.Request.Headers.TryGetValue("x-csrf-token", out csrf);
             requestBody = route.Request.PostData;
-            return route.FulfillAsync(new() { ContentType = "application/json", Body = JsonSerializer.Serialize(new
+            return route.FulfillAsync(new()
             {
-                datasetVersion = "v1", originalText = pasted, normalizedText = pasted,
-                outcome = "exact", candidates = new[] { combination }, hasMore = false,
-                uniqueFields = new { province = combination.GetProperty("province"), district = combination.GetProperty("district"), subdistrict = combination.GetProperty("subdistrict"), postcode = "10110" },
-                detailText = "1 Main Road", extractedSpans = Array.Empty<object>(), conflicts = Array.Empty<string>()
-            }) });
+                ContentType = "application/json",
+                Body = JsonSerializer.Serialize(new
+                {
+                    datasetVersion = "v1",
+                    originalText = pasted,
+                    normalizedText = pasted,
+                    outcome = "exact",
+                    candidates = new[] { combination },
+                    hasMore = false,
+                    uniqueFields = new { province = combination.GetProperty("province"), district = combination.GetProperty("district"), subdistrict = combination.GetProperty("subdistrict"), postcode = "10110" },
+                    detailText = "1 Main Road",
+                    extractedSpans = Array.Empty<object>(),
+                    conflicts = Array.Empty<string>()
+                })
+            });
         });
         await page.GotoAsync(new Uri(server.BaseUri, "/Suppliers/Create").AbsoluteUri);
         await page.Locator("#supplier-address-1").FillAsync("Original street");
@@ -151,7 +162,8 @@ public sealed class LookupSupplierBrowserTests(IntranetClientServerFixture serve
 
     private static Task SessionAsync(IPage page) => page.RouteAsync("**/bff/session", route => route.FulfillAsync(new()
     {
-        ContentType = "application/json", Body = JsonSerializer.Serialize(new
+        ContentType = "application/json",
+        Body = JsonSerializer.Serialize(new
         { isAuthenticated = true, employeeId = "staff", displayName = "Staff", roles = new[] { "Employee" }, csrfToken = "csrf", permissions = new[] { "legacy-catalog.locations.read", "legacy-catalog.companies.read" } })
     }));
     private const string Province = """{"code":"10","nameTh":"กรุงเทพมหานคร","nameEn":"Bangkok","provinceCode":null,"districtCode":null}""";

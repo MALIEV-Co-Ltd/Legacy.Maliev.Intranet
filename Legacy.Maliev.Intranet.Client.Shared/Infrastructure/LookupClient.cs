@@ -28,7 +28,7 @@ public sealed class LookupClient(HttpClient http)
         if (!session.IsAuthenticated) throw new LookupRequestException(HttpStatusCode.Unauthorized);
         if (string.IsNullOrWhiteSpace(session.CsrfToken)) throw new LookupRequestException(HttpStatusCode.Forbidden);
         using var request = new HttpRequestMessage(HttpMethod.Post, "/bff/lookups/thai-addresses/resolve")
-            { Content = JsonContent.Create(input) };
+        { Content = JsonContent.Create(input) };
         request.Headers.Add("X-CSRF-TOKEN", session.CsrfToken);
         using var response = await http.SendAsync(request, cancellationToken);
         var result = await ReadAsync<LookupResolveResponse>(response, cancellationToken);

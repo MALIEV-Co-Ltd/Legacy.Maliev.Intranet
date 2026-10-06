@@ -113,7 +113,7 @@ public sealed class LookupBffProxyTests
         using var sessionResponse = await client.GetAsync("/bff/session");
         var session = await sessionResponse.Content.ReadFromJsonAsync<JsonElement>();
         using var request = new HttpRequestMessage(HttpMethod.Post, "/bff/lookups/thai-addresses/resolve")
-            { Content = JsonContent.Create(new LookupResolveRequest(text, new(Postcode: "10110"))) };
+        { Content = JsonContent.Create(new LookupResolveRequest(text, new(Postcode: "10110"))) };
         request.Headers.Add("X-CSRF-TOKEN", session.GetProperty("csrfToken").GetString());
         using var response = await client.SendAsync(request);
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
@@ -143,7 +143,7 @@ public sealed class LookupBffProxyTests
         var payload = JsonSerializer.Serialize(new { text = new string('x', textLength) });
         if (oversized) payload = new string(' ', 17 * 1024) + payload;
         using var request = new HttpRequestMessage(HttpMethod.Post, "/bff/lookups/thai-addresses/resolve")
-            { Content = new UnknownLengthContent(payload) };
+        { Content = new UnknownLengthContent(payload) };
         request.Content.Headers.ContentType = new("application/json");
         request.Headers.Add("X-CSRF-TOKEN", session.GetProperty("csrfToken").GetString());
         using var response = await client.SendAsync(request);
@@ -152,14 +152,14 @@ public sealed class LookupBffProxyTests
     }
 
     private static HttpClient Client(WebApplicationFactory<BffProgram> factory) => factory.CreateClient(new()
-        { AllowAutoRedirect = false, BaseAddress = new("https://localhost"), HandleCookies = true });
+    { AllowAutoRedirect = false, BaseAddress = new("https://localhost"), HandleCookies = true });
 
     private static async Task SignInAsync(HttpClient client)
     {
         using var sessionResponse = await client.GetAsync("/bff/session");
         var session = await sessionResponse.Content.ReadFromJsonAsync<JsonElement>();
         using var request = new HttpRequestMessage(HttpMethod.Post, "/bff/login")
-            { Content = JsonContent.Create(new { email = "employee@maliev.com", password = "password", returnUrl = "/Suppliers/Create" }) };
+        { Content = JsonContent.Create(new { email = "employee@maliev.com", password = "password", returnUrl = "/Suppliers/Create" }) };
         request.Headers.Add("X-CSRF-TOKEN", session.GetProperty("csrfToken").GetString());
         using var response = await client.SendAsync(request);
         response.EnsureSuccessStatusCode();
@@ -183,7 +183,7 @@ public sealed class LookupBffProxyTests
                 services.RemoveAll<Proxy>();
                 var authenticated = new LegacyServiceAuthenticationHandler(tokens) { InnerHandler = downstream };
                 services.AddSingleton(new Proxy(new HttpClient(authenticated)
-                    { BaseAddress = new("http://catalog/"), Timeout = TimeSpan.FromSeconds(10), MaxResponseContentBufferSize = 256 * 1024 }));
+                { BaseAddress = new("http://catalog/"), Timeout = TimeSpan.FromSeconds(10), MaxResponseContentBufferSize = 256 * 1024 }));
             });
         }
     }
@@ -224,9 +224,12 @@ public sealed class LookupBffProxyTests
             if (request.Method == HttpMethod.Post)
             {
                 ResolveInput = await request.Content!.ReadFromJsonAsync<LookupResolveRequest>(cancellationToken: ct);
-                return new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(new LookupResolveResponse(
+                return new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = JsonContent.Create(new LookupResolveResponse(
                     "v1", ResolveInput!.Text, ResolveInput.Text, "exact", [LookupBehaviorTests.Combination], false,
-                    new(null, null, null, null), "1 Main Road", [], [])) };
+                    new(null, null, null, null), "1 Main Road", [], []))
+                };
             }
             HttpContent content = Status != HttpStatusCode.OK ? new StringContent("private-provider-data") :
                 Invalid ? new StringContent("{}", System.Text.Encoding.UTF8, "application/json") :

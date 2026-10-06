@@ -21,7 +21,7 @@ public sealed class LookupCatalogProxy(HttpClient http) : IDisposable
     public async Task<HttpResponseMessage> ResolveAsync(LookupResolveRequest input, CancellationToken cancellationToken)
     {
         using var request = new HttpRequestMessage(HttpMethod.Post, "/api/v1/thai-addresses/resolve")
-            { Content = JsonContent.Create(input) };
+        { Content = JsonContent.Create(input) };
         return await http.SendAsync(request, HttpCompletionOption.ResponseContentRead, cancellationToken);
     }
 

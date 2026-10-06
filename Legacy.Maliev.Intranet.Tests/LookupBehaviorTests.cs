@@ -119,7 +119,7 @@ public sealed class LookupBehaviorTests
         using var handler = new Handler(request =>
         {
             if (request.RequestUri!.AbsolutePath == "/bff/session") return new(HttpStatusCode.OK)
-                { Content = JsonContent.Create(new EmployeeSessionSummary(true, "staff", "Staff", ["Employee"], "csrf")) };
+            { Content = JsonContent.Create(new EmployeeSessionSummary(true, "staff", "Staff", ["Employee"], "csrf")) };
             csrf = request.Headers.GetValues("X-CSRF-TOKEN").Single();
             body = request.Content!.ReadAsStringAsync().GetAwaiter().GetResult();
             return new(HttpStatusCode.ServiceUnavailable) { Content = new StringContent("private-provider-body") };
