@@ -21,4 +21,55 @@
   <data name="Unavailable" xml:space="preserve"><value>ระบบข้อมูลพนักงานไม่พร้อมใช้งานชั่วคราว</value></data>
   <data name="InvalidResponse" xml:space="preserve"><value>ระบบข้อมูลพนักงานส่งข้อมูลกลับมาไม่ถูกต้อง</value></data>
   <data name="Retry" xml:space="preserve"><value>ลองอีกครั้ง</value></data>
+  <data name="EditPageTitle" xml:space="preserve"><value>แก้ไขข้อมูลพนักงาน - MALIEV Intranet</value></data>
+  <data name="EditHeading" xml:space="preserve"><value>แก้ไขข้อมูลพนักงาน</value></data>
+  <data name="EditDescription" xml:space="preserve"><value>บันทึกบัญชี ที่อยู่บ้าน และข้อมูลพนักงานตามลำดับ ระบบจะไม่ส่งคำขอบันทึกซ้ำโดยอัตโนมัติ</value></data>
+  <data name="EditReload" xml:space="preserve"><value>โหลดข้อมูลปัจจุบันใหม่ (ทิ้งรายการแก้ไข)</value></data>
+  <data name="EditLoading" xml:space="preserve"><value>กำลังโหลดข้อมูลสำหรับแก้ไขพนักงาน</value></data>
+  <data name="EditReloadRequired" xml:space="preserve"><value>ปิดการบันทึกไว้ โปรดโหลดข้อมูลปัจจุบันใหม่และตรวจสอบก่อนแก้ไขอีกครั้ง</value></data>
+  <data name="EditNavigationChanged" xml:space="preserve"><value>พนักงานที่เลือกเปลี่ยนไประหว่างการบันทึก จึงไม่นำผลมาแสดงในหน้านี้ โปรดโหลดข้อมูลพนักงานที่เลือกใหม่ด้วยตนเอง หากส่งคำขอบันทึกแล้ว ให้ตรวจสอบพนักงานคนก่อนแยกต่างหาก</value></data>
+  <data name="EditProfile" xml:space="preserve"><value>ข้อมูลพนักงาน</value></data>
+  <data name="EditFirstName" xml:space="preserve"><value>ชื่อ</value></data>
+  <data name="EditLastName" xml:space="preserve"><value>นามสกุล</value></data>
+  <data name="EditNoRole" xml:space="preserve"><value>ยังไม่ได้เลือกตำแหน่ง</value></data>
+  <data name="EditRoleNumber" xml:space="preserve"><value>ตำแหน่ง #{0}</value></data>
+  <data name="EditSharedEmail" xml:space="preserve"><value>อีเมลนี้จะใช้เป็นชื่อผู้ใช้ของบัญชีและอีเมลติดต่อของพนักงานด้วย</value></data>
+  <data name="EditAccount" xml:space="preserve"><value>จัดการบัญชี</value></data>
+  <data name="EditEmailConfirmed" xml:space="preserve"><value>ยืนยันอีเมลแล้ว</value></data>
+  <data name="EditPhoneConfirmed" xml:space="preserve"><value>ยืนยันหมายเลขโทรศัพท์แล้ว</value></data>
+  <data name="EditLockoutEnabled" xml:space="preserve"><value>เปิดการล็อกบัญชีเมื่อเข้าสู่ระบบไม่สำเร็จหลายครั้ง</value></data>
+  <data name="EditProtectedSettings" xml:space="preserve"><value>การยืนยันตัวตนสองขั้นตอนและเวลาสิ้นสุดการล็อกบัญชีเป็นข้อมูลที่ได้รับการป้องกันและแก้ไขไม่ได้ในแบบฟอร์มนี้</value></data>
+  <data name="EditTwoFactor" xml:space="preserve"><value>การยืนยันตัวตนสองขั้นตอน</value></data>
+  <data name="EditEnabled" xml:space="preserve"><value>เปิดใช้งาน</value></data>
+  <data name="EditDisabled" xml:space="preserve"><value>ปิดใช้งาน</value></data>
+  <data name="EditLockoutEnd" xml:space="preserve"><value>เวลาสิ้นสุดการล็อกบัญชี</value></data>
+  <data name="EditHomeAddress" xml:space="preserve"><value>ที่อยู่บ้าน</value></data>
+  <data name="EditCapturedAddress" xml:space="preserve"><value>กำลังแก้ไขที่อยู่ #{0} ที่เชื่อมกับพนักงาน ไม่สามารถเปลี่ยนรหัสที่อยู่จากแบบฟอร์มนี้ได้</value></data>
+  <data name="EditAddAddress" xml:space="preserve"><value>เพิ่มที่อยู่บ้าน</value></data>
+  <data name="EditOptionalAddress" xml:space="preserve"><value>หากยังไม่มีที่อยู่ที่เชื่อมไว้ ไม่จำเป็นต้องเพิ่มที่อยู่ เว้นช่องนี้ไว้ หรือไม่กรอกที่อยู่หรือไม่เลือกประเทศ เพื่อบันทึกโดยไม่สร้างที่อยู่</value></data>
+  <data name="EditBuilding" xml:space="preserve"><value>อาคาร</value></data>
+  <data name="EditAddressLine1" xml:space="preserve"><value>ที่อยู่</value></data>
+  <data name="EditAddressLine2" xml:space="preserve"><value>ที่อยู่บรรทัดที่ 2</value></data>
+  <data name="EditCity" xml:space="preserve"><value>เมือง / อำเภอ</value></data>
+  <data name="EditState" xml:space="preserve"><value>รัฐ / จังหวัด</value></data>
+  <data name="EditPostalCode" xml:space="preserve"><value>รหัสไปรษณีย์</value></data>
+  <data name="EditCountryId" xml:space="preserve"><value>ประเทศ</value></data>
+  <data name="EditSelectCountry" xml:space="preserve"><value>เลือกประเทศ</value></data>
+  <data name="EditInvalidCountry" xml:space="preserve"><value>โปรดเลือกประเทศจากตัวเลือกปัจจุบัน</value></data>
+  <data name="EditSaving" xml:space="preserve"><value>กำลังบันทึกครั้งเดียว…</value></data>
+  <data name="EditSave" xml:space="preserve"><value>บันทึกการเปลี่ยนแปลง</value></data>
+  <data name="EditBackToProfile" xml:space="preserve"><value>กลับไปยังข้อมูลพนักงาน</value></data>
+  <data name="EditSessionUnavailable" xml:space="preserve"><value>ไม่สามารถตรวจสอบเซสชันได้ ยังไม่ได้ส่งคำขอบันทึก</value></data>
+  <data name="EditForbidden" xml:space="preserve"><value>คุณไม่มีสิทธิ์เปิดแบบฟอร์มจัดการข้อมูลพนักงาน</value></data>
+  <data name="EditForbiddenSave" xml:space="preserve"><value>เซสชัน สิทธิ์ หรือการตรวจสอบคำขอปฏิเสธการบันทึก โปรดโหลดข้อมูลปัจจุบันใหม่ก่อนดำเนินการต่อ</value></data>
+  <data name="EditUnknownOutcome" xml:space="preserve"><value>ไม่ทราบผลการบันทึก บางรายการอาจถูกบันทึกแล้ว ห้ามส่งซ้ำ โปรดโหลดข้อมูลปัจจุบันใหม่และตรวจสอบด้วยตนเอง</value></data>
+  <data name="EditPartialCompletion" xml:space="preserve"><value>บันทึกสำเร็จเพียงบางขั้นตอน โดยไม่ได้ย้อนกลับการเปลี่ยนแปลง โปรดโหลดข้อมูลปัจจุบันใหม่และตรวจสอบก่อนบันทึกอีกครั้ง</value></data>
+  <data name="EditSaved" xml:space="preserve"><value>บันทึกครบทุกขั้นตอนที่ร้องขอแล้ว โปรดโหลดข้อมูลปัจจุบันใหม่เพื่อตรวจสอบค่าที่บันทึกก่อนบันทึกครั้งถัดไป</value></data>
+  <data name="EditStale" xml:space="preserve"><value>ข้อมูลที่เปิดไว้ไม่ใช่ข้อมูลปัจจุบันแล้ว โปรดโหลดใหม่และตรวจสอบค่าล่าสุด ระบบไม่ได้ส่งรายการแก้ไขของคุณซ้ำ</value></data>
+  <data name="EditRequired" xml:space="preserve"><value>จำเป็นต้องกรอกข้อมูลนี้</value></data>
+  <data name="EditInvalidLength" xml:space="preserve"><value>ข้อมูลนี้ยาวเกินขีดจำกัดของช่อง</value></data>
+  <data name="EditInvalidEmail" xml:space="preserve"><value>โปรดกรอกอีเมลให้ถูกต้อง</value></data>
+  <data name="EditInvalidPhone" xml:space="preserve"><value>โปรดกรอกหมายเลขโทรศัพท์ให้ถูกต้อง</value></data>
+  <data name="EditInvalidRole" xml:space="preserve"><value>โปรดเลือกตำแหน่งจากตัวเลือกปัจจุบัน หรือล้างตำแหน่ง</value></data>
+  <data name="EditValidationFailed" xml:space="preserve"><value>โปรดตรวจสอบช่องที่แสดงข้อผิดพลาด โดยเซิร์ฟเวอร์จะตรวจสอบข้อมูลอีกครั้ง</value></data>
 </root>

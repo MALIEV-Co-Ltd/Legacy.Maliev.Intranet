@@ -39,6 +39,7 @@
                 <dd>@ValueOrFallback(detail.HomeAddress?.AddressLine1)</dd>
             </dl>
         </section>
+        <LegacyLink Href="@($"/Employees/Edit?id={detail.Id}")" Role="LegacyLinkRole.Navigation" AriaLabel="@Text["EditHeading"]">@Text["EditHeading"]</LegacyLink>
         <LegacyLink Href="/Employees/Index" Role="LegacyLinkRole.Navigation" AriaLabel="@Text["BackToEmployees"]" Class="employee-detail__back">@Text["BackToEmployees"]</LegacyLink>
     }
 </main>

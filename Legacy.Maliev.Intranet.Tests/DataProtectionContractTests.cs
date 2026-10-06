@@ -110,7 +110,10 @@ public sealed class DataProtectionContractTests
 
         Assert.Contains("docker info", workflow, StringComparison.Ordinal);
         Assert.Contains("Testcontainers.Redis", testProject, StringComparison.Ordinal);
-        Assert.Contains("redis:7.4.5-alpine", integrationTest, StringComparison.Ordinal);
+        var containers = File.ReadAllText(Path.Combine(root, "Legacy.Maliev.Intranet.Tests", "ValidationContainers.cs"));
+        Assert.Contains("ValidationContainers.Redis()", integrationTest, StringComparison.Ordinal);
+        Assert.Contains("redis:7.4.5-alpine", containers, StringComparison.Ordinal);
+        Assert.Contains("new RedisBuilder", containers, StringComparison.Ordinal);
         Assert.DoesNotContain("Skip =", integrationTest, StringComparison.Ordinal);
     }
 

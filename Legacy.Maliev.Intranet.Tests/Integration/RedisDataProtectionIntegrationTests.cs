@@ -17,7 +17,7 @@ namespace Legacy.Maliev.Intranet.Tests.Integration;
 public sealed class RedisDataProtectionIntegrationTests : IAsyncLifetime
 {
     private const string CertificatePassword = "integration-test-only";
-    private readonly RedisContainer redis = new RedisBuilder("redis:7.4.5-alpine").Build();
+    private readonly RedisContainer redis = ValidationContainers.Redis();
 
     public async Task InitializeAsync() => await redis.StartAsync();
 
