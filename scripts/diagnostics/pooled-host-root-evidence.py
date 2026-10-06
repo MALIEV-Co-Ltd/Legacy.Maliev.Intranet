@@ -46,6 +46,12 @@ FAMILIES = ("System.", "Microsoft.", "Legacy.Maliev.", "Maliev.Aspire.ServiceDef
 MAX_TEXT = 1024 * 1024
 SDK_VERSION = "10.0.401"
 CAPTURE_DEADLINE = None
+FRAME_NAMES = frozenset(("GCFrame", "InlinedCallFrame", "TailCallFrame", "ResumableFrame",
+    "RedirectedThreadFrame", "FaultingExceptionFrame", "SoftwareExceptionFrame", "FuncEvalFrame",
+    "ComMethodFrame", "CLRToCOMMethodFrame", "ComPrestubMethodFrame", "PInvokeCalliFrame",
+    "HijackFrame", "PrestubMethodFrame", "CallCountingHelperFrame", "StubDispatchFrame",
+    "ExternalMethodFrame", "DynamicHelperFrame", "ProtectValueClassFrame", "DebuggerClassInitMarkFrame",
+    "DebuggerExitFrame", "DebuggerU2MCatchHandlerFrame", "ExceptionFilterFrame", "InterpreterFrame"))
 
 
 class Unavailable(Exception):
@@ -253,17 +259,23 @@ def weak_handles(text):
             in_statistics = True
         elif re.fullmatch(r"Handle\s+Type\s+Object\s+Size\s+Data\s+Type", row):
             pass
-        elif match := re.fullmatch(rf"({HEX})\s+WeakShort\s+({HEX})\s+\d+\s+(.+)", row):
+        elif match := re.fullmatch(rf"({HEX})\s+WeakShort\s+({HEX})\s+(\d+)\s+(.+)", row):
             require(not in_statistics, "handle-order")
-            handle, target, kind = match.groups()
+            handle, target, size, kind = match.groups()
             require(handle.lower() not in result, "duplicate-handle")
-            result[handle.lower()] = (target.lower(), metadata(kind))
+            # GCHandlesImpl emits literal sentinels for cleared/unreadable/free
+            # weak targets. Never bind these rows as a reviewed live witness.
+            if kind in ("<error>", "<free>"):
+                require(size == "0", "handle-sentinel-size")
+            else:
+                metadata(kind)
+            result[handle.lower()] = (target.lower(), kind)
         elif in_statistics and (re.fullmatch(r"MT\s+Count\s+TotalSize\s+Class Name", row)
-                                or re.fullmatch(r"Total\s+[\d,]+ objects, [\d,]+ bytes", row)
-                                or re.fullmatch(r"Weak Short Handles:\s*[\d,]+", row)):
+                                or re.fullmatch(r"Total\s+\d+ objects", row)):
             pass
-        elif in_statistics and (match := re.fullmatch(rf"{HEX}\s+[\d,]+\s+[\d,]+\s+(.+)", row)):
-            metadata(match.group(1))
+        elif in_statistics and (match := re.fullmatch(rf"{HEX}\s+\d+\s+\d+\s+(.+)", row)):
+            if match.group(1) not in ("Free", "UNKNOWN"):
+                metadata(match.group(1))
         else:
             raise Unavailable("unknown-handle-output")
     require(result and len(result) <= 10000, "handle-count")
@@ -287,33 +299,50 @@ def root_paths(text, target, non_stack=False):
         elif row in ("HandleTable:", "Finalizer Queue:"):
             context = {"kind": "handle" if row == "HandleTable:" else "finalizer"}
             current = None
-        elif match := re.fullmatch(rf"({HEX}) \((strong handle|pinned handle|async pinned handle|sized ref handle|dependent handle|finalizer root)\)", row):
+        elif match := re.fullmatch(rf"({HEX}) \((strong handle|pinned handle|async pinned handle|sized ref handle|dependent handle|finalizer root|ref counted handle RefCount: [\d,]+)\)", row):
             require(context is not None and context["kind"] != "stack", "root-header")
-            current = {**context, "root": match.group(1).lower(), "handle_kind": match.group(2), "nodes": []}
+            kind = match.group(2)
+            if kind.startswith("ref counted handle RefCount:"):
+                kind = "ref counted handle"
+            current = {**context, "root": match.group(1).lower(), "handle_kind": kind, "nodes": []}
             paths.append(current)
         elif match := re.fullmatch(rf"({HEX})(?:\s+{HEX})?\s+(.+)", row):
             require(context is not None and context["kind"] == "stack", "stack-frame-context")
+            context.pop("method", None)
+            context.pop("frame", None)
             method = match.group(2)
             # Source paths are not exported; do not permit locals/argument values.
             source = re.search(r" \[(/[^\r\n\[\]]+\.cs) @ (\d+)\]$", method)
             if source:
                 method = method[:source.start()]
-            frame = re.match(r"\[(HelperMethodFrame(?:_[A-Z0-9]+)?)\] (.+)$", method)
+            frame = re.fullmatch(r"\[([A-Za-z0-9_]+)\](?: {1,2}(.+))?", method)
             if frame:
+                # Exact pinned runtime FrameTypes.h/frames.h identities plus
+                # the reviewed helper-frame family; no arbitrary frame labels.
+                require(frame.group(1) in FRAME_NAMES or re.fullmatch(
+                    r"HelperMethodFrame(?:_[A-Z0-9]+)?", frame.group(1)), "unknown-stack-frame")
                 context["frame"] = frame.group(1)
                 method = frame.group(2)
                 # Pinned GCRootCommand.GetFrameOutput wraps a managed method
                 # in parentheses when emitting its explicit helper-frame name.
-                if method.startswith("(") and method.endswith(")"):
+                if method is not None and method.startswith("(") and method.endswith(")"):
                     method = method[1:-1]
-            context["method"] = metadata(method)
-        elif match := re.fullmatch(rf"(r(?:[abcd]x|[sd]i|[sb]p|[89]|1[0-5]))([+-]{HEX})?:\s*({HEX})?", row):
-            require(context is not None and context.get("kind") == "stack" and "method" in context,
+            if method is not None:
+                context["method"] = metadata(method)
+        elif match := re.fullmatch(rf"(r(?:[abcd]x|[sd]i|[sb]p|[89]|1[0-5])|\?\?\?)([+-]{HEX})?:\s*({HEX})?", row):
+            require(context is not None and context.get("kind") == "stack" and ("method" in context or "frame" in context),
                     "stack-register-context")
             # GetRegisterOutput emits only register, optional signed hex offset,
             # and optional stack-slot address. Never parse a local value/name.
             current = {**context, "register": match.group(1), "offset": match.group(2),
                        "stack_slot": match.group(3), "nodes": []}
+            paths.append(current)
+        elif re.fullmatch(HEX, row):
+            # GetRegisterOutput prints only the x16 stack slot when both
+            # RegisterName and RegisterOffset are absent. It remains private.
+            require(context is not None and context.get("kind") == "stack" and ("method" in context or "frame" in context),
+                    "stack-slot-context")
+            current = {**context, "stack_slot": row, "nodes": []}
             paths.append(current)
         elif match := re.fullmatch(rf"->\s+({HEX})\s+(.+)", row):
             require(current is not None and len(current["nodes"]) < 128, "root-node-context")
@@ -392,7 +421,8 @@ def signal_handle_ids(rows, head):
 def bind_weak_target(handle, table, expected):
     require(handle in table, "weak-handle-not-found")
     target, kind = table[handle]
-    require(kind == expected or (expected == FACTORY and kind.startswith(FACTORY + "[")), "weak-target-identity")
+    require(int(target, 16) != 0 and (kind == expected or (expected == FACTORY and kind.startswith(FACTORY + "["))),
+            "weak-target-identity")
     return target, kind
 
 
@@ -649,6 +679,14 @@ def capture(args, private, cohort=False):
                     os.killpg(test.pid, signal.SIGKILL)
                     test.wait(timeout=5)
 
+    trx = trx_dir / "isolated-pooled-host.trx"
+    require(trx.is_file(), "trx-unavailable")
+    observation = observed_trx(trx.read_bytes(), cohort)
+    # Preserve actual observation before any offline parser can reject output.
+    args.observed_counts = observation
+    args.capture_filter = "focused-cohort" if cohort else "original-fact"
+    verify_original_trx(trx.read_bytes(), cohort)
+
     def sos(commands, label):
         sections = {}
         # One result per process avoids inferring boundaries between unframed
@@ -674,9 +712,6 @@ def capture(args, private, cohort=False):
         sections = sos(commands, "sos-roots-" + name)
         roots[name] = {"all": public_root_paths(root_paths(sections[commands[0]], target)),
                        "non_stack": public_root_paths(root_paths(sections[commands[1]], target, non_stack=True))}
-    trx = trx_dir / "isolated-pooled-host.trx"
-    require(trx.stat().st_size < 128 * 1024, "trx-bound")
-    observation = verify_original_trx(trx.read_bytes(), cohort)
     return {"status": "evidence", "head": args.head, "checkout": checkout, "pid": pid,
             "tool": PIN, "package_source": PACKAGE, "package_sha512": PACKAGE_SHA512,
             "runtime": "10.0.12", "dac_sha256": hashlib.sha256(dac.read_bytes()).hexdigest(),
@@ -878,9 +913,19 @@ class ParserControls(unittest.TestCase):
             self.rejects(object_fields, bad, "System.WeakReference", {"_taggedHandle"}, "System.Private.CoreLib.dll")
 
     def test_handles(self):
-        text = "Handle Type Object Size Data Type\n1000 WeakShort 2000 24 System.WeakReference\nStatistics:\nMT Count TotalSize Class Name\nabc 1 24 System.WeakReference\nTotal 1 objects, 24 bytes\nWeak Short Handles: 1"
+        text = "Handle Type Object Size Data Type\n1000 WeakShort 2000 24 System.WeakReference\nStatistics:\nMT Count TotalSize Class Name\nabc 1 24 System.WeakReference\nTotal 1 objects"
         self.assertEqual(weak_handles(text)["1000"], ("2000", "System.WeakReference"))
         for bad in (text.replace("WeakShort", "Strong"), text + "\nSecret: token", text.replace("System.WeakReference", "Unknown.Object")):
+            self.rejects(weak_handles, bad)
+
+    def test_pinned_native_handle_sentinels_and_summary(self):
+        text = "Handle Type Object Size Data Type\n1000 WeakShort 2000 24 System.WeakReference\n3000 WeakShort 0000 0 <error>\n5000 WeakShort 6000 0 <free>\nStatistics:\nMT Count TotalSize Class Name\nabc 1 24 System.WeakReference\ndef 1 16 Free\nfed 1 32 UNKNOWN\nTotal 3 objects"
+        table = weak_handles(text)
+        self.assertEqual(table["3000"], ("0000", "<error>"))
+        self.rejects(bind_weak_target, "3000", table, FACTORY)
+        for bad in (text.replace("0 <error>", "1 <error>"), text.replace("<free>", "<unreviewed>"),
+                    text.replace("Total 3 objects", "Total 3 objects, 72 bytes"),
+                    text + "\nWeak Short Handles: 3", text + "\nSecret: value"):
             self.rejects(weak_handles, bad)
 
     def test_root_paths(self):
@@ -898,6 +943,16 @@ class ParserControls(unittest.TestCase):
         path = root_paths(helper, "4000")["paths"][0]
         self.assertEqual(path["method"], "System.Threading.Timer.Callback()")
         self.assertEqual((path["register"], path["offset"], path["stack_slot"]), ("rsp", "+28", "3000"))
+        # Pinned GetFrameOutput adds a second space before a framed method;
+        # GetRegisterOutput can emit only a slot, or a literal unknown register.
+        self.assertEqual(root_paths(helper.replace("] (", "]  ("), "4000")["paths"][0]["method"], path["method"])
+        self.assertEqual(root_paths(text.replace("rdi:", "0000000000003000"), "4000")["paths"][0]["stack_slot"],
+                         "0000000000003000")
+        self.assertEqual(root_paths(helper.replace("rsp+28:", "???+28:"), "4000")["paths"][0]["register"], "???")
+        frame_only = text.replace("System.Threading.Timer.Callback()", "[GCFrame]")
+        self.assertEqual(root_paths(frame_only, "4000")["paths"][0]["frame"], "GCFrame")
+        self.assertNotIn("method", root_paths(frame_only, "4000")["paths"][0])
+        self.rejects(root_paths, frame_only.replace("GCFrame", "UnreviewedFrame"), "4000")
         for bad in (helper.replace("rsp+28: 3000", "rsp+secret: 3000"),
                     helper.replace("rsp+28: 3000", "rsp+28: secret"),
                     helper.replace("rsp+28: 3000", "rsp+28: 3000 secret=value")):
@@ -912,6 +967,13 @@ class ParserControls(unittest.TestCase):
                     "unexpected secret\n" + framed, framed.replace("Set load path", "Unknown acknowledgement"),
                     "> dumpheap\nabc\n> exit\n"):
             self.rejects(command_output, bad, dump, runtime)
+
+    def test_pinned_ref_counted_roots_keep_only_kind(self):
+        text = "HandleTable:\n1000 (ref counted handle RefCount: 1,234)\n-> 4000 Microsoft.Extensions.DependencyInjection.ServiceProvider\nFound 1 unique roots."
+        parsed = root_paths(text, "4000")
+        self.assertEqual(parsed["paths"][0]["handle_kind"], "ref counted handle")
+        self.assertNotIn("1,234", json.dumps(public_root_paths(parsed)))
+        self.rejects(root_paths, text.replace("1,234", "secret=value"), "4000")
 
     def test_encoded_native_runtime_version(self):
         native = "10.0.1226.42604\n10.0.1226.42604 @Commit: " + "a" * 40
@@ -1011,6 +1073,8 @@ def main():
         suite = unittest.defaultTestLoader.loadTestsFromTestCase(ParserControls)
         return 0 if unittest.TextTestRunner().run(suite).wasSuccessful() else 1
     require(args.workspace and args.dotnet and args.head, "arguments")
+    args.observed_counts = None
+    args.capture_filter = None
     os.umask(0o077)
     # Exactly one owned temporary subtree; no user home, cache, or shared data deletion.
     runner_temp = os.environ.get("RUNNER_TEMP")
@@ -1056,6 +1120,9 @@ def main():
             pass
         if isolated_control is not None:
             report["isolated_control"] = isolated_control
+        if args.observed_counts is not None:
+            report["observed_test_counts"] = args.observed_counts
+            report["capture_filter"] = args.capture_filter
     payload = json.dumps(report, sort_keys=True)
     require(len(payload.encode()) <= 128 * 1024, "report-bound")
     print(payload)
