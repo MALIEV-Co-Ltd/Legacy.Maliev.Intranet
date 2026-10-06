@@ -289,11 +289,18 @@ def root_paths(text, target, non_stack=False):
             if frame:
                 context["frame"] = frame.group(1)
                 method = frame.group(2)
+                # Pinned GCRootCommand.GetFrameOutput wraps a managed method
+                # in parentheses when emitting its explicit helper-frame name.
+                if method.startswith("(") and method.endswith(")"):
+                    method = method[1:-1]
             context["method"] = metadata(method)
-        elif match := re.fullmatch(r"(r(?:[abcd]x|[sd]i|[sb]p|[89]|1[0-5])):\s*(?:\(interior\))?", row):
+        elif match := re.fullmatch(rf"(r(?:[abcd]x|[sd]i|[sb]p|[89]|1[0-5]))([+-]{HEX})?:\s*({HEX})?", row):
             require(context is not None and context.get("kind") == "stack" and "method" in context,
                     "stack-register-context")
-            current = {**context, "register": match.group(1), "nodes": []}
+            # GetRegisterOutput emits only register, optional signed hex offset,
+            # and optional stack-slot address. Never parse a local value/name.
+            current = {**context, "register": match.group(1), "offset": match.group(2),
+                       "stack_slot": match.group(3), "nodes": []}
             paths.append(current)
         elif match := re.fullmatch(rf"->\s+({HEX})\s+(.+)", row):
             require(current is not None and len(current["nodes"]) < 128, "root-node-context")
@@ -324,6 +331,35 @@ def command_output(text, dump, runtime_dir):
     require(len(rows) >= 2 and rows[:2] == [f"Loading core dump: {dump} ...",
             f"Set load path for DAC/DBI to '{runtime_dir}'"], "unknown-sos-framing")
     return "\n".join(rows[2:])
+
+
+def verify_dump_version(text):
+    """Verify native FileVersion's encoded product identity, not a product string."""
+    # Runtime v10.0.12 clrversion.h uses RuntimeFile*Version. Its pinned Arcade
+    # at VMR 6f10c96a... CalculateAssemblyAndFileVersions.cs:102-107 encodes
+    # minor*100 + patch//100; (patch%100)*100 + yy; mm*5000 + dd*100 + r.
+    # This remains additional to mapped runtime10.0.12 and exact DAC checks.
+    found = False
+    suffix = r"(?:\+[0-9a-f]+| @Commit: ?[0-9a-f]+)?"
+    for row in lines(text):
+        if match := re.fullmatch(r"(\d{1,5}(?:\.\d{1,5}){2,3})" + suffix, row):
+            version = tuple(map(int, match.group(1).split(".")))
+            if len(version) == 3:
+                require(version == (10, 0, 12), "dump-runtime-version")
+            else:
+                major, minor, build, revision = version
+                month, remainder = divmod(revision, 5000)
+                require(major == 10 and minor == 0 and build // 100 == 12
+                        and 1 <= month <= 12 and revision <= 65535
+                        and any(0 <= remainder - day * 100 <= 199 for day in range(1, 32)),
+                        "dump-runtime-version")
+            found = True
+        elif re.fullmatch(r"SOS Version: [0-9.]+" + suffix
+                          + r"|Server mode with \d+ gc heaps|Workstation mode|DATAS \d+", row):
+            pass
+        else:
+            raise Unavailable("unknown-version-output")
+    require(found, "dump-runtime-version")
 
 
 def verify_original_trx(trx_bytes):
@@ -531,13 +567,7 @@ def capture(args, private):
         return sections
 
     initial = sos(["eeversion", f"dumpheap -type {WITNESS} -short", "gchandles -type WeakShort"], "sos-inventory")
-    version_rows = lines(initial["eeversion"])
-    product = r"10\.0\.12(?:\+[0-9a-f]+| @Commit: ?[0-9a-f]+)?"
-    require(any(re.fullmatch(product, v) for v in version_rows), "dump-runtime-version")
-    require(all(re.fullmatch(r"(?:\d+(?:\.\d+){3}|" + product
-                            + r"|SOS Version: [0-9.]+(?:\+[0-9a-f]+| @Commit: ?[0-9a-f]+)?"
-                            + r"|Server mode with \d+ gc heaps|Workstation mode|DATAS \d+)", v)
-                for v in version_rows), "unknown-version-output")
+    verify_dump_version(initial["eeversion"])
     witness_ids = addresses(initial[f"dumpheap -type {WITNESS} -short"])
     require(len(witness_ids) == 1, "ambiguous-witness")
     witness_id = witness_ids[0]
@@ -780,6 +810,15 @@ class ParserControls(unittest.TestCase):
     def test_stack_and_framing(self):
         text = "Thread ab:\n1000 2000 System.Threading.Timer.Callback()\nrdi:\n-> 4000 Microsoft.Extensions.DependencyInjection.ServiceProvider\nFound 1 unique roots."
         self.assertEqual(root_paths(text, "4000")["paths"][0]["kind"], "stack")
+        helper = text.replace("System.Threading.Timer.Callback()", "[HelperMethodFrame_1OBJ] (System.Threading.Timer.Callback())")
+        helper = helper.replace("rdi:", "rsp+28: 3000")
+        path = root_paths(helper, "4000")["paths"][0]
+        self.assertEqual(path["method"], "System.Threading.Timer.Callback()")
+        self.assertEqual((path["register"], path["offset"], path["stack_slot"]), ("rsp", "+28", "3000"))
+        for bad in (helper.replace("rsp+28: 3000", "rsp+secret: 3000"),
+                    helper.replace("rsp+28: 3000", "rsp+28: secret"),
+                    helper.replace("rsp+28: 3000", "rsp+28: 3000 secret=value")):
+            self.rejects(root_paths, bad, "4000")
         self.rejects(root_paths, text, "4000", True)
         self.rejects(root_paths, "Found 0 unique roots.", "4000")
         self.assertEqual(root_paths("Found 0 unique roots.", "4000", True)["paths"], [])
@@ -790,6 +829,16 @@ class ParserControls(unittest.TestCase):
                     "unexpected secret\n" + framed, framed.replace("Set load path", "Unknown acknowledgement"),
                     "> dumpheap\nabc\n> exit\n"):
             self.rejects(command_output, bad, dump, runtime)
+
+    def test_encoded_native_runtime_version(self):
+        native = "10.0.1226.42604\n10.0.1226.42604 @Commit: " + "a" * 40
+        verify_dump_version(native + "\nWorkstation mode\nSOS Version: 10.0.745401+abc")
+        verify_dump_version("10.0.12+abc\nServer mode with 1 gc heaps\nDATAS 1")
+        for bad in (native.replace("1226", "1126"), native.replace("10.0", "10.1"),
+                    native.replace("42604", "99999"), native.replace("42604", "4999"),
+                    native + "\nsecret=value", "Workstation mode\nSOS Version: 10.0.745401",
+                    "10.0.12 @Commit: secret=value"):
+            self.rejects(verify_dump_version, bad)
 
     def test_original_trx_failure(self):
         zero = ("passed", "error", "timeout", "aborted", "inconclusive", "passedButRunAborted",
