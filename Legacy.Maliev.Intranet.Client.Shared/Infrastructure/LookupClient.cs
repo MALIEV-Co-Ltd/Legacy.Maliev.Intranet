@@ -7,9 +7,32 @@ namespace Legacy.Maliev.Intranet.Client.Shared.Infrastructure;
 /// <summary>Uses only the existing authenticated same-origin browser HttpClient.</summary>
 public sealed class LookupClient(HttpClient http)
 {
-    public Task<LookupPage<LookupArea>> SearchAreasAsync(string level, string query, LookupAddressConstraints constraints,
-        string? cursor, CancellationToken cancellationToken) => GetAsync<LookupPage<LookupArea>>(
-        "/bff/lookups/thai-addresses/" + level + AddressQuery(query, constraints, cursor), cancellationToken);
+    public async Task<LookupPage<LookupArea>> SearchAreasAsync(string level, string query, LookupAddressConstraints constraints,
+        string? cursor, CancellationToken cancellationToken)
+    {
+        var page = await GetAsync<LookupPage<LookupArea>>(
+            "/bff/lookups/thai-addresses/" + level + AddressQuery(query, constraints, cursor), cancellationToken);
+        if (page.Items.Any(area => !ValidScopedArea(area, level, constraints)))
+            throw new LookupRequestException(HttpStatusCode.BadGateway);
+        return page;
+    }
+
+    private static bool ValidScopedArea(LookupArea area, string level, LookupAddressConstraints constraints) => level switch
+    {
+        "provinces" => Digits(area.Code, 2) && area.ProvinceCode is null && area.DistrictCode is null &&
+            (constraints.ProvinceCode is null || area.Code == constraints.ProvinceCode),
+        "districts" => Digits(area.Code, 4) && Digits(area.ProvinceCode, 2) && area.DistrictCode is null &&
+            (constraints.ProvinceCode is null || area.ProvinceCode == constraints.ProvinceCode) &&
+            (constraints.DistrictCode is null || area.Code == constraints.DistrictCode),
+        "subdistricts" => Digits(area.Code, 6) && Digits(area.DistrictCode, 4) &&
+            (area.ProvinceCode is null || Digits(area.ProvinceCode, 2) &&
+                (constraints.ProvinceCode is null || area.ProvinceCode == constraints.ProvinceCode)) &&
+            (constraints.DistrictCode is null || area.DistrictCode == constraints.DistrictCode) &&
+            (constraints.SubdistrictCode is null || area.Code == constraints.SubdistrictCode),
+        _ => false
+    };
+
+    private static bool Digits(string? value, int length) => value is not null && value.Length == length && value.All(char.IsAsciiDigit);
 
     public Task<LookupAddressPage> SearchAddressesAsync(string query, LookupAddressConstraints constraints,
         string? cursor, CancellationToken cancellationToken) => GetAsync<LookupAddressPage>(

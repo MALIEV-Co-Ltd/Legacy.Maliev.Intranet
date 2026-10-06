@@ -24,6 +24,8 @@ EXPECTED = {
             "PasteUsesSessionCsrfAndRetainsOriginalTextWithoutErrorBodyLeak": 1,
             "CompanyFailureIsExplicitInsteadOfEmptyMatch": 4,
             "MalformedSuccessCannotMasqueradeAsEmptyLookup": 3,
+            "AreaResponseWithMissingOrIncompatibleParentCannotReachSelection": 6,
+            "ScopedAreaResponseCanBeSelectedWithoutParentException": 4,
         },
         UNIT + "LookupComponentTests": {
             "NonThaiManualAddressDoesNotLaunchLookupRequests": 1,

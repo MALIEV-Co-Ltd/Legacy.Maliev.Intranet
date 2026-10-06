@@ -161,6 +161,57 @@ public sealed class LookupBehaviorTests
         Assert.Equal(HttpStatusCode.BadGateway, error.StatusCode);
     }
 
+    [Theory]
+    [InlineData("districts", "1033", null, null)]
+    [InlineData("districts", "1033", "50", null)]
+    [InlineData("districts", "1033", "10", "1033")]
+    [InlineData("subdistricts", "103301", null, null)]
+    [InlineData("subdistricts", "103301", null, "5001")]
+    [InlineData("subdistricts", "103301", "50", "1033")]
+    public async Task AreaResponseWithMissingOrIncompatibleParentCannotReachSelection(
+        string level, string code, string? province, string? district)
+    {
+        var manual = new SupplierCreateRequest { Address1 = "Manual street", City = "Manual city", State = "Manual state", CountryId = 66 };
+        using var handler = new Handler(_ => new(HttpStatusCode.OK)
+        { Content = JsonContent.Create(new LookupPage<LookupArea>("v1", [new(code, "Area", null, province, district)], false, null)) });
+        using var http = new HttpClient(handler) { BaseAddress = new("https://intranet.test") };
+        using var controller = new LookupSearchController<LookupPage<LookupArea>>();
+        var accepted = false;
+        Exception? failure = null;
+        await controller.SearchAsync(ct => new LookupClient(http).SearchAreasAsync(level, "", new("10", "1033"), null, ct),
+            _ => { accepted = true; manual.City = "Unexpected selection"; }, error => failure = error, TimeSpan.Zero);
+        Assert.False(accepted);
+        Assert.Equal(HttpStatusCode.BadGateway, Assert.IsType<LookupRequestException>(failure).StatusCode);
+        Assert.Equal("Manual city", manual.City);
+        Assert.Equal("Manual street", manual.Address1);
+        Assert.Equal("Manual state", manual.State);
+        Assert.Equal(66, manual.CountryId);
+    }
+
+    [Theory]
+    [InlineData("provinces", "10", null, null)]
+    [InlineData("districts", "1033", "10", null)]
+    [InlineData("subdistricts", "103301", null, "1033")]
+    [InlineData("subdistricts", "103301", "10", "1033")]
+    public async Task ScopedAreaResponseCanBeSelectedWithoutParentException(
+        string level, string code, string? province, string? district)
+    {
+        var area = new LookupArea(code, "Area", null, province, district);
+        using var handler = new Handler(_ => new(HttpStatusCode.OK)
+        { Content = JsonContent.Create(new LookupPage<LookupArea>("v1", [area], false, null)) });
+        using var http = new HttpClient(handler) { BaseAddress = new("https://intranet.test") };
+        var page = await new LookupClient(http).SearchAreasAsync(level, "", new("10", "1033"), null, CancellationToken.None);
+        var selected = Assert.Single(page.Items);
+        var selection = LookupAddressSelection.From(Combination);
+        var applied = level switch
+        {
+            "provinces" => selection.WithProvince(selected),
+            "districts" => selection.WithDistrict(selected),
+            _ => selection.WithSubdistrict(selected)
+        };
+        Assert.Equal(code, level == "provinces" ? applied.Province!.Code : level == "districts" ? applied.District!.Code : applied.Subdistrict!.Code);
+    }
+
     internal static readonly LookupAddressCombination Combination = new(new("10", "กรุงเทพมหานคร", "Bangkok"),
         new("1033", "คลองเตย", "Khlong Toei", "10"), new("103301", "คลองเตย", "Khlong Toei", DistrictCode: "1033"), "10110");
 
