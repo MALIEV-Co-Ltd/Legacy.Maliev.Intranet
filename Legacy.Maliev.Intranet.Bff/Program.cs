@@ -147,7 +147,7 @@ builder.Services.AddHttpClient<CustomersProxy>(client =>
             .HandleResult(response => response.StatusCode == System.Net.HttpStatusCode.RequestTimeout ||
             (int)response.StatusCode >= StatusCodes.Status500InternalServerError),
     });
-});
+}).AddPrivateFailureOperationObservation("CustomerService");
 builder.Services.AddHttpClient<CustomerUpdateProxy>(client =>
 {
     client.BaseAddress = new Uri(builder.Configuration["Services:Customer"]
