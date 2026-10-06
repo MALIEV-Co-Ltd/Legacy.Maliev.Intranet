@@ -19,7 +19,7 @@ public sealed class RedisProcurementStateCollection : ICollectionFixture<RedisPr
 
 public sealed class RedisProcurementStateFixture : IAsyncLifetime
 {
-    private readonly RedisContainer redis = new RedisBuilder("redis:7.4.5-alpine").Build();
+    private readonly RedisContainer redis = ValidationContainers.Redis();
 
     public string ConnectionString => redis.GetConnectionString();
 
