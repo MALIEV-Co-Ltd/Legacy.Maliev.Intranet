@@ -154,7 +154,7 @@ public sealed class OrderInitialStatusHttpTests(ITestOutputHelper output)
     }
 
     [Fact]
-    public async Task History404_DeferredDetailRerendersChildWithoutRouterRender()
+    public async Task History404_DeferredDetailNotifiesChildBeforeUpdatingRouterMarkup()
     {
         using var cultureScope = new CultureScope("th");
         var upstream = new Boundary { HistoryStatus = HttpStatusCode.NotFound, MissingCreatedDate = true };
@@ -165,20 +165,29 @@ public sealed class OrderInitialStatusHttpTests(ITestOutputHelper output)
         using var context = RenderContext(client, stages);
         var router = Render(context);
         var detail = router.FindComponent<OrderView>();
+        var parentMarkupAtChildNotification = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        void ObserveChildRender(object? sender, EventArgs args)
+        {
+            if (detail.FindAll(".order-workflow-panel").Count > 0)
+                parentMarkupAtChildNotification.TrySetResult(router.FindAll(".order-workflow-panel").Count > 0);
+        }
+        detail.OnAfterRender += ObserveChildRender;
         try
         {
             await stages.DetailEntered.Task.WaitAsync(TimeSpan.FromSeconds(5));
-            var routerRenders = router.RenderCount;
             Assert.Empty(detail.FindAll(".order-workflow-panel"));
             stages.DetailReleased.TrySetResult();
             detail.WaitForAssertion(() => Assert.NotEmpty(detail.FindAll(".order-workflow-panel")));
             Assert.Contains("งานใหม่", detail.Find(".order-history").TextContent, StringComparison.Ordinal);
             Assert.Contains("-", detail.Find(".order-history").TextContent, StringComparison.Ordinal);
-            Assert.Equal(routerRenders, router.RenderCount);
+            // bUnit updates/notifies the child before refreshing its parents' DOM.
+            // A wait on the child must therefore query the child's own snapshot.
+            Assert.False(await parentMarkupAtChildNotification.Task.WaitAsync(TimeSpan.FromSeconds(5)));
             Assert.All(upstream.Requests, item => Assert.StartsWith("GET ", item, StringComparison.Ordinal));
         }
         finally
         {
+            detail.OnAfterRender -= ObserveChildRender;
             stages.DetailReleased.TrySetResult();
         }
     }

@@ -86,7 +86,10 @@ def launch_environment_expectations(dotnet):
              b"MSBUILDENSURESTDOUTFORTASKPROCESSES": b"1",
              b"MSBuildLoadMicrosoftTargetsReadOnly": b"true",
              b"VSTEST_DOTNET_ROOT_PATH": str(dotnet.parent).encode(),
-             b"VSTEST_DOTNET_ROOT_ARCHITECTURE": b"X64"}
+             b"VSTEST_DOTNET_ROOT_ARCHITECTURE": b"X64",
+             # SDK 10.0.401's VMR 981be135... TestTaskUtils.cs:216-219,
+             # also Test.Sdk 17.14.1:215-218: --nologo writes exactly this literal.
+             b"VSTEST_MSBUILD_NOLOGO": b"1"}
     # XMake writes precisely these two literals according to the chosen logger.
     enumerated = {b"_MSBUILDTLENABLED": frozenset((b"0", b"1"))}
     return fixed, enumerated
@@ -105,6 +108,7 @@ def verify_target_environment(target, allowed, enumerated=None):
              b"MSBUILDENSURESTDOUTFORTASKPROCESSES": "sdk-task-stdout",
              b"VSTEST_DOTNET_ROOT_PATH": "vstest-root-path",
              b"VSTEST_DOTNET_ROOT_ARCHITECTURE": "vstest-root-architecture",
+             b"VSTEST_MSBUILD_NOLOGO": "vstest-msbuild-no-logo",
              b"DOTNET_CLI_TELEMETRY_SESSIONID": "sdk-telemetry-session",
              b"MSBuildLoadMicrosoftTargetsReadOnly": "msbuild-readonly-targets",
              b"_MSBUILDTLENABLED": "msbuild-terminal-logger",
@@ -686,6 +690,9 @@ class ParserControls(unittest.TestCase):
         fixed, enumerated = launch_environment_expectations(dotnet)
         self.assertEqual(fixed[b"VSTEST_DOTNET_ROOT_PATH"], str(dotnet.parent).encode())
         self.assertEqual(fixed[b"VSTEST_DOTNET_ROOT_ARCHITECTURE"], b"X64")
+        self.assertEqual(fixed[b"VSTEST_MSBUILD_NOLOGO"], b"1")
+        for bad in (b"0", b"true", b"false", b"01", b"1 ", b"1\n"):
+            self.rejects(verify_target_environment, {b"VSTEST_MSBUILD_NOLOGO": bad}, fixed, enumerated)
         for terminal in (b"0", b"1"):
             verify_target_environment({**fixed, b"_MSBUILDTLENABLED": terminal}, fixed, enumerated)
         for key, value in fixed.items():
