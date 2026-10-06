@@ -34,6 +34,42 @@ def valid_trx():
 
 
 class FocusRetainerControls(unittest.TestCase):
+    def test_native_collector_and_identical_trx_attachment_copy_are_admitted(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            collector = root / "2f449604-cb13-4ee9-9f63-787aa8d5977f/coverage.cobertura.xml"
+            attachment = root / "_runner_2026-10-05_19_54_36/In/runner/coverage.cobertura.xml"
+            for path in (collector, attachment):
+                path.parent.mkdir(parents=True)
+                path.write_bytes(b"<coverage />")
+            self.assertEqual(collector, FOCUS.select_coverage(root, [attachment, collector]))
+
+    def test_conflicting_or_extra_native_coverage_copies_are_rejected(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            collector = root / "2f449604-cb13-4ee9-9f63-787aa8d5977f/coverage.cobertura.xml"
+            attachment = root / "_runner_2026-10-05_19_54_36/In/runner/coverage.cobertura.xml"
+            for path in (collector, attachment):
+                path.parent.mkdir(parents=True)
+                path.write_bytes(b"<coverage />")
+            attachment.write_bytes(b"<coverage different='true' />")
+            with self.assertRaisesRegex(ValueError, "conflicting coverage copies"):
+                FOCUS.select_coverage(root, [collector, attachment])
+            with self.assertRaises(ValueError):
+                FOCUS.select_coverage(root, [collector, attachment, root / "extra/coverage.cobertura.xml"])
+
+    def test_unknown_or_mismatched_attachment_layout_is_rejected(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            collector = root / "2f449604-cb13-4ee9-9f63-787aa8d5977f/coverage.cobertura.xml"
+            for relative in ("other/coverage.cobertura.xml", "_runner_2026-10-05_19_54_36/In/different/coverage.cobertura.xml"):
+                with self.subTest(relative=relative), self.assertRaisesRegex(ValueError, "unexpected coverage copy layout"):
+                    FOCUS.select_coverage(root, [collector, root / relative])
+
+    def test_missing_coverage_is_rejected(self):
+        with self.assertRaises(ValueError):
+            FOCUS.select_coverage(Path("fixture"), [])
+
     def test_failure_diagnostics_are_fixed_codes_and_never_external_details(self):
         environment = {"FOCUS_RESULTS": "fixture-results", "FOCUS_EVIDENCE": "fixture-evidence", "EXPECTED_SOURCE_REVISION": REVISION}
         failures = (

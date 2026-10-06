@@ -27,6 +27,7 @@ SAFE_FAILURE_CODES = {
         "failed or skipped case", "method cardinality mismatch", "source identity mismatch",
         "test source differs from exact commit", "evidence destination must be fresh",
         "missing or ambiguous raw evidence", "missing actual raw hits", "invalid raw hits",
+        "unexpected coverage copy layout", "conflicting coverage copies",
     )
 }
 
@@ -84,6 +85,29 @@ def verify_trx(root):
     return records
 
 
+def select_coverage(results, coverage):
+    if len(coverage) == 1:
+        return coverage[0]
+    if len(coverage) != 2:
+        raise ValueError("missing or ambiguous raw evidence")
+    collectors, attachments = [], []
+    for path in coverage:
+        parts = path.relative_to(results).parts
+        if len(parts) == 2 and re.fullmatch(r"[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}", parts[0]):
+            collectors.append(path)
+        elif len(parts) == 4 and parts[1] == "In" and re.fullmatch(r"[A-Za-z0-9_.-]{1,128}", parts[2]):
+            folder = "_" + re.escape(parts[2]) + r"_\d{4}-\d{2}-\d{2}_\d{2}_\d{2}_\d{2}"
+            if re.fullmatch(folder, parts[0]):
+                attachments.append(path)
+    if len(collectors) != 1 or len(attachments) != 1:
+        raise ValueError("unexpected coverage copy layout")
+    collector_bytes, _ = read_xml(collectors[0])
+    attachment_bytes, _ = read_xml(attachments[0])
+    if collector_bytes != attachment_bytes:
+        raise ValueError("conflicting coverage copies")
+    return collectors[0]
+
+
 def retain(repository, results, output, expected_revision):
     revision = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=repository, text=True).strip()
     if not re.fullmatch(r"[0-9a-f]{40}", expected_revision) or revision != expected_revision:
@@ -96,11 +120,11 @@ def retain(repository, results, output, expected_revision):
         raise ValueError("evidence destination must be fresh")
     trx = list(results.rglob("*.trx"))
     coverage = list(results.rglob("coverage.cobertura.xml"))
-    if len(trx) != 1 or len(coverage) != 1:
+    if len(trx) != 1:
         raise ValueError("missing or ambiguous raw evidence")
     trx_bytes, root = read_xml(trx[0])
     records = verify_trx(root)
-    raw, coverage_root = read_xml(coverage[0])
+    raw, coverage_root = read_xml(select_coverage(results, coverage))
     if coverage_root.tag != "coverage" or not coverage_root.findall("./packages/package/classes/class/lines/line"):
         raise ValueError("missing actual raw hits")
     if any(not re.fullmatch(r"\d+", line.get("hits", "")) for line in coverage_root.findall("./packages/package/classes/class/lines/line")):
@@ -118,6 +142,7 @@ def retain(repository, results, output, expected_revision):
         "testSourceSha256": hashlib.sha256(source).hexdigest(),
         "testGitBlobSha256": hashlib.sha256(committed).hexdigest(),
         "actualRawTrxSha256": hashlib.sha256(trx_bytes).hexdigest(),
+        "actualRawCoverageCopies": len(coverage),
         "passedCases": 35, "methodCardinalities": EXPECTED, "files": files,
         "scope": "Focused case inventory and actual hits only; not full-suite coverage or full-floor acceptance",
         "rawTrxRetained": False, "paramsOrOutputRetained": False,
