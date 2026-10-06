@@ -6,6 +6,7 @@ namespace Legacy.Maliev.Intranet.Bff.Catalog;
 /// <summary>Bounded Catalog requests using the BFF's existing server-held authentication.</summary>
 public sealed class LookupCatalogProxy(HttpClient http) : IDisposable
 {
+    /// <summary>Gets one bounded lookup resource with allowlisted query values.</summary>
     public async Task<HttpResponseMessage> GetAsync(string resource, IReadOnlyDictionary<string, string?> query,
         CancellationToken cancellationToken)
     {
@@ -16,6 +17,7 @@ public sealed class LookupCatalogProxy(HttpClient http) : IDisposable
         return await http.SendAsync(request, HttpCompletionOption.ResponseContentRead, cancellationToken);
     }
 
+    /// <summary>Forwards reviewed pasted text without logging the request body.</summary>
     public async Task<HttpResponseMessage> ResolveAsync(LookupResolveRequest input, CancellationToken cancellationToken)
     {
         using var request = new HttpRequestMessage(HttpMethod.Post, "/api/v1/thai-addresses/resolve")
@@ -23,5 +25,6 @@ public sealed class LookupCatalogProxy(HttpClient http) : IDisposable
         return await http.SendAsync(request, HttpCompletionOption.ResponseContentRead, cancellationToken);
     }
 
+    /// <inheritdoc />
     public void Dispose() => http.Dispose();
 }

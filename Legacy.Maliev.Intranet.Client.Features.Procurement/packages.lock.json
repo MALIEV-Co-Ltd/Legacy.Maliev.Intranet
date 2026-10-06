@@ -186,6 +186,7 @@
       "legacy.maliev.intranet.client.shared": {
         "type": "Project",
         "dependencies": {
+          "Legacy.Maliev.Intranet.Contracts": "[1.0.0, )",
           "Maliev.ShadcnBlazor": "[2.2.1, )",
           "Maliev.ShadcnBlazor.Icons.Lucide": "[2.2.1, )",
           "Microsoft.AspNetCore.Components.Web": "[10.0.12, )",

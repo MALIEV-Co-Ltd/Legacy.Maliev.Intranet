@@ -11,10 +11,13 @@ namespace Legacy.Maliev.Intranet.Bff.Catalog;
 /// <summary>Independent registration hooks; no changes to existing editors or persistence routes.</summary>
 public static class LookupEndpointExtensions
 {
+    /// <summary>Exact employee permission for administrative address lookup.</summary>
     public const string LocationsRead = "legacy-catalog.locations.read";
+    /// <summary>Exact employee permission for company suggestions.</summary>
     public const string CompaniesRead = "legacy-catalog.companies.read";
     private const string Limiter = "catalog-lookup";
 
+    /// <summary>Registers the bounded authenticated Catalog client and lookup rate limiter.</summary>
     public static IServiceCollection AddCatalogLookups(this IServiceCollection services, IConfiguration configuration)
     {
 #pragma warning disable EXTEXP0001 // Use the existing explicit no-retry BFF boundary API.
@@ -38,6 +41,7 @@ public static class LookupEndpointExtensions
         return services;
     }
 
+    /// <summary>Maps same-origin employee lookups with permissions and parsing CSRF protection.</summary>
     public static IEndpointRouteBuilder MapCatalogLookups(this IEndpointRouteBuilder app)
     {
         var addresses = app.MapGroup("/bff/lookups/thai-addresses")

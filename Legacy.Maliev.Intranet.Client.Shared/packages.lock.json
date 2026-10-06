@@ -183,6 +183,9 @@
         "type": "Transitive",
         "resolved": "10.0.12",
         "contentHash": "bLgqhSs2YS3i2sOe8Mo11JzgdktB+/VADJXx2oSCE1crpg3RbFESn1mEBfiO4MjX9icW+An1zdGBFucIwIYwmA=="
+      },
+      "legacy.maliev.intranet.contracts": {
+        "type": "Project"
       }
     }
   }
