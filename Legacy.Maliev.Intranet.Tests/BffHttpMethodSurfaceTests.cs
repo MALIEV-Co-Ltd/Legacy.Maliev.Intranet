@@ -40,6 +40,7 @@ public sealed class BffHttpMethodSurfaceTests
         { "Employee management and recovery", ["/bff/employees", "/bff/profile", "/bff/employee-recovery"], ["GET", "POST", "PUT"] },
         { "Customers", ["/bff/customers"], ["GET", "POST", "PUT"] },
         { "Catalog", ["/bff/catalog"], ["DELETE", "GET", "POST", "PUT"] },
+        { "Catalog lookups", ["/bff/lookups"], ["GET", "POST"] },
         { "Orders", ["/bff/orders", "/bff/order-processes"], ["DELETE", "GET", "POST", "PUT"] },
         { "Quotations and requests", ["/bff/quotations", "/bff/quotation-requests"], ["GET", "POST", "PUT"] },
         { "Accounting", ["/bff/finances", "/bff/invoices"], ["DELETE", "GET", "POST", "PUT"] },
@@ -53,7 +54,7 @@ public sealed class BffHttpMethodSurfaceTests
         using var factory = new AnonymousBffFactory();
         using var client = CreateClient(factory);
 
-        var actual = GetBffEndpoints(factory)
+        var actual = GetCoreBffEndpointsAfterVerifyingLookups(factory)
             .SelectMany(endpoint => endpoint.Metadata.GetMetadata<IHttpMethodMetadata>()!.HttpMethods
                 .Select(method => $"{method.ToUpperInvariant()} {endpoint.RoutePattern.RawText}"))
             .Order(StringComparer.Ordinal)
@@ -234,6 +235,33 @@ public sealed class BffHttpMethodSurfaceTests
             BaseAddress = new Uri("https://localhost"),
             HandleCookies = true,
         });
+
+    private static IReadOnlyList<RouteEndpoint> GetCoreBffEndpointsAfterVerifyingLookups(WebApplicationFactory<BffProgram> factory)
+    {
+        var endpoints = GetBffEndpoints(factory);
+        var lookupSurface = endpoints
+            .Where(endpoint => endpoint.RoutePattern.RawText!.StartsWith("/bff/lookups/", StringComparison.Ordinal))
+            .SelectMany(endpoint => endpoint.Metadata.GetMetadata<IHttpMethodMetadata>()!.HttpMethods
+                .Select(method => $"{method.ToUpperInvariant()} {endpoint.RoutePattern.RawText}"))
+            .Order(StringComparer.Ordinal)
+            .ToArray();
+        Assert.Equal(
+        [
+            "GET /bff/lookups/companies/search",
+            "GET /bff/lookups/thai-addresses/autocomplete",
+            "GET /bff/lookups/thai-addresses/districts",
+            "GET /bff/lookups/thai-addresses/postcodes",
+            "GET /bff/lookups/thai-addresses/provinces",
+            "GET /bff/lookups/thai-addresses/subdistricts",
+            "POST /bff/lookups/thai-addresses/resolve",
+        ],
+        lookupSurface);
+
+        // Both partitions have exact inventories; core counts can evolve in the owning migration.
+        return endpoints
+            .Where(endpoint => !endpoint.RoutePattern.RawText!.StartsWith("/bff/lookups/", StringComparison.Ordinal))
+            .ToArray();
+    }
 
     private static IReadOnlyList<RouteEndpoint> GetBffEndpoints(WebApplicationFactory<BffProgram> factory) =>
         factory.Services.GetServices<EndpointDataSource>()

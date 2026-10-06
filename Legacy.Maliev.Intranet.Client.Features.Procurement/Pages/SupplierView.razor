@@ -26,6 +26,7 @@
             <DataAnnotationsValidator />
             <section class="supplier-editor-section" aria-labelledby="supplier-edit-heading">
                 <h2 id="supplier-edit-heading">@Fields["Supplier"]</h2>
+                <LookupCompanyAssist Id="supplier-edit-company-lookup" Selected="ApplyCompanySuggestion" Disabled="@submitting" />
                 <div class="supplier-editor-grid">
                     <ProcurementInputField TValue="string" Id="supplier-edit-name" Label="@Fields["Name"]" @bind-Value="model.Name" Required="true" MaxLength="256" Disabled="@submitting" />
                     <ProcurementInputField TValue="string" Id="supplier-edit-website" Label="@Fields["Website"]" Type="url" @bind-Value="model.Website" Disabled="@submitting" />
@@ -40,6 +41,7 @@
 
             <section class="supplier-editor-section" aria-labelledby="supplier-edit-address-heading">
                 <h2 id="supplier-edit-address-heading">@Fields["Address"]</h2>
+                <LookupAddressAssist Id="supplier-edit-address-lookup" SelectionChanged="ApplyAddressSuggestion" DetailConfirmed="ApplyAddressDetail" CountryKey="@(model.CountryId.ToString(CultureInfo.InvariantCulture))" Disabled="@submitting" />
                 <div class="supplier-editor-grid">
                     <ProcurementInputField TValue="string" Id="supplier-edit-building" Label="@Fields["Building"]" @bind-Value="model.Building" Disabled="@submitting" />
                     <ProcurementInputField TValue="string" Id="supplier-edit-address-1" Label="@Fields["Address1"]" @bind-Value="model.Address1" Required="true" Disabled="@submitting" />
@@ -76,6 +78,26 @@
 </main>
 
 @code {
+    private void ApplyCompanySuggestion(LookupCompany value)
+    {
+        if (submitting) return;
+        LookupSupplierSuggestions.ApplyCompany(model, value, CultureInfo.CurrentUICulture.TwoLetterISOLanguageName == "th");
+        editContext.NotifyFieldChanged(new FieldIdentifier(model, nameof(model.Name)));
+        editContext.NotifyFieldChanged(new FieldIdentifier(model, nameof(model.TaxNumber)));
+    }
+    private void ApplyAddressSuggestion(LookupAddressSelection value)
+    {
+        if (submitting) return;
+        LookupSupplierSuggestions.ApplyAddress(model, value);
+        foreach (var field in new[] { nameof(model.City), nameof(model.State), nameof(model.PostalCode) })
+            editContext.NotifyFieldChanged(new FieldIdentifier(model, field));
+    }
+    private void ApplyAddressDetail(string value)
+    {
+        if (submitting) return;
+        model.Address1 = value;
+        editContext.NotifyFieldChanged(new FieldIdentifier(model, nameof(model.Address1)));
+    }
     [SupplyParameterFromQuery(Name = "id")] public int Id { get; set; }
     private readonly SupplierCreateRequest model = new();
     private SupplierDetail? detail;
