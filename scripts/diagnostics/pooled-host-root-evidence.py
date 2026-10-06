@@ -316,26 +316,14 @@ def root_paths(text, target, non_stack=False):
     return {"paths": paths, "capped": summary == 32}
 
 
-def transcript(text, commands, dump):
-    """Strip only exact tool framing; command result parsers reject everything else."""
-    sections = []
-    active = None
-    for row in text.splitlines():
-        if row == f"Loading core dump: {dump}":
-            continue
-        if row in ("Ready to process analysis commands. Type 'help' to list available commands or 'help [command]' to get detailed help on a command.",
-                   "Type 'quit' or 'exit' to exit the session.") or not row.strip():
-            continue
-        if row.startswith("> "):
-            command = row[2:]
-            require(command in commands and command not in [c for c, _ in sections], "unexpected-sos-command")
-            active = []
-            sections.append((command, active))
-        else:
-            require(active is not None, "unknown-sos-framing")
-            active.append(row)
-    require([c for c, _ in sections] == commands, "sos-command-order")
-    return {command: "\n".join(rows) for command, rows in sections}
+def command_output(text, dump, runtime_dir):
+    """Exact pinned noninteractive framing; result parsers reject every other line."""
+    # v10.0.745401 Analyzer.cs:42,114-123 runs --command without REPL echoes;
+    # SetClrPathCommand.cs:60 prints this exact acknowledgement for an argument.
+    rows = lines(text)
+    require(len(rows) >= 2 and rows[:2] == [f"Loading core dump: {dump} ...",
+            f"Set load path for DAC/DBI to '{runtime_dir}'"], "unknown-sos-framing")
+    return "\n".join(rows[2:])
 
 
 def verify_original_trx(trx_bytes):
@@ -532,13 +520,14 @@ def capture(args, private):
                     test.wait(timeout=5)
 
     def sos(commands, label):
-        all_commands = [f"setclrpath {runtime_dir}", *commands, "exit"]
-        command = [str(tool), "analyze", str(dump)]
-        for value in all_commands:
-            command.extend(["--command", value])
-        text = run_private(command, env, private, private, label)
-        sections = transcript(text, all_commands, dump)
-        require(not sections[all_commands[0]].strip() and not sections["exit"].strip(), "sos-setup-output")
+        sections = {}
+        # One result per process avoids inferring boundaries between unframed
+        # --command outputs. Exact DAC acknowledgement remains mandatory.
+        for index, value in enumerate(commands):
+            command = [str(tool), "analyze", str(dump), "--command", f"setclrpath {runtime_dir}",
+                       "--command", value, "--command", "exit"]
+            text = run_private(command, env, private, private, f"{label}-{index}")
+            sections[value] = command_output(text, dump, runtime_dir)
         return sections
 
     initial = sos(["eeversion", f"dumpheap -type {WITNESS} -short", "gchandles -type WeakShort"], "sos-inventory")
@@ -794,9 +783,13 @@ class ParserControls(unittest.TestCase):
         self.rejects(root_paths, text, "4000", True)
         self.rejects(root_paths, "Found 0 unique roots.", "4000")
         self.assertEqual(root_paths("Found 0 unique roots.", "4000", True)["paths"], [])
-        self.assertEqual(transcript("> dumpheap\nabc\n> exit\n", ["dumpheap", "exit"], Path("/private/heap"))["dumpheap"], "abc")
-        self.rejects(transcript, "unexpected secret\n> exit", ["exit"], Path("/private/heap"))
-        self.rejects(transcript, "> dumpobj\nsecret\n> exit", ["exit"], Path("/private/heap"))
+        dump, runtime = Path("/private/heap"), Path("/pinned/runtime")
+        framed = f"Loading core dump: {dump} ...\nSet load path for DAC/DBI to '{runtime}'\nabc\n"
+        self.assertEqual(command_output(framed, dump, runtime), "abc")
+        for bad in (framed.replace("heap ...", "heap"), framed.replace(str(runtime), str(Path("/wrong/runtime"))),
+                    "unexpected secret\n" + framed, framed.replace("Set load path", "Unknown acknowledgement"),
+                    "> dumpheap\nabc\n> exit\n"):
+            self.rejects(command_output, bad, dump, runtime)
 
     def test_original_trx_failure(self):
         zero = ("passed", "error", "timeout", "aborted", "inconclusive", "passedButRunAborted",
