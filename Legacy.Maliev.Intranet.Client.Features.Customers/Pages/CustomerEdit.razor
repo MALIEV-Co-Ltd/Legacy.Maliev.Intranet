@@ -1,0 +1,288 @@
+@page "/Customers/Edit"
+@attribute [Authorize]
+@implements IDisposable
+@using System.ComponentModel.DataAnnotations
+@using System.Text.Json
+@using Microsoft.AspNetCore.Components.Forms
+@inject HttpClient Http
+@inject NavigationManager Navigation
+@inject IStringLocalizer<CustomerEdit> Text
+
+<PageTitle>@Text["PageTitle"]</PageTitle>
+
+<main class="customer-edit" aria-busy="@((loading || saving).ToString().ToLowerInvariant())">
+    <header class="operations-page-header">
+        <div><h1>@Text["Heading"]</h1><p>@Text["Description"]</p></div>
+        <ShadcnButton ButtonType="ShadcnButtonType.Button" Variant="ShadcnButtonVariant.Outline" OnClick="ReloadAsync" Disabled="@(loading || saving)">@Text["Reload"]</ShadcnButton>
+    </header>
+    @if (error is not null)
+    {
+        <ShadcnAlert Variant="ShadcnAlertVariant.Destructive" AlertRole="ShadcnAlertRole.Alert"><ShadcnAlertDescription>@error</ShadcnAlertDescription></ShadcnAlert>
+    }
+    @if (notice is not null)
+    {
+        <ShadcnAlert AlertRole="ShadcnAlertRole.Status"><ShadcnAlertDescription>@notice</ShadcnAlertDescription></ShadcnAlert>
+    }
+    @if (loading)
+    {
+        <div class="customer-edit__loading" role="status" aria-live="polite"><ShadcnSpinner Label="@Text["Loading"]" Size="1.25rem" /><span>@Text["Loading"]</span></div>
+    }
+    else if (captured is not null && captured.Profile.Id == Id)
+    {
+        @if (saveLocked) { <p role="status">@Text["ReloadRequired"]</p> }
+        <EditForm EditContext="@editContext" OnSubmit="HandleSubmitAsync" data-save-locked="@saveLocked.ToString().ToLowerInvariant()" data-customer-id="@captured.Profile.Id">
+            <section class="customer-edit__section" aria-labelledby="customer-edit-profile">
+                <h2 id="customer-edit-profile">@Text["Profile"]</h2>
+                <div class="customer-edit__grid">
+                    <ShadcnFormField Id="customer-edit-first" Label="@Text["FirstName"]" Error="@ValidationFor(nameof(Model.FirstName))" Required="true"><Control><ShadcnInput TValue="string" id="customer-edit-first" @bind-Value="model.FirstName" maxlength="256" Required="true" Disabled="@FieldsDisabled" /></Control></ShadcnFormField>
+                    <ShadcnFormField Id="customer-edit-last" Label="@Text["LastName"]" Error="@ValidationFor(nameof(Model.LastName))" Required="true"><Control><ShadcnInput TValue="string" id="customer-edit-last" @bind-Value="model.LastName" maxlength="256" Required="true" Disabled="@FieldsDisabled" /></Control></ShadcnFormField>
+                    <ShadcnFormField Id="customer-edit-email" Label="@Text["Email"]" Error="@ValidationFor(nameof(Model.Email))" Required="true"><Control><ShadcnInput TValue="string" id="customer-edit-email" Type="email" @bind-Value="model.Email" maxlength="256" Required="true" Disabled="@FieldsDisabled" /></Control></ShadcnFormField>
+                    <ShadcnFormField Id="customer-edit-phone" Label="@Text["Telephone"]" Error="@ValidationFor(nameof(Model.Telephone))"><Control><ShadcnInput TValue="string" id="customer-edit-phone" Type="tel" @bind-Value="model.Telephone" maxlength="64" Disabled="@FieldsDisabled" /></Control></ShadcnFormField>
+                    <ShadcnFormField Id="customer-edit-mobile" Label="@Text["Mobile"]" Error="@ValidationFor(nameof(Model.Mobile))"><Control><ShadcnInput TValue="string" id="customer-edit-mobile" Type="tel" @bind-Value="model.Mobile" maxlength="64" Disabled="@FieldsDisabled" /></Control></ShadcnFormField>
+                    <ShadcnFormField Id="customer-edit-fax" Label="@Text["Fax"]" Error="@ValidationFor(nameof(Model.Fax))"><Control><ShadcnInput TValue="string" id="customer-edit-fax" Type="tel" @bind-Value="model.Fax" maxlength="64" Disabled="@FieldsDisabled" /></Control></ShadcnFormField>
+                    <ShadcnFormField Id="customer-edit-dob" Label="@Text["DateOfBirth"]"><Control><ShadcnDatePicker id="customer-edit-dob" @bind-Value="DateOfBirth" Clearable="true" CalendarLabel="@Text["DateOfBirth"]" Disabled="@FieldsDisabled" /></Control></ShadcnFormField>
+                </div>
+                <p>@Text["SharedEmail"]</p>
+            </section>
+            <section class="customer-edit__section" aria-labelledby="customer-edit-account">
+                <h2 id="customer-edit-account">@Text["Account"]</h2>
+                <div class="customer-edit__checks">
+                    <ShadcnField Orientation="ShadcnFieldOrientation.Horizontal" Disabled="@FieldsDisabled"><ShadcnCheckbox id="customer-edit-email-confirmed" Value="@model.EmailConfirmed" ValueChanged="@(value => model.EmailConfirmed = value.GetValueOrDefault())" Disabled="@FieldsDisabled" /><ShadcnFieldLabel For="customer-edit-email-confirmed">@Text["EmailConfirmed"]</ShadcnFieldLabel></ShadcnField>
+                    <ShadcnField Orientation="ShadcnFieldOrientation.Horizontal" Disabled="@FieldsDisabled"><ShadcnCheckbox id="customer-edit-phone-confirmed" Value="@model.PhoneNumberConfirmed" ValueChanged="@(value => model.PhoneNumberConfirmed = value.GetValueOrDefault())" Disabled="@FieldsDisabled" /><ShadcnFieldLabel For="customer-edit-phone-confirmed">@Text["PhoneConfirmed"]</ShadcnFieldLabel></ShadcnField>
+                    <ShadcnField Orientation="ShadcnFieldOrientation.Horizontal" Disabled="@FieldsDisabled"><ShadcnCheckbox id="customer-edit-lockout" Value="@model.LockoutEnabled" ValueChanged="@(value => model.LockoutEnabled = value.GetValueOrDefault())" Disabled="@FieldsDisabled" /><ShadcnFieldLabel For="customer-edit-lockout">@Text["LockoutEnabled"]</ShadcnFieldLabel></ShadcnField>
+                </div>
+                <p>@Text["ProtectedSettings"]</p>
+                <dl class="customer-edit__protected">
+                    <dt>@Text["TwoFactor"]</dt><dd>@(captured.Identity.TwoFactorEnabled ? Text["Enabled"] : Text["Disabled"])</dd>
+                    <dt>@Text["LockoutEnd"]</dt><dd>@(captured.Identity.LockoutEnd?.ToString("g", System.Globalization.CultureInfo.CurrentCulture) ?? Text["NotProvided"])</dd>
+                </dl>
+            </section>
+            <div class="customer-edit__actions">
+                <ShadcnButton ButtonType="ShadcnButtonType.Submit" OperationFeedback="false" Disabled="@FieldsDisabled">@(saving ? Text["Saving"] : Text["Save"])</ShadcnButton>
+                <LegacyLink Href="@($"/Customers/View?id={Id}")" Role="LegacyLinkRole.Navigation" Disabled="@saving" AriaLabel="@Text["Back"]">@Text["Back"]</LegacyLink>
+            </div>
+        </EditForm>
+    }
+    else if (!loading && error is null)
+    {
+        <p role="status">@Text["NotFound"]</p>
+    }
+</main>
+
+@code {
+    [SupplyParameterFromQuery(Name = "id")]
+    public int Id { get; set; }
+
+    private CustomerAdministrationEdit? captured;
+    private Model model = new();
+    private EditContext editContext = null!;
+    private ValidationMessageStore validation = null!;
+    private CancellationTokenSource? loadCancellation;
+    private CancellationTokenSource? saveCancellation;
+    private long generation;
+    private bool disposed;
+    private bool loading;
+    private bool saving;
+    private bool saveLocked = true;
+    private string? error;
+    private string? notice;
+    private bool FieldsDisabled => disposed || loading || saving || saveLocked || captured?.Profile.Id != Id;
+    private static readonly JsonSerializerOptions ResponseJson = new(JsonSerializerDefaults.Web);
+
+    protected override Task OnParametersSetAsync()
+    {
+        if (!saving) return ReloadAsync();
+        ++generation;
+        loadCancellation?.Cancel();
+        saveCancellation?.Cancel();
+        saveLocked = true;
+        notice = null;
+        error = Text["NavigationChanged"];
+        return Task.CompletedTask;
+    }
+
+    private bool Current(long sequence, int customerId) => !disposed && sequence == generation && customerId == Id;
+
+    private async Task ReloadAsync()
+    {
+        if (disposed || saving) return;
+        var sequence = ++generation;
+        var customerId = Id;
+        loadCancellation?.Cancel();
+        using var cancellation = LegacyPresentation.CreateRequestTimeout();
+        loadCancellation = cancellation;
+        captured = null;
+        loading = true;
+        saveLocked = true;
+        error = notice = null;
+        try
+        {
+            if (customerId <= 0) { error = Text["NotFound"]; return; }
+            using var response = await Http.GetAsync($"/bff/customers/{customerId}/edit", cancellation.Token);
+            if (!Current(sequence, customerId)) return;
+            if (response.StatusCode == HttpStatusCode.Unauthorized) { RedirectToLogin(); return; }
+            if (!response.IsSuccessStatusCode) { error = StatusMessage(response.StatusCode); return; }
+            var edit = await response.Content.ReadFromJsonAsync<CustomerAdministrationEdit>(cancellationToken: cancellation.Token);
+            if (!Current(sequence, customerId)) return;
+            if (edit?.Profile is null || edit.Identity is null || edit.Profile.Id != customerId
+                || !CustomerAdministrationVersion.IsProfile(edit.ProfileVersion)
+                || !CustomerAdministrationVersion.IsBound(customerId, edit.Identity, edit.IdentityVersion)
+                || string.IsNullOrWhiteSpace(edit.Profile.FirstName) || string.IsNullOrWhiteSpace(edit.Profile.LastName)
+                || string.IsNullOrWhiteSpace(edit.Profile.Email))
+            { error = Text["InvalidResponse"]; return; }
+            captured = edit;
+            model = new()
+            {
+                FirstName = edit.Profile.FirstName, LastName = edit.Profile.LastName, Email = edit.Profile.Email,
+                Telephone = edit.Profile.Telephone, Mobile = edit.Profile.Mobile, Fax = edit.Profile.Fax,
+                DateOfBirth = edit.Profile.DateOfBirth, EmailConfirmed = edit.Identity.EmailConfirmed,
+                PhoneNumberConfirmed = edit.Identity.PhoneNumberConfirmed, LockoutEnabled = edit.Identity.LockoutEnabled,
+            };
+            editContext = new(model);
+            validation = new(editContext);
+            saveLocked = false;
+        }
+        catch (Exception exception) when (exception is HttpRequestException or OperationCanceledException or JsonException or IOException or InvalidOperationException)
+        {
+            if (Current(sequence, customerId)) error = Text["Unavailable"];
+        }
+        finally
+        {
+            if (Current(sequence, customerId)) loading = false;
+            if (ReferenceEquals(loadCancellation, cancellation)) loadCancellation = null;
+        }
+    }
+
+    private Task HandleSubmitAsync(EditContext _) => SaveAsync();
+
+    private async Task SaveAsync()
+    {
+        if (FieldsDisabled || captured is null || !Validate()) return;
+        var customerId = Id;
+        var sequence = generation;
+        var input = new CustomerAdministrationSaveRequest(model.FirstName, model.LastName, model.Email,
+            model.Telephone, model.Mobile, model.Fax, model.DateOfBirth, model.EmailConfirmed,
+            model.PhoneNumberConfirmed, model.LockoutEnabled, captured.ProfileVersion, captured.IdentityVersion);
+        using var cancellation = LegacyPresentation.CreateRequestTimeout();
+        saveCancellation = cancellation;
+        saving = true;
+        error = notice = null;
+        var dispatched = false;
+        try
+        {
+            using var sessionResponse = await Http.GetAsync("/bff/session", cancellation.Token);
+            if (!Current(sequence, customerId)) return;
+            if (sessionResponse.StatusCode == HttpStatusCode.Unauthorized) { RedirectToLogin(); return; }
+            if (!sessionResponse.IsSuccessStatusCode) { error = Text["SessionUnavailable"]; return; }
+            var session = await sessionResponse.Content.ReadFromJsonAsync<EmployeeSessionSummary>(cancellationToken: cancellation.Token);
+            if (!Current(sequence, customerId)) return;
+            if (session?.IsAuthenticated != true || string.IsNullOrWhiteSpace(session.CsrfToken)) { error = Text["SessionUnavailable"]; return; }
+            using var request = new HttpRequestMessage(HttpMethod.Put, $"/bff/customers/{customerId}/edit") { Content = JsonContent.Create(input) };
+            request.Headers.Add("X-CSRF-TOKEN", session.CsrfToken);
+            cancellation.Token.ThrowIfCancellationRequested();
+            dispatched = true;
+            saveLocked = true;
+            using var response = await Http.SendAsync(request, cancellation.Token);
+            if (!Current(sequence, customerId)) return;
+            var result = await ReadSaveResultAsync(response.Content, cancellation.Token);
+            if (!Current(sequence, customerId)) return;
+            if (result is null || result.StatusCode != (int)response.StatusCode || result.OutcomeUnknown)
+            { error = Text["UnknownOutcome"]; return; }
+            if (response.StatusCode == HttpStatusCode.OK && result.Stage == "complete") { notice = Text["Saved"]; return; }
+            if (result.CompletedStages.Count != 0) { error = Text["PartialCompletion"]; return; }
+            error = response.StatusCode is HttpStatusCode.PreconditionFailed or HttpStatusCode.Conflict
+                ? Text["Stale"] : StatusMessage(response.StatusCode);
+        }
+        catch (Exception exception) when (exception is HttpRequestException or OperationCanceledException or JsonException or IOException or InvalidOperationException)
+        {
+            if (Current(sequence, customerId)) error = Text[dispatched ? "UnknownOutcome" : "SessionUnavailable"];
+        }
+        finally
+        {
+            saving = false;
+            if (ReferenceEquals(saveCancellation, cancellation)) saveCancellation = null;
+        }
+    }
+
+    private static async Task<CustomerAdministrationSaveResult?> ReadSaveResultAsync(HttpContent content, CancellationToken token)
+    {
+        var json = await content.ReadFromJsonAsync<JsonElement>(cancellationToken: token);
+        if (json.ValueKind != JsonValueKind.Object) return null;
+        var fields = new Dictionary<string, JsonElement>(StringComparer.OrdinalIgnoreCase);
+        foreach (var field in json.EnumerateObject()) if (!fields.TryAdd(field.Name, field.Value)) return null;
+        if (fields.Count != 4 || !fields.TryGetValue("Stage", out var stage) || stage.ValueKind != JsonValueKind.String
+            || !fields.TryGetValue("CompletedStages", out var completed) || completed.ValueKind != JsonValueKind.Array
+            || completed.EnumerateArray().Any(value => value.ValueKind != JsonValueKind.String)
+            || !fields.TryGetValue("OutcomeUnknown", out var unknown) || unknown.ValueKind is not (JsonValueKind.True or JsonValueKind.False)
+            || !fields.TryGetValue("StatusCode", out var status) || status.ValueKind != JsonValueKind.Number || !status.TryGetInt32(out var code)
+            || code is < 100 or > 599) return null;
+        var result = json.Deserialize<CustomerAdministrationSaveResult>(ResponseJson);
+        if (result?.CompletedStages is null) return null;
+        var valid = result.Stage switch
+        {
+            "validation" or "preflight" => result.CompletedStages.Count == 0 && !result.OutcomeUnknown && code >= 400,
+            "profile" => result.CompletedStages.Count == 0 && code >= 400,
+            "identity" => result.CompletedStages.SequenceEqual(new[] { "profile" }) && code >= 400,
+            "complete" => result.CompletedStages.SequenceEqual(new[] { "profile", "identity" }) && !result.OutcomeUnknown && code == 200,
+            _ => false,
+        };
+        return valid ? result : null;
+    }
+
+    private bool Validate()
+    {
+        validation.Clear();
+        void Add(string field, string key) => validation.Add(new FieldIdentifier(model, field), Text[key]);
+        if (string.IsNullOrWhiteSpace(model.FirstName)) Add(nameof(Model.FirstName), "Required");
+        if (string.IsNullOrWhiteSpace(model.LastName)) Add(nameof(Model.LastName), "Required");
+        if (string.IsNullOrWhiteSpace(model.Email) || !new EmailAddressAttribute().IsValid(model.Email)) Add(nameof(Model.Email), "InvalidEmail");
+        else if (!System.Text.RegularExpressions.Regex.IsMatch(model.Email, @"\A[a-zA-Z0-9._@+-]+\z")) Add(nameof(Model.Email), "InvalidUsername");
+        if (!string.IsNullOrEmpty(model.Telephone) && !new PhoneAttribute().IsValid(model.Telephone)) Add(nameof(Model.Telephone), "InvalidPhone");
+        foreach (var field in new[] { (nameof(Model.FirstName), model.FirstName, 256), (nameof(Model.LastName), model.LastName, 256),
+            (nameof(Model.Email), model.Email, 256), (nameof(Model.Telephone), model.Telephone, 64),
+            (nameof(Model.Mobile), model.Mobile, 64), (nameof(Model.Fax), model.Fax, 64) })
+            if (field.Item2?.Length > field.Item3) Add(field.Item1, "InvalidLength");
+        editContext.NotifyValidationStateChanged();
+        if (!editContext.GetValidationMessages().Any()) return true;
+        error = Text["ValidationFailed"];
+        return false;
+    }
+
+    private string StatusMessage(HttpStatusCode status) => status switch
+    {
+        HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden => Text["Forbidden"],
+        HttpStatusCode.NotFound => Text["NotFound"],
+        HttpStatusCode.BadRequest => Text["ValidationFailed"],
+        HttpStatusCode.TooManyRequests => Text["RateLimited"],
+        HttpStatusCode.BadGateway => Text["InvalidResponse"],
+        _ => Text["Unavailable"],
+    };
+    private string? ValidationFor(string field) => editContext.GetValidationMessages(new FieldIdentifier(model, field)).FirstOrDefault();
+    private DateOnly? DateOfBirth
+    {
+        get => model.DateOfBirth is { } date ? DateOnly.FromDateTime(date) : null;
+        set => model.DateOfBirth = value?.ToDateTime(TimeOnly.MinValue);
+    }
+    private void RedirectToLogin() => Navigation.NavigateTo($"/Login?returnUrl={Uri.EscapeDataString(Navigation.ToBaseRelativePath(Navigation.Uri))}");
+    public void Dispose()
+    {
+        disposed = true;
+        ++generation;
+        loadCancellation?.Cancel();
+        saveCancellation?.Cancel();
+        // Each awaited operation owns and disposes its cancellation source in its using scope.
+    }
+    private sealed class Model
+    {
+        public string FirstName { get; set; } = string.Empty;
+        public string LastName { get; set; } = string.Empty;
+        public string Email { get; set; } = string.Empty;
+        public string? Telephone { get; set; }
+        public string? Mobile { get; set; }
+        public string? Fax { get; set; }
+        public DateTime? DateOfBirth { get; set; }
+        public bool EmailConfirmed { get; set; }
+        public bool PhoneNumberConfirmed { get; set; }
+        public bool LockoutEnabled { get; set; }
+    }
+}

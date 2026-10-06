@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <data name="PageTitle" xml:space="preserve"><value>แก้ไขลูกค้า - MALIEV Intranet</value></data>
+  <data name="Heading" xml:space="preserve"><value>แก้ไขลูกค้า</value></data>
+  <data name="Description" xml:space="preserve"><value>บันทึกข้อมูลลูกค้าก่อน แล้วจึงบันทึกสถานะบัญชีที่เชื่อมโยง การเปลี่ยนแปลงข้ามบริการไม่ใช่ธุรกรรมเดียวกัน</value></data>
+  <data name="Reload" xml:space="preserve"><value>โหลดข้อมูลปัจจุบันใหม่</value></data>
+  <data name="Loading" xml:space="preserve"><value>กำลังโหลดข้อมูลลูกค้าและบัญชี</value></data>
+  <data name="Profile" xml:space="preserve"><value>ข้อมูลลูกค้า</value></data>
+  <data name="FirstName" xml:space="preserve"><value>ชื่อ</value></data>
+  <data name="LastName" xml:space="preserve"><value>นามสกุล</value></data>
+  <data name="Email" xml:space="preserve"><value>อีเมล</value></data>
+  <data name="Telephone" xml:space="preserve"><value>โทรศัพท์</value></data>
+  <data name="Mobile" xml:space="preserve"><value>มือถือ</value></data>
+  <data name="Fax" xml:space="preserve"><value>โทรสาร</value></data>
+  <data name="DateOfBirth" xml:space="preserve"><value>วันเกิด</value></data>
+  <data name="SharedEmail" xml:space="preserve"><value>อีเมลใช้เป็นชื่อผู้ใช้ของบัญชีที่เชื่อมโยงด้วย โดยไม่เปลี่ยนความสัมพันธ์ของบริษัทและที่อยู่</value></data>
+  <data name="Account" xml:space="preserve"><value>บัญชีที่เชื่อมโยง</value></data>
+  <data name="EmailConfirmed" xml:space="preserve"><value>ยืนยันอีเมลแล้ว</value></data>
+  <data name="PhoneConfirmed" xml:space="preserve"><value>ยืนยันโทรศัพท์แล้ว</value></data>
+  <data name="LockoutEnabled" xml:space="preserve"><value>เปิดใช้งานการล็อกบัญชี</value></data>
+  <data name="ProtectedSettings" xml:space="preserve"><value>การยืนยันตัวตนสองขั้นตอนและเวลาสิ้นสุดการล็อกเป็นข้อมูลอ่านอย่างเดียว และเซิร์ฟเวอร์จะคงค่าเดิม</value></data>
+  <data name="TwoFactor" xml:space="preserve"><value>การยืนยันตัวตนสองขั้นตอน</value></data>
+  <data name="LockoutEnd" xml:space="preserve"><value>เวลาสิ้นสุดการล็อก</value></data>
+  <data name="Enabled" xml:space="preserve"><value>เปิดใช้งาน</value></data>
+  <data name="Disabled" xml:space="preserve"><value>ปิดใช้งาน</value></data>
+  <data name="NotProvided" xml:space="preserve"><value>ไม่มีข้อมูล</value></data>
+  <data name="Save" xml:space="preserve"><value>บันทึกลูกค้าและบัญชี</value></data>
+  <data name="Saving" xml:space="preserve"><value>กำลังบันทึก…</value></data>
+  <data name="Back" xml:space="preserve"><value>กลับไปข้อมูลลูกค้า</value></data>
+  <data name="ReloadRequired" xml:space="preserve"><value>กรุณาโหลดข้อมูลใหม่ก่อนบันทึกอีกครั้ง ระบบจะไม่ส่งคำขอบันทึกซ้ำโดยอัตโนมัติ</value></data>
+  <data name="Saved" xml:space="preserve"><value>บันทึกข้อมูลลูกค้าและสถานะบัญชีแล้ว กรุณาโหลดข้อมูลใหม่ก่อนแก้ไขอีกครั้ง</value></data>
+  <data name="PartialCompletion" xml:space="preserve"><value>บันทึกข้อมูลลูกค้าแล้ว แต่การแก้ไขบัญชียังไม่สำเร็จ กรุณาโหลดข้อมูลปัจจุบันเพื่อตรวจสอบ อย่าบันทึกซ้ำ</value></data>
+  <data name="UnknownOutcome" xml:space="preserve"><value>ไม่สามารถยืนยันผลการบันทึกได้ กรุณาโหลดข้อมูลปัจจุบันเพื่อตรวจสอบก่อนดำเนินการต่อ</value></data>
+  <data name="Stale" xml:space="preserve"><value>ข้อมูลลูกค้าหรือบัญชีมีการเปลี่ยนแปลง กรุณาโหลดใหม่ก่อนบันทึกอีกครั้ง</value></data>
+  <data name="NavigationChanged" xml:space="preserve"><value>มีการเปลี่ยนลูกค้าที่เลือกขณะบันทึก กรุณาโหลดข้อมูลลูกค้ารายนี้ใหม่ก่อนดำเนินการต่อ</value></data>
+  <data name="SessionUnavailable" xml:space="preserve"><value>ไม่สามารถตรวจสอบเซสชันปัจจุบันได้ ยังไม่ได้ส่งคำขอบันทึก</value></data>
+  <data name="Forbidden" xml:space="preserve"><value>คุณไม่มีสิทธิ์แก้ไขข้อมูลลูกค้าและบัญชีนี้</value></data>
+  <data name="NotFound" xml:space="preserve"><value>ไม่พบลูกค้า</value></data>
+  <data name="Unavailable" xml:space="preserve"><value>ระบบแก้ไขข้อมูลลูกค้าไม่พร้อมใช้งานชั่วคราว</value></data>
+  <data name="InvalidResponse" xml:space="preserve"><value>เซิร์ฟเวอร์ส่งข้อมูลลูกค้าหรือบัญชีที่ไม่ครบถ้วนหรือไม่ถูกต้อง</value></data>
+  <data name="RateLimited" xml:space="preserve"><value>มีคำขอมากเกินไป กรุณารอก่อนโหลดข้อมูลใหม่</value></data>
+  <data name="Required" xml:space="preserve"><value>กรุณากรอกข้อมูลนี้</value></data>
+  <data name="InvalidEmail" xml:space="preserve"><value>กรุณากรอกอีเมลที่ถูกต้อง</value></data>
+  <data name="InvalidPhone" xml:space="preserve"><value>กรุณากรอกหมายเลขโทรศัพท์ที่ถูกต้อง</value></data>
+  <data name="InvalidLength" xml:space="preserve"><value>ข้อมูลนี้ยาวเกินกำหนด</value></data>
+  <data name="ValidationFailed" xml:space="preserve"><value>กรุณาตรวจสอบช่องข้อมูลที่ระบุก่อนบันทึก</value></data>
+  <data name="InvalidUsername" xml:space="preserve"><value>อีเมลต้องใช้เฉพาะตัวอักษร ASCII ตัวเลข จุด ขีดล่าง @ เครื่องหมายบวก หรือขีดกลาง</value></data>
+</root>

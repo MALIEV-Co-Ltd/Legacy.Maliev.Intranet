@@ -1,0 +1,70 @@
+name: Focused customer administration consumer evidence
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: customer-administration-join-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  customer-administration-consumer:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      MalievWorkspaceRoot: ${{ github.workspace }}/.dependencies
+      LEGACY_DEPLOY_ENABLED: 'false'
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - name: Check out exact consumer
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Check out exact ServiceDefaults
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: MALIEV-Co-Ltd/Legacy.Maliev.ServiceDefaults
+          ref: 7edcd961024868513fd5f373cab3dcb261197f77
+          path: .dependencies/Legacy.Maliev.ServiceDefaults
+          persist-credentials: false
+      - name: Check out exact CompatibilityContracts
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: MALIEV-Co-Ltd/Legacy.Maliev.CompatibilityContracts
+          ref: 78e48ffc4ee000df0510cba5e7c7a3c4c4d539d7
+          path: .dependencies/Legacy.Maliev.CompatibilityContracts
+          persist-credentials: false
+      - name: Set up .NET
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68
+        with:
+          dotnet-version: 10.0.x
+      - name: Verify immutable dependencies and offline verifier controls
+        run: |
+          test "$(git -C .dependencies/Legacy.Maliev.ServiceDefaults rev-parse HEAD)" = 7edcd961024868513fd5f373cab3dcb261197f77
+          test "$(git -C .dependencies/Legacy.Maliev.CompatibilityContracts rev-parse HEAD)" = 78e48ffc4ee000df0510cba5e7c7a3c4c4d539d7
+          python3 -B -m unittest discover -s acceptance/CustomerAdministration -p 'test_*.py'
+      - name: Build actual consumer project before focused executions
+        run: |
+          export GITHUB_ACTIONS=false
+          dotnet build Legacy.Maliev.Intranet.Tests/Legacy.Maliev.Intranet.Tests.csproj --configuration Release --warnaserror --no-incremental -p:UseLocalMalievDependencies=true -p:EnableCoverageSymbols=true --nologo
+      - name: Execute focused normal cookie BFF and real component contracts
+        run: |
+          export GITHUB_ACTIONS=false
+          dotnet test Legacy.Maliev.Intranet.Tests/Legacy.Maliev.Intranet.Tests.csproj --configuration Release --no-build --no-restore -p:UseLocalMalievDependencies=true --filter 'FullyQualifiedName~Legacy.Maliev.Intranet.Tests.CustomerAdministrationContractTests|FullyQualifiedName~Legacy.Maliev.Intranet.Tests.BffCustomerAdministrationCoordinatorTests|FullyQualifiedName~Legacy.Maliev.Intranet.Tests.CustomerAdministrationUiTests' --logger 'trx;LogFileName=customer-administration.trx' --collect:'XPlat Code Coverage' --settings coverage.runsettings --results-directory "$RUNNER_TEMP/customer-administration-results" --nologo
+      - name: Verify exact actual executions and preserve only sanitized evidence
+        run: |
+          python3 -B acceptance/CustomerAdministration/retain.py --root . --source "$(git rev-parse HEAD)" --results "$RUNNER_TEMP/customer-administration-results" --output "$RUNNER_TEMP/customer-administration-sanitized"
+      - name: Retain sanitized focused receipt and actual raw coverage
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: customer-administration-consumer-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/customer-administration-sanitized/
+          if-no-files-found: error
+          retention-days: 7
