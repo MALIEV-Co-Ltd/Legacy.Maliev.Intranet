@@ -9,4 +9,6 @@
   <data name="OrderDetails" xml:space="preserve"><value>Order details</value></data>
   <data name="RemoveFile" xml:space="preserve"><value>Remove {0}</value></data>
   <data name="FilesTooLarge" xml:space="preserve"><value>The combined file size cannot exceed 100 MB.</value></data>
+  <data name="FinishLoading" xml:space="preserve"><value>Loading surface finishes for this material.</value></data>
+  <data name="FinishRetry" xml:space="preserve"><value>Reload surface finishes</value></data>
 </root>

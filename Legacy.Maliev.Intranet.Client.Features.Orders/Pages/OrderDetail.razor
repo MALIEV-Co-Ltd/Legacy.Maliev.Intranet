@@ -1,5 +1,6 @@
 @page "/Orders/View"
 @attribute [Authorize]
+@implements IDisposable
 @inject HttpClient Http
 @inject NavigationManager Navigation
 @inject IStringLocalizer<OrderDetail> Text
@@ -52,9 +53,14 @@ else if (page is not null)
 
             <ShadcnAccordionItem Value="process"><ShadcnAccordionTrigger>@Text["Process"]</ShadcnAccordionTrigger><ShadcnAccordionContent><div class="order-edit-grid">
                 <ShadcnFormField Id="order-process" Label="@Text["Process"]"><Control><ShadcnSelect TValue="int" id="order-process" @bind-Value="edit.ProcessId" Options="@ProcessOptions" Placeholder="@Text["Process"]" Clearable="false" /></Control></ShadcnFormField>
-                <ShadcnFormField Id="order-material" Label="@Text["Material"]"><Control><ShadcnSelect TValue="int?" id="order-material" @bind-Value="edit.MaterialId" Options="@MaterialOptions" Placeholder="@Text["Material"]" Clearable="true" /></Control></ShadcnFormField>
+                <ShadcnFormField Id="order-material" Label="@Text["Material"]"><Control><ShadcnSelect TValue="int?" id="order-material" Value="@edit.MaterialId" ValueChanged="MaterialChangedAsync" Options="@MaterialOptions" Placeholder="@Text["Material"]" Clearable="true" Disabled="@submitting" /></Control></ShadcnFormField>
                 <ShadcnFormField Id="order-color" Label="@Text["Color"]"><Control><ShadcnSelect TValue="int?" id="order-color" @bind-Value="edit.ColorId" Options="@ColorOptions" Placeholder="@Text["Color"]" Clearable="true" /></Control></ShadcnFormField>
-                <ShadcnFormField Id="order-finish" Label="@Text["SurfaceFinish"]"><Control><ShadcnSelect TValue="int?" id="order-finish" @bind-Value="edit.SurfaceFinishId" Options="@SurfaceFinishOptions" Placeholder="@Text["SurfaceFinish"]" Clearable="true" /></Control></ShadcnFormField>
+                <ShadcnFormField Id="order-finish" Label="@Text["SurfaceFinish"]"><Control><ShadcnSelect TValue="int?" id="order-finish" @bind-Value="edit.SurfaceFinishId" Options="@SurfaceFinishOptions" Placeholder="@Text["SurfaceFinish"]" Clearable="true" Disabled="@(submitting || finishLoading || finishError is not null)" /></Control></ShadcnFormField>
+                @if (finishLoading) { <p role="status" aria-live="polite">@Text["FinishLoading"]</p> }
+                @if (finishError is not null)
+                {
+                    <div role="alert"><p>@finishError</p><ShadcnButton OnClick="RetryFinishesAsync" Disabled="@submitting">@Text["FinishRetry"]</ShadcnButton></div>
+                }
             </div></ShadcnAccordionContent></ShadcnAccordionItem>
 
             <ShadcnAccordionItem Value="price"><ShadcnAccordionTrigger>@Text["UnitPrice"]</ShadcnAccordionTrigger><ShadcnAccordionContent><div class="order-edit-grid">
@@ -82,7 +88,7 @@ else if (page is not null)
                 </div>
             </ShadcnAccordionContent></ShadcnAccordionItem>
         </ShadcnAccordion>
-        <div class="order-save-bar"><ShadcnButton ButtonType="ShadcnButtonType.Submit" OperationFeedback="false" Disabled="@submitting">@Text["Save"]</ShadcnButton></div>
+        <div class="order-save-bar"><ShadcnButton ButtonType="ShadcnButtonType.Submit" OperationFeedback="false" Disabled="@(submitting || finishLoading || finishError is not null)">@Text["Save"]</ShadcnButton></div>
     </EditForm>
 
     <section class="order-workflow-panel">
@@ -130,6 +136,12 @@ else if (page is not null)
     private int? selectedStatus;
     private bool loading = true;
     private bool submitting;
+    private bool finishLoading;
+    private bool disposed;
+    private long finishGeneration;
+    private CancellationTokenSource? finishCancellation;
+    private string? finishError;
+    private IReadOnlyList<OrderLookupItem> finishes = [];
     private string? error;
     private string? uploadError;
     private string? notice;
@@ -140,7 +152,7 @@ else if (page is not null)
     private IReadOnlyList<ShadcnSelectOption<int>> ProcessOptions => (page?.Processes ?? []).Select(item => new ShadcnSelectOption<int>(item.Id, item.Name)).ToArray();
     private IReadOnlyList<ShadcnSelectOption<int?>> MaterialOptions => (page?.Materials ?? []).Select(item => new ShadcnSelectOption<int?>(item.Id, item.Name)).ToArray();
     private IReadOnlyList<ShadcnSelectOption<int?>> ColorOptions => (page?.Colors ?? []).Select(item => new ShadcnSelectOption<int?>(item.Id, item.Name)).ToArray();
-    private IReadOnlyList<ShadcnSelectOption<int?>> SurfaceFinishOptions => (page?.SurfaceFinishes ?? []).Select(item => new ShadcnSelectOption<int?>(item.Id, item.Name)).ToArray();
+    private IReadOnlyList<ShadcnSelectOption<int?>> SurfaceFinishOptions => finishes.Select(item => new ShadcnSelectOption<int?>(item.Id, item.Name)).ToArray();
     private IReadOnlyList<ShadcnSelectOption<int?>> CurrencyOptions => (page?.Currencies ?? []).Select(item => new ShadcnSelectOption<int?>(item.Id, item.ShortName)).ToArray();
     private IReadOnlyList<ShadcnSelectOption<int?>> StatusOptions => (page?.AvailableStatuses ?? []).Select(item => new ShadcnSelectOption<int?>(item.Id, StatusLabel(item.Name))).ToArray();
     private DateOnly? PromisedDate { get => edit.PromisedDate is DateTime date ? DateOnly.FromDateTime(date) : null; set => edit.PromisedDate = value?.ToDateTime(TimeOnly.MinValue); }
@@ -150,6 +162,8 @@ else if (page is not null)
 
     private async Task LoadAsync()
     {
+        CancelFinishes();
+        finishLoading = false; finishError = null;
         loading = true; error = null;
         if (Id is not > 0) { error = Text["InvalidId"]; loading = false; return; }
         try
@@ -165,6 +179,7 @@ else if (page is not null)
             page = await response.Content.ReadFromJsonAsync<OrderDetailPage>();
             if (page is null) { error = Text["InvalidResponse"]; return; }
             edit = OrderEditModel.From(page.Order);
+            finishes = page.SurfaceFinishes;
             selectedStatus = null;
         }
         catch (HttpRequestException) { error = Text["Unavailable"]; }
@@ -173,9 +188,77 @@ else if (page is not null)
 
     private async Task SaveAsync()
     {
-        if (page is null || session?.CsrfToken is null) return;
+        if (page is null || session?.CsrfToken is null || submitting || finishLoading || finishError is not null) return;
         if (edit.ProcessId <= 0 || edit.Quantity <= 0 || edit.Manufactured < 0 || string.IsNullOrWhiteSpace(edit.Name)) { error = Text["InvalidRequest"]; return; }
         await SendWriteAsync(HttpMethod.Put, $"/bff/orders/{page.Order.Id}", JsonContent.Create(edit.ToRequest()), Text["OrderSaved"]);
+    }
+
+    private Task RetryFinishesAsync() => MaterialChangedAsync(edit.MaterialId, true);
+
+    private Task MaterialChangedAsync(int? materialId) => MaterialChangedAsync(materialId, false);
+
+    private async Task MaterialChangedAsync(int? materialId, bool retry)
+    {
+        if (disposed || submitting || page is null || (!retry && materialId == edit.MaterialId)) return;
+        CancelFinishes();
+        finishLoading = false;
+        finishError = null;
+        if (materialId is not null && !page.Materials.Any(item => item.Id == materialId))
+        {
+            finishError = Text["InvalidRequest"];
+            return;
+        }
+        edit.MaterialId = materialId;
+        if (materialId is null)
+        {
+            finishes = [];
+            edit.SurfaceFinishId = null;
+            return;
+        }
+
+        var generation = finishGeneration;
+        var orderId = page.Order.Id;
+        using var cancellation = LegacyPresentation.CreateRequestTimeout();
+        finishCancellation = cancellation;
+        finishLoading = true;
+        bool Current() => !disposed && generation == finishGeneration && Id == orderId && edit.MaterialId == materialId;
+        try
+        {
+            using var response = await Http.GetForPresentationAsync($"/bff/catalog/materials/{materialId.Value}/surface-finishes", cancellation.Token);
+            if (!Current()) return;
+            if (!response.IsSuccessStatusCode) { finishError = ErrorFor(response.StatusCode); return; }
+            var choices = await response.Content.ReadFromJsonAsync<List<CatalogMaterialSurfaceFinish>>(cancellationToken: cancellation.Token);
+            if (!Current()) return;
+            if (choices is null || choices.Any(item => item is null || item.Id <= 0 || string.IsNullOrWhiteSpace(item.Name)) || choices.Select(item => item.Id).Distinct().Count() != choices.Count)
+            {
+                finishError = Text["InvalidResponse"];
+                return;
+            }
+            finishes = choices.Select(item => new OrderLookupItem(item.Id, item.Name)).ToArray();
+            if (edit.SurfaceFinishId is int selected && !finishes.Any(item => item.Id == selected)) edit.SurfaceFinishId = null;
+        }
+        catch (Exception exception) when (exception is HttpRequestException or OperationCanceledException or System.Text.Json.JsonException)
+        {
+            if (Current()) finishError = Text["Unavailable"];
+        }
+        finally
+        {
+            if (Current()) finishLoading = false;
+            if (ReferenceEquals(finishCancellation, cancellation)) finishCancellation = null;
+        }
+    }
+
+    private void CancelFinishes()
+    {
+        finishGeneration++;
+        finishCancellation?.Cancel();
+        finishCancellation = null;
+    }
+
+    public void Dispose()
+    {
+        disposed = true;
+        CancelFinishes();
     }
 
     private async Task TransitionAsync()

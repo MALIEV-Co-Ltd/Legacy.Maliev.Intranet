@@ -64,4 +64,6 @@
   <data name="OrderDetails" xml:space="preserve"><value>รายละเอียดใบสั่งผลิต</value></data>
   <data name="RemoveFile" xml:space="preserve"><value>ลบ {0}</value></data>
   <data name="FilesTooLarge" xml:space="preserve"><value>ขนาดไฟล์รวมต้องไม่เกิน 100 MB</value></data>
+  <data name="FinishLoading" xml:space="preserve"><value>กำลังโหลดการตกแต่งผิวสำหรับวัสดุนี้</value></data>
+  <data name="FinishRetry" xml:space="preserve"><value>โหลดการตกแต่งผิวอีกครั้ง</value></data>
 </root>
