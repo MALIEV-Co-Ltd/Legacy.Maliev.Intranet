@@ -67,6 +67,58 @@ public sealed class LookupSupplierBrowserTests(IntranetClientServerFixture serve
         await Assertions.Expect(page.Locator("#supplier-tax-number")).ToHaveValueAsync("0123456789012");
     }
 
+    [Fact]
+    public async Task PastedAddressRequiresCandidateReviewAndExplicitApply()
+    {
+        await using var context = await playwright.Browser.NewContextAsync();
+        var page = await context.NewPageAsync();
+        await SessionAsync(page);
+        const string pasted = "1 Main Road Bangkok 10110";
+        string? csrf = null, requestBody = null;
+        var combination = JsonSerializer.Deserialize<JsonElement>(Combination);
+        await page.RouteAsync("**/bff/lookups/thai-addresses/**", route =>
+        {
+            if (route.Request.Method != "POST")
+                return route.FulfillAsync(new() { ContentType = "application/json", Body = "{\"datasetVersion\":\"v1\",\"items\":[],\"hasMore\":false,\"nextCursor\":null}" });
+            route.Request.Headers.TryGetValue("x-csrf-token", out csrf);
+            requestBody = route.Request.PostData;
+            return route.FulfillAsync(new() { ContentType = "application/json", Body = JsonSerializer.Serialize(new
+            {
+                datasetVersion = "v1", originalText = pasted, normalizedText = pasted,
+                outcome = "exact", candidates = new[] { combination }, hasMore = false,
+                uniqueFields = new { province = combination.GetProperty("province"), district = combination.GetProperty("district"), subdistrict = combination.GetProperty("subdistrict"), postcode = "10110" },
+                detailText = "1 Main Road", extractedSpans = Array.Empty<object>(), conflicts = Array.Empty<string>()
+            }) });
+        });
+        await page.GotoAsync(new Uri(server.BaseUri, "/Suppliers/Create").AbsoluteUri);
+        await page.Locator("#supplier-address-1").FillAsync("Original street");
+        await page.Locator("#supplier-address-2").FillAsync("Floor 2");
+        await page.Locator("#supplier-country-id").FillAsync("66");
+        await page.Locator("#supplier-address-lookup-enabled").ClickAsync();
+        await page.Locator("#supplier-address-lookup-paste").FillAsync(pasted);
+        await page.GetByRole(AriaRole.Button, new() { Name = "Extract address fields", Exact = true }).ClickAsync();
+        var apply = page.GetByRole(AriaRole.Button, new() { Name = "Apply reviewed address", Exact = true });
+        await Assertions.Expect(apply).ToBeDisabledAsync();
+        await Assertions.Expect(page.Locator("#supplier-address-lookup-preview-detail")).ToHaveValueAsync("1 Main Road");
+        await Assertions.Expect(page.Locator("#supplier-address-1")).ToHaveValueAsync("Original street");
+        var candidate = page.GetByRole(AriaRole.Combobox, new() { Name = "Matching address and postcode", Exact = true });
+        await candidate.FocusAsync();
+        await candidate.PressAsync("ArrowDown");
+        await candidate.PressAsync("Enter");
+        await Assertions.Expect(apply).ToBeEnabledAsync();
+        await Assertions.Expect(page.Locator("#supplier-address-1")).ToHaveValueAsync("Original street");
+        await page.Locator("#supplier-address-lookup-preview-detail").FillAsync("Reviewed street");
+        await apply.ClickAsync();
+        await Assertions.Expect(page.Locator("#supplier-address-1")).ToHaveValueAsync("Reviewed street");
+        await Assertions.Expect(page.Locator("#supplier-state")).ToHaveValueAsync("กรุงเทพมหานคร");
+        await Assertions.Expect(page.Locator("#supplier-postal-code")).ToHaveValueAsync("10110");
+        await Assertions.Expect(page.Locator("#supplier-address-2")).ToHaveValueAsync("Floor 2");
+        await Assertions.Expect(page.Locator("#supplier-country-id")).ToHaveValueAsync("66");
+        Assert.Equal("csrf", csrf);
+        Assert.Equal(pasted, JsonSerializer.Deserialize<JsonElement>(requestBody!).GetProperty("text").GetString());
+        await Assertions.Expect(page.Locator("#blazor-error-ui")).ToBeHiddenAsync();
+    }
+
     private static Task SessionAsync(IPage page) => page.RouteAsync("**/bff/session", route => route.FulfillAsync(new()
     {
         ContentType = "application/json", Body = JsonSerializer.Serialize(new

@@ -16,7 +16,7 @@ remain unchanged until an explicit administrative selection. Pagination preserve
 
 Pasted addresses retain their original text, show exact/ambiguous/not-found/conflict
 outcomes, and require a reviewed candidate and an explicit apply action before
-replacing street detail. More-than-preview ambiguity requires further narrowing.
+replacing street detail. More-than-preview ambiguity is visibly flagged for further narrowing.
 Provider outcomes and lookup permission failures remain visible; manual input is
 available throughout. Company suggestions apply only returned names and tax IDs,
 with no invented status, website, contacts or registered address.
@@ -117,7 +117,9 @@ tests cover manual foreign addresses and accessible failure feedback. Normal-coo
 BFF tests cover exact permissions, unauthorized access, filters, CSRF, upstream
 failure status, no retries and payload leakage. Playwright tests exercise rendered
 postcode-first keyboard selection/detail preservation and company manual fallback
-using controlled responses. Mocked responses are not real joined acceptance.
+using controlled responses. Additional cases verify pasted-text preview, explicit candidate
+review and apply, successful normal-cookie CSRF forwarding, empty/overlong parser text,
+and the 16-KiB body bound with unknown content length. Mocked responses are not real joined acceptance.
 
 Hosted evidence at commit `7904222967830a4e785966a4f16ee50b6d9327a6`:
 
@@ -137,7 +139,10 @@ Hosted evidence at commit `7904222967830a4e785966a4f16ee50b6d9327a6`:
 
 At `11e7388f`, finance run `37432706730` again built with zero warnings/errors and
 passed 35/35 existing finance regressions; context admission `37432706781` passed.
-The additional manual-field preservation correction requires its own hosted result.
+At `7d2991b8`, finance run `37433183642` built with zero warnings/errors and passed
+35/35 existing finance regressions; context admission `37433183843` passed.
+Normal validation `37433183957` was running before the parser acceptance additions.
+The new parser review and body-bound regressions require their own hosted result.
 
 The solution suites ran on the earlier published head, with failures limited to missing BFF startup
 routes. A separate focused lookup pass, formatting, native coverage and real joined

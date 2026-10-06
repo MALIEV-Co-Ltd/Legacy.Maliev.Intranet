@@ -102,6 +102,55 @@ public sealed class LookupBffProxyTests
         Assert.Equal(HttpStatusCode.BadGateway, response.StatusCode);
     }
 
+    [Fact]
+    public async Task PasteWithCookieAndCsrfForwardsBoundedTextAndPreservesResolution()
+    {
+        const string text = "1 Main Road Bangkok 10110";
+        using var downstream = new Handler();
+        await using var factory = new Factory(downstream, true);
+        using var client = Client(factory);
+        await SignInAsync(client);
+        using var sessionResponse = await client.GetAsync("/bff/session");
+        var session = await sessionResponse.Content.ReadFromJsonAsync<JsonElement>();
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/bff/lookups/thai-addresses/resolve")
+            { Content = JsonContent.Create(new LookupResolveRequest(text, new(Postcode: "10110"))) };
+        request.Headers.Add("X-CSRF-TOKEN", session.GetProperty("csrfToken").GetString());
+        using var response = await client.SendAsync(request);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var result = await response.Content.ReadFromJsonAsync<LookupResolveResponse>();
+        Assert.Equal(text, result?.OriginalText);
+        Assert.Equal("1 Main Road", result?.DetailText);
+        Assert.Equal("exact", result?.Outcome);
+        Assert.Equal("/api/v1/thai-addresses/resolve", downstream.Path);
+        Assert.Equal("Bearer service-only-token", downstream.Authorization);
+        Assert.Equal(text, downstream.ResolveInput?.Text);
+        Assert.Equal("10110", downstream.ResolveInput?.Constraints?.Postcode);
+        Assert.Equal(1, downstream.Calls);
+    }
+
+    [Theory]
+    [InlineData(0, false, HttpStatusCode.BadRequest)]
+    [InlineData(2049, false, HttpStatusCode.BadRequest)]
+    [InlineData(1, true, HttpStatusCode.RequestEntityTooLarge)]
+    public async Task InvalidOrOversizedPastedBodyStopsBeforeCatalog(int textLength, bool oversized, HttpStatusCode expected)
+    {
+        using var downstream = new Handler();
+        await using var factory = new Factory(downstream, true);
+        using var client = Client(factory);
+        await SignInAsync(client);
+        using var sessionResponse = await client.GetAsync("/bff/session");
+        var session = await sessionResponse.Content.ReadFromJsonAsync<JsonElement>();
+        var payload = JsonSerializer.Serialize(new { text = new string('x', textLength) });
+        if (oversized) payload = new string(' ', 17 * 1024) + payload;
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/bff/lookups/thai-addresses/resolve")
+            { Content = new UnknownLengthContent(payload) };
+        request.Content.Headers.ContentType = new("application/json");
+        request.Headers.Add("X-CSRF-TOKEN", session.GetProperty("csrfToken").GetString());
+        using var response = await client.SendAsync(request);
+        Assert.Equal(expected, response.StatusCode);
+        Assert.Equal(0, downstream.Calls);
+    }
+
     private static HttpClient Client(WebApplicationFactory<BffProgram> factory) => factory.CreateClient(new()
         { AllowAutoRedirect = false, BaseAddress = new("https://localhost"), HandleCookies = true });
 
@@ -154,6 +203,13 @@ public sealed class LookupBffProxyTests
         public Task<CustomerIdentityResponse?> CreateCustomerIdentityAsync(int id, CreateCustomerIdentityRequest input, string token, CancellationToken ct) => Task.FromResult<CustomerIdentityResponse?>(null);
         public Task<EmployeeIdentityResponse?> CreateEmployeeIdentityAsync(int id, CreateEmployeeIdentityRequest input, string token, CancellationToken ct) => Task.FromResult<EmployeeIdentityResponse?>(null);
     }
+    private sealed class UnknownLengthContent(string payload) : HttpContent
+    {
+        protected override async Task SerializeToStreamAsync(Stream stream, TransportContext? context) =>
+            await stream.WriteAsync(System.Text.Encoding.UTF8.GetBytes(payload));
+        protected override bool TryComputeLength(out long length) { length = 0; return false; }
+    }
+
     private sealed class Handler : HttpMessageHandler
     {
         public HttpStatusCode Status { get; init; } = HttpStatusCode.OK;
@@ -161,13 +217,21 @@ public sealed class LookupBffProxyTests
         public string? Path { get; private set; }
         public string? Authorization { get; private set; }
         public int Calls { get; private set; }
-        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
+        public LookupResolveRequest? ResolveInput { get; private set; }
+        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
         {
             Calls++; Path = request.RequestUri?.PathAndQuery; Authorization = request.Headers.Authorization?.ToString();
+            if (request.Method == HttpMethod.Post)
+            {
+                ResolveInput = await request.Content!.ReadFromJsonAsync<LookupResolveRequest>(cancellationToken: ct);
+                return new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(new LookupResolveResponse(
+                    "v1", ResolveInput!.Text, ResolveInput.Text, "exact", [LookupBehaviorTests.Combination], false,
+                    new(null, null, null, null), "1 Main Road", [], [])) };
+            }
             HttpContent content = Status != HttpStatusCode.OK ? new StringContent("private-provider-data") :
                 Invalid ? new StringContent("{}", System.Text.Encoding.UTF8, "application/json") :
                 JsonContent.Create(new LookupAddressPage("v1", [LookupBehaviorTests.Combination], false, null));
-            return Task.FromResult(new HttpResponseMessage(Status) { Content = content });
+            return new HttpResponseMessage(Status) { Content = content };
         }
     }
 }
