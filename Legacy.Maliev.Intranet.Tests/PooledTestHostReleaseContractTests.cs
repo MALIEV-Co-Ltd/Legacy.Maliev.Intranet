@@ -57,6 +57,22 @@ public sealed class PooledTestHostReleaseContractTests(ITestOutputHelper output)
         Assert.Equal(1, transportDisposals);
     }
 
+    [Fact]
+    public async Task LiveParentOwner_TracksDisposedDerivedFactoryAndProvider()
+    {
+        await using var parent = new WebApplicationFactory<BffProgram>();
+        var roots = await ExerciseAndDisposeDerivedAsync(parent);
+        GC.Collect();
+        GC.WaitForPendingFinalizers();
+        GC.Collect();
+        // Pinned WebApplicationFactory stores derived factories in the parent owner.
+        // This control keeps that owner deliberately alive, unlike the release Fact.
+        // The helper returns only weak witnesses, so no caller local owns the child.
+        Assert.True(roots.Factory.IsAlive);
+        Assert.True(roots.Provider.IsAlive);
+        GC.KeepAlive(parent);
+    }
+
     private async Task SignalRootCaptureAsync()
     {
         if (Environment.GetEnvironmentVariable("MALIEV_POOLED_HOST_ROOT_DIAGNOSTICS") != "synthetic-isolated-v1") return;
@@ -96,8 +112,15 @@ public sealed class PooledTestHostReleaseContractTests(ITestOutputHelper output)
     [MethodImpl(MethodImplOptions.NoInlining)]
     private static async Task<RetainedHost> ExerciseAndDisposeAsync()
     {
+        await using var parent = new WebApplicationFactory<BffProgram>();
+        return await ExerciseAndDisposeDerivedAsync(parent);
+    }
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static async Task<RetainedHost> ExerciseAndDisposeDerivedAsync(WebApplicationFactory<BffProgram> parent)
+    {
         var disposal = new DisposalCount();
-        await using var factory = new WebApplicationFactory<BffProgram>().WithWebHostBuilder(builder =>
+        await using var factory = parent.WithWebHostBuilder(builder =>
         {
             builder.UseEnvironment("Testing");
             TestJwtConfiguration.Configure(builder);
