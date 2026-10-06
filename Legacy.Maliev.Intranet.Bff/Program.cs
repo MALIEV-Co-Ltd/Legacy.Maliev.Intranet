@@ -132,6 +132,7 @@ builder.Services.AddHttpClient<CustomersProxy>(client =>
     client.Timeout = TimeSpan.FromSeconds(10);
 }).RemoveAllResilienceHandlers()
     .AddHttpMessageHandler<LegacyServiceAuthenticationHandler>()
+    .AddPrivateFailureOperationObservation("CustomerService")
     .AddResilienceHandler("customer-list", pipeline =>
 {
     pipeline.AddRetry(new Microsoft.Extensions.Http.Resilience.HttpRetryStrategyOptions
