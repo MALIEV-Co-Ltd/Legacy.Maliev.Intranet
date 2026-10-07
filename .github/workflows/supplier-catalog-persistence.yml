@@ -81,6 +81,7 @@ jobs:
         run: pwsh -NoProfile -File acceptance/SupplierCatalogPersistence/bin/Release/net10.0/playwright.ps1 install --with-deps chromium
       - name: Exercise real Catalog selection, supplier save, API readback and reload
         id: proof
+        timeout-minutes: 8
         run: |
           export GITHUB_ACTIONS=false
           dotnet test acceptance/SupplierCatalogPersistence/SupplierCatalogPersistence.AcceptanceTests.csproj -c Release --no-build --no-restore -p:UseLocalMalievDependencies=true --logger 'trx;LogFileName=supplier-persistence.trx' --results-directory "$RUNNER_TEMP/supplier-persistence-results" --nologo

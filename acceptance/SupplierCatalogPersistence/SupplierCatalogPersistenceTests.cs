@@ -62,7 +62,8 @@ public sealed class SupplierCatalogPersistenceTests
         var readonlyEmployee = Token(signingKey, service: false, ["legacy-catalog.locations.read"]);
         var settings = new Dictionary<string, string?>
         {
-            ["Jwt:Issuer"] = Issuer, ["Jwt:Audience"] = Audience,
+            ["Jwt:Issuer"] = Issuer,
+            ["Jwt:Audience"] = Audience,
             ["Jwt:PublicKey"] = Convert.ToBase64String(Encoding.UTF8.GetBytes(signingKey.ExportSubjectPublicKeyInfoPem())),
             ["ConnectionStrings:redis"] = redis.GetConnectionString(),
             ["ConnectionStrings:SupplierDbContext"] = postgres.GetConnectionString(),
@@ -239,8 +240,14 @@ public sealed class SupplierCatalogPersistenceTests
         builder.WebHost.UseUrls("http://127.0.0.1:0");
         var app = builder.Build();
         app.MapPost("/auth/v1/login", (JsonElement body) => body.GetProperty("password").GetString() == "synthetic-disposable"
-            ? Results.Ok(new { accessToken = body.GetProperty("email").GetString() == "readonly-proof@maliev.com" ? readOnly : employee,
-                refreshToken = Guid.NewGuid().ToString("N"), tokenType = "Bearer", expiresIn = 900, refreshExpiresAt = DateTimeOffset.UtcNow.AddHours(1) })
+            ? Results.Ok(new
+            {
+                accessToken = body.GetProperty("email").GetString() == "readonly-proof@maliev.com" ? readOnly : employee,
+                refreshToken = Guid.NewGuid().ToString("N"),
+                tokenType = "Bearer",
+                expiresIn = 900,
+                refreshExpiresAt = DateTimeOffset.UtcNow.AddHours(1)
+            })
             : Results.Unauthorized());
         app.MapPost("/auth/v1/service/login", (JsonElement body) => body.GetProperty("clientId").GetString() == "supplier-proof" && body.GetProperty("clientSecret").GetString() == secret
             ? Results.Ok(new { accessToken = workload, expiresIn = 900 }) : Results.Unauthorized());
