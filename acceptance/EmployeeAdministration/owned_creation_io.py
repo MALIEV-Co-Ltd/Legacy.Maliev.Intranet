@@ -40,7 +40,11 @@ def creation_identity(process):
     except FileNotFoundError:
         # A zombie retains its birth record but no executable link. The retained
         # Popen handle must independently prove exit; never infer a live identity.
+        deadline = time.monotonic() + 0.25
         code = process.poll()
+        while code is None and time.monotonic() < deadline:
+            time.sleep(0.005)
+            code = process.poll()
         if code is None:
             raise
         identity.update(actualExecutable=None, identityObservedAfterExit=True,

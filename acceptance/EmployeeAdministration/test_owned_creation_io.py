@@ -29,7 +29,13 @@ class OwnedIOControls(unittest.TestCase):
             self.assertIsNone(value["actualExecutable"])
             self.assertTrue(value["identityObservedAfterExit"])
             self.assertEqual(0, value["terminalReturnCode"])
-            with self.assertRaises(FileNotFoundError):
+            observed = iter((None, 0))
+            with patch.object(io.time, "sleep"):
+                delayed = io.creation_identity(SimpleNamespace(pid=123, poll=lambda: next(observed)))
+            self.assertEqual("4321", delayed["startTicks"])
+            self.assertIsNone(delayed["actualExecutable"])
+            self.assertEqual(0, delayed["terminalReturnCode"])
+            with patch.object(io.time, "monotonic", side_effect=(0, 1)), self.assertRaises(FileNotFoundError):
                 io.creation_identity(SimpleNamespace(pid=123, poll=lambda: None))
 
     def test_normal_capture_observes_actual_exit(self):
