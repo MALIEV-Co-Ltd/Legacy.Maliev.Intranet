@@ -1,6 +1,11 @@
 name: Supplier Catalog persistence proof
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - 'acceptance/SupplierCatalogPersistence/**'
+      - '.github/workflows/supplier-catalog-persistence.yml'
   pull_request:
     branches: [main]
     paths:
@@ -26,7 +31,7 @@ jobs:
       - name: Check out exact Intranet candidate
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
-          ref: ${{ github.event.pull_request.head.sha }}
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
       - name: Check out reviewed Catalog lookup producer
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
@@ -91,7 +96,7 @@ jobs:
         env:
           PROOF_RESULTS: ${{ runner.temp }}/supplier-persistence-results
           PROOF_EVIDENCE: ${{ runner.temp }}/supplier-persistence-evidence
-          CANDIDATE_HEAD: ${{ github.event.pull_request.head.sha }}
+          CANDIDATE_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
           BUILD_OUTCOME: ${{ steps.build.outcome }}
           EXECUTION_OUTCOME: ${{ steps.proof.outcome }}
         run: python3 -B acceptance/SupplierCatalogPersistence/retain.py
