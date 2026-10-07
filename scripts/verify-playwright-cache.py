@@ -16,9 +16,33 @@ def metadata(package, project, host):
         raise ValueError("Unreviewed Playwright host platform")
     declared = [node.attrib.get("Version") for node in ET.parse(project).iter("PackageReference")
                 if node.attrib.get("Include") == "Microsoft.Playwright.Xunit"]
-    version = json.loads((package / "package.json").read_text())["version"]
-    if declared != [version] or not re.fullmatch(r"\d+\.\d+\.\d+", version):
-        raise ValueError("Built Playwright driver does not match pinned project package")
+    if len(declared) != 1 or not re.fullmatch(r"\d+\.\d+\.\d+", declared[0] or ""):
+        raise ValueError("Explicit pinned project Playwright version required")
+    version = declared[0]
+    # .NET 1.61.0's official Version.props pins this different embedded driver.
+    reviewed_drivers = {"1.61.0": "1.61.1-beta-1782139630000"}
+    driver = json.loads((package / "package.json").read_text())["version"]
+    if reviewed_drivers.get(version) != driver:
+        raise ValueError("Built Playwright driver does not match reviewed pinned project package")
+    assets = json.loads((project.parent / "obj" / "project.assets.json").read_text())
+    for name in ("Microsoft.Playwright", "Microsoft.Playwright.Xunit", "Microsoft.Playwright.TestAdapter"):
+        matches = [key for key in assets["libraries"] if key.startswith(name + "/")]
+        if matches != [name + "/" + version]:
+            raise ValueError("Resolved NuGet Playwright package identity mismatch")
+        library = assets["libraries"][matches[0]]
+        if library.get("type") != "package" or library.get("path") != name.lower() + "/" + version:
+            raise ValueError("Resolved NuGet Playwright package path mismatch")
+        targets = list(assets.get("targets", {}).values())
+        if not targets or any(target.get(matches[0], {}).get("type") != "package" for target in targets):
+            raise ValueError("Resolved NuGet Playwright target graph mismatch")
+    restored = [Path(folder) / ("microsoft.playwright/" + version) / ".playwright/package"
+                for folder in assets["packageFolders"]]
+    restored = [path for path in restored if path.is_dir()]
+    if len(restored) != 1:
+        raise ValueError("Exact restored NuGet Playwright driver is missing or ambiguous")
+    for name in ("package.json", "browsers.json"):
+        if (restored[0] / name).read_bytes() != (package / name).read_bytes():
+            raise ValueError("Built Playwright metadata differs from exact resolved NuGet package")
     raw = (package / "browsers.json").read_bytes()
     values = json.loads(raw)["browsers"]
     browsers = {}
@@ -41,7 +65,8 @@ def metadata(package, project, host):
                     "chromium-headless-shell": "chrome-headless-shell-linux64/chrome-headless-shell",
                     "ffmpeg": "ffmpeg-linux"}
         browsers[name] = {"path": directory + "/" + binaries[name], "version": browser_version}
-    return {"packageVersion": version, "browserFingerprint": hashlib.sha256(raw).hexdigest(),
+    return {"packageVersion": version, "driverVersion": driver,
+            "browserFingerprint": hashlib.sha256(raw).hexdigest(),
             "hostPlatform": host, "browsers": browsers}
 
 
@@ -168,11 +193,12 @@ if __name__ == "__main__":
     if args.github_output:
         with args.github_output.open("a") as output:
             output.write("package-version=" + value["packageVersion"] + "\n")
+            output.write("driver-version=" + value["driverVersion"] + "\n")
             output.write("browser-fingerprint=" + value["browserFingerprint"] + "\n")
             output.write("host-platform=" + value["hostPlatform"] + "\n")
             if valid is not None:
                 output.write("valid=" + str(valid).lower() + "\n")
-    print(json.dumps({"packageVersion": value["packageVersion"], "hostPlatform": value["hostPlatform"],
+    print(json.dumps({"packageVersion": value["packageVersion"], "driverVersion": value["driverVersion"], "hostPlatform": value["hostPlatform"],
                       "browserFingerprint": value["browserFingerprint"], "cacheValid": valid}, sort_keys=True))
     if args.require and valid is not True:
         raise SystemExit("Expected Chromium, headless shell and FFmpeg executable/version validation failed")

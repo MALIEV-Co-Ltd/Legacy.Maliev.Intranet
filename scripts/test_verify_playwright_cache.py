@@ -15,13 +15,21 @@ class CacheGateTests(unittest.TestCase):
     def fixture(self, root, declared="1.61.0"):
         package = root / "package"
         package.mkdir()
-        (package / "package.json").write_text(json.dumps({"version": "1.61.0"}))
+        (package / "package.json").write_text(json.dumps({"version": "1.61.1-beta-1782139630000"}))
         (package / "browsers.json").write_text(json.dumps({"browsers": [
             {"name": "chromium", "revision": "1228", "browserVersion": "149.0.7827.55"},
             {"name": "chromium-headless-shell", "revision": "1228", "browserVersion": "149.0.7827.55"},
             {"name": "ffmpeg", "revision": "1011"}]}))
         project = root / "tests.csproj"
         project.write_text('<Project><ItemGroup><PackageReference Include="Microsoft.Playwright.Xunit" Version="' + declared + '" /></ItemGroup></Project>')
+        restored = root / "nuget/microsoft.playwright/1.61.0/.playwright/package"
+        restored.mkdir(parents=True)
+        for name in ("package.json", "browsers.json"):
+            (restored / name).write_bytes((package / name).read_bytes())
+        (root / "obj").mkdir()
+        libraries = {name + "/1.61.0": {"type": "package", "path": name.lower() + "/1.61.0"}
+                     for name in ("Microsoft.Playwright", "Microsoft.Playwright.Xunit", "Microsoft.Playwright.TestAdapter")}
+        (root / "obj/project.assets.json").write_text(json.dumps({"libraries": libraries, "targets": {"net10.0": libraries}, "packageFolders": {str(root / "nuget"): {}}}))
         return package, project
 
     def populated(self, root):
@@ -38,6 +46,7 @@ class CacheGateTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             cache, value = self.populated(Path(temporary))
             self.assertEqual("1.61.0", value["packageVersion"])
+            self.assertEqual("1.61.1-beta-1782139630000", value["driverVersion"])
             self.assertEqual(64, len(value["browserFingerprint"]))
             calls = []
             def probe(path, argument):
@@ -50,6 +59,36 @@ class CacheGateTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             with self.assertRaisesRegex(ValueError, "pinned project"):
                 gate.metadata(*self.fixture(Path(temporary), "1.60.0"), "ubuntu24.04-x64")
+
+    def test_resolved_nuget_version_mismatch_is_rejected(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            package, project = self.fixture(root)
+            assets = json.loads((root / "obj/project.assets.json").read_text())
+            assets["libraries"]["Microsoft.Playwright/1.60.0"] = assets["libraries"].pop("Microsoft.Playwright/1.61.0")
+            (root / "obj/project.assets.json").write_text(json.dumps(assets))
+            with self.assertRaisesRegex(ValueError, "Resolved NuGet"):
+                gate.metadata(package, project, "ubuntu24.04-x64")
+
+    def test_central_or_expression_version_cannot_bypass_explicit_pin(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            package, project = self.fixture(Path(temporary))
+            for version in (None, "$(PlaywrightVersion)"):
+                attribute = '' if version is None else ' Version="' + version + '"'
+                project.write_text('<Project><ItemGroup><PackageReference Include="Microsoft.Playwright.Xunit"' + attribute + ' /></ItemGroup></Project>')
+                with self.assertRaisesRegex(ValueError, "Explicit pinned"):
+                    gate.metadata(package, project, "ubuntu24.04-x64")
+
+    def test_stale_built_metadata_or_unreviewed_driver_is_rejected(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            package, project = self.fixture(Path(temporary))
+            raw = (package / "browsers.json").read_bytes()
+            (package / "browsers.json").write_bytes(raw + b' ')
+            with self.assertRaisesRegex(ValueError, "differs from exact resolved"):
+                gate.metadata(package, project, "ubuntu24.04-x64")
+            (package / "package.json").write_text(json.dumps({"version": "1.61.1-beta-unknown"}))
+            with self.assertRaisesRegex(ValueError, "reviewed pinned"):
+                gate.metadata(package, project, "ubuntu24.04-x64")
 
     def test_missing_headless_shell_or_wrong_browser_version_is_rejected(self):
         with tempfile.TemporaryDirectory() as temporary:
@@ -75,6 +114,7 @@ class CacheGateTests(unittest.TestCase):
             value = json.loads((package / "browsers.json").read_text())
             value["browsers"].append(value["browsers"][0])
             (package / "browsers.json").write_text(json.dumps(value))
+            (Path(temporary) / "nuget/microsoft.playwright/1.61.0/.playwright/package/browsers.json").write_bytes((package / "browsers.json").read_bytes())
             with self.assertRaisesRegex(ValueError, "ambiguous"):
                 gate.metadata(package, project, "ubuntu24.04-x64")
 
