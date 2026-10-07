@@ -43,7 +43,6 @@ jobs:
       MalievWorkspaceRoot: ${{ github.workspace }}/.dependencies
       DOTNET_PROCESSOR_COUNT: '2'
       LEGACY_DEPLOY_ENABLED: 'false'
-      SUPPLIER_RESOURCE_EVIDENCE: ${{ runner.temp }}/supplier-persistence-evidence
     steps:
       - name: Check out exact Intranet candidate
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
@@ -111,6 +110,8 @@ jobs:
           dotnet test acceptance/SupplierCatalogPersistence/SupplierCatalogPersistence.AcceptanceTests.csproj -c Release --no-build --no-restore -p:UseLocalMalievDependencies=true --filter 'FullyQualifiedName~SupplierResourceControls' --logger 'trx;LogFileName=supplier-resource-controls.trx' --results-directory "$RUNNER_TEMP/supplier-persistence-results" --nologo
       - name: Exercise real Catalog selection, supplier save, API readback and reload
         id: proof
+        env:
+          SUPPLIER_RESOURCE_EVIDENCE: ${{ runner.temp }}/supplier-persistence-evidence
         timeout-minutes: 8
         run: |
           export GITHUB_ACTIONS=false
