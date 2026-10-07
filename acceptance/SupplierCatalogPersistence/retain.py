@@ -15,10 +15,28 @@ PINS = {
 }
 
 def revision(path):
-    value = subprocess.check_output(["git", "-C", str(path), "rev-parse", "HEAD"], text=True).strip()
-    if not re.fullmatch(r"[0-9a-f]{40}", value):
-        raise ValueError("Invalid source identity")
-    return value
+    try:
+        result = subprocess.run(["git", "-C", str(path), "rev-parse", "--show-toplevel", "HEAD"],
+                                text=True, capture_output=True, check=False)
+        values = result.stdout.splitlines()
+        if (result.returncode == 0 and len(values) == 2 and
+                pathlib.Path(values[0]).resolve() == pathlib.Path(path).resolve() and
+                re.fullmatch(r"[0-9a-f]{40}", values[1])):
+            return values[1]
+    except OSError:
+        pass
+    return None
+
+def merge_parents(path):
+    try:
+        result = subprocess.run(["git", "-C", str(path), "show", "-s", "--format=%P", "HEAD"],
+                                text=True, capture_output=True, check=False)
+        values = result.stdout.split()
+        if result.returncode == 0 and all(re.fullmatch(r"[0-9a-f]{40}", value) for value in values):
+            return values
+    except OSError:
+        pass
+    return []
 
 def actual_result(path):
     if not path.exists():
@@ -39,18 +57,19 @@ def bound_candidate(executed, candidate, parents):
     return (re.fullmatch(r"[0-9a-f]{40}", candidate or "") is not None and
             (executed == candidate or (len(parents) == 2 and parents[1] == candidate)))
 
-def main():
-    root = pathlib.Path(__file__).resolve().parents[2]
+def main(root=None):
+    root = pathlib.Path(root).resolve() if root is not None else pathlib.Path(__file__).resolve().parents[2]
     graph = {name: revision(root / ".dependencies" / name) for name in PINS}
     result = actual_result(pathlib.Path(os.environ["PROOF_RESULTS"]) / "supplier-persistence.trx")
     head = os.environ.get("CANDIDATE_HEAD", "")
     executed = revision(root)
-    parents = subprocess.check_output(["git", "-C", str(root), "show", "-s", "--format=%P", "HEAD"], text=True).split()
+    parents = merge_parents(root)
     complete = (result["complete"] and graph == PINS and bound_candidate(executed, head, parents) and
                 os.environ.get("BUILD_OUTCOME") == "success" and
                 os.environ.get("EXECUTION_OUTCOME") == "success")
     evidence = {
         "schema": 1, "candidateHead": head, "executedSource": executed, "mergeParents": parents, "producers": graph,
+        "unavailableProducers": [name for name, value in graph.items() if value is None],
         "runId": os.environ.get("GITHUB_RUN_ID"), "runAttempt": os.environ.get("GITHUB_RUN_ATTEMPT"),
         "tests": [{"name": EXPECTED, "outcomes": result["outcomes"]}], "complete": complete,
         "covered": ["Intranet supplier create", "Catalog Thai postcode selection", "Procurement supplier and address writes", "independent domain API readback", "page reload", "CSRF and employee/workload rejection controls"],
