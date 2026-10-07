@@ -11,6 +11,7 @@ using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Text.Json;
+using Legacy.Maliev.Intranet.Auth;
 using Legacy.Maliev.Intranet.Contracts;
 using Legacy.Maliev.ProcurementService.Data;
 using Maliev.Aspire.ServiceDefaults.IAM;
@@ -42,6 +43,7 @@ public sealed class SupplierCatalogPersistenceTests
     private const string Issuer = "https://disposable-supplier-authority.test";
     private const string Audience = "disposable-supplier-acceptance";
 
+    /// <summary>Proves the bounded supplier postcode selection through real storage and a full editor reload.</summary>
     [Fact]
     public async Task CatalogPostcodeSelection_RealSupplierSave_ApiReadbackAndReloadPreserveAddress()
     {
@@ -239,10 +241,10 @@ public sealed class SupplierCatalogPersistenceTests
         var builder = WebApplication.CreateBuilder();
         builder.WebHost.UseUrls("http://127.0.0.1:0");
         var app = builder.Build();
-        app.MapPost("/auth/v1/login", (JsonElement body) => body.GetProperty("password").GetString() == "synthetic-disposable"
+        app.MapPost("/auth/v1/login", (EmployeeLoginRequest body) => body.Password == "synthetic-disposable"
             ? Results.Ok(new
             {
-                accessToken = body.GetProperty("email").GetString() == "readonly-proof@maliev.com" ? readOnly : employee,
+                accessToken = body.UserName == "readonly-proof@maliev.com" ? readOnly : employee,
                 refreshToken = Guid.NewGuid().ToString("N"),
                 tokenType = "Bearer",
                 expiresIn = 900,
