@@ -82,11 +82,11 @@ public sealed class SupplierCatalogPersistenceTests
 
         await using var authority = await AuthorityAsync(employeeToken, readonlyEmployee, serviceToken, secret);
         await using var catalog = new RuntimeFactory<CatalogApi::Program>(settings, "Production", catalog: true);
-        catalog.UseKestrel();
+        catalog.UseKestrel(0);
         using var catalogClient = catalog.CreateClient();
         catalogClient.Timeout = TimeSpan.FromSeconds(20);
         await using var procurement = new RuntimeFactory<ProcurementApi::Program>(settings, "Production");
-        procurement.UseKestrel();
+        procurement.UseKestrel(0);
         using var procurementClient = procurement.CreateClient();
         procurementClient.Timeout = TimeSpan.FromSeconds(20);
         settings["Services:Catalog"] = catalogClient.BaseAddress!.AbsoluteUri;
