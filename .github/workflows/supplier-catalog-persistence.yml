@@ -100,7 +100,14 @@ jobs:
           python3 -c 'import json,os,pathlib; d=json.loads((pathlib.Path(os.environ["RUNNER_TEMP"])/"supplier-audit.json").read_text()); assert not any(p.get("vulnerabilities") for project in d.get("projects",[]) for f in project.get("frameworks",[]) for k in ("topLevelPackages","transitivePackages") for p in f.get(k,[])), "Vulnerable acceptance dependency"'
       - name: Install Chromium
         id: chromium
-        run: pwsh -NoProfile -File acceptance/SupplierCatalogPersistence/bin/Release/net10.0/playwright.ps1 install --with-deps chromium
+        timeout-minutes: 8
+        run: |
+          # The hosted runner's preferred Azure mirror stalled both exact-head attempts.
+          # Keep signed Ubuntu sources and package policy; use its existing official HTTPS fallback.
+          test -s /etc/apt/apt-mirrors.txt
+          python3 -c 'from pathlib import Path; s=Path("/etc/apt/sources.list.d/ubuntu.sources").read_text(); assert "mirror+file:/etc/apt/apt-mirrors.txt" in s and "Signed-By:" in s, "Unexpected hosted Ubuntu source policy"'
+          printf '%s\n' 'https://archive.ubuntu.com/ubuntu/' | sudo tee /etc/apt/apt-mirrors.txt > /dev/null
+          pwsh -NoProfile -File acceptance/SupplierCatalogPersistence/bin/Release/net10.0/playwright.ps1 install --with-deps chromium
       - name: Exercise actual supplier ownership failure transitions
         id: resource_controls
         timeout-minutes: 3
