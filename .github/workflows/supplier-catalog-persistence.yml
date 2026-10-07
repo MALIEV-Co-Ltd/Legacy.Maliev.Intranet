@@ -101,5 +101,3 @@ jobs:
           path: ${{ runner.temp }}/supplier-persistence-evidence/proof.json
           if-no-files-found: error
           retention-days: 7
-
-

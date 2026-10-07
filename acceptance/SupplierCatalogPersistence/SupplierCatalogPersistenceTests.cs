@@ -282,6 +282,3 @@ public sealed class SupplierCatalogPersistenceTests
         }
     }
 }
-
-
-
