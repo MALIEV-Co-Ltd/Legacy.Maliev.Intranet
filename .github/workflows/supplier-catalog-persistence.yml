@@ -43,6 +43,7 @@ jobs:
       MalievWorkspaceRoot: ${{ github.workspace }}/.dependencies
       DOTNET_PROCESSOR_COUNT: '2'
       LEGACY_DEPLOY_ENABLED: 'false'
+      SUPPLIER_RESOURCE_EVIDENCE: ${{ runner.temp }}/supplier-persistence-evidence
     steps:
       - name: Check out exact Intranet candidate
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
@@ -95,19 +96,26 @@ jobs:
       - name: Verify focused formatting and dependency vulnerabilities
         run: |
           export GITHUB_ACTIONS=false
-          dotnet format acceptance/SupplierCatalogPersistence/SupplierCatalogPersistence.AcceptanceTests.csproj --verify-no-changes --no-restore --include acceptance/SupplierCatalogPersistence/SupplierCatalogPersistenceTests.cs
+          dotnet format acceptance/SupplierCatalogPersistence/SupplierCatalogPersistence.AcceptanceTests.csproj --verify-no-changes --no-restore --include acceptance/SupplierCatalogPersistence/SupplierCatalogPersistenceTests.cs acceptance/SupplierCatalogPersistence/SupplierResourceScope.cs acceptance/SupplierCatalogPersistence/SupplierBackends.cs acceptance/SupplierCatalogPersistence/SupplierResourceControls.cs
           dotnet list acceptance/SupplierCatalogPersistence/SupplierCatalogPersistence.AcceptanceTests.csproj package --vulnerable --include-transitive --format json > "$RUNNER_TEMP/supplier-audit.json"
           python3 -c 'import json,os,pathlib; d=json.loads((pathlib.Path(os.environ["RUNNER_TEMP"])/"supplier-audit.json").read_text()); assert not any(p.get("vulnerabilities") for project in d.get("projects",[]) for f in project.get("frameworks",[]) for k in ("topLevelPackages","transitivePackages") for p in f.get(k,[])), "Vulnerable acceptance dependency"'
       - name: Install Chromium
         id: chromium
         run: pwsh -NoProfile -File acceptance/SupplierCatalogPersistence/bin/Release/net10.0/playwright.ps1 install --with-deps chromium
+      - name: Exercise actual supplier ownership failure transitions
+        id: resource_controls
+        timeout-minutes: 3
+        run: |
+          export GITHUB_ACTIONS=false
+          unset SUPPLIER_RESOURCE_EVIDENCE
+          dotnet test acceptance/SupplierCatalogPersistence/SupplierCatalogPersistence.AcceptanceTests.csproj -c Release --no-build --no-restore -p:UseLocalMalievDependencies=true --filter 'FullyQualifiedName~SupplierResourceControls' --logger 'trx;LogFileName=supplier-resource-controls.trx' --results-directory "$RUNNER_TEMP/supplier-persistence-results" --nologo
       - name: Exercise real Catalog selection, supplier save, API readback and reload
         id: proof
         timeout-minutes: 8
         run: |
           export GITHUB_ACTIONS=false
-          dotnet test acceptance/SupplierCatalogPersistence/SupplierCatalogPersistence.AcceptanceTests.csproj -c Release --no-build --no-restore -p:UseLocalMalievDependencies=true --logger 'trx;LogFileName=supplier-persistence.trx' --results-directory "$RUNNER_TEMP/supplier-persistence-results" --nologo
-      - name: Retain actual named result and immutable source graph
+          dotnet test acceptance/SupplierCatalogPersistence/SupplierCatalogPersistence.AcceptanceTests.csproj -c Release --no-build --no-restore -p:UseLocalMalievDependencies=true --filter 'FullyQualifiedName~SupplierCatalogPersistenceTests' --logger 'trx;LogFileName=supplier-persistence.trx' --results-directory "$RUNNER_TEMP/supplier-persistence-results" --nologo
+      - name: Retain actual journey and ownership-control results with bound cleanup and source graph
         if: always()
         env:
           PROOF_RESULTS: ${{ runner.temp }}/supplier-persistence-results
@@ -115,12 +123,13 @@ jobs:
           CANDIDATE_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
           BUILD_OUTCOME: ${{ steps.build.outcome }}
           EXECUTION_OUTCOME: ${{ steps.proof.outcome }}
+          RESOURCE_CONTROLS_OUTCOME: ${{ steps.resource_controls.outcome }}
         run: python3 -B acceptance/SupplierCatalogPersistence/retain.py
       - name: Upload sanitized proof only
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: supplier-catalog-persistence-${{ github.run_id }}-${{ github.run_attempt }}
-          path: ${{ runner.temp }}/supplier-persistence-evidence/proof.json
+          path: ${{ runner.temp }}/supplier-persistence-evidence/*.json*
           if-no-files-found: error
           retention-days: 7
