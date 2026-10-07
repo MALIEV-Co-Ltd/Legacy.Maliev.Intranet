@@ -3,6 +3,7 @@ using System.Text.Json;
 using System.Text.RegularExpressions;
 using Docker.DotNet;
 using Docker.DotNet.Models;
+using DotNet.Testcontainers.Configurations;
 using DotNet.Testcontainers.Containers;
 using Testcontainers.PostgreSql;
 using Testcontainers.Redis;
@@ -56,7 +57,7 @@ internal sealed class SupplierBackends
             "(sleep 900; kill -TERM 1; sleep 5; kill -KILL 1) & exec docker-entrypoint.sh postgres");
         Postgres = new PostgreSqlBuilder(pg.Image).WithDockerEndpoint(new Uri("unix:///var/run/docker.sock"))
             .WithCleanUp(false).WithName(pg.Name).WithLabel("maliev.owner", "intranet-supplier-proof").WithLabel("maliev.run", run)
-            .WithLabel("maliev.expires-utc", expires).WithEntrypoint("/bin/sh", "-c").WithCommand(pg.Command)
+            .WithLabel("maliev.expires-utc", expires).WithEntrypoint("/bin/sh", "-c").WithCommand(new OverwriteEnumerable<string>([pg.Command]))
             .WithCreateParameterModifier(parameters => Configure(parameters, pg)).Build();
         pg.Container = Postgres;
         await StartResourceAsync(pg, deadline.Token);
@@ -64,7 +65,7 @@ internal sealed class SupplierBackends
             "(sleep 900; kill -TERM 1; sleep 5; kill -KILL 1) & exec docker-entrypoint.sh redis-server --save '' --appendonly no");
         Redis = new RedisBuilder(redis.Image).WithDockerEndpoint(new Uri("unix:///var/run/docker.sock"))
             .WithCleanUp(false).WithName(redis.Name).WithLabel("maliev.owner", "intranet-supplier-proof").WithLabel("maliev.run", run)
-            .WithLabel("maliev.expires-utc", expires).WithEntrypoint("/bin/sh", "-c").WithCommand(redis.Command)
+            .WithLabel("maliev.expires-utc", expires).WithEntrypoint("/bin/sh", "-c").WithCommand(new OverwriteEnumerable<string>([redis.Command]))
             .WithCreateParameterModifier(parameters => Configure(parameters, redis)).Build();
         redis.Container = Redis;
         await StartResourceAsync(redis, deadline.Token);
