@@ -53,7 +53,7 @@ public sealed class CreateEmployeeInput
     [Required, StringLength(256)]
     public string LastName { get; set; } = string.Empty;
     /// <summary>The email used for profile correspondence and account login.</summary>
-    [Required, EmailAddress, StringLength(320)]
+    [Required, EmailAddress, StringLength(256)]
     public string Email { get; set; } = string.Empty;
     /// <summary>The initial account password sent only to AuthService.</summary>
     [Required, StringLength(1024, MinimumLength = 6), DataType(DataType.Password)]
