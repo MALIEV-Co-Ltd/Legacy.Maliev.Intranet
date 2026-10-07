@@ -13,7 +13,6 @@ jobs:
     timeout-minutes: 120
     env:
       MalievWorkspaceRoot: ${{ github.workspace }}/.dependencies
-      PLAYWRIGHT_BROWSERS_PATH: ${{ runner.temp }}/intranet-playwright
       PLAYWRIGHT_DOWNLOAD_CONNECTION_TIMEOUT: '30000'
     steps:
       - name: Check out Intranet
@@ -62,6 +61,7 @@ jobs:
         timeout-minutes: 2
         shell: bash
         run: |
+          printf 'PLAYWRIGHT_BROWSERS_PATH=%s/intranet-playwright\n' "$RUNNER_TEMP" >> "$GITHUB_ENV"
           python3 -B -c "from pathlib import Path; files=[Path('scripts/verify-playwright-cache.py'),Path('scripts/test_verify_playwright_cache.py')]; [compile(p.read_text(),str(p),'exec') for p in files]"
           python3 -B -m unittest discover -s scripts -p 'test_verify_playwright_cache.py'
       - name: Restore BrowserTests packages
