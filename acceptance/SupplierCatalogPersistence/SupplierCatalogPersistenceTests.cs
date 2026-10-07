@@ -17,6 +17,8 @@ using Legacy.Maliev.ProcurementService.Data;
 using Maliev.Aspire.ServiceDefaults.IAM;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Hosting.Server;
+using Microsoft.AspNetCore.Hosting.Server.Features;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
@@ -302,6 +304,15 @@ public sealed class SupplierCatalogPersistenceTests
                 await value.StopAsync(token);
                 await Task.Run(value.Dispose);
             }, phase: 2);
+            if (!bff)
+            {
+                // Match WebApplicationFactory.CreateHost port setup, which this ownership override replaces.
+                var addresses = host.Services.GetRequiredService<IServer>().Features.Get<IServerAddressesFeature>()
+                    ?? throw new InvalidOperationException("Kestrel address feature unavailable.");
+                addresses.Addresses.Clear();
+                addresses.Addresses.Add("http://127.0.0.1:0");
+                addresses.PreferHostingUrls = true;
+            }
             host.Start(); // The outer registered startup task bounds/retains this synchronous call.
             return host;
         }
