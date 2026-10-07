@@ -66,3 +66,85 @@ jobs:
           path: ${{ runner.temp }}/creation-controller-smoke/control-smoke-proof.json
           retention-days: 14
           if-no-files-found: error
+      - name: Collect bounded controller ownership receipts after failure
+        if: failure()
+        timeout-minutes: 1
+        run: |
+          sudo -n --preserve-env=RUNNER_TEMP python3 -B - "$RUNNER_TEMP/creation-controller-smoke" "$RUNNER_TEMP/controller-failure-receipts" <<'PY'
+          import datetime, json, os, pathlib, re, sys
+          source, output = map(pathlib.Path, sys.argv[1:])
+          runner = pathlib.Path(os.environ['RUNNER_TEMP'])
+          if source != runner / 'creation-controller-smoke' or output != runner / 'controller-failure-receipts':
+              raise RuntimeError('Unexpected runner-private receipt roots')
+          for root in (source, runner, *runner.parents):
+              if root.is_symlink():
+                  raise RuntimeError('Linked receipt root or ancestor')
+          if source.resolve(strict=True).parent != runner.resolve(strict=True) or output.exists() or output.is_symlink():
+              raise RuntimeError('Receipt roots are not exact private directories')
+          output.mkdir(mode=0o700)
+          count = total = 0
+          for owner in source.glob('bootstrap-*/ownership.json'):
+              if owner.is_symlink() or owner.parent.is_symlink() or not re.fullmatch(r'bootstrap-[0-9a-f]{32}', owner.parent.name):
+                  raise RuntimeError('Unexpected controller receipt identity')
+              with owner.open('rb') as stream:
+                  raw = stream.read(1024 * 1024 + 1)
+              count += 1
+              total += len(raw)
+              if len(raw) > 1024 * 1024 or total > 8 * 1024 * 1024 or count > 8:
+                  raise RuntimeError('Controller failure receipt budget exceeded')
+              value = json.loads(raw)
+              allowed = {'run', 'unit', 'description', 'dispatchIntent', 'generation', 'identity', 'controlProcesses', 'releaseVerified', 'expiresUtc', 'actualPayload', 'actualExit'}
+              if not isinstance(value, dict) or set(value) - allowed:
+                  raise RuntimeError('Unknown controller ownership payload')
+              run = owner.parent.name.removeprefix('bootstrap-')
+              if value.get('run') != run or value.get('unit') != 'codex-creation-supervisor-' + run + '.service':
+                  raise RuntimeError('Controller receipt run/unit association mismatch')
+              description, generation = value.get('description'), value.get('generation')
+              if not isinstance(description, str) or not re.fullmatch(r'CodexCreationControl:[0-9a-f]{32}', description):
+                  raise RuntimeError('Invalid controller fence')
+              if generation is not None and (not isinstance(generation, str) or not re.fullmatch(r'[0-9a-f]{32}', generation)):
+                  raise RuntimeError('Invalid controller generation')
+              for key in ('dispatchIntent', 'releaseVerified'):
+                  if type(value.get(key)) is not bool:
+                      raise RuntimeError('Invalid controller ownership flag')
+              children = value.get('controlProcesses')
+              if not isinstance(children, list) or len(children) > 1024:
+                  raise RuntimeError('Invalid controller child receipt count')
+              metadata = []
+              for key, keys in (('identity', {'pid', 'startTicks', 'executable'}), ('actualPayload', {'pid', 'startTicks', 'executable', 'cgroup'}), ('actualExit', {'pid', 'signal'})):
+                  nested = value.get(key)
+                  if nested is not None and (not isinstance(nested, dict) or set(nested) - keys):
+                      raise RuntimeError('Unknown controller identity payload')
+              child_keys = {'pid', 'executable', 'purpose', 'maxBytes', 'timeoutSeconds', 'readerWorkers', 'exited', 'readerClosed', 'settled', 'stage', 'creationFileTime', 'actualExecutable', 'startTicks', 'capturedBytes', 'interrupted', 'settlementErrors', 'returnCode', 'identityObservedAfterExit', 'terminalReturnCode'}
+              for child in children:
+                  if not isinstance(child, dict) or set(child) - child_keys:
+                      raise RuntimeError('Invalid controller child receipt')
+                  row = {}
+                  for key in ('pid', 'capturedBytes', 'maxBytes', 'returnCode'):
+                      if key in child:
+                          if type(child[key]) is not int:
+                              raise RuntimeError('Invalid controller child numeric metadata')
+                          row[key] = child[key]
+                  for key in ('exited', 'readerClosed', 'settled', 'interrupted'):
+                      if key in child:
+                          if type(child[key]) is not bool:
+                              raise RuntimeError('Invalid controller child ownership flag')
+                          row[key] = child[key]
+                  metadata.append(row)
+              clean = {'schema': 'controller-failure-metadata/v1', 'run': run, 'unit': value['unit'],
+                       'description': description, 'generation': generation, 'dispatchIntent': value['dispatchIntent'],
+                       'releaseVerified': value['releaseVerified'], 'controlProcesses': metadata,
+                       'expiresUtc': datetime.datetime.fromisoformat(value['expiresUtc']).isoformat()}
+              (output / (owner.parent.name + '.json')).write_text(json.dumps(clean, indent=2))
+          output.chmod(0o755)
+          for receipt in output.iterdir():
+              receipt.chmod(0o644)
+          PY
+      - name: Retain bounded failed controller ownership receipts
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: finite-control-service-failure-${{ github.run_id }}
+          path: ${{ runner.temp }}/controller-failure-receipts/*.json
+          retention-days: 14
+          if-no-files-found: warn
