@@ -26,6 +26,9 @@ class Bootstrap:
                         "dispatchIntent": False, "generation": None, "identity": None, "controlProcesses": [],
                         "releaseVerified": False, "expiresUtc": (dt.datetime.now(dt.timezone.utc) + dt.timedelta(minutes=30)).isoformat()}
         self.failed = False
+        self.source_seal = None
+        self.source_seal_sha = None
+        self.recovery_attempted = False
         self.save()
 
     def save(self):
@@ -132,7 +135,15 @@ class Bootstrap:
                         if stopped is not None and stopped.get("ActiveState") not in ("inactive", "failed"):
                             raise RuntimeError("Bootstrap service did not stop")
                         self.quiescent(self.group)
-                    self.inspect_native_exit()
+                    try:
+                        self.inspect_native_exit()
+                    except RuntimeError:
+                        if self.source_seal is None or self.recovery_attempted:
+                            raise
+                        self.recovery_attempted = True
+                        self.failed = True  # Recovery can release resources, never restore app acceptance.
+                        self.recover_native()
+                        self.inspect_native_exit()
                 if not self.settle():
                     raise RuntimeError("Bootstrap final helper pending")
             except BaseException as error:
@@ -151,7 +162,25 @@ class Bootstrap:
             self.save()
             return
 
+    def recover_native(self):
+        receipt = self.evidence / "native" / self.run / "ownership.json"
+        if not receipt.exists() or receipt.is_symlink():
+            raise RuntimeError("No exact persisted native owner available for recovery")
+        raw = receipt.read_bytes()
+        if len(raw) > 8 * 1024 * 1024:
+            raise RuntimeError("Native ownership recovery receipt exceeds budget")
+        value = json.loads(raw)
+        creator = value.get("controlService", {})
+        if value.get("run") != self.run or creator.get("unit") != self.unit or creator.get("generation") != self.records["generation"]:
+            raise RuntimeError("Persisted native creator generation mismatch")
+        recovery = CleanupBootstrap(self)
+        recovery.execute_cleanup(hashlib.sha256(raw).hexdigest())
+        self.records["cleanupRecoveryUnit"] = recovery.unit
+        self.records["cleanupRecoveryGeneration"] = recovery.records["generation"]
+        self.save()
+
     def execute(self, seal, seal_sha):
+        self.source_seal, self.source_seal_sha = seal, seal_sha
         lane.proof_reader.validate_source_seal(self.root, seal, seal_sha)
         arguments = ["sudo", "-n", "systemd-run", "--quiet", "--service-type=exec", "--unit=" + self.unit,
                      "--property=Description=" + self.records["description"], "--property=RuntimeMaxSec=26min",
@@ -188,6 +217,52 @@ class Bootstrap:
         proof = self.evidence / "native" / self.run / "proof.json"
         if not proof.exists() or self.failed:
             raise RuntimeError("Native proof unavailable or bootstrap failed")
+
+
+class CleanupBootstrap(Bootstrap):
+    def __init__(self, target):
+        super().__init__(target.root, target.evidence / "recovery")
+        self.target = target
+
+    def inspect_native_exit(self):
+        self.target.inspect_native_exit()
+
+    def execute_cleanup(self, receipt_sha):
+        target = self.target
+        args = ["sudo", "-n", "systemd-run", "--quiet", "--service-type=exec", "--unit=" + self.unit,
+                "--property=Description=" + self.records["description"], "--property=RuntimeMaxSec=26min",
+                "--property=TimeoutStopSec=20", "--property=KillMode=control-group", "--property=SendSIGKILL=yes",
+                "--property=Delegate=no", "--property=MemoryMax=128M", "--property=CPUQuota=100%",
+                "--property=RemainAfterExit=yes", "--property=User=" + str(os.getuid()),
+                "--property=Group=" + str(os.getgid()), "--working-directory=" + str(self.root)]
+        values = {"MALIEV_CREATION_CONTROL_UNIT": self.unit, "MALIEV_CREATION_CONTROL_FENCE": self.fence,
+                  "RUNNER_ENVIRONMENT": "github-hosted", "MALIEV_CREATION_HOSTED_ADMISSION": "root-owned-sole-lane"}
+        args += ["--setenv=" + key + "=" + value for key, value in values.items()]
+        args += [str(Path(sys.executable).resolve()), "-B", str(self.root / "acceptance/EmployeeAdministration/recover_creation_owner.py"),
+                 "--root", str(self.root), "--evidence", str(target.evidence / "native"), "--run", target.run,
+                 "--receipt-sha256", receipt_sha, "--creator-unit", target.unit,
+                 "--creator-generation", target.records["generation"], "--source-seal", str(target.source_seal.resolve()),
+                 "--source-seal-sha256", target.source_seal_sha]
+        try:
+            self.records["dispatchIntent"] = True
+            self.records["targetRun"] = target.run
+            self.records["receiptSha256"] = receipt_sha
+            self.save()
+            self.command(args)
+            deadline = time.monotonic() + 27 * 60
+            while True:
+                state = self.acquire()
+                if state is None:
+                    raise RuntimeError("Cleanup recovery service vanished")
+                if state.get("SubState") == "exited" or state.get("ActiveState") in ("inactive", "failed"):
+                    if state.get("Result") != "success" or state.get("ExecMainStatus") != "0":
+                        raise RuntimeError("Cleanup recovery failed; retain private backend evidence")
+                    break
+                if time.monotonic() >= deadline:
+                    raise RuntimeError("Cleanup recovery observation lease expired")
+                time.sleep(1)
+        finally:
+            self.finish()
 
 
 if __name__ == "__main__":

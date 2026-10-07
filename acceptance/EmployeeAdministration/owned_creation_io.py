@@ -34,8 +34,22 @@ def creation_identity(process):
             raise OSError("Cannot observe owned process executable")
         return {"pid": process.pid, "creationFileTime": ticks, "actualExecutable": buffer.value}
     raw = (Path("/proc") / str(process.pid) / "stat").read_text()
-    return {"pid": process.pid, "startTicks": raw[raw.rfind(")") + 2:].split()[19],
-            "actualExecutable": str((Path("/proc") / str(process.pid) / "exe").resolve(strict=True))}
+    identity = {"pid": process.pid, "startTicks": raw[raw.rfind(")") + 2:].split()[19]}
+    try:
+        identity["actualExecutable"] = str((Path("/proc") / str(process.pid) / "exe").resolve(strict=True))
+    except FileNotFoundError:
+        # A zombie retains its birth record but no executable link. The retained
+        # Popen handle must independently prove exit; never infer a live identity.
+        deadline = time.monotonic() + 0.25
+        code = process.poll()
+        while code is None and time.monotonic() < deadline:
+            time.sleep(0.005)
+            code = process.poll()
+        if code is None:
+            raise
+        identity.update(actualExecutable=None, identityObservedAfterExit=True,
+                        terminalReturnCode=code)
+    return identity
 
 
 class OwnedChild:
