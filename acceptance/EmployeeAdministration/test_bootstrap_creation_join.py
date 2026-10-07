@@ -105,6 +105,36 @@ class BootstrapControls(unittest.TestCase):
                 empty.assert_called_once_with(owner.group)
             self.assertTrue(owner.records["releaseVerified"])
 
+    def test_backend_recovery_releases_resources_without_restoring_native_acceptance(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            owner = bootstrap.Bootstrap(Path.cwd(), Path(temporary))
+            owner.records["dispatchIntent"] = True
+            owner.source_seal = Path("seal")
+            owner.source_seal_sha = "a" * 64
+            with patch.object(owner, "acquire", return_value=None), patch.object(owner, "inspect_native_exit", side_effect=[RuntimeError("Private backend remains"), None]), patch.object(owner, "recover_native") as recover:
+                owner.finish()
+                recover.assert_called_once()
+            self.assertTrue(owner.records["releaseVerified"])
+            self.assertTrue(owner.failed)
+            self.assertTrue(owner.recovery_attempted)
+
+    def test_missing_native_receipt_never_dispatches_recovery_owner(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            owner = bootstrap.Bootstrap(Path.cwd(), Path(temporary))
+            with patch.object(bootstrap, "CleanupBootstrap") as recovery, self.assertRaisesRegex(RuntimeError, "persisted native owner"):
+                owner.recover_native()
+            recovery.assert_not_called()
+
+    def test_foreign_persisted_creator_never_dispatches_recovery_owner(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            owner = bootstrap.Bootstrap(Path.cwd(), Path(temporary))
+            scratch = owner.evidence / "native" / owner.run
+            scratch.mkdir(parents=True)
+            (scratch / "ownership.json").write_text('{"run":"foreign","controlService":{}}')
+            with patch.object(bootstrap, "CleanupBootstrap") as recovery, self.assertRaisesRegex(RuntimeError, "generation mismatch"):
+                owner.recover_native()
+            recovery.assert_not_called()
+
     def test_native_receipt_missing_never_becomes_release(self):
         with tempfile.TemporaryDirectory() as temporary:
             owner = bootstrap.Bootstrap(Path.cwd(), Path(temporary))

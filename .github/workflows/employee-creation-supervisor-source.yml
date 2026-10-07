@@ -2,6 +2,8 @@ name: Creation supervisor source controls
 on:
   pull_request:
     paths:
+      - 'acceptance/EmployeeAdministration/recover_creation_owner.py'
+      - 'acceptance/EmployeeAdministration/test_recover_creation_owner.py'
       - 'acceptance/EmployeeAdministration/smoke_creation_control.py'
       - 'acceptance/EmployeeAdministration/test_smoke_creation_control.py'
       - 'acceptance/EmployeeAdministration/bootstrap_creation_join.py'
@@ -16,6 +18,8 @@ on:
   push:
     branches: [main]
     paths:
+      - 'acceptance/EmployeeAdministration/recover_creation_owner.py'
+      - 'acceptance/EmployeeAdministration/test_recover_creation_owner.py'
       - 'acceptance/EmployeeAdministration/smoke_creation_control.py'
       - 'acceptance/EmployeeAdministration/test_smoke_creation_control.py'
       - 'acceptance/EmployeeAdministration/bootstrap_creation_join.py'
@@ -39,7 +43,7 @@ jobs:
           persist-credentials: false
       - name: Compile standalone Python sources
         run: |
-          python3 -B -c "from pathlib import Path; files=[Path('acceptance/EmployeeAdministration/smoke_creation_control.py'),Path('acceptance/EmployeeAdministration/test_smoke_creation_control.py'),Path('acceptance/EmployeeAdministration/bootstrap_creation_join.py'),Path('acceptance/EmployeeAdministration/test_bootstrap_creation_join.py'),Path('acceptance/EmployeeAdministration/run_creation_join.py'),Path('acceptance/EmployeeAdministration/test_run_creation_join.py'),Path('acceptance/EmployeeAdministration/verify_creation_join.py'),Path('acceptance/EmployeeAdministration/test_verify_creation_join.py'),Path('acceptance/EmployeeAdministration/owned_creation_io.py'),Path('acceptance/EmployeeAdministration/test_owned_creation_io.py')]; [compile(p.read_text(),str(p),'exec') for p in files]"
+          python3 -B -c "from pathlib import Path; files=[Path('acceptance/EmployeeAdministration/recover_creation_owner.py'),Path('acceptance/EmployeeAdministration/test_recover_creation_owner.py'),Path('acceptance/EmployeeAdministration/smoke_creation_control.py'),Path('acceptance/EmployeeAdministration/test_smoke_creation_control.py'),Path('acceptance/EmployeeAdministration/bootstrap_creation_join.py'),Path('acceptance/EmployeeAdministration/test_bootstrap_creation_join.py'),Path('acceptance/EmployeeAdministration/run_creation_join.py'),Path('acceptance/EmployeeAdministration/test_run_creation_join.py'),Path('acceptance/EmployeeAdministration/verify_creation_join.py'),Path('acceptance/EmployeeAdministration/test_verify_creation_join.py'),Path('acceptance/EmployeeAdministration/owned_creation_io.py'),Path('acceptance/EmployeeAdministration/test_owned_creation_io.py')]; [compile(p.read_text(),str(p),'exec') for p in files]"
       - name: Run supervisor and existing proof-parser controls
         run: python3 -B -m unittest discover -s acceptance/EmployeeAdministration -p 'test_*.py'
   finite-control-service-smoke:
