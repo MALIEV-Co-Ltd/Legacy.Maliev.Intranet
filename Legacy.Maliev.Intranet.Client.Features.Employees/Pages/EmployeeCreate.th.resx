@@ -30,4 +30,5 @@
   <data name="CreatedEmailNotSent" xml:space="preserve"><value>สร้างบัญชีพนักงานแล้ว แต่ส่งอีเมลยืนยันไม่สำเร็จ อย่าสร้างบัญชีซ้ำ โปรดขอลิงก์ยืนยันใหม่</value></data>
   <data name="ViewEmployee" xml:space="preserve"><value>ดูข้อมูลพนักงาน</value></data>
   <data name="ResendConfirmation" xml:space="preserve"><value>ขอลิงก์ยืนยันใหม่</value></data>
+  <data name="EmailTooLong" xml:space="preserve"><value>อีเมลต้องมีความยาวไม่เกิน 256 ตัวอักษร</value></data>
 </root>

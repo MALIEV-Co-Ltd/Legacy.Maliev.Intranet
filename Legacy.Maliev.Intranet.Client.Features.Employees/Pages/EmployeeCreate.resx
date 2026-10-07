@@ -30,4 +30,5 @@
   <data name="CreatedEmailNotSent" xml:space="preserve"><value>The employee was created, but the confirmation email could not be sent. Do not create the account again; request a new confirmation link.</value></data>
   <data name="ViewEmployee" xml:space="preserve"><value>View employee</value></data>
   <data name="ResendConfirmation" xml:space="preserve"><value>Request a new confirmation link</value></data>
+  <data name="EmailTooLong" xml:space="preserve"><value>Email must be 256 characters or fewer.</value></data>
 </root>

@@ -117,6 +117,21 @@ jobs:
         run: |
           export GITHUB_ACTIONS=false
           dotnet format Legacy.Maliev.Intranet.slnx --verify-no-changes --no-restore
+      - name: Execute employee creation email boundaries before full validation
+        timeout-minutes: 8
+        shell: bash
+        env:
+          DOTNET_PROCESSOR_COUNT: '1'
+        run: |
+          export GITHUB_ACTIONS=false
+          # Reuse the successful strict diagnostic build above. This named
+          # regression supplements the unchanged full-suite validation below.
+          dotnet test Legacy.Maliev.Intranet.Tests/Legacy.Maliev.Intranet.Tests.csproj \
+            --configuration Release --no-build --no-restore -p:UseLocalMalievDependencies=true \
+            --filter 'FullyQualifiedName~EmployeeCreationEmailValidationTests|FullyQualifiedName~EmployeeCreateEmailBoundaryComponentTests|FullyQualifiedName~BffEmployeesCreateContractTests.ProfileEmailStorageBoundary_PreservesAcceptedInputAndRejectsOversizeBeforeDownstreamWrites' \
+            --logger 'console;verbosity=normal' \
+            --logger 'trx;LogFileName=employee-creation-email.trx' \
+            --results-directory TestResults/employee-creation-email
       - name: Validate .NET solution
         uses: MALIEV-Co-Ltd/Legacy.Maliev.Workflows/actions/dotnet-validate@d7efac266bc66273bc45eab583618871292ecbd6
         env:
