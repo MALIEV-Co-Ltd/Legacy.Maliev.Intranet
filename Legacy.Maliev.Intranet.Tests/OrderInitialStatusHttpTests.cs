@@ -121,10 +121,10 @@ public sealed class OrderInitialStatusHttpTests(ITestOutputHelper output)
         Assert.Empty(json.GetProperty("history").EnumerateArray());
         var stages = new PresentationStages();
         using var context = RenderContext(client, stages);
-        var page = Render(context);
+        var page = Render(context).FindComponent<OrderView>();
         try
         {
-            page.WaitForAssertion(() => Assert.NotEmpty(page.FindAll(".order-workflow-panel")));
+            await page.WaitForAssertionAsync(() => Assert.NotEmpty(page.FindAll(".order-workflow-panel")));
             var history = page.Find(".order-history");
             Assert.Contains(label, history.TextContent, StringComparison.Ordinal);
             Assert.Contains(missingCreatedDate ? "-" : culture == "en" ? "15 Jul 2030, 07:00" : "15 ก.ค. 2573, 07:00", history.TextContent, StringComparison.Ordinal);
@@ -138,7 +138,7 @@ public sealed class OrderInitialStatusHttpTests(ITestOutputHelper output)
             var workflowPanels = -1;
             try
             {
-                routeComponents = page.FindComponents<OrderView>().Count;
+                routeComponents = 1;
                 workflowPanels = page.FindAll(".order-workflow-panel").Count;
             }
             catch (Exception)
@@ -153,6 +153,53 @@ public sealed class OrderInitialStatusHttpTests(ITestOutputHelper output)
         }
     }
 
+    [Fact]
+    public async Task History404_DeferredDetailNotifiesChildBeforeUpdatingRouterMarkup()
+    {
+        using var cultureScope = new CultureScope("th");
+        var upstream = new Boundary { HistoryStatus = HttpStatusCode.NotFound, MissingCreatedDate = true };
+        await using var factory = new Factory(upstream);
+        using var client = Client(factory);
+        await LoginAsync(client);
+        var stages = new PresentationStages { HoldDetail = true };
+        using var context = RenderContext(client, stages);
+        var router = Render(context);
+        var detail = router.FindComponent<OrderView>();
+        var parentMarkupAtChildNotification = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        void ObserveChildRender(object? sender, EventArgs args)
+        {
+            if (detail.FindAll(".order-workflow-panel").Count > 0)
+                parentMarkupAtChildNotification.TrySetResult(router.FindAll(".order-workflow-panel").Count > 0);
+        }
+        detail.OnAfterRender += ObserveChildRender;
+        try
+        {
+            await stages.DetailEntered.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            Assert.Empty(detail.FindAll(".order-workflow-panel"));
+            // The default deadline still rejects a response that remains held.
+            // Awaiting the same helper lets this test release the pending HTTP work.
+            var heldAssertion = detail.WaitForAssertionAsync(() => Assert.NotEmpty(detail.FindAll(".order-workflow-panel")));
+            Assert.False(heldAssertion.IsCompleted);
+            await Assert.ThrowsAsync<Bunit.Extensions.WaitForHelpers.WaitForFailedException>(() => heldAssertion);
+            Assert.Empty(detail.FindAll(".order-workflow-panel"));
+            var readyAssertion = detail.WaitForAssertionAsync(() => Assert.NotEmpty(detail.FindAll(".order-workflow-panel")));
+            Assert.False(readyAssertion.IsCompleted);
+            stages.DetailReleased.TrySetResult();
+            await readyAssertion;
+            Assert.Contains("งานใหม่", detail.Find(".order-history").TextContent, StringComparison.Ordinal);
+            Assert.Contains("-", detail.Find(".order-history").TextContent, StringComparison.Ordinal);
+            // bUnit updates/notifies the child before refreshing its parents' DOM.
+            // A wait on the child must therefore query the child's own snapshot.
+            Assert.False(await parentMarkupAtChildNotification.Task.WaitAsync(TimeSpan.FromSeconds(5)));
+            Assert.All(upstream.Requests, item => Assert.StartsWith("GET ", item, StringComparison.Ordinal));
+        }
+        finally
+        {
+            detail.OnAfterRender -= ObserveChildRender;
+            stages.DetailReleased.TrySetResult();
+        }
+    }
+
     [Theory]
     [InlineData("en", "New")]
     [InlineData("th", "งานใหม่")]
@@ -164,8 +211,8 @@ public sealed class OrderInitialStatusHttpTests(ITestOutputHelper output)
         using var client = Client(factory);
         await LoginAsync(client);
         using var context = RenderContext(client);
-        var page = Render(context);
-        page.WaitForAssertion(() => Assert.NotEmpty(page.FindAll(".operations-status-pill")));
+        var page = Render(context).FindComponent<OrderView>();
+        await page.WaitForAssertionAsync(() => Assert.NotEmpty(page.FindAll(".operations-status-pill")));
         Assert.Equal(label, page.Find(".operations-status-pill").TextContent);
         Assert.DoesNotContain(label, page.Find(".order-history").TextContent, StringComparison.Ordinal);
     }
@@ -189,10 +236,10 @@ public sealed class OrderInitialStatusHttpTests(ITestOutputHelper output)
         var realStages = new PresentationStages();
         using (var context = RenderContext(client, realStages))
         {
-            var page = Render(context);
+            var page = Render(context).FindComponent<OrderView>();
             try
             {
-                page.WaitForAssertion(() => Assert.Equal(label, page.Find(".operations-status-pill").TextContent));
+                await page.WaitForAssertionAsync(() => Assert.Equal(label, page.Find(".operations-status-pill").TextContent));
                 Assert.Contains(label, page.Find(".order-history").TextContent, StringComparison.Ordinal);
             }
             finally
@@ -203,10 +250,10 @@ public sealed class OrderInitialStatusHttpTests(ITestOutputHelper output)
         upstream.HistoryBody = "[]";
         var emptyStages = new PresentationStages();
         using var emptyContext = RenderContext(client, emptyStages);
-        var emptyPage = Render(emptyContext);
+        var emptyPage = Render(emptyContext).FindComponent<OrderView>();
         try
         {
-            emptyPage.WaitForAssertion(() => Assert.NotEmpty(emptyPage.FindAll(".order-history")));
+            await emptyPage.WaitForAssertionAsync(() => Assert.NotEmpty(emptyPage.FindAll(".order-history")));
             Assert.True(string.IsNullOrWhiteSpace(emptyPage.Find(".order-history").TextContent));
         }
         finally
@@ -214,7 +261,7 @@ public sealed class OrderInitialStatusHttpTests(ITestOutputHelper output)
             EmitPresentationWitness(emptyPage, emptyStages, "empty-history");
         }
 
-        void EmitPresentationWitness(IRenderedComponent<Router> page, PresentationStages stages, string phase)
+        void EmitPresentationWitness(IRenderedComponent<OrderView> page, PresentationStages stages, string phase)
         {
             // Synthetic counters/presence only; never emit markup, paths, bodies or identity.
             var routeCount = -1;
@@ -224,9 +271,8 @@ public sealed class OrderInitialStatusHttpTests(ITestOutputHelper output)
             var workflow = -1;
             try
             {
-                var routes = page.FindComponents<OrderView>();
-                routeCount = routes.Count;
-                routeRenderCounts = string.Join(',', routes.Select(route => route.RenderCount));
+                routeCount = 1;
+                routeRenderCounts = page.RenderCount.ToString(CultureInfo.InvariantCulture);
                 loading = page.FindAll(".order-detail__loading").Count;
                 error = page.FindAll("[role='alert']").Count;
                 workflow = page.FindAll(".order-workflow-panel").Count;
@@ -331,8 +377,8 @@ public sealed class OrderInitialStatusHttpTests(ITestOutputHelper output)
         Assert.Equal(JsonValueKind.Null, json.GetProperty("currentStatus").ValueKind);
         Assert.DoesNotContain(upstream.Requests, item => item.Contains("/available", StringComparison.Ordinal));
         using var context = RenderContext(client);
-        var page = Render(context);
-        page.WaitForAssertion(() => Assert.Equal("-", page.Find(".operations-status-pill").TextContent));
+        var page = Render(context).FindComponent<OrderView>();
+        await page.WaitForAssertionAsync(() => Assert.Equal("-", page.Find(".operations-status-pill").TextContent));
     }
 
     [Fact]
@@ -411,6 +457,9 @@ public sealed class OrderInitialStatusHttpTests(ITestOutputHelper output)
 
     private sealed class PresentationStages
     {
+        public bool HoldDetail { get; init; }
+        public TaskCompletionSource DetailEntered { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public TaskCompletionSource DetailReleased { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
         private readonly int[] started = new int[3];
         private readonly int[] completed = new int[3];
         public void Start(int stage) => Interlocked.Increment(ref started[stage]);
@@ -428,6 +477,11 @@ public sealed class OrderInitialStatusHttpTests(ITestOutputHelper output)
         {
             var stage = request.RequestUri!.AbsolutePath switch { "/bff/session" => 0, "/bff/orders/84" => 1, _ => 2 };
             stages?.Start(stage);
+            if (stage == 1 && stages?.HoldDetail == true)
+            {
+                stages.DetailEntered.TrySetResult();
+                await stages.DetailReleased.Task.WaitAsync(cancellationToken);
+            }
             var response = await client.GetAsync(request.RequestUri.PathAndQuery, cancellationToken);
             stages?.Complete(stage);
             return response;

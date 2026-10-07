@@ -65,6 +65,58 @@ jobs:
             --no-restore
           pwsh -NoProfile -File Legacy.Maliev.Intranet.BrowserTests/bin/Release/net10.0/playwright.ps1 \
             install --with-deps chromium
+      - name: Diagnose current-main pooled lifecycle and order presentation
+        id: current_main_diagnostics
+        timeout-minutes: 20
+        shell: bash
+        env:
+          DOTNET_PROCESSOR_COUNT: '1'
+        run: |
+          export GITHUB_ACTIONS=false
+          dotnet build Legacy.Maliev.Intranet.Tests/Legacy.Maliev.Intranet.Tests.csproj \
+            --configuration Release -warnaserror -p:UseLocalMalievDependencies=true --nologo
+          dotnet test Legacy.Maliev.Intranet.Tests/Legacy.Maliev.Intranet.Tests.csproj \
+            --configuration Release --no-build --no-restore -p:UseLocalMalievDependencies=true \
+            --filter 'FullyQualifiedName~PooledTestHostReleaseContractTests|FullyQualifiedName~TestHostLimiterDisposalContractTests|FullyQualifiedName~OrderInitialStatusHttpTests|FullyQualifiedName~HostOwnedTimeProviderTests|FullyQualifiedName~ValidationEvidenceCallerContractTests' \
+            --logger 'console;verbosity=normal'
+      - name: Capture bounded synthetic pooled-host root metadata after validation failure
+        if: ${{ !cancelled() && github.event_name == 'pull_request' && steps.current_main_diagnostics.outcome == 'failure' }}
+        timeout-minutes: 8
+        shell: bash
+        env:
+          DOTNET_PROCESSOR_COUNT: '1'
+          GITHUB_ACTIONS: 'false'
+          GITHUB_TOKEN: ''
+          REVIEWED_PR_HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          python3 scripts/diagnostics/pooled-host-root-evidence.py --self-test
+          mkdir -p isolated-pool-results
+          python3 scripts/diagnostics/pooled-host-root-evidence.py \
+            --workspace "$GITHUB_WORKSPACE" \
+            --dotnet "$(readlink -f "$(command -v dotnet)")" \
+            --head "$REVIEWED_PR_HEAD" > isolated-pool-results/root-metadata.json
+      - name: Preserve allowlisted synthetic pooled-host root metadata only
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: intranet-isolated-pool-${{ github.sha }}
+          path: isolated-pool-results/root-metadata.json
+          retention-days: 3
+          if-no-files-found: warn
+      - name: Require current-main diagnostic regressions
+        if: always()
+        shell: bash
+        env:
+          DIAGNOSTIC_OUTCOME: ${{ steps.current_main_diagnostics.outcome }}
+        run: test "$DIAGNOSTIC_OUTCOME" = success
+      - name: Verify current candidate formatting before full validation
+        timeout-minutes: 8
+        shell: bash
+        env:
+          DOTNET_PROCESSOR_COUNT: '1'
+        run: |
+          export GITHUB_ACTIONS=false
+          dotnet format Legacy.Maliev.Intranet.slnx --verify-no-changes --no-restore
       - name: Validate .NET solution
         uses: MALIEV-Co-Ltd/Legacy.Maliev.Workflows/actions/dotnet-validate@d7efac266bc66273bc45eab583618871292ecbd6
         env:

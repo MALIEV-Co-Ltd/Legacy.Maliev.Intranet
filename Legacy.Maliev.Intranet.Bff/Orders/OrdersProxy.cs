@@ -1,4 +1,5 @@
 using Legacy.Maliev.Intranet.Contracts;
+using Maliev.Aspire.ServiceDefaults.Diagnostics;
 
 namespace Legacy.Maliev.Intranet.Bff.Orders;
 
@@ -15,14 +16,14 @@ public sealed class OrdersProxy(HttpClient httpClient)
     {
         var path = $"/Orders?sort={sort}&search={Uri.EscapeDataString(search ?? string.Empty)}&index={index}&size={size}";
         using var request = new HttpRequestMessage(HttpMethod.Get, path);
-        return await httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+        return await httpClient.SendWithPrivateFailureObservationAsync(request, cancellationToken);
     }
 
     /// <summary>Gets the bounded pending order working set.</summary>
     public async Task<HttpResponseMessage> GetPendingAsync(int size, CancellationToken cancellationToken)
     {
         using var request = new HttpRequestMessage(HttpMethod.Get, $"/Orders/pending?index=1&size={size}");
-        return await httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+        return await httpClient.SendWithPrivateFailureObservationAsync(request, cancellationToken);
     }
 
     /// <summary>Gets the bounded order page owned by one customer.</summary>
@@ -51,13 +52,13 @@ public sealed class OrdersProxy(HttpClient httpClient)
     {
         var path = $"/Orders/customers/{customerId}?sort={sort}&search={Uri.EscapeDataString(search ?? string.Empty)}&index={index}&size={size}";
         using var request = new HttpRequestMessage(HttpMethod.Get, path);
-        return await httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+        return await httpClient.SendWithPrivateFailureObservationAsync(request, cancellationToken);
     }
 
     /// <summary>Gets OrderService process labels from the actual controller route.</summary>
     public async Task<HttpResponseMessage> GetProcessesAsync(CancellationToken cancellationToken)
     {
         using var request = new HttpRequestMessage(HttpMethod.Get, "/orders/processes");
-        return await httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+        return await httpClient.SendWithPrivateFailureObservationAsync(request, cancellationToken);
     }
 }

@@ -6,8 +6,18 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Hosting;
 
 namespace Legacy.Maliev.Intranet.Tests;
+
+internal readonly record struct TestHostLimiterDisposalSnapshot(
+    int DisposeStarted, int DisposeCompleted, int AsyncDisposeStarted, int AsyncDisposeCompleted,
+    int CleanupStarted, int CleanupCompleted);
+
+internal interface ITestHostLimiterDisposalDiagnostics
+{
+    TestHostLimiterDisposalSnapshot Snapshot();
+}
 
 internal static class TestHostLifecycle
 {
@@ -18,41 +28,167 @@ internal static class TestHostLifecycle
     // Its heartbeat captures the test-host startup context, rooting each disposed pipeline.
     // https://github.com/dotnet/aspnetcore/issues/66434
     // Keep the real middleware/policies intact and supply only the missing shutdown ownership.
-    private sealed class LimiterDisposalStartupFilter : IStartupFilter, IDisposable, IAsyncDisposable
+    private sealed class LimiterDisposalStartupFilter : IStartupFilter, IDisposable, IAsyncDisposable, ITestHostLimiterDisposalDiagnostics
     {
         private readonly List<PartitionedRateLimiter<HttpContext>> limiters = [];
         private readonly HashSet<object> visited = new(ReferenceEqualityComparer.Instance);
+        private readonly object cleanupGate = new();
+        private readonly CancellationTokenRegistration stoppedCleanup;
+        private TaskCompletionSource? cleanupCompletion;
+        private int disposeStarted;
+        private int disposeCompleted;
+        private int asyncDisposeStarted;
+        private int asyncDisposeCompleted;
+        private int cleanupStarted;
+        private int cleanupCompleted;
+
+        public LimiterDisposalStartupFilter(IHostApplicationLifetime lifetime)
+        {
+            // ApplicationStopped is a shutdown boundary, not a DI-disposal completion
+            // guarantee. Join actual cleanup before this callback returns.
+            stoppedCleanup = lifetime.ApplicationStopped.UnsafeRegister(static state =>
+                ((LimiterDisposalStartupFilter)state!).JoinCleanup(), this);
+        }
+
+        public TestHostLimiterDisposalSnapshot Snapshot() => new(
+            Volatile.Read(ref disposeStarted), Volatile.Read(ref disposeCompleted),
+            Volatile.Read(ref asyncDisposeStarted), Volatile.Read(ref asyncDisposeCompleted),
+            Volatile.Read(ref cleanupStarted), Volatile.Read(ref cleanupCompleted));
 
         public Action<IApplicationBuilder> Configure(Action<IApplicationBuilder> next) =>
             application => next(new TrackingApplicationBuilder(application, Capture));
 
         private void Capture(RequestDelegate middleware)
         {
-            if (middleware.Target is not { } target || !visited.Add(target)) return;
+            lock (cleanupGate)
+            {
+                if (cleanupCompletion is not null)
+                    throw new InvalidOperationException("Test-host limiter capture cannot continue after shutdown ownership begins.");
+                CaptureCore(middleware);
+            }
+        }
+
+        private void CaptureCore(RequestDelegate middleware)
+        {
+            if (middleware.Target is { } target) CaptureTarget(target);
+        }
+
+        private void CaptureTarget(object target)
+        {
+            if (!visited.Add(target)) return;
+            var type = target.GetType();
             // Minimal-host pipelines are already composed before the startup filter runs.
-            // Follow request delegates only, including Map/MapWhen branches, not arbitrary DI graphs.
-            foreach (var nested in target.GetType().GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
+            // The reviewed conventional-middleware binder stores the middleware instance
+            // as object; its instance owns the next RequestDelegate. Follow only that
+            // exact framework edge and request delegates, never arbitrary DI graphs.
+            if (type.DeclaringType?.FullName == "Microsoft.AspNetCore.Builder.UseMiddlewareExtensions+ReflectionMiddlewareBinder"
+                && type.Name.StartsWith("<>c__DisplayClass", StringComparison.Ordinal))
+            {
+                RequireReviewedVersion(type);
+                var instanceField = type.GetField("instance", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
+                    ?? throw new InvalidOperationException("Rate-limiter lifecycle workaround needs review for the binder instance field.");
+                if (instanceField.FieldType != typeof(object) || instanceField.GetValue(target) is not { } instance)
+                    throw new InvalidOperationException("Cannot capture the real middleware instance behind the reviewed binder.");
+                CaptureTarget(instance);
+            }
+            foreach (var nested in type.GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
                 .Select(field => field.GetValue(target)).OfType<RequestDelegate>()) Capture(nested);
-            if (target.GetType().FullName != "Microsoft.AspNetCore.RateLimiting.RateLimitingMiddleware") return;
-            var field = middleware.Target.GetType().GetField("_endpointLimiter", BindingFlags.Instance | BindingFlags.NonPublic)
+            if (type.FullName != "Microsoft.AspNetCore.RateLimiting.RateLimitingMiddleware") return;
+            RequireReviewedVersion(type);
+            var field = type.GetField("_endpointLimiter", BindingFlags.Instance | BindingFlags.NonPublic)
                 ?? throw new InvalidOperationException("Rate-limiter lifecycle workaround needs review for this ASP.NET Core version.");
-            if (field.GetValue(middleware.Target) is not PartitionedRateLimiter<HttpContext> limiter)
+            if (field.GetValue(target) is not PartitionedRateLimiter<HttpContext> limiter)
                 throw new InvalidOperationException("Cannot capture the real endpoint limiter for test-host disposal.");
             limiters.Add(limiter);
         }
 
+        private static void RequireReviewedVersion(Type type)
+        {
+            var version = type.Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion;
+            if (version != "10.0.12" && version?.StartsWith("10.0.12+", StringComparison.Ordinal) != true)
+                throw new InvalidOperationException("Rate-limiter lifecycle workaround needs review for this ASP.NET Core version.");
+        }
+
         public void Dispose()
         {
-            foreach (var limiter in limiters) limiter.Dispose();
-            limiters.Clear();
-            visited.Clear();
+            Interlocked.Increment(ref disposeStarted);
+            try
+            {
+                JoinCleanup();
+                Interlocked.Increment(ref disposeCompleted);
+            }
+            finally { stoppedCleanup.Dispose(); }
         }
 
         public async ValueTask DisposeAsync()
         {
-            foreach (var limiter in limiters) await limiter.DisposeAsync();
-            limiters.Clear();
-            visited.Clear();
+            Interlocked.Increment(ref asyncDisposeStarted);
+            try
+            {
+                var (completion, owned) = BeginCleanup();
+                if (owned is not null) await CompleteCleanupAsync(completion, owned).ConfigureAwait(false);
+                await completion.Task.ConfigureAwait(false);
+                Interlocked.Increment(ref asyncDisposeCompleted);
+            }
+            finally { stoppedCleanup.Dispose(); }
+        }
+
+        // Callback and regular DI disposal join the same completed operation.
+        // The callback never unregisters itself; no gate is held during disposal,
+        // waits, or cancellation-registration disposal.
+        private void JoinCleanup()
+        {
+            var (completion, owned) = BeginCleanup();
+            if (owned is not null) CompleteCleanup(completion, owned);
+            completion.Task.ConfigureAwait(false).GetAwaiter().GetResult();
+        }
+
+        private (TaskCompletionSource Completion, PartitionedRateLimiter<HttpContext>[]? Owned) BeginCleanup()
+        {
+            lock (cleanupGate)
+            {
+                if (cleanupCompletion is not null) return (cleanupCompletion, null);
+                var owned = limiters.ToArray();
+                cleanupCompletion = new(TaskCreationOptions.RunContinuationsAsynchronously);
+                limiters.Clear();
+                visited.Clear();
+                Interlocked.Increment(ref cleanupStarted);
+                return (cleanupCompletion, owned);
+            }
+        }
+
+        private void CompleteCleanup(TaskCompletionSource completion, PartitionedRateLimiter<HttpContext>[] owned)
+        {
+            List<Exception>? failures = null;
+            foreach (var limiter in owned)
+            {
+                try { limiter.Dispose(); }
+                catch (Exception exception) { (failures ??= []).Add(exception); }
+            }
+            FinishCleanup(completion, owned, failures);
+        }
+
+        private async Task CompleteCleanupAsync(TaskCompletionSource completion, PartitionedRateLimiter<HttpContext>[] owned)
+        {
+            List<Exception>? failures = null;
+            foreach (var limiter in owned)
+            {
+                try { await limiter.DisposeAsync().ConfigureAwait(false); }
+                catch (Exception exception) { (failures ??= []).Add(exception); }
+            }
+            FinishCleanup(completion, owned, failures);
+        }
+
+        private void FinishCleanup(TaskCompletionSource completion,
+            PartitionedRateLimiter<HttpContext>[] owned, List<Exception>? failures)
+        {
+            Array.Clear(owned);
+            if (failures is not null) completion.TrySetException(failures);
+            else
+            {
+                Interlocked.Increment(ref cleanupCompleted);
+                completion.TrySetResult();
+            }
         }
     }
 

@@ -34,13 +34,14 @@ using Polly;
 var builder = WebApplication.CreateBuilder(args);
 builder.WebHost.UseStaticWebAssets();
 builder.AddServiceDefaults();
+builder.AddPrivateRequestObservation("intranet-bff");
 builder.AddStandardMiddleware(options => options.EnableRequestLogging = true);
 builder.AddLegacyIntranetDataProtection();
 var allowLocalTestIdentity =
     builder.Environment.IsDevelopment() &&
     builder.Configuration.GetValue("Workspace:AllowLocalTestDomain", false);
 builder.Services.AddProblemDetails();
-builder.Services.AddSingleton(TimeProvider.System);
+builder.Services.AddTransient<TimeProvider>(_ => new Legacy.Maliev.Intranet.Server.Infrastructure.HostOwnedTimeProvider(TimeProvider.System));
 builder.Services.AddSingleton<DiagnosticEventStore>();
 builder.Services.AddScoped<LegacyDashboardAggregator>();
 builder.Services.AddScoped<CustomerActivityAggregator>();
@@ -242,6 +243,7 @@ builder.Services.AddHttpClient<OrdersProxy>(client =>
         ?? throw new InvalidOperationException("Services:Order is required."));
     client.Timeout = TimeSpan.FromSeconds(10);
 }).RemoveAllResilienceHandlers()
+    .AddPrivateFailureOperationObservation("OrderService")
     .AddHttpMessageHandler<LegacyServiceAuthenticationHandler>()
     .AddResilienceHandler("order-index", pipeline =>
 {
