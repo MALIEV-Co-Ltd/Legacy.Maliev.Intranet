@@ -55,6 +55,16 @@ class Bootstrap:
         ]).splitlines() if "=" in line)
 
     def acquire(self):
+        deadline = time.monotonic() + 15
+        while True:
+            try:
+                return self.acquire_state()
+            except (FileNotFoundError, ProcessLookupError):
+                if time.monotonic() >= deadline:
+                    raise RuntimeError("Bootstrap process-transition observation lease exhausted") from None
+                time.sleep(0.05)
+
+    def acquire_state(self):
         state = self.state()
         if state.get("LoadState") == "not-found":
             jobs = self.command(["sudo", "-n", "systemctl", "list-jobs", "--all", "--no-legend"])
@@ -119,7 +129,7 @@ class Bootstrap:
                     if state is not None:
                         self.command(["sudo", "-n", "systemctl", "stop", self.unit])
                         stopped = self.acquire()
-                        if stopped is not None and stopped.get("ActiveState") != "inactive":
+                        if stopped is not None and stopped.get("ActiveState") not in ("inactive", "failed"):
                             raise RuntimeError("Bootstrap service did not stop")
                         self.quiescent(self.group)
                     self.inspect_native_exit()

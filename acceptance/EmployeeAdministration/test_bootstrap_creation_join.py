@@ -82,6 +82,29 @@ class BootstrapControls(unittest.TestCase):
                     controls.RECEIPTS.append(child.receipt)
                 controls.tearDownModule()
 
+    def test_actual_exit_race_reobserves_same_generation_terminal_state(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            owner = bootstrap.Bootstrap(Path.cwd(), Path(temporary))
+            state = {"LoadState": "loaded", "Transient": "yes", "Description": owner.records["description"],
+                     "ExecStart": "{ path=" + str(Path(sys.executable).resolve()) + " ; argv[]=owned ; }",
+                     "InvocationID": "same", "ControlGroup": owner.group, "ActiveState": "active", "SubState": "running", "ExecMainPID": "123"}
+            terminal = {**state, "ActiveState": "failed", "SubState": "failed", "Result": "timeout"}
+            with patch.object(owner, "state", side_effect=[state, terminal]), patch.object(bootstrap.lane, "process_identity", side_effect=FileNotFoundError("Injected exit between state and proc read")) as identity:
+                self.assertEqual(terminal, owner.acquire())
+                identity.assert_called_once_with(123)
+            self.assertEqual("same", owner.records["generation"])
+
+    def test_failed_empty_expired_service_can_be_verified_stopped(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            owner = bootstrap.Bootstrap(Path.cwd(), Path(temporary))
+            owner.records["dispatchIntent"] = True
+            state = {"ActiveState": "failed", "Result": "timeout"}
+            with patch.object(owner, "acquire", return_value=state), patch.object(owner, "command") as command, patch.object(owner, "inspect_native_exit"), patch.object(owner, "quiescent") as empty:
+                owner.finish()
+                command.assert_called_once_with(["sudo", "-n", "systemctl", "stop", owner.unit])
+                empty.assert_called_once_with(owner.group)
+            self.assertTrue(owner.records["releaseVerified"])
+
     def test_native_receipt_missing_never_becomes_release(self):
         with tempfile.TemporaryDirectory() as temporary:
             owner = bootstrap.Bootstrap(Path.cwd(), Path(temporary))
