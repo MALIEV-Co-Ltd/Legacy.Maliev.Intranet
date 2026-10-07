@@ -1,0 +1,95 @@
+import json
+import os
+from pathlib import Path
+import sys
+import unittest
+from unittest.mock import patch
+import owned_creation_io as io
+
+RECEIPTS = []
+
+
+class OwnedIOControls(unittest.TestCase):
+    def test_normal_capture_observes_actual_exit(self):
+        text, receipt = io.capture([sys.executable, "-c", "print('owned')"], env=dict(os.environ), timeout=3)
+        RECEIPTS.append(receipt)
+        self.assertEqual("owned", text)
+        self.assertTrue(receipt["exited"] and receipt["readerClosed"])
+        self.assertEqual(0, receipt["readerWorkers"])
+
+    def test_output_overflow_terminates_exact_child_and_closes_reader(self):
+        with self.assertRaises(io.CaptureError) as error:
+            io.capture([sys.executable, "-c", "import sys,time;sys.stdout.write('x'*4096);sys.stdout.flush();time.sleep(60)"],
+                       env=dict(os.environ), timeout=3, max_bytes=32)
+        receipt = error.exception.receipt
+        RECEIPTS.append(receipt)
+        self.assertTrue(receipt["exited"] and receipt["readerClosed"])
+        self.assertLessEqual(receipt["capturedBytes"], 32)
+
+    def test_timeout_terminates_exact_child_and_closes_reader(self):
+        with self.assertRaises(io.CaptureError) as error:
+            io.capture([sys.executable, "-c", "import time;time.sleep(60)"], env=dict(os.environ), timeout=0.2)
+        receipt = error.exception.receipt
+        RECEIPTS.append(receipt)
+        self.assertTrue(receipt["exited"] and receipt["readerClosed"])
+
+    def test_actual_child_failed_reap_keeps_handle_and_reader_until_retry(self):
+        retained = []
+        def register(resource):
+            retained.append(resource)
+        try:
+            with patch.object(io.subprocess.Popen, "terminate", side_effect=OSError("Injected terminate failure")), patch.object(io.subprocess.Popen, "kill", side_effect=OSError("Injected kill failure")), patch.object(io.subprocess.Popen, "wait", side_effect=io.subprocess.TimeoutExpired("owned", 3)):
+                with self.assertRaises(io.CaptureError) as failure:
+                    io.capture([sys.executable, "-c", "import time;time.sleep(60)"], env=dict(os.environ), timeout=0.1, register=register)
+                resource = failure.exception.resource
+                self.assertIs(resource, retained[0])
+                self.assertFalse(resource.receipt["exited"])
+                self.assertFalse(resource.receipt["readerClosed"])
+                self.assertFalse(resource.receipt["settled"])
+                self.assertIn("actualExecutable", resource.receipt)
+        finally:
+            for resource in retained:
+                self.assertTrue(resource.settle())
+                RECEIPTS.append(resource.receipt)
+        self.assertTrue(resource.receipt["exited"] and resource.receipt["readerClosed"])
+
+    def test_failed_birth_observation_still_retains_and_reaps_actual_child(self):
+        retained = []
+        with patch.object(io, "creation_identity", side_effect=OSError("Injected birth observation failure")), self.assertRaises(io.CaptureError) as failure:
+            io.capture([sys.executable, "-c", "import time;time.sleep(60)"], env=dict(os.environ), register=retained.append)
+        self.assertIs(failure.exception.resource, retained[0])
+        self.assertTrue(retained[0].receipt["settled"])
+        RECEIPTS.append(retained[0].receipt)
+
+    def test_actual_child_wait_failure_keeps_owner_until_exact_retry(self):
+        retained = []
+        try:
+            with patch.object(io.subprocess.Popen, "terminate", return_value=None), patch.object(io.subprocess.Popen, "kill", return_value=None), patch.object(io.subprocess.Popen, "wait", side_effect=io.subprocess.TimeoutExpired("owned", 3)):
+                with self.assertRaises(io.CaptureError) as failure:
+                    io.capture([sys.executable, "-c", "import time;time.sleep(60)"], env=dict(os.environ), timeout=0.1, register=retained.append)
+                self.assertIs(failure.exception.resource, retained[0])
+                self.assertIn("TimeoutExpired", retained[0].receipt["settlementErrors"])
+                self.assertFalse(retained[0].receipt["settled"])
+        finally:
+            for resource in retained:
+                self.assertTrue(resource.settle())
+                RECEIPTS.append(resource.receipt)
+
+    def test_actual_child_metadata_failure_is_registered_before_resolution(self):
+        retained = []
+        with patch.object(io.shutil, "which", side_effect=OSError("Injected metadata resolution failure")), self.assertRaises(io.CaptureError) as failure:
+            io.capture([sys.executable, "-c", "import time;time.sleep(60)"], env=dict(os.environ), register=retained.append)
+        self.assertIs(failure.exception.resource, retained[0])
+        self.assertTrue(retained[0].receipt["settled"])
+        self.assertIn("actualExecutable", retained[0].receipt)
+        RECEIPTS.append(retained[0].receipt)
+
+
+def tearDownModule():
+    target = os.environ.get("CREATION_IO_RESOURCE_LEDGER")
+    if target:
+        Path(target).write_text(json.dumps(RECEIPTS, indent=2))
+
+
+if __name__ == "__main__":
+    unittest.main()

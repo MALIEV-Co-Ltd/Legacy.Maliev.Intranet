@@ -1,0 +1,40 @@
+name: Creation supervisor source controls
+on:
+  pull_request:
+    paths:
+      - 'acceptance/EmployeeAdministration/bootstrap_creation_join.py'
+      - 'acceptance/EmployeeAdministration/test_bootstrap_creation_join.py'
+      - 'acceptance/EmployeeAdministration/run_creation_join.py'
+      - 'acceptance/EmployeeAdministration/test_run_creation_join.py'
+      - 'acceptance/EmployeeAdministration/verify_creation_join.py'
+      - 'acceptance/EmployeeAdministration/test_verify_creation_join.py'
+      - 'acceptance/EmployeeAdministration/owned_creation_io.py'
+      - 'acceptance/EmployeeAdministration/test_owned_creation_io.py'
+      - '.github/workflows/employee-creation-supervisor-source.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'acceptance/EmployeeAdministration/bootstrap_creation_join.py'
+      - 'acceptance/EmployeeAdministration/test_bootstrap_creation_join.py'
+      - 'acceptance/EmployeeAdministration/run_creation_join.py'
+      - 'acceptance/EmployeeAdministration/test_run_creation_join.py'
+      - 'acceptance/EmployeeAdministration/verify_creation_join.py'
+      - 'acceptance/EmployeeAdministration/test_verify_creation_join.py'
+      - 'acceptance/EmployeeAdministration/owned_creation_io.py'
+      - 'acceptance/EmployeeAdministration/test_owned_creation_io.py'
+      - '.github/workflows/employee-creation-supervisor-source.yml'
+permissions:
+  contents: read
+jobs:
+  standalone-source:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Compile standalone Python sources
+        run: |
+          python3 -B -c "from pathlib import Path; files=[Path('acceptance/EmployeeAdministration/bootstrap_creation_join.py'),Path('acceptance/EmployeeAdministration/test_bootstrap_creation_join.py'),Path('acceptance/EmployeeAdministration/run_creation_join.py'),Path('acceptance/EmployeeAdministration/test_run_creation_join.py'),Path('acceptance/EmployeeAdministration/verify_creation_join.py'),Path('acceptance/EmployeeAdministration/test_verify_creation_join.py'),Path('acceptance/EmployeeAdministration/owned_creation_io.py'),Path('acceptance/EmployeeAdministration/test_owned_creation_io.py')]; [compile(p.read_text(),str(p),'exec') for p in files]"
+      - name: Run supervisor and existing proof-parser controls
+        run: python3 -B -m unittest discover -s acceptance/EmployeeAdministration -p 'test_*.py'
