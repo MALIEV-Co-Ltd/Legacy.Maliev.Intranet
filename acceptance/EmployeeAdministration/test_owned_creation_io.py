@@ -10,6 +10,28 @@ RECEIPTS = []
 
 
 class OwnedIOControls(unittest.TestCase):
+    def test_missing_linux_executable_requires_exact_owned_handle_exit(self):
+        from types import SimpleNamespace
+        # Linux birth metadata exists for a zombie; executable symlink does not.
+        raw = "123 (owned helper) " + " ".join(["S"] + ["0"] * 18 + ["4321"])
+        class ProcPath:
+            def __init__(self, value):
+                self.value = value
+            def __truediv__(self, value):
+                return self
+            def read_text(self):
+                return raw
+            def resolve(self, strict):
+                raise FileNotFoundError("Exited process executable unavailable")
+        with patch.object(io.os, "name", "posix"), patch.object(io, "Path", ProcPath):
+            value = io.creation_identity(SimpleNamespace(pid=123, poll=lambda: 0))
+            self.assertEqual("4321", value["startTicks"])
+            self.assertIsNone(value["actualExecutable"])
+            self.assertTrue(value["identityObservedAfterExit"])
+            self.assertEqual(0, value["terminalReturnCode"])
+            with self.assertRaises(FileNotFoundError):
+                io.creation_identity(SimpleNamespace(pid=123, poll=lambda: None))
+
     def test_normal_capture_observes_actual_exit(self):
         text, receipt = io.capture([sys.executable, "-c", "print('owned')"], env=dict(os.environ), timeout=3)
         RECEIPTS.append(receipt)
