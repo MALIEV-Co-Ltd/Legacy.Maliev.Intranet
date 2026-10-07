@@ -113,6 +113,10 @@ EXPECTED_CLIENT_PHASES = {
     "authority-host": 4, "signing-key": 5, "protection-key": 5, "certificate": 5,
 }
 EXPECTED_BACKENDS = frozenset(("postgres-and-redis", "backend-startup"))
+EXPECTED_BACKEND_COMMANDS = {
+    "postgres": "exec timeout -k 5 900 docker-entrypoint.sh postgres",
+    "redis": "exec timeout -k 5 900 docker-entrypoint.sh redis-server --save '' --appendonly no",
+}
 
 def exact_participants(row):
     clients, backends = row["clients"], row["backends"]
@@ -159,6 +163,13 @@ def resource_release(directory):
             return False
         for birth in created:
             if not re.fullmatch(r"[a-f0-9]{64}", birth["Id"]):
+                return False
+            signature = json.loads(birth["ownershipSignature"])
+            role = "postgres" if birth["Name"].endswith("-postgres") else "redis"
+            if (not isinstance(signature, dict) or signature.get("Init") is not True or
+                    signature.get("ID") != birth["Id"] or signature.get("Name") != "/" + birth["Name"] or
+                    signature.get("Entrypoint") != ["/bin/sh", "-c"] or
+                    signature.get("Cmd") != [EXPECTED_BACKEND_COMMANDS[role]]):
                 return False
             matches = [row for row in absent if all(row.get(key) == birth.get(key) for key in ("owner", "run", "daemon", "Name", "Id", "expires"))]
             if len(matches) != 1 or birth["persistentData"] is not False or matches[0]["persistentData"] is not False:

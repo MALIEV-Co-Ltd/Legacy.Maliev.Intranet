@@ -143,6 +143,13 @@ class RetainerTests(unittest.TestCase):
         births = [dict(state="created", Id=value * 64, Name=f"supplier-proof-{run}-{name}", run=run,
                        owner=owner, sequence=index, daemon="daemon", expires="expiry", persistentData=False)
                   for index, (value, name) in enumerate([("a", "postgres"), ("b", "redis")], 1)]
+        commands = {
+            "postgres": "exec timeout -k 5 900 docker-entrypoint.sh postgres",
+            "redis": "exec timeout -k 5 900 docker-entrypoint.sh redis-server --save '' --appendonly no",
+        }
+        for row, role in zip(births, ("postgres", "redis")):
+            row["ownershipSignature"] = json.dumps({"ID": row["Id"], "Name": "/" + row["Name"],
+                "Init": True, "Entrypoint": ["/bin/sh", "-c"], "Cmd": [commands[role]]})
         absent = [dict(row, state="verified-absent", sequence=index) for index, row in enumerate(births, 4)]
         clients = [dict(Name=name, Phase=phase, Released=True, startupSettled=True)
                    for name, phase in {
@@ -212,6 +219,30 @@ class RetainerTests(unittest.TestCase):
     def write_release_rows(self, directory, births, absent, scopes):
         (directory / "resources.jsonl").write_text("\n".join(map(json.dumps, births + absent)))
         (directory / "scope.jsonl").write_text("\n".join(map(json.dumps, scopes)))
+
+    def test_backend_signature_refuses_missing_init_old_pid1_watchdog_and_foreign_identity(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = pathlib.Path(directory)
+            for index in (0, 1):
+                for field, value in [("Init", None), ("Init", False), ("Init", 1),
+                                     ("ID", "f" * 64), ("Name", "/foreign"),
+                                     ("Entrypoint", ["sh", "-c"]),
+                                     ("Cmd", ["(sleep 900; kill -TERM 1; sleep 5; kill -KILL 1) & exec docker-entrypoint.sh postgres"])]:
+                    with self.subTest(index=index, field=field, value=value):
+                        births, absent, scopes = self.release_rows()
+                        signature = json.loads(births[index]["ownershipSignature"])
+                        if value is None:
+                            signature.pop(field)
+                        else:
+                            signature[field] = value
+                        births[index]["ownershipSignature"] = json.dumps(signature)
+                        self.write_release_rows(root, births, absent, scopes)
+                        self.assertFalse(retain.resource_release(root))
+            for malformed in ("null", "[]", "{", "", None):
+                births, absent, scopes = self.release_rows()
+                births[0]["ownershipSignature"] = malformed
+                self.write_release_rows(root, births, absent, scopes)
+                self.assertFalse(retain.resource_release(root))
 
     def test_exact_healthy_participant_inventory_is_unique_and_order_independent(self):
         with tempfile.TemporaryDirectory() as directory:

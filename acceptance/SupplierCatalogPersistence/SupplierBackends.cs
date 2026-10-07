@@ -47,6 +47,7 @@ internal sealed class SupplierBackends
         }
         void Configure(CreateContainerParameters parameters, Resource resource)
         {
+            parameters.HostConfig.Init = true;
             parameters.HostConfig.Memory = resource.Memory;
             parameters.HostConfig.NanoCPUs = resource.Cpu;
             parameters.HostConfig.Tmpfs = new Dictionary<string, string> { [resource.Mount] = "rw,size=268435456" };
@@ -54,7 +55,7 @@ internal sealed class SupplierBackends
                 foreach (var binding in bindings) binding.HostIP = "127.0.0.1";
         }
         var pg = Plan("postgres", "postgres:18-alpine", "/var/lib/postgresql", 512L * 1024 * 1024, 1_000_000_000,
-            "(sleep 900; kill -TERM 1; sleep 5; kill -KILL 1) & exec docker-entrypoint.sh postgres");
+            "exec timeout -k 5 900 docker-entrypoint.sh postgres");
         Postgres = new PostgreSqlBuilder(pg.Image).WithDockerEndpoint(new Uri("unix:///var/run/docker.sock"))
             .WithCleanUp(false).WithName(pg.Name).WithLabel("maliev.owner", "intranet-supplier-proof").WithLabel("maliev.run", run)
             .WithLabel("maliev.expires-utc", expires).WithEntrypoint("/bin/sh", "-c").WithCommand(new OverwriteEnumerable<string>([pg.Command]))
@@ -62,7 +63,7 @@ internal sealed class SupplierBackends
         pg.Container = Postgres;
         await StartResourceAsync(pg, deadline.Token);
         var redis = Plan("redis", "redis:7-alpine", "/data", 128L * 1024 * 1024, 500_000_000,
-            "(sleep 900; kill -TERM 1; sleep 5; kill -KILL 1) & exec docker-entrypoint.sh redis-server --save '' --appendonly no");
+            "exec timeout -k 5 900 docker-entrypoint.sh redis-server --save '' --appendonly no");
         Redis = new RedisBuilder(redis.Image).WithDockerEndpoint(new Uri("unix:///var/run/docker.sock"))
             .WithCleanUp(false).WithName(redis.Name).WithLabel("maliev.owner", "intranet-supplier-proof").WithLabel("maliev.run", run)
             .WithLabel("maliev.expires-utc", expires).WithEntrypoint("/bin/sh", "-c").WithCommand(new OverwriteEnumerable<string>([redis.Command]))
@@ -131,7 +132,7 @@ internal sealed class SupplierBackends
             || !Regex.IsMatch(actual.Image ?? "", "\\Asha256:[a-f0-9]{64}\\z")
             || config.Image != resource.Image || config.Labels["maliev.owner"] != "intranet-supplier-proof"
             || config.Labels["maliev.run"] != run || config.Labels["maliev.expires-utc"] != expires
-            || host.Memory != resource.Memory || host.NanoCPUs != resource.Cpu
+            || host.Init != true || host.Memory != resource.Memory || host.NanoCPUs != resource.Cpu
             || !config.Entrypoint.SequenceEqual(new[] { "/bin/sh", "-c" }) || !config.Cmd.SequenceEqual(new[] { resource.Command })
             || host.Tmpfs.Count != 1 || host.Tmpfs[resource.Mount] != "rw,size=268435456"
             || host.Binds is { Count: > 0 } || host.Mounts is { Count: > 0 }
@@ -152,6 +153,7 @@ internal sealed class SupplierBackends
         ports = actual.HostConfig.PortBindings.OrderBy(pair => pair.Key).ToArray(),
         actual.HostConfig.Memory,
         actual.HostConfig.NanoCPUs,
+        actual.HostConfig.Init,
         actual.Config.Cmd,
         actual.Config.Entrypoint
     });
