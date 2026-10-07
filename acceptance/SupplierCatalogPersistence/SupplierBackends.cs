@@ -90,9 +90,22 @@ internal sealed class SupplierBackends
                     throw new InvalidOperationException("SDK and inspected creation IDs do not match.");
                 resource.Id = actual.ID;
                 resource.Signature = Signature(actual);
-                await ReceiptAsync(new { run, state = "created", daemon, resource.Name, resource.Id,
-                    actual.Created, actual.Image, resource.Memory, resource.Cpu, expires,
-                    persistentData = false, localEndpoint = "unix:///var/run/docker.sock", ownershipSignature = resource.Signature }, capture.Token);
+                await ReceiptAsync(new
+                {
+                    run,
+                    state = "created",
+                    daemon,
+                    resource.Name,
+                    resource.Id,
+                    actual.Created,
+                    actual.Image,
+                    resource.Memory,
+                    resource.Cpu,
+                    expires,
+                    persistentData = false,
+                    localEndpoint = "unix:///var/run/docker.sock",
+                    ownershipSignature = resource.Signature
+                }, capture.Token);
             }
             else if (startup is null) throw new InvalidOperationException("Successful startup lacks creation evidence.");
         }
@@ -128,12 +141,18 @@ internal sealed class SupplierBackends
 
     private static string Signature(ContainerInspectResponse actual) => JsonSerializer.Serialize(new
     {
-        actual.ID, actual.Created, actual.Image, actual.Name,
+        actual.ID,
+        actual.Created,
+        actual.Image,
+        actual.Name,
         labels = actual.Config.Labels.OrderBy(pair => pair.Key, StringComparer.Ordinal).ToArray(),
         mounts = actual.Mounts.Select(mount => new { mount.Type, mount.Source, mount.Destination, mount.RW }).OrderBy(mount => mount.Destination).ToArray(),
         tmpfs = actual.HostConfig.Tmpfs.OrderBy(pair => pair.Key).ToArray(),
         ports = actual.HostConfig.PortBindings.OrderBy(pair => pair.Key).ToArray(),
-        actual.HostConfig.Memory, actual.HostConfig.NanoCPUs, actual.Config.Cmd, actual.Config.Entrypoint
+        actual.HostConfig.Memory,
+        actual.HostConfig.NanoCPUs,
+        actual.Config.Cmd,
+        actual.Config.Entrypoint
     });
 
     private async Task<ContainerInspectResponse?> ReobserveAsync(Resource resource, CancellationToken token)

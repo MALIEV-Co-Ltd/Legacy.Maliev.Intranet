@@ -193,7 +193,8 @@ internal sealed class SupplierResourceScope : IAsyncDisposable
         using var deadline = new CancellationTokenSource(TimeSpan.FromSeconds(10));
         await WriteReceiptAsync("scope.jsonl", new
         {
-            state, expires,
+            state,
+            expires,
             clients = currentClients.Select(entry => new { entry.Name, entry.Phase, entry.Released, startupSettled = entry.Startup?.IsCompleted ?? true }).ToArray(),
             backends = currentBackends.Select(entry => new { entry.Name, entry.Released, startupSettled = entry.Startup?.IsCompleted ?? true }).ToArray(),
             backendBindings = bindings.Select(binding => new { binding.Name, binding.Run, ids = binding.CapturedIds() }).ToArray()
