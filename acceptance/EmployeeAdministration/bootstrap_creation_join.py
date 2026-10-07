@@ -189,6 +189,8 @@ if __name__ == "__main__":
     parser.add_argument("--source-seal-sha256", required=True)
     args = parser.parse_args()
     signal.signal(signal.SIGTERM, lambda *_: (_ for _ in ()).throw(KeyboardInterrupt()))
+    if os.geteuid() != 0:
+        raise RuntimeError("Privileged hosted bootstrap required for exact elevated-helper identity")
     available = int(next(line for line in Path("/proc/meminfo").read_text().splitlines() if line.startswith("MemAvailable:")).split()[1])
     lane.admission(os.environ, available)
     Bootstrap(args.root, args.evidence).execute(args.source_seal, args.source_seal_sha256)

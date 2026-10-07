@@ -119,6 +119,8 @@ if __name__ == "__main__":
         payload(args.payload, args.seconds)
     else:
         signal.signal(signal.SIGTERM, lambda *_: (_ for _ in ()).throw(KeyboardInterrupt()))
+        if os.geteuid() != 0:
+            raise RuntimeError("Privileged hosted controller required for exact elevated-helper identity")
         available = int(next(line for line in Path("/proc/meminfo").read_text().splitlines() if line.startswith("MemAvailable:")).split()[1])
         lane.admission(os.environ, available)
         results = [Smoke(args.root, args.evidence, scenario).run_smoke() for scenario in ("normal", "cancel", "expiry", "post-dispatch-fault")]

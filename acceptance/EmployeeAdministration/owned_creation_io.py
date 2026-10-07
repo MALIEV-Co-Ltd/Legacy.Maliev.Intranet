@@ -92,9 +92,13 @@ def capture(arguments, *, env, timeout=15, max_bytes=262144, drain=lambda: None,
     failure = None
     try:
         # Register the retained handle before any fallible identity/read operation.
+        receipt["stage"] = "register-owner"
         register(resource)
+        receipt["stage"] = "creation-identity"
         receipt.update(creation_identity(process))
+        receipt["stage"] = "executable-metadata"
         receipt["executable"] = str(Path(shutil.which(arguments[0]) or arguments[0]).resolve())
+        receipt["stage"] = "bounded-reader"
         os.set_blocking(process.stdout.fileno(), False)
         eof = False
         while not eof:
@@ -112,6 +116,7 @@ def capture(arguments, *, env, timeout=15, max_bytes=262144, drain=lambda: None,
             except BlockingIOError:
                 time.sleep(0.01)
         code = process.wait(timeout=max(0.01, timeout - (time.monotonic() - started)))
+        receipt["stage"] = "exit-result"
         receipt["returnCode"] = code
         if code != 0:
             raise RuntimeError("Owned control command failed")

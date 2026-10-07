@@ -54,7 +54,7 @@ jobs:
         with:
           persist-credentials: false
       - name: Observe actual normal, cancellation, expiry and post-dispatch cleanup
-        run: python3 -B acceptance/EmployeeAdministration/smoke_creation_control.py --root "$GITHUB_WORKSPACE" --evidence "$RUNNER_TEMP/creation-controller-smoke"
+        run: sudo -n --preserve-env=RUNNER_ENVIRONMENT,MALIEV_CREATION_HOSTED_ADMISSION python3 -B acceptance/EmployeeAdministration/smoke_creation_control.py --root "$GITHUB_WORKSPACE" --evidence "$RUNNER_TEMP/creation-controller-smoke"
       - name: Retain finite control-service proof only
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
