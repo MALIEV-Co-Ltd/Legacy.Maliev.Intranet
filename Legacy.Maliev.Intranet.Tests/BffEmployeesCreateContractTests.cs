@@ -18,6 +18,38 @@ namespace Legacy.Maliev.Intranet.Tests;
 
 public sealed class BffEmployeesCreateContractTests
 {
+    [Theory]
+    [InlineData(255, HttpStatusCode.Created)]
+    [InlineData(256, HttpStatusCode.Created)]
+    [InlineData(257, HttpStatusCode.BadRequest)]
+    public async Task ProfileEmailStorageBoundary_PreservesAcceptedInputAndRejectsOversizeBeforeDownstreamWrites(int length, HttpStatusCode expected)
+    {
+        var profiles = new RecordingHandler((HttpStatusCode.Created, "{\"Id\":42}"));
+        var identities = new RecordingHandler((HttpStatusCode.Created, "{\"databaseID\":42}"));
+        await using var factory = new EmployeesCreateBffFactory(profiles, identities, hasCreatePermission: true);
+        using var client = CreateClient(factory);
+        await SignInAsync(client);
+        var input = ValidRequest();
+        input.Email = new string('a', length - "@fixture.invalid".Length) + "@fixture.invalid";
+
+        using var response = await SendCreateAsync(client, includeCsrf: true, input);
+
+        Assert.Equal(expected, response.StatusCode);
+        if (expected == HttpStatusCode.BadRequest)
+        {
+            using var body = System.Text.Json.JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+            Assert.Single(body.RootElement.GetProperty("errors").GetProperty("email").EnumerateArray());
+            Assert.Empty(profiles.Requests);
+            Assert.Empty(identities.Requests);
+            return;
+        }
+
+        using var profileBody = System.Text.Json.JsonDocument.Parse(Assert.Single(profiles.Requests).Body!);
+        using var identityBody = System.Text.Json.JsonDocument.Parse(Assert.Single(identities.Requests).Body!);
+        Assert.Equal(input.Email, profileBody.RootElement.GetProperty("Email").GetString());
+        Assert.Equal(input.Email, identityBody.RootElement.GetProperty("email").GetString());
+    }
+
     [Fact]
     public async Task AuthorizedEmployee_WithCsrf_UsesServerTokenAndReturnsOnlyCreatedId()
     {
@@ -148,9 +180,9 @@ public sealed class BffEmployeesCreateContractTests
         response.EnsureSuccessStatusCode();
     }
 
-    private static async Task<HttpResponseMessage> SendCreateAsync(HttpClient client, bool includeCsrf)
+    private static async Task<HttpResponseMessage> SendCreateAsync(HttpClient client, bool includeCsrf, CreateEmployeeAccountRequest? input = null)
     {
-        using var request = new HttpRequestMessage(HttpMethod.Post, "/bff/employees") { Content = JsonContent.Create(ValidRequest()) };
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/bff/employees") { Content = JsonContent.Create(input ?? ValidRequest()) };
         if (includeCsrf)
         {
             using var sessionResponse = await client.GetAsync("/bff/session");
