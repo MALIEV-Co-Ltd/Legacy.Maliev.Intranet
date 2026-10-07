@@ -95,7 +95,7 @@ public sealed class SupplierCatalogPersistenceTests
         settings["ServiceAuthentication:ClientId"] = "supplier-proof";
         settings["ServiceAuthentication:ClientSecret"] = secret;
         await using var bff = new RuntimeFactory<Bff::Program>(settings, "Development", bff: true);
-        bff.UseKestrel();
+        bff.UseKestrel(options => options.Listen(IPAddress.Loopback, 0, listen => listen.UseHttps(certificate)));
         using var bffClient = bff.CreateClient();
         bffClient.Timeout = TimeSpan.FromSeconds(20);
         var origin = bffClient.BaseAddress!.AbsoluteUri.TrimEnd('/');
@@ -123,12 +123,12 @@ public sealed class SupplierCatalogPersistenceTests
 
         using var playwright = await Playwright.CreateAsync();
         await using var browser = await playwright.Chromium.LaunchAsync(new() { Headless = true });
-        await using var context = await browser.NewContextAsync(new() { Locale = "en-US" });
+        await using var context = await browser.NewContextAsync(new() { Locale = "en-US", IgnoreHTTPSErrors = true });
         await SignInAsync(context, origin, "supplier-proof@maliev.com");
         var noCsrf = await context.APIRequest.PostAsync(origin + "/bff/suppliers", new()
         { DataObject = new { name = "Rejected synthetic supplier", address1 = "Rejected street", countryId = 66 } });
         Assert.Equal(400, noCsrf.Status);
-        await using (var readOnly = await browser.NewContextAsync())
+        await using (var readOnly = await browser.NewContextAsync(new() { IgnoreHTTPSErrors = true }))
         {
             await SignInAsync(readOnly, origin, "readonly-proof@maliev.com");
             using var session = JsonDocument.Parse(await (await readOnly.APIRequest.GetAsync(origin + "/bff/session")).TextAsync());
