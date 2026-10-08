@@ -14,6 +14,45 @@ import urllib.parse
 from graph_evidence import cleanup
 
 
+def read_site(operation, path, callback):
+    """Retain only source-owned read coordinates on the original OSError."""
+    if not allowed_read_site(operation, path):
+        raise ValueError('unrecognized owned read site')
+    try:
+        return callback()
+    except OSError as error:
+        error.graph_failed_read = {'operation': operation, 'errno': error.errno, 'path': path}
+        raise
+
+
+def allowed_read_site(operation, path):
+    fixed = {'daemon-pid-read': '/var/run/docker.pid',
+             'daemon-socket-stat': '/var/run/docker.sock', 'docker-socket-connect': '/var/run/docker.sock'}
+    if operation in fixed:
+        return path == fixed[operation]
+    suffixes = {'daemon-stat-read': 'stat', 'daemon-exe-readlink': 'exe',
+                'process-stat-read': 'stat', 'process-exe-readlink': 'exe'}
+    if operation not in suffixes or not isinstance(path, str):
+        return False
+    pieces = path.split('/')
+    return (len(pieces) == 4 and pieces[:2] == ['', 'proc'] and pieces[3] == suffixes[operation]
+            and pieces[2].isascii() and pieces[2].isdecimal() and len(pieces[2]) <= 10
+            and 0 < int(pieces[2]) <= 2147483647 and str(int(pieces[2])) == pieces[2])
+
+
+def read_failure(gate, error):
+    failure = {'gate': gate, 'category': type(error).__name__}
+    detail = getattr(error, 'graph_failed_read', None)
+    if (isinstance(error, OSError) and isinstance(detail, dict)
+            and set(detail) == {'operation', 'errno', 'path'}
+            and isinstance(detail['operation'], str) and isinstance(detail['path'], str)
+            and allowed_read_site(detail['operation'], detail['path'])
+            and detail['errno'] == error.errno
+            and (detail['errno'] is None or (type(detail['errno']) is int and 0 < detail['errno'] <= 4095))):
+        failure['failedRead'] = dict(detail)
+    return failure
+
+
 class DockerConnection(http.client.HTTPConnection):
     def __init__(self, timeout=30):
         super().__init__('localhost', timeout=timeout)
@@ -23,7 +62,8 @@ class DockerConnection(http.client.HTTPConnection):
         self.sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
         self.active_socket = self.sock
         self.sock.settimeout(self.timeout)
-        self.sock.connect('/var/run/docker.sock')
+        read_site('docker-socket-connect', '/var/run/docker.sock',
+                  lambda: self.sock.connect('/var/run/docker.sock'))
 
     def stop(self):
         # Retain the exact socket even when HTTPConnection hands its file to HTTPResponse.
@@ -49,10 +89,16 @@ class Docker:
             connection.stop()
 
     def daemon(self):
-        pid = int(pathlib.Path('/var/run/docker.pid').read_text().strip())
-        fields = pathlib.Path(f'/proc/{pid}/stat').read_text().rsplit(')', 1)[1].split()
+        pid = int(read_site('daemon-pid-read', '/var/run/docker.pid',
+                            lambda: pathlib.Path('/var/run/docker.pid').read_text()).strip())
+        if type(pid) is not int or not 0 < pid <= 2147483647:
+            raise ValueError('invalid daemon PID')
+        fields = read_site('daemon-stat-read', f'/proc/{pid}/stat',
+                           lambda: pathlib.Path(f'/proc/{pid}/stat').read_text()).rsplit(')', 1)[1].split()
         return {'id': self.get('/info')['ID'], 'pid': pid, 'birth': fields[19],
-                'exe': os.readlink(f'/proc/{pid}/exe'), 'socketInode': os.stat('/var/run/docker.sock').st_ino}
+                'exe': read_site('daemon-exe-readlink', f'/proc/{pid}/exe', lambda: os.readlink(f'/proc/{pid}/exe')),
+                'socketInode': read_site('daemon-socket-stat', '/var/run/docker.sock',
+                                         lambda: os.stat('/var/run/docker.sock')).st_ino}
 
     def get(self, route):
         connection = DockerConnection()
@@ -81,14 +127,19 @@ class Docker:
         return result
 
 
-def process_identity(pid):
+def process_identity(pid, expected_session=None):
+    if type(pid) is not int or not 0 < pid <= 2147483647:
+        raise ValueError('invalid process PID')
     entry = pathlib.Path('/proc') / str(pid)
     try:
-        fields = (entry / 'stat').read_text().rsplit(')', 1)[1].split()
+        fields = read_site('process-stat-read', f'/proc/{pid}/stat',
+                           lambda: (entry / 'stat').read_text()).rsplit(')', 1)[1].split()
     except FileNotFoundError:
         return None
+    if expected_session is not None and int(fields[3]) != expected_session:
+        return None  # A known foreign session needs no executable read or enrollment.
     try:
-        executable = os.readlink(entry / 'exe')
+        executable = read_site('process-exe-readlink', f'/proc/{pid}/exe', lambda: os.readlink(entry / 'exe'))
     except FileNotFoundError:
         executable = None  # A still-present zombie is not absence.
     return {'pid': pid, 'birth': fields[19], 'session': int(fields[3]), 'exe': executable}
@@ -100,7 +151,7 @@ def group_members(session):
         if not entry.name.isdecimal():
             continue
         try:
-            member = process_identity(int(entry.name))
+            member = process_identity(int(entry.name), expected_session=session)
             if member is not None and member['session'] == session:
                 members.append(member)
         except FileNotFoundError:
@@ -206,7 +257,7 @@ class Phase:
             self.fencer = threading.Thread(target=self._periodic_fences, name='owned-graph-event-fences', daemon=False)
             self.fencer.start()
         except Exception as error:
-            self.first_failure = {'gate': 'observer-startup', 'category': type(error).__name__}
+            self.first_failure = read_failure('observer-startup', error)
             self.errors.append('ObserverAdmissionFailed')
             self._stop_readers(final_fence=False)
             final = self._final_census()
@@ -400,8 +451,8 @@ class Phase:
                     raise CommandFailure('original descendants remain after leader exit')
             except Exception as error:
                 primary = error
-                row['firstFailure'] = {'gate': name, 'category': type(error).__name__,
-                                       'reason': str(error) if isinstance(error, CommandFailure) else type(error).__name__}
+                row['firstFailure'] = read_failure(name, error)
+                row['firstFailure']['reason'] = str(error) if isinstance(error, CommandFailure) else type(error).__name__
                 if self.first_failure is None:
                     self.first_failure = row['firstFailure']
             finally:

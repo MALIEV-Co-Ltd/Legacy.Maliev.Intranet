@@ -38,6 +38,85 @@ def closure():
 
 
 class ProducerGraphTests(unittest.TestCase):
+    def test_foreign_session_does_not_read_executable(self):
+        def stat(entry):
+            pid = int(entry.parent.name)
+            return f'{pid} (synthetic) ' + ' '.join(['S', '1', str(pid), str(pid)] + ['0'] * 15 + ['456'])
+        def executable(entry):
+            if entry.parent.name == '789':
+                raise PermissionError(13, 'synthetic foreign denial', str(entry))
+            return '/synthetic/dotnet'
+        with mock.patch.object(supervisor.pathlib.Path, 'iterdir', return_value=iter([pathlib.Path('/proc/123'), pathlib.Path('/proc/789')])), \
+             mock.patch.object(supervisor.pathlib.Path, 'read_text', stat), \
+             mock.patch.object(supervisor.os, 'readlink', side_effect=executable) as reads:
+            self.assertEqual([{'pid': 123, 'birth': '456', 'session': 123, 'exe': '/synthetic/dotnet'}], supervisor.group_members(123))
+        self.assertEqual([mock.call(pathlib.Path('/proc/123/exe'))], reads.call_args_list)
+
+    def test_unknown_membership_and_owned_executable_denials_remain_hard_failures(self):
+        text = '123 (synthetic) ' + ' '.join(['S', '1', '123', '123'] + ['0'] * 15 + ['456'])
+        for operation in ('process-stat-read', 'process-exe-readlink'):
+            error = PermissionError(13, 'private message', '/private/unretained')
+            with mock.patch.object(supervisor.pathlib.Path, 'read_text', return_value=text,
+                                   side_effect=error if operation == 'process-stat-read' else None), \
+                 mock.patch.object(supervisor.os, 'readlink', side_effect=error):
+                with self.assertRaises(PermissionError) as observed:
+                    supervisor.process_identity(123, expected_session=123)
+            self.assertIs(error, observed.exception)
+            self.assertEqual({'operation': operation, 'errno': 13,
+                              'path': '/proc/123/' + ('stat' if operation.endswith('stat-read') else 'exe')},
+                             supervisor.read_failure('synthetic', error)['failedRead'])
+
+    def test_daemon_actual_read_site_preserves_original_exception_and_safe_coordinates(self):
+        error = PermissionError(13, 'private message', '/private/unretained')
+        def read(entry):
+            return '50' if entry.as_posix() == '/var/run/docker.pid' else '50 (synthetic) ' + ' '.join(['S'] * 19 + ['70'])
+        docker = supervisor.Docker()
+        with mock.patch.object(supervisor.pathlib.Path, 'read_text', read), \
+             mock.patch.object(docker, 'get', return_value={'ID': 'synthetic-daemon'}), \
+             mock.patch.object(supervisor.os, 'readlink', side_effect=error):
+            with self.assertRaises(PermissionError) as observed:
+                docker.daemon()
+        self.assertIs(error, observed.exception)
+        self.assertEqual({'gate': 'observer-startup', 'category': 'PermissionError',
+                          'failedRead': {'operation': 'daemon-exe-readlink', 'errno': 13, 'path': '/proc/50/exe'}},
+                         supervisor.read_failure('observer-startup', error))
+
+    def test_read_coordinates_reject_unknown_private_or_fabricated_metadata(self):
+        for operation, path in (('foreign', '/proc/50/exe'), ('daemon-exe-readlink', '/private/path'),
+                                ('process-stat-read', '/proc/../stat'), ('process-stat-read', '/proc/0/stat')):
+            callback = mock.Mock()
+            with self.assertRaises(ValueError):
+                supervisor.read_site(operation, path, callback)
+            callback.assert_not_called()
+        error = PermissionError(13, 'synthetic')
+        for detail in ({'operation': 'foreign', 'errno': 13, 'path': '/proc/50/exe'},
+                       {'operation': 'daemon-exe-readlink', 'errno': 13, 'path': '/private/path'},
+                       {'operation': 'daemon-exe-readlink', 'errno': 1, 'path': '/proc/50/exe'},
+                       {'operation': 'daemon-exe-readlink', 'errno': 13, 'path': '/proc/50/exe', 'body': 'private'}):
+            error.graph_failed_read = detail
+            self.assertEqual({'gate': 'synthetic', 'category': 'PermissionError'}, supervisor.read_failure('synthetic', error))
+
+    def test_failed_read_startup_preserves_first_cause_after_secondary_census_failure(self):
+        error = PermissionError(13, 'synthetic original denial', '/private/unretained')
+        with self.assertRaises(PermissionError):
+            supervisor.read_site('daemon-exe-readlink', '/proc/50/exe', mock.Mock(side_effect=error))
+        docker = mock.Mock()
+        docker.census.side_effect = [error, OSError(5, 'synthetic secondary failure')]
+        with tempfile.TemporaryDirectory() as temporary, \
+             mock.patch.object(supervisor, 'Docker', return_value=docker), \
+             mock.patch.object(supervisor, 'DockerConnection') as connection, \
+             mock.patch.object(supervisor.threading, 'Thread') as thread:
+            with self.assertRaises(supervisor.AdmissionFailure) as observed:
+                supervisor.Phase({}, temporary)
+            result = json.loads((pathlib.Path(temporary) / 'cleanup.json').read_text())
+        self.assertIs(error, observed.exception.__cause__)
+        self.assertEqual(supervisor.read_failure('observer-startup', error), result['firstFailure'])
+        self.assertEqual([], result['processes'])
+        self.assertFalse(result['admitted'])
+        self.assertFalse(evidence.cleanup(result))
+        thread.assert_not_called()
+        connection.return_value.stop.assert_called_once()
+
     def test_admission_writes_only_owned_evidence_after_all_three_producer_readbacks(self):
         import producer_graph
         with tempfile.TemporaryDirectory() as temporary:
