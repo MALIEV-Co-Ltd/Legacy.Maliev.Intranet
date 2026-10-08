@@ -231,7 +231,9 @@ public sealed class SupplierCatalogEditPersistenceTests
             var addressId = persisted.GetProperty("Id").GetInt32();
             var rejectedUpdateBody = new
             {
-                name = "Rejected synthetic update", address1 = "Rejected replacement", countryId = 66,
+                name = "Rejected synthetic update",
+                address1 = "Rejected replacement",
+                countryId = 66,
             };
             var noEditCsrf = await context.APIRequest.PutAsync(origin + $"/bff/suppliers/{id}", new()
             { DataObject = rejectedUpdateBody });
@@ -337,22 +339,32 @@ public sealed class SupplierCatalogEditPersistenceTests
             Directory.CreateDirectory(evidenceDirectory);
             await File.WriteAllTextAsync(Path.Combine(evidenceDirectory, "edit-journey.json"), JsonSerializer.Serialize(new
             {
-                schema = 1, owner = owner.Id.ToString("N"),
+                schema = 1,
+                owner = owner.Id.ToString("N"),
                 runId = Environment.GetEnvironmentVariable("GITHUB_RUN_ID"),
                 runAttempt = Environment.GetEnvironmentVariable("GITHUB_RUN_ATTEMPT"),
-                supplierId = id, originalAddressId = addressId,
+                supplierId = id,
+                originalAddressId = addressId,
                 persistedSupplierId = editedProfile.GetProperty("Id").GetInt32(),
                 persistedAddressId = editedAddress.GetProperty("Id").GetInt32(),
                 profileAddressId = editedProfile.GetProperty("AddressId").GetInt32(),
-                initialPostcode = "10110", selectedPostcode = "10500",
+                initialPostcode = "10110",
+                selectedPostcode = "10500",
                 persistedPostcode = editedAddress.GetProperty("PostalCode").GetString(),
                 datasetVersion = editActual.GetProperty("datasetVersion").GetString(),
-                lookupStatus = editLookupResponse.Status, updateStatus = updated.Status,
-                addressReadStatus = (int)editedAddressRead.StatusCode, profileReadStatus = (int)editedProfileRead.StatusCode,
-                csrfDeniedStatus = noEditCsrf.Status, employeeUpdateDeniedStatus,
+                lookupStatus = editLookupResponse.Status,
+                updateStatus = updated.Status,
+                addressReadStatus = (int)editedAddressRead.StatusCode,
+                profileReadStatus = (int)editedProfileRead.StatusCode,
+                csrfDeniedStatus = noEditCsrf.Status,
+                employeeUpdateDeniedStatus,
                 workloadUpdateDeniedStatus = (int)deniedDomainUpdate.StatusCode,
-                exactTupleMatched = true, manualAddressPreserved = true, countryPreserved = true,
-                taxPreserved = true, deniedUpdatePreservedOriginal = true, reloadMatched = true,
+                exactTupleMatched = true,
+                manualAddressPreserved = true,
+                countryPreserved = true,
+                taxPreserved = true,
+                deniedUpdatePreservedOriginal = true,
+                reloadMatched = true,
                 singleSupplierAndAddress = true,
             }), timeout.Token);
 
