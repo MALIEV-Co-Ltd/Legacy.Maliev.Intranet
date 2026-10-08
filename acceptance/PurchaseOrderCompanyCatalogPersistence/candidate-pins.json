@@ -1,0 +1,423 @@
+{
+  "schema": 1,
+  "status": "candidate source graph; producer qualification required before dispatch",
+  "pins": {
+    "Legacy.Maliev.CatalogService": "3f426723743570a6c20d2c014499445abb0774e1",
+    "Legacy.Maliev.ProcurementService": "614a157ab5c8739c144554797a387c45990ba7fe",
+    "Legacy.Maliev.ServiceDefaults": "7b3099bf67d0f17e56cfdb3dcf36541304abaac2",
+    "Legacy.Maliev.CompatibilityContracts": "99529ad665503b227184c0baa946ad4e62db978a",
+    "Legacy.Maliev.DocumentService": "b12b9499d3f33113d2f0be196db831759ea3a03c",
+    "Legacy.Maliev.FileService": "d478d2674b57a25c939f62aa838efbedd8591055",
+    "Legacy.Maliev.EmployeeService": "5ace8e2b7b1de498100c2e3cd7d2327451578ea7"
+  },
+  "nativeExecuted": false,
+  "sourceBindings": [
+    {
+      "repository": "Legacy.Maliev.CatalogService",
+      "revision": "3f426723743570a6c20d2c014499445abb0774e1",
+      "path": ".github/workflows/_build-and-test.yml",
+      "gitBlob": "a16dbf43eb7c3d23469b416a5d4cde126bbed3b3",
+      "canonicalSha256": "38f2efeb1827bc45f467c04e6443fef1c31b0b784248b4bfe26fb6997c9b0428",
+      "size": 2255
+    },
+    {
+      "repository": "Legacy.Maliev.CatalogService",
+      "revision": "3f426723743570a6c20d2c014499445abb0774e1",
+      "path": ".github/workflows/pr-validation.yml",
+      "gitBlob": "49b784875dd9275866012396c3ff51a0b1f9dee2",
+      "canonicalSha256": "8645e3bae51218b468c15c026360f8b2befd29813236e10d30def30bcee68cff",
+      "size": 293
+    },
+    {
+      "repository": "Legacy.Maliev.CatalogService",
+      "revision": "3f426723743570a6c20d2c014499445abb0774e1",
+      "path": "AGENTS.md",
+      "gitBlob": "a077721e9202a820aa1d4326bf8c2083a4b055b2",
+      "canonicalSha256": "aceb05f7429d31b39e4ad552c39086d39ad162e6ea55380b15443882ea95a2ed",
+      "size": 1780
+    },
+    {
+      "repository": "Legacy.Maliev.CatalogService",
+      "revision": "3f426723743570a6c20d2c014499445abb0774e1",
+      "path": "Directory.Build.props",
+      "gitBlob": "b47c8d23651f11ea8366bb63f4520fb8de6c6df3",
+      "canonicalSha256": "b03b93e505f9bd0f5d396c5041d9b35d6cfccb454384ba8151e55e05edf45083",
+      "size": 515
+    },
+    {
+      "repository": "Legacy.Maliev.CatalogService",
+      "revision": "3f426723743570a6c20d2c014499445abb0774e1",
+      "path": "Legacy.Maliev.CatalogService.Api/Legacy.Maliev.CatalogService.Api.csproj",
+      "gitBlob": "1ceed2c5fdf64afef4a9463bc89e3be77d1b0468",
+      "canonicalSha256": "93920bfefd982523932d3289b5f6348a161738aa3f48a69526386943ca068637",
+      "size": 1682
+    },
+    {
+      "repository": "Legacy.Maliev.CatalogService",
+      "revision": "3f426723743570a6c20d2c014499445abb0774e1",
+      "path": "Legacy.Maliev.CatalogService.Api/Program.cs",
+      "gitBlob": "816a50a97b06582ed61fc6592e4f8ae124fe8492",
+      "canonicalSha256": "90c0c6405b590f2a616b4be4ae4494290286c60b8455d70cafe5c64f7108d8d2",
+      "size": 4287
+    },
+    {
+      "repository": "Legacy.Maliev.ProcurementService",
+      "revision": "614a157ab5c8739c144554797a387c45990ba7fe",
+      "path": ".github/workflows/_build-and-test.yml",
+      "gitBlob": "4c6b66925b9e93d10ae6f3cd28f5df913295b085",
+      "canonicalSha256": "7e2929416e13222cacc85a0a7086a488058b9a4d0d09e5c0c0b32a20cc6aa09e",
+      "size": 1959
+    },
+    {
+      "repository": "Legacy.Maliev.ProcurementService",
+      "revision": "614a157ab5c8739c144554797a387c45990ba7fe",
+      "path": ".github/workflows/pr-validation.yml",
+      "gitBlob": "49b784875dd9275866012396c3ff51a0b1f9dee2",
+      "canonicalSha256": "8645e3bae51218b468c15c026360f8b2befd29813236e10d30def30bcee68cff",
+      "size": 293
+    },
+    {
+      "repository": "Legacy.Maliev.ProcurementService",
+      "revision": "614a157ab5c8739c144554797a387c45990ba7fe",
+      "path": "AGENTS.md",
+      "gitBlob": "e2ffb807c7309a0499b91dd28db71dfb0e6774d0",
+      "canonicalSha256": "075322946439684a0d368d1fbcff2694f160fa7cd19ecbb0f38be35a8f32ca75",
+      "size": 1975
+    },
+    {
+      "repository": "Legacy.Maliev.ProcurementService",
+      "revision": "614a157ab5c8739c144554797a387c45990ba7fe",
+      "path": "Directory.Build.props",
+      "gitBlob": "b47c8d23651f11ea8366bb63f4520fb8de6c6df3",
+      "canonicalSha256": "b03b93e505f9bd0f5d396c5041d9b35d6cfccb454384ba8151e55e05edf45083",
+      "size": 515
+    },
+    {
+      "repository": "Legacy.Maliev.ProcurementService",
+      "revision": "614a157ab5c8739c144554797a387c45990ba7fe",
+      "path": "Legacy.Maliev.ProcurementService.Api/Authorization/ProcurementIamComposition.cs",
+      "gitBlob": "1bad18d6797295124d84083ba7f5e93276124c1e",
+      "canonicalSha256": "730e0cfde2314b27403f3ed15e653d4436b06e268070b134e93e198ca9ba3d34",
+      "size": 4660
+    },
+    {
+      "repository": "Legacy.Maliev.ProcurementService",
+      "revision": "614a157ab5c8739c144554797a387c45990ba7fe",
+      "path": "Legacy.Maliev.ProcurementService.Api/Authorization/ProcurementWorkloadExchangeGuard.cs",
+      "gitBlob": "2cbafd5644b7653a1eb323788be8f95bd98337ad",
+      "canonicalSha256": "dd7a1fe2ff08469f877ccde6f6d9f41594b248ddb23b48ca17586d8cd454e264",
+      "size": 5240
+    },
+    {
+      "repository": "Legacy.Maliev.ProcurementService",
+      "revision": "614a157ab5c8739c144554797a387c45990ba7fe",
+      "path": "Legacy.Maliev.ProcurementService.Api/Legacy.Maliev.ProcurementService.Api.csproj",
+      "gitBlob": "0fefb94217cd594e097c2e7aaee24da28b7c8c56",
+      "canonicalSha256": "0f058a048b14bb8f6e4b7d4734825789b8765a054069c3102db0017be00c0ae0",
+      "size": 1411
+    },
+    {
+      "repository": "Legacy.Maliev.ProcurementService",
+      "revision": "614a157ab5c8739c144554797a387c45990ba7fe",
+      "path": "Legacy.Maliev.ProcurementService.Api/Program.cs",
+      "gitBlob": "a890fd92f49e3179df1083952b3e0b46d8bbefa8",
+      "canonicalSha256": "0d401630a02338d03042c4c6e80edb62bcbe6c3b9c5d2a635dc7648b082c328f",
+      "size": 3484
+    },
+    {
+      "repository": "Legacy.Maliev.ProcurementService",
+      "revision": "614a157ab5c8739c144554797a387c45990ba7fe",
+      "path": "Legacy.Maliev.ProcurementService.Tests/Integration/ProcurementAuthenticatedIamTests.cs",
+      "gitBlob": "5120d29dab2cc55c2b808ad25346b92c4a3ee7bc",
+      "canonicalSha256": "7ceee7178d81351bc2d96eb31a0720eb908c2721b5c63d377cd62efbdbfa47f9",
+      "size": 19871
+    },
+    {
+      "repository": "Legacy.Maliev.ServiceDefaults",
+      "revision": "7b3099bf67d0f17e56cfdb3dcf36541304abaac2",
+      "path": ".github/workflows/_build-and-test.yml",
+      "gitBlob": "4e9aa17758facdc724ee7b21d9f5464da1e92cdf",
+      "canonicalSha256": "86a517f46d7b9301ce478874bccf0192882797791336d5811d01bd735a4f87e0",
+      "size": 9939
+    },
+    {
+      "repository": "Legacy.Maliev.ServiceDefaults",
+      "revision": "7b3099bf67d0f17e56cfdb3dcf36541304abaac2",
+      "path": ".github/workflows/pr-validation.yml",
+      "gitBlob": "4037ff6fe79757854087b87c7d64b1e3ecd50cb9",
+      "canonicalSha256": "11b3efa5dfab28b675891a89f33567e052efee01fb4bf4a1bf2b2be3713d9397",
+      "size": 275
+    },
+    {
+      "repository": "Legacy.Maliev.ServiceDefaults",
+      "revision": "7b3099bf67d0f17e56cfdb3dcf36541304abaac2",
+      "path": "AGENTS.md",
+      "gitBlob": "40255899262b734d9432a9981515fa04761ee502",
+      "canonicalSha256": "8fd5aeb63f773ded6a032cf2cba1db04f10a8083bae8c5e6941e4dd58bf970c0",
+      "size": 1651
+    },
+    {
+      "repository": "Legacy.Maliev.ServiceDefaults",
+      "revision": "7b3099bf67d0f17e56cfdb3dcf36541304abaac2",
+      "path": "Directory.Build.props",
+      "gitBlob": "b02c403ec61e48967e53191ad422c616acc76e5c",
+      "canonicalSha256": "56228ebe62fe27ad7377a27dcbd954968cd05aaf8ae5a3fa113f3e1da773a8de",
+      "size": 598
+    },
+    {
+      "repository": "Legacy.Maliev.ServiceDefaults",
+      "revision": "7b3099bf67d0f17e56cfdb3dcf36541304abaac2",
+      "path": "src/Legacy.Maliev.ServiceDefaults/Authorization/PermissionAuthorizationHandler.cs",
+      "gitBlob": "52e586b7782cbd7e826538315212d4dec72951a2",
+      "canonicalSha256": "687d32dc8d21fc6a150a3cfd40ba332b921bac7f32ada23ec7490177a7d86d17",
+      "size": 17197
+    },
+    {
+      "repository": "Legacy.Maliev.ServiceDefaults",
+      "revision": "7b3099bf67d0f17e56cfdb3dcf36541304abaac2",
+      "path": "src/Legacy.Maliev.ServiceDefaults/IAM/IIamServiceClient.cs",
+      "gitBlob": "cc192df886c62163612c405d64c4c9c70a4f0b7b",
+      "canonicalSha256": "62eb9950c7a8ff816f0084fdf1226f7925b727e7cf8e4a6abc0e03aafa9649fa",
+      "size": 4524
+    },
+    {
+      "repository": "Legacy.Maliev.ServiceDefaults",
+      "revision": "7b3099bf67d0f17e56cfdb3dcf36541304abaac2",
+      "path": "src/Legacy.Maliev.ServiceDefaults/IAM/IamServiceClient.cs",
+      "gitBlob": "8b83387138cd55b497c583e6e776bf1b08271354",
+      "canonicalSha256": "f52c670486dc58abc3c9ee864db24cc30af97581b702c257b638985f940ffb5a",
+      "size": 16781
+    },
+    {
+      "repository": "Legacy.Maliev.ServiceDefaults",
+      "revision": "7b3099bf67d0f17e56cfdb3dcf36541304abaac2",
+      "path": "src/Legacy.Maliev.ServiceDefaults/LegacyAuth/LegacyServiceAccessTokenProvider.cs",
+      "gitBlob": "16f6efedeab3b6af6166e81ba9d150bec85ee456",
+      "canonicalSha256": "9fa6daae2f2082eba6e4dcfaa96761bfa6c80ade079afb73fbb0e34d55e49f34",
+      "size": 10795
+    },
+    {
+      "repository": "Legacy.Maliev.ServiceDefaults",
+      "revision": "7b3099bf67d0f17e56cfdb3dcf36541304abaac2",
+      "path": "src/Legacy.Maliev.ServiceDefaults/LegacyAuth/LegacyServiceAuthenticationHandler.cs",
+      "gitBlob": "aac06bf54bdeae951ecc5ff8f069b16d6ecc9c3c",
+      "canonicalSha256": "af65b00aeafdd6323e9446da851e10f18a2cee9494fe3715a88e2f0c40136714",
+      "size": 1232
+    },
+    {
+      "repository": "Legacy.Maliev.CompatibilityContracts",
+      "revision": "99529ad665503b227184c0baa946ad4e62db978a",
+      "path": ".github/workflows/_build-and-test.yml",
+      "gitBlob": "db11720b0129290d5b6953aa43fec5db62df6706",
+      "canonicalSha256": "5c2df46df9e0c884efbaf27d07bf40282ef702c10de1429853386a766d47f729",
+      "size": 2100
+    },
+    {
+      "repository": "Legacy.Maliev.CompatibilityContracts",
+      "revision": "99529ad665503b227184c0baa946ad4e62db978a",
+      "path": ".github/workflows/pr-validation.yml",
+      "gitBlob": "4037ff6fe79757854087b87c7d64b1e3ecd50cb9",
+      "canonicalSha256": "11b3efa5dfab28b675891a89f33567e052efee01fb4bf4a1bf2b2be3713d9397",
+      "size": 275
+    },
+    {
+      "repository": "Legacy.Maliev.CompatibilityContracts",
+      "revision": "99529ad665503b227184c0baa946ad4e62db978a",
+      "path": "AGENTS.md",
+      "gitBlob": "58cfec5d5e7f4bf9cbb13d5f4bfda872ccbdf51b",
+      "canonicalSha256": "e23ce9504f05a156b935c25259a1c1c366eb545ef18e87b52a41bce04f9f0f29",
+      "size": 1493
+    },
+    {
+      "repository": "Legacy.Maliev.CompatibilityContracts",
+      "revision": "99529ad665503b227184c0baa946ad4e62db978a",
+      "path": "Directory.Build.props",
+      "gitBlob": "ccb95ff4b0392990dc721ea44637daa581eaf679",
+      "canonicalSha256": "1ed87f1b0cf8d42c77558b99547a1eb0c444f222527b6932e5586cbd3e42c2bc",
+      "size": 377
+    },
+    {
+      "repository": "Legacy.Maliev.DocumentService",
+      "revision": "b12b9499d3f33113d2f0be196db831759ea3a03c",
+      "path": ".github/workflows/_build-and-test.yml",
+      "gitBlob": "c2da07df1efed9d91e701d86c7cc95c6803f73fa",
+      "canonicalSha256": "10ee28c5149e75c8198835e4345ccc75b987e67ae43b4fd3444a9058ae2ea812",
+      "size": 3737
+    },
+    {
+      "repository": "Legacy.Maliev.DocumentService",
+      "revision": "b12b9499d3f33113d2f0be196db831759ea3a03c",
+      "path": ".github/workflows/pr-validation.yml",
+      "gitBlob": "49b784875dd9275866012396c3ff51a0b1f9dee2",
+      "canonicalSha256": "8645e3bae51218b468c15c026360f8b2befd29813236e10d30def30bcee68cff",
+      "size": 293
+    },
+    {
+      "repository": "Legacy.Maliev.DocumentService",
+      "revision": "b12b9499d3f33113d2f0be196db831759ea3a03c",
+      "path": "AGENTS.md",
+      "gitBlob": "24baac39ae8dd6b734826ab5dad8334bb4092c75",
+      "canonicalSha256": "4e9d38c0a042ec920c427d9939d16b68a3306dc5ceb97d774873afb5c602675a",
+      "size": 2089
+    },
+    {
+      "repository": "Legacy.Maliev.DocumentService",
+      "revision": "b12b9499d3f33113d2f0be196db831759ea3a03c",
+      "path": "Directory.Build.props",
+      "gitBlob": "5e514ea0a0e4e8db3184020c136fe05145a46c9e",
+      "canonicalSha256": "c10bdc142ea93708604db54c4870c1057e764b2f9644a12ac1dfed07fa474a8f",
+      "size": 275
+    },
+    {
+      "repository": "Legacy.Maliev.DocumentService",
+      "revision": "b12b9499d3f33113d2f0be196db831759ea3a03c",
+      "path": "Legacy.Maliev.DocumentService.Api/Legacy.Maliev.DocumentService.Api.csproj",
+      "gitBlob": "b916b9ae5920aa35e637d7e990fc390d06839d7f",
+      "canonicalSha256": "7cd7b04b7e2a1f1a0163399c6d1e208c3e66d5a594630950f6497ceaefcf128a",
+      "size": 1501
+    },
+    {
+      "repository": "Legacy.Maliev.DocumentService",
+      "revision": "b12b9499d3f33113d2f0be196db831759ea3a03c",
+      "path": "Legacy.Maliev.DocumentService.Api/Program.cs",
+      "gitBlob": "20b530e98f32985deb49569ffe05b9dc6e86c0df",
+      "canonicalSha256": "f263384e95aded56802c4512d6089897b0c31c0a7fe117be5e1aef0ed3ee8b81",
+      "size": 3184
+    },
+    {
+      "repository": "Legacy.Maliev.FileService",
+      "revision": "d478d2674b57a25c939f62aa838efbedd8591055",
+      "path": ".github/workflows/_build-and-test.yml",
+      "gitBlob": "d6410165cb2ba77247f23cdaedfef1aedc90139b",
+      "canonicalSha256": "a1e851f44d83609a9d2de2003d6391c4c263d0a4b49df9e43e54018ed44cfcf5",
+      "size": 3184
+    },
+    {
+      "repository": "Legacy.Maliev.FileService",
+      "revision": "d478d2674b57a25c939f62aa838efbedd8591055",
+      "path": ".github/workflows/pr-validation.yml",
+      "gitBlob": "49b784875dd9275866012396c3ff51a0b1f9dee2",
+      "canonicalSha256": "8645e3bae51218b468c15c026360f8b2befd29813236e10d30def30bcee68cff",
+      "size": 293
+    },
+    {
+      "repository": "Legacy.Maliev.FileService",
+      "revision": "d478d2674b57a25c939f62aa838efbedd8591055",
+      "path": "AGENTS.md",
+      "gitBlob": "4d101872a0af30237ea2c0e53800be4acc423f94",
+      "canonicalSha256": "056e9d57bf411c6295b8a3c081f12f335e505cb5fe63902457b206ace63bf977",
+      "size": 2227
+    },
+    {
+      "repository": "Legacy.Maliev.FileService",
+      "revision": "d478d2674b57a25c939f62aa838efbedd8591055",
+      "path": "Directory.Build.props",
+      "gitBlob": "b47c8d23651f11ea8366bb63f4520fb8de6c6df3",
+      "canonicalSha256": "b03b93e505f9bd0f5d396c5041d9b35d6cfccb454384ba8151e55e05edf45083",
+      "size": 515
+    },
+    {
+      "repository": "Legacy.Maliev.FileService",
+      "revision": "d478d2674b57a25c939f62aa838efbedd8591055",
+      "path": "Legacy.Maliev.FileService.Api/Legacy.Maliev.FileService.Api.csproj",
+      "gitBlob": "735c49f436425d08a766dad50962d2c407f7ad88",
+      "canonicalSha256": "7931a638c84b113fe271d5c2194da07f406cc44ff125587460faf8d979f4370e",
+      "size": 1301
+    },
+    {
+      "repository": "Legacy.Maliev.FileService",
+      "revision": "d478d2674b57a25c939f62aa838efbedd8591055",
+      "path": "Legacy.Maliev.FileService.Api/Program.cs",
+      "gitBlob": "560442c15b33d47f97a4810f6d8887ed5d874cc1",
+      "canonicalSha256": "960e1850ce745749ca66ed0a3b107d53a1f91bd5f042d835a6ab21dd527f455a",
+      "size": 3043
+    },
+    {
+      "repository": "Legacy.Maliev.FileService",
+      "revision": "d478d2674b57a25c939f62aa838efbedd8591055",
+      "path": "Legacy.Maliev.FileService.Data/ClamAvFileSafetyScanner.cs",
+      "gitBlob": "7eae90a1934056dd2894ca893a560e18ad1c1a67",
+      "canonicalSha256": "78fc1a314e5147dd7d9a2ea5f6710ba58855c3def84f31096ac5c5d2e4f54b0f",
+      "size": 5506
+    },
+    {
+      "repository": "Legacy.Maliev.FileService",
+      "revision": "d478d2674b57a25c939f62aa838efbedd8591055",
+      "path": "Legacy.Maliev.FileService.Data/GoogleCloudObjectStorage.cs",
+      "gitBlob": "b3e28b14d2f2229c5b13555df5be3a2ef5e0c409",
+      "canonicalSha256": "f898e8b93e4726439b782b6666cde8d284f39c0466bf59b657d60158ac2e39ad",
+      "size": 18319
+    },
+    {
+      "repository": "Legacy.Maliev.FileService",
+      "revision": "d478d2674b57a25c939f62aa838efbedd8591055",
+      "path": "Legacy.Maliev.FileService.Tests/Api/HostedFinancialCompletionProfileTests.cs",
+      "gitBlob": "eedcf5a3a4a1cc964b4077ea99fa43803ab21235",
+      "canonicalSha256": "a1a6aad542e156363774cb26d6896a76f37fc69c66d00f167c89d56706e6b4ed",
+      "size": 14536
+    },
+    {
+      "repository": "Legacy.Maliev.FileService",
+      "revision": "d478d2674b57a25c939f62aa838efbedd8591055",
+      "path": "Legacy.Maliev.FileService.Tests/Data/ClamAvFileSafetyScannerTests.cs",
+      "gitBlob": "e5c4fd3e9dc5ec9417edf91d1da7c172032a7ec6",
+      "canonicalSha256": "13f6c8d05ee9cbebb603847d7d2287c2c677fb69c8d4d905e2bf88a24b56e887",
+      "size": 12652
+    },
+    {
+      "repository": "Legacy.Maliev.EmployeeService",
+      "revision": "5ace8e2b7b1de498100c2e3cd7d2327451578ea7",
+      "path": ".github/workflows/_build-and-test.yml",
+      "gitBlob": "4075846cd268b9cca4097c8539c3ed37ef49b6fd",
+      "canonicalSha256": "dd1cde7b3d7f657d45e7df39761e2c3132caf0680219c75ff5cfbb00f6280816",
+      "size": 2146
+    },
+    {
+      "repository": "Legacy.Maliev.EmployeeService",
+      "revision": "5ace8e2b7b1de498100c2e3cd7d2327451578ea7",
+      "path": ".github/workflows/pr-validation.yml",
+      "gitBlob": "49b784875dd9275866012396c3ff51a0b1f9dee2",
+      "canonicalSha256": "8645e3bae51218b468c15c026360f8b2befd29813236e10d30def30bcee68cff",
+      "size": 293
+    },
+    {
+      "repository": "Legacy.Maliev.EmployeeService",
+      "revision": "5ace8e2b7b1de498100c2e3cd7d2327451578ea7",
+      "path": "AGENTS.md",
+      "gitBlob": "942a549b0b11e10981dd9823433824b9865e6684",
+      "canonicalSha256": "092884f2ad20f2d3e6f96ea23e094ef281c77e626fa21b973dc51881499de587",
+      "size": 1565
+    },
+    {
+      "repository": "Legacy.Maliev.EmployeeService",
+      "revision": "5ace8e2b7b1de498100c2e3cd7d2327451578ea7",
+      "path": "Directory.Build.props",
+      "gitBlob": "b47c8d23651f11ea8366bb63f4520fb8de6c6df3",
+      "canonicalSha256": "b03b93e505f9bd0f5d396c5041d9b35d6cfccb454384ba8151e55e05edf45083",
+      "size": 515
+    },
+    {
+      "repository": "Legacy.Maliev.EmployeeService",
+      "revision": "5ace8e2b7b1de498100c2e3cd7d2327451578ea7",
+      "path": "Legacy.Maliev.EmployeeService.Api/Legacy.Maliev.EmployeeService.Api.csproj",
+      "gitBlob": "0d3808825f8711e2083bd35c0c2cad32f57647bb",
+      "canonicalSha256": "c99a659d36a6794386c09a535a80c598944d671f5c39699ed979dda00f9ea326",
+      "size": 2659
+    },
+    {
+      "repository": "Legacy.Maliev.EmployeeService",
+      "revision": "5ace8e2b7b1de498100c2e3cd7d2327451578ea7",
+      "path": "Legacy.Maliev.EmployeeService.Api/Program.cs",
+      "gitBlob": "db3749e8162ac07eef404994b23e2e54ef19f5a0",
+      "canonicalSha256": "bcb7c50b9f348a7862b25113e896731d299d3e732d693a1bcddd7aa94b110d02",
+      "size": 2578
+    }
+  ],
+  "fixtureLimits": {
+    "company": "synthetic external Creden-compatible protocol; actual Catalog adapter and immutable transport source retained",
+    "iam": "ordinary production Procurement concrete HTTP client/workload guard/RequireLiveCheck against owned strict HTTPS fixture; no real IAM backend/enrollment",
+    "file": "actual production controller/application/PostgreSQL/Cloud adapter/ClamAV INSTREAM/SDK signing; external SDK storage/read/protocol fixture only, no live GCS or real malware engine",
+    "authentication": "synthetic disposable RSA authority, no real AuthService issuance"
+  },
+  "acceptedProducerGraph": false
+}
