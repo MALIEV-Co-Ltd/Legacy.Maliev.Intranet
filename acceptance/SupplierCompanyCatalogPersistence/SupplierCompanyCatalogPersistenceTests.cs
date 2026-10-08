@@ -552,7 +552,7 @@ internal sealed class SupplierCompanyBrowserObserver(IPage page, string url, boo
     private bool closed;
     private bool realmClosed;
     private Task? installing;
-    private Task<JsonElement>? closing;
+    private Task<string>? closing;
     private JsonElement? joinedReceipt;
     internal bool InstallationEvaluationSettled => installing?.IsCompleted == true;
     internal bool ClosingWasDispatched => closing is not null;
@@ -619,9 +619,13 @@ internal sealed class SupplierCompanyBrowserObserver(IPage page, string url, boo
     {
         if (installing is null) throw new InvalidOperationException("Observer installation was never dispatched.");
         await installing.WaitAsync(token); // The cancellation wrapper is not original RPC settlement.
-        closing ??= page.EvaluateAsync<JsonElement>("async id => { const state = window.__supplierCompanyObserver; if (!state || state.id !== id) throw new Error('Owned observer identity missing'); return await state.close(); }", id);
-        var value = await closing.WaitAsync(token);
+        closing ??= page.EvaluateAsync<string>("async id => { const state = window.__supplierCompanyObserver; if (!state || state.id !== id) throw new Error('Owned observer identity missing'); return JSON.stringify(await state.close()); }", id);
+        using var actualWire = JsonDocument.Parse(await closing.WaitAsync(token));
+        var value = actualWire.RootElement.Clone();
+        RequireExactKeys(value, "body", "error", "receipt");
         var receipt = value.GetProperty("receipt");
+        RequireExactKeys(receipt, "schema", "source", "observerId", "maxBytes", "deadlineMs", "matchingRequests", "capturedResponses", "capturedBytes", "status",
+            "captureSucceeded", "exactRequestAndResponseUrl", "method", "closed", "fetchIdentityRestored", "activeTasks", "activeTimers", "readSettled", "cancelSettled");
         Assert.True(receipt.GetProperty("closed").GetBoolean());
         Assert.True(receipt.GetProperty("fetchIdentityRestored").GetBoolean());
         Assert.Equal(0, receipt.GetProperty("activeTasks").GetInt32());
@@ -632,6 +636,9 @@ internal sealed class SupplierCompanyBrowserObserver(IPage page, string url, boo
         closed = true;
         return value;
     }
+
+    internal static void RequireExactKeys(JsonElement value, params string[] expected)
+        => Assert.Equal(expected.Order(), value.EnumerateObject().Select(property => property.Name).Order());
 
     internal const string InstallScript = """
         options => {
@@ -729,6 +736,8 @@ internal sealed class SupplierCompanyBrowserObserver(IPage page, string url, boo
         """;
 
     internal static string ControlsScript => "async () => { const install = " + InstallScript + "; " + ControlsBody + " }";
+    // A primitive JSON string avoids Playwright's JsonElement reference-preservation metadata.
+    internal static string ControlsWireScript => "async () => JSON.stringify(await (" + ControlsScript + ")())";
     private const string ControlsBody = """
         const url = 'https://owned.synthetic.test/bff/lookups/companies/search?q=Synthetic%20supplier%20company&queryType=name&language=en&limit=20';
         const body = JSON.stringify({ marker: 'owned-synthetic-observer-control' });
@@ -911,7 +920,7 @@ public sealed class SupplierCompanyBrowserObserverControls
     {
         var owner = new SupplierResourceScope(TimeSpan.FromMinutes(1));
         JsonElement result = default;
-        Task<JsonElement>? evaluation = null;
+        Task<string>? evaluation = null;
         Exception? executionFailure = null;
         try
         {
@@ -925,8 +934,10 @@ public sealed class SupplierCompanyBrowserObserverControls
             var contextLease = owner.Register("observer-control-context", _ => context?.DisposeAsync().AsTask() ?? Task.CompletedTask);
             await owner.StartAsync(contextLease, async _ => context = await browser!.NewContextAsync());
             var page = await context!.NewPageAsync();
-            evaluation = page.EvaluateAsync<JsonElement>(SupplierCompanyBrowserObserver.ControlsScript);
-            result = await evaluation.WaitAsync(TimeSpan.FromSeconds(10));
+            evaluation = page.EvaluateAsync<string>(SupplierCompanyBrowserObserver.ControlsWireScript);
+            using var actualWire = JsonDocument.Parse(await evaluation.WaitAsync(TimeSpan.FromSeconds(10)));
+            result = actualWire.RootElement.Clone();
+            SupplierCompanyBrowserObserver.RequireExactKeys(result, "schema", "nativeBrowserObserverControls", "cases", "realNetworkAllocated");
         }
         catch (Exception error) { executionFailure = error; }
         finally

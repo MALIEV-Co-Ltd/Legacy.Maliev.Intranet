@@ -215,6 +215,26 @@ class RetainerTests(unittest.TestCase):
             for key,value in (("installationDispatched",True),("installationEvaluationSettled",True),("retainedEvaluationSettled",False),("ownedPageClosed",True),("joinedReaderReceipt",self.browser_row())):
                 path.write_text(json.dumps(dict(row,**{key:value})));self.assertFalse(retain.browser_observer_release(root))
 
+    def test_browser_reference_metadata_is_rejected_without_filtering(self):
+        original=self.browser_row()
+        self.assertTrue(retain.browser_observation(original))
+        for key,value in (("$id","2"),("$ref","2"),("$values",[])):
+            received=dict(original,**{key:value})
+            before=json.dumps(received,sort_keys=True)
+            self.assertFalse(retain.browser_observation(received))
+            self.assertEqual(before,json.dumps(received,sort_keys=True))
+
+    def test_control_reference_metadata_is_rejected_instead_of_normalized(self):
+        with tempfile.TemporaryDirectory() as directory,mock.patch.dict(os.environ,GITHUB_RUN_ID="123",GITHUB_RUN_ATTEMPT="1"):
+            root=pathlib.Path(directory)
+            controls=dict(schema=1,nativeBrowserObserverControls=True,cases=retain.OBSERVER_CASES,realNetworkAllocated=False)
+            realm=dict(schema=1,state="owned-realm-destroyed-after-settled-evaluation",observerId="e"*32,installationDispatched=True,installationEvaluationSettled=True,retainedEvaluationSettled=True,ownedPageClosed=True,joinedReaderReceipt=None,runId="123",runAttempt="1")
+            (root/"browser-observer-realm-control.json").write_text(json.dumps(realm))
+            (root/"browser-observer-installation-control.json").write_text(json.dumps(dict(realm,observerId="f"*32)))
+            path=root/"browser-observer-controls.json";path.write_text(json.dumps(controls));self.assertTrue(retain.browser_controls_receipts(root))
+            for received in (dict(controls,**{"$id":"1"}),dict(controls,**{"$ref":"1"}),dict(controls,cases={"$id":"2","$values":retain.OBSERVER_CASES})):
+                text=json.dumps(received);path.write_text(text);self.assertFalse(retain.browser_controls_receipts(root));self.assertEqual(text,path.read_text())
+
     def test_provider_omission_or_unknown_receipt_never_qualifies_cleanup(self):
         with tempfile.TemporaryDirectory() as directory:
             root=pathlib.Path(directory)
