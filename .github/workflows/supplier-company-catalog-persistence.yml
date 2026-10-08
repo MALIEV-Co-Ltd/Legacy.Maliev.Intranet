@@ -136,6 +136,15 @@ jobs:
           export GITHUB_ACTIONS=false
           unset SUPPLIER_RESOURCE_EVIDENCE
           dotnet test acceptance/SupplierCompanyCatalogPersistence/SupplierCompanyCatalogPersistence.AcceptanceTests.csproj -c Release --no-build --no-restore -p:UseLocalMalievDependencies=true --filter 'FullyQualifiedName~SupplierCompanyProviderControls' --logger 'trx;LogFileName=supplier-company-provider.trx' --results-directory "$RUNNER_TEMP/supplier-company-persistence-results" --nologo
+      - name: Exercise passive browser clone and owned realm failure controls
+        id: observer_controls
+        env:
+          PROOF_RESULTS: ${{ runner.temp }}/supplier-company-persistence-results
+        timeout-minutes: 3
+        run: |
+          export GITHUB_ACTIONS=false
+          unset SUPPLIER_RESOURCE_EVIDENCE
+          dotnet test acceptance/SupplierCompanyCatalogPersistence/SupplierCompanyCatalogPersistence.AcceptanceTests.csproj -c Release --no-build --no-restore -p:UseLocalMalievDependencies=true --filter 'FullyQualifiedName~SupplierCompanyBrowserObserverControls' --logger 'trx;LogFileName=supplier-company-browser-observer.trx' --results-directory "$RUNNER_TEMP/supplier-company-persistence-results" --nologo
       - name: Exercise real Catalog selection, supplier save, API readback and reload
         id: proof
         env:
@@ -155,6 +164,7 @@ jobs:
           RESOURCE_CONTROLS_OUTCOME: ${{ steps.resource_controls.outcome }}
           TRANSPORT_CONTROLS_OUTCOME: ${{ steps.transport_controls.outcome }}
           PROVIDER_CONTROLS_OUTCOME: ${{ steps.provider_controls.outcome }}
+          OBSERVER_CONTROLS_OUTCOME: ${{ steps.observer_controls.outcome }}
         run: python3 -B acceptance/SupplierCompanyCatalogPersistence/retain.py
       - name: Upload sanitized proof only
         if: always()
