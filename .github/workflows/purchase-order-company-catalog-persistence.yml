@@ -53,6 +53,7 @@ jobs:
     env:
       MalievWorkspaceRoot: ${{ github.workspace }}/.dependencies
       DOTNET_PROCESSOR_COUNT: '2'
+      GOTOOLCHAIN: go1.26.8
       LEGACY_DEPLOY_ENABLED: 'false'
     steps:
       - name: Check out exact Intranet candidate
