@@ -13,6 +13,7 @@ jobs:
     timeout-minutes: 120
     env:
       MalievWorkspaceRoot: ${{ github.workspace }}/.dependencies
+      PLAYWRIGHT_DOWNLOAD_CONNECTION_TIMEOUT: '30000'
     steps:
       - name: Check out Intranet
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
@@ -56,15 +57,69 @@ jobs:
           test "$(git -C .dependencies/Legacy.Maliev.AuthService rev-parse HEAD)" = 8319b23e8ffab0c85b66c886a0109f7dac034c6f
       - name: Verify Docker integration-test runtime
         run: docker info
-      - name: Install Playwright Chromium
+      - name: Verify bounded browser installer source controls
+        timeout-minutes: 2
         shell: bash
         run: |
-          dotnet restore Legacy.Maliev.Intranet.BrowserTests/Legacy.Maliev.Intranet.BrowserTests.csproj
-          dotnet build Legacy.Maliev.Intranet.BrowserTests/Legacy.Maliev.Intranet.BrowserTests.csproj \
-            --configuration Release \
-            --no-restore
-          pwsh -NoProfile -File Legacy.Maliev.Intranet.BrowserTests/bin/Release/net10.0/playwright.ps1 \
-            install --with-deps chromium
+          printf 'PLAYWRIGHT_BROWSERS_PATH=%s/intranet-playwright\n' "$RUNNER_TEMP" >> "$GITHUB_ENV"
+          python3 -B -c "from pathlib import Path; files=[Path('scripts/verify-playwright-cache.py'),Path('scripts/test_verify_playwright_cache.py')]; [compile(p.read_text(),str(p),'exec') for p in files]"
+          python3 -B -m unittest discover -s scripts -p 'test_verify_playwright_cache.py'
+      - name: Restore BrowserTests packages
+        timeout-minutes: 6
+        shell: bash
+        run: timeout --signal=TERM --kill-after=20s 5m dotnet restore Legacy.Maliev.Intranet.BrowserTests/Legacy.Maliev.Intranet.BrowserTests.csproj
+      - name: Build BrowserTests Release with zero warnings
+        timeout-minutes: 9
+        shell: bash
+        run: |
+          timeout --signal=TERM --kill-after=20s 8m dotnet build Legacy.Maliev.Intranet.BrowserTests/Legacy.Maliev.Intranet.BrowserTests.csproj \
+            --configuration Release --no-restore --warnaserror
+      - name: Read exact built Playwright browser revisions
+        id: playwright_metadata
+        timeout-minutes: 2
+        shell: bash
+        run: |
+          python3 -B scripts/verify-playwright-cache.py \
+            --package Legacy.Maliev.Intranet.BrowserTests/bin/Release/net10.0/.playwright/package \
+            --project Legacy.Maliev.Intranet.BrowserTests/Legacy.Maliev.Intranet.BrowserTests.csproj \
+            --github-output "$GITHUB_OUTPUT"
+      - name: Restore exact-version Playwright browser cache
+        timeout-minutes: 3
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+        with:
+          path: ${{ env.PLAYWRIGHT_BROWSERS_PATH }}
+          key: ${{ runner.os }}-${{ runner.arch }}-playwright-${{ steps.playwright_metadata.outputs.host-platform }}-${{ steps.playwright_metadata.outputs.package-version }}-${{ steps.playwright_metadata.outputs.driver-version }}-${{ steps.playwright_metadata.outputs.browser-fingerprint }}
+      - name: Install Chromium operating-system dependencies
+        timeout-minutes: 6
+        shell: bash
+        run: |
+          timeout --signal=TERM --kill-after=20s 5m pwsh -NoProfile \
+            -File Legacy.Maliev.Intranet.BrowserTests/bin/Release/net10.0/playwright.ps1 install-deps chromium
+      - name: Verify cached browser executables and versions
+        id: playwright_cache
+        timeout-minutes: 2
+        shell: bash
+        run: |
+          python3 -B scripts/verify-playwright-cache.py \
+            --package Legacy.Maliev.Intranet.BrowserTests/bin/Release/net10.0/.playwright/package \
+            --project Legacy.Maliev.Intranet.BrowserTests/Legacy.Maliev.Intranet.BrowserTests.csproj \
+            --cache "$PLAYWRIGHT_BROWSERS_PATH" --cache-parent "$RUNNER_TEMP" \
+            --discard-invalid --github-output "$GITHUB_OUTPUT"
+      - name: Download exact Playwright Chromium when cache is invalid or absent
+        if: steps.playwright_cache.outputs.valid != 'true'
+        timeout-minutes: 6
+        shell: bash
+        run: |
+          timeout --signal=TERM --kill-after=20s 5m pwsh -NoProfile \
+            -File Legacy.Maliev.Intranet.BrowserTests/bin/Release/net10.0/playwright.ps1 install chromium
+      - name: Require valid browser executables before browser regressions
+        timeout-minutes: 2
+        shell: bash
+        run: |
+          python3 -B scripts/verify-playwright-cache.py \
+            --package Legacy.Maliev.Intranet.BrowserTests/bin/Release/net10.0/.playwright/package \
+            --project Legacy.Maliev.Intranet.BrowserTests/Legacy.Maliev.Intranet.BrowserTests.csproj \
+            --cache "$PLAYWRIGHT_BROWSERS_PATH" --require
       - name: Diagnose current-main pooled lifecycle and order presentation
         id: current_main_diagnostics
         timeout-minutes: 20
