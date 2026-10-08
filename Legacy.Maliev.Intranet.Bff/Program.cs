@@ -848,7 +848,10 @@ builder.Services.AddAuthorizationBuilder()
         .Build());
 
 builder.Services.AddCatalogLookups(builder.Configuration);
+builder.Services.AddReplacementBff(builder.Configuration);
+
 var app = builder.Build();
+app.MapReplacementBff();
 app.UseStandardMiddleware();
 app.Use(async (context, next) =>
 {

@@ -1,0 +1,333 @@
+<?xml version='1.0' encoding='utf-8'?>
+<root>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms</value>
+  </resheader>
+  <data xml:space="preserve" name="Heading">
+    <value>งานผลิตทดแทนและแก้ไข</value>
+  </data>
+  <data xml:space="preserve" name="Explanation">
+    <value>บันทึกชิ้นงานเดิมที่มีปัญหาและติดตามการผลิตกับการจัดส่งทดแทนแต่ละครั้งแยกกัน</value>
+  </data>
+  <data xml:space="preserve" name="Loading">
+    <value>กำลังโหลดประวัติงานทดแทน…</value>
+  </data>
+  <data xml:space="preserve" name="Reload">
+    <value>โหลดประวัติงานทดแทนใหม่</value>
+  </data>
+  <data xml:space="preserve" name="Pending">
+    <value>ยังยืนยันผลไม่ได้ ตรวจสอบรายการนี้ก่อนเริ่มรายการใหม่</value>
+  </data>
+  <data xml:space="preserve" name="Reconcile">
+    <value>ตรวจสอบผลที่บันทึก</value>
+  </data>
+  <data xml:space="preserve" name="NoCases">
+    <value>ยังไม่มีงานทดแทนสำหรับคำสั่งผลิตนี้</value>
+  </data>
+  <data xml:space="preserve" name="Case">
+    <value>งานทดแทน #{0}</value>
+  </data>
+  <data xml:space="preserve" name="OriginalSummary">
+    <value>ข้อมูลการผลิตและจัดส่งเดิม</value>
+  </data>
+  <data xml:space="preserve" name="Original">
+    <value>คำสั่งผลิต #{0}: ผลิตเดิม {1}/{2} ชิ้น มีปัญหา {3} ชิ้น</value>
+  </data>
+  <data xml:space="preserve" name="Tracking">
+    <value>เลขติดตามการจัดส่ง</value>
+  </data>
+  <data xml:space="preserve" name="Finished">
+    <value>วันที่ผลิตเสร็จ</value>
+  </data>
+  <data xml:space="preserve" name="Return">
+    <value>การคืนชิ้นงาน</value>
+  </data>
+  <data xml:space="preserve" name="Returned">
+    <value>จำนวนชิ้นงานที่รับคืน</value>
+  </data>
+  <data xml:space="preserve" name="Attempts">
+    <value>การผลิตทดแทนและตรวจคุณภาพ</value>
+  </data>
+  <data xml:space="preserve" name="AttemptSummary">
+    <value>ครั้งที่ #{0} คำสั่งผลิต #{1}: วางแผน {2} ผลิต {3} ผ่าน {4} ไม่ผ่าน {5} ชิ้น</value>
+  </data>
+  <data xml:space="preserve" name="Shipments">
+    <value>การจัดส่งชิ้นงานทดแทน</value>
+  </data>
+  <data xml:space="preserve" name="ShipmentSummary">
+    <value>การจัดส่ง #{0} การผลิตครั้งที่ #{1}: {2} ชิ้น</value>
+  </data>
+  <data xml:space="preserve" name="Recovery">
+    <value>ค่าใช้จ่ายและการเรียกร้องกับขนส่ง</value>
+  </data>
+  <data xml:space="preserve" name="Fact">
+    <value>รายการบันทึก #{0}</value>
+  </data>
+  <data xml:space="preserve" name="Corrects">
+    <value>แก้ไขรายการบันทึก #{0}</value>
+  </data>
+  <data xml:space="preserve" name="History">
+    <value>ประวัติการดำเนินงาน</value>
+  </data>
+  <data xml:space="preserve" name="Employee">
+    <value>พนักงาน #{0}</value>
+  </data>
+  <data xml:space="preserve" name="ChooseCase">
+    <value>งานทดแทน</value>
+  </data>
+  <data xml:space="preserve" name="NewCase">
+    <value>รายงานงานทดแทนใหม่</value>
+  </data>
+  <data xml:space="preserve" name="Action">
+    <value>การดำเนินงาน</value>
+  </data>
+  <data xml:space="preserve" name="Cause">
+    <value>สาเหตุ</value>
+  </data>
+  <data xml:space="preserve" name="AffectedOrder">
+    <value>คำสั่งผลิตเดิมที่มีปัญหา</value>
+  </data>
+  <data xml:space="preserve" name="Quantity">
+    <value>จำนวนชิ้นสำหรับรายการนี้</value>
+  </data>
+  <data xml:space="preserve" name="BlockProduction">
+    <value>รับชิ้นงานคืนก่อนผลิตทดแทน</value>
+  </data>
+  <data xml:space="preserve" name="BlockShipment">
+    <value>รับชิ้นงานคืนก่อนจัดส่งทดแทน</value>
+  </data>
+  <data xml:space="preserve" name="Attempt">
+    <value>ครั้งที่ผลิตทดแทน</value>
+  </data>
+  <data xml:space="preserve" name="Produced">
+    <value>จำนวนชิ้นที่ผลิต</value>
+  </data>
+  <data xml:space="preserve" name="AcceptedQuantity">
+    <value>จำนวนชิ้นที่ผ่านตรวจคุณภาพ</value>
+  </data>
+  <data xml:space="preserve" name="RejectedQuantity">
+    <value>จำนวนชิ้นที่ไม่ผ่านตรวจคุณภาพ</value>
+  </data>
+  <data xml:space="preserve" name="ActualDate">
+    <value>วันที่เกิดรายการจริง</value>
+  </data>
+  <data xml:space="preserve" name="Carrier">
+    <value>ผู้จัดส่ง</value>
+  </data>
+  <data xml:space="preserve" name="Destination">
+    <value>ปลายทางจัดส่ง</value>
+  </data>
+  <data xml:space="preserve" name="Shipment">
+    <value>การจัดส่งทดแทน</value>
+  </data>
+  <data xml:space="preserve" name="Delivered">
+    <value>จัดส่งสำเร็จ</value>
+  </data>
+  <data xml:space="preserve" name="RecoveryKind">
+    <value>ประเภทรายการบันทึก</value>
+  </data>
+  <data xml:space="preserve" name="Amount">
+    <value>ยอดเงินที่บันทึก</value>
+  </data>
+  <data xml:space="preserve" name="Currency">
+    <value>รหัสสกุลเงิน เช่น THB</value>
+  </data>
+  <data xml:space="preserve" name="ClaimReference">
+    <value>เลขอ้างอิงคำร้องกับขนส่ง</value>
+  </data>
+  <data xml:space="preserve" name="Correction">
+    <value>แก้ไขรายการก่อนหน้า (ถ้ามี)</value>
+  </data>
+  <data xml:space="preserve" name="RecoveryExplanation">
+    <value>รายการบันทึกนี้ไม่ออกใบแจ้งหนี้ ใบลดหนี้ ไม่จ่ายเงิน และไม่ส่งคำร้องไปยังขนส่ง</value>
+  </data>
+  <data xml:space="preserve" name="Note">
+    <value>เหตุผลหรือรายละเอียดที่บันทึก</value>
+  </data>
+  <data xml:space="preserve" name="Evidence">
+    <value>หลักฐานประกอบที่มีการควบคุมสิทธิ์</value>
+  </data>
+  <data xml:space="preserve" name="Document">
+    <value>เอกสารประกอบ</value>
+  </data>
+  <data xml:space="preserve" name="Version">
+    <value>รุ่นเอกสารที่ตรวจสอบแล้ว</value>
+  </data>
+  <data xml:space="preserve" name="Previous">
+    <value>หน้าก่อน</value>
+  </data>
+  <data xml:space="preserve" name="Next">
+    <value>หน้าถัดไป</value>
+  </data>
+  <data xml:space="preserve" name="ReloadEvidence">
+    <value>โหลดหลักฐานใหม่</value>
+  </data>
+  <data xml:space="preserve" name="RecordAction">
+    <value>บันทึกรายการนี้</value>
+  </data>
+  <data xml:space="preserve" name="Order">
+    <value>คำสั่งผลิต #{0}</value>
+  </data>
+  <data xml:space="preserve" name="AttemptOption">
+    <value>ผลิตครั้งที่ #{0} · คำสั่งผลิต #{1}</value>
+  </data>
+  <data xml:space="preserve" name="VersionOption">
+    <value>รุ่นที่ {0} · {1}</value>
+  </data>
+  <data xml:space="preserve" name="InvalidResponse">
+    <value>ไม่สามารถตรวจสอบข้อมูลการทดแทนได้</value>
+  </data>
+  <data xml:space="preserve" name="Unavailable">
+    <value>ขณะนี้ยังใช้งานขั้นตอนงานทดแทนไม่ได้</value>
+  </data>
+  <data xml:space="preserve" name="EvidenceUnavailable">
+    <value>ขณะนี้ยังเลือกหลักฐานที่ควบคุมสิทธิ์ไม่ได้</value>
+  </data>
+  <data xml:space="preserve" name="NoEvidence">
+    <value>หน้านี้ไม่มีรุ่นเอกสารที่ตรวจสอบแล้วในประเภทที่ต้องใช้</value>
+  </data>
+  <data xml:space="preserve" name="SessionExpired">
+    <value>กรุณาเข้าสู่ระบบใหม่เพื่อดำเนินการต่อ</value>
+  </data>
+  <data xml:space="preserve" name="Recorded">
+    <value>บันทึกรายการแล้ว</value>
+  </data>
+  <data xml:space="preserve" name="Forbidden">
+    <value>คุณไม่มีสิทธิ์ดำเนินรายการทดแทนนี้</value>
+  </data>
+  <data xml:space="preserve" name="InvalidInput">
+    <value>ตรวจสอบจำนวน วันที่ หลักฐาน และช่องข้อมูลที่ต้องกรอก</value>
+  </data>
+  <data xml:space="preserve" name="NotFound">
+    <value>ไม่พบรายการทดแทนที่ขอ</value>
+  </data>
+  <data xml:space="preserve" name="Conflict">
+    <value>ข้อมูลหรือรายการเปลี่ยนแปลงแล้ว กรุณาตรวจสอบผลที่บันทึก</value>
+  </data>
+  <data xml:space="preserve" name="RateLimited">
+    <value>กรุณารอก่อนดำเนินรายการนี้อีกครั้ง</value>
+  </data>
+  <data xml:space="preserve" name="Report">
+    <value>รายงานชิ้นงานที่มีปัญหา</value>
+  </data>
+  <data xml:space="preserve" name="Approve">
+    <value>อนุมัติงานทดแทน</value>
+  </data>
+  <data xml:space="preserve" name="Reject">
+    <value>ไม่อนุมัติรายงาน</value>
+  </data>
+  <data xml:space="preserve" name="StartAttempt">
+    <value>เริ่มผลิตทดแทน</value>
+  </data>
+  <data xml:space="preserve" name="CompleteQa">
+    <value>บันทึกการผลิตและตรวจคุณภาพ</value>
+  </data>
+  <data xml:space="preserve" name="RecordReturn">
+    <value>รับคืนชิ้นงาน</value>
+  </data>
+  <data xml:space="preserve" name="Ship">
+    <value>บันทึกการจัดส่งทดแทน</value>
+  </data>
+  <data xml:space="preserve" name="ConfirmDelivery">
+    <value>บันทึกผลการจัดส่ง</value>
+  </data>
+  <data xml:space="preserve" name="Close">
+    <value>ปิดงานทดแทนชิ้นงาน</value>
+  </data>
+  <data xml:space="preserve" name="RecordRecoveryFact">
+    <value>บันทึกค่าใช้จ่ายหรือรายการขนส่ง</value>
+  </data>
+  <data xml:space="preserve" name="AuthorizeRetry">
+    <value>อนุมัติทดแทนอีกครั้งหลังส่งไม่สำเร็จ</value>
+  </data>
+  <data xml:space="preserve" name="WaiveReturn">
+    <value>ยกเว้นการคืนชิ้นงาน</value>
+  </data>
+  <data xml:space="preserve" name="WaiveQuantity">
+    <value>ยกเว้นชิ้นงานที่เหลือ</value>
+  </data>
+  <data xml:space="preserve" name="CarrierDamage">
+    <value>เสียหายระหว่างขนส่ง</value>
+  </data>
+  <data xml:space="preserve" name="ManufacturingNonconformance">
+    <value>ผลิตไม่ตรงข้อกำหนด</value>
+  </data>
+  <data xml:space="preserve" name="Required">
+    <value>ต้องคืนชิ้นงาน</value>
+  </data>
+  <data xml:space="preserve" name="Waived">
+    <value>ยกเว้นการคืน</value>
+  </data>
+  <data xml:space="preserve" name="Reported">
+    <value>รายงานแล้ว</value>
+  </data>
+  <data xml:space="preserve" name="Approved">
+    <value>อนุมัติแล้ว</value>
+  </data>
+  <data xml:space="preserve" name="Rejected">
+    <value>ไม่อนุมัติ</value>
+  </data>
+  <data xml:space="preserve" name="Closed">
+    <value>ปิดงานแล้ว</value>
+  </data>
+  <data xml:space="preserve" name="InTransit">
+    <value>อยู่ระหว่างจัดส่ง</value>
+  </data>
+  <data xml:space="preserve" name="Failed">
+    <value>จัดส่งไม่สำเร็จ</value>
+  </data>
+  <data xml:space="preserve" name="Cost">
+    <value>ค่าใช้จ่าย</value>
+  </data>
+  <data xml:space="preserve" name="Claimed">
+    <value>ยอดเรียกร้อง</value>
+  </data>
+  <data xml:space="preserve" name="Received">
+    <value>บันทึกยอดชดเชยที่ได้รับ</value>
+  </data>
+  <data xml:space="preserve" name="ReturnReceived">
+    <value>รับคืนแล้ว</value>
+  </data>
+  <data xml:space="preserve" name="ProductionStarted">
+    <value>เริ่มผลิตทดแทนแล้ว</value>
+  </data>
+  <data xml:space="preserve" name="QaCompleted">
+    <value>ตรวจคุณภาพแล้ว</value>
+  </data>
+  <data xml:space="preserve" name="Shipped">
+    <value>จัดส่งแล้ว</value>
+  </data>
+  <data xml:space="preserve" name="DeliveryFailed">
+    <value>จัดส่งไม่สำเร็จ</value>
+  </data>
+  <data xml:space="preserve" name="RepeatRemedyApproved">
+    <value>อนุมัติทดแทนอีกครั้ง</value>
+  </data>
+  <data xml:space="preserve" name="ReturnWaived">
+    <value>ยกเว้นการคืนแล้ว</value>
+  </data>
+  <data xml:space="preserve" name="RemedyQuantityWaived">
+    <value>ยกเว้นจำนวนที่เหลือแล้ว</value>
+  </data>
+  <data xml:space="preserve" name="RecoveryFactRecorded">
+    <value>บันทึกรายการค่าใช้จ่ายหรือชดเชยแล้ว</value>
+  </data>
+  <data xml:space="preserve" name="RetryCaptured">
+    <value>ลองรายการเดิมนี้อีกครั้ง</value>
+  </data>
+  <data xml:space="preserve" name="CancelUnsent">
+    <value>ยกเลิกรายการที่ยังไม่ได้ส่ง</value>
+  </data>
+  <data xml:space="preserve" name="ForeignPending">
+    <value>มีรายการที่ยังไม่ยืนยันผลสำหรับพนักงานและคำสั่งผลิตเดิม กรุณากลับไปยังรายการเดิมเพื่อตรวจสอบผล</value>
+  </data>
+</root>
