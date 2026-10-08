@@ -1,0 +1,142 @@
+@namespace Legacy.Maliev.Intranet.Client.Features.Orders.Components
+@using System.Text.Json
+@using Microsoft.AspNetCore.Components.Routing
+@implements IDisposable
+@inject HttpClient Http
+@inject IStringLocalizer<ReplacementPanel> Text
+
+@if (CanRead)
+{
+<section class="order-workflow-panel replacement-panel" aria-labelledby="replacement-heading">
+    <h2 id="replacement-heading">@Text["Heading"]</h2>
+    <p>@Text["Explanation"]</p>
+    @if (loading) { <p role="status" aria-busy="true">@Text["Loading"]</p> }
+    @if (message is not null) { <ShadcnAlert AlertRole="ShadcnAlertRole.Status"><ShadcnAlertDescription>@message</ShadcnAlertDescription></ShadcnAlert> }
+    @if (unavailable) { <ShadcnButton OnClick="ReloadAsync" Disabled="@busy">@Text["Reload"]</ShadcnButton> }
+    @if (pending is not null && !ForeignPending)
+    {
+        <NavigationLock ConfirmExternalNavigation="true" OnBeforeInternalNavigation="PreventPendingNavigation" />
+        <p role="status">@Text["Pending"] <code>@pending.OperationId</code></p>
+        <ShadcnButton id="replacement-retry" OnClick="RetryPendingAsync" Disabled="@busy">@Text["RetryCaptured"]</ShadcnButton>
+        @if(!pending.Dispatched){<ShadcnButton OnClick="CancelUnsent" Disabled="@busy">@Text["CancelUnsent"]</ShadcnButton>}
+        <ShadcnButton id="replacement-reconcile" OnClick="ReconcileAsync" Disabled="@busy">@Text["Reconcile"]</ShadcnButton>
+    }
+    @if(ForeignPending){<p role="status">@Text["ForeignPending"]</p>}
+    @if (!loading && !unavailable && !ForeignPending)
+    {
+        @if (cases.Length==0) { <p>@Text["NoCases"]</p> }
+        @foreach (var item in cases)
+        {
+            <article class="replacement-case" aria-label="@Text["Case",item.Id]">
+                <h3>@Text["Case",item.Id] · @Label(item.Value.State) · @Label(item.Value.Reason)</h3>
+                <h4>@Text["OriginalSummary"]</h4>
+                @foreach(var original in item.Value.Originals)
+                {
+                    <p>@Text["Original",original.OrderId,original.Manufactured,original.Quantity,original.AffectedQuantity] · @Text["Tracking"]: @original.TrackingNumber · @Text["Finished"]: @original.FinishedDate</p>
+                }
+                <p>@Text["Return"]: @Label(item.Value.ReturnDecision) · @Text["Returned"]: @item.Value.Returns.Sum(x=>x.Quantity)</p>
+                <h4>@Text["Attempts"]</h4>
+                @foreach(var attempt in item.Value.Attempts)
+                {
+                    <p>@Text["AttemptSummary",attempt.Id,attempt.OrderId,attempt.Quantity,attempt.ProducedQuantity?.ToString()??"—",attempt.AcceptedQuantity,attempt.RejectedQuantity] · @Text["Finished"]: @attempt.FinishedDate</p>
+                }
+                <h4>@Text["Shipments"]</h4>
+                @foreach(var shipment in item.Value.Shipments)
+                {
+                    <p>@Text["ShipmentSummary",shipment.Id,shipment.AttemptId,shipment.Quantity] · @shipment.Carrier · @shipment.TrackingNumber · @Label(shipment.Outcome) · @shipment.ShippedDate</p>
+                }
+                <h4>@Text["Recovery"]</h4>
+                @foreach(var fact in item.Value.RecoveryFacts)
+                {
+                    <p>@Text["Fact",fact.Id] · @Label(fact.Kind) · @fact.Amount @fact.Currency · @fact.ObservedDate · @fact.Description · @fact.ClaimReference @if(fact.CorrectsFactId is {} correction){<span>@Text["Corrects",correction]</span>}</p>
+                }
+                <ShadcnCollapsible Class="replacement-audit" Open="@openAuditCases.Contains(item.Id)" OpenChanged="@(open => SetAuditOpen(item.Id, open))">
+                    <ShadcnCollapsibleTrigger aria-label="@Text["History"]">@Text["History"]</ShadcnCollapsibleTrigger>
+                    <ShadcnCollapsibleContent><ol>@foreach(var entry in item.Value.Audit){<li>@entry.OccurredAt.ToLocalTime() · @Label(entry.Action) · @Text["Employee",entry.EmployeeId] · @entry.Reason</li>}</ol></ShadcnCollapsibleContent>
+                </ShadcnCollapsible>
+            </article>
+        }
+        @if (CanWrite || CanApprove)
+        {
+            <EditForm Model="form" OnSubmit="SubmitAsync" id="replacement-form">
+                <fieldset disabled="@(busy || pending is not null)">
+                <div class="order-edit-grid">
+                    <ShadcnFormField Id="replacement-case" Label="@Text["ChooseCase"]"><Control><ShadcnSelect TValue="int" id="replacement-case" Value="selectedCaseId" ValueChanged="CaseChangedAsync" Options="CaseOptions" Clearable="false" /></Control></ShadcnFormField>
+                    <ShadcnFormField Id="replacement-action" Label="@Text["Action"]"><Control><ShadcnSelect TValue="string" id="replacement-action" Value="action" ValueChanged="ActionChangedAsync" Options="ActionOptions" Clearable="false" /></Control></ShadcnFormField>
+                    @if(action=="Report")
+                    {
+                        <ShadcnFormField Id="replacement-reason" Label="@Text["Cause"]"><Control><ShadcnSelect TValue="string" id="replacement-reason" @bind-Value="form.ReportReason" Options="ReasonOptions" Clearable="false" /></Control></ShadcnFormField>
+                    }
+                    @if(action is "StartAttempt" or "RecordReturn" or "WaiveQuantity" or "RecordRecoveryFact")
+                    {
+                        <ShadcnFormField Id="replacement-original" Label="@Text["AffectedOrder"]"><Control><ShadcnSelect TValue="int" id="replacement-original" @bind-Value="form.OrderId" Options="OriginalOptions" Clearable="false" /></Control></ShadcnFormField>
+                    }
+                    @if(action is "Report" or "StartAttempt" or "RecordReturn" or "WaiveQuantity" or "Ship")
+                    {
+                        <ShadcnFormField Id="replacement-quantity" Label="@Text["Quantity"]"><Control><ShadcnInput TValue="int" id="replacement-quantity" Type="number" min="1" @bind-Value="form.Quantity" /></Control></ShadcnFormField>
+                    }
+                    @if(action=="Approve")
+                    {
+                        <ShadcnFormField Id="replacement-return" Label="@Text["Return"]"><Control><ShadcnSelect TValue="string" id="replacement-return" @bind-Value="form.ReturnDecision" Options="ReturnOptions" Clearable="false" /></Control></ShadcnFormField>
+                        <ShadcnFormField Id="replacement-block-production" Label="@Text["BlockProduction"]"><Control><ShadcnCheckbox id="replacement-block-production" Value="form.BlockProduction" ValueChanged="@(value => form.BlockProduction = value.GetValueOrDefault())" /></Control></ShadcnFormField>
+                        <ShadcnFormField Id="replacement-block-shipment" Label="@Text["BlockShipment"]"><Control><ShadcnCheckbox id="replacement-block-shipment" Value="form.BlockShipment" ValueChanged="@(value => form.BlockShipment = value.GetValueOrDefault())" /></Control></ShadcnFormField>
+                    }
+                    @if(action is "CompleteQa" or "Ship")
+                    {
+                        <ShadcnFormField Id="replacement-attempt" Label="@Text["Attempt"]"><Control><ShadcnSelect TValue="int" id="replacement-attempt" @bind-Value="form.AttemptId" Options="AttemptOptions" Clearable="false" /></Control></ShadcnFormField>
+                    }
+                    @if(action=="CompleteQa")
+                    {
+                        <ShadcnFormField Id="replacement-produced" Label="@Text["Produced"]"><Control><ShadcnInput TValue="int" id="replacement-produced" Type="number" min="0" @bind-Value="form.Produced" /></Control></ShadcnFormField>
+                        <ShadcnFormField Id="replacement-accepted" Label="@Text["AcceptedQuantity"]"><Control><ShadcnInput TValue="int" id="replacement-accepted" Type="number" min="0" @bind-Value="form.Accepted" /></Control></ShadcnFormField>
+                        <ShadcnFormField Id="replacement-rejected" Label="@Text["RejectedQuantity"]"><Control><ShadcnInput TValue="int" id="replacement-rejected" Type="number" min="0" @bind-Value="form.Rejected" /></Control></ShadcnFormField>
+                    }
+                    @if(action is "CompleteQa" or "Ship" or "RecordRecoveryFact")
+                    {
+                        <ShadcnFormField Id="replacement-date" Label="@Text["ActualDate"]"><Control><ShadcnInput TValue="string" id="replacement-date" Type="date" @bind-Value="form.Date" /></Control></ShadcnFormField>
+                    }
+                    @if(action=="Ship")
+                    {
+                        <ShadcnFormField Id="replacement-carrier" Label="@Text["Carrier"]"><Control><ShadcnInput TValue="string" id="replacement-carrier" maxlength="100" @bind-Value="form.Carrier" /></Control></ShadcnFormField>
+                        <ShadcnFormField Id="replacement-tracking" Label="@Text["Tracking"]"><Control><ShadcnInput TValue="string" id="replacement-tracking" maxlength="250" @bind-Value="form.Tracking" /></Control></ShadcnFormField>
+                        <ShadcnFormField Id="replacement-destination" Label="@Text["Destination"]"><Control><ShadcnTextarea id="replacement-destination" maxlength="2000" @bind-Value="form.Destination" /></Control></ShadcnFormField>
+                    }
+                    @if(action is "ConfirmDelivery" or "AuthorizeRetry")
+                    {
+                        <ShadcnFormField Id="replacement-shipment" Label="@Text["Shipment"]"><Control><ShadcnSelect TValue="int" id="replacement-shipment" @bind-Value="form.ShipmentId" Options="ShipmentOptions" Clearable="false" /></Control></ShadcnFormField>
+                    }
+                    @if(action=="ConfirmDelivery")
+                    {
+                        <ShadcnFormField Id="replacement-delivered" Label="@Text["Delivered"]"><Control><ShadcnCheckbox id="replacement-delivered" Value="form.Delivered" ValueChanged="@(value => form.Delivered = value.GetValueOrDefault())" /></Control></ShadcnFormField>
+                    }
+                    @if(action=="RecordRecoveryFact")
+                    {
+                        <ShadcnFormField Id="replacement-fact-kind" Label="@Text["RecoveryKind"]"><Control><ShadcnSelect TValue="string" id="replacement-fact-kind" @bind-Value="form.FactKind" Options="FactOptions" Clearable="false" /></Control></ShadcnFormField>
+                        <ShadcnFormField Id="replacement-amount" Label="@Text["Amount"]"><Control><ShadcnInput TValue="decimal" id="replacement-amount" Type="number" min="0" step="0.01" @bind-Value="form.Amount" /></Control></ShadcnFormField>
+                        <ShadcnFormField Id="replacement-currency" Label="@Text["Currency"]"><Control><ShadcnInput TValue="string" id="replacement-currency" maxlength="3" @bind-Value="form.Currency" /></Control></ShadcnFormField>
+                        @if(form.FactKind!="Cost") { <ShadcnFormField Id="replacement-claim" Label="@Text["ClaimReference"]"><Control><ShadcnInput TValue="string" id="replacement-claim" maxlength="250" @bind-Value="form.Claim" /></Control></ShadcnFormField> }
+                        <ShadcnFormField Id="replacement-correction" Label="@Text["Correction"]"><Control><ShadcnSelect TValue="int?" id="replacement-correction" @bind-Value="form.CorrectsFactId" Options="CorrectionOptions" Clearable="true" /></Control></ShadcnFormField>
+                        <p>@Text["RecoveryExplanation"]</p>
+                    }
+                    @if(action is "Approve" or "Reject" or "RecordReturn" or "ConfirmDelivery" or "AuthorizeRetry" or "WaiveReturn" or "WaiveQuantity" or "RecordRecoveryFact")
+                    {
+                        <ShadcnFormField Id="replacement-note" Label="@Text["Note"]"><Control><ShadcnTextarea id="replacement-note" maxlength="2000" @bind-Value="form.Note" /></Control></ShadcnFormField>
+                    }
+                </div>
+                @if(NeedsEvidence)
+                {
+                    <h4>@Text["Evidence"]</h4>
+                    @if(evidenceMessage is not null){<p role="status">@evidenceMessage</p>}
+                    <div class="order-edit-grid">
+                        <ShadcnFormField Id="replacement-document" Label="@Text["Document"]"><Control><ShadcnSelect TValue="Guid?" id="replacement-document" Placeholder="@Text["Document"]" Value="selectedDocument" ValueChanged="DocumentChangedAsync" Options="DocumentOptions" Clearable="true" /></Control></ShadcnFormField>
+                        <ShadcnFormField Id="replacement-version" Label="@Text["Version"]"><Control><ShadcnSelect TValue="Guid?" id="replacement-version" Placeholder="@Text["Version"]" @bind-Value="selectedVersion" Options="VersionOptions" Clearable="true" /></Control></ShadcnFormField>
+                    </div>
+                    <div class="order-status-actions"><ShadcnButton OnClick="PreviousDocumentsAsync" Disabled="@(documentOffset==0 || busy)">@Text["Previous"]</ShadcnButton><ShadcnButton OnClick="NextDocumentsAsync" Disabled="@(documents.Length<20 || documentOffset>=10000 || busy)">@Text["Next"]</ShadcnButton><ShadcnButton OnClick="ReloadDocumentsAsync" Disabled="@busy">@Text["ReloadEvidence"]</ShadcnButton></div>
+                }
+                <ShadcnButton id="replacement-submit" ButtonType="ShadcnButtonType.Submit" OperationFeedback="false" Disabled="@(!CanSubmit)">@Text["RecordAction"]</ShadcnButton>
+                </fieldset>
+            </EditForm>
+        }
+    }
+</section>
+}

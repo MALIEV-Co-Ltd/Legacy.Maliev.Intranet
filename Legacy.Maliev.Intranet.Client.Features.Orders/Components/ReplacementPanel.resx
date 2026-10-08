@@ -1,0 +1,333 @@
+<?xml version='1.0' encoding='utf-8'?>
+<root>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms</value>
+  </resheader>
+  <data xml:space="preserve" name="Heading">
+    <value>Replacement and rework</value>
+  </data>
+  <data xml:space="preserve" name="Explanation">
+    <value>Record affected original parts and follow each remake and shipment separately.</value>
+  </data>
+  <data xml:space="preserve" name="Loading">
+    <value>Loading replacement history…</value>
+  </data>
+  <data xml:space="preserve" name="Reload">
+    <value>Reload replacement history</value>
+  </data>
+  <data xml:space="preserve" name="Pending">
+    <value>The result is unconfirmed. Check this operation before starting another action.</value>
+  </data>
+  <data xml:space="preserve" name="Reconcile">
+    <value>Check recorded result</value>
+  </data>
+  <data xml:space="preserve" name="NoCases">
+    <value>No replacement case is recorded for this order.</value>
+  </data>
+  <data xml:space="preserve" name="Case">
+    <value>Case #{0}</value>
+  </data>
+  <data xml:space="preserve" name="OriginalSummary">
+    <value>Original fulfillment</value>
+  </data>
+  <data xml:space="preserve" name="Original">
+    <value>Order #{0}: original manufactured {1}/{2}, affected {3}</value>
+  </data>
+  <data xml:space="preserve" name="Tracking">
+    <value>Tracking reference</value>
+  </data>
+  <data xml:space="preserve" name="Finished">
+    <value>Finished date</value>
+  </data>
+  <data xml:space="preserve" name="Return">
+    <value>Return decision</value>
+  </data>
+  <data xml:space="preserve" name="Returned">
+    <value>Received returns</value>
+  </data>
+  <data xml:space="preserve" name="Attempts">
+    <value>Remake attempts and QA</value>
+  </data>
+  <data xml:space="preserve" name="AttemptSummary">
+    <value>Attempt #{0}, order #{1}: planned {2}, produced {3}, accepted {4}, rejected {5}</value>
+  </data>
+  <data xml:space="preserve" name="Shipments">
+    <value>Replacement shipments</value>
+  </data>
+  <data xml:space="preserve" name="ShipmentSummary">
+    <value>Shipment #{0}, attempt #{1}: {2} pieces</value>
+  </data>
+  <data xml:space="preserve" name="Recovery">
+    <value>Costs and carrier recovery</value>
+  </data>
+  <data xml:space="preserve" name="Fact">
+    <value>Observation #{0}</value>
+  </data>
+  <data xml:space="preserve" name="Corrects">
+    <value>Corrects observation #{0}</value>
+  </data>
+  <data xml:space="preserve" name="History">
+    <value>Decision history</value>
+  </data>
+  <data xml:space="preserve" name="Employee">
+    <value>Employee #{0}</value>
+  </data>
+  <data xml:space="preserve" name="ChooseCase">
+    <value>Replacement case</value>
+  </data>
+  <data xml:space="preserve" name="NewCase">
+    <value>Report a new replacement case</value>
+  </data>
+  <data xml:space="preserve" name="Action">
+    <value>Action</value>
+  </data>
+  <data xml:space="preserve" name="Cause">
+    <value>Cause</value>
+  </data>
+  <data xml:space="preserve" name="AffectedOrder">
+    <value>Affected original order</value>
+  </data>
+  <data xml:space="preserve" name="Quantity">
+    <value>Pieces for this action</value>
+  </data>
+  <data xml:space="preserve" name="BlockProduction">
+    <value>Receive return before remake</value>
+  </data>
+  <data xml:space="preserve" name="BlockShipment">
+    <value>Receive return before dispatch</value>
+  </data>
+  <data xml:space="preserve" name="Attempt">
+    <value>Remake attempt</value>
+  </data>
+  <data xml:space="preserve" name="Produced">
+    <value>Produced pieces</value>
+  </data>
+  <data xml:space="preserve" name="AcceptedQuantity">
+    <value>QA accepted pieces</value>
+  </data>
+  <data xml:space="preserve" name="RejectedQuantity">
+    <value>QA rejected pieces</value>
+  </data>
+  <data xml:space="preserve" name="ActualDate">
+    <value>Actual event date</value>
+  </data>
+  <data xml:space="preserve" name="Carrier">
+    <value>Carrier</value>
+  </data>
+  <data xml:space="preserve" name="Destination">
+    <value>Dispatch destination</value>
+  </data>
+  <data xml:space="preserve" name="Shipment">
+    <value>Replacement shipment</value>
+  </data>
+  <data xml:space="preserve" name="Delivered">
+    <value>Delivery succeeded</value>
+  </data>
+  <data xml:space="preserve" name="RecoveryKind">
+    <value>Observation type</value>
+  </data>
+  <data xml:space="preserve" name="Amount">
+    <value>Observed amount</value>
+  </data>
+  <data xml:space="preserve" name="Currency">
+    <value>Currency code (for example THB)</value>
+  </data>
+  <data xml:space="preserve" name="ClaimReference">
+    <value>Carrier claim reference</value>
+  </data>
+  <data xml:space="preserve" name="Correction">
+    <value>Correct an earlier observation (optional)</value>
+  </data>
+  <data xml:space="preserve" name="RecoveryExplanation">
+    <value>These observations do not issue invoices, credits, payments or carrier claims.</value>
+  </data>
+  <data xml:space="preserve" name="Note">
+    <value>Reason or observation</value>
+  </data>
+  <data xml:space="preserve" name="Evidence">
+    <value>Private supporting evidence</value>
+  </data>
+  <data xml:space="preserve" name="Document">
+    <value>Supporting document</value>
+  </data>
+  <data xml:space="preserve" name="Version">
+    <value>Verified document version</value>
+  </data>
+  <data xml:space="preserve" name="Previous">
+    <value>Previous page</value>
+  </data>
+  <data xml:space="preserve" name="Next">
+    <value>Next page</value>
+  </data>
+  <data xml:space="preserve" name="ReloadEvidence">
+    <value>Reload evidence</value>
+  </data>
+  <data xml:space="preserve" name="RecordAction">
+    <value>Record this action</value>
+  </data>
+  <data xml:space="preserve" name="Order">
+    <value>Order #{0}</value>
+  </data>
+  <data xml:space="preserve" name="AttemptOption">
+    <value>Attempt #{0} · order #{1}</value>
+  </data>
+  <data xml:space="preserve" name="VersionOption">
+    <value>Version {0} · {1}</value>
+  </data>
+  <data xml:space="preserve" name="InvalidResponse">
+    <value>Replacement data could not be verified.</value>
+  </data>
+  <data xml:space="preserve" name="Unavailable">
+    <value>Replacement workflow is currently unavailable.</value>
+  </data>
+  <data xml:space="preserve" name="EvidenceUnavailable">
+    <value>Private evidence selection is currently unavailable.</value>
+  </data>
+  <data xml:space="preserve" name="NoEvidence">
+    <value>No verified document version of the required type is available on this page.</value>
+  </data>
+  <data xml:space="preserve" name="SessionExpired">
+    <value>Sign in again to continue.</value>
+  </data>
+  <data xml:space="preserve" name="Recorded">
+    <value>The action was recorded.</value>
+  </data>
+  <data xml:space="preserve" name="Forbidden">
+    <value>You do not have access to this replacement action.</value>
+  </data>
+  <data xml:space="preserve" name="InvalidInput">
+    <value>Check the quantities, dates, evidence and required fields.</value>
+  </data>
+  <data xml:space="preserve" name="NotFound">
+    <value>The requested replacement record was not found.</value>
+  </data>
+  <data xml:space="preserve" name="Conflict">
+    <value>The case or operation changed. Check the recorded result.</value>
+  </data>
+  <data xml:space="preserve" name="RateLimited">
+    <value>Please wait before trying this action again.</value>
+  </data>
+  <data xml:space="preserve" name="Report">
+    <value>Report affected parts</value>
+  </data>
+  <data xml:space="preserve" name="Approve">
+    <value>Approve remedy</value>
+  </data>
+  <data xml:space="preserve" name="Reject">
+    <value>Reject report</value>
+  </data>
+  <data xml:space="preserve" name="StartAttempt">
+    <value>Start remake attempt</value>
+  </data>
+  <data xml:space="preserve" name="CompleteQa">
+    <value>Record production and QA</value>
+  </data>
+  <data xml:space="preserve" name="RecordReturn">
+    <value>Receive returned parts</value>
+  </data>
+  <data xml:space="preserve" name="Ship">
+    <value>Record replacement dispatch</value>
+  </data>
+  <data xml:space="preserve" name="ConfirmDelivery">
+    <value>Record delivery result</value>
+  </data>
+  <data xml:space="preserve" name="Close">
+    <value>Close physical remedy</value>
+  </data>
+  <data xml:space="preserve" name="RecordRecoveryFact">
+    <value>Record cost or carrier observation</value>
+  </data>
+  <data xml:space="preserve" name="AuthorizeRetry">
+    <value>Approve another remedy after failed delivery</value>
+  </data>
+  <data xml:space="preserve" name="WaiveReturn">
+    <value>Waive required return</value>
+  </data>
+  <data xml:space="preserve" name="WaiveQuantity">
+    <value>Waive outstanding pieces</value>
+  </data>
+  <data xml:space="preserve" name="CarrierDamage">
+    <value>Damage during shipping</value>
+  </data>
+  <data xml:space="preserve" name="ManufacturingNonconformance">
+    <value>Manufacturing out of specification</value>
+  </data>
+  <data xml:space="preserve" name="Required">
+    <value>Return required</value>
+  </data>
+  <data xml:space="preserve" name="Waived">
+    <value>Return waived</value>
+  </data>
+  <data xml:space="preserve" name="Reported">
+    <value>Reported</value>
+  </data>
+  <data xml:space="preserve" name="Approved">
+    <value>Approved</value>
+  </data>
+  <data xml:space="preserve" name="Rejected">
+    <value>Rejected</value>
+  </data>
+  <data xml:space="preserve" name="Closed">
+    <value>Closed</value>
+  </data>
+  <data xml:space="preserve" name="InTransit">
+    <value>In transit</value>
+  </data>
+  <data xml:space="preserve" name="Failed">
+    <value>Delivery failed</value>
+  </data>
+  <data xml:space="preserve" name="Cost">
+    <value>Cost</value>
+  </data>
+  <data xml:space="preserve" name="Claimed">
+    <value>Amount claimed</value>
+  </data>
+  <data xml:space="preserve" name="Received">
+    <value>Reimbursement observed</value>
+  </data>
+  <data xml:space="preserve" name="ReturnReceived">
+    <value>Return received</value>
+  </data>
+  <data xml:space="preserve" name="ProductionStarted">
+    <value>Remake started</value>
+  </data>
+  <data xml:space="preserve" name="QaCompleted">
+    <value>QA completed</value>
+  </data>
+  <data xml:space="preserve" name="Shipped">
+    <value>Dispatched</value>
+  </data>
+  <data xml:space="preserve" name="DeliveryFailed">
+    <value>Delivery failed</value>
+  </data>
+  <data xml:space="preserve" name="RepeatRemedyApproved">
+    <value>Another remedy approved</value>
+  </data>
+  <data xml:space="preserve" name="ReturnWaived">
+    <value>Required return waived</value>
+  </data>
+  <data xml:space="preserve" name="RemedyQuantityWaived">
+    <value>Outstanding quantity waived</value>
+  </data>
+  <data xml:space="preserve" name="RecoveryFactRecorded">
+    <value>Recovery observation recorded</value>
+  </data>
+  <data xml:space="preserve" name="RetryCaptured">
+    <value>Retry this captured action</value>
+  </data>
+  <data xml:space="preserve" name="CancelUnsent">
+    <value>Cancel action that was not sent</value>
+  </data>
+  <data xml:space="preserve" name="ForeignPending">
+    <value>An unresolved action belongs to the original employee and order. Return to that session to reconcile it.</value>
+  </data>
+</root>

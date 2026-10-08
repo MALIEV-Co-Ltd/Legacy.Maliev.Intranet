@@ -1,4 +1,6 @@
 @page "/Orders/View"
+@using Legacy.Maliev.Intranet.Client.Features.Orders.Components
+@using Microsoft.AspNetCore.Components.Routing
 @attribute [Authorize]
 @implements IDisposable
 @inject HttpClient Http
@@ -7,6 +9,7 @@
 
 <PageTitle>@Text["PageTitle", Id ?? 0]</PageTitle>
 
+<NavigationLock ConfirmExternalNavigation="@HasPendingReplacement" OnBeforeInternalNavigation="PreventReplacementNavigation" />
 <main class="order-detail">
 @if (loading)
 {
@@ -53,13 +56,13 @@ else if (page is not null)
 
             <ShadcnAccordionItem Value="process"><ShadcnAccordionTrigger>@Text["Process"]</ShadcnAccordionTrigger><ShadcnAccordionContent><div class="order-edit-grid">
                 <ShadcnFormField Id="order-process" Label="@Text["Process"]"><Control><ShadcnSelect TValue="int" id="order-process" @bind-Value="edit.ProcessId" Options="@ProcessOptions" Placeholder="@Text["Process"]" Clearable="false" /></Control></ShadcnFormField>
-                <ShadcnFormField Id="order-material" Label="@Text["Material"]"><Control><ShadcnSelect TValue="int?" id="order-material" Value="@edit.MaterialId" ValueChanged="MaterialChangedAsync" Options="@MaterialOptions" Placeholder="@Text["Material"]" Clearable="true" Disabled="@submitting" /></Control></ShadcnFormField>
+                <ShadcnFormField Id="order-material" Label="@Text["Material"]"><Control><ShadcnSelect TValue="int?" id="order-material" Value="@edit.MaterialId" ValueChanged="MaterialChangedAsync" Options="@MaterialOptions" Placeholder="@Text["Material"]" Clearable="true" Disabled="@(HasPendingReplacement || submitting)" /></Control></ShadcnFormField>
                 <ShadcnFormField Id="order-color" Label="@Text["Color"]"><Control><ShadcnSelect TValue="int?" id="order-color" @bind-Value="edit.ColorId" Options="@ColorOptions" Placeholder="@Text["Color"]" Clearable="true" /></Control></ShadcnFormField>
-                <ShadcnFormField Id="order-finish" Label="@Text["SurfaceFinish"]"><Control><ShadcnSelect TValue="int?" id="order-finish" @bind-Value="edit.SurfaceFinishId" Options="@SurfaceFinishOptions" Placeholder="@Text["SurfaceFinish"]" Clearable="true" Disabled="@(submitting || finishLoading || finishError is not null)" /></Control></ShadcnFormField>
+                <ShadcnFormField Id="order-finish" Label="@Text["SurfaceFinish"]"><Control><ShadcnSelect TValue="int?" id="order-finish" @bind-Value="edit.SurfaceFinishId" Options="@SurfaceFinishOptions" Placeholder="@Text["SurfaceFinish"]" Clearable="true" Disabled="@(HasPendingReplacement || submitting || finishLoading || finishError is not null)" /></Control></ShadcnFormField>
                 @if (finishLoading) { <p role="status" aria-live="polite">@Text["FinishLoading"]</p> }
                 @if (finishError is not null)
                 {
-                    <div role="alert"><p>@finishError</p><ShadcnButton OnClick="RetryFinishesAsync" Disabled="@submitting">@Text["FinishRetry"]</ShadcnButton></div>
+                    <div role="alert"><p>@finishError</p><ShadcnButton OnClick="RetryFinishesAsync" Disabled="@(HasPendingReplacement || submitting)">@Text["FinishRetry"]</ShadcnButton></div>
                 }
             </div></ShadcnAccordionContent></ShadcnAccordionItem>
 
@@ -88,15 +91,17 @@ else if (page is not null)
                 </div>
             </ShadcnAccordionContent></ShadcnAccordionItem>
         </ShadcnAccordion>
-        <div class="order-save-bar"><ShadcnButton ButtonType="ShadcnButtonType.Submit" OperationFeedback="false" Disabled="@(submitting || finishLoading || finishError is not null)">@Text["Save"]</ShadcnButton></div>
+        <div class="order-save-bar"><ShadcnButton ButtonType="ShadcnButtonType.Submit" OperationFeedback="false" Disabled="@(HasPendingReplacement || submitting || finishLoading || finishError is not null)">@Text["Save"]</ShadcnButton></div>
     </EditForm>
+
+    <Legacy.Maliev.Intranet.Client.Features.Orders.Components.ReplacementPanel OrderId="page.Order.Id" Session="session" PendingState="replacementPending" PendingChanged="ReplacementPendingChanged" />
 
     <section class="order-workflow-panel">
         <h2>@Text["Status"]</h2>
         <p>@Text["CurrentStatus"]: <span class="operations-status-pill">@StatusLabel(page.CurrentStatus?.Name)</span></p>
         <div class="order-status-actions">
             <ShadcnFormField Id="order-next-status" Label="@Text["NextStatus"]"><Control><ShadcnSelect TValue="int?" id="order-next-status" @bind-Value="selectedStatus" Options="@StatusOptions" Placeholder="@Text["NextStatus"]" Clearable="true" /></Control></ShadcnFormField>
-            <ShadcnButton OnClick="TransitionAsync" Disabled="@(submitting || selectedStatus is null)">@Text["ApplyStatus"]</ShadcnButton>
+            <ShadcnButton OnClick="TransitionAsync" Disabled="@(HasPendingReplacement || submitting || selectedStatus is null)">@Text["ApplyStatus"]</ShadcnButton>
         </div>
         <div class="order-history" tabindex="0"><ShadcnItemGroup>
             @if (page.InitialHistoryEntry is { } initial)
@@ -112,7 +117,7 @@ else if (page is not null)
 
     <section class="order-files-panel">
         <h2>@Text["Files"]</h2>
-        <div class="order-upload-actions"><InputFile OnChange="SelectFiles" multiple /><ShadcnButton OnClick="UploadAsync" Disabled="@(submitting || uploads.Count == 0)">@Text["Upload"]</ShadcnButton></div>
+        <div class="order-upload-actions"><InputFile OnChange="SelectFiles" multiple /><ShadcnButton OnClick="UploadAsync" Disabled="@(HasPendingReplacement || submitting || uploads.Count == 0)">@Text["Upload"]</ShadcnButton></div>
         @if (!string.IsNullOrWhiteSpace(uploadError))
         {
             <ShadcnAlert Variant="ShadcnAlertVariant.Destructive" AlertRole="ShadcnAlertRole.Alert"><ShadcnAlertDescription>@uploadError</ShadcnAlertDescription></ShadcnAlert>
@@ -120,7 +125,7 @@ else if (page is not null)
         <ShadcnItemGroup>
             @foreach (var file in page.Files)
             {
-                <ShadcnItem><ShadcnItemContent><ShadcnItemTitle><LegacyLink Href="@file.Uri?.ToString()" Role="LegacyLinkRole.External" Target="_blank" Rel="noopener">@file.ObjectName</LegacyLink></ShadcnItemTitle></ShadcnItemContent><ShadcnItemActions><ShadcnButton ButtonType="ShadcnButtonType.Button" Variant="ShadcnButtonVariant.Destructive" Size="ShadcnButtonSize.Icon" OnClick="() => RemoveFileAsync(file.Id)" Disabled="@submitting" aria-label="@Text["RemoveFile", file.ObjectName]"><ShadcnIcon Icon="@DeleteIcon" Size="18" /></ShadcnButton></ShadcnItemActions></ShadcnItem>
+                <ShadcnItem><ShadcnItemContent><ShadcnItemTitle><LegacyLink Href="@file.Uri?.ToString()" Role="LegacyLinkRole.External" Target="_blank" Rel="noopener">@file.ObjectName</LegacyLink></ShadcnItemTitle></ShadcnItemContent><ShadcnItemActions><ShadcnButton ButtonType="ShadcnButtonType.Button" Variant="ShadcnButtonVariant.Destructive" Size="ShadcnButtonSize.Icon" OnClick="() => RemoveFileAsync(file.Id)" Disabled="@(HasPendingReplacement || submitting)" aria-label="@Text["RemoveFile", file.ObjectName]"><ShadcnIcon Icon="@DeleteIcon" Size="18" /></ShadcnButton></ShadcnItemActions></ShadcnItem>
             }
         </ShadcnItemGroup>
     </section>
@@ -129,6 +134,10 @@ else if (page is not null)
 
 @code {
     [SupplyParameterFromQuery(Name = "id")] public int? Id { get; set; }
+    private readonly ReplacementPendingState replacementPending=new();
+    private bool HasPendingReplacement=>replacementPending.Operation is not null;
+    private void ReplacementPendingChanged()=>StateHasChanged();
+    private void PreventReplacementNavigation(LocationChangingContext context){if(HasPendingReplacement)context.PreventNavigation();}
     private OrderDetailPage? page;
     private OrderEditModel edit = new();
     private EmployeeSessionSummary? session;
@@ -188,7 +197,7 @@ else if (page is not null)
 
     private async Task SaveAsync()
     {
-        if (page is null || session?.CsrfToken is null || submitting || finishLoading || finishError is not null) return;
+        if (HasPendingReplacement || page is null || session?.CsrfToken is null || submitting || finishLoading || finishError is not null) return;
         if (edit.ProcessId <= 0 || edit.Quantity <= 0 || edit.Manufactured < 0 || string.IsNullOrWhiteSpace(edit.Name)) { error = Text["InvalidRequest"]; return; }
         await SendWriteAsync(HttpMethod.Put, $"/bff/orders/{page.Order.Id}", JsonContent.Create(edit.ToRequest()), Text["OrderSaved"]);
     }
@@ -263,7 +272,7 @@ else if (page is not null)
 
     private async Task TransitionAsync()
     {
-        if (page is null || selectedStatus is null) return;
+        if (HasPendingReplacement || page is null || selectedStatus is null) return;
         using var request = WriteRequest(HttpMethod.Post, $"/bff/orders/{page.Order.Id}/status/{selectedStatus.Value}");
         request.Headers.Add("Idempotency-Key", Guid.NewGuid().ToString("D"));
         await SendAsync(request, Text["StatusSaved"]);
@@ -273,7 +282,7 @@ else if (page is not null)
 
     private async Task UploadAsync()
     {
-        if (page is null || session?.CsrfToken is null || uploads.Count == 0) return;
+        if (HasPendingReplacement || page is null || session?.CsrfToken is null || uploads.Count == 0) return;
         if (UploadAggregateLimit.Exceeds(uploads.Select(file => file.Size))) { uploadError = Text["FilesTooLarge"]; return; }
         uploadError = null;
         using var content = new MultipartFormDataContent("----maliev-order-upload");
@@ -290,7 +299,7 @@ else if (page is not null)
 
     private async Task RemoveFileAsync(int fileId)
     {
-        if (page is null) return;
+        if (HasPendingReplacement || page is null) return;
         using var request = WriteRequest(HttpMethod.Delete, $"/bff/orders/{page.Order.Id}/files/{fileId}");
         await SendAsync(request, Text["FileRemoved"]);
     }
@@ -309,6 +318,8 @@ else if (page is not null)
 
     private async Task SendAsync(HttpRequestMessage request, string success)
     {
+        if(HasPendingReplacement)return;
+        replacementPending.OriginalWriteInProgress=true;
         submitting = true; error = null; notice = null;
         try
         {
@@ -334,7 +345,7 @@ else if (page is not null)
         {
             error = Text["Unavailable"];
         }
-        finally { submitting = false; }
+        finally { submitting = false; replacementPending.OriginalWriteInProgress=false; }
     }
 
     private string ErrorFor(HttpStatusCode status) => status switch { HttpStatusCode.Forbidden => Text["Forbidden"], HttpStatusCode.TooManyRequests => Text["RateLimited"], HttpStatusCode.BadGateway => Text["InvalidResponse"], _ => Text["Unavailable"] };

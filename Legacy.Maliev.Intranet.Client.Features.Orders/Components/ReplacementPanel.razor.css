@@ -1,0 +1,13 @@
+/* Child components do not inherit the parent's isolated CSS scope. */
+.replacement-panel { display: grid; gap: 1rem; min-width: 0; padding: 1rem; border: 1px solid var(--shadcn-border); border-radius: var(--shadcn-radius-lg); background: var(--shadcn-card); color: var(--shadcn-card-foreground); }
+.replacement-panel h2, .replacement-panel h3, .replacement-panel h4, .replacement-panel p { margin: 0; }
+.replacement-panel p, .replacement-panel li, .replacement-panel code { overflow-wrap: anywhere; }
+.replacement-case { display: grid; gap: 0.625rem; padding: 1rem; border: 1px solid var(--shadcn-border); border-radius: var(--shadcn-radius-lg); }
+.replacement-panel fieldset { display: grid; gap: 1rem; min-width: 0; padding: 0; border: 0; }
+.order-edit-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; min-width: 0; }
+.order-status-actions { display: flex; gap: 0.75rem; flex-wrap: wrap; }
+@media (max-width: 720px) {
+    .replacement-panel, .replacement-case { padding: 0.75rem; }
+    .order-edit-grid { grid-template-columns: minmax(0, 1fr); }
+}
+@media (pointer: coarse) { .replacement-panel ::deep .shadcn-button { min-width: 44px; min-height: 44px; } }

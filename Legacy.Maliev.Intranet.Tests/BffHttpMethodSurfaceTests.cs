@@ -54,7 +54,7 @@ public sealed class BffHttpMethodSurfaceTests
         using var factory = new AnonymousBffFactory();
         using var client = CreateClient(factory);
 
-        var actual = GetCoreBffEndpointsAfterVerifyingLookups(factory)
+        var actual = GetCoreBffEndpointsAfterVerifyingAdditiveSurfaces(factory)
             .SelectMany(endpoint => endpoint.Metadata.GetMetadata<IHttpMethodMetadata>()!.HttpMethods
                 .Select(method => $"{method.ToUpperInvariant()} {endpoint.RoutePattern.RawText}"))
             .Order(StringComparer.Ordinal)
@@ -236,7 +236,7 @@ public sealed class BffHttpMethodSurfaceTests
             HandleCookies = true,
         });
 
-    private static IReadOnlyList<RouteEndpoint> GetCoreBffEndpointsAfterVerifyingLookups(WebApplicationFactory<BffProgram> factory)
+    private static IReadOnlyList<RouteEndpoint> GetCoreBffEndpointsAfterVerifyingAdditiveSurfaces(WebApplicationFactory<BffProgram> factory)
     {
         var endpoints = GetBffEndpoints(factory);
         var lookupSurface = endpoints
@@ -257,9 +257,29 @@ public sealed class BffHttpMethodSurfaceTests
         ],
         lookupSurface);
 
-        // Both partitions have exact inventories; core counts can evolve in the owning migration.
+        const string replacementPrefix = "/bff/orders/{orderId:int}/replacements";
+        var replacementSurface = endpoints
+            .Where(endpoint => endpoint.RoutePattern.RawText!.StartsWith(replacementPrefix, StringComparison.Ordinal))
+            .SelectMany(endpoint => endpoint.Metadata.GetMetadata<IHttpMethodMetadata>()!.HttpMethods
+                .Select(method => $"{method.ToUpperInvariant()} {endpoint.RoutePattern.RawText}"))
+            .Order(StringComparer.Ordinal)
+            .ToArray();
+        Assert.Equal(
+        [
+            "GET /bff/orders/{orderId:int}/replacements/",
+            "GET /bff/orders/{orderId:int}/replacements/evidence",
+            "GET /bff/orders/{orderId:int}/replacements/evidence/{documentId:guid}/versions",
+            "GET /bff/orders/{orderId:int}/replacements/operations/{operationId:guid}",
+            "POST /bff/orders/{orderId:int}/replacements/",
+            "POST /bff/orders/{orderId:int}/replacements/{caseId:int}/commands",
+            "POST /bff/orders/{orderId:int}/replacements/{caseId:int}/decisions",
+        ],
+        replacementSurface);
+
+        // Every additive surface has an exact inventory; the legacy core counts stay unchanged.
         return endpoints
-            .Where(endpoint => !endpoint.RoutePattern.RawText!.StartsWith("/bff/lookups/", StringComparison.Ordinal))
+            .Where(endpoint => !endpoint.RoutePattern.RawText!.StartsWith("/bff/lookups/", StringComparison.Ordinal)
+                && !endpoint.RoutePattern.RawText!.StartsWith(replacementPrefix, StringComparison.Ordinal))
             .ToArray();
     }
 
@@ -273,7 +293,9 @@ public sealed class BffHttpMethodSurfaceTests
             .ToArray();
 
     private static string MaterializeRoute(string routeTemplate) =>
-        Regex.Replace(routeTemplate, "\\{[^}]+\\}", "1", RegexOptions.CultureInvariant);
+        Regex.Replace(
+            Regex.Replace(routeTemplate, "\\{[^}]+:guid\\}", "b9b7ba14-aac7-4964-a50a-c37ea8da812d", RegexOptions.CultureInvariant),
+            "\\{[^}]+\\}", "1", RegexOptions.CultureInvariant);
 
     private static string[] ExpectedEndpointSurface =>
         """
