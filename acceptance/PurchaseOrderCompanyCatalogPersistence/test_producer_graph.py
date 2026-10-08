@@ -94,6 +94,7 @@ class ProducerGraphTests(unittest.TestCase):
             with mock.patch.object(supervisor.subprocess, 'Popen', return_value=process), \
                  mock.patch.object(supervisor, 'process_identity', return_value=original), \
                  mock.patch.object(supervisor, 'group_members', side_effect=lambda session: list(members)), \
+                 mock.patch.object(supervisor.time, 'monotonic', return_value=31.123), \
                  mock.patch.object(supervisor.signal, 'SIGKILL', 9, create=True), \
                  mock.patch.object(supervisor, 'signal_original', side_effect=send) as signal_original:
                 with self.assertRaises(supervisor.CommandFailure):
@@ -104,7 +105,7 @@ class ProducerGraphTests(unittest.TestCase):
             self.assertEqual([], row['remaining'])
             self.assertIn('descendants remain', row['firstFailure']['reason'])
             self.assertEqual(row['firstFailure'], phase.first_failure)
-            self.assertEqual(30, row['settlementDeadline'] - row['settlementStarted'])
+            self.assertEqual(row['settlementStarted'] + 30, row['settlementDeadline'])
             signal_original.assert_called_once()
             self.assertTrue(row['settlement'][0]['sent'])
 
@@ -147,6 +148,7 @@ class ProducerGraphTests(unittest.TestCase):
         process = mock.Mock()
         process.poll.return_value = 0
         with mock.patch.object(supervisor, 'group_members', return_value=[child, replacement]), \
+             mock.patch.object(supervisor.time, 'monotonic', return_value=31.123), \
              mock.patch.object(supervisor.signal, 'SIGKILL', 9, create=True), \
              mock.patch.object(supervisor.os, 'pidfd_open', create=True) as open_descriptor, \
              mock.patch.object(supervisor.signal, 'pidfd_send_signal', create=True) as send_descriptor:
@@ -157,7 +159,7 @@ class ProducerGraphTests(unittest.TestCase):
         self.assertEqual([], row['settlement'])
         self.assertEqual([child, replacement], row['remaining'])
         self.assertEqual('TimeoutExpired', row['firstFailure']['category'])
-        self.assertEqual(30, row['settlementDeadline'] - row['settlementStarted'])
+        self.assertEqual(row['settlementStarted'] + 30, row['settlementDeadline'])
 
     def test_closed_original_session_is_never_reenrolled(self):
         row = closure()['processes'][0]
