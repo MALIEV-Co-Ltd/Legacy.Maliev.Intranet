@@ -282,11 +282,43 @@ public sealed class SupplierCompanyCatalogPersistenceTests
             Assert.Equal("Synthetic Catalog persistence supplier", unchangedProfile.GetProperty("Name").GetString());
             Assert.Equal("0123456789012", unchangedProfile.GetProperty("TaxNumber").GetString());
 
+            // Capture the same fetch response eagerly: Chromium may release the CDP body after WASM consumes it.
+            // The observer clones bytes only; it neither replays requests nor changes the response delivered to WASM.
+            await page.EvaluateAsync("""
+                () => {
+                    const originalFetch = window.fetch;
+                    window.__supplierCompanyCapture = null;
+                    window.fetch = async function (...args) {
+                        const response = await originalFetch.apply(this, args);
+                        const url = new URL(response.url);
+                        if (url.origin === location.origin && url.pathname === '/bff/lookups/companies/search'
+                            && url.searchParams.get('q') === 'Synthetic supplier company') {
+                            window.fetch = originalFetch;
+                            const capture = { url: response.url, status: response.status };
+                            response.clone().text().then(body => {
+                                window.__supplierCompanyCapture = { ...capture, body };
+                            }, () => {
+                                window.__supplierCompanyCapture = { ...capture, error: 'Response body capture failed' };
+                            });
+                        }
+                        return response;
+                    };
+                }
+                """);
             var editLookupResponse = await page.RunAndWaitForResponseAsync(
                 () => page.Locator("#supplier-edit-company-lookup").FillAsync("Synthetic supplier company"),
                 response => response.Url.Contains("/bff/lookups/companies/search", StringComparison.Ordinal));
             Assert.Equal(200, editLookupResponse.Status);
-            var actualCompanyPage = (await editLookupResponse.JsonAsync())!.Value;
+            await page.WaitForFunctionAsync("() => window.__supplierCompanyCapture !== null");
+            var capturedCompanyResponse = await page.EvaluateAsync<JsonElement>("() => window.__supplierCompanyCapture");
+            await page.EvaluateAsync("() => { delete window.__supplierCompanyCapture; }");
+            Assert.False(capturedCompanyResponse.TryGetProperty("error", out _));
+            Assert.Equal(editLookupResponse.Url, capturedCompanyResponse.GetProperty("url").GetString());
+            Assert.Equal(editLookupResponse.Status, capturedCompanyResponse.GetProperty("status").GetInt32());
+            var capturedCompanyBody = capturedCompanyResponse.GetProperty("body").GetString()!;
+            Assert.InRange(Encoding.UTF8.GetByteCount(capturedCompanyBody), 1, 256 * 1024);
+            using var capturedCompanyDocument = JsonDocument.Parse(capturedCompanyBody);
+            var actualCompanyPage = capturedCompanyDocument.RootElement;
             Assert.Equal("matches", actualCompanyPage.GetProperty("outcome").GetString());
             Assert.Equal("creden", actualCompanyPage.GetProperty("provider").GetString());
             Assert.Equal("suggestion", actualCompanyPage.GetProperty("capability").GetString());
