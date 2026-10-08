@@ -33,6 +33,13 @@ PINS = {
     "Legacy.Maliev.CompatibilityContracts": "99529ad665503b227184c0baa946ad4e62db978a",
 }
 
+
+OBSERVER_TESTS = tuple("SupplierCatalogPersistence.Acceptance.SupplierAddressBrowserObserverControls."+name for name in (
+    "ActualPassiveCloneContractsAndFailureSettlement", "PendingCloneRetainsExactEvaluationUntilOwnedRealmClosesAndSameOwnerRetries", "CanceledInstallationRetainsOriginalRpcBeforeCloseAndOwnedRealmRetry"))
+OBSERVER_CASES = ["same-promise-response-args-receiver","restored-pass-through-no-new-task","wrong-origin","wrong-path","wrong-query","wrong-method",
+                  "url-fragment","duplicate-query-key","wrong-response-url","wrong-response-status","byte-cap","invalid-json","clone-read-error",
+                  "duplicate-exact-request","original-fetch-rejection","deadline-pending-tee-until-original-close","detach-identity-interference"]
+
 def revision(path):
     try:
         result = subprocess.run(["git", "-C", str(path), "rev-parse", "--show-toplevel", "HEAD"],
@@ -74,8 +81,8 @@ def actual_result(path):
                 len(summaries) == 1 and summaries[0].get("outcome") == "Completed")
     return {"outcomes": matches, "complete": complete}
 
-def actual_controls(path):
-    sanitized = {"tests": [{"name": name, "outcomes": []} for name in EXPECTED_CONTROLS], "complete": False}
+def actual_controls(path, names=EXPECTED_CONTROLS):
+    sanitized = {"tests": [{"name": name, "outcomes": []} for name in names], "complete": False}
     try:
         document = ET.parse(path)
         namespace = {"t": "http://microsoft.com/schemas/VisualStudio/TeamTest/2010"}
@@ -85,9 +92,9 @@ def actual_controls(path):
                                 for row in results if row.get("testName") == test["name"]]
         summaries = document.findall(".//t:ResultSummary", namespace)
         counters = document.findall(".//t:ResultSummary/t:Counters", namespace)
-        expected = {"total": len(EXPECTED_CONTROLS), "executed": len(EXPECTED_CONTROLS),
-                    "passed": len(EXPECTED_CONTROLS), **dict.fromkeys(ZERO_COUNTERS, 0)}
-        sanitized["complete"] = (len(results) == len(EXPECTED_CONTROLS) and
+        expected = {"total": len(names), "executed": len(names),
+                    "passed": len(names), **dict.fromkeys(ZERO_COUNTERS, 0)}
+        sanitized["complete"] = (len(results) == len(names) and
                                  all(test["outcomes"] == ["Passed"] for test in sanitized["tests"]) and
                                  len(summaries) == 1 and summaries[0].get("outcome") == "Completed" and
                                  len(counters) == 1 and counters[0].attrib == {key: str(value) for key, value in expected.items()})
@@ -105,6 +112,7 @@ EXPECTED_CLIENT_PHASES = {
     "authority-startup": 0, "catalog-startup": 0, "catalog-http": 0,
     "procurement-startup": 0, "procurement-http": 0, "bff-startup": 0,
     "bff-http": 0, "chromium": 0, "browser-context": 0,
+    "address-browser-response-observer": 0,
     "playwright-driver": 1,
     "Legacy.Maliev.CatalogService.Api-actual-host": 2,
     "Legacy.Maliev.ProcurementService.Api-actual-host": 2,
@@ -195,10 +203,85 @@ def resource_release(directory):
         return False
 
 
+def browser_observation(row, successful=True):
+    try:
+        keys={"schema","source","observerId","maxBytes","deadlineMs","matchingRequests","capturedResponses","capturedBytes","status",
+              "captureSucceeded","exactRequestAndResponseUrl","method","closed","fetchIdentityRestored","activeTasks","activeTimers","readSettled","cancelSettled"}
+        if not (isinstance(row,dict) and set(row)==keys and type(row["schema"]) is int and row["schema"]==1
+                and row["source"]=="actual-browser-fetch-clone" and re.fullmatch(r"[a-f0-9]{32}",row["observerId"])
+                and type(row["maxBytes"]) is int and row["maxBytes"]==65536 and type(row["deadlineMs"]) is int and row["deadlineMs"]==5000
+                and row["method"]=="POST" and all(row[k] is True for k in ("closed","fetchIdentityRestored","readSettled","cancelSettled"))
+                and all(type(row[k]) is int and row[k]==0 for k in ("activeTasks","activeTimers"))
+                and all(type(row[k]) is int for k in ("matchingRequests","capturedResponses","capturedBytes","status"))
+                and type(row["captureSucceeded"]) is bool and type(row["exactRequestAndResponseUrl"]) is bool):
+            return False
+        return (all(row[k]==v for k,v in {"matchingRequests":1,"capturedResponses":1,"status":200}.items())
+                and 1<=row["capturedBytes"]<=65536 and row["captureSucceeded"] is True and row["exactRequestAndResponseUrl"] is True) if successful else (
+                    0<=row["matchingRequests"]<=2 and 0<=row["capturedResponses"]<=1 and 0<=row["capturedBytes"]<=65536 and 0<=row["status"]<=599)
+    except (ValueError,KeyError,TypeError):
+        return False
+
+def browser_observer_release(directory):
+    try:
+        rows=[json.loads(line) for line in (directory/"browser-observer.jsonl").read_text().splitlines()]
+        row,=rows
+        resources=[json.loads(line) for line in (directory/"resources.jsonl").read_text().splitlines()]
+        scopes=[json.loads(line) for line in (directory/"scope.jsonl").read_text().splitlines()]
+        keys={"schema","state","observerId","installationDispatched","installationEvaluationSettled","retainedEvaluationSettled","ownedPageClosed","joinedReaderReceipt","runId","runAttempt","owner","sequence"}
+        installed=row["installationDispatched"] is True and row["installationEvaluationSettled"] is True
+        unborn=(row["state"]=="observer-never-dispatched" and row["installationDispatched"] is False and row["installationEvaluationSettled"] is False and row["ownedPageClosed"] is False and row["joinedReaderReceipt"] is None)
+        realm=(installed and row["state"]=="owned-realm-destroyed-after-settled-evaluation" and row["ownedPageClosed"] is True and row["joinedReaderReceipt"] is None)
+        joined=(installed and row["state"]=="reader-joined-fetch-restored" and row["ownedPageClosed"] is False and browser_observation(row["joinedReaderReceipt"],False)
+                and row["observerId"]==row["joinedReaderReceipt"]["observerId"])
+        all_events=resources+scopes
+        return (set(row)==keys and type(row["schema"]) is int and row["schema"]==1 and row["retainedEvaluationSettled"] is True and (realm or joined or unborn)
+                and re.fullmatch(r"[a-f0-9]{32}",row["observerId"]) and re.fullmatch(r"[a-f0-9]{32}",row["owner"])
+                and row["runId"]==os.environ.get("GITHUB_RUN_ID") and row["runAttempt"]==os.environ.get("GITHUB_RUN_ATTEMPT")
+                and type(row["sequence"]) is int and resources and scopes and all(event["owner"]==row["owner"] for event in all_events)
+                and row["sequence"] not in {event["sequence"] for event in all_events}
+                and max(event["sequence"] for event in resources if event["state"]=="created") < row["sequence"]
+                and any(event["state"]=="clients-quiescent" and row["sequence"] < event["sequence"] for event in scopes))
+    except (OSError,ValueError,KeyError,TypeError):
+        return False
+
+def strict_result_ids(results):
+    pattern = r"[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}"
+    return bool(results) and all(
+        len({row.get(key) for row in results}) == len(results)
+        and all(re.fullmatch(pattern, row.get(key, "")) is not None for row in results)
+        for key in ("testId", "executionId"))
+
+def browser_controls_receipts(directory):
+    try:
+        row=json.loads((directory/"browser-observer-controls.json").read_text())
+        realms=[json.loads((directory/name).read_text()) for name in ("browser-observer-realm-control.json","browser-observer-installation-control.json")]
+        keys={"schema","state","observerId","installationDispatched","installationEvaluationSettled","retainedEvaluationSettled","ownedPageClosed","joinedReaderReceipt","runId","runAttempt"}
+        return (row==dict(schema=1,nativeBrowserObserverControls=True,cases=OBSERVER_CASES,realNetworkAllocated=False)
+                and type(row["schema"]) is int and row["nativeBrowserObserverControls"] is True and row["realNetworkAllocated"] is False
+                and all(set(realm)==keys and type(realm["schema"]) is int and realm["schema"]==1
+                    and realm["state"]=="owned-realm-destroyed-after-settled-evaluation"
+                    and re.fullmatch(r"[a-f0-9]{32}",realm["observerId"])
+                    and all(realm[k] is True for k in ("installationDispatched","installationEvaluationSettled","retainedEvaluationSettled","ownedPageClosed"))
+                    and realm["joinedReaderReceipt"] is None and realm["runId"]==os.environ.get("GITHUB_RUN_ID") and realm["runAttempt"]==os.environ.get("GITHUB_RUN_ATTEMPT") for realm in realms)
+                and len({realm["observerId"] for realm in realms})==2)
+    except (OSError,ValueError,KeyError,TypeError):
+        return False
+
+def actual_browser_controls(path):
+    result = actual_controls(path, OBSERVER_TESTS)
+    try:
+        rows = ET.parse(path).findall(".//{http://microsoft.com/schemas/VisualStudio/TeamTest/2010}UnitTestResult")
+        result["complete"] = result["complete"] and strict_result_ids(rows)
+    except (OSError, ET.ParseError):
+        result["complete"] = False
+    return result
+
+
 def resolve_journey(directory):
     try:
         row = json.loads((directory / "resolve-journey.json").read_text())
         resources = [json.loads(line) for line in (directory / "resources.jsonl").read_text().splitlines()]
+        observer, = [json.loads(line) for line in (directory / "browser-observer.jsonl").read_text().splitlines()]
         identifiers = ("supplierId", "originalAddressId", "persistedSupplierId", "persistedAddressId", "profileAddressId")
         flags = ("directAndBffResolutionMatched", "noAutoApply", "candidateSelectionDidNotApply",
                  "editedPreviewDidNotApply", "explicitApplyMatched", "reviewedDetailPersisted",
@@ -207,6 +290,8 @@ def resolve_journey(directory):
         return (isinstance(row, dict) and type(row.get("schema")) is int and row["schema"] == 1 and
                 re.fullmatch(r"[a-f0-9]{32}", row.get("owner", "")) is not None and
                 resources and all(resource.get("owner") == row["owner"] for resource in resources) and
+                browser_observation(row.get("browserBodyObservation")) and observer["owner"] == row["owner"] and
+                observer["state"] == "reader-joined-fetch-restored" and observer["joinedReaderReceipt"] == row["browserBodyObservation"] and
                 re.fullmatch(r"[0-9]+", row.get("runId", "")) is not None and
                 re.fullmatch(r"[0-9]+", row.get("runAttempt", "")) is not None and
                 row["runId"] == os.environ.get("GITHUB_RUN_ID") and
@@ -235,17 +320,19 @@ def main(root=None):
     executed = revision(root)
     parents = merge_parents(root)
     journey_complete = resolve_journey(pathlib.Path(os.environ["PROOF_EVIDENCE"]))
-    cleanup_complete = resource_release(pathlib.Path(os.environ["PROOF_EVIDENCE"]))
-    complete = (result["complete"] and controls["complete"] and graph == PINS and bound_candidate(executed, head, parents) and
+    cleanup_complete = resource_release(pathlib.Path(os.environ["PROOF_EVIDENCE"])) and browser_observer_release(pathlib.Path(os.environ["PROOF_EVIDENCE"]))
+    observer_controls = actual_browser_controls(pathlib.Path(os.environ["PROOF_RESULTS"]) / "supplier-address-browser-observer.trx")
+    observer_receipts = browser_controls_receipts(pathlib.Path(os.environ["PROOF_RESULTS"]))
+    complete = (result["complete"] and controls["complete"] and observer_controls["complete"] and observer_receipts and graph == PINS and bound_candidate(executed, head, parents) and
                 os.environ.get("BUILD_OUTCOME") == "success" and
                 os.environ.get("EXECUTION_OUTCOME") == "success" and cleanup_complete and journey_complete and
-                os.environ.get("RESOURCE_CONTROLS_OUTCOME") == "success")
+                os.environ.get("RESOURCE_CONTROLS_OUTCOME") == "success" and os.environ.get("BROWSER_OBSERVER_CONTROLS_OUTCOME") == "success")
     evidence = {
         "schema": 1, "candidateHead": head, "executedSource": executed, "mergeParents": parents, "producers": graph,
         "unavailableProducers": [name for name, value in graph.items() if value is None],
         "runId": os.environ.get("GITHUB_RUN_ID"), "runAttempt": os.environ.get("GITHUB_RUN_ATTEMPT"),
         "tests": [{"name": EXPECTED, "outcomes": result["outcomes"]}], "complete": complete,
-        "resourceControls": controls, "resolveJourneyComplete": journey_complete,
+        "resourceControls": controls, "browserObserverControls": observer_controls, "browserControlReceiptsComplete": observer_receipts, "resolveJourneyComplete": journey_complete,
         "covered": ["Existing supplier pasted-address exact resolution (initial ordinary create prerequisite)", "real Catalog resolve/explicit candidate/edited detail Apply", "ordinary supplier/address update with original IDs preserved", "independent domain API readback", "page reload", "resolve CSRF/missing only Catalog read denial with manual save permitted"],
         "excluded": ["Creden company selection", "real AuthService issuance", "AppHost orchestration", "customer", "billing", "shipping", "purchase order", "quotation"],
         "authority": "disposable synthetic RSA issuer; normal JWT and signed permission fallback",
