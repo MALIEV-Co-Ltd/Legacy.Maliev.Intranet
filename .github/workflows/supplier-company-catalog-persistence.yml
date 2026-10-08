@@ -1,0 +1,166 @@
+name: Supplier COMPANY Catalog persistence proof
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'acceptance/SupplierCompanyCatalogPersistence/**'
+      - 'acceptance/SupplierCatalogPersistence/SupplierBackends.cs'
+      - 'acceptance/SupplierCatalogPersistence/SupplierResourceScope.cs'
+      - 'acceptance/SupplierCatalogPersistence/SupplierResourceControls.cs'
+      - '.github/workflows/supplier-company-catalog-persistence.yml'
+      - 'Legacy.Maliev.Intranet.Client.Features.Procurement/**'
+      - 'Legacy.Maliev.Intranet.Client.Shared/**'
+      - 'Legacy.Maliev.Intranet.Contracts/Supplier*.cs'
+      - 'Legacy.Maliev.Intranet.Contracts/Lookup*.cs'
+      - 'Legacy.Maliev.Intranet.Bff/Procurement/Supplier*.cs'
+      - 'Legacy.Maliev.Intranet.Bff/Catalog/Lookup*.cs'
+      - 'Legacy.Maliev.Intranet.Server/Suppliers/**'
+      - 'Legacy.Maliev.Intranet.Bff/Program.cs'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'acceptance/SupplierCompanyCatalogPersistence/**'
+      - 'acceptance/SupplierCatalogPersistence/SupplierBackends.cs'
+      - 'acceptance/SupplierCatalogPersistence/SupplierResourceScope.cs'
+      - 'acceptance/SupplierCatalogPersistence/SupplierResourceControls.cs'
+      - '.github/workflows/supplier-company-catalog-persistence.yml'
+      - 'Legacy.Maliev.Intranet.Client.Features.Procurement/**'
+      - 'Legacy.Maliev.Intranet.Client.Shared/**'
+      - 'Legacy.Maliev.Intranet.Contracts/Supplier*.cs'
+      - 'Legacy.Maliev.Intranet.Contracts/Lookup*.cs'
+      - 'Legacy.Maliev.Intranet.Bff/Procurement/Supplier*.cs'
+      - 'Legacy.Maliev.Intranet.Bff/Catalog/Lookup*.cs'
+      - 'Legacy.Maliev.Intranet.Server/Suppliers/**'
+      - 'Legacy.Maliev.Intranet.Bff/Program.cs'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: supplier-company-catalog-persistence-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  supplier-company-catalog-persistence:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      MalievWorkspaceRoot: ${{ github.workspace }}/.dependencies
+      DOTNET_PROCESSOR_COUNT: '2'
+      LEGACY_DEPLOY_ENABLED: 'false'
+    steps:
+      - name: Check out exact Intranet candidate
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - name: Check out reviewed Catalog lookup producer
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: MALIEV-Co-Ltd/Legacy.Maliev.CatalogService
+          ref: 3f426723743570a6c20d2c014499445abb0774e1
+          path: .dependencies/Legacy.Maliev.CatalogService
+          persist-credentials: false
+      - name: Check out reviewed Procurement writer
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: MALIEV-Co-Ltd/Legacy.Maliev.ProcurementService
+          ref: 614a157ab5c8739c144554797a387c45990ba7fe
+          path: .dependencies/Legacy.Maliev.ProcurementService
+          persist-credentials: false
+      - name: Check out reviewed ServiceDefaults
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: MALIEV-Co-Ltd/Legacy.Maliev.ServiceDefaults
+          ref: 7b3099bf67d0f17e56cfdb3dcf36541304abaac2
+          path: .dependencies/Legacy.Maliev.ServiceDefaults
+          persist-credentials: false
+      - name: Check out reviewed CompatibilityContracts
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: MALIEV-Co-Ltd/Legacy.Maliev.CompatibilityContracts
+          ref: 99529ad665503b227184c0baa946ad4e62db978a
+          path: .dependencies/Legacy.Maliev.CompatibilityContracts
+          persist-credentials: false
+      - name: Set up .NET 10
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68
+        with:
+          dotnet-version: 10.0.x
+      - name: Verify disposable hosted runtime
+        run: |
+          test "$RUNNER_ENVIRONMENT" = github-hosted
+          docker info > /dev/null
+      - name: Validate evidence rejection controls
+        run: python3 -B acceptance/SupplierCompanyCatalogPersistence/test_retain.py
+      - name: Build real joined programs without weakening warnings or audit
+        id: build
+        run: |
+          export GITHUB_ACTIONS=false
+          dotnet build acceptance/SupplierCompanyCatalogPersistence/SupplierCompanyCatalogPersistence.AcceptanceTests.csproj -c Release --warnaserror -p:UseLocalMalievDependencies=true --nologo
+      - name: Verify focused formatting and dependency vulnerabilities
+        run: |
+          export GITHUB_ACTIONS=false
+          dotnet format acceptance/SupplierCompanyCatalogPersistence/SupplierCompanyCatalogPersistence.AcceptanceTests.csproj --verify-no-changes --no-restore --include acceptance/SupplierCompanyCatalogPersistence/SupplierCompanyCatalogPersistenceTests.cs acceptance/SupplierCompanyCatalogPersistence/OwnedSyntheticTransport.cs acceptance/SupplierCompanyCatalogPersistence/SupplierSyntheticProvider.cs
+          dotnet list acceptance/SupplierCompanyCatalogPersistence/SupplierCompanyCatalogPersistence.AcceptanceTests.csproj package --vulnerable --include-transitive --format json > "$RUNNER_TEMP/supplier-audit.json"
+          python3 -c 'import json,os,pathlib; d=json.loads((pathlib.Path(os.environ["RUNNER_TEMP"])/"supplier-audit.json").read_text()); assert not any(p.get("vulnerabilities") for project in d.get("projects",[]) for f in project.get("frameworks",[]) for k in ("topLevelPackages","transitivePackages") for p in f.get(k,[])), "Vulnerable acceptance dependency"'
+      - name: Install Chromium
+        id: chromium
+        timeout-minutes: 8
+        run: |
+          # The hosted runner's preferred Azure mirror stalled both exact-head attempts.
+          # Keep signed Ubuntu sources and package policy; use its existing official HTTPS fallback.
+          test -s /etc/apt/apt-mirrors.txt
+          python3 -c 'from pathlib import Path; s=Path("/etc/apt/sources.list.d/ubuntu.sources").read_text(); assert "mirror+file:/etc/apt/apt-mirrors.txt" in s and "Signed-By:" in s, "Unexpected hosted Ubuntu source policy"'
+          printf '%s\n' 'https://archive.ubuntu.com/ubuntu/' | sudo tee /etc/apt/apt-mirrors.txt > /dev/null
+          pwsh -NoProfile -File acceptance/SupplierCompanyCatalogPersistence/bin/Release/net10.0/playwright.ps1 install --with-deps chromium
+      - name: Exercise actual supplier ownership failure transitions
+        id: resource_controls
+        timeout-minutes: 3
+        run: |
+          export GITHUB_ACTIONS=false
+          unset SUPPLIER_RESOURCE_EVIDENCE
+          dotnet test acceptance/SupplierCompanyCatalogPersistence/SupplierCompanyCatalogPersistence.AcceptanceTests.csproj -c Release --no-build --no-restore -p:UseLocalMalievDependencies=true --filter 'FullyQualifiedName~SupplierResourceControls' --logger 'trx;LogFileName=supplier-resource-controls.trx' --results-directory "$RUNNER_TEMP/supplier-company-persistence-results" --nologo
+      - name: Exercise actual guarded provider transport controls
+        id: transport_controls
+        env:
+          PROOF_RESULTS: ${{ runner.temp }}/supplier-company-persistence-results
+        timeout-minutes: 3
+        run: |
+          export GITHUB_ACTIONS=false
+          dotnet test acceptance/SupplierCompanyCatalogPersistence/SupplierCompanyCatalogPersistence.AcceptanceTests.csproj -c Release --no-build --no-restore -p:UseLocalMalievDependencies=true --filter 'FullyQualifiedName~SupplierCompanyTransportControls' --logger 'trx;LogFileName=supplier-company-transport.trx' --results-directory "$RUNNER_TEMP/supplier-company-persistence-results" --nologo
+      - name: Exercise provider startup failure before transport allocation
+        id: provider_controls
+        timeout-minutes: 3
+        run: |
+          export GITHUB_ACTIONS=false
+          unset SUPPLIER_RESOURCE_EVIDENCE
+          dotnet test acceptance/SupplierCompanyCatalogPersistence/SupplierCompanyCatalogPersistence.AcceptanceTests.csproj -c Release --no-build --no-restore -p:UseLocalMalievDependencies=true --filter 'FullyQualifiedName~SupplierCompanyProviderControls' --logger 'trx;LogFileName=supplier-company-provider.trx' --results-directory "$RUNNER_TEMP/supplier-company-persistence-results" --nologo
+      - name: Exercise real Catalog selection, supplier save, API readback and reload
+        id: proof
+        env:
+          SUPPLIER_RESOURCE_EVIDENCE: ${{ runner.temp }}/supplier-company-persistence-evidence
+        timeout-minutes: 8
+        run: |
+          export GITHUB_ACTIONS=false
+          dotnet test acceptance/SupplierCompanyCatalogPersistence/SupplierCompanyCatalogPersistence.AcceptanceTests.csproj -c Release --no-build --no-restore -p:UseLocalMalievDependencies=true --filter 'FullyQualifiedName~SupplierCompanyCatalogPersistenceTests' --logger 'trx;LogFileName=supplier-company-persistence.trx' --results-directory "$RUNNER_TEMP/supplier-company-persistence-results" --nologo
+      - name: Retain actual journey and ownership-control results with bound cleanup and source graph
+        if: always()
+        env:
+          PROOF_RESULTS: ${{ runner.temp }}/supplier-company-persistence-results
+          PROOF_EVIDENCE: ${{ runner.temp }}/supplier-company-persistence-evidence
+          CANDIDATE_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+          BUILD_OUTCOME: ${{ steps.build.outcome }}
+          EXECUTION_OUTCOME: ${{ steps.proof.outcome }}
+          RESOURCE_CONTROLS_OUTCOME: ${{ steps.resource_controls.outcome }}
+          TRANSPORT_CONTROLS_OUTCOME: ${{ steps.transport_controls.outcome }}
+          PROVIDER_CONTROLS_OUTCOME: ${{ steps.provider_controls.outcome }}
+        run: python3 -B acceptance/SupplierCompanyCatalogPersistence/retain.py
+      - name: Upload sanitized proof only
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: supplier-company-catalog-persistence-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/supplier-company-persistence-evidence/*.json*
+          if-no-files-found: error
+          retention-days: 7
