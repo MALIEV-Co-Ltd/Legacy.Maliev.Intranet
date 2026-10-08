@@ -188,7 +188,7 @@ jobs:
             --logger 'trx;LogFileName=employee-creation-email.trx' \
             --results-directory TestResults/employee-creation-email
       - name: Validate .NET solution
-        uses: MALIEV-Co-Ltd/Legacy.Maliev.Workflows/actions/dotnet-validate@d7efac266bc66273bc45eab583618871292ecbd6
+        uses: MALIEV-Co-Ltd/Legacy.Maliev.Workflows/actions/dotnet-validate@53892c362a30130f582c40da7525e44f11474e8e
         env:
           # The shared action tests solution projects concurrently by default. Keep the
           # Playwright fixture isolated from the long-running integration test host.
