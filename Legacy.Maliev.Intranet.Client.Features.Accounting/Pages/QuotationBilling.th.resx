@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <data name="Title" xml:space="preserve"><value>การเรียกเก็บเงินตามใบเสนอราคา</value></data>
+  <data name="Description" xml:space="preserve"><value>ตรวจสอบแต่ละงวดและดูตัวอย่างการเรียกเก็บเงินงวดถัดไป</value></data>
+  <data name="Loading" xml:space="preserve"><value>กำลังโหลด…</value></data>
+  <data name="Quotation" xml:space="preserve"><value>ใบเสนอราคา</value></data>
+  <data name="Total" xml:space="preserve"><value>ยอดรวมใบเสนอราคา</value></data>
+  <data name="Billed" xml:space="preserve"><value>เรียกเก็บแล้ว</value></data>
+  <data name="Cash" xml:space="preserve"><value>เงินที่ได้รับ</value></data>
+  <data name="Withholding" xml:space="preserve"><value>ภาษีหัก ณ ที่จ่ายที่รับรองแล้ว</value></data>
+  <data name="Outstanding" xml:space="preserve"><value>ยอดค้างชำระ</value></data>
+  <data name="Unbilled" xml:space="preserve"><value>ยอดที่ยังไม่เรียกเก็บ</value></data>
+  <data name="Stages" xml:space="preserve"><value>งวดการเรียกเก็บเงิน</value></data>
+  <data name="NoStages" xml:space="preserve"><value>ยังไม่มีการเรียกเก็บเงิน</value></data>
+  <data name="Credit" xml:space="preserve"><value>ยอดลดหนี้</value></data>
+  <data name="Due" xml:space="preserve"><value>วันครบกำหนดชำระ</value></data>
+  <data name="Unspecified" xml:space="preserve"><value>ไม่ระบุ</value></data>
+  <data name="Recipient" xml:space="preserve"><value>ผู้รับใบเรียกเก็บเงิน</value></data>
+  <data name="RequiredDocuments" xml:space="preserve"><value>เอกสารที่ต้องใช้</value></data>
+  <data name="Preview" xml:space="preserve"><value>ดูตัวอย่างงวดถัดไป</value></data>
+  <data name="PreviewOnly" xml:space="preserve"><value>ตัวอย่างนี้ไม่ออกใบแจ้งหนี้และไม่ยืนยันการอนุมัติเอกสาร</value></data>
+  <data name="Kind" xml:space="preserve"><value>ประเภทการเรียกเก็บ</value></data>
+  <data name="Method" xml:space="preserve"><value>ระบุจำนวนเงินหรือเปอร์เซ็นต์</value></data>
+  <data name="Amount" xml:space="preserve"><value>จำนวนเงิน</value></data>
+  <data name="Percentage" xml:space="preserve"><value>เปอร์เซ็นต์</value></data>
+  <data name="Address" xml:space="preserve"><value>ที่อยู่เรียกเก็บเงิน</value></data>
+  <data name="Branch" xml:space="preserve"><value>สาขา / สำนักงานใหญ่</value></data>
+  <data name="SameDebtor" xml:space="preserve"><value>ต้องเป็นลูกค้านิติบุคคลและเลขประจำตัวผู้เสียภาษีเดิม:</value></data>
+  <data name="PreviewAmount" xml:space="preserve"><value>จำนวนเงินที่เรียกเก็บ:</value></data>
+  <data name="Invalid" xml:space="preserve"><value>ตรวจสอบจำนวนเงินและรายละเอียดการเรียกเก็บ</value></data>
+  <data name="Forbidden" xml:space="preserve"><value>คุณไม่มีสิทธิ์เข้าถึงบัญชีการเรียกเก็บเงินนี้</value></data>
+  <data name="NotFound" xml:space="preserve"><value>ไม่พบบัญชีการเรียกเก็บเงิน</value></data>
+  <data name="Changed" xml:space="preserve"><value>บัญชีการเรียกเก็บเงินมีการเปลี่ยนแปลง โปรดโหลดใหม่ก่อนดูตัวอย่าง</value></data>
+  <data name="Unavailable" xml:space="preserve"><value>การเรียกเก็บเงินไม่พร้อมใช้งานชั่วคราว</value></data>
+  <data name="Full" xml:space="preserve"><value>ชำระเต็มจำนวน</value></data>
+  <data name="Deposit" xml:space="preserve"><value>เงินมัดจำ</value></data>
+  <data name="Installment" xml:space="preserve"><value>งวดชำระ</value></data>
+  <data name="Remaining" xml:space="preserve"><value>ยอดที่เหลือ</value></data>
+  <data name="Shipment" xml:space="preserve"><value>เอกสารจัดส่ง</value></data>
+  <data name="Release" xml:space="preserve"><value>เอกสารส่งมอบ</value></data>
+  <data name="Acceptance" xml:space="preserve"><value>เอกสารตรวจรับ</value></data>
+  <data name="BillingInstruction" xml:space="preserve"><value>ข้อกำหนดการวางบิล</value></data>
+  <data name="VatRecognized" xml:space="preserve"><value>ภาษีมูลค่าเพิ่มที่รับรู้แล้ว</value></data>
+</root>
