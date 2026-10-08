@@ -215,7 +215,9 @@ public sealed class WorkspaceCultureBootstrapBrowserTests(
         Assert.NotEqual(
             new DateTime(2030, 9, 30).ToString("d", CultureInfo.GetCultureInfo("en-US")),
             new DateTime(2030, 9, 30).ToString("d", CultureInfo.GetCultureInfo("en-TH")));
-        await page.Locator("[data-slot='data-table']").GetByText(expectedDate, new() { Exact = true }).WaitForAsync();
+        var table = page.Locator("[data-slot='data-table']");
+        await table.GetByText("Culture formatting observation", new() { Exact = true }).WaitForAsync();
+        Assert.Contains(expectedDate, await table.InnerTextAsync(), StringComparison.Ordinal);
         Assert.Equal(stored, await page.EvaluateAsync<string?>("() => localStorage.getItem('maliev_culture')"));
     }
 
