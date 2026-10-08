@@ -22,6 +22,10 @@ public sealed class ReplacementBrowserTests(IntranetClientServerFixture server, 
         Assert.True(await page.EvaluateAsync<bool>("document.documentElement.scrollWidth<=window.innerWidth+1"));
         Assert.True(await page.Locator(".replacement-panel").EvaluateAsync<bool>("panel=>panel.scrollWidth<=panel.clientWidth+1"));
         Assert.Contains(culture == "th-TH" ? "งานผลิตทดแทนและแก้ไข" : "Replacement and rework", await page.Locator(".replacement-panel").InnerTextAsync());
+        var audit = page.Locator(".replacement-audit"); var trigger = audit.GetByRole(AriaRole.Button);
+        await trigger.PressAsync("Enter"); await audit.Locator("li").WaitForAsync(new() { State = WaitForSelectorState.Visible });
+        Assert.Contains("Defect", await audit.InnerTextAsync());
+        await trigger.PressAsync("Enter"); await audit.Locator("li").WaitForAsync(new() { State = WaitForSelectorState.Hidden });
         Assert.Empty(errors); Directory.CreateDirectory("output/playwright"); await page.Locator(".replacement-panel").ScreenshotAsync(new() { Path = $"output/playwright/replacement-{culture}-{width}.png" });
     }
     [Theory]

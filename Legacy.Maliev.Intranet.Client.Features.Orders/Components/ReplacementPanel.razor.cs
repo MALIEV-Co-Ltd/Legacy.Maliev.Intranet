@@ -18,6 +18,12 @@ public partial class ReplacementPanel
     [Parameter] public ReplacementPendingState PendingState { get; set; } = new();
     [Parameter] public EventCallback PendingChanged { get; set; }
     private ReplacementStoredCaseView[] cases = [];
+    private readonly HashSet<int> openAuditCases = [];
+    private void SetAuditOpen(int caseId, bool open)
+    {
+        if (open) openAuditCases.Add(caseId);
+        else openAuditCases.Remove(caseId);
+    }
     private ReplacementDocumentView[] documents = [];
     private ReplacementDocumentVersionView[] versions = [];
     private CancellationTokenSource lifetime = new();

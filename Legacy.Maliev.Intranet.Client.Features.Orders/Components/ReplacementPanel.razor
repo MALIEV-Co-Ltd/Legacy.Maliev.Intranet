@@ -50,7 +50,10 @@
                 {
                     <p>@Text["Fact",fact.Id] · @Label(fact.Kind) · @fact.Amount @fact.Currency · @fact.ObservedDate · @fact.Description · @fact.ClaimReference @if(fact.CorrectsFactId is {} correction){<span>@Text["Corrects",correction]</span>}</p>
                 }
-                <details><summary>@Text["History"]</summary><ol>@foreach(var entry in item.Value.Audit){<li>@entry.OccurredAt.ToLocalTime() · @Label(entry.Action) · @Text["Employee",entry.EmployeeId] · @entry.Reason</li>}</ol></details>
+                <ShadcnCollapsible Class="replacement-audit" Open="@openAuditCases.Contains(item.Id)" OpenChanged="@(open => SetAuditOpen(item.Id, open))">
+                    <ShadcnCollapsibleTrigger aria-label="@Text["History"]">@Text["History"]</ShadcnCollapsibleTrigger>
+                    <ShadcnCollapsibleContent><ol>@foreach(var entry in item.Value.Audit){<li>@entry.OccurredAt.ToLocalTime() · @Label(entry.Action) · @Text["Employee",entry.EmployeeId] · @entry.Reason</li>}</ol></ShadcnCollapsibleContent>
+                </ShadcnCollapsible>
             </article>
         }
         @if (CanWrite || CanApprove)
