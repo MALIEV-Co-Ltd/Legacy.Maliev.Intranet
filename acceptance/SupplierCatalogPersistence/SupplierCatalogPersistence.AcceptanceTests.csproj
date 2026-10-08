@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <IsTestProject>true</IsTestProject>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="10.0.12" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+    <PackageReference Include="Microsoft.Playwright" Version="1.58.0" />
+    <PackageReference Include="Testcontainers.PostgreSql" Version="4.10.0" />
+    <PackageReference Include="Testcontainers.Redis" Version="4.10.0" />
+    <PackageReference Include="SSH.NET" Version="2026.0.0" PrivateAssets="all" />
+    <PackageReference Include="NSubstitute" Version="5.3.0" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.4" />
+    <Using Include="Xunit" />
+    <ProjectReference Include="../../Legacy.Maliev.Intranet.Bff/Legacy.Maliev.Intranet.Bff.csproj" Aliases="Bff" />
+    <ProjectReference Include="../../Legacy.Maliev.Intranet.Contracts/Legacy.Maliev.Intranet.Contracts.csproj" />
+    <ProjectReference Include="$(MalievWorkspaceRoot)/Legacy.Maliev.CatalogService/Legacy.Maliev.CatalogService.Api/Legacy.Maliev.CatalogService.Api.csproj" Aliases="CatalogApi" />
+    <ProjectReference Include="$(MalievWorkspaceRoot)/Legacy.Maliev.ProcurementService/Legacy.Maliev.ProcurementService.Api/Legacy.Maliev.ProcurementService.Api.csproj" Aliases="ProcurementApi" />
+    <ProjectReference Include="$(MalievWorkspaceRoot)/Legacy.Maliev.ProcurementService/Legacy.Maliev.ProcurementService.Data/Legacy.Maliev.ProcurementService.Data.csproj" />
+  </ItemGroup>
+</Project>
