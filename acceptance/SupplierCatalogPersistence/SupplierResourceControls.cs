@@ -135,9 +135,17 @@ public sealed class SupplierResourceControls
         var enqueued = Signal();
         var hold = true;
         var invoked = false;
-        var owner = new SupplierResourceScope(TimeSpan.FromMinutes(1), TimeSpan.FromMilliseconds(250), queuedWork =>
+        Task? queuedCleanup = null;
+        SupplierResourceScope owner = null!;
+        owner = new SupplierResourceScope(TimeSpan.FromMinutes(1), TimeSpan.FromMilliseconds(250), queuedWork =>
         {
-            if (Volatile.Read(ref hold)) { queued.Enqueue(queuedWork); enqueued.TrySetResult(); }
+            if (Volatile.Read(ref hold))
+            {
+                queued.Enqueue(queuedWork);
+                // Cancel before returning to the bounded acquisition wait, rather than racing a scheduled continuation.
+                queuedCleanup = owner.DisposeAsync().AsTask();
+                enqueued.TrySetResult();
+            }
             else { _ = Task.Run(queuedWork); }
         });
         var host = allocation ? null : owner.Register("host", _ => Task.CompletedTask);
@@ -147,7 +155,8 @@ public sealed class SupplierResourceControls
         try
         {
             await enqueued.Task.WaitAsync(TimeSpan.FromSeconds(5));
-            await Assert.ThrowsAsync<AggregateException>(async () => await owner.DisposeAsync().AsTask().WaitAsync(TimeSpan.FromSeconds(5)));
+            Assert.NotNull(queuedCleanup);
+            await Assert.ThrowsAsync<AggregateException>(() => queuedCleanup!.WaitAsync(TimeSpan.FromSeconds(5)));
             await Assert.ThrowsAnyAsync<OperationCanceledException>(() => work.WaitAsync(TimeSpan.FromSeconds(5)));
             Volatile.Write(ref hold, false);
             Assert.True(queued.TryDequeue(out var dispatch));
