@@ -38,6 +38,27 @@ class Smoke(bootstrap.Bootstrap):
         self.scenario = scenario
         self.marker = self.evidence / "payload.json"
 
+    def retain_diagnostics(self):
+        # Bootstrap journals stay root-private. Copy only bounded control metadata
+        # to the already-readable smoke artifact directory, never stdout/env/args.
+        fields = ("pid", "creationFileTime", "startTicks", "actualExecutable", "executable",
+                  "identityObservedAfterExit", "terminalReturnCode", "stage", "returnCode",
+                  "capturedBytes", "maxBytes", "timeoutSeconds", "readerWorkers", "exited",
+                  "readerClosed", "settled", "interrupted")
+        children = self.records["controlProcesses"]
+        if len(children) > 256:
+            raise ValueError("Smoke diagnostic inventory bound")
+        value = {"diagnosticOnly": True, "nativeCreationAcceptance": False,
+                 "scenario": self.scenario, "run": self.run, "unit": self.unit,
+                 "releaseVerified": self.records["releaseVerified"],
+                 "controlProcesses": [{key: row[key] for key in fields if key in row} for row in children]}
+        if len(json.dumps(value).encode()) > 262144:
+            raise ValueError("Smoke diagnostic byte bound")
+        target = self.evidence.parent / ("control-smoke-" + self.run + ".json")
+        marker_write(target, value)
+        target.chmod(0o644)
+        return target
+
     def inspect_native_exit(self):
         # This specialized smoke allocates ONLY this finite control service.
         self.quiescent(self.group)
@@ -99,7 +120,16 @@ class Smoke(bootstrap.Bootstrap):
             if self.scenario != "post-dispatch-fault" or str(error) != "Injected after actual dispatch and payload start":
                 raise
         finally:
-            self.finish()
+            try:
+                self.finish()
+            finally:
+                primary = sys.exception()
+                try:
+                    self.retain_diagnostics()
+                except BaseException:
+                    if primary is None:
+                        raise
+                    print("smoke_diagnostic_retention_unavailable", file=sys.stderr)
         if not self.records["releaseVerified"]:
             raise RuntimeError("Actual smoke resources not released")
         return {"scenario": self.scenario, "scope": "finite-control-service-only", "generation": self.records["generation"],

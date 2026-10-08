@@ -56,9 +56,12 @@ jobs:
       - name: Observe actual normal, cancellation, expiry and post-dispatch cleanup
         run: sudo -n --preserve-env=RUNNER_ENVIRONMENT,MALIEV_CREATION_HOSTED_ADMISSION python3 -B acceptance/EmployeeAdministration/smoke_creation_control.py --root "$GITHUB_WORKSPACE" --evidence "$RUNNER_TEMP/creation-controller-smoke"
       - name: Retain finite control-service proof only
+        if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: finite-control-service-proof-${{ github.run_id }}
-          path: ${{ runner.temp }}/creation-controller-smoke/control-smoke-proof.json
+          path: |
+            ${{ runner.temp }}/creation-controller-smoke/control-smoke-proof.json
+            ${{ runner.temp }}/creation-controller-smoke/control-smoke-*.json
           retention-days: 14
           if-no-files-found: error

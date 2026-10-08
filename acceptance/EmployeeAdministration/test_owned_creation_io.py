@@ -10,6 +10,57 @@ RECEIPTS = []
 
 
 class OwnedIOControls(unittest.TestCase):
+    def test_missing_linux_executable_requires_exact_owned_handle_exit(self):
+        from types import SimpleNamespace
+        # Linux birth metadata exists for a zombie; executable symlink does not.
+        raw = "123 (owned helper) " + " ".join(["S"] + ["0"] * 18 + ["4321"])
+        class ProcPath:
+            def __init__(self, value):
+                self.value = value
+            def __truediv__(self, value):
+                return self
+            def read_text(self):
+                return raw
+            def resolve(self, strict):
+                raise FileNotFoundError("Exited process executable unavailable")
+        with patch.object(io.os, "name", "posix"), patch.object(io, "Path", ProcPath):
+            value = io.creation_identity(SimpleNamespace(pid=123, poll=lambda: 0))
+            self.assertEqual("4321", value["startTicks"])
+            self.assertIsNone(value["actualExecutable"])
+            self.assertTrue(value["identityObservedAfterExit"])
+            self.assertEqual(0, value["terminalReturnCode"])
+            with self.assertRaises(FileNotFoundError):
+                io.creation_identity(SimpleNamespace(pid=123, poll=lambda: None))
+
+    def test_missing_linux_birth_record_never_infers_terminal_identity(self):
+        from types import SimpleNamespace
+        class MissingBirth:
+            def __init__(self, _value):
+                pass
+            def __truediv__(self, _value):
+                return self
+            def read_text(self):
+                raise FileNotFoundError()
+        with patch.object(io.os, "name", "posix"), patch.object(io, "Path", MissingBirth):
+            with self.assertRaises(FileNotFoundError):
+                io.creation_identity(SimpleNamespace(pid=123, poll=lambda: 0))
+
+    def test_terminal_identity_never_converts_failed_command_to_success(self):
+        from types import SimpleNamespace
+        reader = SimpleNamespace(closed=False, fileno=lambda: 42)
+        reader.close = lambda: setattr(reader, "closed", True)
+        process = SimpleNamespace(pid=123, stdout=reader, poll=lambda: 7, wait=lambda **kwargs: 7)
+        identity = {"pid": 123, "startTicks": "4321", "actualExecutable": None,
+                    "identityObservedAfterExit": True, "terminalReturnCode": 7}
+        with patch.object(io.subprocess, "Popen", return_value=process), \
+                patch.object(io, "creation_identity", return_value=identity), \
+                patch.object(io.os, "set_blocking"), patch.object(io.os, "read", return_value=b""), \
+                self.assertRaises(io.CaptureError) as failure:
+            io.capture([sys.executable], env={})
+        self.assertEqual(7, failure.exception.receipt["returnCode"])
+        self.assertTrue(failure.exception.receipt["settled"])
+        self.assertIsNone(failure.exception.receipt["actualExecutable"])
+
     def test_normal_capture_observes_actual_exit(self):
         text, receipt = io.capture([sys.executable, "-c", "print('owned')"], env=dict(os.environ), timeout=3)
         RECEIPTS.append(receipt)
