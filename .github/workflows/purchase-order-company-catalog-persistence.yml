@@ -48,7 +48,8 @@ concurrency:
 jobs:
   purchase-order-company-catalog-persistence:
     runs-on: ubuntu-latest
-    timeout-minutes: 40
+    # Three serial original producer suites/policies precede the bounded PO proof.
+    timeout-minutes: 120
     env:
       MalievWorkspaceRoot: ${{ github.workspace }}/.dependencies
       DOTNET_PROCESSOR_COUNT: '2'
@@ -112,6 +113,27 @@ jobs:
         uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68
         with:
           dotnet-version: 10.0.x
+      - name: Check out original compile-linked File test consumer only
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: MALIEV-Co-Ltd/Legacy.Maliev.Intranet
+          ref: 3f5f7542c93cb085757130971c4fc7cf61043f01
+          path: .dependencies/Legacy.Maliev.Intranet
+          persist-credentials: false
+      - name: Check out original File offline fixture scripts only
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: MALIEV-Co-Ltd/Legacy.Maliev.Workflows
+          ref: 0159e67a033712a7120d52173819e8bde214cf6e
+          path: .dependencies/Legacy.Maliev.FileService/.dependencies/Legacy.Maliev.Workflows
+          persist-credentials: false
+      - name: Check out original strict security scan source only
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: MALIEV-Co-Ltd/Legacy.Maliev.Workflows
+          ref: e3a6093324a24968876782153286f52db8b29fd8
+          path: .graph-security
+          persist-credentials: false
       - name: Verify disposable hosted runtime
         run: |
           test "$RUNNER_ENVIRONMENT" = github-hosted
@@ -119,19 +141,32 @@ jobs:
       - name: Validate evidence rejection controls
         run: |
           cd acceptance/PurchaseOrderCompanyCatalogPersistence
-          python3 -B -m unittest test_retain test_po_receipt
+          python3 -B -m unittest test_retain test_po_receipt test_producer_graph
+      - name: Qualify exact same-run mixed producer graph and settle each original fixture phase
+        id: graph
+        timeout-minutes: 90
+        env:
+          CANDIDATE_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+          PROOF_EVIDENCE: ${{ runner.temp }}/purchase-order-company-catalog-persistence-evidence
+        run: python3 -B acceptance/PurchaseOrderCompanyCatalogPersistence/producer_graph.py
       - name: Build real joined programs without weakening warnings or audit
         id: build
         run: |
           export GITHUB_ACTIONS=false
           dotnet build acceptance/PurchaseOrderCompanyCatalogPersistence/PurchaseOrderCompanyCatalogPersistence.AcceptanceTests.csproj -c Release --warnaserror -p:UseLocalMalievDependencies=true --nologo
+      - name: Admit actual fresh standalone PE PDB copies only after complete graph
+        id: graph_admission
+        env:
+          CANDIDATE_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+          PROOF_EVIDENCE: ${{ runner.temp }}/purchase-order-company-catalog-persistence-evidence
+        run: python3 -B acceptance/PurchaseOrderCompanyCatalogPersistence/graph_receipt.py
       - name: Verify focused formatting and dependency vulnerabilities
         id: format
         run: |
           export GITHUB_ACTIONS=false
           dotnet format acceptance/PurchaseOrderCompanyCatalogPersistence/PurchaseOrderCompanyCatalogPersistence.AcceptanceTests.csproj --verify-no-changes --no-restore --include acceptance/PurchaseOrderCompanyCatalogPersistence
-          dotnet list acceptance/PurchaseOrderCompanyCatalogPersistence/PurchaseOrderCompanyCatalogPersistence.AcceptanceTests.csproj package --vulnerable --include-transitive --format json > "$RUNNER_TEMP/supplier-audit.json"
-          python3 -c 'import json,os,pathlib; d=json.loads((pathlib.Path(os.environ["RUNNER_TEMP"])/"supplier-audit.json").read_text()); assert not any(p.get("vulnerabilities") for project in d.get("projects",[]) for f in project.get("frameworks",[]) for k in ("topLevelPackages","transitivePackages") for p in f.get(k,[])), "Vulnerable acceptance dependency"'
+          dotnet list acceptance/PurchaseOrderCompanyCatalogPersistence/PurchaseOrderCompanyCatalogPersistence.AcceptanceTests.csproj package --vulnerable --include-transitive --no-restore --format json > "$RUNNER_TEMP/supplier-audit.json"
+          python3 -c 'import os,pathlib,sys; sys.path.insert(0,"acceptance/PurchaseOrderCompanyCatalogPersistence"); from graph_evidence import audit; audit(pathlib.Path(os.environ["RUNNER_TEMP"])/"supplier-audit.json", ["PurchaseOrderCompanyCatalogPersistence.AcceptanceTests.csproj"])'
       - name: Install Chromium
         id: chromium
         timeout-minutes: 8
@@ -188,6 +223,8 @@ jobs:
           PROOF_RESULTS: ${{ runner.temp }}/purchase-order-company-catalog-persistence-results
           PROOF_EVIDENCE: ${{ runner.temp }}/purchase-order-company-catalog-persistence-evidence
           CANDIDATE_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+          GRAPH_OUTCOME: ${{ steps.graph.outcome }}
+          GRAPH_ADMISSION_OUTCOME: ${{ steps.graph_admission.outcome }}
           BUILD_OUTCOME: ${{ steps.build.outcome }}
           FORMAT_OUTCOME: ${{ steps.format.outcome }}
           COMPONENT_OUTCOME: ${{ steps.component.outcome }}

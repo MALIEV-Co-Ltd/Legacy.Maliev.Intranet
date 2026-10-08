@@ -235,6 +235,7 @@ def component_rows(path):
 
 def main(root=None):
     from po_receipt import journey
+    from graph_receipt import join as producer_graph_join
     root = pathlib.Path(root).resolve() if root is not None else pathlib.Path(__file__).resolve().parents[2]
     results = pathlib.Path(os.environ['PROOF_RESULTS'])
     directory = pathlib.Path(os.environ['PROOF_EVIDENCE'])
@@ -249,9 +250,10 @@ def main(root=None):
     component = component_rows(results / 'po-component-controls.trx')
     cleanup = resource_release(directory)
     business = journey(directory)
-    gates = {key: os.environ.get(key) == 'success' for key in ('BUILD_OUTCOME','FORMAT_OUTCOME','COMPONENT_OUTCOME','TRANSPORT_OUTCOME','FILE_CONTROLS_OUTCOME','EXECUTION_OUTCOME','RESOURCE_CONTROLS_OUTCOME')}
+    producer_graph_complete = producer_graph_join(directory, root)
+    gates = {key: os.environ.get(key) == 'success' for key in ('GRAPH_OUTCOME','GRAPH_ADMISSION_OUTCOME','BUILD_OUTCOME','FORMAT_OUTCOME','COMPONENT_OUTCOME','TRANSPORT_OUTCOME','FILE_CONTROLS_OUTCOME','EXECUTION_OUTCOME','RESOURCE_CONTROLS_OUTCOME')}
     complete = (native['complete'] and controls['complete'] and transport and file_controls and component and cleanup and business and
-                all(gates.values()) and graph == PINS and bound_candidate(executed, head, parents))
+                producer_graph_complete and all(gates.values()) and graph == PINS and bound_candidate(executed, head, parents))
     report = {
         'schema':1, 'candidateHead':head, 'executedSource':executed, 'mergeParents':parents,
         'producers':graph, 'runId':os.environ.get('GITHUB_RUN_ID'), 'runAttempt':os.environ.get('GITHUB_RUN_ATTEMPT'),
@@ -259,6 +261,7 @@ def main(root=None):
         'transportControlsComplete':transport, 'fileProtocolControlsComplete':file_controls,
         'componentControlsComplete':component,
         'businessReceiptComplete':business, 'observedExactBackendAbsenceAndOwnerRelease':cleanup,
+        'producerGraphComplete':producer_graph_complete,
         'covered':['PO shipping/billing company selection in English/Thai', 'ordinary PO create and distinct address/contact/item persistence',
                    'actual QuestPDF party names', 'normal File scan/promotion/journal/metadata', 'independent API/result/download/reload', 'CSRF/create/company permission denials with manual save'],
         'excluded':['live IAM authority','live Creden','live Google Cloud Storage','real ClamAV malware engine','all other PO variants','invoice','quotation','customer','AppHost orchestration','production deployment'],
