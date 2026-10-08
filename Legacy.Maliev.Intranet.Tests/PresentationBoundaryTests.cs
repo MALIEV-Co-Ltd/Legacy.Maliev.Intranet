@@ -209,7 +209,8 @@ public sealed class PresentationBoundaryTests
         var current = new DirectoryInfo(AppContext.BaseDirectory);
         while (current is not null)
         {
-            if (Directory.Exists(Path.Combine(current.FullName, "Legacy.Maliev.Intranet.Contracts")))
+            if (File.Exists(Path.Combine(current.FullName, "Legacy.Maliev.Intranet.slnx")) &&
+                Directory.Exists(Path.Combine(current.FullName, "Legacy.Maliev.Intranet.Contracts")))
             {
                 return current.FullName;
             }

@@ -3,7 +3,7 @@
 @inject HttpClient Http
 @inject IStringLocalizer<QuotationBilling> Text
 
-<PageTitle>@Text["Title"]</PageTitle>
+<PageTitle>@Text["PageTitle"]</PageTitle>
 <main class="billing-page">
     <header class="operations-page-header"><h1>@Text["Title"]</h1></header>
     <p>@Text["Description"]</p>
@@ -48,25 +48,29 @@
         <section aria-labelledby="billing-preview">
             <h2 id="billing-preview">@Text["Preview"]</h2>
             <p>@Text["PreviewOnly"]</p>
-            <form @onsubmit="PreviewAsync" @onsubmit:preventDefault>
-                <label for="billing-kind">@Text["Kind"]</label>
-                <select id="billing-kind" @bind="kind" @bind:after="ClearPreview" disabled="@previewing">
-                    @foreach (var option in Enum.GetValues<BillingStageKind>()) { <option value="@option">@Text[option.ToString()]</option> }
-                </select>
+            <EditForm Model="@formModel" OnSubmit="PreviewAsync">
+                <AccountingSelectField TValue="BillingStageKind" Id="billing-kind" Label="@Text["Kind"]" Placeholder="@Text["Kind"]"
+                    Value="@kind" ValueChanged="@(next => { kind = next; ClearPreview(); })" Options="@KindOptions" Disabled="@previewing" />
                 @if (kind is BillingStageKind.Deposit or BillingStageKind.Installment)
                 {
-                    <label for="billing-method">@Text["Method"]</label>
-                    <select id="billing-method" @bind="percentageMode" @bind:after="ClearPreview" disabled="@previewing"><option value="false">@Text["Amount"]</option><option value="true">@Text["Percentage"]</option></select>
-                    <label for="billing-amount">@(percentageMode ? Text["Percentage"] : Text["Amount"])</label>
-                    <input id="billing-amount" type="number" min="0" step="any" @bind="value" @bind:after="ClearPreview" disabled="@previewing" required />
+                    <AccountingSelectField TValue="bool" Id="billing-method" Label="@Text["Method"]" Placeholder="@Text["Method"]"
+                        Value="@percentageMode" ValueChanged="@(next => { percentageMode = next; ClearPreview(); })" Options="@MethodOptions" Disabled="@previewing" />
+                    <ShadcnFormField Id="billing-amount" Label="@(percentageMode ? Text["Percentage"] : Text["Amount"])"><Control>
+                        <ShadcnInput TValue="decimal?" id="billing-amount" Type="number" min="0" step="any" Value="@value"
+                            ValueChanged="@(next => { value = next; ClearPreview(); })" Disabled="@previewing" Required="true" />
+                    </Control></ShadcnFormField>
                 }
-                <label for="billing-recipient">@Text["Recipient"]</label><input id="billing-recipient" @bind="recipient" @bind:after="ClearPreview" maxlength="250" required disabled="@previewing" />
-                <label for="billing-address">@Text["Address"]</label><textarea id="billing-address" @bind="address" @bind:after="ClearPreview" maxlength="2000" required disabled="@previewing"></textarea>
-                <label for="billing-branch">@Text["Branch"]</label><input id="billing-branch" @bind="branch" @bind:after="ClearPreview" maxlength="250" disabled="@previewing" />
-                <label for="billing-due">@Text["Due"]</label><input id="billing-due" type="date" @bind="due" @bind:after="ClearPreview" disabled="@previewing" />
+                <AccountingInputField TValue="string" Id="billing-recipient" Label="@Text["Recipient"]" Value="@recipient"
+                    ValueChanged="@(next => { recipient = next; ClearPreview(); })" MaxLength="250" Required="true" Disabled="@previewing" />
+                <ShadcnFormField Id="billing-address" Label="@Text["Address"]"><Control><ShadcnTextarea TValue="string" id="billing-address"
+                    Value="@address" ValueChanged="@(next => { address = next; ClearPreview(); })" maxlength="2000" Required="true" Disabled="@previewing" /></Control></ShadcnFormField>
+                <AccountingInputField TValue="string" Id="billing-branch" Label="@Text["Branch"]" Value="@(branch ?? "")"
+                    ValueChanged="@(next => { branch = next; ClearPreview(); })" MaxLength="250" Disabled="@previewing" />
+                <AccountingInputField TValue="DateTime?" Id="billing-due" Label="@Text["Due"]" Type="date" Value="@due"
+                    ValueChanged="@(next => { due = next; ClearPreview(); })" Disabled="@previewing" />
                 <p>@Text["SameDebtor"] @account.Snapshot.TaxId</p>
-                <button type="submit" disabled="@(previewing || session?.CsrfToken is null)">@(previewing ? Text["Loading"] : Text["Preview"])</button>
-            </form>
+                <ShadcnButton ButtonType="ShadcnButtonType.Submit" Disabled="@(previewing || session?.CsrfToken is null)">@(previewing ? Text["Loading"] : Text["Preview"])</ShadcnButton>
+            </EditForm>
             @if (preview is not null) { <p role="status" aria-live="polite" data-testid="preview">@Text["PreviewAmount"] @Money(preview.Amount.Gross)</p> }
         </section>
     }
@@ -84,6 +88,10 @@
     private DateTime? due;
     private string recipient = "", address = "";
     private string? branch, error;
+    private readonly object formModel = new();
+    private IReadOnlyList<ShadcnSelectOption<BillingStageKind>> KindOptions => Enum.GetValues<BillingStageKind>()
+        .Select(option => new ShadcnSelectOption<BillingStageKind>(option, Text[option.ToString()])).ToArray();
+    private IReadOnlyList<ShadcnSelectOption<bool>> MethodOptions => [new(false, Text["Amount"]), new(true, Text["Percentage"])];
     private long requestGeneration;
     private string Path => $"/bff/customers/{CustomerId}/billing/accounts/{AccountId:D}";
     private void ClearPreview() => preview = null;
@@ -95,11 +103,12 @@
         var accountId = AccountId;
         var path = Path;
         loading = true; previewing = false; account = null; session = null; preview = null; error = null;
+        kind = BillingStageKind.Full; percentageMode = false; value = null; due = null;
         try
         {
-            var loadedSession = await Http.GetFromJsonAsync<EmployeeSessionSummary>("/bff/session");
+            var loadedSession = await Http.GetFromJsonForPresentationAsync<EmployeeSessionSummary>("/bff/session");
             if (generation != requestGeneration) return;
-            using var response = await Http.GetAsync(path);
+            using var response = await Http.GetForPresentationAsync(path);
             if (generation != requestGeneration) return;
             if (!response.IsSuccessStatusCode) { error = Error(response.StatusCode); return; }
             var loaded = await response.Content.ReadFromJsonAsync<BillingAccountView>();
@@ -130,10 +139,11 @@
                 due is null ? null : DateOnly.FromDateTime(due.Value), new(capturedAccount.Snapshot.CustomerId, capturedAccount.Snapshot.TaxId, recipient, branch, address), capturedAccount.Revision);
             using var request = new HttpRequestMessage(HttpMethod.Post, capturedPath + "/preview") { Content = JsonContent.Create(input) };
             request.Headers.Add("X-CSRF-TOKEN", csrfToken);
-            using var response = await Http.SendAsync(request);
+            using var timeout = LegacyPresentation.CreateRequestTimeout();
+            using var response = await Http.SendAsync(request, timeout.Token);
             if (generation != requestGeneration) return;
             if (!response.IsSuccessStatusCode) { error = Error(response.StatusCode); return; }
-            var result = await response.Content.ReadFromJsonAsync<BillingStagePreview>();
+            var result = await response.Content.ReadFromJsonAsync<BillingStagePreview>(cancellationToken: timeout.Token);
             if (generation != requestGeneration) return;
             if (result is null || result.AccountId != capturedAccount.Id || result.Revision != capturedAccount.Revision) { error = Text["Unavailable"]; return; }
             preview = result;

@@ -43,4 +43,5 @@
   <data name="Acceptance" xml:space="preserve"><value>เอกสารตรวจรับ</value></data>
   <data name="BillingInstruction" xml:space="preserve"><value>ข้อกำหนดการวางบิล</value></data>
   <data name="VatRecognized" xml:space="preserve"><value>ภาษีมูลค่าเพิ่มที่รับรู้แล้ว</value></data>
+  <data name="PageTitle" xml:space="preserve"><value>การเรียกเก็บเงินตามใบเสนอราคา</value></data>
 </root>

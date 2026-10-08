@@ -5,6 +5,8 @@ using System.Text.Json;
 using Bunit;
 using Legacy.Maliev.Intranet.Client.Features.Accounting.Pages;
 using Legacy.Maliev.Intranet.Contracts;
+using Maliev.ShadcnBlazor.Components.Selection;
+using Maliev.ShadcnBlazor.Components.Forms;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Legacy.Maliev.Intranet.Tests;
@@ -25,6 +27,7 @@ public sealed class BillingUiBehaviorTests
             using var transport = new BrowserTransport(account);
             using var client = new HttpClient(transport) { BaseAddress = new("https://intranet.invalid") };
             using var context = new BunitContext();
+            context.JSInterop.Mode = JSRuntimeMode.Loose;
             context.Services.AddLocalization();
             context.Services.AddSingleton(client);
             var cut = context.Render<QuotationBilling>(parameters => parameters.Add(page => page.CustomerId, 7).Add(page => page.AccountId, account.Id));
@@ -37,8 +40,8 @@ public sealed class BillingUiBehaviorTests
             }
             cut.WaitForAssertion(() => Assert.Contains("800", cut.Find("[data-testid=unbilled]").TextContent, StringComparison.Ordinal));
             Assert.Contains("200", cut.Find("[data-testid=billed]").TextContent, StringComparison.Ordinal);
-            Assert.Equal("Full", cut.Find("#billing-kind").GetAttribute("value"));
-            cut.Find("#billing-kind").Change("Remaining");
+            Assert.Equal(BillingStageKind.Full, cut.FindComponent<ShadcnSelect<BillingStageKind>>().Instance.Value);
+            await cut.InvokeAsync(() => cut.FindComponent<ShadcnSelect<BillingStageKind>>().Instance.ValueChanged.InvokeAsync(BillingStageKind.Remaining));
             await cut.Find("form").SubmitAsync();
             cut.WaitForAssertion(() => Assert.Contains("800", cut.Find("[data-testid=preview]").TextContent, StringComparison.Ordinal));
             var captured = Assert.Single(transport.Posts);
@@ -49,7 +52,7 @@ public sealed class BillingUiBehaviorTests
             Assert.Null(captured.Input.Amount);
             Assert.Null(captured.Input.Percentage);
             Assert.Equal(account.Snapshot.TaxId, captured.Input.Recipient.TaxId);
-            cut.Find("#billing-recipient").Change("Updated office");
+            cut.Find("#billing-recipient").Input("Updated office");
             Assert.Empty(cut.FindAll("[data-testid=preview]"));
             Assert.DoesNotContain(transport.Paths, path => path.Contains("issue", StringComparison.Ordinal) || path.Contains("invoice", StringComparison.Ordinal));
         }
@@ -62,12 +65,42 @@ public sealed class BillingUiBehaviorTests
         using var transport = new BrowserTransport(BillingBffContractTests.Account()) { Unavailable = true };
         using var client = new HttpClient(transport) { BaseAddress = new("https://intranet.invalid") };
         using var context = new BunitContext();
+        context.JSInterop.Mode = JSRuntimeMode.Loose;
         context.Services.AddLocalization();
         context.Services.AddSingleton(client);
         var cut = context.Render<QuotationBilling>(parameters => parameters.Add(page => page.CustomerId, 7).Add(page => page.AccountId, Guid.NewGuid()));
         cut.WaitForAssertion(() => Assert.Single(cut.FindAll("[role=alert]")));
         Assert.Empty(cut.FindAll("form"));
         Assert.Empty(transport.Posts);
+    }
+
+    [Theory]
+    [InlineData(false, "200.50", 200.50)]
+    [InlineData(true, "12.5", 12.5)]
+    public async Task DepositAllowsFractionalAmountOrPercentageWithoutIntegerStepConstraint(bool percentage, string text, double expected)
+    {
+        var previous = CultureInfo.CurrentCulture;
+        CultureInfo.CurrentCulture = CultureInfo.GetCultureInfo("en-US");
+        try
+        {
+            var account = BillingBffContractTests.Account();
+            using var transport = new BrowserTransport(account);
+            using var client = new HttpClient(transport) { BaseAddress = new("https://intranet.invalid") };
+            using var context = new BunitContext();
+            context.JSInterop.Mode = JSRuntimeMode.Loose;
+            context.Services.AddLocalization();
+            context.Services.AddSingleton(client);
+            var cut = context.Render<QuotationBilling>(parameters => parameters.Add(page => page.CustomerId, 7).Add(page => page.AccountId, account.Id));
+            cut.WaitForAssertion(() => Assert.Single(cut.FindAll("form")));
+            await cut.InvokeAsync(() => cut.FindComponent<ShadcnSelect<BillingStageKind>>().Instance.ValueChanged.InvokeAsync(BillingStageKind.Deposit));
+            if (percentage) await cut.InvokeAsync(() => cut.FindComponent<ShadcnSelect<bool>>().Instance.ValueChanged.InvokeAsync(true));
+            Assert.Equal("any", cut.Find("#billing-amount").GetAttribute("step"));
+            cut.Find("#billing-amount").Input(text);
+            await cut.Find("form").SubmitAsync();
+            var posted = Assert.Single(transport.Posts).Input;
+            Assert.Equal((decimal)expected, percentage ? posted.Percentage : posted.Amount);
+        }
+        finally { CultureInfo.CurrentCulture = previous; }
     }
 
     [Theory]
@@ -80,6 +113,7 @@ public sealed class BillingUiBehaviorTests
         using var transport = new BrowserTransport(account) { NextAccount = next, DelayRead = !preview, DelayPreview = preview };
         using var client = new HttpClient(transport) { BaseAddress = new("https://intranet.invalid") };
         using var context = new BunitContext();
+        context.JSInterop.Mode = JSRuntimeMode.Loose;
         context.Services.AddLocalization();
         context.Services.AddSingleton(client);
         var cut = context.Render<QuotationBilling>(parameters => parameters.Add(page => page.CustomerId, 7).Add(page => page.AccountId, account.Id));

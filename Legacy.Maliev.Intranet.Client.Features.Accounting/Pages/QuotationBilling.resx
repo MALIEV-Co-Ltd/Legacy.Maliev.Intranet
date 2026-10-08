@@ -43,4 +43,5 @@
   <data name="Acceptance" xml:space="preserve"><value>Acceptance document</value></data>
   <data name="BillingInstruction" xml:space="preserve"><value>Billing instruction</value></data>
   <data name="VatRecognized" xml:space="preserve"><value>VAT recognized</value></data>
+  <data name="PageTitle" xml:space="preserve"><value>Quotation billing</value></data>
 </root>
