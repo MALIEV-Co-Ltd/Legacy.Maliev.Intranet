@@ -1,0 +1,177 @@
+name: Workspace culture bootstrap proof
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+permissions:
+  contents: read
+concurrency:
+  group: workspace-culture-focus-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  culture:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      DOTNET_PROCESSOR_COUNT: '1'
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - name: Check out exact candidate
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Set up standard .NET runtime
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68
+        with:
+          dotnet-version: 10.0.x
+      - name: Verify bounded browser installer source controls
+        timeout-minutes: 2
+        shell: bash
+        run: |
+          printf 'PLAYWRIGHT_BROWSERS_PATH=%s/intranet-playwright\n' "$RUNNER_TEMP" >> "$GITHUB_ENV"
+          python3 -B -c "from pathlib import Path; files=[Path('scripts/verify-playwright-cache.py'),Path('scripts/test_verify_playwright_cache.py')]; [compile(p.read_text(),str(p),'exec') for p in files]"
+          python3 -B -m unittest discover -s scripts -p 'test_verify_playwright_cache.py'
+      - name: Restore BrowserTests packages
+        timeout-minutes: 6
+        shell: bash
+        run: timeout --signal=TERM --kill-after=20s 5m dotnet restore Legacy.Maliev.Intranet.BrowserTests/Legacy.Maliev.Intranet.BrowserTests.csproj
+      - name: Build BrowserTests Release with zero warnings
+        timeout-minutes: 9
+        shell: bash
+        run: |
+          timeout --signal=TERM --kill-after=20s 8m dotnet build Legacy.Maliev.Intranet.BrowserTests/Legacy.Maliev.Intranet.BrowserTests.csproj \
+            --configuration Release --no-restore --warnaserror
+      - name: Read exact built Playwright browser revisions
+        id: playwright_metadata
+        timeout-minutes: 2
+        shell: bash
+        run: |
+          python3 -B scripts/verify-playwright-cache.py \
+            --package Legacy.Maliev.Intranet.BrowserTests/bin/Release/net10.0/.playwright/package \
+            --project Legacy.Maliev.Intranet.BrowserTests/Legacy.Maliev.Intranet.BrowserTests.csproj \
+            --github-output "$GITHUB_OUTPUT"
+      - name: Restore exact-version Playwright browser cache
+        timeout-minutes: 3
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+        with:
+          path: ${{ env.PLAYWRIGHT_BROWSERS_PATH }}
+          key: ${{ runner.os }}-${{ runner.arch }}-playwright-${{ steps.playwright_metadata.outputs.host-platform }}-${{ steps.playwright_metadata.outputs.package-version }}-${{ steps.playwright_metadata.outputs.driver-version }}-${{ steps.playwright_metadata.outputs.browser-fingerprint }}
+      - name: Install Chromium operating-system dependencies
+        timeout-minutes: 6
+        shell: bash
+        run: |
+          timeout --signal=TERM --kill-after=20s 5m pwsh -NoProfile \
+            -File Legacy.Maliev.Intranet.BrowserTests/bin/Release/net10.0/playwright.ps1 install-deps chromium
+      - name: Verify cached browser executables and versions
+        id: playwright_cache
+        timeout-minutes: 2
+        shell: bash
+        run: |
+          python3 -B scripts/verify-playwright-cache.py \
+            --package Legacy.Maliev.Intranet.BrowserTests/bin/Release/net10.0/.playwright/package \
+            --project Legacy.Maliev.Intranet.BrowserTests/Legacy.Maliev.Intranet.BrowserTests.csproj \
+            --cache "$PLAYWRIGHT_BROWSERS_PATH" --cache-parent "$RUNNER_TEMP" \
+            --discard-invalid --github-output "$GITHUB_OUTPUT"
+      - name: Download exact Playwright Chromium when cache is invalid or absent
+        if: steps.playwright_cache.outputs.valid != 'true'
+        timeout-minutes: 6
+        shell: bash
+        run: |
+          timeout --signal=TERM --kill-after=20s 5m pwsh -NoProfile \
+            -File Legacy.Maliev.Intranet.BrowserTests/bin/Release/net10.0/playwright.ps1 install chromium
+      - name: Require valid browser executables before browser regressions
+        timeout-minutes: 2
+        shell: bash
+        run: |
+          python3 -B scripts/verify-playwright-cache.py \
+            --package Legacy.Maliev.Intranet.BrowserTests/bin/Release/net10.0/.playwright/package \
+            --project Legacy.Maliev.Intranet.BrowserTests/Legacy.Maliev.Intranet.BrowserTests.csproj \
+            --cache "$PLAYWRIGHT_BROWSERS_PATH" --require
+      - name: Execute actual culture regressions
+        timeout-minutes: 5
+        shell: bash
+        run: |
+          dotnet test Legacy.Maliev.Intranet.BrowserTests/Legacy.Maliev.Intranet.BrowserTests.csproj \
+            --configuration Release --no-build --no-restore \
+            --filter 'FullyQualifiedName~WorkspaceCultureBootstrapBrowserTests' \
+            --logger 'trx;LogFileName=culture.trx' --results-directory "$RUNNER_TEMP/culture-proof"
+      - name: Execute affected operational shell browser suite
+        timeout-minutes: 5
+        shell: bash
+        run: |
+          dotnet test Legacy.Maliev.Intranet.BrowserTests/Legacy.Maliev.Intranet.BrowserTests.csproj \
+            --configuration Release --no-build --no-restore \
+            --filter 'FullyQualifiedName~OperationalShellBrowserTests' \
+            --logger 'trx;LogFileName=shell.trx' --results-directory "$RUNNER_TEMP/culture-proof"
+      - name: Require exact named executions and retain hashes
+        env:
+          PROOF_ROOT: ${{ runner.temp }}/culture-proof
+        run: |
+          python3 -B - <<'PY'
+          import hashlib, json, os, pathlib, xml.etree.ElementTree as ET
+          root = pathlib.Path(os.environ['PROOF_ROOT'])
+          evidence = {'sourceRevision': os.environ['GITHUB_SHA'], 'runId': os.environ['GITHUB_RUN_ID'], 'runAttempt': os.environ['GITHUB_RUN_ATTEMPT'], 'suites': []}
+          ns = {'t': 'http://microsoft.com/schemas/VisualStudio/TeamTest/2010'}
+          manifests = {
+              'WorkspaceCultureBootstrapBrowserTests': {
+                  'MalformedCultureCookieDefaultsWithoutPreventingWorkspaceBootstrap': 2,
+                  'RecognizedThaiPreferenceMatchesPrebootLabelsAndRenderedWorkspace': 6,
+                  'DeniedCultureStorageFallsBackToRecognizedCookieAndBootstrapsThaiWorkspace': 1,
+                  'PreferenceResolutionPreservesStoragePrecedenceSupportedCulturesAndDefault': 12,
+                  'DefaultAndUnsupportedPreferencesKeepEnglishPrebootAndRuntime': 7,
+                  'SavedCultureInitializesRealWasmDateFormatting': 3,
+              },
+              'OperationalShellBrowserTests': {
+                  'DesktopShellKeepsNavigationScrollableWithoutHorizontalRailAndUsesOpaqueTopbar': 1,
+                  'DesktopSidebarRailDividerSpansTheFullViewport': 1,
+                  'DesktopNavigationUsesCompactRowsWhileMobileDrawerKeepsTouchTargets': 1,
+                  'NavigationAndProfileUseReleasedShadcnPrimitivesWithoutDefaultLinkDecoration': 1,
+                  'EmployeeMenuOwnsLanguagePreferenceAndPersistsCultureSelection': 2,
+                  'EmployeeProfileTriggerIsAStandaloneTouchSizedCapsule': 1,
+                  'EmployeeMenuOwnsThemePreferenceAndPersistsSelection': 1,
+                  'CollapsedNavigationCentersEveryVisibleIconInRail': 1,
+                  'CollapsedNavigationLeavesBreathingRoomBetweenHeaderAndFirstDestination': 1,
+                  'ParentNavigationActionsAreCollapsedByDefaultAndChevronTogglesThem': 1,
+                  'EveryCollapsedNavigationDestinationShowsShadcnTooltipToTheRightOnHover': 1,
+                  'SignOutActionUsesDestructiveColorWithAccessibleContrast': 1,
+                  'NarrowQuickCreateRoutesRemainVisibleFocusableAndTouchSized': 1,
+                  'ThreeHundredTwentyPixelTopbarContainsNonOverlappingZonesAndControls': 1,
+                  'ProductionShellKeepsHierarchyAlignmentContainmentAndDrawerFocusAcrossSupportedWidths': 1,
+                  'EveryCreateRouteHasOneMostSpecificCurrentLinkInsideItsAuthorizedParent': 2,
+              },
+          }
+          for filename, class_name, expected in [('culture.trx', 'WorkspaceCultureBootstrapBrowserTests', 31), ('shell.trx', 'OperationalShellBrowserTests', 18)]:
+              path = root / filename
+              tree = ET.parse(path)
+              counters = tree.find('t:ResultSummary/t:Counters', ns).attrib
+              results = tree.findall('t:Results/t:UnitTestResult', ns)
+              total = int(counters['total'])
+              assert total > 0 and (expected is None or total == expected)
+              assert int(counters['executed']) == total == int(counters['passed']) == len(results)
+              assert all(result.attrib['outcome'] == 'Passed' for result in results)
+              definitions = tree.findall('t:TestDefinitions/t:UnitTest/t:TestMethod', ns)
+              assert definitions and all(method.attrib['className'].endswith('.' + class_name) for method in definitions)
+              definition_ids = [test.attrib['id'] for test in tree.findall('t:TestDefinitions/t:UnitTest', ns)]
+              result_ids = [result.attrib['testId'] for result in results]
+              assert len(set(definition_ids)) == len(definition_ids) == total
+              assert len(set(result_ids)) == len(result_ids) == total
+              assert set(definition_ids) == set(result_ids)
+              actual_methods = {}
+              for method in definitions:
+                  name = method.attrib['name'].split('(')[0].rsplit('.', 1)[-1]
+                  actual_methods[name] = actual_methods.get(name, 0) + 1
+              assert actual_methods == manifests[class_name], (class_name, actual_methods)
+              evidence['suites'].append({'className': class_name, 'passed': total, 'trxSha256': hashlib.sha256(path.read_bytes()).hexdigest()})
+          for source in ['Legacy.Maliev.Intranet.Client/wwwroot/js/workspace-culture.js', 'Legacy.Maliev.Intranet.BrowserTests/WorkspaceCultureBootstrapBrowserTests.cs']:
+              evidence.setdefault('sourceSha256', {})[source] = hashlib.sha256(pathlib.Path(source).read_bytes()).hexdigest()
+          (root / 'receipt.json').write_text(json.dumps(evidence, indent=2) + '\n')
+          PY
+      - name: Preserve actual synthetic browser results
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: workspace-culture-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/culture-proof/
+          if-no-files-found: error
+          retention-days: 7

@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.Json;
 using Legacy.Maliev.Intranet.BrowserTests.Infrastructure;
 using Microsoft.Playwright;
@@ -168,6 +169,54 @@ public sealed class WorkspaceCultureBootstrapBrowserTests(
         Assert.Equal("en", await page.Locator("html").GetAttributeAsync("lang"));
         Assert.Equal(stored, await page.EvaluateAsync<string?>("() => localStorage.getItem('maliev_culture')"));
         Assert.Equal(cookie, (await context.CookiesAsync()).SingleOrDefault(value => value.Name == "maliev_culture")?.Value);
+    }
+
+    [Theory]
+    [InlineData("  EN-us  ", "en-US")]
+    [InlineData("  EN-th  ", "en-TH")]
+    [InlineData("  TH-th  ", "th-TH")]
+    public async Task SavedCultureInitializesRealWasmDateFormatting(string stored, string expectedCulture)
+    {
+        await using var context = await playwright.Browser.NewContextAsync();
+        await context.AddInitScriptAsync($"localStorage.setItem('maliev_culture', {JsonSerializer.Serialize(stored)});");
+        var page = await context.NewPageAsync();
+        await StubProductionBoundariesAsync(page);
+        await page.RouteAsync("**/bff/orders?*", route => route.FulfillAsync(new()
+        {
+            Status = 200,
+            ContentType = "application/json",
+            Body = """
+                {"items":[{"id":9101,"customerId":4401,"employeeId":null,"name":"Culture formatting observation","processId":1,"quantity":1,"manufactured":0,"remaining":1,"subtotal":1250.50,"promisedDate":"2030-09-30T00:00:00","allowSocialMedia":false}],"pageIndex":1,"totalPages":1,"totalRecords":1,"hasNextPage":false,"hasPreviousPage":false}
+                """,
+        }));
+        await page.RouteAsync("**/bff/orders/pending?*", route => route.FulfillAsync(new()
+        {
+            Status = 200,
+            ContentType = "application/json",
+            Body = "{\"items\":[],\"pageIndex\":1,\"totalPages\":1,\"totalRecords\":0,\"hasNextPage\":false,\"hasPreviousPage\":false}",
+        }));
+        await page.RouteAsync("**/bff/order-processes", route => route.FulfillAsync(new()
+        {
+            Status = 200,
+            ContentType = "application/json",
+            Body = "[]",
+        }));
+        await page.RouteAsync("**/bff/employees?*", route => route.FulfillAsync(new()
+        {
+            Status = 200,
+            ContentType = "application/json",
+            Body = "{\"items\":[],\"pageIndex\":1,\"totalPages\":1,\"totalRecords\":0,\"hasNextPage\":false,\"hasPreviousPage\":false}",
+        }));
+        await page.GotoAsync(new Uri(server.BaseUri, "sales/orders").AbsoluteUri);
+
+        // This date is rendered by the real WASM Orders component using CurrentCulture.
+        // The short-date pattern distinguishes en-US from en-TH and Thai's calendar year.
+        var expectedDate = new DateTime(2030, 9, 30).ToString("d", CultureInfo.GetCultureInfo(expectedCulture));
+        Assert.NotEqual(
+            new DateTime(2030, 9, 30).ToString("d", CultureInfo.GetCultureInfo("en-US")),
+            new DateTime(2030, 9, 30).ToString("d", CultureInfo.GetCultureInfo("en-TH")));
+        await page.Locator("[data-slot='data-table']").GetByText(expectedDate, new() { Exact = true }).WaitForAsync();
+        Assert.Equal(stored, await page.EvaluateAsync<string?>("() => localStorage.getItem('maliev_culture')"));
     }
 
     private Task AddCultureCookieAsync(IBrowserContext context, string value) => context.AddCookiesAsync(
