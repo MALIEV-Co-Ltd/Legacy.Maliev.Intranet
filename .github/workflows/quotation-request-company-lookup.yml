@@ -1,0 +1,102 @@
+name: Quotation request company editor proof
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "Legacy.Maliev.Intranet.Client.Features.Quotations/Pages/QuotationRequests/**"
+      - "Legacy.Maliev.Intranet.Tests/QuotationRequestCompanyLookupComponentTests.cs"
+      - "scripts/verify-quotation-company-focus.py"
+      - "tests/fixtures/quotation-company-focus/**"
+      - ".github/workflows/quotation-request-company-lookup.yml"
+  push:
+    branches: [main]
+    paths:
+      - "Legacy.Maliev.Intranet.Client.Features.Quotations/Pages/QuotationRequests/**"
+      - "Legacy.Maliev.Intranet.Tests/QuotationRequestCompanyLookupComponentTests.cs"
+      - "scripts/verify-quotation-company-focus.py"
+      - "tests/fixtures/quotation-company-focus/**"
+      - ".github/workflows/quotation-request-company-lookup.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: quotation-company-focus-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quotation-company-focus:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      MalievWorkspaceRoot: ${{ github.workspace }}/.dependencies
+      PYTHONDONTWRITEBYTECODE: '1'
+      DOTNET_PROCESSOR_COUNT: '1'
+    steps:
+      - name: Check out exact Intranet candidate
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Check out exact ServiceDefaults
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: MALIEV-Co-Ltd/Legacy.Maliev.ServiceDefaults
+          ref: 7edcd961024868513fd5f373cab3dcb261197f77
+          path: .dependencies/Legacy.Maliev.ServiceDefaults
+          persist-credentials: false
+      - name: Check out exact CompatibilityContracts
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: MALIEV-Co-Ltd/Legacy.Maliev.CompatibilityContracts
+          ref: 78e48ffc4ee000df0510cba5e7c7a3c4c4d539d7
+          path: .dependencies/Legacy.Maliev.CompatibilityContracts
+          persist-credentials: false
+      - name: Set up the same .NET runtime
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68
+        with:
+          dotnet-version: 10.0.x
+      - name: Cache NuGet packages
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+        with:
+          path: ~/.nuget/packages
+          key: ${{ runner.os }}-nuget-${{ hashFiles('**/packages.lock.json', '**/*.csproj', '**/*.props') }}
+          restore-keys: |
+            ${{ runner.os }}-nuget-
+      - name: Validate strict result rejection controls
+        run: python3 -B tests/fixtures/quotation-company-focus/test_retainer.py
+      - name: Build affected test target before focused execution
+        id: build
+        shell: bash
+        timeout-minutes: 8
+        run: |
+          export GITHUB_ACTIONS=false
+          dotnet restore Legacy.Maliev.Intranet.Tests/Legacy.Maliev.Intranet.Tests.csproj --locked-mode -p:UseLocalMalievDependencies=true
+          dotnet build Legacy.Maliev.Intranet.Tests/Legacy.Maliev.Intranet.Tests.csproj -c Release --no-restore --warnaserror -p:UseLocalMalievDependencies=true
+      - name: Execute compiled quotation company editor regressions
+        id: execution
+        timeout-minutes: 3
+        run: |
+          export GITHUB_ACTIONS=false
+          dotnet test Legacy.Maliev.Intranet.Tests/Legacy.Maliev.Intranet.Tests.csproj -c Release --no-build --no-restore -p:UseLocalMalievDependencies=true --filter 'FullyQualifiedName~QuotationRequestCompanyLookupComponentTests' --logger 'trx;LogFileName=quotation-company.trx' --results-directory "$RUNNER_TEMP/quotation-company-results"
+      - name: Verify scoped formatting
+        id: formatting
+        run: dotnet format Legacy.Maliev.Intranet.Tests/Legacy.Maliev.Intranet.Tests.csproj --verify-no-changes --no-restore --include Legacy.Maliev.Intranet.Tests/QuotationRequestCompanyLookupComponentTests.cs Legacy.Maliev.Intranet.Client.Features.Quotations/Pages/QuotationRequests/View.razor
+      - name: Retain bounded actual named results
+        if: always()
+        env:
+          EXPECTED_SOURCE_REVISION: ${{ github.sha }}
+          FOCUS_RESULTS: ${{ runner.temp }}/quotation-company-results
+          FOCUS_EVIDENCE: ${{ runner.temp }}/quotation-company-evidence
+          BUILD_OUTCOME: ${{ steps.build.outcome }}
+          EXECUTION_OUTCOME: ${{ steps.execution.outcome }}
+          FORMAT_OUTCOME: ${{ steps.formatting.outcome }}
+        run: python3 -B scripts/verify-quotation-company-focus.py
+      - name: Upload sanitized component proof
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: quotation-company-focus-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/quotation-company-evidence/
+          if-no-files-found: error
+          retention-days: 7
