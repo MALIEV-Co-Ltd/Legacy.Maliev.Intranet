@@ -848,6 +848,14 @@ builder.Services.AddAuthorizationBuilder()
         .Build());
 
 builder.Services.AddCatalogLookups(builder.Configuration);
+#pragma warning disable EXTEXP0001 // Document mutations must not inherit automatic retries.
+builder.Services.AddHttpClient<Legacy.Maliev.Intranet.Bff.CustomerDocuments.CustomerDocumentProxy>(client =>
+{
+    client.BaseAddress = new Uri(builder.Configuration["Services:File"]
+        ?? throw new InvalidOperationException("Services:File is required."));
+}).RemoveAllResilienceHandlers()
+  .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler { AllowAutoRedirect = false });
+#pragma warning restore EXTEXP0001
 var app = builder.Build();
 app.UseStandardMiddleware();
 app.Use(async (context, next) =>
@@ -2838,6 +2846,8 @@ app.MapPut("/bff/catalog/materials/{id:int}", async (
 app.MapCatalogLookups();
 app.MapFallbackToFile("index.html").AllowAnonymous();
 
+if (builder.Configuration.GetValue<bool>("CustomerDocuments:Enabled"))
+    Legacy.Maliev.Intranet.Bff.CustomerDocuments.CustomerDocumentEndpointMapper.MapCustomerDocumentEndpoints(app);
 await app.RunAsync();
 
 static bool TryGetLegacyEmployeeId(ClaimsPrincipal principal, out int employeeId) =>

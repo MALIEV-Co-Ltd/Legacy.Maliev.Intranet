@@ -1,0 +1,73 @@
+@namespace Legacy.Maliev.Intranet.Client.Features.Customers.Components
+@inject HttpClient Http
+@inject IStringLocalizer<CustomerNdaVerification> Text
+
+<details><summary>@Text["Verify externally signed NDA"]</summary>
+    <p>@Text["Expiry does not release confidentiality."]</p>
+    @if (agreement is not null) {
+        <dl><dt>@Text["Agreement calendar"]</dt><dd>@Text[agreement.AgreementStatus]</dd><dt>@Text["Confidentiality obligation"]</dt><dd>@Text[agreement.ObligationStatus]</dd><dt>@Text["Expiry date (UTC)"]</dt><dd>@(agreement.ExpiresAtUtc?.ToString("yyyy-MM-dd HH:mm 'UTC'") ?? Text["Unknown"].Value)</dd><dt>@Text["Confidentiality survival"]</dt><dd>@Text[agreement.SurvivalKind]</dd></dl>
+    }
+    @if (!string.IsNullOrEmpty(message)) { <p role="status" aria-live="polite">@Text[message]</p> }
+    <label for="@Id("party-one")">@Text["First party"]</label><input id="@Id("party-one")" @bind="partyOne" required maxlength="250" />
+    <label for="@Id("party-two")">@Text["Second party"]</label><input id="@Id("party-two")" @bind="partyTwo" required maxlength="250" />
+    <label for="@Id("effective")">@Text["Effective date (UTC)"]</label><input id="@Id("effective")" type="date" @bind="effective" />
+    <label for="@Id("expiry")">@Text["Expiry date (UTC)"]</label><input id="@Id("expiry")" type="date" @bind="expiry" />
+    <label for="@Id("renewal")">@Text["Renewal date (UTC)"]</label><input id="@Id("renewal")" type="date" @bind="renewal" />
+    <label for="@Id("survival")">@Text["Confidentiality survival"]</label><select id="@Id("survival")" @bind="survival"><option value="Unknown">@Text["Unknown"]</option><option value="Indefinite">@Text["Indefinite"]</option><option value="Finite">@Text["Finite"]</option></select>
+    @if (survival == "Finite") { <label for="@Id("survival-end")">@Text["Survival end date (UTC)"]</label><input id="@Id("survival-end")" type="date" @bind="survivalEnd" /> }
+    <label for="@Id("coverage")">@Text["Explicit coverage"]</label><select id="@Id("coverage")" @bind="coverageKind"><option value="">@Text["Select coverage"]</option><option value="Customer">@Text["Customer-wide coverage"]</option>@foreach (var kind in coverageKinds) { <option value="@kind">@Text[kind]</option> }</select>
+    @if (coverageKind != "Customer") { <label for="@Id("resource")">@Text["Canonical resource ID"]</label><input id="@Id("resource")" type="number" min="1" @bind="resourceId" /> }
+    <label for="@Id("responsible")">@Text["Responsible employee subject"]</label><input id="@Id("responsible")" @bind="responsible" required maxlength="250" />
+    <label for="@Id("reason")">@Text["Verification reason"]</label><textarea id="@Id("reason")" @bind="reason" maxlength="1000" required></textarea>
+    <p>@Text["Unknown survival remains protected and requires review."]</p>
+    <button type="button" @onclick="VerifyAsync" disabled="@busy">@Text["Verify exact signed version"]</button>
+    @if (agreementStatus == "Expired" && obligationStatus != "Released") { <p role="alert">@Text["Expired but protected"]</p> }
+</details>
+
+@code {
+    [Parameter] public int CustomerId { get; set; }
+    [Parameter] public Guid DocumentId { get; set; }
+    [Parameter] public Guid VersionId { get; set; }
+    [Parameter] public long ExpectedRevision { get; set; }
+    [Parameter] public EventCallback ParentRefresh { get; set; }
+    private string partyOne = "", partyTwo = "", responsible = "", reason = "", message = "", agreementStatus = "", obligationStatus = "";
+    private DateTime effective = DateTime.UtcNow.Date;
+    private DateTime? expiry;
+    private DateTime? renewal, survivalEnd;
+    private string survival = "Unknown", coverageKind = "";
+    private int resourceId;
+    private static readonly string[] coverageKinds = ["Order", "Quotation", "Invoice", "Replacement", "Shipment"];
+    private bool busy;
+    private CustomerNdaAgreementSummary? agreement;
+    private string Id(string field) => $"nda-{VersionId:D}-{field}";
+    protected override async Task OnParametersSetAsync() {
+        agreement = null; agreementStatus = ""; obligationStatus = ""; message = "";
+        try {
+            using var response = await Http.GetAsync($"/bff/customers/{CustomerId}/documents/{DocumentId:D}/nda?versionId={VersionId:D}");
+            if (response.StatusCode == HttpStatusCode.NotFound) return;
+            if (!response.IsSuccessStatusCode) { message = "Document service is unavailable. Please retry later."; return; }
+            agreement = await response.Content.ReadFromJsonAsync<CustomerNdaAgreementSummary>();
+            agreementStatus = agreement?.AgreementStatus ?? ""; obligationStatus = agreement?.ObligationStatus ?? "";
+        } catch (Exception exception) when (exception is HttpRequestException or System.Text.Json.JsonException) { message = "Document service is unavailable. Please retry later."; }
+    }
+    private async Task VerifyAsync() {
+        if (coverageKind == "" || coverageKind != "Customer" && resourceId <= 0 || survival == "Finite" && survivalEnd is null || string.IsNullOrWhiteSpace(partyOne) || string.IsNullOrWhiteSpace(partyTwo) || string.IsNullOrWhiteSpace(responsible) || string.IsNullOrWhiteSpace(reason)) { message = "Complete agreement details and explicit coverage."; return; }
+        var customer = CustomerId; var document = DocumentId;
+        var input = new CustomerNdaVerificationRequest(VersionId, ExpectedRevision, partyOne, partyTwo, new DateTimeOffset(DateTime.SpecifyKind(effective, DateTimeKind.Utc)), Utc(expiry), Utc(renewal), survival, survival == "Finite" ? Utc(survivalEnd) : null, responsible, [new(coverageKind, coverageKind == "Customer" ? customer : resourceId)], reason);
+        busy = true;
+        try {
+            var session = await Http.GetFromJsonAsync<EmployeeSessionSummary>("/bff/session");
+            if (string.IsNullOrWhiteSpace(session?.CsrfToken)) { message = "Document access denied."; return; }
+            using var request = new HttpRequestMessage(HttpMethod.Post, $"/bff/customers/{customer}/documents/{document:D}/nda/verification") { Content = JsonContent.Create(input) };
+            request.Headers.Add("X-CSRF-TOKEN", session.CsrfToken);
+            using var response = await Http.SendAsync(request);
+            if (!response.IsSuccessStatusCode) { if (response.StatusCode == HttpStatusCode.Conflict) await ParentRefresh.InvokeAsync(); message = response.StatusCode == HttpStatusCode.Conflict ? "The document changed. Reload before retrying." : "Verification was refused or unavailable."; return; }
+            var result = await response.Content.ReadFromJsonAsync<CustomerNdaVerificationReceipt>();
+            if (result is null) { message = "Verification was refused or unavailable."; return; }
+            await ParentRefresh.InvokeAsync(); await OnParametersSetAsync();
+            agreementStatus = result.AgreementStatus; obligationStatus = result.ObligationStatus; message = "Verified exact signed version.";
+        } catch (HttpRequestException) { message = "Verification was refused or unavailable."; }
+        finally { busy = false; }
+    }
+    private static DateTimeOffset? Utc(DateTime? value) => value is null ? null : new DateTimeOffset(DateTime.SpecifyKind(value.Value, DateTimeKind.Utc));
+}
