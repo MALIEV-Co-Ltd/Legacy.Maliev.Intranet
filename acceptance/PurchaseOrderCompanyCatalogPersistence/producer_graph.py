@@ -135,8 +135,20 @@ def verify_sources(root, pins):
 
 def assets(directory, workspace):
     inventory, found = [], set()
+    projects = {path.resolve() for path in directory.glob('*/*.csproj')}
+    restored_projects = set()
     for path in sorted(directory.glob('*/obj/project.assets.json')):
         value = json.loads(path.read_text())
+        owner = path.parent.parent / (path.parent.parent.name + '.csproj')
+        frameworks = value.get('project', {}).get('frameworks')
+        targets = value.get('targets')
+        libraries = value.get('libraries')
+        restored_owner = value.get('project', {}).get('restore', {}).get('projectPath')
+        if owner.resolve() not in projects or not isinstance(restored_owner, str) or pathlib.Path(restored_owner).resolve() != owner.resolve() or owner.resolve() in restored_projects or not isinstance(frameworks, dict) or not frameworks or any(not isinstance(name, str) or not name or not isinstance(row, dict) for name, row in frameworks.items()) or not isinstance(targets, dict) or not targets or not isinstance(libraries, dict):
+            raise ValueError('missing restored shared graph')
+        if {name.split('/')[0] for name in targets} != set(frameworks) or any(not isinstance(row, dict) or any(key not in libraries or not isinstance(library, dict) or library.get('type') not in ('package', 'project') or not isinstance(libraries[key], dict) or library.get('type') != libraries[key].get('type') for key, library in row.items()) for row in targets.values()):
+            raise ValueError('missing restored shared graph')
+        restored_projects.add(owner.resolve())
         if value.get('logs') and any(item.get('level') in ('Error', 'Warning') for item in value['logs']):
             raise ValueError('restore warnings/errors')
         for key, library in value.get('libraries', {}).items():
@@ -150,7 +162,7 @@ def assets(directory, workspace):
                     raise ValueError('foreign shared project path')
                 found.add(name)
         inventory.append({'path': path.relative_to(directory).as_posix(), 'sha256': digest(path)})
-    if not inventory or found != {'Legacy.Maliev.ServiceDefaults', 'Legacy.Maliev.CompatibilityContracts'}:
+    if not projects or restored_projects != projects or not inventory or found != {'Legacy.Maliev.ServiceDefaults', 'Legacy.Maliev.CompatibilityContracts'}:
         raise ValueError('missing restored shared graph')
     return inventory
 
@@ -243,7 +255,7 @@ def qualify(root, producer, pins, inventory, private):
         gate = 'restore-assets-readback'
         restored = assets(directory, root / '.dependencies')
         gate = 'package-audit-command'
-        audit_path = phase.run(['dotnet', 'list', solution, 'package', '--vulnerable', '--include-transitive', '--no-restore', '--format', 'json'], directory, env, 'package-audit')
+        audit_path = phase.run(['dotnet', 'list', solution, 'package', '--vulnerable', '--include-transitive', '--no-restore', '--format', 'json', '--output-version', '1'], directory, env, 'package-audit')
         projects = [path.name for path in directory.glob('*/*.csproj')]
         gate = 'package-audit-readback'
         audit_metadata = safe_audit_metadata(audit_path, projects)

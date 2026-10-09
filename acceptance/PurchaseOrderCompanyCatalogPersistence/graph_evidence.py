@@ -107,23 +107,40 @@ def coverage(paths, assemblies, contract_application=False):
 
 
 def audit(path, expected_projects):
+    """Read the version-one vulnerability-filtered protocol, not a package inventory."""
     document = json.loads(pathlib.Path(path).read_text())
-    projects = document['projects']
-    if document.get('problems') or not projects:
+    if not isinstance(document, dict) or set(document) - {'version', 'parameters', 'sources', 'projects', 'problems'} or type(document.get('version')) is not int or document['version'] != 1 or document.get('parameters') != '--vulnerable --include-transitive':
         raise ValueError('audit incomplete')
+    sources, projects = document.get('sources'), document.get('projects')
+    if not isinstance(sources, list) or not sources or any(not isinstance(source, str) or not source.strip() for source in sources) or not isinstance(projects, list) or not projects or ('problems' in document and (not isinstance(document['problems'], list) or document['problems'])):
+        raise ValueError('audit incomplete')
+    expected = list(expected_projects)
+    if not expected or any(not isinstance(name, str) or pathlib.Path(name).name != name or not name.endswith('.csproj') for name in expected) or len(set(expected)) != len(expected):
+        raise ValueError('missing audited project')
     names = set()
     for project in projects:
-        if project.get('problems') or not project.get('frameworks'):
+        if not isinstance(project, dict) or set(project) - {'path', 'frameworks', 'problems'} or not isinstance(project.get('path'), str) or not project['path'] or ('problems' in project and (not isinstance(project['problems'], list) or project['problems'])):
             raise ValueError('audit project incomplete')
-        names.add(pathlib.Path(project['path']).name)
-        for framework in project['frameworks']:
-            if not framework.get('framework') or framework.get('problems'):
+        name = pathlib.PurePosixPath(project['path'].replace('\\', '/')).name
+        if name in names or name not in expected:
+            raise ValueError('missing audited project')
+        names.add(name)
+        # NuGet omits this key when the vulnerability filter returns no frameworks.
+        if 'frameworks' not in project:
+            continue
+        frameworks = project['frameworks']
+        if not isinstance(frameworks, list) or not frameworks:
+            raise ValueError('audit project incomplete')
+        seen = set()
+        for framework in frameworks:
+            if not isinstance(framework, dict) or set(framework) - {'framework', 'topLevelPackages', 'transitivePackages', 'problems'} or not isinstance(framework.get('framework'), str) or not framework['framework'] or framework['framework'] in seen or ('problems' in framework and (not isinstance(framework['problems'], list) or framework['problems'])):
                 raise ValueError('audit framework incomplete')
+            seen.add(framework['framework'])
             for key in ('topLevelPackages', 'transitivePackages'):
-                for package in framework.get(key, []):
-                    if package.get('vulnerabilities') or package.get('problems'):
-                        raise ValueError('vulnerable or incomplete package')
-    if not set(expected_projects).issubset(names):
+                if key in framework and (not isinstance(framework[key], list) or framework[key]):
+                    # Every reported package is a filtered finding or malformed row.
+                    raise ValueError('vulnerable or incomplete package')
+    if set(expected) != names:
         raise ValueError('missing audited project')
     return {'rawSha256': digest(path), 'projectNames': sorted(names)}
 

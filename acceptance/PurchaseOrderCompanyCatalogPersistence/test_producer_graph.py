@@ -183,6 +183,8 @@ class ProducerGraphTests(unittest.TestCase):
                 self.assertTrue(receipt.join(directory, root, admit=True))
                 self.assertTrue(receipt.join(directory, root))
                 self.assertFalse(receipt.join(directory, root, admit=True))
+                with mock.patch.object(producer_graph, 'assets', side_effect=ValueError('missing restored shared graph')):
+                    self.assertFalse(receipt.join(directory, root))
             self.assertTrue((directory / 'producer-graph-admission.json').is_file())
             self.assertEqual([], list((root / '.dependencies').rglob('producer-graph-admission.json')))
 
@@ -394,7 +396,7 @@ class ProducerGraphTests(unittest.TestCase):
                 self.assertFalse(receipt.observed_coverage(changed, 'Document'))
 
     def test_audit_rejects_missing_framework_project_problem_and_vulnerability(self):
-        value = {'projects': [{'path': '/synthetic/Owned.csproj', 'frameworks': [{'framework': 'net10.0'}]}]}
+        value = {'version': 1, 'parameters': '--vulnerable --include-transitive', 'sources': ['https://api.nuget.org/v3/index.json'], 'projects': [{'path': '/synthetic/Owned.csproj', 'frameworks': [{'framework': 'net10.0'}]}]}
         with tempfile.TemporaryDirectory() as temporary:
             path = pathlib.Path(temporary) / 'audit.json'
             path.write_text(json.dumps(value))
@@ -880,7 +882,7 @@ class ProducerGraphTests(unittest.TestCase):
             directory.mkdir(parents=True)
             (directory / 'Legacy.Maliev.DocumentService.Api.csproj').write_text('synthetic')
             audited = root / 'audit.json'
-            audited.write_text(json.dumps({'projects': [{'path': '/PRIVATE/Legacy.Maliev.DocumentService.Api.csproj', 'frameworks': []}]}))
+            audited.write_text(json.dumps({'version': 1, 'parameters': '--vulnerable --include-transitive', 'sources': ['https://api.nuget.org/v3/index.json'], 'projects': [{'path': '/PRIVATE/Legacy.Maliev.DocumentService.Api.csproj', 'frameworks': []}]}))
             phase = mock.Mock()
             phase.run.return_value = audited
             phase.settle.side_effect = PermissionError(13, 'PRIVATE secondary cleanup')
@@ -900,6 +902,9 @@ class ProducerGraphTests(unittest.TestCase):
             document_policy.assert_not_called()
             phase.settle.assert_called_once()
             self.assertEqual('package-audit', phase.run.call_args.args[-1])
+            self.assertEqual(['dotnet', 'list', 'Legacy.Maliev.DocumentService.slnx', 'package', '--vulnerable',
+                              '--include-transitive', '--no-restore', '--format', 'json', '--output-version', '1'],
+                             phase.run.call_args.args[0])
 
     def test_safe_audit_metadata_has_only_known_basenames_and_numeric_counts(self):
         with tempfile.TemporaryDirectory() as temporary:
@@ -950,6 +955,75 @@ class ProducerGraphTests(unittest.TestCase):
             self.assertEqual('Document', result['failedProducer'])
             self.assertEqual([], result['producers'])
             qualify.assert_called_once()
+
+    def test_filtered_zero_findings_requires_exact_protocol_and_unique_projects(self):
+        value = {'version': 1, 'parameters': '--vulnerable --include-transitive',
+                 'sources': ['https://api.nuget.org/v3/index.json'],
+                 'projects': [{'path': '/synthetic/Owned.csproj'}]}
+        with tempfile.TemporaryDirectory() as temporary:
+            path = pathlib.Path(temporary) / 'audit.json'
+            path.write_text(json.dumps(value))
+            self.assertEqual(['Owned.csproj'], evidence.audit(path, ['Owned.csproj'])['projectNames'])
+            changes = [lambda r: r.pop('version'), lambda r: r.update(version=True), lambda r: r.update(version=2),
+                       lambda r: r.update(parameters='--include-transitive'), lambda r: r.update(sources=[]),
+                       lambda r: r.update(sources=[None]), lambda r: r.update(problems=['failed source']),
+                       lambda r: r.update(problems=None), lambda r: r.update(projects=[]),
+                       lambda r: r['projects'].append(copy.deepcopy(r['projects'][0])),
+                       lambda r: r['projects'].append({'path': '/synthetic/Foreign.csproj'}),
+                       lambda r: r['projects'][0].update(path=None), lambda r: r['projects'][0].update(problems=['failed']),
+                       lambda r: r['projects'][0].update(frameworks=[]), lambda r: r['projects'][0].update(frameworks=None),
+                       lambda r: r['projects'][0].update(frameworks=[{'framework': 'net10.0', 'problems': ['failed']}]),
+                       lambda r: r['projects'][0].update(frameworks=[{'framework': 'net10.0', 'transitivePackages': [{'vulnerabilities': [{'severity': 'high'}]}]}]),
+                       lambda r: r['projects'][0].update(frameworks=[{'framework': 'net10.0', 'topLevelPackages': [{}]}]),
+                       lambda r: r['projects'][0].update(frameworks=[{'framework': 'net10.0', 'transitivePackages': None}]),
+                       lambda r: r['projects'][0].update(frameworks=[None])]
+            for change in changes:
+                changed = copy.deepcopy(value)
+                change(changed)
+                path.write_text(json.dumps(changed))
+                with self.subTest(value=changed), self.assertRaises(ValueError):
+                    evidence.audit(path, ['Owned.csproj'])
+
+    def test_restored_graph_requires_every_owned_project_framework_and_identity(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            workspace = pathlib.Path(temporary)
+            directory = workspace / 'Legacy.Maliev.DocumentService'
+            fixture = {}
+            for module in ('Api', 'Domain'):
+                name = 'Legacy.Maliev.DocumentService.' + module
+                project = directory / name / (name + '.csproj')
+                project.parent.mkdir(parents=True)
+                project.write_text('synthetic')
+                libraries = {} if module == 'Domain' else {shared + '/1.0.0': {
+                    'type': 'project', 'path': str(workspace / shared / 'src' / shared / (shared + '.csproj'))}
+                    for shared in ('Legacy.Maliev.ServiceDefaults', 'Legacy.Maliev.CompatibilityContracts')}
+                value = {'version': 3, 'project': {'restore': {'projectPath': str(project)}, 'frameworks': {'net10.0': {}}},
+                         'targets': {'net10.0': {key: {'type': row['type']} for key, row in libraries.items()}},
+                         'libraries': libraries}
+                path = project.parent / 'obj/project.assets.json'
+                path.parent.mkdir()
+                fixture[path] = value
+            def write_all():
+                for path, value in fixture.items():
+                    path.write_text(json.dumps(value))
+            write_all()
+            self.assertEqual(2, len(producer_graph.assets(directory, workspace)))
+            domain = next(path for path in fixture if '.Domain/' in path.as_posix())
+            original = fixture[domain]
+            changes = [lambda r: r['project'].update(frameworks={}), lambda r: r.update(targets={}),
+                       lambda r: r.update(targets={'net9.0': {}}), lambda r: r['project']['restore'].update(projectPath='/foreign/Domain.csproj'),
+                       lambda r: r.update(libraries=None), lambda r: r.update(targets={'net10.0': {'missing/1': {'type': 'package'}}}),
+                       lambda r: r.update(logs=[{'level': 'Warning'}])]
+            for change in changes:
+                changed = copy.deepcopy(original)
+                change(changed)
+                domain.write_text(json.dumps(changed))
+                with self.subTest(value=changed), self.assertRaises(ValueError):
+                    producer_graph.assets(directory, workspace)
+            write_all()
+            domain.unlink()
+            with self.assertRaises(ValueError):
+                producer_graph.assets(directory, workspace)
 
 if __name__ == '__main__':
     unittest.main()
