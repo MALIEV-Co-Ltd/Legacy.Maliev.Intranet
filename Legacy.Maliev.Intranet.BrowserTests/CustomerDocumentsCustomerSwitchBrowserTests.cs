@@ -37,7 +37,8 @@ public sealed class CustomerDocumentsCustomerSwitchBrowserTests
         owner.DelayCustomer42 = true; await page.Locator("section > button").ClickAsync(); await owner.ListEntered.Task.WaitAsync(TimeSpan.FromSeconds(15));
         await page.Locator("#fixture-customer-43").ClickAsync();
         try { await page.Locator("article h3").Filter(new() { HasText = "current-customer-43" }).WaitForAsync(); }
-        catch {
+        catch
+        {
             using var captureDeadline = new CancellationTokenSource(TimeSpan.FromSeconds(10));
             try { await DiagnosticEvidence(page, diagnostics, owner, $"interactive-staff-{culture}-switch-failure", captureDeadline.Token).WaitAsync(TimeSpan.FromSeconds(10)); }
             catch { /* Best-effort diagnostics must preserve the original test failure. */ }
@@ -61,14 +62,17 @@ public sealed class CustomerDocumentsCustomerSwitchBrowserTests
         var root = Path.GetFullPath(configured);
         if (!File.Exists(Path.Combine(root, "index.html")) || !File.Exists(Path.Combine(root, "_framework", "blazor.webassembly.js"))) throw new InvalidOperationException("Publish the isolated WASM fixture before this validation.");
         var handler = new CustomerDocumentBffTests.RecordingHandler("[]") { ResponseFactory = owner.ReadAsync };
-        var app = await CustomerDocumentBffTests.HostAsync(handler, loopbackBrowser: true, configure: app => {
+        var app = await CustomerDocumentBffTests.HostAsync(handler, loopbackBrowser: true, configure: app =>
+        {
             app.Services.GetRequiredService<IOptions<AntiforgeryOptions>>().Value.HeaderName = "X-CSRF-TOKEN";
-            app.MapGet("/bff/session", (HttpContext context, IAntiforgery antiforgery) => {
+            app.MapGet("/bff/session", (HttpContext context, IAntiforgery antiforgery) =>
+            {
                 var token = antiforgery.GetAndStoreTokens(context).RequestToken; owner.SessionTokenIssued = !string.IsNullOrWhiteSpace(token);
                 return Results.Json(new EmployeeSessionSummary(true, "synthetic-employee", null, [], token));
             }).RequireAuthorization();
             var mime = new FileExtensionContentTypeProvider(); mime.Mappings[".wasm"] = "application/wasm";
-            app.MapGet("/{**asset}", (string? asset) => {
+            app.MapGet("/{**asset}", (string? asset) =>
+            {
                 var relative = string.IsNullOrEmpty(asset) ? "index.html" : asset;
                 var path = Path.GetFullPath(Path.Combine(root, relative));
                 if (!path.StartsWith(root.TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase) || !File.Exists(path)) return Results.NotFound();
@@ -80,7 +84,8 @@ public sealed class CustomerDocumentsCustomerSwitchBrowserTests
     private static Task<IBrowserContext> BrowserContext(IBrowser browser) => browser.NewContextAsync(new() { ExtraHTTPHeaders = new Dictionary<string, string> { ["Synthetic-Employee"] = "yes" } });
     private static async Task Load(IPage page, FixtureHost app, string culture) { await page.GotoAsync(app.Urls.Single() + "/?culture=" + culture); await page.Locator("article h3").Filter(new() { HasText = "old-customer-42" }).WaitForAsync(); }
     private static Task SelectPdf(IPage page) => page.Locator("#customer-document-file").SetInputFilesAsync(new FilePayload { Name = "synthetic.pdf", MimeType = "application/pdf", Buffer = Encoding.ASCII.GetBytes("%PDF-1.4\n1 0 obj<</Type/Catalog>>endobj\ntrailer<</Root 1 0 R>>\n%%EOF\n") });
-    private static ConcurrentQueue<string> Observe(IPage page) {
+    private static ConcurrentQueue<string> Observe(IPage page)
+    {
         var entries = new ConcurrentQueue<string>();
         static string PathOnly(string url) => Uri.TryCreate(url, UriKind.Absolute, out var uri) ? uri.AbsolutePath : "[invalid URL]";
         page.Request += (_, request) => entries.Enqueue("request " + request.Method + " " + PathOnly(request.Url));
@@ -90,11 +95,13 @@ public sealed class CustomerDocumentsCustomerSwitchBrowserTests
         page.PageError += (_, error) => entries.Enqueue("page-error " + SafeDiagnostic(error));
         return entries;
     }
-    private static string SafeDiagnostic(string text) {
+    private static string SafeDiagnostic(string text)
+    {
         if (text.Contains("token", StringComparison.OrdinalIgnoreCase) || text.Contains("authorization", StringComparison.OrdinalIgnoreCase) || text.Contains("csrf", StringComparison.OrdinalIgnoreCase)) return "[redacted sensitive diagnostic]";
         return text.Length <= 4096 ? text : text[..4096];
     }
-    private static async Task DiagnosticEvidence(IPage page, ConcurrentQueue<string> diagnostics, OwnerBoundary owner, string name, CancellationToken token) {
+    private static async Task DiagnosticEvidence(IPage page, ConcurrentQueue<string> diagnostics, OwnerBoundary owner, string name, CancellationToken token)
+    {
         var root = Environment.GetEnvironmentVariable("TASK4_BROWSER_EVIDENCE") ?? throw new InvalidOperationException("TASK4_BROWSER_EVIDENCE is required.");
         Directory.CreateDirectory(root);
         await File.WriteAllTextAsync(Path.Combine(root, name + ".diagnostics.json"), JsonSerializer.Serialize(new { Browser = diagnostics.ToArray(), OwnerPaths = owner.ObservedPaths.ToArray(), ListBarrierEntered = owner.ListEntered.Task.IsCompleted, ListBarrierReleased = owner.ReleaseList.Task.IsCompleted, owner.Mutations }, new JsonSerializerOptions { WriteIndented = true }), token);
@@ -103,22 +110,26 @@ public sealed class CustomerDocumentsCustomerSwitchBrowserTests
         var html = await page.Locator("html").EvaluateAsync<string>("element => element.outerHTML", null, new() { Timeout = 2000 }).WaitAsync(TimeSpan.FromSeconds(3), token);
         await File.WriteAllTextAsync(Path.Combine(root, name + ".html"), html, token);
     }
-    private static async Task Evidence(IPage page, string name) {
+    private static async Task Evidence(IPage page, string name)
+    {
         var root = Environment.GetEnvironmentVariable("TASK4_BROWSER_EVIDENCE") ?? throw new InvalidOperationException("TASK4_BROWSER_EVIDENCE is required.");
         Directory.CreateDirectory(root);
         using var deadline = new CancellationTokenSource(TimeSpan.FromSeconds(10));
-        try {
+        try
+        {
             var screenshot = await page.ScreenshotAsync(new() { FullPage = true, Timeout = 3000 }).WaitAsync(TimeSpan.FromSeconds(4), deadline.Token);
             await File.WriteAllBytesAsync(Path.Combine(root, name + ".png"), screenshot, deadline.Token);
             var html = await page.Locator("html").EvaluateAsync<string>("element => element.outerHTML", null, new() { Timeout = 2000 }).WaitAsync(TimeSpan.FromSeconds(3), deadline.Token);
             await File.WriteAllTextAsync(Path.Combine(root, name + ".html"), html, deadline.Token);
-        } finally { deadline.Cancel(); }
+        }
+        finally { deadline.Cancel(); }
     }
 
     private sealed class FixtureHost(WebApplication app, OwnerBoundary owner) : IAsyncDisposable
     {
         public ICollection<string> Urls => app.Urls;
-        public async ValueTask DisposeAsync() {
+        public async ValueTask DisposeAsync()
+        {
             owner.ReleaseAll();
             using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(10));
             try { await app.StopAsync(timeout.Token).WaitAsync(TimeSpan.FromSeconds(10)); }
