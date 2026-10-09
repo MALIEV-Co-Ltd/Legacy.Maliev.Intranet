@@ -139,7 +139,7 @@ jobs:
             --output .customer-documents-published
           test -f "$TASK4_INTERACTIVE_ASSET_ROOT/index.html"
           test -f "$TASK4_INTERACTIVE_ASSET_ROOT/_framework/blazor.webassembly.js"
-      - name: Diagnose exact two Documents customer switch cases before full validation
+      - name: Diagnose exact ten Documents interactive cases before full validation
         timeout-minutes: 5
         shell: bash
         env:
@@ -150,11 +150,12 @@ jobs:
           timeout --signal=TERM --kill-after=20s 4m dotnet test \
             Legacy.Maliev.Intranet.BrowserTests/Legacy.Maliev.Intranet.BrowserTests.csproj \
             --configuration Release --no-build --no-restore -p:UseLocalMalievDependencies=true \
-            --filter 'FullyQualifiedName~CustomerDocumentsCustomerSwitchBrowserTests.LateCustomerResponseCannotRestorePriorInputsOrMetadata' \
+            --filter 'FullyQualifiedName~CustomerDocumentsCustomerSwitchBrowserTests|FullyQualifiedName~CustomerDocumentsLifecycleBrowserTests' \
             --blame-hang --blame-hang-timeout 90s --blame-hang-dump-type none \
+            --logger 'console;verbosity=normal' \
             --logger 'trx;LogFileName=customer-documents-switch.trx' \
             --results-directory TestResults/customer-documents-switch
-          python3 -B -c 'import xml.etree.ElementTree as E; r=E.parse("TestResults/customer-documents-switch/customer-documents-switch.trx").getroot(); ns={"t":"http://microsoft.com/schemas/VisualStudio/TeamTest/2010"}; c=r.find("t:ResultSummary/t:Counters",ns); assert c is not None and all(c.get(k)==v for k,v in {"total":"2","executed":"2","passed":"2","failed":"0","notExecuted":"0"}.items()), E.tostring(r,encoding="unicode")[-4000:]'
+          python3 -B -c 'import xml.etree.ElementTree as E; r=E.parse("TestResults/customer-documents-switch/customer-documents-switch.trx").getroot(); ns={"t":"http://microsoft.com/schemas/VisualStudio/TeamTest/2010"}; c=r.find("t:ResultSummary/t:Counters",ns); assert c is not None and all(c.get(k)==v for k,v in {"total":"10","executed":"10","passed":"10","failed":"0","notExecuted":"0"}.items()), E.tostring(r,encoding="unicode")[-4000:]'
       - name: Retain Documents switch failure and success diagnostics
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
