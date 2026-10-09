@@ -136,9 +136,18 @@ jobs:
             tests/fixtures/customer-documents-interactive/CustomerDocuments.InteractiveFixture.csproj \
             --configuration Release --warnaserror -m:1 \
             -p:UseLocalMalievDependencies=true -p:UseSharedCompilation=false \
+            -p:RestorePackagesWithLockFile=true \
             --output .customer-documents-published
           test -f "$TASK4_INTERACTIVE_ASSET_ROOT/index.html"
           test -f "$TASK4_INTERACTIVE_ASSET_ROOT/_framework/blazor.webassembly.js"
+      - name: Retain generated Documents fixture dependency lock
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: customer-documents-fixture-lock-${{ github.run_id }}-${{ github.run_attempt }}
+          path: tests/fixtures/customer-documents-interactive/packages.lock.json
+          if-no-files-found: error
+          retention-days: 7
       - name: Diagnose exact ten Documents interactive cases before full validation
         timeout-minutes: 5
         shell: bash
