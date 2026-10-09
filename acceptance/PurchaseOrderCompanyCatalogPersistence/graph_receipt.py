@@ -133,7 +133,7 @@ def join(directory, root, admit=False):
                  'runId': os.environ['GITHUB_RUN_ID'], 'runAttempt': os.environ['GITHUB_RUN_ATTEMPT']}
         if not complete(graph, owner, json.loads((HERE / 'graph-native-inventory.json').read_text()), pins):
             return False
-        from producer_graph import assets, git, verify_sources
+        from producer_graph import assets, git, producer_directory, verify_sources
         root = pathlib.Path(root)
         if git(root, 'rev-parse', 'HEAD') != owner['candidateHead'] or verify_sources(root, pins) != graph['sourceTrees']:
             return False
@@ -141,15 +141,15 @@ def join(directory, root, admit=False):
         private = pathlib.Path(os.environ['RUNNER_TEMP']) / 'po-producer-graph-private'
         for row in graph['producers']:
             producer = row['producer']
-            producer_directory = root / '.dependencies' / ('Legacy.Maliev.' + producer + 'Service')
+            directory = producer_directory(root, producer, pins)
             original = private / producer
             full = original / ('receipt-evidence/full' if producer == 'Document' else 'results')
-            if trx(full / 'full-suite.trx', inventory[producer]['inventory']) != row['native'] or assets(producer_directory, root / '.dependencies') != row['assets']:
+            if trx(full / 'full-suite.trx', inventory[producer]['inventory']) != row['native'] or assets(directory, root / '.dependencies') != row['assets']:
                 return False
             assemblies = ['Legacy.Maliev.' + producer + 'Service.' + name for name in ('Api', 'Application', 'Domain', 'Rendering' if producer == 'Document' else 'Data')]
             if coverage(full.rglob('coverage.cobertura.xml'), assemblies, producer == 'Document') != row['coverage']:
                 return False
-            projects = [path.name for path in producer_directory.glob('*/*.csproj')]
+            projects = [path.name for path in directory.glob('*/*.csproj')]
             if audit(original / 'package-audit.log', projects) != row['audit']:
                 return False
             if producer == 'Document':
@@ -157,7 +157,7 @@ def join(directory, root, admit=False):
                     return False
                 retained = original / 'receipt-evidence'
                 policy = row['applicability']
-                if json.loads((retained / 'contract-applicability-acceptance.json').read_text()) != policy or policy['policySha256'] != digest(producer_directory / 'docs/document-contract-applicability-policy.json') or policy['compiledProofSha256'] != digest(retained / 'contract-applicability-proposal.json') or policy['controlsSha256'] != digest(retained / 'contract-negative-controls.json'):
+                if json.loads((retained / 'contract-applicability-acceptance.json').read_text()) != policy or policy['policySha256'] != digest(directory / 'docs/document-contract-applicability-policy.json') or policy['compiledProofSha256'] != digest(retained / 'contract-applicability-proposal.json') or policy['controlsSha256'] != digest(retained / 'contract-negative-controls.json'):
                     return False
             for process in row['cleanup']['processes']:
                 if digest(original / (process['name'] + '.log')) != process['logSha256']:

@@ -46,6 +46,11 @@ VALIDATION_REASONS = {
     'production binaries not restored after instrumentation': 'production-binaries-not-restored',
     'not exact-head owned hosted Ubuntu': 'hosted-source-invalid',
     'candidate flag must remain unaccepted': 'candidate-flag-invalid'}
+VALIDATION_REASONS.update({'Document checkout layout invalid': 'document-layout-invalid',
+                           'Document checkout is not pristine': 'document-layout-not-pristine',
+                           'Document checkout has actor outputs': 'document-layout-actor-outputs',
+                           'Document checkout alias acquisition failed': 'document-layout-alias-failed',
+                           'Document checkout rollback incomplete': 'document-layout-rollback-incomplete'})
 VALIDATION_GATES = {'hosted-source', 'candidate-manifest', 'source-verification', 'native-inventory',
                     'producer-commands', 'production-binary-readback', 'restore-assets-readback',
                     'package-audit-command', 'package-audit-readback', 'document-policy',
@@ -53,6 +58,7 @@ VALIDATION_GATES = {'hosted-source', 'candidate-manifest', 'source-verification'
                     'document-focus-readback', 'document-evidence-policy', 'coverage-policy',
                     'employee-scaffold-policy', 'coverage-readback', 'production-binary-restoration',
                     'producer-cleanup', 'shared-binary-readback'}
+VALIDATION_GATES.add('document-layout-preparation')
 
 
 def safe_audit_metadata(path, expected):
@@ -337,9 +343,105 @@ def document_policy(phase, directory, private, env):
     return evidence
 
 
+def document_layout_paths(root):
+    """Fixed owned leaves only; never follow foreign workspace or layout parents."""
+    root = pathlib.Path(root).absolute()
+    if any(part.casefold() == '.dependencies' for part in root.parts):
+        raise ValueError('Document checkout layout invalid')
+    legacy = root / '.dependencies/Legacy.Maliev.DocumentService'
+    target = root / '.producer-sources/Legacy.Maliev.DocumentService'
+    for parent in {root, *root.parents, legacy.parent, target.parent}:
+        if parent.is_symlink() or (hasattr(parent, 'is_junction') and parent.is_junction()):
+            raise ValueError('Document checkout layout invalid')
+    if not root.is_dir() or root.resolve() != root or not legacy.parent.is_dir():
+        raise ValueError('Document checkout layout invalid')
+    return legacy, target
+
+
+def pristine_document(directory, pin):
+    metadata = directory / '.git'
+    if not directory.is_dir() or directory.is_symlink() or not metadata.is_dir() or metadata.is_symlink() or (hasattr(directory, 'is_junction') and (directory.is_junction() or metadata.is_junction())):
+        raise ValueError('Document checkout layout invalid')
+    if pathlib.Path(git(directory, 'rev-parse', '--show-toplevel')).resolve() != directory or git(directory, 'rev-parse', 'HEAD') != pin or git(directory, 'status', '--porcelain', '--untracked-files=all'):
+        raise ValueError('Document checkout is not pristine')
+    tree = git(directory, 'rev-parse', 'HEAD^{tree}')
+    if not re.fullmatch('[0-9a-f]{40}', tree):
+        raise ValueError('Document checkout is not pristine')
+    return tree
+
+
+def producer_directory(root, producer, pins):
+    if producer != 'Document':
+        return pathlib.Path(root) / '.dependencies' / ('Legacy.Maliev.' + producer + 'Service')
+    legacy, target = document_layout_paths(root)
+    if not legacy.is_symlink() or not target.is_dir() or target.is_symlink() or legacy.resolve(strict=True) != target:
+        raise ValueError('Document checkout layout invalid')
+    pristine_document(target, pins['Legacy.Maliev.DocumentService'])
+    return target
+
+
+def layout_node(path):
+    value = path.lstat()
+    if type(value.st_dev) is not int or type(value.st_ino) is not int or value.st_ino <= 0:
+        raise ValueError('Document checkout layout invalid')
+    return value.st_dev, value.st_ino, value.st_mode
+
+
+def prepare_document_layout(root, pins, private):
+    """Before actors, relocate the pristine clone; alias keeps consumer references exact."""
+    legacy, target = document_layout_paths(root)
+    if legacy.is_symlink() or target.exists() or target.is_symlink() or private.exists() or private.is_symlink():
+        raise ValueError('Document checkout layout invalid')
+    pin = pins['Legacy.Maliev.DocumentService']
+    tree = pristine_document(legacy, pin)
+    if git(legacy, 'ls-files', '--others', '--ignored', '--exclude-standard'):
+        raise ValueError('Document checkout is not pristine')
+    def unavailable_walk(error):
+        raise ValueError('Document checkout layout invalid') from error
+    for parent, directories, files in os.walk(legacy, followlinks=False, onerror=unavailable_walk):
+        directories[:] = [name for name in directories if name != '.git']
+        if any(name.casefold() in {'bin', 'obj', 'testresults', 'runner-results'} for name in directories) or 'project.assets.json' in files:
+            raise ValueError('Document checkout has actor outputs')
+        if any((pathlib.Path(parent) / name).is_symlink() for name in directories + files):
+            raise ValueError('Document checkout layout invalid')
+    target.parent.mkdir(exist_ok=True)
+    # Recheck the owned absolute leaves immediately before the atomic same-workspace rename.
+    if document_layout_paths(root) != (legacy, target) or target.exists() or target.is_symlink():
+        raise ValueError('Document checkout layout invalid')
+    owned_directory = layout_node(legacy)
+    legacy.rename(target)
+    acquired_alias = None
+    try:
+        if layout_node(target) != owned_directory:
+            raise ValueError('Document checkout is not pristine')
+        legacy.symlink_to(target, target_is_directory=True)
+        acquired_alias = layout_node(legacy)  # Only after successful acquisition, never from an exception path.
+        if producer_directory(root, 'Document', pins) != target or pristine_document(target, pin) != tree:
+            raise ValueError('Document checkout is not pristine')
+    except Exception as original:
+        try:
+            if document_layout_paths(root) != (legacy, target) or layout_node(target) != owned_directory:
+                raise ValueError('Document checkout rollback incomplete')
+            if legacy.is_symlink():
+                if acquired_alias is None or layout_node(legacy) != acquired_alias or legacy.resolve() != target:
+                    raise ValueError('Document checkout rollback incomplete')
+                legacy.unlink()  # Only this exact known owned alias, never a recursive removal.
+            if legacy.exists() or legacy.is_symlink() or not target.is_dir() or target.is_symlink():
+                raise ValueError('Document checkout rollback incomplete')
+            if document_layout_paths(root) != (legacy, target) or layout_node(target) != owned_directory:
+                raise ValueError('Document checkout rollback incomplete')
+            target.rename(legacy)
+            if layout_node(legacy) != owned_directory or pristine_document(legacy, pin) != tree:
+                raise ValueError('Document checkout rollback incomplete')
+        except Exception as rollback:
+            raise ValueError('Document checkout rollback incomplete') from rollback
+        raise ValueError('Document checkout alias acquisition failed') from original
+    return target
+
+
 def qualify(root, producer, pins, inventory, private):
     name = 'Legacy.Maliev.' + producer + 'Service'
-    directory = root / '.dependencies' / name
+    directory = producer_directory(root, producer, pins)
     env = {**os.environ, 'GITHUB_ACTIONS': 'false', 'UseLocalMalievDependencies': 'true',
            'MalievWorkspaceRoot': str(root / '.dependencies'), 'DocumentProvenanceCapture': 'false',
            'DOCUMENT_SOURCE_SHA': pins['Legacy.Maliev.DocumentService'],
@@ -460,6 +562,10 @@ def main():
         report['pins'] = manifest['pins']
         gate = 'source-verification'
         report['sourceTrees'] = verify_sources(root, report['pins'])
+        gate = 'document-layout-preparation'
+        prepare_document_layout(root, report['pins'], private / 'Document')
+        if verify_sources(root, report['pins']) != report['sourceTrees']:
+            raise ValueError('source checkout mismatch')
         gate = 'native-inventory'
         inventory = json.loads((HERE / 'graph-native-inventory.json').read_text())
         for producer in PRODUCERS:

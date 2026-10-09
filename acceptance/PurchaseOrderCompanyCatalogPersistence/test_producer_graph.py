@@ -1,8 +1,10 @@
 """Causal metadata controls only: never starts SDK, Docker or a service."""
 import copy
+import contextlib
 import io
 import json
 import pathlib
+import os
 import tempfile
 import unittest
 from unittest import mock
@@ -14,6 +16,45 @@ import graph_receipt as receipt
 import graph_supervisor as supervisor
 import daemon_exe_probe as probe
 import producer_graph
+
+
+@contextlib.contextmanager
+def projected_links(fail=False):
+    """Explicit actor-free link projection: no privileged Windows symlink or OS proof."""
+    aliases = {}
+    identities = {}
+    original_symlink = pathlib.Path.is_symlink
+    original_resolve = pathlib.Path.resolve
+    original_unlink = pathlib.Path.unlink
+    original_lstat = pathlib.Path.lstat
+    def create(path, target, target_is_directory=False):
+        if fail:
+            raise OSError('synthetic unavailable symlink')
+        aliases[path] = pathlib.Path(target)
+        identities[path] = os.stat_result((0o120777, len(identities) + 100001, 1, 1, 0, 0, 0, 0, 0, 0))
+    def resolve(path, strict=False):
+        for alias in sorted(aliases, key=lambda value: len(value.parts), reverse=True):
+            if path.is_relative_to(alias):
+                return original_resolve(aliases[alias] / path.relative_to(alias), strict=strict)
+        return original_resolve(path, strict=strict)
+    def unlink(path, missing_ok=False):
+        if path in aliases:
+            del aliases[path]
+            identities.pop(path, None)
+        else:
+            original_unlink(path, missing_ok=missing_ok)
+    def lstat(path):
+        if path in aliases:
+            if path not in identities:
+                identities[path] = os.stat_result((0o120777, len(identities) + 200001, 1, 1, 0, 0, 0, 0, 0, 0))
+            return identities[path]
+        return original_lstat(path)
+    with mock.patch.object(pathlib.Path, 'symlink_to', create), \
+         mock.patch.object(pathlib.Path, 'is_symlink', lambda path: path in aliases or original_symlink(path)), \
+         mock.patch.object(pathlib.Path, 'resolve', resolve), \
+         mock.patch.object(pathlib.Path, 'lstat', lstat), \
+         mock.patch.object(pathlib.Path, 'unlink', unlink):
+        yield aliases
 
 
 
@@ -197,14 +238,27 @@ class ProducerGraphTests(unittest.TestCase):
                              'audit': {}, 'applicability': policy, 'cleanup': closed, 'binaries': []})
             (directory / 'producer-graph.json').write_text(json.dumps({'producers': rows, 'sourceTrees': [], 'sharedBinaries': []}))
             environment = {'CANDIDATE_HEAD': '1' * 40, 'GITHUB_RUN_ID': '123', 'GITHUB_RUN_ATTEMPT': '1', 'RUNNER_TEMP': temporary}
+            legacy, target, pins, identity = self.layout_fixture(root)
+            pins['Legacy.Maliev.DocumentService'] = json.loads((producer_graph.HERE / 'candidate-pins.json').read_text())['pins']['Legacy.Maliev.DocumentService']
+            def bound_git(directory, *arguments):
+                return '1' * 40 if directory == root else identity(directory, *arguments)
             # Upstream content checks are isolated here; this control exercises real admission-path IO.
             with mock.patch.dict('os.environ', environment), mock.patch.object(receipt, 'complete', return_value=True), \
-                 mock.patch.object(producer_graph, 'git', return_value='1' * 40), mock.patch.object(producer_graph, 'verify_sources', return_value=[]), \
+                 projected_links(), mock.patch.object(producer_graph, 'git', side_effect=bound_git), \
+                 mock.patch.object(producer_graph, 'verify_sources', return_value=[]), \
                  mock.patch.object(producer_graph, 'assets', return_value=[]), mock.patch.object(receipt, 'trx', return_value={}), \
                  mock.patch.object(receipt, 'coverage', return_value={}), mock.patch.object(receipt, 'audit', return_value={}), \
                  mock.patch.object(receipt, 'digest', return_value='a' * 64):
+                self.assertFalse(receipt.join(directory, root, admit=True))
+                self.assertFalse((directory / 'producer-graph-admission.json').exists())
+                producer_graph.prepare_document_layout(root, pins, root / 'unused-private/Document')
                 self.assertTrue(receipt.join(directory, root, admit=True))
                 self.assertTrue(receipt.join(directory, root))
+                with mock.patch.object(producer_graph, 'pristine_document', side_effect=ValueError('Document checkout is not pristine')):
+                    self.assertFalse(receipt.join(directory, root))
+                legacy.unlink()
+                self.assertFalse(receipt.join(directory, root))
+                legacy.symlink_to(target, target_is_directory=True)
                 self.assertFalse(receipt.join(directory, root, admit=True))
                 with mock.patch.object(producer_graph, 'assets', side_effect=ValueError('missing restored shared graph')):
                     self.assertFalse(receipt.join(directory, root))
@@ -525,6 +579,7 @@ class ProducerGraphTests(unittest.TestCase):
                         raise RuntimeError('PRIVATE capture')
                     return native_reader(*arguments)
                 with mock.patch.object(producer_graph, 'Phase', return_value=phase), \
+                     mock.patch.object(producer_graph, 'producer_directory', return_value=directory.parent), \
                      mock.patch.object(producer_graph, 'binaries', return_value=[]), \
                      mock.patch.object(producer_graph, 'assets', return_value=[]), \
                      mock.patch.object(producer_graph, 'document_policy', return_value=private / 'receipt-evidence'), \
@@ -706,6 +761,7 @@ class ProducerGraphTests(unittest.TestCase):
             with mock.patch.dict(producer_graph.os.environ, env), mock.patch.object(producer_graph.sys, 'platform', 'linux'), \
                  mock.patch.object(producer_graph, 'git', return_value=owner['executedSource']), \
                  mock.patch.object(producer_graph, 'verify_sources', return_value=graph['sourceTrees']), \
+                 mock.patch.object(producer_graph, 'prepare_document_layout'), \
                  mock.patch.object(producer_graph, 'qualify', side_effect=graph['producers']), \
                  mock.patch.object(producer_graph, 'shared_binaries', return_value=graph['sharedBinaries']):
                 producer_graph.main()
@@ -1070,6 +1126,7 @@ class ProducerGraphTests(unittest.TestCase):
             phase.run.return_value = audited
             phase.settle.side_effect = PermissionError(13, 'PRIVATE secondary cleanup')
             with mock.patch.object(producer_graph, 'Phase', return_value=phase), \
+                 mock.patch.object(producer_graph, 'producer_directory', return_value=directory.parent), \
                  mock.patch.object(producer_graph, 'binaries', return_value=[]), \
                  mock.patch.object(producer_graph, 'assets', return_value=[]), \
                  mock.patch.object(producer_graph, 'document_policy') as document_policy:
@@ -1128,6 +1185,7 @@ class ProducerGraphTests(unittest.TestCase):
             with mock.patch.dict(producer_graph.os.environ, env), mock.patch.object(producer_graph.sys, 'platform', 'linux'), \
                  mock.patch.object(producer_graph, 'git', return_value='a' * 40), \
                  mock.patch.object(producer_graph, 'verify_sources', return_value=[]), \
+                 mock.patch.object(producer_graph, 'prepare_document_layout'), \
                  mock.patch.object(producer_graph, 'qualify', side_effect=error) as qualify:
                 with self.assertRaises(SystemExit):
                     producer_graph.main()
@@ -1207,6 +1265,286 @@ class ProducerGraphTests(unittest.TestCase):
             domain.unlink()
             with self.assertRaises(ValueError):
                 producer_graph.assets(directory, workspace)
+
+    @staticmethod
+    def layout_fixture(root, sources=True):
+        root = root.resolve()
+        legacy = root / '.dependencies/Legacy.Maliev.DocumentService'
+        target = root / '.producer-sources/Legacy.Maliev.DocumentService'
+        (legacy / '.git').mkdir(parents=True)
+        if sources:
+            (legacy / 'Production').mkdir()
+            for index in range(40):
+                (legacy / 'Production' / ('Source' + str(index) + '.cs')).write_text('synthetic source')
+            (legacy / 'Production/Rendering.csproj').write_text('synthetic QuestPDF reference')
+        pins = {'Legacy.Maliev.DocumentService': 'a' * 40}
+        def identity(directory, *arguments):
+            if arguments == ('rev-parse', '--show-toplevel'):
+                return str(directory)
+            if arguments == ('rev-parse', 'HEAD'):
+                return pins['Legacy.Maliev.DocumentService']
+            if arguments == ('rev-parse', 'HEAD^{tree}'):
+                return 'b' * 40
+            if arguments == ('status', '--porcelain', '--untracked-files=all'):
+                return ''
+            if arguments == ('ls-files', '--others', '--ignored', '--exclude-standard'):
+                return ''
+            raise AssertionError(arguments)
+        return legacy, target, pins, identity
+
+    def test_document_layout_restores_census_and_exact_source_without_os_link_claim(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = pathlib.Path(temporary).resolve()
+            legacy, target, pins, identity = self.layout_fixture(root)
+            before = {path.relative_to(legacy): path.read_bytes() for path in legacy.rglob('*') if path.is_file()}
+            def census(directory):
+                return [path for path in directory.rglob('*') if path.suffix in ('.cs', '.csproj')
+                        and '.dependencies' not in [part.casefold() for part in path.parts]]
+            self.assertEqual(41, len(before))
+            self.assertEqual(0, len(census(legacy)))
+            with projected_links() as aliases, mock.patch.object(producer_graph, 'git', side_effect=identity):
+                self.assertEqual(target, producer_graph.prepare_document_layout(root, pins, root / 'private/Document'))
+                self.assertEqual({legacy: target}, aliases)
+                self.assertEqual(target, producer_graph.producer_directory(root, 'Document', pins))
+                self.assertEqual(41, len(census(target)))
+                self.assertTrue(any(b'QuestPDF' in path.read_bytes() for path in census(target)))
+                self.assertEqual(before, {path.relative_to(target): path.read_bytes() for path in target.rglob('*') if path.is_file()})
+                for other in ('File', 'Employee'):
+                    self.assertEqual(root / '.dependencies' / ('Legacy.Maliev.' + other + 'Service'),
+                                     producer_graph.producer_directory(root, other, pins))
+                (target / 'Production/obj').mkdir()
+                # Generated output is expected after actors and cannot masquerade as source dirt.
+                self.assertEqual(target, producer_graph.producer_directory(root, 'Document', pins))
+
+    def test_document_layout_rejects_unsafe_geometry_before_move_or_actor(self):
+        for mutation in ('ancestor', 'target', 'dangling-target', 'legacy-alias', 'parent-alias',
+                         'git-indirection', 'git-alias', 'source-alias', 'actor-bin', 'actor-assets',
+                         'prior-private', 'dirty', 'ignored', 'head', 'tree', 'toplevel', 'reader-no-alias'):
+            with self.subTest(mutation=mutation), tempfile.TemporaryDirectory() as temporary:
+                root = pathlib.Path(temporary).resolve()
+                if mutation == 'ancestor':
+                    root = root / '.DEPENDENCIES/workspace'
+                    root.mkdir(parents=True)
+                legacy, target, pins, identity = self.layout_fixture(root)
+                private = root / 'private/Document'
+                with projected_links() as aliases:
+                    if mutation == 'target':
+                        target.mkdir(parents=True)
+                    elif mutation == 'dangling-target':
+                        aliases[target] = root / 'absent'
+                    elif mutation == 'legacy-alias':
+                        aliases[legacy] = root / 'foreign'
+                    elif mutation == 'parent-alias':
+                        aliases[target.parent] = root / 'foreign'
+                    elif mutation == 'git-indirection':
+                        (legacy / '.git').rmdir()
+                        (legacy / '.git').write_text('gitdir: foreign')
+                    elif mutation == 'git-alias':
+                        aliases[legacy / '.git'] = root / 'foreign'
+                    elif mutation == 'source-alias':
+                        aliases[legacy / 'Production/Source0.cs'] = root / 'foreign'
+                    elif mutation == 'actor-bin':
+                        (legacy / 'Production/bin').mkdir()
+                    elif mutation == 'actor-assets':
+                        (legacy / 'project.assets.json').write_text('{}')
+                    elif mutation == 'prior-private':
+                        private.mkdir(parents=True)
+                    def changed_identity(directory, *arguments):
+                        if mutation == 'dirty' and arguments[0] == 'status':
+                            return ' M Production/Source0.cs'
+                        if mutation == 'ignored' and arguments[0] == 'ls-files':
+                            return 'Production/ignored.cs'
+                        if mutation == 'head' and arguments == ('rev-parse', 'HEAD'):
+                            return 'c' * 40
+                        if mutation == 'tree' and arguments == ('rev-parse', 'HEAD^{tree}'):
+                            return 'malformed'
+                        if mutation == 'toplevel' and arguments == ('rev-parse', '--show-toplevel'):
+                            return str(root / 'foreign')
+                        return identity(directory, *arguments)
+                    with mock.patch.object(producer_graph, 'git', side_effect=changed_identity), \
+                         mock.patch.object(pathlib.Path, 'rename') as rename, \
+                         mock.patch.object(producer_graph, 'Phase') as actor:
+                        with self.assertRaises(ValueError):
+                            if mutation == 'reader-no-alias':
+                                producer_graph.producer_directory(root, 'Document', pins)
+                            else:
+                                producer_graph.prepare_document_layout(root, pins, private)
+                        rename.assert_not_called()
+                        actor.assert_not_called()
+
+    def test_document_layout_alias_failure_rolls_back_exact_known_leaf(self):
+        for post_move_mismatch in (False, True):
+            with self.subTest(post_move_mismatch=post_move_mismatch), tempfile.TemporaryDirectory() as temporary:
+                root = pathlib.Path(temporary).resolve()
+                legacy, target, pins, identity = self.layout_fixture(root)
+                original = (legacy / 'Production/Rendering.csproj').read_bytes()
+                def changed_identity(directory, *arguments):
+                    if post_move_mismatch and directory == target and arguments == ('rev-parse', 'HEAD^{tree}'):
+                        return 'c' * 40
+                    return identity(directory, *arguments)
+                with projected_links(fail=not post_move_mismatch) as aliases, \
+                     mock.patch.object(producer_graph, 'git', side_effect=changed_identity):
+                    with self.assertRaisesRegex(ValueError, '^Document checkout alias acquisition failed$'):
+                        producer_graph.prepare_document_layout(root, pins, root / 'private/Document')
+                    self.assertFalse(aliases)
+                    self.assertTrue(legacy.is_dir())
+                    self.assertFalse(target.exists())
+                    self.assertEqual(original, (legacy / 'Production/Rendering.csproj').read_bytes())
+
+    def test_document_qualify_uses_canonical_cwd_and_preserves_original_failure_and_argv(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = pathlib.Path(temporary).resolve()
+            legacy, target, pins, identity = self.layout_fixture(root)
+            private = root / 'private/Document'
+            original = RuntimeError('synthetic first command boundary')
+            phase = mock.Mock()
+            phase.run.side_effect = original
+            with projected_links(), mock.patch.object(producer_graph, 'git', side_effect=identity):
+                producer_graph.prepare_document_layout(root, pins, private)
+                with mock.patch.object(producer_graph, 'Phase', return_value=phase):
+                    with self.assertRaises(RuntimeError) as observed:
+                        producer_graph.qualify(root, 'Document', pins, {}, private)
+                self.assertIs(original, observed.exception)
+                arguments, cwd, env, label = phase.run.call_args.args
+                self.assertEqual(target, cwd)
+                self.assertEqual(['go', 'install', 'github.com/zricethezav/gitleaks/v8@6eaad039603a4de39fddd1cf5f727391efe9974e'], arguments)
+                self.assertEqual('gitleaks-install', label)
+                self.assertEqual(str(root / '.dependencies'), env['MalievWorkspaceRoot'])
+                phase.settle.assert_called_once()
+                with mock.patch.object(producer_graph, 'Phase') as actor:
+                    # A lost alias is rejected before even the SDK/resource supervisor is constructed.
+                    legacy.unlink()
+                    with self.assertRaisesRegex(ValueError, '^Document checkout layout invalid$'):
+                        producer_graph.qualify(root, 'Document', pins, {}, private)
+                    actor.assert_not_called()
+
+    def test_document_layout_failed_rollback_is_closed_and_does_not_mask_foreign_state(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = pathlib.Path(temporary).resolve()
+            legacy, target, pins, identity = self.layout_fixture(root)
+            rename = pathlib.Path.rename
+            def fail_rollback(path, destination):
+                if path == target:
+                    raise PermissionError(13, 'PRIVATE rollback path')
+                return rename(path, destination)
+            with projected_links(fail=True), mock.patch.object(producer_graph, 'git', side_effect=identity), \
+                 mock.patch.object(pathlib.Path, 'rename', fail_rollback), \
+                 mock.patch.object(producer_graph, 'Phase') as actor:
+                with self.assertRaisesRegex(ValueError, '^Document checkout rollback incomplete$') as failed:
+                    producer_graph.prepare_document_layout(root, pins, root / 'private/Document')
+                diagnostic = producer_graph.validation_failure(failed.exception, 'document-layout-preparation')
+                self.assertEqual('document-layout-rollback-incomplete', diagnostic['reason'])
+                self.assertNotIn('PRIVATE', json.dumps(diagnostic))
+                self.assertTrue(target.is_dir())
+                self.assertFalse(legacy.exists())
+                actor.assert_not_called()
+        with tempfile.TemporaryDirectory() as temporary:
+            root = pathlib.Path(temporary).resolve()
+            legacy, target, pins, identity = self.layout_fixture(root)
+            with projected_links() as aliases, mock.patch.object(producer_graph, 'git', side_effect=identity):
+                def foreign_alias(path, destination, target_is_directory=False):
+                    aliases[path] = root / 'foreign'
+                    raise OSError('synthetic foreign acquisition')
+                with mock.patch.object(pathlib.Path, 'symlink_to', foreign_alias):
+                    with self.assertRaisesRegex(ValueError, '^Document checkout rollback incomplete$'):
+                        producer_graph.prepare_document_layout(root, pins, root / 'private/Document')
+                self.assertEqual(root / 'foreign', aliases[legacy])
+                self.assertTrue(target.is_dir())
+
+    def test_document_layout_assets_join_physical_owner_and_original_shared_roots(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = pathlib.Path(temporary).resolve()
+            legacy, target, pins, identity = self.layout_fixture(root, sources=False)
+            shared = ('Legacy.Maliev.ServiceDefaults', 'Legacy.Maliev.CompatibilityContracts')
+            for name in shared:
+                directory = root / '.dependencies' / name / 'src' / name
+                directory.mkdir(parents=True)
+                (directory / (name + '.csproj')).write_text('synthetic shared project')
+            for module in ('Api', 'Application', 'Domain', 'Rendering', 'Tests'):
+                name = 'Legacy.Maliev.DocumentService.' + module
+                directory = legacy / name
+                directory.mkdir()
+                (directory / (name + '.csproj')).write_text('synthetic source project')
+            with projected_links(), mock.patch.object(producer_graph, 'git', side_effect=identity):
+                producer_graph.prepare_document_layout(root, pins, root / 'private/Document')
+                owner = producer_graph.producer_directory(root, 'Document', pins)
+                for directory in owner.iterdir():
+                    if directory.name == '.git':
+                        continue
+                    assets = directory / 'obj/project.assets.json'
+                    assets.parent.mkdir()
+                    packages = {name + '/1.0.0': {'type': 'project',
+                        'path': '../../../.dependencies/' + name + '/src/' + name + '/' + name + '.csproj'} for name in shared}
+                    assets.write_text(json.dumps({'project': {'restore': {'projectPath': str(directory / (directory.name + '.csproj'))}, 'frameworks': {'net10.0': {}}},
+                        'targets': {'net10.0': {key: {'type': 'project'} for key in packages}}, 'libraries': packages}))
+                restored = producer_graph.assets(owner, root / '.dependencies')
+                self.assertEqual(5, len(restored))
+                self.assertEqual(restored, producer_graph.assets(producer_graph.producer_directory(root, 'Document', pins), root / '.dependencies'))
+                self.assertEqual(owner, producer_graph.producer_directory(root, 'Document', pins))
+                sample = owner / 'Legacy.Maliev.DocumentService.Api/obj/project.assets.json'
+                actual = json.loads(sample.read_text())
+                for mutation in ('foreign-owner', 'foreign-shared', 'packaged-shared'):
+                    changed = copy.deepcopy(actual)
+                    if mutation == 'foreign-owner':
+                        changed['project']['restore']['projectPath'] = str(root / 'foreign/Api.csproj')
+                    elif mutation == 'foreign-shared':
+                        changed['libraries'][shared[0] + '/1.0.0']['path'] = '../../../foreign/Service.csproj'
+                    else:
+                        changed['libraries'][shared[0] + '/1.0.0']['type'] = 'package'
+                        changed['targets']['net10.0'][shared[0] + '/1.0.0']['type'] = 'package'
+                    sample.write_text(json.dumps(changed))
+                    with self.subTest(mutation=mutation), self.assertRaises(ValueError):
+                        producer_graph.assets(owner, root / '.dependencies')
+                sample.write_text(json.dumps(actual))
+
+    def test_document_layout_rollback_preserves_foreign_exact_target_alias_and_replaced_directory(self):
+        for mutation in ('exact-target-alias', 'replaced-directory', 'rollback-parent-alias'):
+            with self.subTest(mutation=mutation), tempfile.TemporaryDirectory() as temporary:
+                root = pathlib.Path(temporary).resolve()
+                legacy, target, pins, identity = self.layout_fixture(root)
+                with projected_links() as aliases, mock.patch.object(producer_graph, 'git', side_effect=identity):
+                    def failed_acquisition(path, destination, target_is_directory=False):
+                        if mutation == 'exact-target-alias':
+                            aliases[path] = target
+                        elif mutation == 'replaced-directory':
+                            target.rename(root / 'original-directory')
+                            target.mkdir()
+                            (target / 'foreign-marker').write_text('synthetic foreign node')
+                        else:
+                            aliases[legacy.parent] = root / 'foreign-parent'
+                        raise OSError('synthetic failed acquisition')
+                    with mock.patch.object(pathlib.Path, 'symlink_to', failed_acquisition):
+                        with self.assertRaisesRegex(ValueError, '^Document checkout rollback incomplete$'):
+                            producer_graph.prepare_document_layout(root, pins, root / 'private/Document')
+                    self.assertTrue(target.is_dir())
+                    if mutation == 'exact-target-alias':
+                        self.assertEqual(target, aliases[legacy])
+                    elif mutation == 'replaced-directory':
+                        self.assertTrue((root / 'original-directory/Production/Rendering.csproj').exists())
+                        self.assertEqual('synthetic foreign node', (target / 'foreign-marker').read_text())
+                        self.assertFalse(legacy.exists())
+                    else:
+                        self.assertEqual(root / 'foreign-parent', aliases[legacy.parent])
+        with tempfile.TemporaryDirectory() as temporary:
+            root = pathlib.Path(temporary).resolve()
+            legacy, target, pins, identity = self.layout_fixture(root)
+            node = producer_graph.layout_node
+            legacy_reads = []
+            def replaced_alias(path):
+                value = node(path)
+                if path == legacy:
+                    legacy_reads.append(value)
+                    if len(legacy_reads) > 2:
+                        return value[0], value[1] + 1, value[2]
+                return value
+            def changed_tree(directory, *arguments):
+                return 'c' * 40 if directory == target and arguments == ('rev-parse', 'HEAD^{tree}') else identity(directory, *arguments)
+            with projected_links() as aliases, mock.patch.object(producer_graph, 'git', side_effect=changed_tree), \
+                 mock.patch.object(producer_graph, 'layout_node', side_effect=replaced_alias):
+                with self.assertRaisesRegex(ValueError, '^Document checkout rollback incomplete$'):
+                    producer_graph.prepare_document_layout(root, pins, root / 'private/Document')
+                self.assertEqual(target, aliases[legacy])
+                self.assertTrue(target.is_dir())
 
 if __name__ == '__main__':
     unittest.main()
