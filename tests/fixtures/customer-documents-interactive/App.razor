@@ -1,0 +1,11 @@
+@namespace CustomerDocumentsInteractiveFixture
+@using Legacy.Maliev.Intranet.Client.Features.Customers.Components
+@using Microsoft.AspNetCore.Components
+@using Maliev.ShadcnBlazor.Components.Actions
+
+<p>This isolated browser fixture uses synthetic session and downstream boundaries.</p>
+<ShadcnButton id="fixture-customer-42" OnClick="() => customer = 42" OperationFeedback="false">Fixture customer 42</ShadcnButton>
+<ShadcnButton id="fixture-customer-43" OnClick="() => customer = 43" OperationFeedback="false">Fixture customer 43</ShadcnButton>
+<CustomerDocuments CustomerId="customer" />
+
+@code { private int customer = 42; }
