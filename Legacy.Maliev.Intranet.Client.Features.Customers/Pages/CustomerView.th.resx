@@ -118,4 +118,5 @@
   <data name="Payment" xml:space="preserve"><value>การชำระเงิน</value></data>
   <data name="Yes" xml:space="preserve"><value>ใช่</value></data>
   <data name="No" xml:space="preserve"><value>ไม่</value></data>
+  <data name="Documents" xml:space="preserve"><value>เอกสาร</value></data>
 </root>

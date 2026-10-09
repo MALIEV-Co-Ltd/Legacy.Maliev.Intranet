@@ -14,6 +14,8 @@ jobs:
     env:
       MalievWorkspaceRoot: ${{ github.workspace }}/.dependencies
       PLAYWRIGHT_DOWNLOAD_CONNECTION_TIMEOUT: '30000'
+      TASK4_INTERACTIVE_ASSET_ROOT: ${{ github.workspace }}/.customer-documents-published/wwwroot
+      TASK4_BROWSER_EVIDENCE: ${{ github.workspace }}/TestResults/customer-documents-switch/evidence
     steps:
       - name: Check out Intranet
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
@@ -67,13 +69,16 @@ jobs:
       - name: Restore BrowserTests packages
         timeout-minutes: 6
         shell: bash
-        run: timeout --signal=TERM --kill-after=20s 5m dotnet restore Legacy.Maliev.Intranet.BrowserTests/Legacy.Maliev.Intranet.BrowserTests.csproj
+        run: |
+          export GITHUB_ACTIONS=false
+          timeout --signal=TERM --kill-after=20s 5m dotnet restore Legacy.Maliev.Intranet.BrowserTests/Legacy.Maliev.Intranet.BrowserTests.csproj -p:UseLocalMalievDependencies=true
       - name: Build BrowserTests Release with zero warnings
         timeout-minutes: 9
         shell: bash
         run: |
+          export GITHUB_ACTIONS=false
           timeout --signal=TERM --kill-after=20s 8m dotnet build Legacy.Maliev.Intranet.BrowserTests/Legacy.Maliev.Intranet.BrowserTests.csproj \
-            --configuration Release --no-restore --warnaserror
+            --configuration Release --no-restore --warnaserror -p:UseLocalMalievDependencies=true
       - name: Read exact built Playwright browser revisions
         id: playwright_metadata
         timeout-minutes: 2
@@ -120,6 +125,54 @@ jobs:
             --package Legacy.Maliev.Intranet.BrowserTests/bin/Release/net10.0/.playwright/package \
             --project Legacy.Maliev.Intranet.BrowserTests/Legacy.Maliev.Intranet.BrowserTests.csproj \
             --cache "$PLAYWRIGHT_BROWSERS_PATH" --require
+      - name: Publish isolated Documents WASM fixture for focused and full browser validation
+        timeout-minutes: 9
+        shell: bash
+        env:
+          DOTNET_PROCESSOR_COUNT: '1'
+        run: |
+          export GITHUB_ACTIONS=false
+          timeout --signal=TERM --kill-after=20s 8m dotnet publish \
+            tests/fixtures/customer-documents-interactive/CustomerDocuments.InteractiveFixture.csproj \
+            --configuration Release --warnaserror -m:1 \
+            -p:UseLocalMalievDependencies=true -p:UseSharedCompilation=false \
+            -p:RestorePackagesWithLockFile=true \
+            --output .customer-documents-published
+          test -f "$TASK4_INTERACTIVE_ASSET_ROOT/index.html"
+          test -f "$TASK4_INTERACTIVE_ASSET_ROOT/_framework/blazor.webassembly.js"
+      - name: Retain generated Documents fixture dependency lock
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: customer-documents-fixture-lock-${{ github.run_id }}-${{ github.run_attempt }}
+          path: tests/fixtures/customer-documents-interactive/packages.lock.json
+          if-no-files-found: error
+          retention-days: 7
+      - name: Diagnose exact ten Documents interactive cases before full validation
+        timeout-minutes: 5
+        shell: bash
+        env:
+          DOTNET_PROCESSOR_COUNT: '1'
+        run: |
+          export GITHUB_ACTIONS=false
+          mkdir -p "$TASK4_BROWSER_EVIDENCE"
+          timeout --signal=TERM --kill-after=20s 4m dotnet test \
+            Legacy.Maliev.Intranet.BrowserTests/Legacy.Maliev.Intranet.BrowserTests.csproj \
+            --configuration Release --no-build --no-restore -p:UseLocalMalievDependencies=true \
+            --filter 'FullyQualifiedName~CustomerDocumentsCustomerSwitchBrowserTests|FullyQualifiedName~CustomerDocumentsLifecycleBrowserTests' \
+            --blame-hang --blame-hang-timeout 90s --blame-hang-dump-type none \
+            --logger 'console;verbosity=normal' \
+            --logger 'trx;LogFileName=customer-documents-switch.trx' \
+            --results-directory TestResults/customer-documents-switch
+          python3 -B -c 'import xml.etree.ElementTree as E; r=E.parse("TestResults/customer-documents-switch/customer-documents-switch.trx").getroot(); ns={"t":"http://microsoft.com/schemas/VisualStudio/TeamTest/2010"}; c=r.find("t:ResultSummary/t:Counters",ns); assert c is not None and all(c.get(k)==v for k,v in {"total":"10","executed":"10","passed":"10","failed":"0","notExecuted":"0"}.items()), E.tostring(r,encoding="unicode")[-4000:]'
+      - name: Retain Documents switch failure and success diagnostics
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: customer-documents-switch-${{ github.run_id }}-${{ github.run_attempt }}
+          path: TestResults/customer-documents-switch/
+          if-no-files-found: warn
+          retention-days: 7
       - name: Diagnose current-main pooled lifecycle and order presentation
         id: current_main_diagnostics
         timeout-minutes: 20

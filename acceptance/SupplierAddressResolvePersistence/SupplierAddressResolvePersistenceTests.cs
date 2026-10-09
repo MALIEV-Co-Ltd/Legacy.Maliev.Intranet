@@ -50,6 +50,7 @@ public sealed class SupplierAddressResolvePersistenceTests
         var owner = new SupplierResourceScope(TimeSpan.FromMinutes(6));
         Exception? executionFailure = null;
         SupplierAddressBrowserObserver? bodyObserver = null;
+        ResolveBodyObservation? resolveObservation = null;
         try
         {
             using var timeout = CancellationTokenSource.CreateLinkedTokenSource(owner.Token);
@@ -301,12 +302,24 @@ public sealed class SupplierAddressResolvePersistenceTests
                 }
             });
             await owner.StartAsync(observerLease, bodyObserver.InstallAsync);
+            resolveObservation = new ResolveBodyObservation(page, context, origin + "/bff/lookups/thai-addresses/resolve");
             var resolved = await page.RunAndWaitForResponseAsync(
                 () => page.GetByRole(AriaRole.Button, new() { Name = "Extract address fields", Exact = true }).ClickAsync(),
                 response => response.Request.Method == "POST" && response.Url.EndsWith("/bff/lookups/thai-addresses/resolve", StringComparison.Ordinal));
             Assert.Equal(200, resolved.Status);
             Assert.Equal(JsonSerializer.Serialize(resolveBody), JsonSerializer.Serialize(JsonSerializer.Deserialize<LookupResolveRequest>(resolved.Request.PostData!, new JsonSerializerOptions(JsonSerializerDefaults.Web))));
-            var bodyObservation = await bodyObserver.ReadAndCloseAsync(timeout.Token);
+            resolveObservation.Record("headers-observed", resolved.Request);
+            resolveObservation.Record("body-read-start", resolved.Request);
+            JsonElement bodyObservation;
+            try
+            {
+                bodyObservation = await bodyObserver.ReadAndCloseAsync(timeout.Token);
+            }
+            catch (PlaywrightException error)
+            {
+                resolveObservation.RetainFailure(resolved, error);
+                throw;
+            }
             var browserResolution = JsonSerializer.Deserialize<LookupResolveResponse>(bodyObservation.GetProperty("body").GetString()!, new JsonSerializerOptions(JsonSerializerDefaults.Web));
             Assert.NotNull(browserResolution);
             Assert.Equal(JsonSerializer.Serialize(actualResolution), JsonSerializer.Serialize(browserResolution));
@@ -391,6 +404,7 @@ public sealed class SupplierAddressResolvePersistenceTests
         catch (Exception error) { executionFailure = error; }
         finally
         {
+            resolveObservation?.Detach();
             try { await owner.DisposeAsync(); }
             catch (Exception firstCleanup) when (executionFailure is not null && bodyObserver?.RequiresRealmRecovery == true)
             {
@@ -409,6 +423,135 @@ public sealed class SupplierAddressResolvePersistenceTests
             { throw new AggregateException("Supplier execution and exact owned cleanup failed.", executionFailure, cleanupFailure); }
         }
         if (executionFailure is not null) System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(executionFailure).Throw();
+    }
+
+    // Passive, failure-only metadata: never read another body or await a request terminal event.
+    private sealed class ResolveBodyObservation
+    {
+        private readonly IPage page;
+        private readonly IBrowserContext context;
+        private readonly string expectedUrl;
+        private readonly object gate = new();
+        private readonly List<(string Kind, IRequest? Request)> events = [];
+        private bool truncated;
+        private bool pageClosed;
+        private bool pageCrashed;
+        private bool contextClosed;
+        private bool requestSubscribed;
+        private bool finishedSubscribed;
+        private bool failedSubscribed;
+        private bool pageCloseSubscribed;
+        private bool pageCrashSubscribed;
+        private bool contextCloseSubscribed;
+
+        public ResolveBodyObservation(IPage page, IBrowserContext context, string expectedUrl)
+        {
+            this.page = page;
+            this.context = context;
+            this.expectedUrl = expectedUrl;
+            try { page.Request += OnRequest; requestSubscribed = true; } catch { }
+            try { page.RequestFinished += OnFinished; finishedSubscribed = true; } catch { }
+            try { page.RequestFailed += OnFailed; failedSubscribed = true; } catch { }
+            try { page.Close += OnPageClose; pageCloseSubscribed = true; } catch { }
+            try { page.Crash += OnPageCrash; pageCrashSubscribed = true; } catch { }
+            try { context.Close += OnContextClose; contextCloseSubscribed = true; } catch { }
+        }
+
+        public void Record(string kind, IRequest? request)
+        {
+            try
+            {
+                lock (gate)
+                {
+                    if (kind == "page-close") pageClosed = true;
+                    if (kind == "page-crash") pageCrashed = true;
+                    if (kind == "context-close") contextClosed = true;
+                    if (events.Count < 32) events.Add((kind, request));
+                    else truncated = true;
+                }
+            }
+            catch { /* Observation must not replace the original execution or cleanup failure. */ }
+        }
+
+        private void ObserveRequest(string kind, IRequest request)
+        {
+            try
+            {
+                if (request.Method == "POST" && string.Equals(request.Url, expectedUrl, StringComparison.Ordinal))
+                    Record(kind, request);
+            }
+            catch { /* No raw request, URL or failure text is retained. */ }
+        }
+
+        private void OnRequest(object? sender, IRequest request) => ObserveRequest("request", request);
+        private void OnFinished(object? sender, IRequest request) => ObserveRequest("request-finished", request);
+        private void OnFailed(object? sender, IRequest request) => ObserveRequest("request-failed", request);
+        private void OnPageClose(object? sender, IPage value) => Record("page-close", null);
+        private void OnPageCrash(object? sender, IPage value) => Record("page-crash", null);
+        private void OnContextClose(object? sender, IBrowserContext value) => Record("context-close", null);
+
+        public void RetainFailure(IResponse response, PlaywrightException error)
+        {
+            try
+            {
+                Record("body-read-failure", response.Request);
+                string json;
+                lock (gate)
+                {
+                    json = JsonSerializer.Serialize(new
+                    {
+                        schemaVersion = 1,
+                        accepted = false,
+                        phase = "resolve-browser-body-read",
+                        reason = error.Message.Contains("Network.getResponseBody", StringComparison.Ordinal)
+                            && error.Message.Contains("No data found for resource with given identifier", StringComparison.Ordinal)
+                            ? "cdp-response-body-resource-unavailable" : "playwright-body-read-failure",
+                        exactRequest = response.Request.Method == "POST"
+                            && string.Equals(response.Request.Url, expectedUrl, StringComparison.Ordinal),
+                        status = response.Status is >= 100 and <= 599 ? response.Status : (int?)null,
+                        pageIsClosed = page.IsClosed,
+                        pageClosed,
+                        pageCrashed,
+                        contextClosed,
+                        truncated,
+                        requestSubscribed,
+                        finishedSubscribed,
+                        failedSubscribed,
+                        pageCloseSubscribed,
+                        pageCrashSubscribed,
+                        contextCloseSubscribed,
+                        events = events.Select((row, index) => new
+                        {
+                            ordinal = index + 1,
+                            kind = row.Kind,
+                            referenceMatch = row.Request is null ? (bool?)null : ReferenceEquals(row.Request, response.Request),
+                        }).ToArray(),
+                    });
+                }
+                try { Console.Error.WriteLine("SUPPLIER_RESOLVE_BODY_FAILURE " + json); } catch { }
+                try
+                {
+                    var directory = Environment.GetEnvironmentVariable("SUPPLIER_RESOURCE_EVIDENCE");
+                    if (!string.IsNullOrWhiteSpace(directory))
+                    {
+                        Directory.CreateDirectory(directory);
+                        File.WriteAllText(Path.Combine(directory, "supplier-resolve-body-failure.json"), json + "\n");
+                    }
+                }
+                catch { /* Best effort only; the original PlaywrightException is rethrown. */ }
+            }
+            catch { /* A failed observation cannot change the original failure. */ }
+        }
+
+        public void Detach()
+        {
+            try { page.Request -= OnRequest; } catch { }
+            try { page.RequestFinished -= OnFinished; } catch { }
+            try { page.RequestFailed -= OnFailed; } catch { }
+            try { page.Close -= OnPageClose; } catch { }
+            try { page.Crash -= OnPageCrash; } catch { }
+            try { context.Close -= OnContextClose; } catch { }
+        }
     }
 
     private static async Task AssertEditorAsync(IPage page, string address1, string city, string state, string postcode)

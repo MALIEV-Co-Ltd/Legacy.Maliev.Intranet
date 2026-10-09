@@ -14,12 +14,28 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
+      MalievWorkspaceRoot: ${{ github.workspace }}/.dependencies
+      UseLocalMalievDependencies: 'true'
       DOTNET_PROCESSOR_COUNT: '1'
       PYTHONDONTWRITEBYTECODE: '1'
     steps:
       - name: Check out exact candidate
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
+          persist-credentials: false
+      - name: Check out Legacy.Maliev.ServiceDefaults
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: MALIEV-Co-Ltd/Legacy.Maliev.ServiceDefaults
+          ref: 7edcd961024868513fd5f373cab3dcb261197f77
+          path: .dependencies/Legacy.Maliev.ServiceDefaults
+          persist-credentials: false
+      - name: Check out Legacy.Maliev.CompatibilityContracts
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: MALIEV-Co-Ltd/Legacy.Maliev.CompatibilityContracts
+          ref: 78e48ffc4ee000df0510cba5e7c7a3c4c4d539d7
+          path: .dependencies/Legacy.Maliev.CompatibilityContracts
           persist-credentials: false
       - name: Set up standard .NET runtime
         uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68
@@ -35,11 +51,14 @@ jobs:
       - name: Restore BrowserTests packages
         timeout-minutes: 6
         shell: bash
-        run: timeout --signal=TERM --kill-after=20s 5m dotnet restore Legacy.Maliev.Intranet.BrowserTests/Legacy.Maliev.Intranet.BrowserTests.csproj
+        run: |
+          export GITHUB_ACTIONS=false
+          timeout --signal=TERM --kill-after=20s 5m dotnet restore Legacy.Maliev.Intranet.BrowserTests/Legacy.Maliev.Intranet.BrowserTests.csproj -p:UseLocalMalievDependencies=true
       - name: Build BrowserTests Release with zero warnings
         timeout-minutes: 9
         shell: bash
         run: |
+          export GITHUB_ACTIONS=false
           timeout --signal=TERM --kill-after=20s 8m dotnet build Legacy.Maliev.Intranet.BrowserTests/Legacy.Maliev.Intranet.BrowserTests.csproj \
             --configuration Release --no-restore --warnaserror
       - name: Read exact built Playwright browser revisions
@@ -92,6 +111,7 @@ jobs:
         timeout-minutes: 5
         shell: bash
         run: |
+          export GITHUB_ACTIONS=false
           dotnet test Legacy.Maliev.Intranet.BrowserTests/Legacy.Maliev.Intranet.BrowserTests.csproj \
             --configuration Release --no-build --no-restore \
             --filter 'FullyQualifiedName~WorkspaceCultureBootstrapBrowserTests' \
@@ -100,6 +120,7 @@ jobs:
         timeout-minutes: 5
         shell: bash
         run: |
+          export GITHUB_ACTIONS=false
           dotnet test Legacy.Maliev.Intranet.BrowserTests/Legacy.Maliev.Intranet.BrowserTests.csproj \
             --configuration Release --no-build --no-restore \
             --filter 'FullyQualifiedName~OperationalShellBrowserTests' \

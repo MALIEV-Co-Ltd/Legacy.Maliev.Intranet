@@ -1,0 +1,200 @@
+@namespace Legacy.Maliev.Intranet.Client.Features.Customers.Components
+@using Microsoft.AspNetCore.Components.Forms
+@inject HttpClient Http
+@inject IStringLocalizer<CustomerDocuments> Text
+
+<section aria-labelledby="customer-documents-heading">
+    <h2 id="customer-documents-heading">@Text["Documents"]</h2>
+    <p>@Text["Expiry does not release confidentiality."]</p>
+    @if (busy) { <p role="status" aria-live="polite">@Text["Processing document. Please wait."]</p> }
+    @if (!string.IsNullOrEmpty(error)) { <p role="alert">@Text[error]</p> }
+    <ShadcnButton OnClick="LoadAsync" Disabled="@busy" OperationFeedback="false">@Text["Reload"]</ShadcnButton>
+    <ShadcnCollapsible id="customer-nda-reminders"><ShadcnCollapsibleTrigger>@Text["My NDA reminders"]</ShadcnCollapsibleTrigger><ShadcnCollapsibleContent>
+        <label for="nda-due-from">@Text["Due from (UTC)"]</label><ShadcnInput TValue="string" id="nda-due-from" Type="date" Value="@DateValue(dueFrom)" ValueChanged="@(value => dueFrom = ParseDate(value))" />
+        <label for="nda-due-through">@Text["Due through (UTC, inclusive)"]</label><ShadcnInput TValue="string" id="nda-due-through" Type="date" Value="@DateValue(dueThrough)" ValueChanged="@(value => dueThrough = ParseDate(value))" />
+        <label for="nda-reminder-state">@Text["Reminder state"]</label><ShadcnSelect TValue="string" id="nda-reminder-state" @bind-Value="reminderState" Options="@ReminderStateOptions" />
+        <label for="nda-reminder-limit">@Text["Maximum reminders"]</label><ShadcnSelect TValue="int" id="nda-reminder-limit" @bind-Value="reminderLimit" Options="@ReminderLimitOptions" />
+        <ShadcnButton Disabled="@busy" OnClick="LoadAsync" OperationFeedback="false">@Text["Apply reminder filters"]</ShadcnButton>
+        <ul>@foreach (var reminder in reminders) { <li>@reminder.DueAtUtc.ToString("yyyy-MM-dd HH:mm 'UTC'") - @Text[reminder.State] - @reminder.LeadDays @Text["days before renewal"]</li> }</ul>
+    </ShadcnCollapsibleContent></ShadcnCollapsible>
+    @foreach (var item in documents) {
+        <article><h3>@item.Title</h3><p>@Text[item.Kind] - @Text[item.Visibility]</p>
+            @if (versions.TryGetValue(item.DocumentId, out var history)) { <ul>@foreach (var version in history) { <li>
+                @Text["Version"] @version.VersionNumber - @Text[version.VerificationStatus]
+                <LegacyLink Href="@($"/bff/customers/{CustomerId}/documents/{item.DocumentId:D}/versions/{version.VersionId:D}/download")" Role="LegacyLinkRole.Inline" download>@Text["Download attachment"]</LegacyLink>
+                @if (item.Kind == "Nda") { <CustomerNdaVerification @key="(CustomerId, item.DocumentId, version.VersionId)" CustomerId="CustomerId" DocumentId="item.DocumentId" VersionId="version.VersionId" ExpectedRevision="item.Revision" ParentRefresh="() => RefreshParentRevisionAsync(item.CustomerId)" /> }
+                else { <label for="@($"verification-{version.VersionId:D}")">@Text["Verification reason"]</label><ShadcnInput TValue="string" id="@($"verification-{version.VersionId:D}")" @bind-Value="verificationReason" maxlength="1024" /><ShadcnButton Disabled="@busy" OnClick='() => VerifyEvidenceAsync(item, version, "Verified")' OperationFeedback="false">@Text["Verify exact version"]</ShadcnButton><ShadcnButton Disabled="@busy" OnClick='() => VerifyEvidenceAsync(item, version, "Rejected")' OperationFeedback="false">@Text["Reject exact version"]</ShadcnButton> }
+            </li> }</ul> }
+            <label for="@($"archive-{item.DocumentId:D}")">@Text["Archive reason"]</label><ShadcnInput TValue="string" id="@($"archive-{item.DocumentId:D}")" @bind-Value="archiveReason" maxlength="1000" />
+            <ShadcnButton OnClick="() => ArchiveAsync(item)" Disabled="@busy" OperationFeedback="false">@Text["Archive without deleting originals"]</ShadcnButton>
+        </article>
+    }
+    <div><label for="customer-document-title">@Text["Title"]</label><ShadcnInput TValue="string" id="customer-document-title" @bind-Value="title" maxlength="250" Required="true" />
+        <label for="customer-document-kind">@Text["Document category"]</label><ShadcnSelect TValue="string" id="customer-document-kind" @bind-Value="kind" Options="@KindOptions" />
+        <label for="customer-document-visibility">@Text["Visibility"]</label><ShadcnSelect TValue="string" id="customer-document-visibility" @bind-Value="visibility" Options="@VisibilityOptions" />
+        <label for="customer-document-replacement">@Text["New document or replacement version"]</label><ShadcnSelect TValue="string" id="customer-document-replacement" @bind-Value="replacement" Options="@ReplacementOptions" />
+        <fieldset><legend>@Text["Commercial associations"]</legend>
+            <p>@Text["Optional canonical IDs. Separate order and replacement IDs with commas; maximum 100 associations."]</p>
+            <label for="upload-order-ids">@Text["Order IDs"]</label><ShadcnInput TValue="string" id="upload-order-ids" @bind-Value="uploadOrders" maxlength="1100" />
+            <label for="upload-quotation-id">@Text["Quotation ID (optional, one only)"]</label><ShadcnInput TValue="string" id="upload-quotation-id" @bind-Value="uploadQuotation" maxlength="10" InputMode="numeric" />
+            <label for="upload-replacement-ids">@Text["Replacement IDs"]</label><ShadcnInput TValue="string" id="upload-replacement-ids" @bind-Value="uploadReplacements" maxlength="1100" />
+        </fieldset>
+        <label for="customer-document-file">@Text["PDF, PNG or JPEG, maximum 20 MiB"]</label><ShadcnInput TValue="string" Type="file" @key="CustomerId" id="customer-document-file" FilesChanged="SelectFile" Accept="application/pdf,image/png,image/jpeg" />
+        <ShadcnButton id="customer-document-upload" OnClick="UploadAsync" Disabled="@(busy || file is null)" OperationFeedback="false">@Text["Upload for staff verification"]</ShadcnButton>
+    </div>
+</section>
+
+@code {
+    private IReadOnlyList<ShadcnSelectOption<string>> ReminderStateOptions => new[] { "", "Due", "Missed", "Cancelled" }.Select(value => new ShadcnSelectOption<string>(value, Text[value == "" ? "All states" : value])).ToArray();
+    private static IReadOnlyList<ShadcnSelectOption<int>> ReminderLimitOptions => new[] { 20, 50, 100 }.Select(value => new ShadcnSelectOption<int>(value, value.ToString(System.Globalization.CultureInfo.InvariantCulture))).ToArray();
+    private IReadOnlyList<ShadcnSelectOption<string>> KindOptions => kinds.Select(value => new ShadcnSelectOption<string>(value, Text[value])).ToArray();
+    private IReadOnlyList<ShadcnSelectOption<string>> VisibilityOptions => new[] { "Internal", "Customer" }.Select(value => new ShadcnSelectOption<string>(value, Text[value])).ToArray();
+    private IReadOnlyList<ShadcnSelectOption<string>> ReplacementOptions => new[] { new ShadcnSelectOption<string>("", Text["New document"]) }.Concat(documents.Select(value => new ShadcnSelectOption<string>(value.DocumentId.ToString("D"), value.Title))).ToArray();
+    private static string DateValue(DateTime? value) => value?.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture) ?? "";
+    private static DateTime? ParseDate(string value) => DateTime.TryParseExact(value, "yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out var date) ? date : null;
+    [Parameter] public int CustomerId { get; set; }
+    private IReadOnlyList<CustomerDocumentSummary> documents = [];
+    private readonly Dictionary<Guid, IReadOnlyList<CustomerDocumentVersionSummary>> versions = [];
+    private IReadOnlyList<CustomerNdaReminder> reminders = [];
+    private DateTime? dueFrom, dueThrough;
+    private string reminderState = "";
+    private int reminderLimit = 20;
+    private IBrowserFile? file;
+    private string title = "", kind = "Nda", visibility = "Internal", error = "";
+    private bool busy;
+    private string archiveReason = "", replacement = "";
+    private string verificationReason = "";
+    private string uploadOrders = "", uploadQuotation = "", uploadReplacements = "";
+    private Guid uploadKey = Guid.NewGuid();
+    private static readonly string[] kinds = ["Nda", "Corporate", "BillingInstruction", "Shipment", "Release", "Acceptance", "Evidence"];
+    private int formCustomerId;
+    private long loadGeneration;
+    protected override Task OnParametersSetAsync() {
+        if (formCustomerId != CustomerId) {
+            formCustomerId = CustomerId; file = null; title = ""; kind = "Nda"; visibility = "Internal"; replacement = ""; archiveReason = ""; verificationReason = ""; uploadKey = Guid.NewGuid();
+            dueFrom = null; dueThrough = null; reminderState = ""; reminderLimit = 20;
+            uploadOrders = ""; uploadQuotation = ""; uploadReplacements = "";
+        }
+        return LoadAsync();
+    }
+    private Task LoadAsync() => LoadSnapshotAsync(clearBeforeRead: true);
+    private Task RefreshParentRevisionAsync(int customer) => customer == CustomerId ? LoadSnapshotAsync(clearBeforeRead: false) : Task.CompletedTask;
+    private async Task LoadSnapshotAsync(bool clearBeforeRead) {
+        var customer = CustomerId; var generation = ++loadGeneration;
+        bool Current() => customer == CustomerId && generation == loadGeneration;
+        void Fail(string failure) { if (Current()) { ClearLoadedState(); error = failure; } }
+        if (customer <= 0) { Fail("Document access denied."); busy = false; return; }
+        busy = true; error = ""; if (clearBeforeRead) ClearLoadedState();
+        try {
+            var fromUtc = dueFrom is null ? (DateTimeOffset?)null : new DateTimeOffset(DateTime.SpecifyKind(dueFrom.Value.Date, DateTimeKind.Utc));
+            var throughUtc = dueThrough is null ? (DateTimeOffset?)null : new DateTimeOffset(DateTime.SpecifyKind(dueThrough.Value.Date.AddTicks(TimeSpan.TicksPerDay - 1), DateTimeKind.Utc));
+            if (fromUtc is not null && throughUtc is not null && (throughUtc.Value < fromUtc.Value || throughUtc.Value - fromUtc.Value > TimeSpan.FromDays(366))) { Fail("Select an ordered reminder interval of at most 366 days."); return; }
+            var query = new List<string> { $"limit={reminderLimit}" };
+            if (fromUtc is not null) query.Add("dueFromUtc=" + Uri.EscapeDataString(fromUtc.Value.ToString("O", System.Globalization.CultureInfo.InvariantCulture)));
+            if (throughUtc is not null) query.Add("dueThroughUtc=" + Uri.EscapeDataString(throughUtc.Value.ToString("O", System.Globalization.CultureInfo.InvariantCulture)));
+            if (reminderState != "") query.Add("state=" + Uri.EscapeDataString(reminderState));
+            using var response = await Http.GetForPresentationAsync($"/bff/customers/{customer}/documents");
+            if (!Current()) return;
+            if (!response.IsSuccessStatusCode) { Fail(Status(response.StatusCode)); return; }
+            var loadedDocuments = await response.Content.ReadFromJsonAsync<CustomerDocumentSummary[]>() ?? [];
+            if (!Current()) return;
+            using var worklist = await Http.GetForPresentationAsync("/bff/staff/nda-reminders?" + string.Join("&", query));
+            if (!Current()) return;
+            if (!worklist.IsSuccessStatusCode) { Fail(Status(worklist.StatusCode)); return; }
+            var loadedReminders = await worklist.Content.ReadFromJsonAsync<CustomerNdaReminder[]>() ?? [];
+            var loadedVersions = new Dictionary<Guid, IReadOnlyList<CustomerDocumentVersionSummary>>();
+            foreach (var document in loadedDocuments) {
+                if (!Current()) return;
+                using var history = await Http.GetForPresentationAsync($"/bff/customers/{customer}/documents/{document.DocumentId:D}/versions");
+                if (!Current()) return;
+                if (!history.IsSuccessStatusCode) { Fail(Status(history.StatusCode)); return; }
+                loadedVersions[document.DocumentId] = await history.Content.ReadFromJsonAsync<CustomerDocumentVersionSummary[]>() ?? [];
+            }
+            if (Current()) { documents = loadedDocuments; reminders = loadedReminders; versions.Clear(); foreach (var history in loadedVersions) versions[history.Key] = history.Value; }
+        } catch (Exception exception) when (exception is HttpRequestException or System.Text.Json.JsonException or OperationCanceledException) { Fail("Document service is unavailable. Please retry later."); }
+        finally { if (Current()) busy = false; }
+    }
+    private void ClearLoadedState() { documents = []; versions.Clear(); reminders = []; }
+    private bool CurrentAction(int customer, long generation) => customer == CustomerId && generation == loadGeneration;
+    private void SelectFile(InputFileChangeEventArgs input) { file = input.File; uploadKey = Guid.NewGuid(); }
+    private async Task UploadAsync() {
+        if (file is null || file.Size is <= 0 or > 20 * 1024 * 1024 || string.IsNullOrWhiteSpace(title)) { error = "Select a valid file and title."; return; }
+        var selectedAssociations = new List<CustomerDocumentAssociation>();
+        if (!AddAssociations(selectedAssociations, "Order", uploadOrders) || !AddAssociations(selectedAssociations, "Quotation", uploadQuotation, single: true) || !AddAssociations(selectedAssociations, "Replacement", uploadReplacements)) { error = "Enter distinct positive IDs, one quotation, and at most 100 associations."; return; }
+        var associationJson = System.Text.Json.JsonSerializer.Serialize(selectedAssociations);
+        var customer = CustomerId; var generation = loadGeneration; var selectedFile = file; var selectedTitle = title; var selectedKind = kind; var selectedVisibility = visibility; var selectedKey = uploadKey;
+        var target = Guid.TryParse(replacement, out var selected) ? documents.FirstOrDefault(x => x.DocumentId == selected) : null;
+        busy = true; error = "";
+        try {
+            var session = await Http.GetFromJsonForPresentationAsync<EmployeeSessionSummary>("/bff/session");
+            if (!CurrentAction(customer, generation)) return;
+            if (string.IsNullOrWhiteSpace(session?.CsrfToken)) { error = "Document access denied."; return; }
+            using var request = new HttpRequestMessage(HttpMethod.Post, target is null ? $"/bff/customers/{customer}/documents" : $"/bff/customers/{customer}/documents/{target.DocumentId:D}/versions");
+            request.Headers.Add("X-CSRF-TOKEN", session.CsrfToken); request.Headers.Add("Idempotency-Key", selectedKey.ToString("D"));
+            using var form = new MultipartFormDataContent(); form.Add(new StringContent(selectedKind), "Kind"); form.Add(new StringContent(selectedTitle), "Title"); form.Add(new StringContent(selectedVisibility), "Visibility"); form.Add(new StringContent(associationJson), "Associations");
+            if (target is not null) form.Add(new StringContent(target.Revision.ToString(System.Globalization.CultureInfo.InvariantCulture)), "ExpectedRevision");
+            await using var stream = selectedFile.OpenReadStream(20 * 1024 * 1024); using var content = new StreamContent(stream); content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(selectedFile.ContentType); form.Add(content, "files", selectedFile.Name); request.Content = form;
+            using var response = await Http.SendAsync(request);
+            if (!CurrentAction(customer, generation)) return;
+            if (!response.IsSuccessStatusCode) { error = Status(response.StatusCode); return; }
+            file = null; uploadKey = Guid.NewGuid(); uploadOrders = ""; uploadQuotation = ""; uploadReplacements = ""; await LoadAsync();
+        } catch (Exception exception) when (exception is HttpRequestException or IOException or System.Text.Json.JsonException or OperationCanceledException) { if (CurrentAction(customer, generation)) error = "Document service is unavailable. Please retry later."; }
+        finally { if (CurrentAction(customer, generation)) busy = false; }
+    }
+    private static bool AddAssociations(List<CustomerDocumentAssociation> associations, string associationKind, string input, bool single = false) {
+        if (string.IsNullOrWhiteSpace(input)) return true;
+        if (input.Length > 1100) return false;
+        var ids = input.Split(',', StringSplitOptions.TrimEntries);
+        if (single && ids.Length != 1 || ids.Length + associations.Count > 100) return false;
+        foreach (var text in ids) {
+            if (!int.TryParse(text, System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out var id) || id <= 0 || associations.Any(x => x.Kind == associationKind && x.ResourceId == id)) return false;
+            associations.Add(new CustomerDocumentAssociation(associationKind, id));
+        }
+        return true;
+    }
+    private async Task ArchiveAsync(CustomerDocumentSummary document) {
+        if (string.IsNullOrWhiteSpace(archiveReason)) { error = "Archive reason is required."; return; }
+        var customer = CustomerId; var generation = loadGeneration; var reason = archiveReason;
+        busy = true;
+        try {
+            var session = await Http.GetFromJsonForPresentationAsync<EmployeeSessionSummary>("/bff/session");
+            if (!CurrentAction(customer, generation)) return;
+            if (string.IsNullOrWhiteSpace(session?.CsrfToken)) { error = "Document access denied."; return; }
+            using var request = new HttpRequestMessage(HttpMethod.Post, $"/bff/customers/{customer}/documents/{document.DocumentId:D}/archive") { Content = JsonContent.Create(new CustomerDocumentArchiveRequest(document.Revision, reason)) };
+            request.Headers.Add("X-CSRF-TOKEN", session.CsrfToken);
+            using var response = await Http.SendAsync(request);
+            if (!CurrentAction(customer, generation)) return;
+            if (!response.IsSuccessStatusCode) { error = Status(response.StatusCode); return; }
+            archiveReason = ""; await LoadAsync();
+        } catch (Exception exception) when (exception is HttpRequestException or System.Text.Json.JsonException or OperationCanceledException) { if (CurrentAction(customer, generation)) error = "Document service is unavailable. Please retry later."; }
+        finally { if (CurrentAction(customer, generation)) busy = false; }
+    }
+    private async Task VerifyEvidenceAsync(CustomerDocumentSummary document, CustomerDocumentVersionSummary version, string status) {
+        if (string.IsNullOrWhiteSpace(verificationReason)) { error = "Verification reason is required."; return; }
+        var customer = CustomerId; var generation = loadGeneration; var reason = verificationReason;
+        busy = true;
+        try {
+            var session = await Http.GetFromJsonForPresentationAsync<EmployeeSessionSummary>("/bff/session");
+            if (!CurrentAction(customer, generation)) return;
+            if (string.IsNullOrWhiteSpace(session?.CsrfToken)) { error = "Document access denied."; return; }
+            using var receiptResponse = await Http.GetForPresentationAsync($"/bff/customers/{customer}/documents/{document.DocumentId:D}/versions/{version.VersionId:D}/receipt");
+            if (!CurrentAction(customer, generation)) return;
+            if (!receiptResponse.IsSuccessStatusCode) { error = Status(receiptResponse.StatusCode); return; }
+            var receipt = await receiptResponse.Content.ReadFromJsonAsync<CustomerDocumentReceipt>();
+            if (!CurrentAction(customer, generation)) return;
+            if (receipt is null || receipt.CustomerId != customer || receipt.DocumentId != document.DocumentId || receipt.VersionId != version.VersionId || receipt.Kind != document.Kind || receipt.Revision <= 0) { error = "Document service is unavailable. Please retry later."; return; }
+            using var request = new HttpRequestMessage(HttpMethod.Post, $"/bff/customers/{customer}/documents/{document.DocumentId:D}/versions/{version.VersionId:D}/verification") { Content = JsonContent.Create(new CustomerDocumentVerificationRequest(receipt.Revision, status, reason)) };
+            request.Headers.Add("X-CSRF-TOKEN", session.CsrfToken);
+            using var response = await Http.SendAsync(request);
+            if (!CurrentAction(customer, generation)) return;
+            if (!response.IsSuccessStatusCode) {
+                var failure = Status(response.StatusCode);
+                if (response.StatusCode == HttpStatusCode.Conflict) { var refreshed = loadGeneration + 1; await LoadAsync(); if (CurrentAction(customer, refreshed)) error = failure; }
+                else error = failure; return;
+            }
+            verificationReason = ""; await LoadAsync();
+        } catch (Exception exception) when (exception is HttpRequestException or System.Text.Json.JsonException or OperationCanceledException) { if (CurrentAction(customer, generation)) error = "Document service is unavailable. Please retry later."; }
+        finally { if (CurrentAction(customer, generation)) busy = false; }
+    }
+    private static string Status(HttpStatusCode status) => status is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden ? "Document access denied." : status == HttpStatusCode.Conflict ? "The document changed. Reload before retrying." : "Document service is unavailable. Please retry later.";
+}

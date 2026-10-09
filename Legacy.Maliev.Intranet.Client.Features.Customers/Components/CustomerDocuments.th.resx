@@ -1,0 +1,221 @@
+<root>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <data name="Acceptance" xml:space="preserve">
+    <value>การรับมอบ</value>
+  </data>
+  <data name="Archive reason" xml:space="preserve">
+    <value>เหตุผลการเก็บเข้าคลัง</value>
+  </data>
+  <data name="Archive reason is required." xml:space="preserve">
+    <value>กรุณาระบุเหตุผลการเก็บเข้าคลัง</value>
+  </data>
+  <data name="Archive without deleting originals" xml:space="preserve">
+    <value>เก็บเข้าคลังโดยไม่ลบต้นฉบับ</value>
+  </data>
+  <data name="BillingInstruction" xml:space="preserve">
+    <value>คำแนะนำการเรียกเก็บเงิน</value>
+  </data>
+  <data name="Cancelled" xml:space="preserve">
+    <value>ยกเลิกแล้ว</value>
+  </data>
+  <data name="Completed" xml:space="preserve">
+    <value>ดำเนินการแล้ว</value>
+  </data>
+  <data name="Corporate" xml:space="preserve">
+    <value>เอกสารบริษัท</value>
+  </data>
+  <data name="Customer" xml:space="preserve">
+    <value>ลูกค้า</value>
+  </data>
+  <data name="days before renewal" xml:space="preserve">
+    <value>วันก่อนต่ออายุ</value>
+  </data>
+  <data name="Document access denied." xml:space="preserve">
+    <value>ไม่มีสิทธิ์เข้าถึงเอกสาร</value>
+  </data>
+  <data name="Document category" xml:space="preserve">
+    <value>ประเภทเอกสาร</value>
+  </data>
+  <data name="Documents" xml:space="preserve">
+    <value>เอกสาร</value>
+  </data>
+  <data name="Documents | MALIEV" xml:space="preserve">
+    <value>เอกสาร | MALIEV</value>
+  </data>
+  <data name="Document service is unavailable. Please retry later." xml:space="preserve">
+    <value>บริการเอกสารไม่พร้อมใช้งาน กรุณาลองใหม่ภายหลัง</value>
+  </data>
+  <data name="Download attachment" xml:space="preserve">
+    <value>ดาวน์โหลดเอกสารแนบ</value>
+  </data>
+  <data name="Effective date (UTC)" xml:space="preserve">
+    <value>วันที่มีผล (UTC)</value>
+  </data>
+  <data name="Evidence" xml:space="preserve">
+    <value>หลักฐาน</value>
+  </data>
+  <data name="Expired but protected" xml:space="preserve">
+    <value>หมดอายุแต่ยังได้รับการคุ้มครอง</value>
+  </data>
+  <data name="Expiry date (UTC)" xml:space="preserve">
+    <value>วันหมดอายุ (UTC)</value>
+  </data>
+  <data name="Expiry does not release confidentiality." xml:space="preserve">
+    <value>การหมดอายุไม่ยกเลิกหน้าที่รักษาความลับ</value>
+  </data>
+  <data name="First party" xml:space="preserve">
+    <value>คู่สัญญาฝ่ายแรก</value>
+  </data>
+  <data name="Internal" xml:space="preserve">
+    <value>ภายใน</value>
+  </data>
+  <data name="My NDA reminders" xml:space="preserve">
+    <value>งานเตือน NDA ของฉัน</value>
+  </data>
+  <data name="Nda" xml:space="preserve">
+    <value>ข้อตกลงรักษาความลับ</value>
+  </data>
+  <data name="NDA uploads remain pending staff verification. Expiry does not release confidentiality." xml:space="preserve">
+    <value>เอกสาร NDA ที่อัปโหลดยังรอเจ้าหน้าที่ตรวจสอบ การหมดอายุไม่ยกเลิกหน้าที่รักษาความลับ</value>
+  </data>
+  <data name="New document" xml:space="preserve">
+    <value>เอกสารใหม่</value>
+  </data>
+  <data name="New document or replacement version" xml:space="preserve">
+    <value>เอกสารใหม่หรือรุ่นทดแทน</value>
+  </data>
+  <data name="No documents found." xml:space="preserve">
+    <value>ไม่พบเอกสาร</value>
+  </data>
+  <data name="PDF, PNG or JPEG, maximum 20 MiB" xml:space="preserve">
+    <value>ไฟล์ PDF, PNG หรือ JPEG ขนาดสูงสุด 20 MiB</value>
+  </data>
+  <data name="Pending" xml:space="preserve">
+    <value>รอดำเนินการ</value>
+  </data>
+  <data name="PendingVerification" xml:space="preserve">
+    <value>รอเจ้าหน้าที่ตรวจสอบ</value>
+  </data>
+  <data name="Processing document. Please wait." xml:space="preserve">
+    <value>กำลังดำเนินการกับเอกสาร กรุณารอ</value>
+  </data>
+  <data name="Rejected" xml:space="preserve">
+    <value>ไม่ผ่านการตรวจสอบ</value>
+  </data>
+  <data name="Release" xml:space="preserve">
+    <value>การอนุมัติปล่อยงาน</value>
+  </data>
+  <data name="Reload" xml:space="preserve">
+    <value>โหลดใหม่</value>
+  </data>
+  <data name="Responsible employee subject" xml:space="preserve">
+    <value>รหัสผู้รับผิดชอบ</value>
+  </data>
+  <data name="Revision" xml:space="preserve">
+    <value>รายการแก้ไข</value>
+  </data>
+  <data name="Second party" xml:space="preserve">
+    <value>คู่สัญญาฝ่ายที่สอง</value>
+  </data>
+  <data name="Select a valid file and title." xml:space="preserve">
+    <value>กรุณาเลือกไฟล์และระบุชื่อเอกสาร</value>
+  </data>
+  <data name="Shipment" xml:space="preserve">
+    <value>การจัดส่ง</value>
+  </data>
+  <data name="The document changed. Reload before retrying." xml:space="preserve">
+    <value>เอกสารมีการเปลี่ยนแปลง กรุณาโหลดใหม่ก่อนลองอีกครั้ง</value>
+  </data>
+  <data name="Title" xml:space="preserve">
+    <value>ชื่อเอกสาร</value>
+  </data>
+  <data name="Unknown survival remains protected and requires review." xml:space="preserve">
+    <value>ระยะเวลาคงอยู่ที่ไม่ทราบยังได้รับการคุ้มครองและต้องได้รับการทบทวน</value>
+  </data>
+  <data name="Upload for staff verification" xml:space="preserve">
+    <value>อัปโหลดเพื่อให้เจ้าหน้าที่ตรวจสอบ</value>
+  </data>
+  <data name="Verification reason" xml:space="preserve">
+    <value>เหตุผลการตรวจสอบ</value>
+  </data>
+  <data name="Verification was refused or unavailable." xml:space="preserve">
+    <value>การตรวจสอบถูกปฏิเสธหรือไม่พร้อมใช้งาน</value>
+  </data>
+  <data name="Verified" xml:space="preserve">
+    <value>ตรวจสอบแล้ว</value>
+  </data>
+  <data name="Verified exact signed version." xml:space="preserve">
+    <value>ตรวจสอบรุ่นที่ลงนามนี้แล้ว</value>
+  </data>
+  <data name="Verify exact signed version" xml:space="preserve">
+    <value>ตรวจสอบรุ่นที่ลงนามนี้</value>
+  </data>
+  <data name="Verify externally signed NDA" xml:space="preserve">
+    <value>ตรวจสอบ NDA ที่ลงนามภายนอกแล้ว</value>
+  </data>
+  <data name="Version" xml:space="preserve">
+    <value>รุ่น</value>
+  </data>
+  <data name="Visibility" xml:space="preserve">
+    <value>การมองเห็น</value>
+  </data>
+  <data name="Verify exact version">
+    <value>ตรวจสอบรุ่นนี้</value>
+  </data>
+  <data name="Reject exact version">
+    <value>ปฏิเสธรุ่นนี้</value>
+  </data>
+  <data name="Verification reason is required.">
+    <value>กรุณาระบุเหตุผลการตรวจสอบ</value>
+  </data>
+  <data name="Reminder state">
+    <value>สถานะรายการเตือน</value>
+  </data>
+  <data name="Apply reminder filters">
+    <value>ใช้ตัวกรองรายการเตือน</value>
+  </data>
+  <data name="All states">
+    <value>ทุกสถานะ</value>
+  </data>
+  <data name="Select an ordered reminder interval of at most 366 days.">
+    <value>เลือกช่วงวันที่เรียงตามลำดับและไม่เกิน 366 วัน</value>
+  </data>
+  <data name="Missed">
+    <value>เลยกำหนด</value>
+  </data>
+  <data name="Due from (UTC)">
+    <value>ครบกำหนดตั้งแต่ (UTC)</value>
+  </data>
+  <data name="Maximum reminders">
+    <value>จำนวนรายการเตือนสูงสุด</value>
+  </data>
+  <data name="Due">
+    <value>ถึงกำหนด</value>
+  </data>
+  <data name="Due through (UTC, inclusive)">
+    <value>ครบกำหนดถึง (UTC รวมวันที่ระบุ)</value>
+  </data>
+  <data name="Quotation ID (optional, one only)">
+    <value>รหัสใบเสนอราคา (ไม่บังคับ หนึ่งรายการเท่านั้น)</value>
+  </data>
+  <data name="Order IDs">
+    <value>รหัสคำสั่งซื้อ</value>
+  </data>
+  <data name="Optional canonical IDs. Separate order and replacement IDs with commas; maximum 100 associations.">
+    <value>รหัสอ้างอิงของระบบไม่บังคับ ระบุรหัสคำสั่งซื้อและงานทดแทนโดยคั่นด้วยจุลภาค เชื่อมโยงได้สูงสุด 100 รายการ</value>
+  </data>
+  <data name="Enter distinct positive IDs, one quotation, and at most 100 associations.">
+    <value>ระบุรหัสจำนวนเต็มบวกที่ไม่ซ้ำกัน ใบเสนอราคาหนึ่งรายการ และการเชื่อมโยงรวมไม่เกิน 100 รายการ</value>
+  </data>
+  <data name="Replacement IDs">
+    <value>รหัสงานทดแทน</value>
+  </data>
+  <data name="Commercial associations">
+    <value>การเชื่อมโยงเอกสารทางการค้า</value>
+  </data>
+</root>
