@@ -1,5 +1,6 @@
 """Causal metadata controls only: never starts SDK, Docker or a service."""
 import copy
+import io
 import json
 import pathlib
 import tempfile
@@ -11,6 +12,30 @@ import xml.etree.ElementTree as ET
 import graph_evidence as evidence
 import graph_receipt as receipt
 import graph_supervisor as supervisor
+import daemon_exe_probe as probe
+
+
+
+def synthetic_probe(daemon):
+    chain = [{'pid': 201, 'birth': '701', 'ppid': 202, 'session': 203, 'exe': '/usr/bin/python3.12'},
+             {'pid': 202, 'birth': '702', 'ppid': 203, 'session': 203, 'exe': '/usr/bin/timeout'},
+             {'pid': 203, 'birth': '703', 'ppid': 204, 'session': 203, 'exe': '/usr/bin/sudo'},
+             {'pid': 204, 'birth': '704', 'ppid': 1, 'session': 204, 'exe': '/synthetic/supervisor'}]
+    for index, member in enumerate(chain):
+        member['children'] = None if index == len(chain) - 1 else ([] if index == 0 else [chain[index - 1]['pid']])
+    payload = {'schema': 1, 'daemon': {key: daemon[key] for key in ('pid', 'birth', 'exe')},
+               'chain': chain, 'startedNs': 100, 'completedNs': 200, 'expirySeconds': 5}
+    raw = json.dumps(payload, separators=(',', ':')) + '\n'
+    return {'sourceSha256': evidence.digest(pathlib.Path(__file__).with_name('daemon_exe_probe.py')),
+            'interpreterExe': '/usr/bin/python3.12',
+            'owner': {key: chain[-1][key] for key in ('pid', 'birth', 'session', 'exe')},
+            'launcher': {key: chain[-2][key] for key in ('pid', 'birth', 'session')},
+            'payload': payload, 'raw': raw, 'rawSha256': evidence.hashlib.sha256(raw.encode()).hexdigest(),
+            'exitCode': 0, 'joined': True, 'firstFailure': None,
+            'probeFailure': None, 'stderrSha256': evidence.hashlib.sha256(b'').hexdigest(),
+            'outputSha256': evidence.hashlib.sha256(raw.encode()).hexdigest(),
+            'absence': [{'pid': member['pid'], 'birth': member['birth'], 'absent': True} for member in chain[:-1]],
+            'daemonBefore': copy.deepcopy(daemon), 'daemonAfter': copy.deepcopy(daemon)}
 
 
 def closure():
@@ -30,7 +55,7 @@ def closure():
     return {'daemon': before['daemon'], 'baseline': before, 'final': copy.deepcopy(before),
             'admitted': True, 'readerJoined': True, 'readerErrors': [], 'processes': [process],
             'resources': [original], 'foreignEvents': [], 'limitExceeded': False, 'fencerJoined': True,
-            'firstFailure': None,
+            'firstFailure': None, 'daemonProbes': [synthetic_probe(daemon), synthetic_probe(daemon)],
             'fences': [{'startNano': 1, 'endNano': 30, 'eventCount': 2, 'streamSha256': 'e' * 64,
                         'replaySha256': 'e' * 64, 'historyCount': 2, 'historyOldestNano': 10,
                         'anchor': None, 'anchorPresent': True, 'initialPrefixComplete': True,
@@ -38,6 +63,11 @@ def closure():
 
 
 class ProducerGraphTests(unittest.TestCase):
+    def setUp(self):
+        patch = mock.patch.object(evidence, 'interpreter_exe', return_value='/usr/bin/python3.12')
+        patch.start()
+        self.addCleanup(patch.stop)
+
     def test_foreign_session_does_not_read_executable(self):
         def stat(entry):
             pid = int(entry.parent.name)
@@ -73,7 +103,8 @@ class ProducerGraphTests(unittest.TestCase):
         docker = supervisor.Docker()
         with mock.patch.object(supervisor.pathlib.Path, 'read_text', read), \
              mock.patch.object(docker, 'get', return_value={'ID': 'synthetic-daemon'}), \
-             mock.patch.object(supervisor.os, 'readlink', side_effect=error):
+             mock.patch.object(supervisor, 'daemon_probe', side_effect=error), \
+             mock.patch.object(supervisor.os, 'stat', return_value=mock.Mock(st_ino=80)):
             with self.assertRaises(PermissionError) as observed:
                 docker.daemon()
         self.assertIs(error, observed.exception)
@@ -510,6 +541,318 @@ class ProducerGraphTests(unittest.TestCase):
             with self.subTest(mutation=mutation):
                 self.assertFalse(receipt.complete(changed, owner, inventories, pins))
 
+
+
+    def test_probe_helper_uses_literal_daemon_and_actual_bounded_ancestry(self):
+        daemon = closure()['daemon']
+        payload = synthetic_probe(daemon)['payload']
+        table = {member['pid']: {key: value for key, value in member.items() if key != 'children'} for member in payload['chain']}
+        table[50] = {'pid': 50, 'birth': '70', 'exe': '/synthetic/dockerd', 'ppid': 1, 'session': 50}
+        launcher = synthetic_probe(daemon)['launcher']
+        with mock.patch('builtins.open', side_effect=lambda path, **kw: io.StringIO('50' if path == '/var/run/docker.pid' else {'/proc/201/task/201/children': '', '/proc/202/task/202/children': '201', '/proc/203/task/203/children': '202'}[path])), \
+             mock.patch.object(probe.os, 'getpid', return_value=201), \
+             mock.patch.object(probe, 'process', side_effect=lambda pid, **kwargs: copy.deepcopy(table[pid])) as reads:
+            result = probe.observe(204, '704', 50, '70', launcher)
+        self.assertEqual(payload['chain'], result['chain'])
+        self.assertEqual(payload['daemon'], result['daemon'])
+        self.assertEqual([50, 201, 202, 203, 204, 201, 202, 203, 50], [call.args[0] for call in reads.call_args_list])
+        for value in ('0', '-1', '01', '../50', '2147483648', '５０', 'True'):
+            with self.assertRaises(ValueError):
+                probe.positive(value)
+
+    def test_probe_helper_rejects_changed_daemon_and_unbound_launcher(self):
+        daemon = closure()['daemon']
+        row = synthetic_probe(daemon)
+        table = {member['pid']: {key: value for key, value in member.items() if key != 'children'} for member in row['payload']['chain']}
+        table[50] = {'pid': 50, 'birth': '70', 'exe': '/synthetic/dockerd', 'ppid': 1, 'session': 50}
+        for target, birth, launcher in ((51, '70', row['launcher']), (50, 'foreign', row['launcher']),
+                                         (50, '70', {**row['launcher'], 'birth': '999'})):
+            with mock.patch('builtins.open', side_effect=lambda path, **kw: io.StringIO('50' if path == '/var/run/docker.pid' else {'/proc/201/task/201/children': '', '/proc/202/task/202/children': '201', '/proc/203/task/203/children': '202'}[path])), \
+                 mock.patch.object(probe.os, 'getpid', return_value=201), \
+                 mock.patch.object(probe, 'process', side_effect=lambda pid, **kwargs: table[pid]):
+                with self.assertRaises(ValueError):
+                    probe.observe(204, '704', target, birth, launcher)
+
+
+    def test_probe_helper_unknown_sibling_or_reparenting_is_fatal(self):
+        row = synthetic_probe(closure()['daemon'])
+        table = {member['pid']: {key: value for key, value in member.items() if key != 'children'} for member in row['payload']['chain']}
+        table[50] = {'pid': 50, 'birth': '70', 'exe': '/synthetic/dockerd', 'ppid': 1, 'session': 50}
+        for children in ('201 900', '01', '2147483648'):
+            def read(path, **kwargs):
+                return io.StringIO('50' if path == '/var/run/docker.pid' else (children if '/202/' in path else ''))
+            with mock.patch('builtins.open', side_effect=read), \
+                 mock.patch.object(probe.os, 'getpid', return_value=201), \
+                 mock.patch.object(probe, 'process', side_effect=lambda pid, **kwargs: copy.deepcopy(table[pid])):
+                with self.assertRaises(ValueError):
+                    probe.observe(204, '704', 50, '70', row['launcher'])
+
+    def test_probe_helper_changed_own_generation_or_parent_is_fatal(self):
+        row = synthetic_probe(closure()['daemon'])
+        table = {member['pid']: {key: value for key, value in member.items() if key != 'children'} for member in row['payload']['chain']}
+        table[50] = {'pid': 50, 'birth': '70', 'exe': '/synthetic/dockerd', 'ppid': 1, 'session': 50}
+        for changed in ({'birth': '999'}, {'ppid': 900}, {'exe': '/foreign/python'}):
+            counts = {}
+            def identity(pid, **kwargs):
+                counts[pid] = counts.get(pid, 0) + 1
+                result = copy.deepcopy(table[pid])
+                if pid == 201 and counts[pid] > 1:
+                    result.update(changed)
+                return result
+            with mock.patch('builtins.open', side_effect=lambda path, **kw: io.StringIO('50' if path == '/var/run/docker.pid' else '')), \
+                 mock.patch.object(probe.os, 'getpid', return_value=201), \
+                 mock.patch.object(probe, 'process', side_effect=identity):
+                with self.assertRaisesRegex(ValueError, 'cohort'):
+                    probe.observe(204, '704', 50, '70', row['launcher'])
+
+    def test_probe_helper_second_stat_bound_and_denied_exe_fail(self):
+        text = '50 (synthetic) ' + ' '.join(['S', '1', '50', '50'] + ['0'] * 15 + ['70'])
+        with mock.patch('builtins.open', side_effect=[io.StringIO(text), io.StringIO('x' * 8193)]), \
+             mock.patch.object(probe.os, 'readlink', return_value='/synthetic/dockerd'):
+            with self.assertRaises(ValueError):
+                probe.process(50)
+        error = PermissionError(13, 'synthetic denied')
+        with mock.patch('builtins.open', return_value=io.StringIO(text)), \
+             mock.patch.object(probe.os, 'readlink', side_effect=error):
+            with self.assertRaises(PermissionError) as observed:
+                probe.process(50)
+        self.assertIs(error, observed.exception)
+        with self.assertRaises(TimeoutError):
+            probe.expire(14, None)
+
+    def test_probe_wrong_source_never_launches(self):
+        with mock.patch.object(supervisor.pathlib.Path, 'read_bytes', return_value=b'foreign utility'), \
+             mock.patch.object(supervisor.subprocess, 'Popen') as launch:
+            with self.assertRaises(ValueError):
+                supervisor.daemon_probe(50, '70', [])
+        launch.assert_not_called()
+
+    def test_probe_fixed_source_argv_handshake_and_original_reap(self):
+        original = synthetic_probe(closure()['daemon'])
+        process = mock.Mock(pid=203, returncode=0)
+        process.communicate.return_value = (original['raw'].encode(), b'')
+        rows = []
+        with mock.patch.object(supervisor, 'probe_stat', side_effect=[{key: original['owner'][key] for key in ('pid', 'birth', 'session')}, original['launcher']]), \
+             mock.patch.object(supervisor.os, 'getpid', return_value=204), \
+             mock.patch.object(supervisor.os, 'readlink', return_value='/synthetic/supervisor'), \
+             mock.patch.object(supervisor.os.path, 'realpath', return_value='/usr/bin/python3.12'), \
+             mock.patch.object(supervisor.subprocess, 'Popen', return_value=process) as launch, \
+             mock.patch.object(supervisor, 'probe_absence', return_value=original['absence']):
+            self.assertEqual('/synthetic/dockerd', supervisor.daemon_probe(50, '70', rows))
+        argv = launch.call_args.args[0]
+        self.assertEqual(['/usr/bin/sudo', '-n', '--', '/usr/bin/timeout', '--signal=TERM', '--kill-after=1s', '5s', '/usr/bin/python3', '-I', '-S', '-B', '-c'], argv[:12])
+        self.assertEqual(pathlib.Path(supervisor.__file__).with_name('daemon_exe_probe.py').read_bytes(), argv[12].encode('utf-8'))
+        self.assertEqual(['204', '704', '50', '70'], argv[13:])
+        self.assertTrue(launch.call_args.kwargs['start_new_session'])
+        process.communicate.assert_called_once_with((json.dumps(original['launcher']) + '\n').encode('ascii'), timeout=8)
+        self.assertTrue(rows[0]['joined'])
+        self.assertEqual(original['absence'], rows[0]['absence'])
+        self.assertIsNone(rows[0]['firstFailure'])
+
+    def test_probe_timeout_retains_unknown_and_never_general_kills(self):
+        original = synthetic_probe(closure()['daemon'])
+        process = mock.Mock(pid=203)
+        process.communicate.side_effect = supervisor.subprocess.TimeoutExpired('fixed', 8)
+        process.wait.side_effect = supervisor.subprocess.TimeoutExpired('fixed', 1)
+        rows = []
+        with mock.patch.object(supervisor, 'probe_stat', side_effect=[{key: original['owner'][key] for key in ('pid', 'birth', 'session')}, original['launcher']]), \
+             mock.patch.object(supervisor.os, 'getpid', return_value=204), \
+             mock.patch.object(supervisor.os, 'readlink', return_value='/synthetic/supervisor'), \
+             mock.patch.object(supervisor.os.path, 'realpath', return_value='/usr/bin/python3.12'), \
+             mock.patch.object(supervisor.subprocess, 'Popen', return_value=process):
+            with self.assertRaises(supervisor.subprocess.TimeoutExpired):
+                supervisor.daemon_probe(50, '70', rows)
+        self.assertFalse(rows[0]['joined'])
+        self.assertEqual('TimeoutExpired', rows[0]['firstFailure']['category'])
+        process.kill.assert_not_called()
+        process.terminate.assert_not_called()
+        self.assertFalse(evidence.probe_receipt(rows[0]))
+
+    def test_probe_terminal_absence_rejects_denied_read_reuse_and_unknown_session(self):
+        chain = synthetic_probe(closure()['daemon'])['payload']['chain'][:-1]
+        for error in (PermissionError(13, 'synthetic'), ValueError('unknown')):
+            with mock.patch.object(supervisor, 'probe_stat', side_effect=error):
+                with self.assertRaises(type(error)):
+                    supervisor.probe_absence(chain)
+        with mock.patch.object(supervisor, 'probe_stat', return_value={'pid': 201, 'birth': '999', 'session': 203}):
+            with self.assertRaisesRegex(ValueError, 'reused'):
+                supervisor.probe_absence(chain)
+        with mock.patch.object(supervisor, 'probe_stat', side_effect=[FileNotFoundError()] * 3 + [{'pid': 900, 'birth': '999', 'session': 203}]), \
+             mock.patch.object(supervisor.pathlib.Path, 'iterdir', return_value=[pathlib.Path('/proc/900')]):
+            with self.assertRaisesRegex(ValueError, 'unknown'):
+                supervisor.probe_absence(chain)
+        with mock.patch.object(supervisor, 'probe_stat', side_effect=FileNotFoundError()), \
+             mock.patch.object(supervisor.pathlib.Path, 'iterdir', return_value=[]):
+            self.assertEqual(synthetic_probe(closure()['daemon'])['absence'], supervisor.probe_absence(chain))
+
+    def test_probe_receipt_every_member_source_raw_identity_and_closure_fail_closed(self):
+        original = synthetic_probe(closure()['daemon'])
+        self.assertTrue(evidence.probe_receipt(original))
+        for key in original:
+            changed = copy.deepcopy(original)
+            del changed[key]
+            self.assertFalse(evidence.probe_receipt(changed), key)
+        changes = [lambda r: r.update(sourceSha256='0' * 64), lambda r: r.update(joined=False),
+                   lambda r: r.update(exitCode=1), lambda r: r.update(firstFailure={'category': 'PermissionError'}),
+                   lambda r: r.update(rawSha256='0' * 64), lambda r: r.update(absence=[]),
+                   lambda r: r['owner'].update(pid=True), lambda r: r['launcher'].update(session=True),
+                   lambda r: r['daemonBefore'].update(pid=True), lambda r: r['daemonAfter'].update(socketInode=True),
+                   lambda r: r['payload'].update(expirySeconds=6), lambda r: r['payload'].update(completedNs=5_000_000_101),
+                   lambda r: r['payload']['chain'][0].update(birth='foreign'),
+                   lambda r: r['payload']['chain'][1].update(exe='/foreign/executable'),
+                   lambda r: r['payload']['chain'][1].update(ppid=999),
+                   lambda r: r['payload']['chain'][0].update(session=204),
+                   lambda r: r['payload']['chain'][0].update(children=[900]),
+                   lambda r: r['payload']['chain'][1].update(children=[201, 900]),
+                   lambda r: r['payload']['chain'][1].update(children=[True])]
+        for change in changes:
+            changed = copy.deepcopy(original)
+            change(changed)
+            # Rebind raw so each structural rejection is independently causal.
+            changed['raw'] = json.dumps(changed['payload'], separators=(',', ':')) + '\n'
+            if changed['rawSha256'] != '0' * 64:
+                changed['rawSha256'] = evidence.hashlib.sha256(changed['raw'].encode()).hexdigest()
+            changed['outputSha256'] = evidence.hashlib.sha256(changed['raw'].encode()).hexdigest()
+            self.assertFalse(evidence.probe_receipt(changed))
+        closed = closure()
+        for row in closed['daemonProbes']:
+            row['absence'] = []
+        self.assertFalse(evidence.cleanup(closed))
+
+
+    def test_probe_each_snapshot_inode_rejects_bool_even_when_equal_to_one(self):
+        original = synthetic_probe({**closure()['daemon'], 'socketInode': 1})
+        self.assertTrue(evidence.probe_receipt(original))
+        for key in ('daemonBefore', 'daemonAfter'):
+            changed = copy.deepcopy(original)
+            changed[key]['socketInode'] = True
+            self.assertFalse(evidence.probe_receipt(changed))
+
+    def test_failed_unsettled_or_partial_probe_prevents_any_second_launch(self):
+        original = synthetic_probe(closure()['daemon'])
+        for change in (lambda r: r.update(firstFailure={'category': 'TimeoutExpired'}),
+                       lambda r: r.update(joined=False), lambda r: r.update(absence=[]),
+                       lambda r: r.update(daemonAfter=None), lambda r: r.update(rawSha256='0' * 64)):
+            row = copy.deepcopy(original)
+            change(row)
+            with mock.patch.object(supervisor.subprocess, 'Popen') as launch:
+                with self.assertRaisesRegex(ValueError, 'prior daemon probe'):
+                    supervisor.daemon_probe(50, '70', [row])
+            launch.assert_not_called()
+        # A real actor-free first call leaves retained unknown settlement.
+        process = mock.Mock(pid=203)
+        process.communicate.side_effect = supervisor.subprocess.TimeoutExpired('fixed', 8)
+        process.wait.side_effect = supervisor.subprocess.TimeoutExpired('fixed', 1)
+        rows = []
+        with mock.patch.object(supervisor, 'probe_stat', side_effect=[{key: original['owner'][key] for key in ('pid', 'birth', 'session')}, original['launcher']]), \
+             mock.patch.object(supervisor.os, 'getpid', return_value=204), \
+             mock.patch.object(supervisor.os, 'readlink', return_value='/synthetic/supervisor'), \
+             mock.patch.object(supervisor.os.path, 'realpath', return_value='/usr/bin/python3.12'), \
+             mock.patch.object(supervisor.subprocess, 'Popen', return_value=process) as launch:
+            with self.assertRaises(supervisor.subprocess.TimeoutExpired):
+                supervisor.daemon_probe(50, '70', rows)
+            with self.assertRaisesRegex(ValueError, 'prior daemon probe'):
+                supervisor.daemon_probe(50, '70', rows)
+            self.assertEqual(1, launch.call_count)
+        self.assertEqual('TimeoutExpired', rows[0]['firstFailure']['category'])
+        self.assertFalse(rows[0]['joined'])
+
+    def test_probe_failure_remains_sticky_before_sdk_dispatch(self):
+        phase = supervisor.Phase.__new__(supervisor.Phase)
+        phase.first_failure = {'gate': 'observer-startup', 'category': 'PermissionError'}
+        phase.errors, phase.foreign, phase.limit = [], [], False
+        with mock.patch.object(supervisor.subprocess, 'Popen') as launch:
+            with self.assertRaises(supervisor.CommandFailure):
+                phase.run(['dotnet', 'build'], '.', {}, 'must-not-dispatch')
+        launch.assert_not_called()
+        self.assertEqual('PermissionError', phase.first_failure['category'])
+
+
+    def helper_failure_output(self, observe):
+        output = io.StringIO()
+        stdin = mock.Mock(buffer=io.BytesIO(b'{"pid":203,"birth":"703","session":203}\n'))
+        with mock.patch.object(probe.sys, 'argv', ['fixed', '204', '704', '50', '70']), \
+             mock.patch.object(probe.sys, 'stdin', stdin), mock.patch.object(probe.sys, 'stdout', output), \
+             mock.patch.object(probe.signal, 'SIGALRM', 14, create=True), \
+             mock.patch.object(probe.signal, 'signal'), mock.patch.object(probe.signal, 'alarm', create=True), \
+             mock.patch.object(probe, 'observe', side_effect=observe):
+            self.assertEqual(1, probe.main())
+        payload = json.loads(output.getvalue())
+        self.assertFalse(payload['complete'])
+        self.assertTrue(evidence.utility_failure(payload))
+        return output.getvalue(), payload
+
+    def test_helper_original_denied_read_retains_safe_cause(self):
+        stat = '50 (synthetic) ' + ' '.join(['S', '1', '50', '50'] + ['0'] * 15 + ['70'])
+        def observe(*arguments):
+            with mock.patch('builtins.open', return_value=io.StringIO(stat)), \
+                 mock.patch.object(probe.os, 'readlink', side_effect=PermissionError(13, 'PRIVATE exception')):
+                return probe.process(50, operation='daemon')
+        raw, payload = self.helper_failure_output(observe)
+        self.assertEqual('PermissionError', payload['category'])
+        self.assertEqual(13, payload['errno'])
+        self.assertEqual({'operation': 'daemon-exe-readlink', 'path': '/proc/50/exe'}, payload['failedRead'])
+        self.assertNotIn('PRIVATE', raw)
+
+    def test_helper_actual_unknown_cohort_retains_allowlisted_cause(self):
+        original = synthetic_probe(closure()['daemon'])
+        table = {row['pid']: {key: value for key, value in row.items() if key != 'children'} for row in original['payload']['chain']}
+        table[50] = {'pid': 50, 'birth': '70', 'exe': '/synthetic/dockerd', 'ppid': 1, 'session': 50}
+        original_observe = probe.observe
+        def observe(*arguments):
+            def read(path, **kwargs):
+                return io.StringIO('50' if path == '/var/run/docker.pid' else ('201 900' if '/202/' in path else ''))
+            with mock.patch('builtins.open', side_effect=read), mock.patch.object(probe.os, 'getpid', return_value=201), \
+                 mock.patch.object(probe, 'process', side_effect=lambda pid, **kwargs: copy.deepcopy(table[pid])):
+                return original_observe(*arguments)
+        raw, payload = self.helper_failure_output(observe)
+        self.assertEqual('cohort-unknown-or-changed', payload['reason'])
+        self.assertEqual('ValueError', payload['category'])
+        self.assertIsNone(payload['failedRead'])
+
+    def mocked_probe_output(self, payload, exit_code, stderr=b''):
+        original = synthetic_probe(closure()['daemon'])
+        process = mock.Mock(pid=203, returncode=exit_code)
+        process.communicate.return_value = ((json.dumps(payload, separators=(',', ':')) + '\n').encode(), stderr)
+        rows = []
+        with mock.patch.object(supervisor, 'probe_stat', side_effect=[{key: original['owner'][key] for key in ('pid', 'birth', 'session')}, original['launcher']]), \
+             mock.patch.object(supervisor.os, 'getpid', return_value=204), \
+             mock.patch.object(supervisor.os, 'readlink', return_value='/synthetic/supervisor'), \
+             mock.patch.object(supervisor.subprocess, 'Popen', return_value=process) as launch:
+            with self.assertRaises(ValueError):
+                supervisor.daemon_probe(50, '70', rows)
+            with self.assertRaisesRegex(ValueError, 'prior daemon probe'):
+                supervisor.daemon_probe(50, '70', rows)
+            self.assertEqual(1, launch.call_count)
+        self.assertFalse(evidence.probe_receipt(rows[0]))
+        self.assertIsNone(rows[0]['payload'])
+        self.assertEqual([], rows[0]['absence'])
+        return rows[0]
+
+    def test_supervisor_nonzero_retains_only_safe_failure_not_private_stderr(self):
+        denial = PermissionError(13, 'PRIVATE')
+        denial.probe_read_site = {'operation': 'daemon-exe-readlink', 'path': '/proc/50/exe'}
+        payload = probe.failure(denial)
+        row = self.mocked_probe_output(payload, 1, b'PRIVATE stderr')
+        self.assertEqual(payload, row['probeFailure'])
+        self.assertEqual('PermissionError', row['firstFailure']['utilityCategory'])
+        self.assertEqual(13, row['firstFailure']['errno'])
+        self.assertEqual(payload['failedRead'], row['firstFailure']['failedRead'])
+        self.assertNotIn('PRIVATE', json.dumps(row))
+
+    def test_fabricated_diagnostic_and_nonzero_fake_success_fail_closed(self):
+        safe = probe.failure(PermissionError(13, 'PRIVATE'))
+        changed = []
+        for key, value in (('reason', 'PRIVATE'), ('category', 'PRIVATE'), ('complete', True), ('errno', True),
+                           ('failedRead', {'operation': 'daemon-exe-readlink', 'path': '/etc/shadow'})):
+            item = copy.deepcopy(safe)
+            item[key] = value
+            changed.append(item)
+            self.assertFalse(evidence.utility_failure(item))
+        for payload, code in [(synthetic_probe(closure()['daemon'])['payload'], 1), (safe, 0)] + [(item, 1) for item in changed]:
+            row = self.mocked_probe_output(payload, code)
+            self.assertIsNone(row['probeFailure'])
+            self.assertEqual('', row['raw'])
 
 if __name__ == '__main__':
     unittest.main()

@@ -11,7 +11,9 @@ import threading
 import time
 import urllib.parse
 
-from graph_evidence import cleanup
+from graph_evidence import cleanup, probe_receipt, utility_failure
+
+PROBE_SHA256 = 'ac5ffb6b4bb2e2647f58797359e992ca5f72a46d5430cfb96a90d06afab34919'
 
 
 def read_site(operation, path, callback):
@@ -53,6 +55,120 @@ def read_failure(gate, error):
     return failure
 
 
+
+def probe_stat(pid):
+    """Unprivileged stat only; this never substitutes executable identity."""
+    if type(pid) is not int or not 0 < pid <= 2147483647:
+        raise ValueError('invalid probe process PID')
+    text = pathlib.Path(f'/proc/{pid}/stat').read_text(encoding='ascii')
+    if len(text) > 8192:
+        raise ValueError('probe stat bound')
+    fields = text.rsplit(')', 1)[1].split()
+    return {'pid': pid, 'birth': fields[19], 'session': int(fields[3])}
+
+
+def probe_absence(chain):
+    """Require actual absence, not denied read, zombie, PID reuse or exit status."""
+    sessions = {row['session'] for row in chain}
+    originals = {row['pid']: row for row in chain}
+    absent = []
+    for pid, row in originals.items():
+        try:
+            current = probe_stat(pid)
+        except FileNotFoundError:
+            absent.append({'pid': pid, 'birth': row['birth'], 'absent': True})
+            continue
+        if current['birth'] != row['birth']:
+            raise ValueError('original probe PID reused')
+        raise ValueError('original probe process remains')
+    # Enumerate stat only, preserving the existing SDK executable/session gates.
+    for entry in pathlib.Path('/proc').iterdir():
+        if not entry.name.isascii() or not entry.name.isdecimal():
+            continue
+        try:
+            current = probe_stat(int(entry.name))
+        except FileNotFoundError:
+            continue
+        if current['session'] in sessions:
+            raise ValueError('unknown probe session member remains')
+    return absent
+
+
+def daemon_probe(pid, birth, receipts):
+    """Run only the exact source-owned read utility; no shell, grant or SDK action."""
+    if not isinstance(receipts, list) or len(receipts) >= 4096 or any(not probe_receipt(row) for row in receipts):
+        raise ValueError('prior daemon probe failed or remains unqualified')
+    source = pathlib.Path(__file__).with_name('daemon_exe_probe.py').read_bytes()
+    source_sha = hashlib.sha256(source).hexdigest()
+    if source_sha != PROBE_SHA256 or not 0 < len(source) <= 16384 or source.decode('utf-8').encode('utf-8') != source or b'\r' in source:
+        raise ValueError('fixed probe source changed')
+    owner = probe_stat(os.getpid())
+    owner['exe'] = os.readlink(f'/proc/{owner["pid"]}/exe')
+    interpreter = os.path.realpath('/usr/bin/python3')
+    arguments = ['/usr/bin/sudo', '-n', '--', '/usr/bin/timeout', '--signal=TERM',
+                 '--kill-after=1s', '5s', '/usr/bin/python3', '-I', '-S', '-B', '-c', source.decode('utf-8'),
+                 str(owner['pid']), owner['birth'], str(pid), birth]
+    row = {'sourceSha256': source_sha, 'interpreterExe': interpreter, 'owner': owner,
+           'launcher': None, 'payload': None, 'raw': '', 'rawSha256': '',
+           'exitCode': None, 'joined': False, 'absence': [], 'firstFailure': None,
+           'daemonBefore': None, 'daemonAfter': None,
+           'probeFailure': None, 'stderrSha256': '', 'outputSha256': ''}
+    receipts.append(row)  # Retain partial failure before any privileged launch.
+    process = None
+    safe_payload = False
+    try:
+        process = subprocess.Popen(arguments, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                                   stderr=subprocess.PIPE, start_new_session=True,
+                                   env={'PATH': '/usr/bin:/bin', 'LANG': 'C.UTF-8'})
+        launcher = probe_stat(process.pid)
+        if launcher['session'] != launcher['pid']:
+            raise ValueError('probe launcher session not isolated')
+        row['launcher'] = launcher
+        out, error = process.communicate((json.dumps(launcher) + '\n').encode('ascii'), timeout=8)
+        row['exitCode'] = process.returncode
+        row['joined'] = True  # communicate waits/reaps the retained direct child.
+        row['stderrSha256'] = hashlib.sha256(error).hexdigest()
+        row['outputSha256'] = hashlib.sha256(out).hexdigest()
+        if not 0 < len(out) <= 32768:
+            raise ValueError('readonly probe failed or output bound')
+        raw = out.decode('utf-8')
+        payload = json.loads(raw)
+        if utility_failure(payload):
+            if raw != json.dumps(payload, separators=(',', ':')) + '\n':
+                raise ValueError('utility failure encoding invalid')
+            if process.returncode == 0:
+                raise ValueError('utility failure cannot be successful exit')
+            safe_payload = True
+            row['probeFailure'] = payload
+            row['raw'], row['rawSha256'] = raw, row['outputSha256']
+            row['firstFailure'] = {'category': 'ProbeUtilityFailure', 'reason': payload['reason'],
+                                   'utilityCategory': payload['category'], 'errno': payload['errno'],
+                                   'failedRead': payload['failedRead']}
+            raise ValueError('readonly utility failed; safe original cause retained')
+        if process.returncode != 0 or error:
+            raise ValueError('readonly probe nonzero or unexpected stderr')
+        row['raw'], row['rawSha256'], row['payload'] = raw, row['outputSha256'], payload
+        if payload['daemon']['pid'] != pid or payload['daemon']['birth'] != birth:
+            raise ValueError('probe target generation changed')
+        if not probe_receipt(row, terminal=False):
+            raise ValueError('probe source or original ancestry invalid')
+        safe_payload = True
+        row['absence'] = probe_absence(payload['chain'][:-1])
+        return payload['daemon']['exe']
+    except Exception as failure:
+        if not safe_payload:
+            row['raw'], row['rawSha256'], row['payload'] = '', '', None
+        if row['firstFailure'] is None:
+            row['firstFailure'] = {'category': type(failure).__name__}
+        if process is not None and not row['joined']:
+            try:
+                process.wait(timeout=1)
+                row['exitCode'], row['joined'] = process.returncode, True
+            except subprocess.TimeoutExpired:
+                pass  # No general privileged kill or unknown-child absence claim.
+        raise
+
+
 class DockerConnection(http.client.HTTPConnection):
     def __init__(self, timeout=30):
         super().__init__('localhost', timeout=timeout)
@@ -78,7 +194,9 @@ class DockerConnection(http.client.HTTPConnection):
 
 
 class Docker:
-    def __init__(self):
+    def __init__(self, probes=None):
+        self.probes = probes if probes is not None else []
+        self.probe_lock = threading.Lock()
         self.connections = {}
         self.lock = threading.Lock()
 
@@ -89,16 +207,35 @@ class Docker:
             connection.stop()
 
     def daemon(self):
-        pid = int(read_site('daemon-pid-read', '/var/run/docker.pid',
-                            lambda: pathlib.Path('/var/run/docker.pid').read_text()).strip())
-        if type(pid) is not int or not 0 < pid <= 2147483647:
-            raise ValueError('invalid daemon PID')
-        fields = read_site('daemon-stat-read', f'/proc/{pid}/stat',
-                           lambda: pathlib.Path(f'/proc/{pid}/stat').read_text()).rsplit(')', 1)[1].split()
-        return {'id': self.get('/info')['ID'], 'pid': pid, 'birth': fields[19],
-                'exe': read_site('daemon-exe-readlink', f'/proc/{pid}/exe', lambda: os.readlink(f'/proc/{pid}/exe')),
-                'socketInode': read_site('daemon-socket-stat', '/var/run/docker.sock',
-                                         lambda: os.stat('/var/run/docker.sock')).st_ino}
+        # Serialize utility cohorts; no probe may outlive this identity observation.
+        with self.probe_lock:
+            pid = int(read_site('daemon-pid-read', '/var/run/docker.pid',
+                                lambda: pathlib.Path('/var/run/docker.pid').read_text()).strip())
+            if type(pid) is not int or not 0 < pid <= 2147483647:
+                raise ValueError('invalid daemon PID')
+            def snapshot():
+                current = int(read_site('daemon-pid-read', '/var/run/docker.pid',
+                                       lambda: pathlib.Path('/var/run/docker.pid').read_text()).strip())
+                fields = read_site('daemon-stat-read', f'/proc/{pid}/stat',
+                                   lambda: pathlib.Path(f'/proc/{pid}/stat').read_text()).rsplit(')', 1)[1].split()
+                inode = read_site('daemon-socket-stat', '/var/run/docker.sock',
+                                  lambda: os.stat('/var/run/docker.sock')).st_ino
+                return (current, fields[19], self.get('/info')['ID'], inode)
+            before = snapshot()
+            if before[0] != pid:
+                raise ValueError('daemon PID changed before observation')
+            executable = read_site('daemon-exe-readlink', f'/proc/{pid}/exe',
+                                   lambda: daemon_probe(pid, before[1], self.probes))
+            after = snapshot()
+            row = self.probes[-1]
+            row['daemonBefore'] = {'id': before[2], 'pid': pid, 'birth': before[1],
+                                   'exe': executable, 'socketInode': before[3]}
+            row['daemonAfter'] = {'id': after[2], 'pid': after[0], 'birth': after[1],
+                                  'exe': executable, 'socketInode': after[3]}
+            if after != before or not probe_receipt(row):
+                row['firstFailure'] = {'category': 'DaemonProbeIdentityOrClosureInvalid'}
+                raise ValueError('daemon generation or probe closure changed across privileged read')
+            return row['daemonBefore']
 
     def get(self, route):
         connection = DockerConnection()
@@ -231,7 +368,8 @@ class Phase:
         self.policy = actor_policy
         self.private = pathlib.Path(private)
         self.private.mkdir(parents=True, exist_ok=True)
-        self.docker = Docker()
+        self.probes = []
+        self.docker = Docker(self.probes)
         self.baseline = {'daemon': None, 'success': False, 'containers': [], 'volumes': [], 'networks': []}
         self.events, self.resources, self.errors, self.foreign, self.processes = [], {}, [], [], []
         self.limit = False
@@ -517,7 +655,7 @@ class Phase:
                    'resources': list(self.resources.values()), 'foreignEvents': self.foreign,
                    'limitExceeded': self.limit, 'fences': self.fences,
                    'fencerJoined': self.fencer is None or not self.fencer.is_alive(),
-                   'firstFailure': self.first_failure}
+                   'firstFailure': self.first_failure, 'daemonProbes': self.probes}
         (self.private / 'cleanup.json').write_text(json.dumps(receipt, indent=2) + '\n')
         return receipt
 
