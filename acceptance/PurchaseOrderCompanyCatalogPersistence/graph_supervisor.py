@@ -10,10 +10,46 @@ import subprocess
 import threading
 import time
 import urllib.parse
+from collections import Counter
 
 from graph_evidence import cleanup, probe_receipt, utility_failure
 
 PROBE_SHA256 = 'ac5ffb6b4bb2e2647f58797359e992ca5f72a46d5430cfb96a90d06afab34919'
+
+
+def coordinate_digest(event):
+    return hashlib.sha256(json.dumps(event, sort_keys=True).encode()).hexdigest()
+
+
+def safe_coordinate(event):
+    """Never retain arbitrary action/ID/type text, labels or Docker attributes."""
+    kinds = {'container', 'volume', 'network', 'image'}
+    actions = {'create', 'start', 'stop', 'die', 'destroy', 'remove', 'pull',
+               'connect', 'disconnect', 'exec_die', 'exec_start', 'exec_create'}
+    kind, action, key, nano = event.get('Type'), event.get('Action'), event.get('id'), event.get('timeNano')
+    return {'kind': kind if isinstance(kind, str) and kind in kinds else 'other',
+            'action': action if isinstance(action, str) and action in actions else 'other',
+            'id': key if isinstance(key, str) and len(key) == 64 and all(c in '0123456789abcdef' for c in key) else None,
+            'timeNano': nano if type(nano) is int and 0 < nano < 2 ** 63 else None,
+            'sha256': coordinate_digest(event)}
+
+
+def mismatch_diagnostic(observed, replay, start, end):
+    """Bounded first differing coordinate and hashes; no raw daemon payload."""
+    if observed == replay:
+        return None
+    index = next((i for i, pair in enumerate(zip(observed, replay)) if pair[0] != pair[1]),
+                 min(len(observed), len(replay)))
+    stream = [coordinate_digest(event) for event in observed[:200]]
+    history = [coordinate_digest(event) for event in replay[:200]]
+    truncated = len(observed) > 200 or len(replay) > 200
+    return {'startNano': start, 'endNano': end,
+            'streamSha256': coordinate_digest(observed), 'replaySha256': coordinate_digest(replay),
+            'streamCount': len(observed), 'replayCount': len(replay), 'firstMismatchIndex': index,
+            'stream': safe_coordinate(observed[index]) if index < len(observed) else None,
+            'replay': safe_coordinate(replay[index]) if index < len(replay) else None,
+            'streamSequenceSha256': stream, 'replaySequenceSha256': history,
+            'truncated': truncated, 'orderOnly': None if truncated else Counter(stream) == Counter(history)}
 
 
 def read_site(operation, path, callback):
@@ -381,6 +417,10 @@ class Phase:
         self.anchor = None
         self.stopping = False
         self.first_failure = None
+        self.first_rejection = None
+        self.first_mismatch = None
+        self.rejection_capture_attempted = False
+        self.mismatch_capture_attempted = False
         self.commands = []
         self.connection = DockerConnection(timeout=30)
         self.reader = None
@@ -484,6 +524,12 @@ class Phase:
         finally:
             connection.close()
             self.fence_connection = None
+            if observed != replay and not getattr(self, 'mismatch_capture_attempted', False):
+                self.mismatch_capture_attempted = True
+                try:
+                    self.first_mismatch = mismatch_diagnostic(observed, replay, start, end)
+                except Exception:
+                    pass  # Secondary diagnostics must not mask original failure or fence settlement.
             self.fences.append({'startNano': start, 'endNano': end, 'eventCount': len(observed),
                                 'streamSha256': hashlib.sha256(json.dumps(observed, sort_keys=True).encode()).hexdigest(),
                                 'replaySha256': hashlib.sha256(json.dumps(replay, sort_keys=True).encode()).hexdigest(),
@@ -498,6 +544,17 @@ class Phase:
         while not self.fence_stop.wait(4):
             self._fence(time.time_ns())
 
+    def _reject(self, category, event):
+        self.foreign.append(category)
+        if not getattr(self, 'rejection_capture_attempted', False):
+            self.rejection_capture_attempted = True
+            try:
+                projected = {key: event.get(key) for key in ('Type', 'Action', 'timeNano')}
+                projected['id'] = event['Actor']['ID']
+                self.first_rejection = {'category': category, 'coordinate': safe_coordinate(projected)}
+            except Exception:
+                pass  # The original foreign category remains fatal; never retain arbitrary exception text.
+
     def _resource(self, event):
         kind = {'container': 'containers', 'volume': 'volumes', 'network': 'networks'}.get(event['Type'])
         action, key = event['Action'], event['Actor']['ID']
@@ -509,11 +566,11 @@ class Phase:
                         return  # Source-expected image cache boundary, not an owned resource cleanup claim.
                 except Exception:
                     self.errors.append('UnknownImageCacheIdentity')
-            self.foreign.append('unexpected-daemon-actor')
+            self._reject('unexpected-daemon-actor', event)
             return
         if action == 'create':
             if key in self.resources or key in self.baseline[kind]:
-                self.foreign.append('duplicate-or-baseline-create')
+                self._reject('duplicate-or-baseline-create', event)
                 return
             row = {'kind': kind, 'id': key, 'createdNano': event['timeNano'], 'terminalNano': 0,
                    'inspect': {}, 'session': '', 'daemon': self.baseline['daemon']}
@@ -527,7 +584,7 @@ class Phase:
                     image = value['Config']['Image']
                     reaper = '00000000-0000-0000-0000-000000000000' if image == self.policy['ryukImage'] else session
                     if not session or image not in self.policy['images'] or labels.get(self.policy['reaperLabel']) != reaper or any(labels.get(name) != expected for name, expected in self.policy['requiredLabels'].items()):
-                        self.foreign.append('foreign-container')
+                        self._reject('foreign-container', event)
                     row['session'] = session
                     row['inspect'] = {'id': value['Id'], 'kind': kind, 'generation': value['Created'],
                                       'image': value['Image'], 'configImage': image,
@@ -543,14 +600,14 @@ class Phase:
             if key in self.resources:
                 self.resources[key]['terminalNano'] = event['timeNano']
             elif key in self.baseline.get(kind, []):
-                self.foreign.append('baseline-object-destroyed')
+                self._reject('baseline-object-destroyed', event)
             else:
-                self.foreign.append('terminal-without-original-create')
+                self._reject('terminal-without-original-create', event)
         elif key not in self.resources:
             attributes = event['Actor'].get('Attributes') or {}
             container = attributes.get('container')
             if not (kind == 'networks' and key in self.baseline['networks'] and action in ('connect', 'disconnect') and container in self.resources and self.resources[container]['kind'] == 'containers'):
-                self.foreign.append('event-without-original-create')
+                self._reject('event-without-original-create', event)
 
     def run(self, arguments, cwd, environment, name, timeout=1800):
         if self.errors or self.foreign or self.limit or self.first_failure is not None:
@@ -655,7 +712,9 @@ class Phase:
                    'resources': list(self.resources.values()), 'foreignEvents': self.foreign,
                    'limitExceeded': self.limit, 'fences': self.fences,
                    'fencerJoined': self.fencer is None or not self.fencer.is_alive(),
-                   'firstFailure': self.first_failure, 'daemonProbes': self.probes}
+                   'firstFailure': self.first_failure, 'daemonProbes': self.probes,
+                   'observerDiagnostic': {'firstRejection': getattr(self, 'first_rejection', None),
+                                          'firstMismatch': getattr(self, 'first_mismatch', None)}}
         (self.private / 'cleanup.json').write_text(json.dumps(receipt, indent=2) + '\n')
         return receipt
 

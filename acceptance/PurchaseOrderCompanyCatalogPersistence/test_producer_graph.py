@@ -98,6 +98,7 @@ def closure():
             'admitted': True, 'readerJoined': True, 'readerErrors': [], 'processes': [process],
             'resources': [original], 'foreignEvents': [], 'limitExceeded': False, 'fencerJoined': True,
             'firstFailure': None, 'daemonProbes': [synthetic_probe(daemon), synthetic_probe(daemon)],
+            'observerDiagnostic': {'firstRejection': None, 'firstMismatch': None},
             'fences': [{'startNano': 1, 'endNano': 30, 'eventCount': 2, 'streamSha256': 'e' * 64,
                         'replaySha256': 'e' * 64, 'historyCount': 2, 'historyOldestNano': 10,
                         'anchor': None, 'anchorPresent': True, 'initialPrefixComplete': True,
@@ -109,6 +110,184 @@ class ProducerGraphTests(unittest.TestCase):
         patch = mock.patch.object(evidence, 'interpreter_exe', return_value='/usr/bin/python3.12')
         patch.start()
         self.addCleanup(patch.stop)
+
+    @staticmethod
+    def projected_event(nano=10, action='start', key='c' * 64):
+        return {'Type': 'container', 'Action': action, 'timeNano': nano, 'id': key}
+
+    @staticmethod
+    def resource_phase(image='postgres:18-alpine', session='12345678-1234-1234-1234-123456789abc', reaper=None):
+        phase = supervisor.Phase.__new__(supervisor.Phase)
+        phase.policy = json.loads(pathlib.Path(supervisor.__file__).with_name('graph-actor-policy.json').read_text())
+        phase.baseline = closure()['baseline']
+        phase.resources, phase.errors, phase.foreign = {}, [], []
+        phase.first_rejection = None
+        phase.docker = mock.Mock()
+        phase.docker.get.return_value = {'Id': 'c' * 64, 'Created': 'synthetic-original-generation',
+            'Image': 'sha256:' + 'd' * 64, 'Mounts': [], 'Config': {'Image': image, 'Labels': {
+                'org.testcontainers.session-id': session,
+                'org.testcontainers.resource-reaper-session': session if reaper is None else reaper,
+                'org.testcontainers': 'true', 'org.testcontainers.lang': 'dotnet'}}}
+        return phase
+
+    def test_policy_remains_exact_and_source_expected_redis_still_rejects(self):
+        for image, session, reaper in (('redis:8-alpine', '12345678-1234-1234-1234-123456789abc', None),
+                ('arbitrary-private-image', '12345678-1234-1234-1234-123456789abc', None),
+                ('postgres:18-alpine', '', None), ('postgres:18-alpine', '12345678-1234-1234-1234-123456789abc', 'foreign')):
+            with self.subTest(image=image, session=session, reaper=reaper):
+                phase = self.resource_phase(image, session, reaper)
+                phase._resource({'Type': 'container', 'Action': 'create', 'timeNano': 10, 'Actor': {'ID': 'c' * 64}})
+                self.assertEqual(['foreign-container'], phase.foreign)
+                self.assertTrue(evidence.observer_diagnostic({'firstRejection': phase.first_rejection, 'firstMismatch': None}))
+                self.assertNotIn('arbitrary-private-image', json.dumps(phase.first_rejection))
+        self.assertEqual(['postgres:18-alpine', 'testcontainers/ryuk:0.14.0'], phase.policy['images'])
+
+    def test_existing_session_ownership_blocker_is_observed_without_gate_expansion(self):
+        # Characterize the existing weakness, not a successful ownership proof or correction.
+        foreign = 'ffffffff-ffff-ffff-ffff-ffffffffffff'
+        phase = self.resource_phase(session=foreign)
+        phase._resource({'Type': 'container', 'Action': 'create', 'timeNano': 10, 'Actor': {'ID': 'c' * 64}})
+        self.assertEqual([], phase.foreign)
+        row = closure()
+        resource = row['resources'][0]
+        resource['session'] = foreign
+        for label in ('org.testcontainers.session-id', 'org.testcontainers.resource-reaper-session'):
+            resource['inspect']['labels'][label] = foreign
+        self.assertTrue(evidence.cleanup(row))  # No producer birth -> expected SDK session join exists.
+
+    def test_first_foreign_rejection_is_sticky_bounded_and_excludes_arbitrary_payload(self):
+        phase = self.resource_phase()
+        secret = 'https://private.invalid/token=synthetic-secret'
+        event = {'Type': secret, 'Action': secret, 'timeNano': True,
+                 'Actor': {'ID': secret, 'Attributes': {'private-label': secret}}}
+        phase._resource(event)
+        retained = copy.deepcopy(phase.first_rejection)
+        phase._resource({'Type': 'container', 'Action': 'destroy', 'timeNano': 20, 'Actor': {'ID': 'a' * 64}})
+        self.assertEqual(retained, phase.first_rejection)
+        self.assertEqual(['unexpected-daemon-actor', 'terminal-without-original-create'], phase.foreign)
+        self.assertNotIn(secret, json.dumps(retained))
+        self.assertEqual({'kind': 'other', 'action': 'other', 'id': None, 'timeNano': None,
+                          'sha256': retained['coordinate']['sha256']}, retained['coordinate'])
+        self.assertLess(len(json.dumps(retained)), 350)
+        self.assertTrue(evidence.observer_diagnostic({'firstRejection': retained, 'firstMismatch': None}))
+
+    def test_actual_fence_retains_order_discrepancy_without_changing_failure_or_daemon_short_circuit(self):
+        observed = [self.projected_event(10), self.projected_event(20, 'die')]
+        replay = list(reversed(observed))
+        phase = self.resource_phase()
+        phase.started = phase.fenced_until = 1
+        phase.anchor = None
+        phase.events, phase.fences, phase.errors = observed, [], []
+        phase.first_mismatch = None
+        phase.docker.daemon.return_value = phase.baseline['daemon']
+        connection = mock.Mock()
+        connection.getresponse.return_value.status = 200
+        connection.getresponse.return_value.read.return_value = b'\n'.join(json.dumps({
+            **{key: value for key, value in event.items() if key != 'id'}, 'Actor': {'ID': event['id']}}).encode()
+            for event in replay)
+        with mock.patch.object(supervisor, 'DockerConnection', return_value=connection), \
+             mock.patch.object(supervisor.time, 'monotonic', side_effect=[10, 16]), \
+             mock.patch.object(supervisor.subprocess, 'Popen') as actor:
+            phase._fence(30)
+            actor.assert_not_called()
+        phase.docker.daemon.assert_not_called()
+        self.assertFalse(phase.fences[0]['success'])
+        self.assertEqual(['EventReplayGapOverflowOrDaemonChange'], phase.errors)
+        self.assertTrue(phase.first_mismatch['orderOnly'])
+        self.assertEqual(0, phase.first_mismatch['firstMismatchIndex'])
+        for key in ('startNano', 'endNano', 'streamSha256', 'replaySha256'):
+            self.assertEqual(phase.fences[0][key], phase.first_mismatch[key])
+        self.assertTrue(evidence.observer_diagnostic({'firstRejection': None, 'firstMismatch': phase.first_mismatch}))
+        connection.close.assert_called_once()
+
+    def test_rejection_diagnostic_exception_preserves_original_return_failure_and_first_attempt(self):
+        phase = self.resource_phase(image='redis:8-alpine')
+        event = {'Type': 'container', 'Action': 'create', 'timeNano': 10, 'Actor': {'ID': 'c' * 64}}
+        with mock.patch.object(supervisor, 'safe_coordinate', side_effect=RuntimeError('synthetic-private-text')) as capture:
+            phase._resource(event)
+            phase._resource({'Type': 'container', 'Action': 'destroy', 'timeNano': 20, 'Actor': {'ID': 'a' * 64}})
+            capture.assert_called_once()
+        self.assertEqual(['foreign-container', 'terminal-without-original-create'], phase.foreign)
+        self.assertEqual([], phase.errors)
+        self.assertEqual('redis:8-alpine', phase.resources['c' * 64]['inspect']['configImage'])
+        self.assertIsNone(phase.first_rejection)
+        row = closure()
+        row['foreignEvents'] = phase.foreign
+        self.assertFalse(evidence.cleanup(row))
+        self.assertNotIn('synthetic-private-text', json.dumps(row))
+
+    def test_fence_diagnostic_exception_preserves_original_append_failure_close_and_first_attempt(self):
+        phase = self.resource_phase()
+        phase.started = phase.fenced_until = 1
+        phase.anchor = None
+        phase.events = [self.projected_event(10), self.projected_event(20),
+                        self.projected_event(40), self.projected_event(50)]
+        phase.fences, phase.errors, phase.first_mismatch = [], [], None
+        history = [phase.events[i] for i in (1, 0, 3, 2)]
+        connection = mock.Mock()
+        connection.getresponse.return_value.status = 200
+        connection.getresponse.return_value.read.return_value = b'\n'.join(json.dumps({
+            **{key: value for key, value in event.items() if key != 'id'}, 'Actor': {'ID': event['id']}}).encode()
+            for event in history)
+        with mock.patch.object(supervisor, 'DockerConnection', return_value=connection), \
+             mock.patch.object(supervisor.time, 'monotonic', side_effect=[10, 16, 20, 26]), \
+             mock.patch.object(supervisor, 'mismatch_diagnostic', side_effect=RuntimeError('synthetic-private-text')) as capture:
+            phase._fence(30)
+            phase._fence(60)
+            capture.assert_called_once()
+        self.assertEqual(2, len(phase.fences))
+        self.assertTrue(all(row['success'] is False for row in phase.fences))
+        self.assertEqual(['EventReplayGapOverflowOrDaemonChange'] * 2, phase.errors)
+        self.assertIsNone(phase.first_mismatch)
+        self.assertEqual(2, connection.close.call_count)
+        phase.docker.daemon.assert_not_called()
+        row = closure()
+        row['fences'], row['readerErrors'] = phase.fences, phase.errors
+        self.assertFalse(evidence.cleanup(row))
+        self.assertNotIn('synthetic-private-text', json.dumps(row))
+
+    def test_mismatch_diagnostic_distinguishes_missing_extra_reordered_and_caps_content(self):
+        a, b = self.projected_event(10), self.projected_event(20, 'die')
+        self.assertIsNone(supervisor.mismatch_diagnostic([a], [a], 1, 30))
+        for observed, replay, order_only in (([a, b], [b, a], True), ([a], [a, b], False),
+                                           ([a, b], [a], False), ([a], [b], False)):
+            with self.subTest(observed=observed, replay=replay):
+                value = supervisor.mismatch_diagnostic(observed, replay, 1, 30)
+                self.assertEqual(order_only, value['orderOnly'])
+                self.assertTrue(evidence.observer_diagnostic({'firstRejection': None, 'firstMismatch': value}))
+        value = supervisor.mismatch_diagnostic([a] * 201, [a] * 200 + [b], 1, 30)
+        self.assertTrue(value['truncated'])
+        self.assertIsNone(value['orderOnly'])
+        self.assertEqual(200, len(value['streamSequenceSha256']))
+        self.assertEqual(200, len(value['replaySequenceSha256']))
+        self.assertLess(len(json.dumps(value)), 28500)
+        self.assertTrue(evidence.observer_diagnostic({'firstRejection': None, 'firstMismatch': value}))
+
+    def test_diagnostic_tampering_or_forged_success_never_qualifies_cleanup(self):
+        mismatch = supervisor.mismatch_diagnostic([self.projected_event()], [self.projected_event(20)], 1, 30)
+        value = {'firstRejection': None, 'firstMismatch': mismatch}
+        for mutation in ('count-bool', 'index-bool', 'extra-text', 'raw-id', 'hash', 'over-cap', 'order', 'truncated'):
+            changed = copy.deepcopy(value)
+            row = changed['firstMismatch']
+            if mutation == 'count-bool': row['streamCount'] = True
+            elif mutation == 'index-bool': row['firstMismatchIndex'] = True
+            elif mutation == 'extra-text': row['stream']['private'] = 'synthetic-secret'
+            elif mutation == 'raw-id': row['stream']['id'] = 'private-url'
+            elif mutation == 'hash': row['stream']['sha256'] = 'a' * 64
+            elif mutation == 'over-cap': row['streamSequenceSha256'] *= 201
+            elif mutation == 'order': row['orderOnly'] = True
+            else: row['truncated'] = True
+            with self.subTest(mutation=mutation):
+                self.assertFalse(evidence.observer_diagnostic(changed))
+        row = closure()
+        row['observerDiagnostic'] = value
+        self.assertFalse(evidence.cleanup(row))  # All old success flags remain set; diagnostic cannot grant success.
+        row['observerDiagnostic'] = {'firstRejection': None, 'firstMismatch': None}
+        row['readerErrors'] = ['EventReplayGapOverflowOrDaemonChange']
+        self.assertFalse(evidence.cleanup(row))
+        row = closure()
+        del row['observerDiagnostic']
+        self.assertFalse(evidence.cleanup(row))
 
     def test_openapi_metadata_command_keeps_compilation_in_owned_sdk_cohort(self):
         # Observe the actual argv at the supervisor boundary without starting any SDK process.

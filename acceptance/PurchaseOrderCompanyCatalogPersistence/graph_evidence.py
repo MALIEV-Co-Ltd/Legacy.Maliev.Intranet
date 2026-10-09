@@ -242,11 +242,69 @@ def probe_receipt(row, terminal=True):
         return False
 
 
+def observer_diagnostic(value):
+    """Validate bounded public diagnostics independently; never grant admission."""
+    def coordinate(row):
+        return (isinstance(row, dict) and set(row) == {'kind', 'action', 'id', 'timeNano', 'sha256'} and
+                row['kind'] in ('container', 'volume', 'network', 'image', 'other') and
+                row['action'] in ('create', 'start', 'stop', 'die', 'destroy', 'remove', 'pull', 'connect',
+                                  'disconnect', 'exec_die', 'exec_start', 'exec_create', 'other') and
+                (row['id'] is None or identity(row['id'])) and
+                (row['timeNano'] is None or type(row['timeNano']) is int and 0 < row['timeNano'] < 2 ** 63) and
+                identity(row['sha256']))
+    try:
+        if not isinstance(value, dict) or set(value) != {'firstRejection', 'firstMismatch'}:
+            return False
+        rejection, mismatch = value['firstRejection'], value['firstMismatch']
+        if rejection is not None and (not isinstance(rejection, dict) or set(rejection) != {'category', 'coordinate'} or
+                rejection['category'] not in ('unexpected-daemon-actor', 'duplicate-or-baseline-create',
+                                             'foreign-container', 'baseline-object-destroyed',
+                                             'terminal-without-original-create', 'event-without-original-create') or
+                not coordinate(rejection['coordinate'])):
+            return False
+        if mismatch is None:
+            return True
+        if not isinstance(mismatch, dict) or set(mismatch) != {'startNano', 'endNano', 'streamSha256', 'replaySha256',
+                'streamCount', 'replayCount', 'firstMismatchIndex',
+                'stream', 'replay', 'streamSequenceSha256', 'replaySequenceSha256', 'truncated', 'orderOnly'}:
+            return False
+        if type(mismatch['startNano']) is not int or type(mismatch['endNano']) is not int or not 0 < mismatch['startNano'] < mismatch['endNano'] < 2 ** 63 or not identity(mismatch['streamSha256']) or not identity(mismatch['replaySha256']) or mismatch['streamSha256'] == mismatch['replaySha256']:
+            return False
+        counts = [mismatch['streamCount'], mismatch['replayCount']]
+        index = mismatch['firstMismatchIndex']
+        if any(type(count) is not int or not 0 <= count <= 4_194_304 for count in counts) or counts[0] > 16384 or type(index) is not int or not 0 <= index <= min(counts) or index >= max(counts):
+            return False
+        sequences = [mismatch['streamSequenceSha256'], mismatch['replaySequenceSha256']]
+        for count, sequence, row in zip(counts, sequences, (mismatch['stream'], mismatch['replay'])):
+            if not isinstance(sequence, list) or len(sequence) != min(count, 200) or any(not identity(item) for item in sequence):
+                return False
+            if index >= count:
+                if row is not None:
+                    return False
+            elif not coordinate(row) or (index < 200 and row['sha256'] != sequence[index]):
+                return False
+        if sequences[0][:min(index, 200)] != sequences[1][:min(index, 200)]:
+            return False
+        if index < min(counts) and mismatch['stream']['sha256'] == mismatch['replay']['sha256']:
+            return False
+        truncated = any(count > 200 for count in counts)
+        if type(mismatch['truncated']) is not bool or mismatch['truncated'] != truncated:
+            return False
+        if truncated:
+            return mismatch['orderOnly'] is None
+        return type(mismatch['orderOnly']) is bool and mismatch['orderOnly'] == (Counter(sequences[0]) == Counter(sequences[1]))
+    except (KeyError, TypeError, ValueError, AttributeError):
+        return False
+
+
 def cleanup(receipt):
     """Validate observed process/resource closure, never infer SDK object disposal."""
     try:
         if set(receipt) != {'daemon', 'baseline', 'final', 'admitted', 'readerJoined', 'readerErrors',
-                            'processes', 'resources', 'foreignEvents', 'limitExceeded', 'fences', 'fencerJoined', 'firstFailure', 'daemonProbes'}:
+                            'processes', 'resources', 'foreignEvents', 'limitExceeded', 'fences', 'fencerJoined', 'firstFailure', 'daemonProbes', 'observerDiagnostic'}:
+            return False
+        diagnostic = receipt['observerDiagnostic']
+        if not observer_diagnostic(diagnostic) or diagnostic != {'firstRejection': None, 'firstMismatch': None}:
             return False
         if not receipt['daemon'] or receipt['admitted'] is not True or receipt['readerJoined'] is not True or receipt['fencerJoined'] is not True or receipt['firstFailure'] is not None or receipt['readerErrors'] or receipt['foreignEvents'] or receipt['limitExceeded']:
             return False
