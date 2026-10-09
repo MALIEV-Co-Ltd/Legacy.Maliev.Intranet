@@ -30,30 +30,33 @@ public sealed class CustomerDocumentAssociationTests
         app.MapGet("/bff/customers/{customer:int}/documents", () => Array.Empty<CustomerDocumentSummary>());
         app.MapGet("/bff/staff/nda-reminders", () => Array.Empty<CustomerNdaReminder>());
         app.MapGet("/bff/session", async () => { entered.TrySetResult(); if (delayedSession) await release.Task; return new EmployeeSessionSummary(true, "synthetic-staff", null, [], "synthetic-csrf"); });
-        app.MapPost("/bff/customers/{customer:int}/documents", async (int customer, HttpRequest request) => {
+        app.MapPost("/bff/customers/{customer:int}/documents", async (int customer, HttpRequest request) =>
+        {
             var form = await request.ReadFormAsync(); associations = form["Associations"].ToString(); uploadedCustomer = customer;
             return Results.Json(new CustomerDocumentVersionReceipt(Guid.NewGuid(), Guid.NewGuid(), customer, 1, new string('a', 64), 1));
         });
         await app.StartAsync(); using var context = Context(app.GetTestClient());
         var cut = context.Render<CustomerDocuments>(p => p.Add(x => x.CustomerId, 42));
         cut.WaitForAssertion(() => Assert.False(cut.Find("section > button").HasAttribute("disabled")));
-        await cut.Find("#customer-document-title").ChangeAsync("synthetic billing evidence");
-        await cut.Find("#customer-document-kind").ChangeAsync("BillingInstruction");
-        await cut.Find("#upload-order-ids").ChangeAsync("11,12");
-        await cut.Find("#upload-quotation-id").ChangeAsync("21");
-        await cut.Find("#upload-replacement-ids").ChangeAsync("31");
+        await cut.Find("#customer-document-title").InputAsync("synthetic billing evidence");
+        await cut.Find("#customer-document-kind").ClickAsync();
+        await cut.Find("[role=option][data-value=BillingInstruction]").ClickAsync();
+        await cut.Find("#upload-order-ids").InputAsync("11,12");
+        await cut.Find("#upload-quotation-id").InputAsync("21");
+        await cut.Find("#upload-replacement-ids").InputAsync("31");
         cut.FindComponent<InputFile>().UploadFiles(InputFileContent.CreateFromBinary([1], "synthetic.pdf", null, "application/pdf"));
-        var pending = cut.Find("section > div > button").ClickAsync();
-        if (delayedSession) {
+        var pending = cut.Find("#customer-document-upload").ClickAsync();
+        if (delayedSession)
+        {
             await entered.Task.WaitAsync(TimeSpan.FromSeconds(5));
-            await cut.Find("#upload-order-ids").ChangeAsync("99"); release.TrySetResult();
+            await cut.Find("#upload-order-ids").InputAsync("99"); release.TrySetResult();
         }
         await pending;
         Assert.Equal(42, uploadedCustomer);
         using var payload = JsonDocument.Parse(associations!);
         Assert.Equal(new[] { "Order:11", "Order:12", "Quotation:21", "Replacement:31" }, payload.RootElement.EnumerateArray().Select(x => x.GetProperty("Kind").GetString() + ":" + x.GetProperty("ResourceId").GetInt32()));
         Assert.DoesNotContain("CustomerId", associations!);
-        await cut.Find("#upload-order-ids").ChangeAsync("88");
+        await cut.Find("#upload-order-ids").InputAsync("88");
         await cut.InvokeAsync(() => cut.Instance.SetParametersAsync(ParameterView.FromDictionary(new Dictionary<string, object?> { [nameof(CustomerDocuments.CustomerId)] = 43 })));
         Assert.Equal("", cut.Find("#upload-order-ids").GetAttribute("value") ?? "");
         Assert.Equal("", cut.Find("#upload-quotation-id").GetAttribute("value") ?? "");
@@ -77,10 +80,10 @@ public sealed class CustomerDocumentAssociationTests
         await app.StartAsync(); using var context = Context(app.GetTestClient());
         var cut = context.Render<CustomerDocuments>(p => p.Add(x => x.CustomerId, 42));
         cut.WaitForAssertion(() => Assert.False(cut.Find("section > button").HasAttribute("disabled")));
-        await cut.Find("#customer-document-title").ChangeAsync("synthetic");
-        await cut.Find("#upload-order-ids").ChangeAsync(ids);
+        await cut.Find("#customer-document-title").InputAsync("synthetic");
+        await cut.Find("#upload-order-ids").InputAsync(ids);
         cut.FindComponent<InputFile>().UploadFiles(InputFileContent.CreateFromBinary([1], "synthetic.pdf", null, "application/pdf"));
-        await cut.Find("section > div > button").ClickAsync();
+        await cut.Find("#customer-document-upload").ClickAsync();
         Assert.Equal(0, mutations); Assert.Single(cut.FindAll("p[role=alert]"));
     }
 

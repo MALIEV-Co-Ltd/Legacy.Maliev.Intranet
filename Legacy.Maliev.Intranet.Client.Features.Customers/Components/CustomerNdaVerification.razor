@@ -2,29 +2,33 @@
 @inject HttpClient Http
 @inject IStringLocalizer<CustomerNdaVerification> Text
 
-<details><summary>@Text["Verify externally signed NDA"]</summary>
+<ShadcnCollapsible><ShadcnCollapsibleTrigger>@Text["Verify externally signed NDA"]</ShadcnCollapsibleTrigger><ShadcnCollapsibleContent>
     <p>@Text["Expiry does not release confidentiality."]</p>
     @if (agreement is not null) {
         <dl><dt>@Text["Agreement calendar"]</dt><dd>@Text[agreement.AgreementStatus]</dd><dt>@Text["Confidentiality obligation"]</dt><dd>@Text[agreement.ObligationStatus]</dd><dt>@Text["Expiry date (UTC)"]</dt><dd>@(agreement.ExpiresAtUtc?.ToString("yyyy-MM-dd HH:mm 'UTC'") ?? Text["Unknown"].Value)</dd><dt>@Text["Confidentiality survival"]</dt><dd>@Text[agreement.SurvivalKind]</dd></dl>
     }
     @if (!string.IsNullOrEmpty(message)) { <p role="status" aria-live="polite">@Text[message]</p> }
-    <label for="@Id("party-one")">@Text["First party"]</label><input id="@Id("party-one")" @bind="partyOne" required maxlength="250" />
-    <label for="@Id("party-two")">@Text["Second party"]</label><input id="@Id("party-two")" @bind="partyTwo" required maxlength="250" />
-    <label for="@Id("effective")">@Text["Effective date (UTC)"]</label><input id="@Id("effective")" type="date" @bind="effective" />
-    <label for="@Id("expiry")">@Text["Expiry date (UTC)"]</label><input id="@Id("expiry")" type="date" @bind="expiry" />
-    <label for="@Id("renewal")">@Text["Renewal date (UTC)"]</label><input id="@Id("renewal")" type="date" @bind="renewal" />
-    <label for="@Id("survival")">@Text["Confidentiality survival"]</label><select id="@Id("survival")" @bind="survival"><option value="Unknown">@Text["Unknown"]</option><option value="Indefinite">@Text["Indefinite"]</option><option value="Finite">@Text["Finite"]</option></select>
-    @if (survival == "Finite") { <label for="@Id("survival-end")">@Text["Survival end date (UTC)"]</label><input id="@Id("survival-end")" type="date" @bind="survivalEnd" /> }
-    <label for="@Id("coverage")">@Text["Explicit coverage"]</label><select id="@Id("coverage")" @bind="coverageKind"><option value="">@Text["Select coverage"]</option><option value="Customer">@Text["Customer-wide coverage"]</option>@foreach (var kind in coverageKinds) { <option value="@kind">@Text[kind]</option> }</select>
-    @if (coverageKind != "Customer") { <label for="@Id("resource")">@Text["Canonical resource ID"]</label><input id="@Id("resource")" type="number" min="1" @bind="resourceId" /> }
-    <label for="@Id("responsible")">@Text["Responsible employee subject"]</label><input id="@Id("responsible")" @bind="responsible" required maxlength="250" />
-    <label for="@Id("reason")">@Text["Verification reason"]</label><textarea id="@Id("reason")" @bind="reason" maxlength="1000" required></textarea>
+    <label for="@Id("party-one")">@Text["First party"]</label><ShadcnInput TValue="string" id="@Id("party-one")" @bind-Value="partyOne" Required="true" maxlength="250" />
+    <label for="@Id("party-two")">@Text["Second party"]</label><ShadcnInput TValue="string" id="@Id("party-two")" @bind-Value="partyTwo" Required="true" maxlength="250" />
+    <label for="@Id("effective")">@Text["Effective date (UTC)"]</label><ShadcnInput TValue="string" id="@Id("effective")" Type="date" Value="@DateValue(effective)" ValueChanged="@(value => effective = ParseDate(value) ?? default)" />
+    <label for="@Id("expiry")">@Text["Expiry date (UTC)"]</label><ShadcnInput TValue="string" id="@Id("expiry")" Type="date" Value="@DateValue(expiry)" ValueChanged="@(value => expiry = ParseDate(value))" />
+    <label for="@Id("renewal")">@Text["Renewal date (UTC)"]</label><ShadcnInput TValue="string" id="@Id("renewal")" Type="date" Value="@DateValue(renewal)" ValueChanged="@(value => renewal = ParseDate(value))" />
+    <label for="@Id("survival")">@Text["Confidentiality survival"]</label><ShadcnSelect TValue="string" id="@Id("survival")" @bind-Value="survival" Options="@SurvivalOptions" />
+    @if (survival == "Finite") { <label for="@Id("survival-end")">@Text["Survival end date (UTC)"]</label><ShadcnInput TValue="string" id="@Id("survival-end")" Type="date" Value="@DateValue(survivalEnd)" ValueChanged="@(value => survivalEnd = ParseDate(value))" /> }
+    <label for="@Id("coverage")">@Text["Explicit coverage"]</label><ShadcnSelect TValue="string" id="@Id("coverage")" @bind-Value="coverageKind" Options="@CoverageOptions" />
+    @if (coverageKind != "Customer") { <label for="@Id("resource")">@Text["Canonical resource ID"]</label><ShadcnInput TValue="int" id="@Id("resource")" Type="number" min="1" @bind-Value="resourceId" /> }
+    <label for="@Id("responsible")">@Text["Responsible employee subject"]</label><ShadcnInput TValue="string" id="@Id("responsible")" @bind-Value="responsible" Required="true" maxlength="250" />
+    <label for="@Id("reason")">@Text["Verification reason"]</label><ShadcnTextarea TValue="string" id="@Id("reason")" @bind-Value="reason" maxlength="1000" Required="true" />
     <p>@Text["Unknown survival remains protected and requires review."]</p>
-    <button type="button" @onclick="VerifyAsync" disabled="@busy">@Text["Verify exact signed version"]</button>
+    <ShadcnButton id="@Id("verify")" OnClick="VerifyAsync" Disabled="@busy" OperationFeedback="false">@Text["Verify exact signed version"]</ShadcnButton>
     @if (agreementStatus == "Expired" && obligationStatus != "Released") { <p role="alert">@Text["Expired but protected"]</p> }
-</details>
+</ShadcnCollapsibleContent></ShadcnCollapsible>
 
 @code {
+    private IReadOnlyList<ShadcnSelectOption<string>> SurvivalOptions => new[] { "Unknown", "Indefinite", "Finite" }.Select(value => new ShadcnSelectOption<string>(value, Text[value])).ToArray();
+    private IReadOnlyList<ShadcnSelectOption<string>> CoverageOptions => new[] { new ShadcnSelectOption<string>("", Text["Select coverage"]), new ShadcnSelectOption<string>("Customer", Text["Customer-wide coverage"]) }.Concat(coverageKinds.Select(value => new ShadcnSelectOption<string>(value, Text[value]))).ToArray();
+    private static string DateValue(DateTime? value) => value?.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture) ?? "";
+    private static DateTime? ParseDate(string value) => DateTime.TryParseExact(value, "yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out var date) ? date : null;
     [Parameter] public int CustomerId { get; set; }
     [Parameter] public Guid DocumentId { get; set; }
     [Parameter] public Guid VersionId { get; set; }

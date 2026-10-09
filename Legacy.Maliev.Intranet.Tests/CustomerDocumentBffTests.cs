@@ -226,7 +226,8 @@ public sealed class CustomerDocumentBffTests
         public string? Query { get; private set; }
         public Func<string, string>? ResponseBody { get; init; }
         public Func<HttpRequestMessage, CancellationToken, Task<HttpResponseMessage>>? ResponseFactory { get; init; }
-        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken token) {
+        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken token)
+        {
             var path = request.RequestUri!.AbsolutePath; Path = path; Query = request.RequestUri.Query; Authorization = request.Headers.Authorization?.ToString();
             Body = request.Content is null ? null : await request.Content.ReadAsStringAsync(token);
             if (ResponseFactory is not null) return await ResponseFactory(request, token);
@@ -246,7 +247,8 @@ public sealed class CustomerDocumentBffTests
         builder.Services.AddSingleton(new CustomerDocumentProxy(new HttpClient(handler) { BaseAddress = new Uri("http://synthetic-registry/") }));
         var app = builder.Build(); app.UseRequestLocalization(new RequestLocalizationOptions().SetDefaultCulture("en").AddSupportedCultures("en", "th").AddSupportedUICultures("en", "th")); app.UseAuthentication(); app.UseAuthorization(); CustomerDocumentEndpointMapper.MapCustomerDocumentEndpoints(app);
         app.MapGet("/fixture/csrf", (HttpContext context, IAntiforgery antiforgery) => Results.Json(antiforgery.GetAndStoreTokens(context).RequestToken));
-        app.MapGet("/fixture/page", async (HttpContext context) => {
+        app.MapGet("/fixture/page", async (HttpContext context) =>
+        {
             await using var renderer = new HtmlRenderer(context.RequestServices, context.RequestServices.GetRequiredService<ILoggerFactory>());
             var html = await renderer.Dispatcher.InvokeAsync(async () => (await renderer.RenderComponentAsync<CustomerDocuments>(ParameterView.FromDictionary(new Dictionary<string, object?> { ["CustomerId"] = 42 }))).ToHtmlString());
             return Results.Content(html, "text/html; charset=utf-8");

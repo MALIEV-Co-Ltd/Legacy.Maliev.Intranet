@@ -8,43 +8,50 @@
     <p>@Text["Expiry does not release confidentiality."]</p>
     @if (busy) { <p role="status" aria-live="polite">@Text["Processing document. Please wait."]</p> }
     @if (!string.IsNullOrEmpty(error)) { <p role="alert">@Text[error]</p> }
-    <button type="button" @onclick="LoadAsync" disabled="@busy">@Text["Reload"]</button>
-    <details><summary>@Text["My NDA reminders"]</summary>
-        <label for="nda-due-from">@Text["Due from (UTC)"]</label><input id="nda-due-from" type="date" @bind="dueFrom" />
-        <label for="nda-due-through">@Text["Due through (UTC, inclusive)"]</label><input id="nda-due-through" type="date" @bind="dueThrough" />
-        <label for="nda-reminder-state">@Text["Reminder state"]</label><select id="nda-reminder-state" @bind="reminderState"><option value="">@Text["All states"]</option><option value="Due">@Text["Due"]</option><option value="Missed">@Text["Missed"]</option><option value="Cancelled">@Text["Cancelled"]</option></select>
-        <label for="nda-reminder-limit">@Text["Maximum reminders"]</label><select id="nda-reminder-limit" @bind="reminderLimit"><option value="20">20</option><option value="50">50</option><option value="100">100</option></select>
-        <button type="button" disabled="@busy" @onclick="LoadAsync">@Text["Apply reminder filters"]</button>
+    <ShadcnButton OnClick="LoadAsync" Disabled="@busy" OperationFeedback="false">@Text["Reload"]</ShadcnButton>
+    <ShadcnCollapsible><ShadcnCollapsibleTrigger>@Text["My NDA reminders"]</ShadcnCollapsibleTrigger><ShadcnCollapsibleContent>
+        <label for="nda-due-from">@Text["Due from (UTC)"]</label><ShadcnInput TValue="string" id="nda-due-from" Type="date" Value="@DateValue(dueFrom)" ValueChanged="@(value => dueFrom = ParseDate(value))" />
+        <label for="nda-due-through">@Text["Due through (UTC, inclusive)"]</label><ShadcnInput TValue="string" id="nda-due-through" Type="date" Value="@DateValue(dueThrough)" ValueChanged="@(value => dueThrough = ParseDate(value))" />
+        <label for="nda-reminder-state">@Text["Reminder state"]</label><ShadcnSelect TValue="string" id="nda-reminder-state" @bind-Value="reminderState" Options="@ReminderStateOptions" />
+        <label for="nda-reminder-limit">@Text["Maximum reminders"]</label><ShadcnSelect TValue="int" id="nda-reminder-limit" @bind-Value="reminderLimit" Options="@ReminderLimitOptions" />
+        <ShadcnButton Disabled="@busy" OnClick="LoadAsync" OperationFeedback="false">@Text["Apply reminder filters"]</ShadcnButton>
         <ul>@foreach (var reminder in reminders) { <li>@reminder.DueAtUtc.ToString("yyyy-MM-dd HH:mm 'UTC'") - @Text[reminder.State] - @reminder.LeadDays @Text["days before renewal"]</li> }</ul>
-    </details>
+    </ShadcnCollapsibleContent></ShadcnCollapsible>
     @foreach (var item in documents) {
         <article><h3>@item.Title</h3><p>@Text[item.Kind] - @Text[item.Visibility]</p>
             @if (versions.TryGetValue(item.DocumentId, out var history)) { <ul>@foreach (var version in history) { <li>
                 @Text["Version"] @version.VersionNumber - @Text[version.VerificationStatus]
                 <a href="@($"/bff/customers/{CustomerId}/documents/{item.DocumentId:D}/versions/{version.VersionId:D}/download")">@Text["Download attachment"]</a>
                 @if (item.Kind == "Nda") { <CustomerNdaVerification @key="(CustomerId, item.DocumentId, version.VersionId)" CustomerId="CustomerId" DocumentId="item.DocumentId" VersionId="version.VersionId" ExpectedRevision="item.Revision" ParentRefresh="() => RefreshParentRevisionAsync(item.CustomerId)" /> }
-                else { <label for="@($"verification-{version.VersionId:D}")">@Text["Verification reason"]</label><input id="@($"verification-{version.VersionId:D}")" @bind="verificationReason" maxlength="1024" /><button type="button" disabled="@busy" @onclick='() => VerifyEvidenceAsync(item, version, "Verified")'>@Text["Verify exact version"]</button><button type="button" disabled="@busy" @onclick='() => VerifyEvidenceAsync(item, version, "Rejected")'>@Text["Reject exact version"]</button> }
+                else { <label for="@($"verification-{version.VersionId:D}")">@Text["Verification reason"]</label><ShadcnInput TValue="string" id="@($"verification-{version.VersionId:D}")" @bind-Value="verificationReason" maxlength="1024" /><ShadcnButton Disabled="@busy" OnClick='() => VerifyEvidenceAsync(item, version, "Verified")' OperationFeedback="false">@Text["Verify exact version"]</ShadcnButton><ShadcnButton Disabled="@busy" OnClick='() => VerifyEvidenceAsync(item, version, "Rejected")' OperationFeedback="false">@Text["Reject exact version"]</ShadcnButton> }
             </li> }</ul> }
-            <label for="@($"archive-{item.DocumentId:D}")">@Text["Archive reason"]</label><input id="@($"archive-{item.DocumentId:D}")" @bind="archiveReason" maxlength="1000" />
-            <button type="button" @onclick="() => ArchiveAsync(item)" disabled="@busy">@Text["Archive without deleting originals"]</button>
+            <label for="@($"archive-{item.DocumentId:D}")">@Text["Archive reason"]</label><ShadcnInput TValue="string" id="@($"archive-{item.DocumentId:D}")" @bind-Value="archiveReason" maxlength="1000" />
+            <ShadcnButton OnClick="() => ArchiveAsync(item)" Disabled="@busy" OperationFeedback="false">@Text["Archive without deleting originals"]</ShadcnButton>
         </article>
     }
-    <div><label for="customer-document-title">@Text["Title"]</label><input id="customer-document-title" @bind="title" maxlength="250" required />
-        <label for="customer-document-kind">@Text["Document category"]</label><select id="customer-document-kind" @bind="kind">@foreach (var category in kinds) { <option value="@category">@Text[category]</option> }</select>
-        <label for="customer-document-visibility">@Text["Visibility"]</label><select id="customer-document-visibility" @bind="visibility"><option value="Internal">@Text["Internal"]</option><option value="Customer">@Text["Customer"]</option></select>
-        <label for="customer-document-replacement">@Text["New document or replacement version"]</label><select id="customer-document-replacement" @bind="replacement"><option value="">@Text["New document"]</option>@foreach (var document in documents) { <option value="@document.DocumentId.ToString("D")">@document.Title</option> }</select>
+    <div><label for="customer-document-title">@Text["Title"]</label><ShadcnInput TValue="string" id="customer-document-title" @bind-Value="title" maxlength="250" Required="true" />
+        <label for="customer-document-kind">@Text["Document category"]</label><ShadcnSelect TValue="string" id="customer-document-kind" @bind-Value="kind" Options="@KindOptions" />
+        <label for="customer-document-visibility">@Text["Visibility"]</label><ShadcnSelect TValue="string" id="customer-document-visibility" @bind-Value="visibility" Options="@VisibilityOptions" />
+        <label for="customer-document-replacement">@Text["New document or replacement version"]</label><ShadcnSelect TValue="string" id="customer-document-replacement" @bind-Value="replacement" Options="@ReplacementOptions" />
         <fieldset><legend>@Text["Commercial associations"]</legend>
             <p>@Text["Optional canonical IDs. Separate order and replacement IDs with commas; maximum 100 associations."]</p>
-            <label for="upload-order-ids">@Text["Order IDs"]</label><input id="upload-order-ids" @bind="uploadOrders" maxlength="1100" />
-            <label for="upload-quotation-id">@Text["Quotation ID (optional, one only)"]</label><input id="upload-quotation-id" @bind="uploadQuotation" maxlength="10" inputmode="numeric" />
-            <label for="upload-replacement-ids">@Text["Replacement IDs"]</label><input id="upload-replacement-ids" @bind="uploadReplacements" maxlength="1100" />
+            <label for="upload-order-ids">@Text["Order IDs"]</label><ShadcnInput TValue="string" id="upload-order-ids" @bind-Value="uploadOrders" maxlength="1100" />
+            <label for="upload-quotation-id">@Text["Quotation ID (optional, one only)"]</label><ShadcnInput TValue="string" id="upload-quotation-id" @bind-Value="uploadQuotation" maxlength="10" InputMode="numeric" />
+            <label for="upload-replacement-ids">@Text["Replacement IDs"]</label><ShadcnInput TValue="string" id="upload-replacement-ids" @bind-Value="uploadReplacements" maxlength="1100" />
         </fieldset>
-        <label for="customer-document-file">@Text["PDF, PNG or JPEG, maximum 20 MiB"]</label><InputFile @key="CustomerId" id="customer-document-file" OnChange="SelectFile" accept="application/pdf,image/png,image/jpeg" />
-        <button type="button" @onclick="UploadAsync" disabled="@(busy || file is null)">@Text["Upload for staff verification"]</button>
+        <label for="customer-document-file">@Text["PDF, PNG or JPEG, maximum 20 MiB"]</label><ShadcnInput TValue="string" Type="file" @key="CustomerId" id="customer-document-file" FilesChanged="SelectFile" Accept="application/pdf,image/png,image/jpeg" />
+        <ShadcnButton id="customer-document-upload" OnClick="UploadAsync" Disabled="@(busy || file is null)" OperationFeedback="false">@Text["Upload for staff verification"]</ShadcnButton>
     </div>
 </section>
 
 @code {
+    private IReadOnlyList<ShadcnSelectOption<string>> ReminderStateOptions => new[] { "", "Due", "Missed", "Cancelled" }.Select(value => new ShadcnSelectOption<string>(value, Text[value == "" ? "All states" : value])).ToArray();
+    private static IReadOnlyList<ShadcnSelectOption<int>> ReminderLimitOptions => new[] { 20, 50, 100 }.Select(value => new ShadcnSelectOption<int>(value, value.ToString(System.Globalization.CultureInfo.InvariantCulture))).ToArray();
+    private IReadOnlyList<ShadcnSelectOption<string>> KindOptions => kinds.Select(value => new ShadcnSelectOption<string>(value, Text[value])).ToArray();
+    private IReadOnlyList<ShadcnSelectOption<string>> VisibilityOptions => new[] { "Internal", "Customer" }.Select(value => new ShadcnSelectOption<string>(value, Text[value])).ToArray();
+    private IReadOnlyList<ShadcnSelectOption<string>> ReplacementOptions => new[] { new ShadcnSelectOption<string>("", Text["New document"]) }.Concat(documents.Select(value => new ShadcnSelectOption<string>(value.DocumentId.ToString("D"), value.Title))).ToArray();
+    private static string DateValue(DateTime? value) => value?.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture) ?? "";
+    private static DateTime? ParseDate(string value) => DateTime.TryParseExact(value, "yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out var date) ? date : null;
     [Parameter] public int CustomerId { get; set; }
     private IReadOnlyList<CustomerDocumentSummary> documents = [];
     private readonly Dictionary<Guid, IReadOnlyList<CustomerDocumentVersionSummary>> versions = [];

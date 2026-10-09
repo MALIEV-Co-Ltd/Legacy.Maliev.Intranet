@@ -35,12 +35,14 @@ public sealed class CustomerDocumentProxy(HttpClient httpClient)
     /// <summary>Archives metadata without deleting protected originals.</summary>
     public async Task<int> ArchiveAsync(int customerId, Guid documentId, CustomerDocumentArchiveRequest input, string credential, CancellationToken token)
     {
-        try {
+        try
+        {
             using var request = Request(HttpMethod.Post, $"customers/{customerId}/documents/{documentId:D}/archive", credential);
             request.Content = JsonContent.Create(input, options: Json);
             using var response = await httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, token);
             return response.IsSuccessStatusCode ? 204 : SafeStatus(response);
-        } catch (Exception exception) when (Bounded(exception, token)) { return 503; }
+        }
+        catch (Exception exception) when (Bounded(exception, token)) { return 503; }
     }
 
     /// <summary>Uploads one file with the owner's multipart contract and replay identity.</summary>

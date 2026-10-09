@@ -13,12 +13,12 @@ public sealed class CustomerDocumentDecidedEvidenceWireTests
     public static IEnumerable<object[]> Cases()
     {
         foreach (var route in new[] { "receipt", "history", "verification" })
-        foreach (var status in new[] { "Verified", "Rejected" })
-        {
-            foreach (var fault in new[] { "missing-actor", "blank-actor", "missing-time", "default-time", "non-utc-time" })
-                yield return [route, status, fault, HttpStatusCode.ServiceUnavailable];
-            yield return [route, status, "complete", HttpStatusCode.OK];
-        }
+            foreach (var status in new[] { "Verified", "Rejected" })
+            {
+                foreach (var fault in new[] { "missing-actor", "blank-actor", "missing-time", "default-time", "non-utc-time" })
+                    yield return [route, status, fault, HttpStatusCode.ServiceUnavailable];
+                yield return [route, status, "complete", HttpStatusCode.OK];
+            }
         foreach (var route in new[] { "receipt", "history" })
             yield return [route, "PendingVerification", "complete", HttpStatusCode.OK];
     }

@@ -74,7 +74,8 @@ public static class CustomerDocumentEndpointMapper
     }
     private static Task<IResult> UploadAsync(int customerId, HttpContext context, EmployeeSessionService sessions, CustomerDocumentProxy proxy, CancellationToken token) => UploadCoreAsync(customerId, null, context, sessions, proxy, token);
     private static Task<IResult> ReplaceAsync(int customerId, Guid documentId, HttpContext context, EmployeeSessionService sessions, CustomerDocumentProxy proxy, CancellationToken token) => documentId == Guid.Empty ? Task.FromResult<IResult>(Results.BadRequest()) : UploadCoreAsync(customerId, documentId, context, sessions, proxy, token);
-    private static async Task<IResult> ArchiveAsync(int customerId, Guid documentId, HttpContext context, EmployeeSessionService sessions, CustomerDocumentProxy proxy, CancellationToken token) {
+    private static async Task<IResult> ArchiveAsync(int customerId, Guid documentId, HttpContext context, EmployeeSessionService sessions, CustomerDocumentProxy proxy, CancellationToken token)
+    {
         var body = await ReadBoundedJsonAsync<CustomerDocumentArchiveRequest>(context, token);
         if (body.StatusCode != 200 || body.Value is null) return Results.StatusCode(body.StatusCode);
         var input = body.Value;
@@ -96,21 +97,25 @@ public static class CustomerDocumentEndpointMapper
         var result = await proxy.UploadAsync(customerId, documentId, form, key.ToString("D"), credential, token);
         return result.StatusCode == 200 && result.Value is { } value && value.CustomerId == customerId && value.DocumentId != Guid.Empty && (documentId is null || value.DocumentId == documentId) && value.VersionId != Guid.Empty && value.VersionNumber > 0 && value.Revision > 0 && Digest(value.ContentSha256) ? Results.Ok(value) : Results.StatusCode(result.StatusCode == 200 ? 503 : result.StatusCode);
     }
-    private static bool CommercialAssociations(IFormCollection form) {
+    private static bool CommercialAssociations(IFormCollection form)
+    {
         if (!form.TryGetValue("Associations", out var values)) return true;
         if (values.Count != 1 || values[0] is not { Length: <= 16384 } json) return false;
-        try {
+        try
+        {
             using var document = JsonDocument.Parse(json, new JsonDocumentOptions { MaxDepth = 4 });
             var root = document.RootElement;
             if (root.ValueKind != JsonValueKind.Array || root.GetArrayLength() > 100) return false;
             var seen = new HashSet<(string Kind, int ResourceId)>(); var quotations = 0;
-            foreach (var item in root.EnumerateArray()) {
+            foreach (var item in root.EnumerateArray())
+            {
                 if (item.ValueKind != JsonValueKind.Object || item.EnumerateObject().Count() != 2 || !item.TryGetProperty("Kind", out var kind) || kind.ValueKind != JsonValueKind.String || !item.TryGetProperty("ResourceId", out var resource) || resource.ValueKind != JsonValueKind.Number || !resource.TryGetInt32(out var id) || id <= 0) return false;
                 var name = kind.GetString();
                 if (name is not ("Order" or "Quotation" or "Replacement") || !seen.Add((name, id)) || name == "Quotation" && ++quotations > 1) return false;
             }
             return true;
-        } catch (JsonException) { return false; }
+        }
+        catch (JsonException) { return false; }
     }
     private static async Task<IResult> VerifyAsync(int customerId, Guid documentId, HttpContext context, EmployeeSessionService sessions, CustomerDocumentProxy proxy, CancellationToken token)
     {
@@ -151,16 +156,19 @@ public static class CustomerDocumentEndpointMapper
         if (!context.Request.HasJsonContentType()) return new(415, null);
         if (context.Request.ContentLength > maximum) return new(413, null);
         using var body = new MemoryStream(); var buffer = new byte[4096];
-        try {
+        try
+        {
             int count;
-            while ((count = await context.Request.Body.ReadAsync(buffer, token)) != 0) {
+            while ((count = await context.Request.Body.ReadAsync(buffer, token)) != 0)
+            {
                 if (body.Length + count > maximum) return new(413, null);
                 await body.WriteAsync(buffer.AsMemory(0, count), token);
             }
             body.Position = 0;
             var value = await JsonSerializer.DeserializeAsync<T>(body, BrowserJson, token);
             return new(value is null ? 400 : 200, value);
-        } catch (JsonException) { return new(400, null); }
+        }
+        catch (JsonException) { return new(400, null); }
         catch (BadHttpRequestException exception) { return new(exception.StatusCode == 413 ? 413 : 400, null); }
         catch (IOException) { return new(400, null); }
     }

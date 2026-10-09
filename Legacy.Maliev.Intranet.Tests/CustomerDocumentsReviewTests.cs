@@ -26,7 +26,8 @@ public sealed class CustomerDocumentsReviewTests
         var document = Guid.NewGuid();
         var builder = WebApplication.CreateBuilder(); builder.WebHost.UseTestServer(); builder.Logging.ClearProviders();
         await using var app = builder.Build();
-        app.MapGet("/bff/customers/{customer:int}/documents", async (int customer) => {
+        app.MapGet("/bff/customers/{customer:int}/documents", async (int customer) =>
+        {
             if (customer == 42) { entered.TrySetResult(); await release.Task; if (lateFailure) return Results.Text("{malformed", "application/json"); }
             return Results.Json(new[] { new CustomerDocumentSummary(document, customer, "Evidence", customer == 42 ? "old-customer-A" : "current-customer-B", "Internal", 1) });
         });
@@ -36,7 +37,7 @@ public sealed class CustomerDocumentsReviewTests
         var cut = context.Render<CustomerDocuments>(parameters => parameters.Add(x => x.CustomerId, 0));
         var previousLoad = cut.InvokeAsync(() => cut.Instance.SetParametersAsync(ParameterView.FromDictionary(new Dictionary<string, object?> { [nameof(CustomerDocuments.CustomerId)] = 42 })));
         await entered.Task.WaitAsync(TimeSpan.FromSeconds(5));
-        await cut.Find("#customer-document-title").ChangeAsync("old customer file title");
+        await cut.Find("#customer-document-title").InputAsync("old customer file title");
         await cut.InvokeAsync(() => cut.Instance.SetParametersAsync(ParameterView.FromDictionary(new Dictionary<string, object?> { [nameof(CustomerDocuments.CustomerId)] = 43 })));
         cut.WaitForAssertion(() => Assert.Contains("current-customer-B", cut.Markup));
         release.TrySetResult(); await previousLoad.WaitAsync(TimeSpan.FromSeconds(5));
@@ -71,7 +72,8 @@ public sealed class CustomerDocumentsReviewTests
         app.MapGet($"/bff/customers/42/documents/{document:D}/versions", () => new[] { new CustomerDocumentVersionSummary(document, version, 1, "Nda", new string('a', 64), DateTimeOffset.UtcNow, revision > 1 ? "Verified" : "PendingVerification", revision > 1 ? "synthetic-staff" : null, revision > 1 ? DateTimeOffset.UtcNow : null, revision) });
         app.MapGet($"/bff/customers/42/documents/{document:D}/nda", () => Results.NotFound());
         app.MapGet("/bff/session", () => new EmployeeSessionSummary(true, "synthetic-staff", null, [], "synthetic-csrf"));
-        app.MapPost($"/bff/customers/42/documents/{document:D}/nda/verification", async (HttpContext request) => {
+        app.MapPost($"/bff/customers/42/documents/{document:D}/nda/verification", async (HttpContext request) =>
+        {
             var input = await request.Request.ReadFromJsonAsync<CustomerNdaVerificationRequest>(); sent.Add(input!.ExpectedRevision);
             if (input.ExpectedRevision != revision) return Results.Conflict();
             revision++; return Results.Json(new CustomerNdaVerificationReceipt(Guid.NewGuid(), document, version, revision, "Active", "Protected"));
@@ -82,7 +84,7 @@ public sealed class CustomerDocumentsReviewTests
         await Change(cut, version, "party-one", "synthetic first"); await Change(cut, version, "party-two", "synthetic second");
         await Change(cut, version, "coverage", "Customer"); await Change(cut, version, "responsible", "synthetic-staff"); await Change(cut, version, "reason", "synthetic reason");
         if (concurrentOwnerChange) revision = 2;
-        await cut.FindComponent<CustomerNdaVerification>().Find("button").ClickAsync(); await cut.FindComponent<CustomerNdaVerification>().Find("button").ClickAsync();
+        await cut.FindComponent<CustomerNdaVerification>().Find($"#nda-{version:D}-verify").ClickAsync(); await cut.FindComponent<CustomerNdaVerification>().Find($"#nda-{version:D}-verify").ClickAsync();
         Assert.Equal(new long[] { 1, 2 }, sent); Assert.Equal(3, revision);
         Assert.Contains("Version 1 - Verified", cut.Find("article ul li").TextContent);
         Assert.DoesNotContain("\u00e2\u20ac\u201d", cut.Find("article ul li").TextContent);
@@ -91,7 +93,16 @@ public sealed class CustomerDocumentsReviewTests
         Assert.DoesNotContain("synthetic-nda", cut.Markup);
     }
 
-    private static Task Change(IRenderedComponent<CustomerDocuments> cut, Guid version, string field, string value) => cut.InvokeAsync(() => cut.FindComponent<CustomerNdaVerification>().Find($"#nda-{version:D}-{field}").ChangeAsync(value));
+    private static Task Change(IRenderedComponent<CustomerDocuments> cut, Guid version, string field, string value) => cut.InvokeAsync(async () =>
+    {
+        var form = cut.FindComponent<CustomerNdaVerification>();
+        if (field == "coverage")
+        {
+            await form.Find($"#nda-{version:D}-{field}").ClickAsync();
+            await form.Find($"[role=option][data-value={value}]").ClickAsync();
+        }
+        else await form.Find($"#nda-{version:D}-{field}").InputAsync(value);
+    });
     private static BunitContext Context(HttpClient http)
     {
         var context = new BunitContext(); context.Services.AddLocalization(); context.Services.AddSingleton(http); context.JSInterop.Mode = JSRuntimeMode.Loose; return context;
