@@ -264,7 +264,7 @@ public sealed class CustomerDocumentsLifecycleBrowserTests
     private sealed class OwnerBoundary
     {
         public readonly Guid Document = Guid.NewGuid(), Version = Guid.NewGuid(), UploadedDocument = Guid.NewGuid();
-        public long Revision = 1, EvidenceEpoch = 1, FirstNdaReceiptEpoch; public bool DelaySession, DelayCustomer42, SessionTokenIssued, DistinctParentEpoch;
+        public long Revision = 1, EvidenceEpoch = 1, FirstNdaReceiptEpoch; public bool DelaySession, SessionTokenIssued, DistinctParentEpoch;
         public string DocumentKind = "Nda", EvidenceStatus = "PendingVerification"; public bool ConflictFirstEvidence, ShowReminders;
         public long ReceiptEpoch = 7; public int ReceiptReads, ReminderStatus = 200; public string? ReminderQuery, ReminderAuthorization, ReminderRecipient;
         public readonly List<CustomerDocumentVerificationRequest> EvidenceRequests = []; public readonly List<string?> EvidenceAuthorizations = [];
@@ -320,7 +320,6 @@ public sealed class CustomerDocumentsLifecycleBrowserTests
                 var status = DocumentKind == "Nda" ? EvidenceEpoch > 1 ? "Verified" : "PendingVerification" : EvidenceStatus;
                 return Json(new[] { new CustomerDocumentVersionSummary(uploaded ? UploadedDocument : Document, Version, 1, uploaded ? "BillingInstruction" : DocumentKind, new string('a', 64), DateTimeOffset.UtcNow, uploaded ? "PendingVerification" : status, !uploaded && status is "Verified" or "Rejected" ? "synthetic-employee" : null, !uploaded && status is "Verified" or "Rejected" ? DateTimeOffset.UtcNow : null, uploaded ? 1 : EvidenceEpoch) });
             }
-            if (DelayCustomer42 && customer == 42) { ListEntered.TrySetResult(); await ReleaseList.Task.WaitAsync(token); }
             if (DistinctParentEpoch && NdaEpochs.Count == 1 && Revision == 5) { ParentRefreshEntered.TrySetResult(); await ReleaseParentRefresh.Task.WaitAsync(token); }
             if (ConflictFirstEvidence && EvidenceRequests.Count == 1 && Revision == 109) { EvidenceConflictRefreshEntered.TrySetResult(); await ReleaseEvidenceConflictRefresh.Task.WaitAsync(token); }
             var documents = new List<CustomerDocumentSummary> { new(Document, customer, DocumentKind, customer == 42 ? "old-customer-42" : "current-customer-43", "Internal", Revision) };
