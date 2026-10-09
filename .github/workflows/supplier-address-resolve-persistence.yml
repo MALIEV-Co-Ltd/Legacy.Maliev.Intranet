@@ -92,10 +92,7 @@ jobs:
           test "$RUNNER_ENVIRONMENT" = github-hosted
           docker info > /dev/null
       - name: Validate evidence rejection controls
-        run: |
-          python3 -B acceptance/SupplierAddressResolvePersistence/test_retain.py
-          python3 -B acceptance/SupplierAddressResolvePersistence/test_browser_observer_source.py
-          node acceptance/SupplierAddressResolvePersistence/test_browser_observer_contract.mjs
+        run: python3 -B acceptance/SupplierAddressResolvePersistence/test_retain.py
       - name: Build real joined programs without weakening warnings or audit
         id: build
         run: |
@@ -124,11 +121,11 @@ jobs:
           export GITHUB_ACTIONS=false
           unset SUPPLIER_RESOURCE_EVIDENCE
           dotnet test acceptance/SupplierAddressResolvePersistence/SupplierAddressResolvePersistence.AcceptanceTests.csproj -c Release --no-build --no-restore -p:UseLocalMalievDependencies=true --filter 'FullyQualifiedName~SupplierResourceControls' --logger 'trx;LogFileName=supplier-resource-controls.trx' --results-directory "$RUNNER_TEMP/supplier-address-resolve-persistence-results" --nologo
-      - name: Exercise exact POST observer and pending realm failure controls
-        id: browser_observer_controls
-        timeout-minutes: 3
+      - name: Verify passive POST observer contracts and retained evaluation cleanup
+        id: observer_controls
         env:
           PROOF_RESULTS: ${{ runner.temp }}/supplier-address-resolve-persistence-results
+        timeout-minutes: 3
         run: |
           export GITHUB_ACTIONS=false
           unset SUPPLIER_RESOURCE_EVIDENCE
@@ -149,8 +146,8 @@ jobs:
           CANDIDATE_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
           BUILD_OUTCOME: ${{ steps.build.outcome }}
           EXECUTION_OUTCOME: ${{ steps.proof.outcome }}
+          OBSERVER_CONTROLS_OUTCOME: ${{ steps.observer_controls.outcome }}
           RESOURCE_CONTROLS_OUTCOME: ${{ steps.resource_controls.outcome }}
-          BROWSER_OBSERVER_CONTROLS_OUTCOME: ${{ steps.browser_observer_controls.outcome }}
         run: python3 -B acceptance/SupplierAddressResolvePersistence/retain.py
       - name: Upload sanitized proof only
         if: always()

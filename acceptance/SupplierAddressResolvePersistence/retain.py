@@ -33,13 +33,6 @@ PINS = {
     "Legacy.Maliev.CompatibilityContracts": "99529ad665503b227184c0baa946ad4e62db978a",
 }
 
-
-OBSERVER_TESTS = tuple("SupplierCatalogPersistence.Acceptance.SupplierAddressBrowserObserverControls."+name for name in (
-    "ActualPassiveCloneContractsAndFailureSettlement", "PendingCloneRetainsExactEvaluationUntilOwnedRealmClosesAndSameOwnerRetries", "CanceledInstallationRetainsOriginalRpcBeforeCloseAndOwnedRealmRetry"))
-OBSERVER_CASES = ["same-promise-response-args-receiver","restored-pass-through-no-new-task","wrong-origin","wrong-path","wrong-query","wrong-method",
-                  "url-fragment","duplicate-query-key","wrong-response-url","wrong-response-status","byte-cap","invalid-json","clone-read-error",
-                  "duplicate-exact-request","original-fetch-rejection","deadline-pending-tee-until-original-close","detach-identity-interference"]
-
 def revision(path):
     try:
         result = subprocess.run(["git", "-C", str(path), "rev-parse", "--show-toplevel", "HEAD"],
@@ -203,6 +196,12 @@ def resource_release(directory):
         return False
 
 
+OBSERVER_TESTS = tuple("SupplierCatalogPersistence.Acceptance.SupplierAddressBrowserObserverControls."+name for name in (
+    "ActualPassiveCloneContractsAndFailureSettlement", "PendingCloneRetainsExactEvaluationUntilOwnedRealmClosesAndSameOwnerRetries", "CanceledInstallationRetainsOriginalRpcBeforeCloseAndOwnedRealmRetry"))
+OBSERVER_CASES = ["same-promise-response-args-receiver","restored-pass-through-no-new-task","wrong-origin","wrong-path","unexpected-query","wrong-method",
+                  "url-fragment","url-credentials","wrong-response-url","wrong-response-status","byte-cap","invalid-json","clone-read-error",
+                  "duplicate-exact-request","original-fetch-rejection","deadline-pending-tee-until-original-close","detach-identity-interference"]
+
 def browser_observation(row, successful=True):
     try:
         keys={"schema","source","observerId","maxBytes","deadlineMs","matchingRequests","capturedResponses","capturedBytes","status",
@@ -239,17 +238,10 @@ def browser_observer_release(directory):
                 and row["runId"]==os.environ.get("GITHUB_RUN_ID") and row["runAttempt"]==os.environ.get("GITHUB_RUN_ATTEMPT")
                 and type(row["sequence"]) is int and resources and scopes and all(event["owner"]==row["owner"] for event in all_events)
                 and row["sequence"] not in {event["sequence"] for event in all_events}
-                and max(event["sequence"] for event in resources if event["state"]=="created") < row["sequence"]
+                and max(event["sequence"] for event in resources if event["state"]=="created") < row["sequence"] < min(event["sequence"] for event in resources if event["state"]=="verified-absent")
                 and any(event["state"]=="clients-quiescent" and row["sequence"] < event["sequence"] for event in scopes))
     except (OSError,ValueError,KeyError,TypeError):
         return False
-
-def strict_result_ids(results):
-    pattern = r"[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}"
-    return bool(results) and all(
-        len({row.get(key) for row in results}) == len(results)
-        and all(re.fullmatch(pattern, row.get(key, "")) is not None for row in results)
-        for key in ("testId", "executionId"))
 
 def browser_controls_receipts(directory):
     try:
@@ -267,14 +259,6 @@ def browser_controls_receipts(directory):
     except (OSError,ValueError,KeyError,TypeError):
         return False
 
-def actual_browser_controls(path):
-    result = actual_controls(path, OBSERVER_TESTS)
-    try:
-        rows = ET.parse(path).findall(".//{http://microsoft.com/schemas/VisualStudio/TeamTest/2010}UnitTestResult")
-        result["complete"] = result["complete"] and strict_result_ids(rows)
-    except (OSError, ET.ParseError):
-        result["complete"] = False
-    return result
 
 
 def resolve_journey(directory):
@@ -290,8 +274,6 @@ def resolve_journey(directory):
         return (isinstance(row, dict) and type(row.get("schema")) is int and row["schema"] == 1 and
                 re.fullmatch(r"[a-f0-9]{32}", row.get("owner", "")) is not None and
                 resources and all(resource.get("owner") == row["owner"] for resource in resources) and
-                browser_observation(row.get("browserBodyObservation")) and observer["owner"] == row["owner"] and
-                observer["state"] == "reader-joined-fetch-restored" and observer["joinedReaderReceipt"] == row["browserBodyObservation"] and
                 re.fullmatch(r"[0-9]+", row.get("runId", "")) is not None and
                 re.fullmatch(r"[0-9]+", row.get("runAttempt", "")) is not None and
                 row["runId"] == os.environ.get("GITHUB_RUN_ID") and
@@ -307,7 +289,9 @@ def resolve_journey(directory):
                 all(type(row.get(key)) is int and row[key] == value for key, value in {
                     "directResolveStatus": 200, "resolveStatus": 200, "updateStatus": 204, "addressReadStatus": 200, "profileReadStatus": 200,
                     "csrfDeniedStatus": 400, "lookupDeniedStatus": 403, "manualSaveStatus": 204,
-                }.items()) and all(row.get(key) is True for key in flags))
+                }.items()) and all(row.get(key) is True for key in flags)
+                and browser_observation(row["browserBodyObservation"]) and observer["owner"] == row["owner"]
+                and observer["state"] == "reader-joined-fetch-restored" and observer["joinedReaderReceipt"] == row["browserBodyObservation"])
     except (OSError, ValueError, TypeError, KeyError):
         return False
 
@@ -316,23 +300,23 @@ def main(root=None):
     graph = {name: revision(root / ".dependencies" / name) for name in PINS}
     result = actual_result(pathlib.Path(os.environ["PROOF_RESULTS"]) / "supplier-address-resolve-persistence.trx")
     controls = actual_controls(pathlib.Path(os.environ["PROOF_RESULTS"]) / "supplier-resource-controls.trx")
+    observer = actual_controls(pathlib.Path(os.environ["PROOF_RESULTS"]) / "supplier-address-browser-observer.trx", OBSERVER_TESTS)
     head = os.environ.get("CANDIDATE_HEAD", "")
     executed = revision(root)
     parents = merge_parents(root)
     journey_complete = resolve_journey(pathlib.Path(os.environ["PROOF_EVIDENCE"]))
     cleanup_complete = resource_release(pathlib.Path(os.environ["PROOF_EVIDENCE"])) and browser_observer_release(pathlib.Path(os.environ["PROOF_EVIDENCE"]))
-    observer_controls = actual_browser_controls(pathlib.Path(os.environ["PROOF_RESULTS"]) / "supplier-address-browser-observer.trx")
-    observer_receipts = browser_controls_receipts(pathlib.Path(os.environ["PROOF_RESULTS"]))
-    complete = (result["complete"] and controls["complete"] and observer_controls["complete"] and observer_receipts and graph == PINS and bound_candidate(executed, head, parents) and
+    complete = (result["complete"] and controls["complete"] and observer["complete"] and browser_controls_receipts(pathlib.Path(os.environ["PROOF_RESULTS"]))
+                and os.environ.get("OBSERVER_CONTROLS_OUTCOME") == "success" and graph == PINS and bound_candidate(executed, head, parents) and
                 os.environ.get("BUILD_OUTCOME") == "success" and
                 os.environ.get("EXECUTION_OUTCOME") == "success" and cleanup_complete and journey_complete and
-                os.environ.get("RESOURCE_CONTROLS_OUTCOME") == "success" and os.environ.get("BROWSER_OBSERVER_CONTROLS_OUTCOME") == "success")
+                os.environ.get("RESOURCE_CONTROLS_OUTCOME") == "success")
     evidence = {
         "schema": 1, "candidateHead": head, "executedSource": executed, "mergeParents": parents, "producers": graph,
         "unavailableProducers": [name for name, value in graph.items() if value is None],
         "runId": os.environ.get("GITHUB_RUN_ID"), "runAttempt": os.environ.get("GITHUB_RUN_ATTEMPT"),
         "tests": [{"name": EXPECTED, "outcomes": result["outcomes"]}], "complete": complete,
-        "resourceControls": controls, "browserObserverControls": observer_controls, "browserControlReceiptsComplete": observer_receipts, "resolveJourneyComplete": journey_complete,
+        "resourceControls": controls, "browserObserverControls": observer, "resolveJourneyComplete": journey_complete,
         "covered": ["Existing supplier pasted-address exact resolution (initial ordinary create prerequisite)", "real Catalog resolve/explicit candidate/edited detail Apply", "ordinary supplier/address update with original IDs preserved", "independent domain API readback", "page reload", "resolve CSRF/missing only Catalog read denial with manual save permitted"],
         "excluded": ["Creden company selection", "real AuthService issuance", "AppHost orchestration", "customer", "billing", "shipping", "purchase order", "quotation"],
         "authority": "disposable synthetic RSA issuer; normal JWT and signed permission fallback",

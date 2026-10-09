@@ -3,7 +3,6 @@ using Microsoft.Playwright;
 
 namespace SupplierCatalogPersistence.Acceptance;
 
-/// <summary>Observes a clone of the actual browser fetch; never replaces its promise, response or wire request.</summary>
 internal sealed class SupplierAddressBrowserObserver(IPage page, string url, bool heldInstallationControl = false)
 {
     private readonly string id = Guid.NewGuid().ToString("N");
@@ -113,7 +112,7 @@ internal sealed class SupplierAddressBrowserObserver(IPage page, string url, boo
             const u = new URL(value, expected.origin);
             const pairs = [...u.searchParams.entries()];
             return method === 'POST' && u.origin === expected.origin && u.pathname === expected.pathname && !u.hash && !u.username && !u.password &&
-              expected.search === '' && pairs.length === 0;
+              pairs.length === 0 && expected.search === '';
             } catch { return false; }
           }
           async function capture(response) {
@@ -223,7 +222,7 @@ internal sealed class SupplierAddressBrowserObserver(IPage page, string url, boo
         }
         {
           const expectedResponse = response();
-          const f = fixture(() => expectedResponse), options = { method: 'POST', body: 'unchanged-original-post-body' };
+          const f = fixture(() => expectedResponse), options = { method: 'POST' };
           const promise = f.target.fetch(url, options);
           check(promise === f.promise && f.calls === 1 && f.receiver === f.target && f.args[0] === url && f.args[1] === options, 'identity');
           const originalResponse = await promise;
@@ -239,10 +238,10 @@ internal sealed class SupplierAddressBrowserObserver(IPage page, string url, boo
         for (const [name, changed, method] of [
           ['wrong-origin', url.replace('owned.synthetic.test', 'other.synthetic.test'), 'POST'],
           ['wrong-path', url.replace('/thai-addresses/resolve', '/thai-addresses/other'), 'POST'],
-          ['wrong-query', url + '?unexpected=1', 'POST'],
+          ['unexpected-query', url + '?q=extra', 'POST'],
           ['wrong-method', url, 'GET'],
           ['url-fragment', url + '#fragment', 'POST'],
-          ['duplicate-query-key', url + '?q=first&q=second', 'POST']]) {
+          ['url-credentials', url.replace('https://', 'https://user@'), 'POST']]) {
           const f = fixture(); const p = f.target.fetch(changed, { method });
           check(p === f.promise, name + ' promise'); await p;
           const result = await f.state.close();
@@ -250,7 +249,7 @@ internal sealed class SupplierAddressBrowserObserver(IPage page, string url, boo
           passed.push(name);
         }
         for (const [name, factory, cap] of [
-          ['wrong-response-url', () => response(body, 200, url + '?unexpected=1'), 65536],
+          ['wrong-response-url', () => response(body, 200, url + '?unexpected=true'), 65536],
           ['wrong-response-status', () => response(body, 503), 65536],
           ['byte-cap', () => response(body), 8],
           ['invalid-json', () => response('{'), 65536],

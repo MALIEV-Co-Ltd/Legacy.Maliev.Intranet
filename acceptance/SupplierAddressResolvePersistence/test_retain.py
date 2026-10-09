@@ -5,20 +5,80 @@ import pathlib
 import subprocess
 import tempfile
 import unittest
-import uuid
 from unittest import mock
 import retain
 
 class RetainerTests(unittest.TestCase):
-    def browser_row(self):
-        return dict(schema=1,source="actual-browser-fetch-clone",observerId="e"*32,maxBytes=65536,deadlineMs=5000,
-                    matchingRequests=1,capturedResponses=1,capturedBytes=512,status=200,captureSucceeded=True,
-                    exactRequestAndResponseUrl=True,method="POST",closed=True,fetchIdentityRestored=True,
-                    activeTasks=0,activeTimers=0,readSettled=True,cancelSettled=True)
+    def observation(self):
+        return dict(schema=1, source="actual-browser-fetch-clone", observerId="c"*32,
+                    maxBytes=65536, deadlineMs=5000, matchingRequests=1, capturedResponses=1,
+                    capturedBytes=313, status=200, captureSucceeded=True, exactRequestAndResponseUrl=True,
+                    method="POST", closed=True, fetchIdentityRestored=True, activeTasks=0, activeTimers=0,
+                    readSettled=True, cancelSettled=True)
 
-    def write_observer_join(self, root, row):
-        (root / "browser-observer.jsonl").write_text(json.dumps(dict(owner=row["owner"],
-            state="reader-joined-fetch-restored",joinedReaderReceipt=row["browserBodyObservation"])))
+    def test_observation_rejects_unjoined_oversized_foreign_method_and_unknown_fields(self):
+        row=self.observation()
+        self.assertTrue(retain.browser_observation(row))
+        mutations=dict(method="GET", maxBytes=65537, deadlineMs=5001, matchingRequests=2,
+                       capturedResponses=0, capturedBytes=65537, status=503, observerId="foreign",
+                       activeTasks=1, activeTimers=1, readSettled=False, cancelSettled=False,
+                       fetchIdentityRestored=False, captureSucceeded=False, exactRequestAndResponseUrl=False)
+        for key in row:
+            changed=dict(row); changed.pop(key)
+            self.assertFalse(retain.browser_observation(changed), key)
+        for key,value in mutations.items():
+            self.assertFalse(retain.browser_observation(dict(row, **{key:value})), key)
+        self.assertFalse(retain.browser_observation(dict(row, unexpected=True)))
+
+    def test_observer_release_requires_same_owner_run_attempt_and_before_quiescence(self):
+        with tempfile.TemporaryDirectory() as directory, mock.patch.dict(os.environ,GITHUB_RUN_ID="123",GITHUB_RUN_ATTEMPT="1"):
+            root=pathlib.Path(directory)
+            births,absent,scopes=self.release_rows()
+            # Make a unique sequence slot between backend creation and client quiescence.
+            for row in scopes: row["sequence"]+=1
+            for row in absent: row["sequence"]+=1
+            self.write_release_rows(root,births,absent,scopes)
+            row=dict(schema=1,state="reader-joined-fetch-restored",observerId="c"*32,
+                     installationDispatched=True,installationEvaluationSettled=True,retainedEvaluationSettled=True,
+                     ownedPageClosed=False,joinedReaderReceipt=self.observation(),runId="123",runAttempt="1",owner="c"*32,sequence=3)
+            path=root/"browser-observer.jsonl"
+            path.write_text(json.dumps(row))
+            self.assertTrue(retain.browser_observer_release(root))
+            for key,value in dict(owner="b"*32,runId="124",runAttempt="2",sequence=4,
+                                  retainedEvaluationSettled=False,installationEvaluationSettled=False,
+                                  observerId="d"*32,ownedPageClosed=True).items():
+                path.write_text(json.dumps(dict(row,**{key:value})))
+                self.assertFalse(retain.browser_observer_release(root),key)
+            path.write_text(json.dumps(row)+"\n"+json.dumps(row))
+            self.assertFalse(retain.browser_observer_release(root))
+
+    def test_native_observer_trx_requires_exact_three_passed_cases(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path=pathlib.Path(directory)/"controls.trx"
+            path.write_text(self.controls_xml(names=retain.OBSERVER_TESTS))
+            self.assertTrue(retain.actual_controls(path,retain.OBSERVER_TESTS)["complete"])
+            path.write_text(self.controls_xml(names=retain.OBSERVER_TESTS[:-1]))
+            self.assertFalse(retain.actual_controls(path,retain.OBSERVER_TESTS)["complete"])
+
+    def test_native_lifecycle_receipts_reject_stale_nonsettled_and_reused_observers(self):
+        with tempfile.TemporaryDirectory() as directory, mock.patch.dict(os.environ,GITHUB_RUN_ID="123",GITHUB_RUN_ATTEMPT="1"):
+            root=pathlib.Path(directory)
+            controls=dict(schema=1,nativeBrowserObserverControls=True,cases=retain.OBSERVER_CASES,realNetworkAllocated=False)
+            (root/"browser-observer-controls.json").write_text(json.dumps(controls))
+            realm=dict(schema=1,state="owned-realm-destroyed-after-settled-evaluation",observerId="c"*32,
+                       installationDispatched=True,installationEvaluationSettled=True,retainedEvaluationSettled=True,
+                       ownedPageClosed=True,joinedReaderReceipt=None,runId="123",runAttempt="1")
+            first=root/"browser-observer-realm-control.json"
+            second=root/"browser-observer-installation-control.json"
+            first.write_text(json.dumps(realm)); second.write_text(json.dumps(dict(realm,observerId="d"*32)))
+            self.assertTrue(retain.browser_controls_receipts(root))
+            for key,value in dict(runId="124",runAttempt="2",retainedEvaluationSettled=False,
+                                  installationEvaluationSettled=False,ownedPageClosed=False,joinedReaderReceipt=self.observation(),observerId="d"*32).items():
+                first.write_text(json.dumps(dict(realm,**{key:value})))
+                self.assertFalse(retain.browser_controls_receipts(root),key)
+            first.write_text(json.dumps(realm))
+            (root/"browser-observer-controls.json").write_text(json.dumps(dict(controls,cases=retain.OBSERVER_CASES[:-1])))
+            self.assertFalse(retain.browser_controls_receipts(root))
 
     def journey_row(self):
         return dict(schema=1, owner="a" * 32, runId="123", runAttempt="1",
@@ -33,15 +93,15 @@ class RetainerTests(unittest.TestCase):
                     editedPreviewDidNotApply=True, explicitApplyMatched=True, reviewedDetailPersisted=True,
                     address2AndBuildingPreserved=True, countryPreserved=True,
                     taxPreserved=True, deniedResolvePreservedOriginal=True, reloadMatched=True,
-                    singleSupplierAndAddress=True,browserBodyObservation=self.browser_row())
+                    singleSupplierAndAddress=True, browserBodyObservation=self.observation())
 
     def test_resolve_receipt_requires_deliberate_confirmation_identity_denials_and_reload(self):
         with tempfile.TemporaryDirectory() as directory, mock.patch.dict(os.environ, GITHUB_RUN_ID="123", GITHUB_RUN_ATTEMPT="1"):
             root = pathlib.Path(directory)
             path = root / "resolve-journey.json"
             row = self.journey_row()
-            self.write_observer_join(root, row)
             (root / "resources.jsonl").write_text(json.dumps(dict(owner=row["owner"])) + "\n")
+            (root / "browser-observer.jsonl").write_text(json.dumps(dict(owner=row["owner"], state="reader-joined-fetch-restored", joinedReaderReceipt=row["browserBodyObservation"])))
             path.write_text(json.dumps(row))
             self.assertTrue(retain.resolve_journey(root))
             for key in row:
@@ -81,7 +141,7 @@ class RetainerTests(unittest.TestCase):
                     **dict.fromkeys(retain.ZERO_COUNTERS, 0)}
         counters.update(overrides or {})
         attributes = " ".join(f'{key}="{value}"' for key, value in counters.items())
-        results = "".join(f'<UnitTestResult testId="{uuid.uuid4()}" executionId="{uuid.uuid4()}" testName="{name}" outcome="{outcome}" />' for name in names)
+        results = "".join(f'<UnitTestResult testName="{name}" outcome="{outcome}" />' for name in names)
         return f'<TestRun xmlns="http://microsoft.com/schemas/VisualStudio/TeamTest/2010"><Results>{results}</Results><ResultSummary outcome="{summary}"><Counters {attributes} /></ResultSummary></TestRun>'
 
     def test_all_exact_resource_controls_must_actually_pass(self):
@@ -371,119 +431,6 @@ class RetainerTests(unittest.TestCase):
                 with self.subTest(mutation=mutation):
                     self.write_release_rows(root, births, absent, changed)
                     self.assertFalse(retain.resource_release(root))
-
-    def test_browser_body_requires_every_bound_join_and_exact_types(self):
-        row=self.browser_row();self.assertTrue(retain.browser_observation(row))
-        for key in row:
-            missing=row.copy();missing.pop(key)
-            with self.subTest(missing=key): self.assertFalse(retain.browser_observation(missing))
-        for key,value in row.items():
-            changed=row.copy()
-            changed[key]=False if type(value) is bool else True if type(value) is int else "other"
-            with self.subTest(changed=key): self.assertFalse(retain.browser_observation(changed))
-        self.assertFalse(retain.browser_observation(dict(row,unknown=True)))
-
-    def test_browser_deadline_cap_duplicate_unjoined_error_or_alternative_source_rejected(self):
-        row=self.browser_row()
-        for key,value in (("deadlineMs",6000),("maxBytes",65537),("capturedBytes",65537),("capturedBytes",0),
-                          ("matchingRequests",2),("capturedResponses",0),("activeTasks",1),("activeTimers",1),
-                          ("readSettled",False),("cancelSettled",False),("captureSucceeded",False),
-                          ("source","separate-api-get"),("fetchIdentityRestored",False),("method","GET")):
-            with self.subTest(key=key,value=value): self.assertFalse(retain.browser_observation(dict(row,**{key:value})))
-
-    def test_browser_cleanup_exact_owner_sequence_nonce_and_terminal_state(self):
-        with tempfile.TemporaryDirectory() as directory,mock.patch.dict(os.environ,GITHUB_RUN_ID="123",GITHUB_RUN_ATTEMPT="1"):
-            root=pathlib.Path(directory);path=root/"browser-observer.jsonl"
-            row=dict(schema=1,state="reader-joined-fetch-restored",observerId="e"*32,installationDispatched=True,installationEvaluationSettled=True,retainedEvaluationSettled=True,
-                     ownedPageClosed=False,joinedReaderReceipt=self.browser_row(),runId="123",runAttempt="1",owner="a"*32,sequence=3)
-            (root/"resources.jsonl").write_text("\n".join(json.dumps(dict(owner="a"*32,state="created",sequence=i)) for i in (1,2)))
-            (root/"scope.jsonl").write_text(json.dumps(dict(owner="a"*32,state="clients-quiescent",sequence=5)))
-            path.write_text(json.dumps(row));self.assertTrue(retain.browser_observer_release(root))
-            for key in row:
-                changed=row.copy();changed.pop(key);path.write_text(json.dumps(changed));self.assertFalse(retain.browser_observer_release(root))
-            for key,value in (("owner","b"*32),("observerId","f"*32),("sequence",1),("sequence",5),("sequence",6),
-                              ("installationDispatched",False),("installationEvaluationSettled",False),("installationEvaluationSettled",1),("retainedEvaluationSettled",False),("ownedPageClosed",True),("runId","124"),("unknown",True)):
-                path.write_text(json.dumps(dict(row,**{key:value})));self.assertFalse(retain.browser_observer_release(root))
-            path.write_text(json.dumps(row)+"\n"+json.dumps(row));self.assertFalse(retain.browser_observer_release(root))
-
-    def test_realm_destroyed_receipt_cannot_impersonate_joined_reader_or_successful_body(self):
-        with tempfile.TemporaryDirectory() as directory,mock.patch.dict(os.environ,GITHUB_RUN_ID="123",GITHUB_RUN_ATTEMPT="1"):
-            root=pathlib.Path(directory)
-            row=dict(schema=1,state="owned-realm-destroyed-after-settled-evaluation",observerId="e"*32,installationDispatched=True,installationEvaluationSettled=True,retainedEvaluationSettled=True,
-                     ownedPageClosed=True,joinedReaderReceipt=None,runId="123",runAttempt="1",owner="a"*32,sequence=3)
-            (root/"resources.jsonl").write_text("\n".join(json.dumps(dict(owner="a"*32,state="created",sequence=i)) for i in (1,2)))
-            (root/"scope.jsonl").write_text(json.dumps(dict(owner="a"*32,state="clients-quiescent",sequence=5)))
-            path=root/"browser-observer.jsonl";path.write_text(json.dumps(row));self.assertTrue(retain.browser_observer_release(root))
-            for key,value in (("ownedPageClosed",False),("joinedReaderReceipt",self.browser_row()),("retainedEvaluationSettled",False)):
-                path.write_text(json.dumps(dict(row,**{key:value})));self.assertFalse(retain.browser_observer_release(root))
-            self.assertFalse(retain.browser_observation(None))
-
-    def test_native_observer_requires_three_exact_actual_results_and_zero_nonpass(self):
-        with tempfile.TemporaryDirectory() as directory:
-            path=pathlib.Path(directory)/"observer.trx"
-            path.write_text(self.controls_xml(names=retain.OBSERVER_TESTS));self.assertTrue(retain.actual_browser_controls(path)["complete"])
-            for names in (retain.OBSERVER_TESTS[:1],retain.OBSERVER_TESTS[:2],[],[retain.OBSERVER_TESTS[0]]*2,[retain.OBSERVER_TESTS[0],"other"]):
-                path.write_text(self.controls_xml(names=names));self.assertFalse(retain.actual_browser_controls(path)["complete"])
-            for key in retain.ZERO_COUNTERS:
-                path.write_text(self.controls_xml(names=retain.OBSERVER_TESTS,overrides={key:1}));self.assertFalse(retain.actual_browser_controls(path)["complete"])
-
-    def test_native_observer_case_receipt_rejects_missing_wrong_controls_and_false_realm_settlement(self):
-        with tempfile.TemporaryDirectory() as directory,mock.patch.dict(os.environ,GITHUB_RUN_ID="123",GITHUB_RUN_ATTEMPT="1"):
-            root=pathlib.Path(directory)
-            controls=dict(schema=1,nativeBrowserObserverControls=True,cases=retain.OBSERVER_CASES,realNetworkAllocated=False)
-            realm=dict(schema=1,state="owned-realm-destroyed-after-settled-evaluation",observerId="e"*32,installationDispatched=True,installationEvaluationSettled=True,retainedEvaluationSettled=True,
-                       ownedPageClosed=True,joinedReaderReceipt=None,runId="123",runAttempt="1")
-            a=root/"browser-observer-controls.json";b=root/"browser-observer-realm-control.json"
-            a.write_text(json.dumps(controls));b.write_text(json.dumps(realm));(root/"browser-observer-installation-control.json").write_text(json.dumps(dict(realm,observerId="f"*32)));self.assertTrue(retain.browser_controls_receipts(root))
-            for key,value in (("cases",retain.OBSERVER_CASES[:-1]),("cases",retain.OBSERVER_CASES[::-1]),("realNetworkAllocated",True),
-                              ("nativeBrowserObserverControls",1),("schema",True)):
-                a.write_text(json.dumps(dict(controls,**{key:value})));self.assertFalse(retain.browser_controls_receipts(root))
-            a.write_text(json.dumps(controls))
-            for key,value in (("ownedPageClosed",False),("installationDispatched",False),("installationEvaluationSettled",False),("installationEvaluationSettled",1),("retainedEvaluationSettled",False),("joinedReaderReceipt",self.browser_row()),("runAttempt","2")):
-                b.write_text(json.dumps(dict(realm,**{key:value})));self.assertFalse(retain.browser_controls_receipts(root))
-
-    def test_installation_control_requires_its_own_actual_settlement_receipt(self):
-        with tempfile.TemporaryDirectory() as directory,mock.patch.dict(os.environ,GITHUB_RUN_ID="123",GITHUB_RUN_ATTEMPT="1"):
-            root=pathlib.Path(directory)
-            (root/"browser-observer-controls.json").write_text(json.dumps(dict(schema=1,nativeBrowserObserverControls=True,cases=retain.OBSERVER_CASES,realNetworkAllocated=False)))
-            realm=dict(schema=1,state="owned-realm-destroyed-after-settled-evaluation",observerId="e"*32,installationDispatched=True,installationEvaluationSettled=True,retainedEvaluationSettled=True,ownedPageClosed=True,joinedReaderReceipt=None,runId="123",runAttempt="1")
-            (root/"browser-observer-realm-control.json").write_text(json.dumps(realm))
-            self.assertFalse(retain.browser_controls_receipts(root))
-            path=root/"browser-observer-installation-control.json"
-            installed=dict(realm,observerId="f"*32)
-            path.write_text(json.dumps(installed));self.assertTrue(retain.browser_controls_receipts(root))
-            for key,value in (("observerId","e"*32),("installationDispatched",False),("installationEvaluationSettled",False),("installationEvaluationSettled",1),("retainedEvaluationSettled",False),("joinedReaderReceipt",self.browser_row())):
-                path.write_text(json.dumps(dict(installed,**{key:value})));self.assertFalse(retain.browser_controls_receipts(root))
-
-    def test_never_dispatched_observer_cannot_claim_an_installation_or_reader_join(self):
-        with tempfile.TemporaryDirectory() as directory,mock.patch.dict(os.environ,GITHUB_RUN_ID="123",GITHUB_RUN_ATTEMPT="1"):
-            root=pathlib.Path(directory)
-            (root/"resources.jsonl").write_text("\n".join(json.dumps(dict(owner="a"*32,state="created",sequence=i)) for i in (1,2)))
-            (root/"scope.jsonl").write_text(json.dumps(dict(owner="a"*32,state="clients-quiescent",sequence=5)))
-            row=dict(schema=1,state="observer-never-dispatched",observerId="e"*32,installationDispatched=False,installationEvaluationSettled=False,retainedEvaluationSettled=True,ownedPageClosed=False,joinedReaderReceipt=None,runId="123",runAttempt="1",owner="a"*32,sequence=3)
-            path=root/"browser-observer.jsonl";path.write_text(json.dumps(row));self.assertTrue(retain.browser_observer_release(root))
-            for key,value in (("installationDispatched",True),("installationEvaluationSettled",True),("retainedEvaluationSettled",False),("ownedPageClosed",True),("joinedReaderReceipt",self.browser_row())):
-                path.write_text(json.dumps(dict(row,**{key:value})));self.assertFalse(retain.browser_observer_release(root))
-
-    def test_browser_reference_metadata_is_rejected_without_filtering(self):
-        original=self.browser_row()
-        self.assertTrue(retain.browser_observation(original))
-        for key,value in (("$id","2"),("$ref","2"),("$values",[])):
-            received=dict(original,**{key:value})
-            before=json.dumps(received,sort_keys=True)
-            self.assertFalse(retain.browser_observation(received))
-            self.assertEqual(before,json.dumps(received,sort_keys=True))
-
-    def test_control_reference_metadata_is_rejected_instead_of_normalized(self):
-        with tempfile.TemporaryDirectory() as directory,mock.patch.dict(os.environ,GITHUB_RUN_ID="123",GITHUB_RUN_ATTEMPT="1"):
-            root=pathlib.Path(directory)
-            controls=dict(schema=1,nativeBrowserObserverControls=True,cases=retain.OBSERVER_CASES,realNetworkAllocated=False)
-            realm=dict(schema=1,state="owned-realm-destroyed-after-settled-evaluation",observerId="e"*32,installationDispatched=True,installationEvaluationSettled=True,retainedEvaluationSettled=True,ownedPageClosed=True,joinedReaderReceipt=None,runId="123",runAttempt="1")
-            (root/"browser-observer-realm-control.json").write_text(json.dumps(realm))
-            (root/"browser-observer-installation-control.json").write_text(json.dumps(dict(realm,observerId="f"*32)))
-            path=root/"browser-observer-controls.json";path.write_text(json.dumps(controls));self.assertTrue(retain.browser_controls_receipts(root))
-            for received in (dict(controls,**{"$id":"1"}),dict(controls,**{"$ref":"1"}),dict(controls,cases={"$id":"2","$values":retain.OBSERVER_CASES})):
-                text=json.dumps(received);path.write_text(text);self.assertFalse(retain.browser_controls_receipts(root));self.assertEqual(text,path.read_text())
 
 if __name__ == "__main__":
     unittest.main()

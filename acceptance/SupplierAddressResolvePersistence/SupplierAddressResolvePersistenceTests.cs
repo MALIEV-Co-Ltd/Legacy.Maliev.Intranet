@@ -305,6 +305,7 @@ public sealed class SupplierAddressResolvePersistenceTests
                 () => page.GetByRole(AriaRole.Button, new() { Name = "Extract address fields", Exact = true }).ClickAsync(),
                 response => response.Request.Method == "POST" && response.Url.EndsWith("/bff/lookups/thai-addresses/resolve", StringComparison.Ordinal));
             Assert.Equal(200, resolved.Status);
+            Assert.Equal(JsonSerializer.Serialize(resolveBody), JsonSerializer.Serialize(JsonSerializer.Deserialize<LookupResolveRequest>(resolved.Request.PostData!, new JsonSerializerOptions(JsonSerializerDefaults.Web))));
             var bodyObservation = await bodyObserver.ReadAndCloseAsync(timeout.Token);
             var browserResolution = JsonSerializer.Deserialize<LookupResolveResponse>(bodyObservation.GetProperty("body").GetString()!, new JsonSerializerOptions(JsonSerializerDefaults.Web));
             Assert.NotNull(browserResolution);
@@ -365,13 +366,13 @@ public sealed class SupplierAddressResolvePersistenceTests
                 candidateCount = actualResolution.Candidates.Count,
                 directResolveStatus = (int)independentResolve.StatusCode,
                 resolveStatus = resolved.Status,
-                browserBodyObservation = bodyObservation.GetProperty("receipt"),
                 updateStatus = updated.Status,
                 addressReadStatus = (int)editedAddressRead.StatusCode,
                 profileReadStatus = (int)editedProfileRead.StatusCode,
                 csrfDeniedStatus = missingResolveCsrf.Status,
                 lookupDeniedStatus,
                 manualSaveStatus,
+                browserBodyObservation = bodyObservation.GetProperty("receipt"),
                 directAndBffResolutionMatched = true,
                 noAutoApply = true,
                 candidateSelectionDidNotApply = true,
