@@ -204,3 +204,13 @@ The isolated clone contains persistent reviewable source and recovery evidence a
 is retained. The earlier unused empty worktree was removed, and its absence was
 verified. No shared process or
 another owner's checkout was stopped or changed.
+
+## Supplier qualification on main — 2026-10-09
+
+PR [#286](https://github.com/MALIEV-Co-Ltd/Legacy.Maliev.Intranet/pull/286) merged through normal protected linear history as `c1571a3e74923ab4da777f8e43dbe238ca19d60c`. Its tree `95e388be4dbfd3874d1594d1efe22c62aacc02e1` is identical to reviewed head `dc22a41bc0f92dc7aa6c324749ccb4623b42cc26` and tested PR merge `2bc7e24ff056dcf2b7eaab5f8213850c7d4ef1f0`.
+
+The exact-main supplier address run [37884896498](https://github.com/MALIEV-Co-Ltd/Legacy.Maliev.Intranet/actions/runs/37884896498) passed 17 native cases: 13 resource controls, 3 browser observer controls and the original pasted-address journey. The journey compares real Catalog/BFF resolution, requires candidate review, edited detail and explicit Apply, then uses ordinary supplier PUT, independent Procurement readback and page reload with original supplier/address IDs. CSRF and permission denials preserve the original fields. Downloaded sanitized receipts independently verify all 21 clients and both backend participants settled/released, original two backend IDs absent, and the original fetch restored with no active reader tasks/timers.
+
+Required PR validation [37879053982](https://github.com/MALIEV-Co-Ltd/Legacy.Maliev.Intranet/actions/runs/37879053982) passed 1,953 main, 200 browser and 3 joined tests, plus the separate 1,953-test native coverage execution. Builds had zero warnings/errors; format, audit, image and coverage gates passed. All 12 retained file hashes and tested tree identity were independently verified. Exact-main full validation [37884896712](https://github.com/MALIEV-Co-Ltd/Legacy.Maliev.Intranet/actions/runs/37884896712) is still running at this checkpoint; its result must be read back separately.
+
+This closes the demonstrated supplier response-observation failure only. Synthetic issuer and guarded provider boundaries remain explicit. It does not close live IAM/Creden, AppHost #144, other editors or broader UI coverage. Current physical UI line coverage is 1,208/2,417 (49.98%); unchanged BFF/Server/Contracts floors remain 80/85/95%. Historical failures above are retained for their original source revisions. Purchase-order company hooks are owned by PR #285, and customer document paths by PR #287; this lane does not edit those files.
