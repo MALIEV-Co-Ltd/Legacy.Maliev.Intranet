@@ -60,6 +60,26 @@ class RetainerTests(unittest.TestCase):
             path.write_text(self.controls_xml(names=retain.OBSERVER_TESTS[:-1]))
             self.assertFalse(retain.actual_controls(path,retain.OBSERVER_TESTS)["complete"])
 
+    def test_native_lifecycle_receipts_reject_stale_nonsettled_and_reused_observers(self):
+        with tempfile.TemporaryDirectory() as directory, mock.patch.dict(os.environ,GITHUB_RUN_ID="123",GITHUB_RUN_ATTEMPT="1"):
+            root=pathlib.Path(directory)
+            controls=dict(schema=1,nativeBrowserObserverControls=True,cases=retain.OBSERVER_CASES,realNetworkAllocated=False)
+            (root/"browser-observer-controls.json").write_text(json.dumps(controls))
+            realm=dict(schema=1,state="owned-realm-destroyed-after-settled-evaluation",observerId="c"*32,
+                       installationDispatched=True,installationEvaluationSettled=True,retainedEvaluationSettled=True,
+                       ownedPageClosed=True,joinedReaderReceipt=None,runId="123",runAttempt="1")
+            first=root/"browser-observer-realm-control.json"
+            second=root/"browser-observer-installation-control.json"
+            first.write_text(json.dumps(realm)); second.write_text(json.dumps(dict(realm,observerId="d"*32)))
+            self.assertTrue(retain.browser_controls_receipts(root))
+            for key,value in dict(runId="124",runAttempt="2",retainedEvaluationSettled=False,
+                                  installationEvaluationSettled=False,ownedPageClosed=False,joinedReaderReceipt=self.observation(),observerId="d"*32).items():
+                first.write_text(json.dumps(dict(realm,**{key:value})))
+                self.assertFalse(retain.browser_controls_receipts(root),key)
+            first.write_text(json.dumps(realm))
+            (root/"browser-observer-controls.json").write_text(json.dumps(dict(controls,cases=retain.OBSERVER_CASES[:-1])))
+            self.assertFalse(retain.browser_controls_receipts(root))
+
     def journey_row(self):
         return dict(schema=1, owner="a" * 32, runId="123", runAttempt="1",
                     supplierId=7, persistedSupplierId=7, originalAddressId=11,
