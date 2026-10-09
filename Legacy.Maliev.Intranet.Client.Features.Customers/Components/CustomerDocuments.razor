@@ -9,7 +9,7 @@
     @if (busy) { <p role="status" aria-live="polite">@Text["Processing document. Please wait."]</p> }
     @if (!string.IsNullOrEmpty(error)) { <p role="alert">@Text[error]</p> }
     <ShadcnButton OnClick="LoadAsync" Disabled="@busy" OperationFeedback="false">@Text["Reload"]</ShadcnButton>
-    <ShadcnCollapsible><ShadcnCollapsibleTrigger>@Text["My NDA reminders"]</ShadcnCollapsibleTrigger><ShadcnCollapsibleContent>
+    <ShadcnCollapsible id="customer-nda-reminders"><ShadcnCollapsibleTrigger>@Text["My NDA reminders"]</ShadcnCollapsibleTrigger><ShadcnCollapsibleContent>
         <label for="nda-due-from">@Text["Due from (UTC)"]</label><ShadcnInput TValue="string" id="nda-due-from" Type="date" Value="@DateValue(dueFrom)" ValueChanged="@(value => dueFrom = ParseDate(value))" />
         <label for="nda-due-through">@Text["Due through (UTC, inclusive)"]</label><ShadcnInput TValue="string" id="nda-due-through" Type="date" Value="@DateValue(dueThrough)" ValueChanged="@(value => dueThrough = ParseDate(value))" />
         <label for="nda-reminder-state">@Text["Reminder state"]</label><ShadcnSelect TValue="string" id="nda-reminder-state" @bind-Value="reminderState" Options="@ReminderStateOptions" />

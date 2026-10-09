@@ -56,7 +56,7 @@ public sealed class CustomerDocumentsReviewTests
         using var context = Context(app.GetTestClient()); var cut = context.Render<CustomerDocuments>(parameters => parameters.Add(x => x.CustomerId, 42));
         cut.WaitForAssertion(() => Assert.Contains("role=\"alert\"", cut.Markup));
         Assert.DoesNotContain("partial-protected-first", cut.Markup); Assert.DoesNotContain("partial-protected-second", cut.Markup);
-        Assert.Empty(cut.FindAll("article")); Assert.Empty(cut.FindAll("details ul li"));
+        Assert.Empty(cut.FindAll("article")); Assert.Empty(cut.FindAll("#customer-nda-reminders [data-slot=collapsible-content] ul li"));
     }
 
     [Theory]
