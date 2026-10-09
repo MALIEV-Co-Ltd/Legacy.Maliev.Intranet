@@ -1,0 +1,244 @@
+name: Purchase-order company Catalog PDF persistence proof
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'acceptance/PurchaseOrderCompanyCatalogPersistence/**'
+      - 'acceptance/SupplierCatalogPersistence/SupplierBackends.cs'
+      - 'acceptance/SupplierCatalogPersistence/SupplierResourceScope.cs'
+      - 'acceptance/SupplierCatalogPersistence/SupplierResourceControls.cs'
+      - '.github/workflows/purchase-order-company-catalog-persistence.yml'
+      - 'Legacy.Maliev.Intranet.Client.Features.Procurement/**'
+      - 'Legacy.Maliev.Intranet.Client.Shared/**'
+      - 'Legacy.Maliev.Intranet.Contracts/PurchaseOrder*.cs'
+      - 'Legacy.Maliev.Intranet.Contracts/Lookup*.cs'
+      - 'Legacy.Maliev.Intranet.Bff/Procurement/PurchaseOrder*.cs'
+      - 'Legacy.Maliev.Intranet.Bff/Catalog/Lookup*.cs'
+      - 'Legacy.Maliev.Intranet.Server/PurchaseOrders/**'
+      - 'Legacy.Maliev.Intranet.Server/Auth/**'
+      - 'acceptance/SupplierCompanyCatalogPersistence/OwnedSyntheticTransport.cs'
+      - 'Legacy.Maliev.Intranet.Bff/Program.cs'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'acceptance/PurchaseOrderCompanyCatalogPersistence/**'
+      - 'acceptance/SupplierCatalogPersistence/SupplierBackends.cs'
+      - 'acceptance/SupplierCatalogPersistence/SupplierResourceScope.cs'
+      - 'acceptance/SupplierCatalogPersistence/SupplierResourceControls.cs'
+      - '.github/workflows/purchase-order-company-catalog-persistence.yml'
+      - 'Legacy.Maliev.Intranet.Client.Features.Procurement/**'
+      - 'Legacy.Maliev.Intranet.Client.Shared/**'
+      - 'Legacy.Maliev.Intranet.Contracts/PurchaseOrder*.cs'
+      - 'Legacy.Maliev.Intranet.Contracts/Lookup*.cs'
+      - 'Legacy.Maliev.Intranet.Bff/Procurement/PurchaseOrder*.cs'
+      - 'Legacy.Maliev.Intranet.Bff/Catalog/Lookup*.cs'
+      - 'Legacy.Maliev.Intranet.Server/PurchaseOrders/**'
+      - 'Legacy.Maliev.Intranet.Server/Auth/**'
+      - 'acceptance/SupplierCompanyCatalogPersistence/OwnedSyntheticTransport.cs'
+      - 'Legacy.Maliev.Intranet.Bff/Program.cs'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: purchase-order-company-catalog-persistence-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  purchase-order-company-catalog-persistence:
+    runs-on: ubuntu-latest
+    # Three serial original producer suites/policies precede the bounded PO proof.
+    timeout-minutes: 120
+    env:
+      MalievWorkspaceRoot: ${{ github.workspace }}/.dependencies
+      DOTNET_PROCESSOR_COUNT: '2'
+      GOTOOLCHAIN: go1.26.8
+      LEGACY_DEPLOY_ENABLED: 'false'
+    steps:
+      - name: Check out exact Intranet candidate
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - name: Check out reviewed Catalog lookup producer
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: MALIEV-Co-Ltd/Legacy.Maliev.CatalogService
+          ref: 3f426723743570a6c20d2c014499445abb0774e1
+          path: .dependencies/Legacy.Maliev.CatalogService
+          persist-credentials: false
+      - name: Check out reviewed Procurement writer (consumer joined live-IAM fixture)
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: MALIEV-Co-Ltd/Legacy.Maliev.ProcurementService
+          ref: 614a157ab5c8739c144554797a387c45990ba7fe
+          path: .dependencies/Legacy.Maliev.ProcurementService
+          persist-credentials: false
+      - name: Check out reviewed ServiceDefaults
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: MALIEV-Co-Ltd/Legacy.Maliev.ServiceDefaults
+          ref: 7b3099bf67d0f17e56cfdb3dcf36541304abaac2
+          path: .dependencies/Legacy.Maliev.ServiceDefaults
+          persist-credentials: false
+      - name: Check out reviewed CompatibilityContracts
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: MALIEV-Co-Ltd/Legacy.Maliev.CompatibilityContracts
+          ref: 99529ad665503b227184c0baa946ad4e62db978a
+          path: .dependencies/Legacy.Maliev.CompatibilityContracts
+          persist-credentials: false
+      - name: Check out candidate Legacy.Maliev.DocumentService source (consumer qualification required)
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: MALIEV-Co-Ltd/Legacy.Maliev.DocumentService
+          ref: b12b9499d3f33113d2f0be196db831759ea3a03c
+          path: .dependencies/Legacy.Maliev.DocumentService
+          persist-credentials: false
+      - name: Check out candidate Legacy.Maliev.FileService source (consumer qualification required)
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: MALIEV-Co-Ltd/Legacy.Maliev.FileService
+          ref: d478d2674b57a25c939f62aa838efbedd8591055
+          path: .dependencies/Legacy.Maliev.FileService
+          persist-credentials: false
+      - name: Check out candidate Legacy.Maliev.EmployeeService source (consumer qualification required)
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: MALIEV-Co-Ltd/Legacy.Maliev.EmployeeService
+          ref: 5ace8e2b7b1de498100c2e3cd7d2327451578ea7
+          path: .dependencies/Legacy.Maliev.EmployeeService
+          persist-credentials: false
+      - name: Set up .NET 10
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68
+        with:
+          dotnet-version: 10.0.x
+      - name: Check out original compile-linked File test consumer only
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: MALIEV-Co-Ltd/Legacy.Maliev.Intranet
+          ref: 3f5f7542c93cb085757130971c4fc7cf61043f01
+          path: .dependencies/Legacy.Maliev.Intranet
+          persist-credentials: false
+      - name: Check out original File offline fixture scripts only
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: MALIEV-Co-Ltd/Legacy.Maliev.Workflows
+          ref: 0159e67a033712a7120d52173819e8bde214cf6e
+          path: .dependencies/Legacy.Maliev.FileService/.dependencies/Legacy.Maliev.Workflows
+          persist-credentials: false
+      - name: Check out original strict security scan source only
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: MALIEV-Co-Ltd/Legacy.Maliev.Workflows
+          ref: e3a6093324a24968876782153286f52db8b29fd8
+          path: .graph-security
+          persist-credentials: false
+      - name: Verify disposable hosted runtime
+        run: |
+          test "$RUNNER_ENVIRONMENT" = github-hosted
+          docker info > /dev/null
+      - name: Validate evidence rejection controls
+        run: |
+          cd acceptance/PurchaseOrderCompanyCatalogPersistence
+          python3 -B -m unittest test_retain test_po_receipt test_producer_graph
+      - name: Qualify exact same-run mixed producer graph and settle each original fixture phase
+        id: graph
+        timeout-minutes: 90
+        env:
+          CANDIDATE_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+          PROOF_EVIDENCE: ${{ runner.temp }}/purchase-order-company-catalog-persistence-evidence
+        run: python3 -B acceptance/PurchaseOrderCompanyCatalogPersistence/producer_graph.py
+      - name: Build real joined programs without weakening warnings or audit
+        id: build
+        run: |
+          export GITHUB_ACTIONS=false
+          dotnet build acceptance/PurchaseOrderCompanyCatalogPersistence/PurchaseOrderCompanyCatalogPersistence.AcceptanceTests.csproj -c Release --warnaserror -p:UseLocalMalievDependencies=true --nologo
+      - name: Admit actual fresh standalone PE PDB copies only after complete graph
+        id: graph_admission
+        env:
+          CANDIDATE_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+          PROOF_EVIDENCE: ${{ runner.temp }}/purchase-order-company-catalog-persistence-evidence
+        run: python3 -B acceptance/PurchaseOrderCompanyCatalogPersistence/graph_receipt.py
+      - name: Verify focused formatting and dependency vulnerabilities
+        id: format
+        run: |
+          export GITHUB_ACTIONS=false
+          dotnet format acceptance/PurchaseOrderCompanyCatalogPersistence/PurchaseOrderCompanyCatalogPersistence.AcceptanceTests.csproj --verify-no-changes --no-restore --include acceptance/PurchaseOrderCompanyCatalogPersistence
+          dotnet list acceptance/PurchaseOrderCompanyCatalogPersistence/PurchaseOrderCompanyCatalogPersistence.AcceptanceTests.csproj package --vulnerable --include-transitive --no-restore --format json > "$RUNNER_TEMP/supplier-audit.json"
+          python3 -c 'import os,pathlib,sys; sys.path.insert(0,"acceptance/PurchaseOrderCompanyCatalogPersistence"); from graph_evidence import audit; audit(pathlib.Path(os.environ["RUNNER_TEMP"])/"supplier-audit.json", ["PurchaseOrderCompanyCatalogPersistence.AcceptanceTests.csproj"])'
+      - name: Install Chromium
+        id: chromium
+        timeout-minutes: 8
+        run: |
+          # The hosted runner's preferred Azure mirror stalled both exact-head attempts.
+          # Keep signed Ubuntu sources and package policy; use its existing official HTTPS fallback.
+          test -s /etc/apt/apt-mirrors.txt
+          python3 -c 'from pathlib import Path; s=Path("/etc/apt/sources.list.d/ubuntu.sources").read_text(); assert "mirror+file:/etc/apt/apt-mirrors.txt" in s and "Signed-By:" in s, "Unexpected hosted Ubuntu source policy"'
+          printf '%s\n' 'https://archive.ubuntu.com/ubuntu/' | sudo tee /etc/apt/apt-mirrors.txt > /dev/null
+          pwsh -NoProfile -File acceptance/PurchaseOrderCompanyCatalogPersistence/bin/Release/net10.0/playwright.ps1 install --with-deps chromium
+      - name: Exercise actual supplier ownership failure transitions
+        id: resource_controls
+        timeout-minutes: 3
+        run: |
+          export GITHUB_ACTIONS=false
+          unset SUPPLIER_RESOURCE_EVIDENCE
+          dotnet test acceptance/PurchaseOrderCompanyCatalogPersistence/PurchaseOrderCompanyCatalogPersistence.AcceptanceTests.csproj -c Release --no-build --no-restore -p:UseLocalMalievDependencies=true --filter 'FullyQualifiedName~SupplierResourceControls' --logger 'trx;LogFileName=supplier-resource-controls.trx' --results-directory "$RUNNER_TEMP/purchase-order-company-catalog-persistence-results" --nologo
+      - name: Verify real PO Razor callback and ordinary submission guards
+        id: component
+        timeout-minutes: 4
+        run: |
+          export GITHUB_ACTIONS=false
+          unset SUPPLIER_RESOURCE_EVIDENCE
+          export PROOF_RESULTS="$RUNNER_TEMP/purchase-order-company-catalog-persistence-results"
+          dotnet test acceptance/PurchaseOrderCompanyCatalogPersistence/PurchaseOrderCompanyCatalogPersistence.AcceptanceTests.csproj -c Release --no-build --no-restore -p:UseLocalMalievDependencies=true --filter 'FullyQualifiedName~PurchaseOrderCompanyHooksComponentTests' --logger 'trx;LogFileName=po-component-controls.trx' --results-directory "$PROOF_RESULTS" --nologo
+      - name: Verify original logical company transport boundaries
+        id: transport
+        timeout-minutes: 4
+        run: |
+          export GITHUB_ACTIONS=false
+          unset SUPPLIER_RESOURCE_EVIDENCE
+          export PROOF_RESULTS="$RUNNER_TEMP/purchase-order-company-catalog-persistence-results"
+          dotnet test acceptance/PurchaseOrderCompanyCatalogPersistence/PurchaseOrderCompanyCatalogPersistence.AcceptanceTests.csproj -c Release --no-build --no-restore -p:UseLocalMalievDependencies=true --filter 'FullyQualifiedName~PoOriginalCatalogTransportControls' --logger 'trx;LogFileName=po-transport-controls.trx' --results-directory "$PROOF_RESULTS" --nologo
+      - name: Verify production storage scanner adapters against finite external protocols
+        id: file_controls
+        timeout-minutes: 4
+        run: |
+          export GITHUB_ACTIONS=false
+          unset SUPPLIER_RESOURCE_EVIDENCE
+          export PROOF_RESULTS="$RUNNER_TEMP/purchase-order-company-catalog-persistence-results"
+          dotnet test acceptance/PurchaseOrderCompanyCatalogPersistence/PurchaseOrderCompanyCatalogPersistence.AcceptanceTests.csproj -c Release --no-build --no-restore -p:UseLocalMalievDependencies=true --filter 'FullyQualifiedName~PoOwnedFileFixtureControls' --logger 'trx;LogFileName=po-file-controls.trx' --results-directory "$PROOF_RESULTS" --nologo
+      - name: Exercise real PO Catalog selection ordinary save PDF File readback and reload
+        id: proof
+        env:
+          PO_COMPANY_PROOF_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+          SUPPLIER_RESOURCE_EVIDENCE: ${{ runner.temp }}/purchase-order-company-catalog-persistence-evidence
+        timeout-minutes: 14
+        run: |
+          export GITHUB_ACTIONS=false
+          dotnet test acceptance/PurchaseOrderCompanyCatalogPersistence/PurchaseOrderCompanyCatalogPersistence.AcceptanceTests.csproj -c Release --no-build --no-restore -p:UseLocalMalievDependencies=true --filter 'FullyQualifiedName~PurchaseOrderCompanyCatalogPersistenceTests' --logger 'trx;LogFileName=po-company-persistence.trx' --results-directory "$RUNNER_TEMP/purchase-order-company-catalog-persistence-results" --nologo
+      - name: Retain actual journey and ownership-control results with bound cleanup and source graph
+        if: always()
+        env:
+          PROOF_RESULTS: ${{ runner.temp }}/purchase-order-company-catalog-persistence-results
+          PROOF_EVIDENCE: ${{ runner.temp }}/purchase-order-company-catalog-persistence-evidence
+          CANDIDATE_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+          GRAPH_OUTCOME: ${{ steps.graph.outcome }}
+          GRAPH_ADMISSION_OUTCOME: ${{ steps.graph_admission.outcome }}
+          BUILD_OUTCOME: ${{ steps.build.outcome }}
+          FORMAT_OUTCOME: ${{ steps.format.outcome }}
+          COMPONENT_OUTCOME: ${{ steps.component.outcome }}
+          TRANSPORT_OUTCOME: ${{ steps.transport.outcome }}
+          FILE_CONTROLS_OUTCOME: ${{ steps.file_controls.outcome }}
+          EXECUTION_OUTCOME: ${{ steps.proof.outcome }}
+          RESOURCE_CONTROLS_OUTCOME: ${{ steps.resource_controls.outcome }}
+        run: python3 -B acceptance/PurchaseOrderCompanyCatalogPersistence/retain.py
+      - name: Upload sanitized proof only
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: purchase-order-company-catalog-persistence-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/purchase-order-company-catalog-persistence-evidence/*.json*
+          if-no-files-found: error
+          retention-days: 7
