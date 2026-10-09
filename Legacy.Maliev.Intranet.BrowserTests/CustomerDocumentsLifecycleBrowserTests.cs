@@ -102,14 +102,16 @@ public sealed class CustomerDocumentsLifecycleBrowserTests
             await Load(page, app, culture);
             RecordPhase(culture, "loaded", owner);
             await page.Locator($"#verification-{owner.Version:D}").FillAsync("synthetic verification reason");
+            using var conflictCompletion = new CustomerDocumentRequestCompletion(page);
             var conflict = page.WaitForResponseAsync(response => response.Url.EndsWith($"/versions/{owner.Version:D}/verification", StringComparison.Ordinal) && response.Status == 409);
             RecordPhase(culture, "before-verify-click", owner);
             await page.Locator("article").GetByRole(AriaRole.Button, new() { Name = Label(culture, "Verify exact version"), Exact = true }).ClickAsync();
             RecordPhase(culture, "verify-click-completed", owner);
             var conflictResponse = await conflict;
             RecordPhase(culture, "conflict-headers-observed", owner);
-            await conflictResponse.FinishedAsync().WaitAsync(TimeSpan.FromSeconds(10));
-            RecordPhase(culture, "conflict-response-finished", owner);
+            Assert.Equal(409, conflictResponse.Status);
+            await conflictCompletion.WaitAsync(conflictResponse);
+            RecordPhase(culture, "conflict-request-terminal", owner);
             await owner.EvidenceConflictRefreshEntered.Task.WaitAsync(TimeSpan.FromSeconds(15));
             Assert.Equal(109, owner.Revision); Assert.Equal(17, owner.ReceiptEpoch);
             RecordPhase(culture, "before-release-refresh", owner);
@@ -155,8 +157,9 @@ public sealed class CustomerDocumentsLifecycleBrowserTests
             foreach (var failure in new[] { 403, 503 })
             {
                 owner.ReminderStatus = failure;
+                using var refusalCompletion = new CustomerDocumentRequestCompletion(page);
                 var refused = page.WaitForResponseAsync(response => response.Url.Contains("/bff/staff/nda-reminders?", StringComparison.Ordinal) && response.Status == failure);
-                await page.Locator("#customer-nda-reminders").GetByRole(AriaRole.Button, new() { Name = Label(culture, "Apply reminder filters"), Exact = true }).ClickAsync(); await (await refused).FinishedAsync().WaitAsync(TimeSpan.FromSeconds(10));
+                await page.Locator("#customer-nda-reminders").GetByRole(AriaRole.Button, new() { Name = Label(culture, "Apply reminder filters"), Exact = true }).ClickAsync(); var refusalResponse = await refused; Assert.Equal(failure, refusalResponse.Status); await refusalCompletion.WaitAsync(refusalResponse);
                 await page.GetByRole(AriaRole.Alert).WaitForAsync(); await Assertions.Expect(page.GetByRole(AriaRole.Button, new() { Name = Label(culture, "Reload"), Exact = true })).ToBeEnabledAsync();
                 Assert.Equal(0, await page.Locator("article").CountAsync()); Assert.Equal(0, await page.Locator("#customer-nda-reminders ul li").CountAsync());
                 Assert.DoesNotContain("old-customer-42", await page.Locator("section").InnerTextAsync());

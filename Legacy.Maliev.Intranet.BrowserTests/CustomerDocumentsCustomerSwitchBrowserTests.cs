@@ -45,8 +45,9 @@ public sealed class CustomerDocumentsCustomerSwitchBrowserTests
             finally { try { captureDeadline.Cancel(); } catch { /* Preserve the original failure. */ } owner.ReleaseAll(); }
             throw;
         }
+        using var lateCompletion = new CustomerDocumentRequestCompletion(page);
         var late = page.WaitForResponseAsync(response => response.Url.EndsWith("/bff/customers/42/documents", StringComparison.Ordinal));
-        owner.ReleaseList.TrySetResult(); var lateResponse = await late; await lateResponse.FinishedAsync().WaitAsync(TimeSpan.FromSeconds(10));
+        owner.ReleaseList.TrySetResult(); var lateResponse = await late; Assert.Equal(200, lateResponse.Status); await lateCompletion.WaitAsync(lateResponse);
         await page.EvaluateAsync("() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))").WaitAsync(TimeSpan.FromSeconds(10));
         Assert.Equal("", await page.Locator("#customer-document-title").InputValueAsync());
         foreach (var id in new[] { "upload-order-ids", "upload-quotation-id", "upload-replacement-ids" }) Assert.Equal("", await page.Locator("#" + id).InputValueAsync());
