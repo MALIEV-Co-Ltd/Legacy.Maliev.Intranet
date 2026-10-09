@@ -47,12 +47,12 @@
     protected override async Task OnParametersSetAsync() {
         agreement = null; agreementStatus = ""; obligationStatus = ""; message = "";
         try {
-            using var response = await Http.GetAsync($"/bff/customers/{CustomerId}/documents/{DocumentId:D}/nda?versionId={VersionId:D}");
+            using var response = await Http.GetForPresentationAsync($"/bff/customers/{CustomerId}/documents/{DocumentId:D}/nda?versionId={VersionId:D}");
             if (response.StatusCode == HttpStatusCode.NotFound) return;
             if (!response.IsSuccessStatusCode) { message = "Document service is unavailable. Please retry later."; return; }
             agreement = await response.Content.ReadFromJsonAsync<CustomerNdaAgreementSummary>();
             agreementStatus = agreement?.AgreementStatus ?? ""; obligationStatus = agreement?.ObligationStatus ?? "";
-        } catch (Exception exception) when (exception is HttpRequestException or System.Text.Json.JsonException) { message = "Document service is unavailable. Please retry later."; }
+        } catch (Exception exception) when (exception is HttpRequestException or System.Text.Json.JsonException or OperationCanceledException) { message = "Document service is unavailable. Please retry later."; }
     }
     private async Task VerifyAsync() {
         if (coverageKind == "" || coverageKind != "Customer" && resourceId <= 0 || survival == "Finite" && survivalEnd is null || string.IsNullOrWhiteSpace(partyOne) || string.IsNullOrWhiteSpace(partyTwo) || string.IsNullOrWhiteSpace(responsible) || string.IsNullOrWhiteSpace(reason)) { message = "Complete agreement details and explicit coverage."; return; }
@@ -60,7 +60,7 @@
         var input = new CustomerNdaVerificationRequest(VersionId, ExpectedRevision, partyOne, partyTwo, new DateTimeOffset(DateTime.SpecifyKind(effective, DateTimeKind.Utc)), Utc(expiry), Utc(renewal), survival, survival == "Finite" ? Utc(survivalEnd) : null, responsible, [new(coverageKind, coverageKind == "Customer" ? customer : resourceId)], reason);
         busy = true;
         try {
-            var session = await Http.GetFromJsonAsync<EmployeeSessionSummary>("/bff/session");
+            var session = await Http.GetFromJsonForPresentationAsync<EmployeeSessionSummary>("/bff/session");
             if (string.IsNullOrWhiteSpace(session?.CsrfToken)) { message = "Document access denied."; return; }
             using var request = new HttpRequestMessage(HttpMethod.Post, $"/bff/customers/{customer}/documents/{document:D}/nda/verification") { Content = JsonContent.Create(input) };
             request.Headers.Add("X-CSRF-TOKEN", session.CsrfToken);
@@ -70,7 +70,7 @@
             if (result is null) { message = "Verification was refused or unavailable."; return; }
             await ParentRefresh.InvokeAsync(); await OnParametersSetAsync();
             agreementStatus = result.AgreementStatus; obligationStatus = result.ObligationStatus; message = "Verified exact signed version.";
-        } catch (HttpRequestException) { message = "Verification was refused or unavailable."; }
+        } catch (Exception exception) when (exception is HttpRequestException or System.Text.Json.JsonException or OperationCanceledException) { message = "Verification was refused or unavailable."; }
         finally { busy = false; }
     }
     private static DateTimeOffset? Utc(DateTime? value) => value is null ? null : new DateTimeOffset(DateTime.SpecifyKind(value.Value, DateTimeKind.Utc));

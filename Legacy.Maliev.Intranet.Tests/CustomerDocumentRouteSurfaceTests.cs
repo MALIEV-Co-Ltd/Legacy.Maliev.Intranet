@@ -17,13 +17,13 @@ public sealed class CustomerDocumentRouteSurfaceTests
     private const string Version = "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb";
     private static readonly (string Method, string Template)[] Expected =
     [
-        ("GET", CustomerRoot),
+        ("GET", CustomerRoot + "/"),
         ("GET", CustomerRoot + "/{documentId:guid}/versions"),
         ("GET", CustomerRoot + "/{documentId:guid}/nda"),
         ("GET", CustomerRoot + "/{documentId:guid}/versions/{versionId:guid}/receipt"),
         ("GET", CustomerRoot + "/{documentId:guid}/versions/{versionId:guid}/download"),
         ("GET", ReminderRoot),
-        ("POST", CustomerRoot),
+        ("POST", CustomerRoot + "/"),
         ("POST", CustomerRoot + "/{documentId:guid}/versions"),
         ("POST", CustomerRoot + "/{documentId:guid}/archive"),
         ("POST", CustomerRoot + "/{documentId:guid}/nda/verification"),

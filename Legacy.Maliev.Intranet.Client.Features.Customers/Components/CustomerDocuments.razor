@@ -21,7 +21,7 @@
         <article><h3>@item.Title</h3><p>@Text[item.Kind] - @Text[item.Visibility]</p>
             @if (versions.TryGetValue(item.DocumentId, out var history)) { <ul>@foreach (var version in history) { <li>
                 @Text["Version"] @version.VersionNumber - @Text[version.VerificationStatus]
-                <a href="@($"/bff/customers/{CustomerId}/documents/{item.DocumentId:D}/versions/{version.VersionId:D}/download")">@Text["Download attachment"]</a>
+                <LegacyLink Href="@($"/bff/customers/{CustomerId}/documents/{item.DocumentId:D}/versions/{version.VersionId:D}/download")" Role="LegacyLinkRole.Inline" download>@Text["Download attachment"]</LegacyLink>
                 @if (item.Kind == "Nda") { <CustomerNdaVerification @key="(CustomerId, item.DocumentId, version.VersionId)" CustomerId="CustomerId" DocumentId="item.DocumentId" VersionId="version.VersionId" ExpectedRevision="item.Revision" ParentRefresh="() => RefreshParentRevisionAsync(item.CustomerId)" /> }
                 else { <label for="@($"verification-{version.VersionId:D}")">@Text["Verification reason"]</label><ShadcnInput TValue="string" id="@($"verification-{version.VersionId:D}")" @bind-Value="verificationReason" maxlength="1024" /><ShadcnButton Disabled="@busy" OnClick='() => VerifyEvidenceAsync(item, version, "Verified")' OperationFeedback="false">@Text["Verify exact version"]</ShadcnButton><ShadcnButton Disabled="@busy" OnClick='() => VerifyEvidenceAsync(item, version, "Rejected")' OperationFeedback="false">@Text["Reject exact version"]</ShadcnButton> }
             </li> }</ul> }
@@ -93,25 +93,25 @@
             if (fromUtc is not null) query.Add("dueFromUtc=" + Uri.EscapeDataString(fromUtc.Value.ToString("O", System.Globalization.CultureInfo.InvariantCulture)));
             if (throughUtc is not null) query.Add("dueThroughUtc=" + Uri.EscapeDataString(throughUtc.Value.ToString("O", System.Globalization.CultureInfo.InvariantCulture)));
             if (reminderState != "") query.Add("state=" + Uri.EscapeDataString(reminderState));
-            using var response = await Http.GetAsync($"/bff/customers/{customer}/documents");
+            using var response = await Http.GetForPresentationAsync($"/bff/customers/{customer}/documents");
             if (!Current()) return;
             if (!response.IsSuccessStatusCode) { Fail(Status(response.StatusCode)); return; }
             var loadedDocuments = await response.Content.ReadFromJsonAsync<CustomerDocumentSummary[]>() ?? [];
             if (!Current()) return;
-            using var worklist = await Http.GetAsync("/bff/staff/nda-reminders?" + string.Join("&", query));
+            using var worklist = await Http.GetForPresentationAsync("/bff/staff/nda-reminders?" + string.Join("&", query));
             if (!Current()) return;
             if (!worklist.IsSuccessStatusCode) { Fail(Status(worklist.StatusCode)); return; }
             var loadedReminders = await worklist.Content.ReadFromJsonAsync<CustomerNdaReminder[]>() ?? [];
             var loadedVersions = new Dictionary<Guid, IReadOnlyList<CustomerDocumentVersionSummary>>();
             foreach (var document in loadedDocuments) {
                 if (!Current()) return;
-                using var history = await Http.GetAsync($"/bff/customers/{customer}/documents/{document.DocumentId:D}/versions");
+                using var history = await Http.GetForPresentationAsync($"/bff/customers/{customer}/documents/{document.DocumentId:D}/versions");
                 if (!Current()) return;
                 if (!history.IsSuccessStatusCode) { Fail(Status(history.StatusCode)); return; }
                 loadedVersions[document.DocumentId] = await history.Content.ReadFromJsonAsync<CustomerDocumentVersionSummary[]>() ?? [];
             }
             if (Current()) { documents = loadedDocuments; reminders = loadedReminders; versions.Clear(); foreach (var history in loadedVersions) versions[history.Key] = history.Value; }
-        } catch (Exception exception) when (exception is HttpRequestException or System.Text.Json.JsonException) { Fail("Document service is unavailable. Please retry later."); }
+        } catch (Exception exception) when (exception is HttpRequestException or System.Text.Json.JsonException or OperationCanceledException) { Fail("Document service is unavailable. Please retry later."); }
         finally { if (Current()) busy = false; }
     }
     private void ClearLoadedState() { documents = []; versions.Clear(); reminders = []; }
@@ -126,7 +126,7 @@
         var target = Guid.TryParse(replacement, out var selected) ? documents.FirstOrDefault(x => x.DocumentId == selected) : null;
         busy = true; error = "";
         try {
-            var session = await Http.GetFromJsonAsync<EmployeeSessionSummary>("/bff/session");
+            var session = await Http.GetFromJsonForPresentationAsync<EmployeeSessionSummary>("/bff/session");
             if (!CurrentAction(customer, generation)) return;
             if (string.IsNullOrWhiteSpace(session?.CsrfToken)) { error = "Document access denied."; return; }
             using var request = new HttpRequestMessage(HttpMethod.Post, target is null ? $"/bff/customers/{customer}/documents" : $"/bff/customers/{customer}/documents/{target.DocumentId:D}/versions");
@@ -138,7 +138,7 @@
             if (!CurrentAction(customer, generation)) return;
             if (!response.IsSuccessStatusCode) { error = Status(response.StatusCode); return; }
             file = null; uploadKey = Guid.NewGuid(); uploadOrders = ""; uploadQuotation = ""; uploadReplacements = ""; await LoadAsync();
-        } catch (Exception exception) when (exception is HttpRequestException or IOException) { if (CurrentAction(customer, generation)) error = "Document service is unavailable. Please retry later."; }
+        } catch (Exception exception) when (exception is HttpRequestException or IOException or System.Text.Json.JsonException or OperationCanceledException) { if (CurrentAction(customer, generation)) error = "Document service is unavailable. Please retry later."; }
         finally { if (CurrentAction(customer, generation)) busy = false; }
     }
     private static bool AddAssociations(List<CustomerDocumentAssociation> associations, string associationKind, string input, bool single = false) {
@@ -157,7 +157,7 @@
         var customer = CustomerId; var generation = loadGeneration; var reason = archiveReason;
         busy = true;
         try {
-            var session = await Http.GetFromJsonAsync<EmployeeSessionSummary>("/bff/session");
+            var session = await Http.GetFromJsonForPresentationAsync<EmployeeSessionSummary>("/bff/session");
             if (!CurrentAction(customer, generation)) return;
             if (string.IsNullOrWhiteSpace(session?.CsrfToken)) { error = "Document access denied."; return; }
             using var request = new HttpRequestMessage(HttpMethod.Post, $"/bff/customers/{customer}/documents/{document.DocumentId:D}/archive") { Content = JsonContent.Create(new CustomerDocumentArchiveRequest(document.Revision, reason)) };
@@ -166,7 +166,7 @@
             if (!CurrentAction(customer, generation)) return;
             if (!response.IsSuccessStatusCode) { error = Status(response.StatusCode); return; }
             archiveReason = ""; await LoadAsync();
-        } catch (HttpRequestException) { if (CurrentAction(customer, generation)) error = "Document service is unavailable. Please retry later."; }
+        } catch (Exception exception) when (exception is HttpRequestException or System.Text.Json.JsonException or OperationCanceledException) { if (CurrentAction(customer, generation)) error = "Document service is unavailable. Please retry later."; }
         finally { if (CurrentAction(customer, generation)) busy = false; }
     }
     private async Task VerifyEvidenceAsync(CustomerDocumentSummary document, CustomerDocumentVersionSummary version, string status) {
@@ -174,10 +174,10 @@
         var customer = CustomerId; var generation = loadGeneration; var reason = verificationReason;
         busy = true;
         try {
-            var session = await Http.GetFromJsonAsync<EmployeeSessionSummary>("/bff/session");
+            var session = await Http.GetFromJsonForPresentationAsync<EmployeeSessionSummary>("/bff/session");
             if (!CurrentAction(customer, generation)) return;
             if (string.IsNullOrWhiteSpace(session?.CsrfToken)) { error = "Document access denied."; return; }
-            using var receiptResponse = await Http.GetAsync($"/bff/customers/{customer}/documents/{document.DocumentId:D}/versions/{version.VersionId:D}/receipt");
+            using var receiptResponse = await Http.GetForPresentationAsync($"/bff/customers/{customer}/documents/{document.DocumentId:D}/versions/{version.VersionId:D}/receipt");
             if (!CurrentAction(customer, generation)) return;
             if (!receiptResponse.IsSuccessStatusCode) { error = Status(receiptResponse.StatusCode); return; }
             var receipt = await receiptResponse.Content.ReadFromJsonAsync<CustomerDocumentReceipt>();
@@ -193,7 +193,7 @@
                 else error = failure; return;
             }
             verificationReason = ""; await LoadAsync();
-        } catch (HttpRequestException) { if (CurrentAction(customer, generation)) error = "Document service is unavailable. Please retry later."; }
+        } catch (Exception exception) when (exception is HttpRequestException or System.Text.Json.JsonException or OperationCanceledException) { if (CurrentAction(customer, generation)) error = "Document service is unavailable. Please retry later."; }
         finally { if (CurrentAction(customer, generation)) busy = false; }
     }
     private static string Status(HttpStatusCode status) => status is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden ? "Document access denied." : status == HttpStatusCode.Conflict ? "The document changed. Reload before retrying." : "Document service is unavailable. Please retry later.";

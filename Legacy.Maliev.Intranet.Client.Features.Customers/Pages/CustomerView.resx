@@ -118,4 +118,5 @@
   <data name="Payment" xml:space="preserve"><value>Payment</value></data>
   <data name="Yes" xml:space="preserve"><value>Yes</value></data>
   <data name="No" xml:space="preserve"><value>No</value></data>
+  <data name="Documents" xml:space="preserve"><value>Documents</value></data>
 </root>
