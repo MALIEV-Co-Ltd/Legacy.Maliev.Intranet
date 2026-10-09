@@ -95,6 +95,117 @@ def validation_failure(error, gate, audit_metadata=None):
             'auditMetadata': audit_metadata}
 
 
+def safe_native_failure(path, inventory):
+    """Failure-only original TRX projection; source-known identities, never assertion/output text."""
+    from collections import Counter
+    import hashlib
+    import uuid
+    import xml.etree.ElementTree as ET
+    from graph_evidence import NS, ZERO
+
+    reason = 'inventory-invalid'
+    raw_hash = None
+    try:
+        if not isinstance(inventory, list) or not 0 < len(inventory) <= 2048:
+            raise ValueError()
+        known = {}
+        for item in inventory:
+            if set(item) != {'testName', 'className', 'method'} or any(
+                    not isinstance(item[key], str) or not 0 < len(item[key]) <= 4096 for key in item):
+                raise ValueError()
+            known[(item['testName'], item['className'], item['method'])] = item
+        expected = Counter((item['testName'], item['className'], item['method']) for item in inventory)
+        reason = 'trx-unreadable'
+        with pathlib.Path(path).open('rb') as stream:
+            raw = stream.read(8_388_609)
+        reason = 'trx-size-limit'
+        if len(raw) > 8_388_608:
+            raise ValueError()
+        raw_hash = hashlib.sha256(raw).hexdigest()
+        reason = 'xml-malformed'
+        text = raw.decode('utf-8-sig')
+        reason = 'xml-encoding-invalid'
+        if '\x00' in text:
+            raise ValueError()
+        reason = 'xml-forbidden-declaration'
+        if '<!DOCTYPE' in text.upper() or '<!ENTITY' in text.upper():
+            raise ValueError()
+        reason = 'xml-malformed'
+        root = ET.fromstring(text)
+        reason = 'lineage-invalid'
+        if root.tag != '{' + NS['t'] + '}TestRun':
+            raise ValueError()
+        run_id = str(uuid.UUID(root.attrib['id']))
+        definitions, executions = {}, {}
+        definition_rows = root.findall('./t:TestDefinitions/t:UnitTest', NS)
+        rows = root.findall('./t:Results/t:UnitTestResult', NS)
+        entries = root.findall('./t:TestEntries/t:TestEntry', NS)
+        if any(len(group) != len(inventory) for group in (definition_rows, rows, entries)):
+            raise ValueError()
+        for definition in definition_rows:
+            test_id = str(uuid.UUID(definition.attrib['id']))
+            methods = definition.findall('./t:TestMethod', NS)
+            execution_rows = definition.findall('./t:Execution', NS)
+            if test_id in definitions or len(methods) != 1 or len(execution_rows) != 1:
+                raise ValueError()
+            identity = (definition.attrib['name'], methods[0].attrib['className'], methods[0].attrib['name'])
+            reason = 'inventory-mismatch'
+            if identity not in known:
+                raise ValueError()
+            reason = 'lineage-invalid'
+            execution_id = str(uuid.UUID(execution_rows[0].attrib['id']))
+            if execution_id in executions.values():
+                raise ValueError()
+            definitions[test_id], executions[test_id] = identity, execution_id
+        entry_map = {}
+        for entry in entries:
+            test_id, execution_id = str(uuid.UUID(entry.attrib['testId'])), str(uuid.UUID(entry.attrib['executionId']))
+            if test_id in entry_map or executions.get(test_id) != execution_id:
+                raise ValueError()
+            entry_map[test_id] = execution_id
+        if entry_map != executions:
+            raise ValueError()
+        outcomes = {'Passed': 'passed', 'Failed': 'failed', 'NotExecuted': 'notExecuted', 'Aborted': 'aborted',
+                    'Timeout': 'timeout', 'Error': 'error', 'Inconclusive': 'inconclusive', 'NotRunnable': 'notRunnable'}
+        actual, result_ids, captured = [], set(), []
+        for row in rows:
+            test_id, execution_id = str(uuid.UUID(row.attrib['testId'])), str(uuid.UUID(row.attrib['executionId']))
+            if execution_id in result_ids or executions.get(test_id) != execution_id or entry_map.get(test_id) != execution_id:
+                raise ValueError()
+            identity = definitions[test_id]
+            if row.attrib['testName'] != identity[0]:
+                raise ValueError()
+            result_ids.add(execution_id)
+            outcome = row.attrib['outcome']
+            reason = 'outcome-invalid'
+            if outcome not in outcomes:
+                raise ValueError()
+            reason = 'lineage-invalid'
+            actual.append(identity)
+            captured.append({**known[identity], 'testId': test_id, 'executionId': execution_id, 'outcome': outcome})
+        reason = 'inventory-mismatch'
+        if Counter(actual) != expected:
+            raise ValueError()
+        reason = 'counters-invalid'
+        summaries = root.findall('./t:ResultSummary', NS)
+        counters = root.findall('./t:ResultSummary/t:Counters', NS)
+        if len(summaries) != 1 or summaries[0].get('outcome') not in {'Completed', 'Failed', 'Aborted', 'Error', 'Timeout'} or len(counters) != 1:
+            raise ValueError()
+        observed = Counter(outcomes[item['outcome']] for item in captured)
+        required = dict.fromkeys(('total', 'executed', 'passed', *ZERO), 0)
+        required.update(observed)
+        required.update(total=len(rows), executed=len(rows) - observed['notExecuted'] - observed['notRunnable'])
+        if counters[0].attrib != {key: str(value) for key, value in required.items()}:
+            raise ValueError()
+        return {'status': 'retained', 'accepted': False, 'rawSha256': raw_hash, 'runId': run_id,
+                'summaryOutcome': summaries[0].get('outcome'), 'counters': required, 'rows': captured}
+    except FileNotFoundError:
+        reason = 'trx-missing'
+    except Exception:
+        pass
+    return {'status': 'unavailable', 'accepted': False, 'reason': reason, 'rawSha256': raw_hash}
+
+
 def git(root, *args):
     return subprocess.check_output(['git', '-C', str(root), *args]).decode().strip()
 
@@ -305,6 +416,13 @@ def qualify(root, producer, pins, inventory, private):
                   'applicability': applicability}
     except Exception as error:
         error.producer_validation_failure = validation_failure(error, gate, audit_metadata)
+        if gate in {'full-native-command', 'native-readback'}:
+            try:
+                error.producer_validation_failure['nativeMetadata'] = safe_native_failure(
+                    full / 'full-suite.trx', inventory[producer]['inventory'])
+            except Exception:
+                error.producer_validation_failure['nativeMetadata'] = {
+                    'status': 'unavailable', 'accepted': False, 'reason': 'capture-unavailable', 'rawSha256': None}
         failure = error
     finally:
         try:

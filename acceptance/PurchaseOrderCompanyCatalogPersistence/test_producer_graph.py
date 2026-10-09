@@ -385,6 +385,166 @@ class ProducerGraphTests(unittest.TestCase):
                 with self.subTest(mutation=mutation), self.assertRaises(ValueError):
                     evidence.trx(path, inventory)
 
+    @staticmethod
+    def native_failure_fixture():
+        first = {'testName': 'duplicate(value: "source-owned")', 'className': 'OwnedFixture', 'method': 'First'}
+        second = {**first, 'method': 'Second'}
+        inventory = [first, second, first]
+        root = ET.Element('TestRun', xmlns=evidence.NS['t'], id=str(uuid.uuid4()))
+        definitions, results, entries = (ET.SubElement(root, name) for name in ('TestDefinitions', 'Results', 'TestEntries'))
+        for index, item in enumerate(inventory):
+            test, execution = str(uuid.uuid4()), str(uuid.uuid4())
+            definition = ET.SubElement(definitions, 'UnitTest', id=test, name=item['testName'])
+            ET.SubElement(definition, 'Execution', id=execution)
+            ET.SubElement(definition, 'TestMethod', className=item['className'], name=item['method'], codeBase='/PRIVATE/path')
+            row = ET.SubElement(results, 'UnitTestResult', testId=test, executionId=execution,
+                                testName=item['testName'], outcome='Failed' if index == 0 else 'Passed')
+            ET.SubElement(row, 'Output').text = 'PRIVATE token/session/path/assertion'
+            ET.SubElement(row, 'ErrorInfo').text = 'PRIVATE exception details'
+            ET.SubElement(entries, 'TestEntry', testId=test, executionId=execution)
+        summary = ET.SubElement(root, 'ResultSummary', outcome='Failed')
+        counters = {'total': '3', 'executed': '3', 'passed': '2', **dict.fromkeys(evidence.ZERO, '0')}
+        counters['failed'] = '1'
+        ET.SubElement(summary, 'Counters', **counters)
+        return root, inventory
+
+    def test_failure_trx_retains_source_cases_multiplicity_and_original_joins_without_private_output(self):
+        root, inventory = self.native_failure_fixture()
+        with tempfile.TemporaryDirectory() as temporary:
+            path = pathlib.Path(temporary) / 'own.trx'
+            ET.ElementTree(root).write(path)
+            value = producer_graph.safe_native_failure(path, inventory)
+            self.assertEqual('retained', value['status'])
+            self.assertFalse(value['accepted'])
+            self.assertEqual(evidence.digest(path), value['rawSha256'])
+            self.assertEqual(root.attrib['id'], value['runId'])
+            self.assertEqual(1, value['counters']['failed'])
+            self.assertEqual(['Failed', 'Passed', 'Passed'], [row['outcome'] for row in value['rows']])
+            self.assertEqual(inventory, [{key: row[key] for key in ('testName', 'className', 'method')} for row in value['rows']])
+            self.assertEqual(3, len({row['executionId'] for row in value['rows']}))
+            self.assertNotIn('PRIVATE', json.dumps(value))
+            with self.assertRaises(ValueError):
+                evidence.trx(path, inventory)
+            root.find('Results')[0].set('outcome', 'Passed')
+            root.find('ResultSummary').set('outcome', 'Completed')
+            root.find('ResultSummary/Counters').set('passed', '3')
+            root.find('ResultSummary/Counters').set('failed', '0')
+            ET.ElementTree(root).write(path)
+            self.assertEqual(3, evidence.trx(path, inventory)['count'])
+            self.assertFalse(producer_graph.safe_native_failure(path, inventory)['accepted'])
+
+    def test_failure_trx_foreign_duplicate_missing_or_inconsistent_metadata_stays_unavailable(self):
+        root, inventory = self.native_failure_fixture()
+        with tempfile.TemporaryDirectory() as temporary:
+            path = pathlib.Path(temporary) / 'own.trx'
+            mutations = {
+                'missing_definition': lambda r: r.find('TestDefinitions').remove(r.find('TestDefinitions')[0]),
+                'missing_result': lambda r: r.find('Results').remove(r.find('Results')[0]),
+                'missing_entry': lambda r: r.find('TestEntries').remove(r.find('TestEntries')[0]),
+                'duplicate_definition': lambda r: r.find('TestDefinitions')[1].set('id', r.find('TestDefinitions')[0].get('id')),
+                'duplicate_execution': lambda r: r.find('Results')[1].set('executionId', r.find('Results')[0].get('executionId')),
+                'foreign_entry': lambda r: r.find('TestEntries')[0].set('executionId', str(uuid.uuid4())),
+                'foreign_method': lambda r: r.find('TestDefinitions')[0].find('TestMethod').set('name', 'PRIVATE method'),
+                'foreign_name': lambda r: r.find('Results')[0].set('testName', 'PRIVATE identity'),
+                'foreign_outcome': lambda r: r.find('Results')[0].set('outcome', 'PRIVATE outcome'),
+                'invalid_uuid': lambda r: r.set('id', 'PRIVATE identifier'),
+                'counter_mismatch': lambda r: r.find('ResultSummary/Counters').set('failed', '0'),
+                'counter_pending': lambda r: r.find('ResultSummary/Counters').set('pending', '1'),
+                'counter_negative': lambda r: r.find('ResultSummary/Counters').set('failed', '-1'),
+                'summary_foreign': lambda r: r.find('ResultSummary').set('outcome', 'PRIVATE summary'),
+                'multiplicity': lambda r: r.find('TestDefinitions')[1].find('TestMethod').set('name', 'First'),
+            }
+            for name, mutate in mutations.items():
+                changed = copy.deepcopy(root)
+                mutate(changed)
+                ET.ElementTree(changed).write(path)
+                with self.subTest(mutation=name):
+                    value = producer_graph.safe_native_failure(path, inventory)
+                    self.assertEqual('unavailable', value['status'])
+                    self.assertFalse(value['accepted'])
+                    self.assertIn(value['reason'], {'lineage-invalid', 'inventory-mismatch', 'outcome-invalid', 'counters-invalid'})
+                    self.assertNotIn('rows', value)
+                    self.assertNotIn('PRIVATE', json.dumps(value))
+
+    def test_failure_trx_missing_malformed_entity_oversize_or_unreadable_inputs_have_typed_reasons(self):
+        _, inventory = self.native_failure_fixture()
+        with tempfile.TemporaryDirectory() as temporary:
+            path = pathlib.Path(temporary) / 'own.trx'
+            self.assertEqual('trx-missing', producer_graph.safe_native_failure(path, inventory)['reason'])
+            for raw, reason in ((b'PRIVATE malformed', 'xml-malformed'),
+                                (b'<!DOCTYPE TestRun [<!ENTITY secret "PRIVATE">]><TestRun>&secret;</TestRun>', 'xml-forbidden-declaration'),
+                                ('<!DOCTYPE TestRun [<!ENTITY secret "PRIVATE">]><TestRun/>'.encode('utf-16'), 'xml-malformed'),
+                                ('<!DOCTYPE TestRun [<!ENTITY secret "PRIVATE">]><TestRun/>'.encode('utf-16-le'), 'xml-encoding-invalid'),
+                                ('<!DOCTYPE TestRun [<!ENTITY secret "PRIVATE">]><TestRun/>'.encode('utf-16-be'), 'xml-encoding-invalid'),
+                                (b'x' * 8_388_609, 'trx-size-limit')):
+                path.write_bytes(raw)
+                value = producer_graph.safe_native_failure(path, inventory)
+                self.assertEqual(reason, value['reason'])
+                self.assertFalse(value['accepted'])
+                self.assertNotIn('PRIVATE', json.dumps(value))
+            with mock.patch.object(pathlib.Path, 'open', side_effect=PermissionError(13, 'PRIVATE path')):
+                self.assertEqual('trx-unreadable', producer_graph.safe_native_failure(path, inventory)['reason'])
+            for invalid in ([], inventory * 683, [{'testName': 'PRIVATE'}]):
+                value = producer_graph.safe_native_failure(path, invalid)
+                self.assertEqual('inventory-invalid', value['reason'])
+                self.assertNotIn('PRIVATE', json.dumps(value))
+
+    def test_qualify_preserves_failed_native_command_or_reader_and_secondary_cleanup(self):
+        for fail_command, capture_error in ((True, False), (False, False), (True, True)):
+            with self.subTest(fail_command=fail_command, capture_error=capture_error), tempfile.TemporaryDirectory() as temporary:
+                root = pathlib.Path(temporary)
+                directory = root / '.dependencies/Legacy.Maliev.DocumentService/Legacy.Maliev.DocumentService.Api'
+                directory.mkdir(parents=True)
+                (directory / 'Legacy.Maliev.DocumentService.Api.csproj').write_text('synthetic')
+                private = root / 'private/Document'
+                full = private / 'receipt-evidence/full'
+                full.mkdir(parents=True)
+                document, inventory = self.native_failure_fixture()
+                ET.ElementTree(document).write(full / 'full-suite.trx')
+                audited = root / 'audit.json'
+                audited.write_text(json.dumps({'version': 1, 'parameters': '--vulnerable --include-transitive',
+                                              'sources': ['https://api.nuget.org/v3/index.json'],
+                                              'projects': [{'path': '/synthetic/Legacy.Maliev.DocumentService.Api.csproj'}]}))
+                original = supervisor.CommandFailure('PRIVATE original command')
+                secondary = PermissionError(13, 'PRIVATE secondary cleanup')
+                phase = mock.Mock()
+                events = []
+                def command(arguments, directory, env, label):
+                    if label == 'full-native' and fail_command:
+                        raise original
+                    return audited
+                phase.run.side_effect = command
+                def settle():
+                    events.append('settle')
+                    raise secondary
+                phase.settle.side_effect = settle
+                native_reader = producer_graph.safe_native_failure
+                def observe(*arguments):
+                    events.append('capture')
+                    if capture_error:
+                        raise RuntimeError('PRIVATE capture')
+                    return native_reader(*arguments)
+                with mock.patch.object(producer_graph, 'Phase', return_value=phase), \
+                     mock.patch.object(producer_graph, 'binaries', return_value=[]), \
+                     mock.patch.object(producer_graph, 'assets', return_value=[]), \
+                     mock.patch.object(producer_graph, 'document_policy', return_value=private / 'receipt-evidence'), \
+                     mock.patch.object(producer_graph, 'safe_native_failure', side_effect=observe) as capture:
+                    with self.assertRaises(supervisor.CommandFailure if fail_command else ValueError) as raised:
+                        producer_graph.qualify(root, 'Document', {'Legacy.Maliev.DocumentService': 'a' * 40},
+                                               {'Document': {'inventory': inventory}}, private)
+                if fail_command:
+                    self.assertIs(original, raised.exception)
+                self.assertIs(secondary, raised.exception.__cause__)
+                diagnostic = raised.exception.producer_validation_failure
+                self.assertEqual('full-native-command' if fail_command else 'native-readback', diagnostic['gate'])
+                self.assertFalse(diagnostic['nativeMetadata']['accepted'])
+                self.assertEqual('unavailable' if capture_error else 'retained', diagnostic['nativeMetadata']['status'])
+                self.assertNotIn('PRIVATE', json.dumps(diagnostic))
+                capture.assert_called_once_with(full / 'full-suite.trx', inventory)
+                phase.settle.assert_called_once()
+                self.assertEqual(['capture', 'settle'], events)
+                self.assertEqual('full-native', phase.run.call_args.args[-1])
+
     def test_raw_coverage_retains_generated_lines_and_rejects_empty_or_below_floor(self):
         with tempfile.TemporaryDirectory() as temporary:
             path = pathlib.Path(temporary) / 'coverage.cobertura.xml'
