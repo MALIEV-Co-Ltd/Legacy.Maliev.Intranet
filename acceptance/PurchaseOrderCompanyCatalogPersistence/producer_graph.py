@@ -17,6 +17,84 @@ TEST_INTRANET = '3f5f7542c93cb085757130971c4fc7cf61043f01'
 TEST_WORKFLOWS = '0159e67a033712a7120d52173819e8bde214cf6e'
 
 
+# These are source-owned validator literals, never caller exception text.
+VALIDATION_REASONS = {
+    'audit incomplete': 'audit-incomplete', 'audit project incomplete': 'audit-project-incomplete',
+    'audit framework incomplete': 'audit-framework-incomplete',
+    'vulnerable or incomplete package': 'audit-package-incomplete-or-vulnerable',
+    'missing audited project': 'audit-project-missing',
+    'source checkout mismatch': 'source-checkout-mismatch', 'source blob mismatch': 'source-blob-mismatch',
+    'source canonical hash mismatch': 'source-hash-mismatch',
+    'working source differs from canonical blob': 'working-source-mismatch',
+    'original CRLF File consumer checkout projection mismatch': 'consumer-projection-mismatch',
+    'security source mismatch': 'security-source-mismatch',
+    'restore warnings/errors': 'restore-warnings-or-errors',
+    'packaged shared dependency': 'packaged-shared-dependency',
+    'foreign shared project path': 'foreign-shared-project',
+    'missing restored shared graph': 'restored-shared-graph-missing',
+    'missing production PE/PDB': 'production-binary-missing', 'missing shared PE/PDB': 'shared-binary-missing',
+    'OpenAPI generated source ambiguous': 'openapi-source-ambiguous',
+    'duplicate TRX definition': 'native-definition-duplicate',
+    'foreign or duplicate TRX TestEntry': 'native-entry-foreign-or-duplicate',
+    'missing TestEntry lineage': 'native-entry-lineage-missing',
+    'nonpass or duplicate execution': 'native-nonpass-or-duplicate',
+    'broken definition/execution lineage': 'native-lineage-broken', 'foreign result name': 'native-result-foreign',
+    'native inventory mismatch': 'native-inventory-mismatch', 'native counters mismatch': 'native-counters-mismatch',
+    'missing or distinct raw coverage': 'coverage-missing-or-distinct',
+    'missing coverage filename': 'coverage-filename-missing', 'invalid raw line': 'coverage-line-invalid',
+    'raw owned coverage fails': 'coverage-floor-failed',
+    'production binaries not restored after instrumentation': 'production-binaries-not-restored',
+    'not exact-head owned hosted Ubuntu': 'hosted-source-invalid',
+    'candidate flag must remain unaccepted': 'candidate-flag-invalid'}
+VALIDATION_GATES = {'hosted-source', 'candidate-manifest', 'source-verification', 'native-inventory',
+                    'producer-commands', 'production-binary-readback', 'restore-assets-readback',
+                    'package-audit-command', 'package-audit-readback', 'document-policy',
+                    'document-focus-command', 'full-native-command', 'native-readback',
+                    'document-focus-readback', 'document-evidence-policy', 'coverage-policy',
+                    'employee-scaffold-policy', 'coverage-readback', 'production-binary-restoration',
+                    'producer-cleanup', 'shared-binary-readback'}
+
+
+def safe_audit_metadata(path, expected):
+    """Counts and source-known basenames only; unavailable data grants no acceptance."""
+    try:
+        if path.stat().st_size > 8_388_608:
+            return None
+        value = json.loads(path.read_text())
+        projects = value['projects']
+        if not isinstance(projects, list) or len(projects) > 128:
+            return None
+        names = sorted(set(name for name in expected if isinstance(name, str) and re.fullmatch(r'Legacy\.Maliev\.[A-Za-z0-9.]+\.csproj', name)))
+        rows = []
+        for project in projects:
+            basename = pathlib.PurePosixPath(str(project.get('path', '')).replace('\\', '/')).name
+            frameworks = project.get('frameworks', [])
+            if not isinstance(frameworks, list) or len(frameworks) > 128:
+                return None
+            counts = []
+            for framework in frameworks:
+                top, transitive = framework.get('topLevelPackages', []), framework.get('transitivePackages', [])
+                if not isinstance(top, list) or not isinstance(transitive, list):
+                    return None
+                counts.append({'frameworkPresent': bool(framework.get('framework')),
+                               'problemCount': len(framework.get('problems') or []),
+                               'topLevelPackageCount': len(top), 'transitivePackageCount': len(transitive)})
+            rows.append({'project': basename if basename in names else 'unrecognized-project',
+                         'problemCount': len(project.get('problems') or []), 'frameworks': counts})
+        return {'expectedProjects': names, 'actualProjects': rows, 'problemCount': len(value.get('problems') or [])}
+    except Exception:
+        return None
+
+
+def validation_failure(error, gate, audit_metadata=None):
+    category = type(error).__name__
+    return {'gate': gate if gate in VALIDATION_GATES else 'unknown-validator',
+            'category': category if category in {'ValueError', 'KeyError', 'TypeError', 'JSONDecodeError',
+                                               'FileNotFoundError', 'PermissionError', 'OSError', 'CommandFailure'} else 'ProducerValidationError',
+            'reason': VALIDATION_REASONS.get(str(error), 'unknown-validator-reason') if type(error) is ValueError else 'unknown-validator-reason',
+            'auditMetadata': audit_metadata}
+
+
 def git(root, *args):
     return subprocess.check_output(['git', '-C', str(root), *args]).decode().strip()
 
@@ -148,6 +226,7 @@ def qualify(root, producer, pins, inventory, private):
     policy = json.loads((HERE / 'graph-actor-policy.json').read_text())
     phase = Phase(policy, private)
     result, failure, cleanup_failure = None, None, None
+    gate, audit_metadata = 'producer-commands', None
     try:
         solution = name + '.slnx'
         if producer == 'Document':
@@ -159,42 +238,60 @@ def qualify(root, producer, pins, inventory, private):
                                (['dotnet', 'build', solution, '-c', 'Release', '--no-restore', '--warnaserror', '-p:UseLocalMalievDependencies=true', '-p:GITHUB_ACTIONS=false', '-p:EmitCompilerGeneratedFiles=true', '-p:UseSharedCompilation=false'], 'build'),
                                (['dotnet', 'format', solution, '--verify-no-changes', '--no-restore'], 'format')):
             phase.run(command, directory, env, label)
+        gate = 'production-binary-readback'
         pristine = binaries(directory, producer)
+        gate = 'restore-assets-readback'
         restored = assets(directory, root / '.dependencies')
+        gate = 'package-audit-command'
         audit_path = phase.run(['dotnet', 'list', solution, 'package', '--vulnerable', '--include-transitive', '--no-restore', '--format', 'json'], directory, env, 'package-audit')
         projects = [path.name for path in directory.glob('*/*.csproj')]
+        gate = 'package-audit-readback'
+        audit_metadata = safe_audit_metadata(audit_path, projects)
         audited = audit(audit_path, projects)
+        audit_metadata = None
+        gate = 'document-policy'
         evidence = document_policy(phase, directory, private, env) if producer == 'Document' else private / 'results'
         full = evidence / 'full' if producer == 'Document' else evidence
         if producer == 'Document':
+            gate = 'document-focus-command'
             phase.run(['dotnet', 'test', name + '.Tests/' + name + '.Tests.csproj', '-c', 'Release', '--no-build', '--no-restore', '-p:UseLocalMalievDependencies=true',
                        '--filter', 'FullyQualifiedName~ThaiBahtAmountWordsTests|FullyQualifiedName~ReceiptThaiAmountContentTests|FullyQualifiedName~DocumentRuntimeHttpTests|FullyQualifiedName~ReceiptAmountBrandPatternTests',
                        '--logger', 'trx;LogFileName=receipt-focus.trx', '--results-directory', str(evidence / 'focus')], directory, env, 'document-focus')
+        gate = 'full-native-command'
         phase.run(['dotnet', 'test', solution, '-c', 'Release', '--no-build', '--no-restore', '-p:UseLocalMalievDependencies=true',
                    '--logger', 'trx;LogFileName=full-suite.trx', '--results-directory', str(full), '--collect', 'XPlat Code Coverage'], directory, env, 'full-native')
+        gate = 'native-readback'
         native = trx(full / 'full-suite.trx', inventory[producer]['inventory'])
         applicability = None
         focus = None
         if producer == 'Document':
+            gate = 'document-focus-readback'
             focus = trx(evidence / 'focus/receipt-focus.trx', inventory['Document-focus']['inventory'])
+            gate = 'document-evidence-policy'
             for pattern in ('test_receipt_evidence.py', 'test_document_application_proof.py'):
                 phase.run([sys.executable, '-B', '-m', 'unittest', 'discover', '-s', 'scripts', '-p', pattern], directory, env, pattern)
             for script in ('read-receipt-evidence.py', 'read-document-contract-applicability.py'):
                 phase.run([sys.executable, '-B', 'scripts/' + script, str(evidence)], directory, env, script)
+            gate = 'coverage-policy'
             phase.run([sys.executable, '-B', 'scripts/verify-runner-coverage.py', str(full), str(evidence)], directory, env, 'original-coverage-policy')
             applicability = json.loads((evidence / 'contract-applicability-acceptance.json').read_text())
         else:
+            gate = 'coverage-policy'
             phase.run([sys.executable, '-B', 'scripts/verify-runner-coverage.py', str(full)], directory, env, 'original-coverage-policy')
         if producer == 'Employee':
+            gate = 'employee-scaffold-policy'
             phase.run(['pwsh', '-NoProfile', '-File', 'tooling/Test-EmployeeScaffoldContract.ps1', '-EvidencePath', str(private / 'employee-scaffold-orchestration.json')], directory, env, 'original-scaffold-controls')
         assemblies = ['Legacy.Maliev.' + producer + 'Service.' + module for module in ('Api', 'Application', 'Domain', 'Rendering' if producer == 'Document' else 'Data')]
+        gate = 'coverage-readback'
         covered = coverage(full.rglob('coverage.cobertura.xml'), assemblies, producer == 'Document')
+        gate = 'production-binary-restoration'
         if binaries(directory, producer) != pristine:
             raise ValueError('production binaries not restored after instrumentation')
         result = {'producer': producer, 'head': pins[name], 'native': native, 'focus': focus,
                   'coverage': covered, 'audit': audited, 'assets': restored, 'binaries': pristine,
                   'applicability': applicability}
     except Exception as error:
+        error.producer_validation_failure = validation_failure(error, gate, audit_metadata)
         failure = error
     finally:
         try:
@@ -204,6 +301,7 @@ def qualify(root, producer, pins, inventory, private):
     if failure is not None:
         raise failure from cleanup_failure
     if cleanup_failure is not None:
+        cleanup_failure.producer_validation_failure = validation_failure(cleanup_failure, 'producer-cleanup')
         raise cleanup_failure
     result['cleanup'] = closure
     return result
@@ -220,21 +318,27 @@ def main():
               'pins': {}, 'sourceTrees': [], 'producers': [], 'sharedBinaries': [], 'failureCategory': None,
               'failedProducer': None, 'failureCleanup': None,
               'scope': 'fresh native fixture completion; observed original resource absence and SDK process closure; no SDK-object Dispose certification'}
+    gate = 'hosted-source'
     try:
         if sys.platform != 'linux' or os.environ.get('RUNNER_ENVIRONMENT') != 'github-hosted' or not re.fullmatch('[0-9a-f]{40}', report['candidateHead']) or report['candidateHead'] != report['executedSource']:
             raise ValueError('not exact-head owned hosted Ubuntu')
+        gate = 'candidate-manifest'
         manifest = json.loads((HERE / 'candidate-pins.json').read_text())
         if manifest['acceptedProducerGraph'] is not False:
             raise ValueError('candidate flag must remain unaccepted')
         report['pins'] = manifest['pins']
+        gate = 'source-verification'
         report['sourceTrees'] = verify_sources(root, report['pins'])
+        gate = 'native-inventory'
         inventory = json.loads((HERE / 'graph-native-inventory.json').read_text())
         for producer in PRODUCERS:
             report['producers'].append(qualify(root, producer, report['pins'], inventory, private / producer))
+        gate = 'shared-binary-readback'
         report['sharedBinaries'] = shared_binaries(root)
         report['graphComplete'] = True
     except Exception as error:
-        report['failureCategory'] = type(error).__name__
+        report['validationFailure'] = getattr(error, 'producer_validation_failure', None) or validation_failure(error, gate)
+        report['failureCategory'] = report['validationFailure']['category']
         if 'producer' in locals():
             report['failedProducer'] = producer
             cleanup_path = private / producer / 'cleanup.json'

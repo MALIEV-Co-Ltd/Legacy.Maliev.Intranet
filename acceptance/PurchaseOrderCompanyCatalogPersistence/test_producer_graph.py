@@ -13,6 +13,7 @@ import graph_evidence as evidence
 import graph_receipt as receipt
 import graph_supervisor as supervisor
 import daemon_exe_probe as probe
+import producer_graph
 
 
 
@@ -511,6 +512,24 @@ class ProducerGraphTests(unittest.TestCase):
                 'binaries': [{'name': 'Legacy.Maliev.' + producer + 'Service.' + name + '.' + extension, 'sha256': 'a' * 64, 'bytes': 1} for name in modules for extension in ('dll', 'pdb')],
                 'applicability': policy, 'cleanup': closed})
         self.assertTrue(receipt.complete(graph, owner, inventories, pins))
+        # Actual successful main projection must still pass the unchanged strict reader.
+        with tempfile.TemporaryDirectory() as temporary:
+            root = pathlib.Path(temporary)
+            env = {'PROOF_EVIDENCE': str(root / 'output'), 'RUNNER_TEMP': str(root),
+                   'CANDIDATE_HEAD': owner['candidateHead'], 'GITHUB_RUN_ID': owner['runId'],
+                   'GITHUB_RUN_ATTEMPT': owner['runAttempt'], 'RUNNER_ENVIRONMENT': 'github-hosted'}
+            with mock.patch.dict(producer_graph.os.environ, env), mock.patch.object(producer_graph.sys, 'platform', 'linux'), \
+                 mock.patch.object(producer_graph, 'git', return_value=owner['executedSource']), \
+                 mock.patch.object(producer_graph, 'verify_sources', return_value=graph['sourceTrees']), \
+                 mock.patch.object(producer_graph, 'qualify', side_effect=graph['producers']), \
+                 mock.patch.object(producer_graph, 'shared_binaries', return_value=graph['sharedBinaries']):
+                producer_graph.main()
+            successful = json.loads((root / 'output/producer-graph.json').read_text())
+            self.assertEqual(set(graph), set(successful))
+            self.assertNotIn('validationFailure', successful)
+            self.assertTrue(receipt.complete(successful, owner, inventories, pins))
+            rejected = {**successful, 'validationFailure': None}
+            self.assertFalse(receipt.complete(rejected, owner, inventories, pins))
         for mutation in ('stale_run', 'static_acceptance', 'missing_producer', 'lost_duplicate', 'shared_pin', 'missing_security',
                          'missing_asset', 'foreign_binary', 'numerical_application', 'scope_extra', 'stale_focus', 'missing_pdb'):
             changed = copy.deepcopy(graph)
@@ -853,6 +872,84 @@ class ProducerGraphTests(unittest.TestCase):
             row = self.mocked_probe_output(payload, code)
             self.assertIsNone(row['probeFailure'])
             self.assertEqual('', row['raw'])
+
+    def test_package_audit_gate_preserves_original_reason_before_cleanup_failure(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = pathlib.Path(temporary)
+            directory = root / '.dependencies/Legacy.Maliev.DocumentService/Legacy.Maliev.DocumentService.Api'
+            directory.mkdir(parents=True)
+            (directory / 'Legacy.Maliev.DocumentService.Api.csproj').write_text('synthetic')
+            audited = root / 'audit.json'
+            audited.write_text(json.dumps({'projects': [{'path': '/PRIVATE/Legacy.Maliev.DocumentService.Api.csproj', 'frameworks': []}]}))
+            phase = mock.Mock()
+            phase.run.return_value = audited
+            phase.settle.side_effect = PermissionError(13, 'PRIVATE secondary cleanup')
+            with mock.patch.object(producer_graph, 'Phase', return_value=phase), \
+                 mock.patch.object(producer_graph, 'binaries', return_value=[]), \
+                 mock.patch.object(producer_graph, 'assets', return_value=[]), \
+                 mock.patch.object(producer_graph, 'document_policy') as document_policy:
+                with self.assertRaisesRegex(ValueError, '^audit project incomplete$') as raised:
+                    producer_graph.qualify(root, 'Document', {'Legacy.Maliev.DocumentService': 'a' * 40}, {}, root / 'private/Document')
+            diagnostic = raised.exception.producer_validation_failure
+            self.assertEqual('package-audit-readback', diagnostic['gate'])
+            self.assertEqual('audit-project-incomplete', diagnostic['reason'])
+            self.assertEqual('ValueError', diagnostic['category'])
+            self.assertEqual([], diagnostic['auditMetadata']['actualProjects'][0]['frameworks'])
+            self.assertNotIn('PRIVATE', json.dumps(diagnostic))
+            self.assertIsInstance(raised.exception.__cause__, PermissionError)
+            document_policy.assert_not_called()
+            phase.settle.assert_called_once()
+            self.assertEqual('package-audit', phase.run.call_args.args[-1])
+
+    def test_safe_audit_metadata_has_only_known_basenames_and_numeric_counts(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            path = pathlib.Path(temporary) / 'audit.json'
+            expected = ['Legacy.Maliev.DocumentService.Api.csproj']
+            path.write_text(json.dumps({'projects': [
+                {'path': 'C:\\PRIVATE\\Legacy.Maliev.DocumentService.Api.csproj', 'frameworks': [
+                    {'framework': 'PRIVATE framework', 'topLevelPackages': [{'id': 'PRIVATE', 'url': 'PRIVATE'}],
+                     'transitivePackages': [{}, {}], 'problems': ['PRIVATE problem']}]},
+                {'path': '/PRIVATE/private-project.csproj', 'frameworks': []}], 'problems': ['PRIVATE problem']}))
+            result = producer_graph.safe_audit_metadata(path, expected)
+            self.assertEqual(expected, result['expectedProjects'])
+            self.assertEqual('unrecognized-project', result['actualProjects'][1]['project'])
+            self.assertEqual({'frameworkPresent': True, 'problemCount': 1, 'topLevelPackageCount': 1,
+                              'transitivePackageCount': 2}, result['actualProjects'][0]['frameworks'][0])
+            self.assertNotIn('PRIVATE', json.dumps(result))
+            path.write_text('PRIVATE malformed JSON')
+            self.assertIsNone(producer_graph.safe_audit_metadata(path, expected))
+
+    def test_unknown_validator_text_and_fabricated_gate_never_enter_diagnostic(self):
+        for error in (ValueError('PRIVATE path/secret'), PermissionError(13, 'PRIVATE'), RuntimeError('PRIVATE')):
+            result = producer_graph.validation_failure(error, 'PRIVATE gate')
+            self.assertEqual('unknown-validator', result['gate'])
+            self.assertEqual('unknown-validator-reason', result['reason'])
+            self.assertNotIn('PRIVATE', json.dumps(result))
+        self.assertEqual('audit-framework-incomplete', producer_graph.validation_failure(
+            ValueError('audit framework incomplete'), 'package-audit-readback')['reason'])
+        self.assertEqual('audit-project-missing', producer_graph.validation_failure(
+            ValueError('missing audited project'), 'package-audit-readback')['reason'])
+
+    def test_main_retains_original_validator_diagnostic_in_nonaccepted_report(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = pathlib.Path(temporary)
+            error = ValueError('audit framework incomplete')
+            error.producer_validation_failure = producer_graph.validation_failure(error, 'package-audit-readback')
+            env = {'PROOF_EVIDENCE': str(root / 'output'), 'RUNNER_TEMP': str(root), 'CANDIDATE_HEAD': 'a' * 40,
+                   'GITHUB_RUN_ID': '123', 'GITHUB_RUN_ATTEMPT': '1', 'RUNNER_ENVIRONMENT': 'github-hosted'}
+            with mock.patch.dict(producer_graph.os.environ, env), mock.patch.object(producer_graph.sys, 'platform', 'linux'), \
+                 mock.patch.object(producer_graph, 'git', return_value='a' * 40), \
+                 mock.patch.object(producer_graph, 'verify_sources', return_value=[]), \
+                 mock.patch.object(producer_graph, 'qualify', side_effect=error) as qualify:
+                with self.assertRaises(SystemExit):
+                    producer_graph.main()
+            result = json.loads((root / 'output/producer-graph.json').read_text())
+            self.assertEqual(error.producer_validation_failure, result['validationFailure'])
+            self.assertFalse(result['graphComplete'])
+            self.assertFalse(result['acceptedProducerGraph'])
+            self.assertEqual('Document', result['failedProducer'])
+            self.assertEqual([], result['producers'])
+            qualify.assert_called_once()
 
 if __name__ == '__main__':
     unittest.main()
