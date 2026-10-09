@@ -69,13 +69,13 @@ jobs:
       - name: Restore BrowserTests packages
         timeout-minutes: 6
         shell: bash
-        run: timeout --signal=TERM --kill-after=20s 5m dotnet restore Legacy.Maliev.Intranet.BrowserTests/Legacy.Maliev.Intranet.BrowserTests.csproj
+        run: timeout --signal=TERM --kill-after=20s 5m dotnet restore Legacy.Maliev.Intranet.BrowserTests/Legacy.Maliev.Intranet.BrowserTests.csproj -p:UseLocalMalievDependencies=true
       - name: Build BrowserTests Release with zero warnings
         timeout-minutes: 9
         shell: bash
         run: |
           timeout --signal=TERM --kill-after=20s 8m dotnet build Legacy.Maliev.Intranet.BrowserTests/Legacy.Maliev.Intranet.BrowserTests.csproj \
-            --configuration Release --no-restore --warnaserror
+            --configuration Release --no-restore --warnaserror -p:UseLocalMalievDependencies=true
       - name: Read exact built Playwright browser revisions
         id: playwright_metadata
         timeout-minutes: 2
@@ -146,7 +146,7 @@ jobs:
           mkdir -p "$TASK4_BROWSER_EVIDENCE"
           timeout --signal=TERM --kill-after=20s 4m dotnet test \
             Legacy.Maliev.Intranet.BrowserTests/Legacy.Maliev.Intranet.BrowserTests.csproj \
-            --configuration Release --no-build --no-restore \
+            --configuration Release --no-build --no-restore -p:UseLocalMalievDependencies=true \
             --filter 'FullyQualifiedName~CustomerDocumentsCustomerSwitchBrowserTests.LateCustomerResponseCannotRestorePriorInputsOrMetadata' \
             --blame-hang --blame-hang-timeout 90s --blame-hang-dump-type none \
             --logger 'trx;LogFileName=customer-documents-switch.trx' \
