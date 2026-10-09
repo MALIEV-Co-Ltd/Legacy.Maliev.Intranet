@@ -69,11 +69,14 @@ jobs:
       - name: Restore BrowserTests packages
         timeout-minutes: 6
         shell: bash
-        run: timeout --signal=TERM --kill-after=20s 5m dotnet restore Legacy.Maliev.Intranet.BrowserTests/Legacy.Maliev.Intranet.BrowserTests.csproj -p:UseLocalMalievDependencies=true
+        run: |
+          export GITHUB_ACTIONS=false
+          timeout --signal=TERM --kill-after=20s 5m dotnet restore Legacy.Maliev.Intranet.BrowserTests/Legacy.Maliev.Intranet.BrowserTests.csproj -p:UseLocalMalievDependencies=true
       - name: Build BrowserTests Release with zero warnings
         timeout-minutes: 9
         shell: bash
         run: |
+          export GITHUB_ACTIONS=false
           timeout --signal=TERM --kill-after=20s 8m dotnet build Legacy.Maliev.Intranet.BrowserTests/Legacy.Maliev.Intranet.BrowserTests.csproj \
             --configuration Release --no-restore --warnaserror -p:UseLocalMalievDependencies=true
       - name: Read exact built Playwright browser revisions
