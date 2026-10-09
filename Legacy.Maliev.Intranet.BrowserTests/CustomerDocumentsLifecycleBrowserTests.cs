@@ -86,17 +86,33 @@ public sealed class CustomerDocumentsLifecycleBrowserTests
     [InlineData("th")]
     public async Task VerifyRejectReadsExactReceiptEpochAndReloadsAfterConflict(string culture)
     {
+        RecordPhase(culture, "before-owner-host");
         var owner = new OwnerBoundary { DocumentKind = "Evidence", Revision = 101, EvidenceEpoch = 7, ConflictFirstEvidence = true }; await using var app = await HostAsync(owner);
-        using var runtime = await Playwright.CreateAsync(); await using var browser = await runtime.Chromium.LaunchAsync(new() { Headless = true });
-        await using var context = await BrowserContext(browser); var page = await context.NewPageAsync(); using var barriers = owner.ReleaseAtEnd(); var diagnostics = Observe(page);
+        RecordPhase(culture, "before-playwright");
+        using var runtime = await Playwright.CreateAsync();
+        RecordPhase(culture, "before-browser-launch");
+        await using var browser = await runtime.Chromium.LaunchAsync(new() { Headless = true });
+        RecordPhase(culture, "before-context");
+        await using var context = await BrowserContext(browser);
+        RecordPhase(culture, "before-page");
+        var page = await context.NewPageAsync(); using var barriers = owner.ReleaseAtEnd(); var diagnostics = Observe(page);
         try
         {
+            RecordPhase(culture, "before-load", owner);
             await Load(page, app, culture);
+            RecordPhase(culture, "loaded", owner);
             await page.Locator($"#verification-{owner.Version:D}").FillAsync("synthetic verification reason");
             var conflict = page.WaitForResponseAsync(response => response.Url.EndsWith($"/versions/{owner.Version:D}/verification", StringComparison.Ordinal) && response.Status == 409);
-            await page.Locator("article").GetByRole(AriaRole.Button, new() { Name = Label(culture, "Verify exact version"), Exact = true }).ClickAsync(); await (await conflict).FinishedAsync();
+            RecordPhase(culture, "before-verify-click", owner);
+            await page.Locator("article").GetByRole(AriaRole.Button, new() { Name = Label(culture, "Verify exact version"), Exact = true }).ClickAsync();
+            RecordPhase(culture, "verify-click-completed", owner);
+            var conflictResponse = await conflict;
+            RecordPhase(culture, "conflict-headers-observed", owner);
+            await conflictResponse.FinishedAsync().WaitAsync(TimeSpan.FromSeconds(10));
+            RecordPhase(culture, "conflict-response-finished", owner);
             await owner.EvidenceConflictRefreshEntered.Task.WaitAsync(TimeSpan.FromSeconds(15));
             Assert.Equal(109, owner.Revision); Assert.Equal(17, owner.ReceiptEpoch);
+            RecordPhase(culture, "before-release-refresh", owner);
             owner.ReleaseEvidenceConflictRefresh.TrySetResult();
             await page.GetByRole(AriaRole.Alert).WaitForAsync(); await Assertions.Expect(page.GetByRole(AriaRole.Button, new() { Name = Label(culture, "Reload"), Exact = true })).ToBeEnabledAsync();
             await page.Locator("article").GetByRole(AriaRole.Button, new() { Name = Label(culture, "Reject exact version"), Exact = true }).ClickAsync();
@@ -107,9 +123,10 @@ public sealed class CustomerDocumentsLifecycleBrowserTests
             Assert.Equal(2, owner.ReceiptReads); Assert.Equal("Rejected", owner.EvidenceStatus);
             Assert.All(owner.EvidenceAuthorizations, value => Assert.Equal("Bearer synthetic-acting-token", value));
             Assert.DoesNotContain("synthetic-acting-token", await page.ContentAsync());
+            RecordPhase(culture, "assertions-passed-before-evidence", owner);
             await Evidence(page, $"interactive-staff-{culture}-evidence");
         }
-        catch { await CaptureFailure(page, diagnostics, owner, culture); throw; }
+        catch { RecordPhase(culture, "failure-before-capture", owner); await CaptureFailure(page, diagnostics, owner, culture); RecordPhase(culture, "failure-after-capture-before-cleanup", owner); throw; }
     }
 
     [Theory]
@@ -139,7 +156,7 @@ public sealed class CustomerDocumentsLifecycleBrowserTests
             {
                 owner.ReminderStatus = failure;
                 var refused = page.WaitForResponseAsync(response => response.Url.Contains("/bff/staff/nda-reminders?", StringComparison.Ordinal) && response.Status == failure);
-                await page.Locator("#customer-nda-reminders").GetByRole(AriaRole.Button, new() { Name = Label(culture, "Apply reminder filters"), Exact = true }).ClickAsync(); await (await refused).FinishedAsync();
+                await page.Locator("#customer-nda-reminders").GetByRole(AriaRole.Button, new() { Name = Label(culture, "Apply reminder filters"), Exact = true }).ClickAsync(); await (await refused).FinishedAsync().WaitAsync(TimeSpan.FromSeconds(10));
                 await page.GetByRole(AriaRole.Alert).WaitForAsync(); await Assertions.Expect(page.GetByRole(AriaRole.Button, new() { Name = Label(culture, "Reload"), Exact = true })).ToBeEnabledAsync();
                 Assert.Equal(0, await page.Locator("article").CountAsync()); Assert.Equal(0, await page.Locator("#customer-nda-reminders ul li").CountAsync());
                 Assert.DoesNotContain("old-customer-42", await page.Locator("section").InnerTextAsync());
@@ -157,6 +174,17 @@ public sealed class CustomerDocumentsLifecycleBrowserTests
         await Assertions.Expect(trigger).ToHaveAttributeAsync("role", "combobox");
         await trigger.ClickAsync();
         await page.GetByRole(AriaRole.Option, new() { Name = name, Exact = true }).ClickAsync();
+    }
+    private static void RecordPhase(string culture, string phase, OwnerBoundary? owner = null)
+    {
+        try
+        {
+            var root = Environment.GetEnvironmentVariable("TASK4_BROWSER_EVIDENCE");
+            if (string.IsNullOrWhiteSpace(root)) return;
+            Directory.CreateDirectory(root);
+            File.WriteAllText(Path.Combine(root, $"interactive-staff-{culture}-evidence-phase.json"), JsonSerializer.Serialize(new { Phase = phase, OwnerPaths = owner?.ObservedPaths.ToArray() ?? [], ConflictRefreshEntered = owner?.EvidenceConflictRefreshEntered.Task.IsCompleted ?? false, ConflictRefreshReleased = owner?.ReleaseEvidenceConflictRefresh.Task.IsCompleted ?? false }));
+        }
+        catch { /* Diagnostic writes must preserve the original test outcome and capture path. */ }
     }
     private static async Task CaptureFailure(IPage page, ConcurrentQueue<string> diagnostics, OwnerBoundary owner, string culture)
     {
