@@ -9,6 +9,57 @@ from unittest import mock
 import retain
 
 class RetainerTests(unittest.TestCase):
+    def observation(self):
+        return dict(schema=1, source="actual-browser-fetch-clone", observerId="c"*32,
+                    maxBytes=65536, deadlineMs=5000, matchingRequests=1, capturedResponses=1,
+                    capturedBytes=313, status=200, captureSucceeded=True, exactRequestAndResponseUrl=True,
+                    method="POST", closed=True, fetchIdentityRestored=True, activeTasks=0, activeTimers=0,
+                    readSettled=True, cancelSettled=True)
+
+    def test_observation_rejects_unjoined_oversized_foreign_method_and_unknown_fields(self):
+        row=self.observation()
+        self.assertTrue(retain.browser_observation(row))
+        mutations=dict(method="GET", maxBytes=65537, deadlineMs=5001, matchingRequests=2,
+                       capturedResponses=0, capturedBytes=65537, status=503, observerId="foreign",
+                       activeTasks=1, activeTimers=1, readSettled=False, cancelSettled=False,
+                       fetchIdentityRestored=False, captureSucceeded=False, exactRequestAndResponseUrl=False)
+        for key in row:
+            changed=dict(row); changed.pop(key)
+            self.assertFalse(retain.browser_observation(changed), key)
+        for key,value in mutations.items():
+            self.assertFalse(retain.browser_observation(dict(row, **{key:value})), key)
+        self.assertFalse(retain.browser_observation(dict(row, unexpected=True)))
+
+    def test_observer_release_requires_same_owner_run_attempt_and_before_quiescence(self):
+        with tempfile.TemporaryDirectory() as directory, mock.patch.dict(os.environ,GITHUB_RUN_ID="123",GITHUB_RUN_ATTEMPT="1"):
+            root=pathlib.Path(directory)
+            births,absent,scopes=self.release_rows()
+            # Make a unique sequence slot between backend creation and client quiescence.
+            for row in scopes: row["sequence"]+=1
+            for row in absent: row["sequence"]+=1
+            self.write_release_rows(root,births,absent,scopes)
+            row=dict(schema=1,state="reader-joined-fetch-restored",observerId="c"*32,
+                     installationDispatched=True,installationEvaluationSettled=True,retainedEvaluationSettled=True,
+                     ownedPageClosed=False,joinedReaderReceipt=self.observation(),runId="123",runAttempt="1",owner="c"*32,sequence=3)
+            path=root/"browser-observer.jsonl"
+            path.write_text(json.dumps(row))
+            self.assertTrue(retain.browser_observer_release(root))
+            for key,value in dict(owner="b"*32,runId="124",runAttempt="2",sequence=4,
+                                  retainedEvaluationSettled=False,installationEvaluationSettled=False,
+                                  observerId="d"*32,ownedPageClosed=True).items():
+                path.write_text(json.dumps(dict(row,**{key:value})))
+                self.assertFalse(retain.browser_observer_release(root),key)
+            path.write_text(json.dumps(row)+"\n"+json.dumps(row))
+            self.assertFalse(retain.browser_observer_release(root))
+
+    def test_native_observer_trx_requires_exact_three_passed_cases(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path=pathlib.Path(directory)/"controls.trx"
+            path.write_text(self.controls_xml(names=retain.OBSERVER_TESTS))
+            self.assertTrue(retain.actual_controls(path,retain.OBSERVER_TESTS)["complete"])
+            path.write_text(self.controls_xml(names=retain.OBSERVER_TESTS[:-1]))
+            self.assertFalse(retain.actual_controls(path,retain.OBSERVER_TESTS)["complete"])
+
     def journey_row(self):
         return dict(schema=1, owner="a" * 32, runId="123", runAttempt="1",
                     supplierId=7, persistedSupplierId=7, originalAddressId=11,
@@ -22,7 +73,7 @@ class RetainerTests(unittest.TestCase):
                     editedPreviewDidNotApply=True, explicitApplyMatched=True, reviewedDetailPersisted=True,
                     address2AndBuildingPreserved=True, countryPreserved=True,
                     taxPreserved=True, deniedResolvePreservedOriginal=True, reloadMatched=True,
-                    singleSupplierAndAddress=True)
+                    singleSupplierAndAddress=True, browserBodyObservation=self.observation())
 
     def test_resolve_receipt_requires_deliberate_confirmation_identity_denials_and_reload(self):
         with tempfile.TemporaryDirectory() as directory, mock.patch.dict(os.environ, GITHUB_RUN_ID="123", GITHUB_RUN_ATTEMPT="1"):
@@ -30,6 +81,7 @@ class RetainerTests(unittest.TestCase):
             path = root / "resolve-journey.json"
             row = self.journey_row()
             (root / "resources.jsonl").write_text(json.dumps(dict(owner=row["owner"])) + "\n")
+            (root / "browser-observer.jsonl").write_text(json.dumps(dict(owner=row["owner"], state="reader-joined-fetch-restored", joinedReaderReceipt=row["browserBodyObservation"])))
             path.write_text(json.dumps(row))
             self.assertTrue(retain.resolve_journey(root))
             for key in row:
@@ -152,7 +204,7 @@ class RetainerTests(unittest.TestCase):
                            "CANDIDATE_HEAD": head, "BUILD_OUTCOME": "success", "EXECUTION_OUTCOME": "success",
                            "RESOURCE_CONTROLS_OUTCOME": "success"}
             (root / "supplier-resource-controls.trx").write_text(self.controls_xml())
-            with mock.patch.dict(os.environ, environment), mock.patch("retain.revision", side_effect=available_revision), mock.patch("retain.resource_release", return_value=True), mock.patch("retain.resolve_journey", return_value=True):
+            with mock.patch.dict(os.environ, environment), mock.patch("retain.revision", side_effect=available_revision), mock.patch("retain.resource_release", return_value=True), mock.patch("retain.browser_observer_release", return_value=True), mock.patch("retain.resolve_journey", return_value=True):
                 with self.assertRaises(SystemExit):
                     retain.main(root)
             evidence = json.loads((root / "evidence" / "proof.json").read_text())
@@ -213,6 +265,7 @@ class RetainerTests(unittest.TestCase):
                        "authority-startup": 0, "catalog-startup": 0, "catalog-http": 0,
                        "procurement-startup": 0, "procurement-http": 0, "bff-startup": 0,
                        "bff-http": 0, "chromium": 0, "browser-context": 0,
+                       "address-browser-response-observer": 0,
                        "playwright-driver": 1,
                        "Legacy.Maliev.CatalogService.Api-actual-host": 2,
                        "Legacy.Maliev.ProcurementService.Api-actual-host": 2,
@@ -261,7 +314,7 @@ class RetainerTests(unittest.TestCase):
             environment = {"PROOF_RESULTS": str(root), "PROOF_EVIDENCE": str(root / "evidence"),
                            "CANDIDATE_HEAD": head, "BUILD_OUTCOME": "success", "EXECUTION_OUTCOME": "success",
                            "RESOURCE_CONTROLS_OUTCOME": "success"}
-            with mock.patch.dict(os.environ, environment), mock.patch("retain.revision", side_effect=lambda path: head if path == root else retain.PINS[path.name]), mock.patch("retain.merge_parents", return_value=[]), mock.patch("retain.resource_release", return_value=True), mock.patch("retain.resolve_journey", return_value=True):
+            with mock.patch.dict(os.environ, environment), mock.patch("retain.revision", side_effect=lambda path: head if path == root else retain.PINS[path.name]), mock.patch("retain.merge_parents", return_value=[]), mock.patch("retain.resource_release", return_value=True), mock.patch("retain.browser_observer_release", return_value=True), mock.patch("retain.resolve_journey", return_value=True):
                 with self.assertRaises(SystemExit):
                     retain.main(root)
             evidence = json.loads((root / "evidence" / "proof.json").read_text())
@@ -305,8 +358,8 @@ class RetainerTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             root = pathlib.Path(directory)
             births, absent, scopes = self.release_rows()
-            self.assertEqual(20, len(scopes[0]["clients"]))
-            self.assertEqual(20, len({item["Name"] for item in scopes[0]["clients"]}))
+            self.assertEqual(21, len(scopes[0]["clients"]))
+            self.assertEqual(21, len({item["Name"] for item in scopes[0]["clients"]}))
             self.assertEqual(2, len(scopes[0]["backends"]))
             for row in scopes:
                 row["clients"].reverse()
