@@ -82,7 +82,7 @@ public sealed class CustomerDocumentsCustomerSwitchBrowserTests
         return new FixtureHost(app, owner);
     }
     private static Task<IBrowserContext> BrowserContext(IBrowser browser) => browser.NewContextAsync(new() { ExtraHTTPHeaders = new Dictionary<string, string> { ["Synthetic-Employee"] = "yes" } });
-    private static async Task Load(IPage page, FixtureHost app, string culture) { await page.GotoAsync(app.Urls.Single() + "/?culture=" + culture); await page.Locator("article h3").Filter(new() { HasText = "old-customer-42" }).WaitForAsync(); }
+    private static async Task Load(IPage page, FixtureHost app, string culture) { await page.GotoAsync(app.Urls.Single() + "/?culture=" + culture); await Assertions.Expect(page.Locator("#fixture-customer-43")).ToHaveCSSAsync("display", "inline-flex"); await page.Locator("article h3").Filter(new() { HasText = "old-customer-42" }).WaitForAsync(); }
     private static Task SelectPdf(IPage page) => page.Locator("#customer-document-file").SetInputFilesAsync(new FilePayload { Name = "synthetic.pdf", MimeType = "application/pdf", Buffer = Encoding.ASCII.GetBytes("%PDF-1.4\n1 0 obj<</Type/Catalog>>endobj\ntrailer<</Root 1 0 R>>\n%%EOF\n") });
     private static ConcurrentQueue<string> Observe(IPage page)
     {
