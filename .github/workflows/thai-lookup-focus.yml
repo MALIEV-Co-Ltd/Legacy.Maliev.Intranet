@@ -78,7 +78,7 @@ jobs:
         timeout-minutes: 5
         run: |
           export GITHUB_ACTIONS=false
-          dotnet test Legacy.Maliev.Intranet.Tests/Legacy.Maliev.Intranet.Tests.csproj -c Release --no-build --no-restore -p:UseLocalMalievDependencies=true --filter 'FullyQualifiedName~LookupBehaviorTests|FullyQualifiedName~LookupComponentTests' --logger 'trx;LogFileName=lookup-unit.trx' --results-directory "$LOOKUP_RESULTS"
+          dotnet test Legacy.Maliev.Intranet.Tests/Legacy.Maliev.Intranet.Tests.csproj -c Release --no-build --no-restore -p:UseLocalMalievDependencies=true --filter 'FullyQualifiedName~Legacy.Maliev.Intranet.Tests.LookupBehaviorTests.|FullyQualifiedName~Legacy.Maliev.Intranet.Tests.LookupComponentTests.' --logger 'trx;LogFileName=lookup-unit.trx' --results-directory "$LOOKUP_RESULTS"
       - name: Install Chromium for the focused browser cases
         id: chromium
         if: ${{ always() && steps.build.outcome == 'success' }}
