@@ -49,6 +49,7 @@ public sealed class SupplierAddressResolvePersistenceTests
     {
         var owner = new SupplierResourceScope(TimeSpan.FromMinutes(6));
         Exception? executionFailure = null;
+        SupplierAddressBrowserObserver? bodyObserver = null;
         try
         {
             using var timeout = CancellationTokenSource.CreateLinkedTokenSource(owner.Token);
@@ -288,11 +289,25 @@ public sealed class SupplierAddressResolvePersistenceTests
 
             await page.Locator("#supplier-edit-address-lookup-enabled").ClickAsync();
             await page.Locator("#supplier-edit-address-lookup-paste").FillAsync(pasted);
+            bodyObserver = new SupplierAddressBrowserObserver(page, origin + "/bff/lookups/thai-addresses/resolve");
+            var observerReceiptWritten = false;
+            var observerLease = owner.Register("address-browser-response-observer", async token =>
+            {
+                await bodyObserver.DisposeAsync(token);
+                if (!observerReceiptWritten)
+                {
+                    await owner.WriteReceiptAsync("browser-observer.jsonl", bodyObserver.ReleaseReceipt(), token);
+                    observerReceiptWritten = true;
+                }
+            });
+            await owner.StartAsync(observerLease, bodyObserver.InstallAsync);
             var resolved = await page.RunAndWaitForResponseAsync(
                 () => page.GetByRole(AriaRole.Button, new() { Name = "Extract address fields", Exact = true }).ClickAsync(),
                 response => response.Request.Method == "POST" && response.Url.EndsWith("/bff/lookups/thai-addresses/resolve", StringComparison.Ordinal));
             Assert.Equal(200, resolved.Status);
-            var browserResolution = JsonSerializer.Deserialize<LookupResolveResponse>(await resolved.TextAsync(), new JsonSerializerOptions(JsonSerializerDefaults.Web));
+            Assert.Equal(JsonSerializer.Serialize(resolveBody), JsonSerializer.Serialize(JsonSerializer.Deserialize<LookupResolveRequest>(resolved.Request.PostData!, new JsonSerializerOptions(JsonSerializerDefaults.Web))));
+            var bodyObservation = await bodyObserver.ReadAndCloseAsync(timeout.Token);
+            var browserResolution = JsonSerializer.Deserialize<LookupResolveResponse>(bodyObservation.GetProperty("body").GetString()!, new JsonSerializerOptions(JsonSerializerDefaults.Web));
             Assert.NotNull(browserResolution);
             Assert.Equal(JsonSerializer.Serialize(actualResolution), JsonSerializer.Serialize(browserResolution));
             Assert.Equal(pasted, browserResolution.OriginalText);
@@ -357,6 +372,7 @@ public sealed class SupplierAddressResolvePersistenceTests
                 csrfDeniedStatus = missingResolveCsrf.Status,
                 lookupDeniedStatus,
                 manualSaveStatus,
+                browserBodyObservation = bodyObservation.GetProperty("receipt"),
                 directAndBffResolutionMatched = true,
                 noAutoApply = true,
                 candidateSelectionDidNotApply = true,
@@ -376,6 +392,19 @@ public sealed class SupplierAddressResolvePersistenceTests
         finally
         {
             try { await owner.DisposeAsync(); }
+            catch (Exception firstCleanup) when (executionFailure is not null && bodyObserver?.RequiresRealmRecovery == true)
+            {
+                // Same phase attempted context/browser shutdown after the bounded observer join failed.
+                // Retry only after the exact retained Evaluate task settled and its owned page closed.
+                try
+                {
+                    await bodyObserver.AwaitExactEvaluationAfterRealmClosureAsync();
+                    if (!bodyObserver.CanRetryAfterRealmClosure) throw new InvalidOperationException("Exact observer evaluation has not settled for retry.");
+                    await owner.DisposeAsync();
+                }
+                catch (Exception retryCleanup)
+                { throw new AggregateException("Supplier execution and settled-realm cleanup retry failed.", executionFailure, firstCleanup, retryCleanup); }
+            }
             catch (Exception cleanupFailure) when (executionFailure is not null)
             { throw new AggregateException("Supplier execution and exact owned cleanup failed.", executionFailure, cleanupFailure); }
         }

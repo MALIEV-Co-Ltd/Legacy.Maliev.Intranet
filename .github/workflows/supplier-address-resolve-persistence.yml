@@ -101,7 +101,7 @@ jobs:
       - name: Verify focused formatting and dependency vulnerabilities
         run: |
           export GITHUB_ACTIONS=false
-          dotnet format acceptance/SupplierAddressResolvePersistence/SupplierAddressResolvePersistence.AcceptanceTests.csproj --verify-no-changes --no-restore --include acceptance/SupplierAddressResolvePersistence/SupplierAddressResolvePersistenceTests.cs
+          dotnet format acceptance/SupplierAddressResolvePersistence/SupplierAddressResolvePersistence.AcceptanceTests.csproj --verify-no-changes --no-restore --include acceptance/SupplierAddressResolvePersistence/SupplierAddressResolvePersistenceTests.cs acceptance/SupplierAddressResolvePersistence/SupplierAddressBrowserObserver.cs
           dotnet list acceptance/SupplierAddressResolvePersistence/SupplierAddressResolvePersistence.AcceptanceTests.csproj package --vulnerable --include-transitive --format json > "$RUNNER_TEMP/supplier-audit.json"
           python3 -c 'import json,os,pathlib; d=json.loads((pathlib.Path(os.environ["RUNNER_TEMP"])/"supplier-audit.json").read_text()); assert not any(p.get("vulnerabilities") for project in d.get("projects",[]) for f in project.get("frameworks",[]) for k in ("topLevelPackages","transitivePackages") for p in f.get(k,[])), "Vulnerable acceptance dependency"'
       - name: Install Chromium
@@ -121,6 +121,15 @@ jobs:
           export GITHUB_ACTIONS=false
           unset SUPPLIER_RESOURCE_EVIDENCE
           dotnet test acceptance/SupplierAddressResolvePersistence/SupplierAddressResolvePersistence.AcceptanceTests.csproj -c Release --no-build --no-restore -p:UseLocalMalievDependencies=true --filter 'FullyQualifiedName~SupplierResourceControls' --logger 'trx;LogFileName=supplier-resource-controls.trx' --results-directory "$RUNNER_TEMP/supplier-address-resolve-persistence-results" --nologo
+      - name: Verify passive POST observer contracts and retained evaluation cleanup
+        id: observer_controls
+        env:
+          PROOF_RESULTS: ${{ runner.temp }}/supplier-address-resolve-persistence-results
+        timeout-minutes: 3
+        run: |
+          export GITHUB_ACTIONS=false
+          unset SUPPLIER_RESOURCE_EVIDENCE
+          dotnet test acceptance/SupplierAddressResolvePersistence/SupplierAddressResolvePersistence.AcceptanceTests.csproj -c Release --no-build --no-restore -p:UseLocalMalievDependencies=true --filter 'FullyQualifiedName~SupplierAddressBrowserObserverControls' --logger 'trx;LogFileName=supplier-address-browser-observer.trx' --results-directory "$RUNNER_TEMP/supplier-address-resolve-persistence-results" --nologo
       - name: Exercise real Catalog resolve, deliberate preview Apply, save, API readback and reload
         id: proof
         env:
@@ -137,6 +146,7 @@ jobs:
           CANDIDATE_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
           BUILD_OUTCOME: ${{ steps.build.outcome }}
           EXECUTION_OUTCOME: ${{ steps.proof.outcome }}
+          OBSERVER_CONTROLS_OUTCOME: ${{ steps.observer_controls.outcome }}
           RESOURCE_CONTROLS_OUTCOME: ${{ steps.resource_controls.outcome }}
         run: python3 -B acceptance/SupplierAddressResolvePersistence/retain.py
       - name: Upload sanitized proof only
