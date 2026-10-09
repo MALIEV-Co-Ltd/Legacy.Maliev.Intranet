@@ -198,6 +198,7 @@ def document_policy(phase, directory, private, env):
     inputs = phase.run(['dotnet', 'msbuild', api + '/' + api + '.csproj',
                         '-target:ResolveReferences,GenerateAdditionalXmlFilesForOpenApi',
                         '-p:Configuration=Release', '-p:UseLocalMalievDependencies=true', '-p:GITHUB_ACTIONS=false',
+                        '-p:UseSharedCompilation=false',
                         '-getItem:AdditionalFiles,ReferencePath'], directory, env, 'openapi-inputs')
     target = evidence / 'openapi-compile'
     target.mkdir()

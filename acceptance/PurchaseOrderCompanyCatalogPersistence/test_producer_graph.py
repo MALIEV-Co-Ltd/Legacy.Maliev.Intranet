@@ -69,6 +69,29 @@ class ProducerGraphTests(unittest.TestCase):
         patch.start()
         self.addCleanup(patch.stop)
 
+    def test_openapi_metadata_command_keeps_compilation_in_owned_sdk_cohort(self):
+        # Observe the actual argv at the supervisor boundary without starting any SDK process.
+        stopped = RuntimeError('synthetic command boundary')
+        phase = mock.Mock()
+        phase.run.side_effect = stopped
+        with tempfile.TemporaryDirectory() as temporary:
+            private = pathlib.Path(temporary)
+            directory = private / 'document-source'
+            env = {'MSBUILDDISABLENODEREUSE': '1'}
+            with self.assertRaises(RuntimeError) as raised:
+                producer_graph.document_policy(phase, directory, private, env)
+            self.assertIs(stopped, raised.exception)
+            phase.run.assert_called_once()
+            argv, actual_directory, actual_env, label = phase.run.call_args.args
+            self.assertEqual('openapi-inputs', label)
+            self.assertEqual(directory, actual_directory)
+            self.assertIs(env, actual_env)
+            self.assertEqual(1, argv.count('-p:UseSharedCompilation=false'))
+            self.assertFalse(any(value.startswith('-p:UseSharedCompilation=')
+                                 and value != '-p:UseSharedCompilation=false' for value in argv))
+            self.assertIn('-target:ResolveReferences,GenerateAdditionalXmlFilesForOpenApi', argv)
+            self.assertIn('-getItem:AdditionalFiles,ReferencePath', argv)
+
     def test_foreign_session_does_not_read_executable(self):
         def stat(entry):
             pid = int(entry.parent.name)
