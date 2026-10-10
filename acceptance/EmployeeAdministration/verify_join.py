@@ -22,11 +22,11 @@ EXPECTED_CASES = {CLASS + "." + method for method, count in METHODS.items() if c
 EXPECTED_CASES.update(CLASS + "." + THEORY + '(failure: "' + failure + '")'
                       for failure in ("http", "io", "cancellation"))
 # Public immutable source identity, not authentication or credential material.
-ISSUER_COMMIT = "ef74d99f56cb53b600efc7f85819d9adc28f8935"
+ISSUER_COMMIT = "f7079f133b1e607b8909636a5114ebccc73b27bc"
 PINS = {
     "auth": (".dependencies/Legacy.Maliev.AuthService", ISSUER_COMMIT),
     "employee": (".dependencies/Legacy.Maliev.EmployeeService", "8a8a619b021e9dc71607fa279aa12257844b6359"),
-    "defaults": (".dependencies/Legacy.Maliev.ServiceDefaults", "7edcd961024868513fd5f373cab3dcb261197f77"),
+    "defaults": (".dependencies/Legacy.Maliev.ServiceDefaults", "4517cf16f5f1159318e184969732d46eae4a8308"),
     "contracts": (".dependencies/Legacy.Maliev.CompatibilityContracts", "78e48ffc4ee000df0510cba5e7c7a3c4c4d539d7"),
 }
 

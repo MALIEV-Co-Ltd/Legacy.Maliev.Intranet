@@ -243,7 +243,7 @@ builder.Services.AddHttpClient<OrdersProxy>(client =>
         ?? throw new InvalidOperationException("Services:Order is required."));
     client.Timeout = TimeSpan.FromSeconds(10);
 }).RemoveAllResilienceHandlers()
-    .AddPrivateFailureOperationObservation("OrderService")
+    .AddPrivateFailureSourceObservation("OrderService")
     .AddHttpMessageHandler<LegacyServiceAuthenticationHandler>()
     .AddResilienceHandler("order-index", pipeline =>
 {

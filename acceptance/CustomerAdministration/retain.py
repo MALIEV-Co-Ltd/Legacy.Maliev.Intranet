@@ -59,7 +59,7 @@ EXPECTED = {
 METHODS = {PREFIX + cls + "." + name: count for cls, methods in EXPECTED.items() for name, count in methods.items()}
 TOTAL = 111
 DEPENDENCIES = {
-    "Legacy.Maliev.ServiceDefaults": "7edcd961024868513fd5f373cab3dcb261197f77",
+    "Legacy.Maliev.ServiceDefaults": "4517cf16f5f1159318e184969732d46eae4a8308",
     "Legacy.Maliev.CompatibilityContracts": "78e48ffc4ee000df0510cba5e7c7a3c4c4d539d7",
 }
 COUNTERS = dict.fromkeys(("total", "executed", "passed"), TOTAL)

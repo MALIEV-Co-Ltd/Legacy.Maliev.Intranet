@@ -3,7 +3,8 @@ namespace Legacy.Maliev.Intranet.Tests;
 public sealed class LegacyServiceDefaultsIdentityContractTests
 {
     private const string DotNetPatchVersion = "10.0.12";
-    private const string NativeLoggingReplacementCommit = "7edcd961024868513fd5f373cab3dcb261197f77";
+    private const string NativeLoggingReplacementCommit = "4517cf16f5f1159318e184969732d46eae4a8308";
+    private const string QualifiedAuthIssuerCommit = "f7079f133b1e607b8909636a5114ebccc73b27bc";
 
     [Fact]
     public void HostsAndDeliveryPinSharedNativeLoggingReplacement()
@@ -28,6 +29,78 @@ public sealed class LegacyServiceDefaultsIdentityContractTests
     }
 
     [Fact]
+    public void EveryWorkflowDefaultsCheckout_UsesQualifiedObserverProducer()
+    {
+        var consumers = ValidateWorkflowDefaultsDirectory(Path.Combine(FindRoot(), ".github", "workflows"));
+        Assert.True(consumers >= 13, "All existing workflow consumers must retain qualified checkouts.");
+    }
+
+    [Theory]
+    [InlineData("old-pin")]
+    [InlineData("quoted-repository")]
+    [InlineData("reordered-fields")]
+    [InlineData("key-spacing")]
+    [InlineData("wrong-path")]
+    public void WorkflowDefaultsGuard_RejectsUnqualifiedOrUnparsedCheckout(string mutation)
+    {
+        var source = QualifiedWorkflowCheckout();
+        source = mutation switch
+        {
+            "old-pin" => source.Replace(NativeLoggingReplacementCommit, new string('a', 40), StringComparison.Ordinal),
+            "quoted-repository" => source.Replace("repository: MALIEV-Co-Ltd/Legacy.Maliev.ServiceDefaults", "repository: 'MALIEV-Co-Ltd/Legacy.Maliev.ServiceDefaults'", StringComparison.Ordinal),
+            "reordered-fields" => $"path: .dependencies/Legacy.Maliev.ServiceDefaults\nref: {NativeLoggingReplacementCommit}\nrepository: MALIEV-Co-Ltd/Legacy.Maliev.ServiceDefaults\n",
+            "key-spacing" => source.Replace("repository: ", "repository : ", StringComparison.Ordinal),
+            "wrong-path" => source.Replace(".dependencies/Legacy.Maliev.ServiceDefaults", ".dependencies/wrong", StringComparison.Ordinal),
+            _ => throw new ArgumentException("Unknown mutation", nameof(mutation)),
+        };
+        Assert.Throws<InvalidOperationException>(() => ValidateWorkflowDefaults(source, mutation));
+    }
+
+    [Fact]
+    public void WorkflowDefaultsGuard_RetainsValidConsumersAndRejectsAdditionalYamlBypass()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(directory);
+        try
+        {
+            for (var index = 0; index < 13; index++)
+                File.WriteAllText(Path.Combine(directory, $"consumer-{index}.yml"), QualifiedWorkflowCheckout());
+            Assert.Equal(13, ValidateWorkflowDefaultsDirectory(directory));
+            File.WriteAllText(Path.Combine(directory, "extra.yaml"), QualifiedWorkflowCheckout()
+                .Replace(NativeLoggingReplacementCommit, new string('a', 40), StringComparison.Ordinal));
+            Assert.Throws<InvalidOperationException>(() => ValidateWorkflowDefaultsDirectory(directory));
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    private static string QualifiedWorkflowCheckout() =>
+        $"repository: MALIEV-Co-Ltd/Legacy.Maliev.ServiceDefaults\nref: {NativeLoggingReplacementCommit}\npath: .dependencies/Legacy.Maliev.ServiceDefaults\n";
+
+    private static int ValidateWorkflowDefaultsDirectory(string directory) => Directory.GetFiles(directory)
+        .Where(path => Path.GetExtension(path) is ".yml" or ".yaml")
+        .Sum(path => ValidateWorkflowDefaults(File.ReadAllText(path), path));
+
+    private static int ValidateWorkflowDefaults(string source, string path)
+    {
+        const string producer = "MALIEV-Co-Ltd/Legacy.Maliev.ServiceDefaults";
+        var declared = System.Text.RegularExpressions.Regex.Matches(source,
+            System.Text.RegularExpressions.Regex.Escape(producer),
+            System.Text.RegularExpressions.RegexOptions.IgnoreCase).Count;
+        var checkouts = System.Text.RegularExpressions.Regex.Matches(source,
+            @"(?m)^\s*repository: MALIEV-Co-Ltd/Legacy\.Maliev\.ServiceDefaults\r?\n\s*ref: (?<pin>[^\r\n]+)\r?\n\s*path: (?<path>[^\r\n]+)");
+        if (declared != checkouts.Count)
+            throw new InvalidOperationException($"Unparsed Defaults producer reference in {path}; review checkout format.");
+        foreach (System.Text.RegularExpressions.Match checkout in checkouts)
+            if (checkout.Groups["pin"].Value.Trim() != NativeLoggingReplacementCommit ||
+                checkout.Groups["path"].Value.Trim() != ".dependencies/Legacy.Maliev.ServiceDefaults")
+                throw new InvalidOperationException($"Unqualified Defaults producer pin or path in {path}.");
+        return checkouts.Count;
+    }
+
+    [Fact]
     public void HostsConsumeLegacyServiceDefaultsWithoutNewPlatformRepositoryCollision()
     {
         var root = FindRoot();
@@ -48,6 +121,8 @@ public sealed class LegacyServiceDefaultsIdentityContractTests
         Assert.Contains("repository: MALIEV-Co-Ltd/Legacy.Maliev.ServiceDefaults", workflow, StringComparison.Ordinal);
         Assert.Contains("path: .dependencies/Legacy.Maliev.ServiceDefaults", workflow, StringComparison.Ordinal);
         Assert.Contains($"ref: {NativeLoggingReplacementCommit}", workflow, StringComparison.Ordinal);
+        Assert.Matches($@"repository: MALIEV-Co-Ltd/Legacy\.Maliev\.AuthService\r?\n\s+ref: {QualifiedAuthIssuerCommit}\r?\n\s+path: \.dependencies/Legacy\.Maliev\.AuthService", workflow);
+        Assert.Contains($"test \"$(git -C .dependencies/Legacy.Maliev.AuthService rev-parse HEAD)\" = {QualifiedAuthIssuerCommit}", workflow, StringComparison.Ordinal);
         Assert.Contains("repository: MALIEV-Co-Ltd/Legacy.Maliev.CompatibilityContracts", workflow, StringComparison.Ordinal);
         Assert.Contains("path: .dependencies/Legacy.Maliev.CompatibilityContracts", workflow, StringComparison.Ordinal);
         Assert.DoesNotContain("repository: MALIEV-Co-Ltd/Maliev.Aspire", workflow, StringComparison.Ordinal);

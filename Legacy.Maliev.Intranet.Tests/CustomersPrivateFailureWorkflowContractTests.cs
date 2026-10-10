@@ -21,9 +21,9 @@ public sealed class CustomersPrivateFailureWorkflowContractTests
         var preserve = workflow.IndexOf("- name: Preserve actual runner validation evidence", StringComparison.Ordinal);
         Assert.True(shared >= 0 && shared < strictBuild && strictBuild < coverageVerify && coverageVerify < focus && focus < proof && proof < preserve);
         Assert.Contains("timeout-minutes: 120", workflow, StringComparison.Ordinal);
-        Assert.Contains("ref: 7edcd961024868513fd5f373cab3dcb261197f77", workflow, StringComparison.Ordinal);
+        Assert.Contains("ref: 4517cf16f5f1159318e184969732d46eae4a8308", workflow, StringComparison.Ordinal);
         Assert.Contains("ref: 78e48ffc4ee000df0510cba5e7c7a3c4c4d539d7", workflow, StringComparison.Ordinal);
-        Assert.Contains("test \"$(git -C .dependencies/Legacy.Maliev.ServiceDefaults rev-parse HEAD)\" = 7edcd961024868513fd5f373cab3dcb261197f77", workflow[..shared], StringComparison.Ordinal);
+        Assert.Contains("test \"$(git -C .dependencies/Legacy.Maliev.ServiceDefaults rev-parse HEAD)\" = 4517cf16f5f1159318e184969732d46eae4a8308", workflow[..shared], StringComparison.Ordinal);
         Assert.Contains("test \"$(git -C .dependencies/Legacy.Maliev.CompatibilityContracts rev-parse HEAD)\" = 78e48ffc4ee000df0510cba5e7c7a3c4c4d539d7", workflow[..shared], StringComparison.Ordinal);
         Assert.Contains("-warnaserror", workflow[..focus], StringComparison.Ordinal);
         Assert.Contains("--no-build --no-restore", workflow[focus..proof], StringComparison.Ordinal);

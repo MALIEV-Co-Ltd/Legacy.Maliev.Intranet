@@ -22,7 +22,7 @@ LOCKS = (
     "build/nuget-locks/Legacy.Maliev.CompatibilityContracts/packages.lock.json",
 )
 DEPENDENCY_REFS = (
-    "7edcd961024868513fd5f373cab3dcb261197f77",
+    "4517cf16f5f1159318e184969732d46eae4a8308",
     "78e48ffc4ee000df0510cba5e7c7a3c4c4d539d7",
 )
 FORBIDDEN = tuple(

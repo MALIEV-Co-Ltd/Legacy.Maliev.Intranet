@@ -25,7 +25,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           repository: MALIEV-Co-Ltd/Legacy.Maliev.ServiceDefaults
-          ref: 7edcd961024868513fd5f373cab3dcb261197f77
+          ref: 4517cf16f5f1159318e184969732d46eae4a8308
           path: .dependencies/Legacy.Maliev.ServiceDefaults
           persist-credentials: false
       - name: Check out Legacy.Maliev.CompatibilityContracts
@@ -46,17 +46,17 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           repository: MALIEV-Co-Ltd/Legacy.Maliev.AuthService
-          ref: 8319b23e8ffab0c85b66c886a0109f7dac034c6f
+          ref: f7079f133b1e607b8909636a5114ebccc73b27bc
           path: .dependencies/Legacy.Maliev.AuthService
           persist-credentials: false
       - name: Verify exact Customers validation dependency identities
         shell: bash
         run: |
           test "$(git rev-parse HEAD)" = "${{ github.sha }}"
-          test "$(git -C .dependencies/Legacy.Maliev.ServiceDefaults rev-parse HEAD)" = 7edcd961024868513fd5f373cab3dcb261197f77
+          test "$(git -C .dependencies/Legacy.Maliev.ServiceDefaults rev-parse HEAD)" = 4517cf16f5f1159318e184969732d46eae4a8308
           test "$(git -C .dependencies/Legacy.Maliev.CompatibilityContracts rev-parse HEAD)" = 78e48ffc4ee000df0510cba5e7c7a3c4c4d539d7
           test "$(git -C .dependencies/Legacy.Maliev.CustomerService rev-parse HEAD)" = cebf45e8e1eeb600d760a565f8b0970c7f434148
-          test "$(git -C .dependencies/Legacy.Maliev.AuthService rev-parse HEAD)" = 8319b23e8ffab0c85b66c886a0109f7dac034c6f
+          test "$(git -C .dependencies/Legacy.Maliev.AuthService rev-parse HEAD)" = f7079f133b1e607b8909636a5114ebccc73b27bc
       - name: Verify Docker integration-test runtime
         run: docker info
       - name: Verify bounded browser installer source controls

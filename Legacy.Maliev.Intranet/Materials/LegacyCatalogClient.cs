@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using Maliev.Aspire.ServiceDefaults.Diagnostics;
 
 namespace Legacy.Maliev.Intranet.Materials;
 
@@ -39,7 +40,8 @@ public sealed class LegacyCatalogClient(HttpClient httpClient) : ILegacyCatalogC
     public async Task<MaterialResponse> CreateMaterialAsync(UpsertMaterialRequest payload, string accessToken, CancellationToken cancellationToken)
     {
         using var request = CreateRequest(HttpMethod.Post, "/Materials", accessToken, payload);
-        using var response = await httpClient.SendAsync(request, cancellationToken);
+        using var response = await httpClient.SendWithPrivateFailureObservationAsync(request, cancellationToken,
+            new PrivateDependencyFailureObservation(), HttpCompletionOption.ResponseContentRead);
         response.EnsureSuccessStatusCode();
         return await response.Content.ReadFromJsonAsync<MaterialResponse>(cancellationToken)
             ?? throw new InvalidOperationException("CatalogService returned an empty material response.");
@@ -49,7 +51,8 @@ public sealed class LegacyCatalogClient(HttpClient httpClient) : ILegacyCatalogC
     public async Task UpdateMaterialAsync(int id, UpsertMaterialRequest payload, string accessToken, CancellationToken cancellationToken)
     {
         using var request = CreateRequest(HttpMethod.Put, $"/Materials/{id}", accessToken, payload);
-        using var response = await httpClient.SendAsync(request, cancellationToken);
+        using var response = await httpClient.SendWithPrivateFailureObservationAsync(request, cancellationToken,
+            new PrivateDependencyFailureObservation(), HttpCompletionOption.ResponseContentRead);
         response.EnsureSuccessStatusCode();
     }
 
@@ -70,7 +73,8 @@ public sealed class LegacyCatalogClient(HttpClient httpClient) : ILegacyCatalogC
     private async Task<T?> GetOptionalAsync<T>(string uri, string accessToken, CancellationToken cancellationToken)
     {
         using var request = CreateRequest(HttpMethod.Get, uri, accessToken);
-        using var response = await httpClient.SendAsync(request, cancellationToken);
+        using var response = await httpClient.SendWithPrivateFailureObservationAsync(request, cancellationToken,
+            new PrivateDependencyFailureObservation(), HttpCompletionOption.ResponseContentRead);
         if (response.StatusCode == HttpStatusCode.NotFound) return default;
         response.EnsureSuccessStatusCode();
         return await response.Content.ReadFromJsonAsync<T>(cancellationToken);
@@ -99,7 +103,8 @@ public sealed class LegacyCatalogClient(HttpClient httpClient) : ILegacyCatalogC
     private async Task SendNoContentAsync(HttpMethod method, string uri, string accessToken, CancellationToken cancellationToken)
     {
         using var request = CreateRequest(method, uri, accessToken);
-        using var response = await httpClient.SendAsync(request, cancellationToken);
+        using var response = await httpClient.SendWithPrivateFailureObservationAsync(request, cancellationToken,
+            new PrivateDependencyFailureObservation(), HttpCompletionOption.ResponseContentRead);
         if (response.StatusCode != HttpStatusCode.NotFound) response.EnsureSuccessStatusCode();
     }
 
