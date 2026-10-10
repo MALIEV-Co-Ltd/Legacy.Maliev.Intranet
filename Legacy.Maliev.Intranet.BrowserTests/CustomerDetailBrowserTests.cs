@@ -905,7 +905,26 @@ public sealed class CustomerDetailBrowserTests(
                         const ancestors = [];
                         for (let node = element.parentElement; node && ancestors.length < 6; node = node.parentElement)
                             ancestors.push(describe(node));
-                        return JSON.stringify({ control: describe(element), ancestors,
+                        const scrollports = [];
+                        for (let node = element.parentElement, depth = 0; node && depth < 20; node = node.parentElement, depth++) {
+                            const style = getComputedStyle(node);
+                            if (!/auto|scroll|hidden|clip/.test(style.overflowX + style.overflowY)) continue;
+                            const rect = node.getBoundingClientRect();
+                            scrollports.push({ tag: node.tagName,
+                                classes: Array.from(node.classList).slice(0, 8).map(value => value.slice(0, 64)),
+                                rect: { x: rect.x, y: rect.y, width: rect.width, height: rect.height },
+                                clientHeight: node.clientHeight, scrollHeight: node.scrollHeight, scrollTop: node.scrollTop,
+                                clientWidth: node.clientWidth, scrollWidth: node.scrollWidth, scrollLeft: node.scrollLeft,
+                                overflowX: style.overflowX, overflowY: style.overflowY, scrollBehavior: style.scrollBehavior,
+                                scrollSnapType: style.scrollSnapType, contain: style.contain, zoom: style.zoom
+                            });
+                            if (scrollports.length === 8) break;
+                        }
+                        const visual = window.visualViewport;
+                        return JSON.stringify({ control: describe(element), scrollports,
+                            visualViewport: visual ? { width: visual.width, height: visual.height,
+                                offsetTop: visual.offsetTop, offsetLeft: visual.offsetLeft, scale: visual.scale } : null,
+                            ancestors,
                             centerHit: document.elementFromPoint(x, y)?.tagName ?? null,
                             hitBelongsToControl: element.contains(document.elementFromPoint(x, y)),
                             hits: document.elementsFromPoint(x, y).slice(0, 4).map(describe),
