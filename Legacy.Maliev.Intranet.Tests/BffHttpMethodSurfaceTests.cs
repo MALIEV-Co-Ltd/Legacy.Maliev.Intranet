@@ -61,10 +61,10 @@ public sealed class BffHttpMethodSurfaceTests
             .ToArray();
 
         Assert.Equal(ExpectedEndpointSurface, actual);
-        Assert.Equal(105, actual.Length);
-        Assert.Equal(58, actual.Count(value => value.StartsWith("GET ", StringComparison.Ordinal)));
+        Assert.Equal(109, actual.Length);
+        Assert.Equal(60, actual.Count(value => value.StartsWith("GET ", StringComparison.Ordinal)));
         Assert.Equal(24, actual.Count(value => value.StartsWith("POST ", StringComparison.Ordinal)));
-        Assert.Equal(14, actual.Count(value => value.StartsWith("PUT ", StringComparison.Ordinal)));
+        Assert.Equal(16, actual.Count(value => value.StartsWith("PUT ", StringComparison.Ordinal)));
         Assert.Equal(9, actual.Count(value => value.StartsWith("DELETE ", StringComparison.Ordinal)));
     }
 
@@ -287,6 +287,7 @@ public sealed class BffHttpMethodSurfaceTests
         GET /bff/catalog/materials/{id:int}/surface-finishes
         GET /bff/catalog/surface-finishes
         GET /bff/customers
+        GET /bff/customers/relation-countries
         GET /bff/customers/{customerId:int}/activity
         GET /bff/customers/{customerId:int}/invoices
         GET /bff/customers/{customerId:int}/orders
@@ -294,6 +295,7 @@ public sealed class BffHttpMethodSurfaceTests
         GET /bff/customers/{id:int}
         GET /bff/customers/{id:int}/edit
         GET /bff/customers/{id:int}/internal-remark
+        GET /bff/customers/{id:int}/relations/{kind}/{relation}
         GET /bff/customers/{id:int}/versioned
         GET /bff/dashboard
         GET /bff/diagnostics/events
@@ -363,6 +365,8 @@ public sealed class BffHttpMethodSurfaceTests
         PUT /bff/customers/{id:int}
         PUT /bff/customers/{id:int}/edit
         PUT /bff/customers/{id:int}/internal-remark
+        PUT /bff/customers/{id:int}/relations/company/{relation}
+        PUT /bff/customers/{id:int}/relations/{kind}/address/{relation}
         PUT /bff/customers/{id:int}/versioned
         PUT /bff/employees/{id:int}/edit
         PUT /bff/finances/{id:int}
