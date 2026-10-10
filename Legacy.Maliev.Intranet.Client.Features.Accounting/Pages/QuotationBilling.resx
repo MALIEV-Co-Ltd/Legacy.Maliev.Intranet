@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <data name="Title" xml:space="preserve"><value>Quotation billing</value></data>
+  <data name="Description" xml:space="preserve"><value>Review each billing stage and preview the next request.</value></data>
+  <data name="Loading" xml:space="preserve"><value>Loading…</value></data>
+  <data name="Quotation" xml:space="preserve"><value>Quotation</value></data>
+  <data name="Total" xml:space="preserve"><value>Quotation total</value></data>
+  <data name="Billed" xml:space="preserve"><value>Billed</value></data>
+  <data name="Cash" xml:space="preserve"><value>Cash received</value></data>
+  <data name="Withholding" xml:space="preserve"><value>Accepted withholding</value></data>
+  <data name="Outstanding" xml:space="preserve"><value>Outstanding</value></data>
+  <data name="Unbilled" xml:space="preserve"><value>Remaining unbilled</value></data>
+  <data name="Stages" xml:space="preserve"><value>Billing stages</value></data>
+  <data name="NoStages" xml:space="preserve"><value>No billing requests yet.</value></data>
+  <data name="Credit" xml:space="preserve"><value>Credited</value></data>
+  <data name="Due" xml:space="preserve"><value>Payment due date</value></data>
+  <data name="Unspecified" xml:space="preserve"><value>Not specified</value></data>
+  <data name="Recipient" xml:space="preserve"><value>Billing recipient</value></data>
+  <data name="RequiredDocuments" xml:space="preserve"><value>Required documents</value></data>
+  <data name="Preview" xml:space="preserve"><value>Preview next request</value></data>
+  <data name="PreviewOnly" xml:space="preserve"><value>This preview does not issue an invoice or confirm document approval.</value></data>
+  <data name="Kind" xml:space="preserve"><value>Request type</value></data>
+  <data name="Method" xml:space="preserve"><value>Enter amount or percentage</value></data>
+  <data name="Amount" xml:space="preserve"><value>Amount</value></data>
+  <data name="Percentage" xml:space="preserve"><value>Percentage</value></data>
+  <data name="Address" xml:space="preserve"><value>Billing address</value></data>
+  <data name="Branch" xml:space="preserve"><value>Branch / head office</value></data>
+  <data name="SameDebtor" xml:space="preserve"><value>Billing must retain the same legal customer and tax ID:</value></data>
+  <data name="PreviewAmount" xml:space="preserve"><value>Requested amount:</value></data>
+  <data name="Invalid" xml:space="preserve"><value>Check the amount and billing details.</value></data>
+  <data name="Forbidden" xml:space="preserve"><value>You do not have access to this billing account.</value></data>
+  <data name="NotFound" xml:space="preserve"><value>The billing account was not found.</value></data>
+  <data name="Changed" xml:space="preserve"><value>The billing account changed. Reload it before previewing again.</value></data>
+  <data name="Unavailable" xml:space="preserve"><value>Billing is temporarily unavailable.</value></data>
+  <data name="Full" xml:space="preserve"><value>Full payment</value></data>
+  <data name="Deposit" xml:space="preserve"><value>Deposit</value></data>
+  <data name="Installment" xml:space="preserve"><value>Installment</value></data>
+  <data name="Remaining" xml:space="preserve"><value>Remaining balance</value></data>
+  <data name="Shipment" xml:space="preserve"><value>Shipment document</value></data>
+  <data name="Release" xml:space="preserve"><value>Release document</value></data>
+  <data name="Acceptance" xml:space="preserve"><value>Acceptance document</value></data>
+  <data name="BillingInstruction" xml:space="preserve"><value>Billing instruction</value></data>
+  <data name="VatRecognized" xml:space="preserve"><value>VAT recognized</value></data>
+  <data name="PageTitle" xml:space="preserve"><value>Quotation billing</value></data>
+</root>

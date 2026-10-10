@@ -1,0 +1,11 @@
+.billing-page { max-width: 72rem; margin: auto; padding: 1.5rem; }
+.billing-page section { margin-block: 2rem; }
+.billing-totals { display: grid; grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr)); gap: 1rem; }
+.billing-totals dd { margin: .35rem 0; font-weight: 600; }
+.billing-stage { padding: 1rem; border: 1px solid var(--border, #ddd); border-radius: .5rem; margin-block: 1rem; }
+.billing-stage dl { display: grid; grid-template-columns: minmax(6rem, 1fr) 2fr; gap: .5rem; }
+.billing-stage dd { margin: 0; overflow-wrap: anywhere; }
+.billing-page form { display: grid; gap: .6rem; max-width: 36rem; }
+.billing-page input, .billing-page textarea, .billing-page select, .billing-page button { font: inherit; padding: .65rem; border: 1px solid var(--border, #aaa); border-radius: .35rem; }
+.billing-page button { cursor: pointer; }
+.billing-page button:disabled { cursor: default; opacity: .6; }

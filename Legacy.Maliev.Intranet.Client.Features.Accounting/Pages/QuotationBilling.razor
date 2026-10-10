@@ -1,0 +1,165 @@
+@page "/accounting/customers/{CustomerId:int}/billing/{AccountId:guid}"
+@attribute [Authorize]
+@inject HttpClient Http
+@inject IStringLocalizer<QuotationBilling> Text
+
+<PageTitle>@Text["PageTitle"]</PageTitle>
+<main class="billing-page">
+    <header class="operations-page-header"><h1>@Text["Title"]</h1></header>
+    <p>@Text["Description"]</p>
+    @if (loading) { <p role="status" aria-live="polite">@Text["Loading"]</p> }
+    @if (error is not null) { <p role="alert">@error</p> }
+    @if (account is not null)
+    {
+        <section aria-labelledby="billing-summary">
+            <h2 id="billing-summary">@Text["Quotation"] @account.Snapshot.QuotationId</h2>
+            <dl class="billing-totals">
+                <div><dt>@Text["Total"]</dt><dd>@Money(account.Snapshot.Cap.Gross)</dd></div>
+                <div><dt>@Text["Billed"]</dt><dd data-testid="billed">@Money(account.Billed.Gross)</dd></div>
+                <div><dt>@Text["Cash"]</dt><dd>@Money(account.Cash)</dd></div>
+                <div><dt>@Text["Withholding"]</dt><dd>@Money(account.Withholding)</dd></div>
+                <div><dt>@Text["Outstanding"]</dt><dd>@Money(account.Outstanding)</dd></div>
+                <div><dt>@Text["Unbilled"]</dt><dd data-testid="unbilled">@Money(account.Unbilled)</dd></div>
+                <div><dt>@Text["VatRecognized"]</dt><dd>@Money(account.VatRecognized)</dd></div>
+            </dl>
+        </section>
+        <section aria-labelledby="billing-stages">
+            <h2 id="billing-stages">@Text["Stages"]</h2>
+            @if (account.Stages.Count == 0) { <p>@Text["NoStages"]</p> }
+            @foreach (var stage in account.Stages)
+            {
+                <article class="billing-stage" @key="stage.Id">
+                    <h3>@Text[stage.Kind.ToString()]</h3>
+                    <dl><dt>@Text["Billed"]</dt><dd>@Money(stage.Amount.Gross)</dd>
+                        <dt>@Text["Cash"]</dt><dd>@Money(stage.Cash)</dd>
+                        <dt>@Text["Withholding"]</dt><dd>@Money(stage.Withholding)</dd>
+                        <dt>@Text["Credit"]</dt><dd>@Money(stage.Credit)</dd>
+                        <dt>@Text["Outstanding"]</dt><dd>@Money(stage.Amount.Gross - stage.Credit - stage.Cash - stage.Withholding)</dd>
+                        <dt>@Text["Due"]</dt><dd>@(stage.DueDate?.ToString("d", CultureInfo.CurrentCulture) ?? Text["Unspecified"])</dd>
+                        <dt>@Text["Recipient"]</dt><dd>@stage.Recipient.Recipient · @stage.Recipient.Address</dd></dl>
+                    @if (stage.Requirements.Count > 0)
+                    {
+                        <p>@Text["RequiredDocuments"]</p>
+                        <ul>@foreach (var requirement in stage.Requirements) { <li>@Text[requirement.Kind.ToString()]</li> }</ul>
+                    }
+                </article>
+            }
+        </section>
+        <section aria-labelledby="billing-preview">
+            <h2 id="billing-preview">@Text["Preview"]</h2>
+            <p>@Text["PreviewOnly"]</p>
+            <EditForm Model="@formModel" OnSubmit="PreviewAsync">
+                <AccountingSelectField TValue="BillingStageKind" Id="billing-kind" Label="@Text["Kind"]" Placeholder="@Text["Kind"]"
+                    Value="@kind" ValueChanged="@(next => { kind = next; ClearPreview(); })" Options="@KindOptions" Disabled="@previewing" />
+                @if (kind is BillingStageKind.Deposit or BillingStageKind.Installment)
+                {
+                    <AccountingSelectField TValue="bool" Id="billing-method" Label="@Text["Method"]" Placeholder="@Text["Method"]"
+                        Value="@percentageMode" ValueChanged="@(next => { percentageMode = next; ClearPreview(); })" Options="@MethodOptions" Disabled="@previewing" />
+                    <ShadcnFormField Id="billing-amount" Label="@(percentageMode ? Text["Percentage"] : Text["Amount"])"><Control>
+                        <ShadcnInput TValue="decimal?" id="billing-amount" Type="number" min="0" step="any" Value="@value"
+                            ValueChanged="@(next => { value = next; ClearPreview(); })" Disabled="@previewing" Required="true" />
+                    </Control></ShadcnFormField>
+                }
+                <AccountingInputField TValue="string" Id="billing-recipient" Label="@Text["Recipient"]" Value="@recipient"
+                    ValueChanged="@(next => { recipient = next; ClearPreview(); })" MaxLength="250" Required="true" Disabled="@previewing" />
+                <ShadcnFormField Id="billing-address" Label="@Text["Address"]"><Control><ShadcnTextarea TValue="string" id="billing-address"
+                    Value="@address" ValueChanged="@(next => { address = next; ClearPreview(); })" maxlength="2000" Required="true" Disabled="@previewing" /></Control></ShadcnFormField>
+                <AccountingInputField TValue="string" Id="billing-branch" Label="@Text["Branch"]" Value="@(branch ?? "")"
+                    ValueChanged="@(next => { branch = next; ClearPreview(); })" MaxLength="250" Disabled="@previewing" />
+                <AccountingInputField TValue="DateTime?" Id="billing-due" Label="@Text["Due"]" Type="date" Value="@due"
+                    ValueChanged="@(next => { due = next; ClearPreview(); })" Disabled="@previewing" />
+                <p>@Text["SameDebtor"] @account.Snapshot.TaxId</p>
+                <ShadcnButton ButtonType="ShadcnButtonType.Submit" Disabled="@(previewing || session?.CsrfToken is null)">@(previewing ? Text["Loading"] : Text["Preview"])</ShadcnButton>
+            </EditForm>
+            @if (preview is not null) { <p role="status" aria-live="polite" data-testid="preview">@Text["PreviewAmount"] @Money(preview.Amount.Gross)</p> }
+        </section>
+    }
+</main>
+
+@code {
+    [Parameter] public int CustomerId { get; set; }
+    [Parameter] public Guid AccountId { get; set; }
+    private BillingAccountView? account;
+    private EmployeeSessionSummary? session;
+    private BillingStagePreview? preview;
+    private BillingStageKind kind = BillingStageKind.Full;
+    private bool loading, previewing, percentageMode;
+    private decimal? value;
+    private DateTime? due;
+    private string recipient = "", address = "";
+    private string? branch, error;
+    private readonly object formModel = new();
+    private IReadOnlyList<ShadcnSelectOption<BillingStageKind>> KindOptions => Enum.GetValues<BillingStageKind>()
+        .Select(option => new ShadcnSelectOption<BillingStageKind>(option, Text[option.ToString()])).ToArray();
+    private IReadOnlyList<ShadcnSelectOption<bool>> MethodOptions => [new(false, Text["Amount"]), new(true, Text["Percentage"])];
+    private long requestGeneration;
+    private string Path => $"/bff/customers/{CustomerId}/billing/accounts/{AccountId:D}";
+    private void ClearPreview() => preview = null;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        var generation = ++requestGeneration;
+        var customerId = CustomerId;
+        var accountId = AccountId;
+        var path = Path;
+        loading = true; previewing = false; account = null; session = null; preview = null; error = null;
+        kind = BillingStageKind.Full; percentageMode = false; value = null; due = null;
+        try
+        {
+            var loadedSession = await Http.GetFromJsonForPresentationAsync<EmployeeSessionSummary>("/bff/session");
+            if (generation != requestGeneration) return;
+            using var response = await Http.GetForPresentationAsync(path);
+            if (generation != requestGeneration) return;
+            if (!response.IsSuccessStatusCode) { error = Error(response.StatusCode); return; }
+            var loaded = await response.Content.ReadFromJsonAsync<BillingAccountView>();
+            if (generation != requestGeneration) return;
+            if (loaded is null || loaded.Id != accountId || loaded.Snapshot.CustomerId != customerId) { error = Text["Unavailable"]; return; }
+            session = loadedSession;
+            account = loaded;
+            var routing = account.Stages.LastOrDefault()?.Recipient;
+            recipient = routing?.Recipient ?? ""; address = routing?.Address ?? ""; branch = routing?.Branch;
+        }
+        catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException)
+        { if (generation == requestGeneration) error = Text["Unavailable"]; }
+        finally { if (generation == requestGeneration) loading = false; }
+    }
+
+    private async Task PreviewAsync()
+    {
+        if (account is null || session?.CsrfToken is null || previewing) return;
+        var generation = requestGeneration;
+        var capturedAccount = account;
+        var capturedPath = Path;
+        var csrfToken = session.CsrfToken;
+        previewing = true; preview = null; error = null;
+        try
+        {
+            var flexible = kind is BillingStageKind.Deposit or BillingStageKind.Installment;
+            var input = new BillingPreviewRequest(kind, flexible && !percentageMode ? value : null, flexible && percentageMode ? value : null,
+                due is null ? null : DateOnly.FromDateTime(due.Value), new(capturedAccount.Snapshot.CustomerId, capturedAccount.Snapshot.TaxId, recipient, branch, address), capturedAccount.Revision);
+            using var request = new HttpRequestMessage(HttpMethod.Post, capturedPath + "/preview") { Content = JsonContent.Create(input) };
+            request.Headers.Add("X-CSRF-TOKEN", csrfToken);
+            using var timeout = LegacyPresentation.CreateRequestTimeout();
+            using var response = await Http.SendAsync(request, timeout.Token);
+            if (generation != requestGeneration) return;
+            if (!response.IsSuccessStatusCode) { error = Error(response.StatusCode); return; }
+            var result = await response.Content.ReadFromJsonAsync<BillingStagePreview>(cancellationToken: timeout.Token);
+            if (generation != requestGeneration) return;
+            if (result is null || result.AccountId != capturedAccount.Id || result.Revision != capturedAccount.Revision) { error = Text["Unavailable"]; return; }
+            preview = result;
+        }
+        catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException)
+        { if (generation == requestGeneration) error = Text["Unavailable"]; }
+        finally { if (generation == requestGeneration) previewing = false; }
+    }
+
+    private string Money(decimal amount) => $"{amount.ToString($"N{account?.Snapshot.CurrencyPrecision ?? 2}", CultureInfo.CurrentCulture)} {account?.Snapshot.Cap.Currency}";
+    private string Error(System.Net.HttpStatusCode status) => Text[status switch
+    {
+        System.Net.HttpStatusCode.BadRequest => "Invalid",
+        System.Net.HttpStatusCode.Unauthorized or System.Net.HttpStatusCode.Forbidden => "Forbidden",
+        System.Net.HttpStatusCode.NotFound => "NotFound",
+        System.Net.HttpStatusCode.Conflict => "Changed",
+        _ => "Unavailable"
+    }];
+}
