@@ -14,7 +14,7 @@
         {
             <ShadcnAlert Variant="@noticeVariant" AlertRole="@(noticeVariant == ShadcnAlertVariant.Destructive ? ShadcnAlertRole.Alert : ShadcnAlertRole.Status)"><ShadcnAlertDescription>@notice</ShadcnAlertDescription></ShadcnAlert>
         }
-        <EditForm Model="@form" OnSubmit="SubmitAsync" Class="employee-recovery__form">
+        <EditForm Model="@form" OnSubmit="SubmitAsync" novalidate="novalidate" Class="employee-recovery__form">
             <ShadcnFormField Id="employee-confirmation-email" Label="@Text["Email"]" Error="@emailError" Required="true" Disabled="@submitting">
                 <Control><ShadcnInput TValue="string" id="employee-confirmation-email" Type="email" @bind-Value="form.Email" autocomplete="email" Required="true" Disabled="@submitting" /></Control>
             </ShadcnFormField>
@@ -36,6 +36,10 @@
         if (submitting) return;
         emailError = string.IsNullOrWhiteSpace(form.Email) ? Text["EmailRequired"].Value : null;
         if (emailError is not null) return;
+        var submitted = new EmployeeRecoveryEmailRequest(form.Email);
+        if (!System.ComponentModel.DataAnnotations.Validator.TryValidateObject(submitted,
+            new System.ComponentModel.DataAnnotations.ValidationContext(submitted), null, validateAllProperties: true))
+        { emailError = Text["EmailInvalid"]; return; }
 
         submitting = true;
         notice = null;
@@ -47,7 +51,7 @@
             if (string.IsNullOrWhiteSpace(csrf)) { ShowUnavailable(); return; }
             using var request = new HttpRequestMessage(HttpMethod.Post, "/bff/employee-recovery/email-confirmation/request")
             {
-                Content = JsonContent.Create(new EmployeeRecoveryEmailRequest(form.Email.Trim())),
+                Content = JsonContent.Create(submitted),
             };
             request.Headers.Add("X-CSRF-TOKEN", csrf);
             using var response = await Http.SendAsync(request);
