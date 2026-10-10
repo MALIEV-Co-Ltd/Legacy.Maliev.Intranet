@@ -881,9 +881,77 @@ public sealed class CustomerDetailBrowserTests(
 
     private static async Task ClickWithGeometryDiagnosticsAsync(ILocator control)
     {
+        var traceKey = Guid.NewGuid().ToString("N");
+        var trajectory = "trajectory not installed";
+        try
+        {
+            await control.EvaluateAsync<string>("""
+                (element, key) => {
+                    const registry = window.__malievClickTrajectories ??= Object.create(null);
+                    const main = element.closest('.legacy-main-content');
+                    const describe = node => node ? { tag: String(node.tagName ?? '').slice(0, 32),
+                        classes: Array.from(node.classList ?? []).slice(0, 2).map(value => value.slice(0, 32)) } : null;
+                    const started = performance.now();
+                    const state = { initial: null, samples: [], observed: 0, stopped: false };
+                    let frame = 0, expiry = 0;
+                    const sample = (reason, event) => {
+                        if (state.stopped) return;
+                        const rect = element.getBoundingClientRect();
+                        const x = rect.x + rect.width / 2, y = rect.y + rect.height / 2;
+                        const hit = document.elementFromPoint(x, y);
+                        const pointer = event && Number.isFinite(event.clientX) ?
+                            { x: event.clientX, y: event.clientY,
+                                hit: describe(document.elementFromPoint(event.clientX, event.clientY)) } : null;
+                        const value = { ms: Math.round(performance.now() - started), reason,
+                            connected: element.isConnected,
+                            rect: { x: rect.x, y: rect.y, width: rect.width, height: rect.height },
+                            mainScrollTop: main?.scrollTop ?? null,
+                            mainScrollHeight: main?.scrollHeight ?? null,
+                            mainClientHeight: main?.clientHeight ?? null,
+                            active: describe(document.activeElement), eventTarget: describe(event?.target),
+                            centerHit: describe(hit), centerBelongs: !!hit && element.contains(hit), pointer };
+                        state.observed++;
+                        if (!state.initial) state.initial = value;
+                        else {
+                            state.samples.push(value);
+                            if (state.samples.length > 16) state.samples.shift();
+                        }
+                    };
+                    const events = ['scroll', 'focusin', 'pointerdown', 'mousedown', 'click'];
+                    const listener = event => {
+                        sample(event.type, event);
+                        if (event.type === 'scroll' && !frame) frame = requestAnimationFrame(() => {
+                            frame = 0;
+                            sample('scroll-frame');
+                        });
+                    };
+                    state.stop = () => {
+                        if (state.stopped) return;
+                        state.stopped = true;
+                        for (const type of events) document.removeEventListener(type, listener, true);
+                        cancelAnimationFrame(frame);
+                        clearTimeout(expiry);
+                        if (registry[key] === state) delete registry[key];
+                        if (window.__malievClickTrajectories === registry && Object.keys(registry).length === 0)
+                            delete window.__malievClickTrajectories;
+                    };
+                    registry[key] = state;
+                    for (const type of events) document.addEventListener(type, listener, { capture: true, passive: true });
+                    expiry = setTimeout(state.stop, 45000);
+                    sample('before-click');
+                    return 'installed';
+                }
+                """, traceKey, new LocatorEvaluateOptions { Timeout = 2000 }).WaitAsync(TimeSpan.FromSeconds(2));
+            trajectory = "trajectory installed";
+        }
+        catch (Exception diagnosticFailure)
+        {
+            trajectory = "trajectory installation unavailable: " + diagnosticFailure.GetType().Name;
+        }
         try { await control.ClickAsync(); }
         catch (TimeoutException exception)
         {
+            trajectory = await ReadAndReleaseClickTrajectoryAsync(control.Page, traceKey, trajectory);
             string geometry;
             try
             {
@@ -937,7 +1005,40 @@ public sealed class CustomerDetailBrowserTests(
             {
                 geometry = "geometry unavailable: " + diagnosticFailure.GetType().Name;
             }
-            throw new TimeoutException(exception.Message + "\nBounded control geometry: " + geometry, exception);
+            throw new TimeoutException(exception.Message + "\nBounded click trajectory: " + trajectory +
+                "\nBounded control geometry: " + geometry, exception);
+        }
+        finally
+        {
+            await ReadAndReleaseClickTrajectoryAsync(control.Page, traceKey, trajectory);
+        }
+    }
+
+    private static async Task<string> ReadAndReleaseClickTrajectoryAsync(IPage page, string key, string fallback)
+    {
+        try
+        {
+            return await page.EvaluateAsync<string>("""
+                key => {
+                    const registry = window.__malievClickTrajectories;
+                    const state = registry?.[key];
+                    if (!state) return 'trajectory absent or already released';
+                    state.stop();
+                    const serialize = () => JSON.stringify({ initial: state.initial, samples: state.samples,
+                        observed: state.observed, stopped: state.stopped });
+                    let result = serialize();
+                    while (result.length > 8192 && state.samples.length) {
+                        state.samples.shift();
+                        result = serialize();
+                    }
+                    return result.length <= 8192 ? result : JSON.stringify({
+                        unavailable: 'trajectory exceeded bounded output', stopped: state.stopped });
+                }
+                """, key).WaitAsync(TimeSpan.FromSeconds(2));
+        }
+        catch (Exception diagnosticFailure)
+        {
+            return fallback + "; trajectory release unavailable: " + diagnosticFailure.GetType().Name;
         }
     }
 
