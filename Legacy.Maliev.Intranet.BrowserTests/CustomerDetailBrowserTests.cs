@@ -885,14 +885,42 @@ public sealed class CustomerDetailBrowserTests(
         var trajectory = "trajectory not installed";
         try
         {
-            await control.EvaluateAsync<string>("""
+            trajectory = await control.EvaluateAsync<string>("""
                 (element, key) => {
                     const registry = window.__malievClickTrajectories ??= Object.create(null);
                     const main = element.closest('.legacy-main-content');
                     const describe = node => node ? { tag: String(node.tagName ?? '').slice(0, 32),
                         classes: Array.from(node.classList ?? []).slice(0, 2).map(value => value.slice(0, 32)) } : null;
+                    const bounds = node => {
+                        if (!node) return null;
+                        const rect = node.getBoundingClientRect();
+                        return { x: rect.x, y: rect.y, width: rect.width, height: rect.height };
+                    };
+                    const geometry = node => {
+                        if (!node) return null;
+                        const style = getComputedStyle(node);
+                        return { node: describe(node), rect: bounds(node),
+                            clientHeight: node.clientHeight, scrollHeight: node.scrollHeight,
+                            clientWidth: node.clientWidth, scrollWidth: node.scrollWidth,
+                            scrollTop: node.scrollTop, scrollLeft: node.scrollLeft,
+                            style: Object.fromEntries(['display', 'position', 'transform', 'zoom', 'overflowX', 'overflowY',
+                                'contain', 'contentVisibility', 'overflowAnchor',
+                                'scrollSnapType', 'scrollPaddingTop', 'scrollMarginTop']
+                                .map(name => [name, String(style[name] ?? '').slice(0, 64)])) };
+                    };
                     const started = performance.now();
-                    const state = { initial: null, samples: [], observed: 0, stopped: false };
+                    const ancestors = [];
+                    for (let node = element.parentElement, depth = 0; node && depth < 20; node = node.parentElement, depth++) {
+                        const style = getComputedStyle(node);
+                        if (node !== main && node !== document.body && node !== document.documentElement &&
+                            /auto|scroll|hidden|clip/.test(style.overflowX + style.overflowY)) ancestors.push(geometry(node));
+                        if (ancestors.length === 8) break;
+                    }
+                    const state = { initial: null, samples: [], observed: 0, stopped: false,
+                        started, timeOrigin: performance.timeOrigin, expiryAt: started + 45000,
+                        layout: { control: geometry(element), main: geometry(main),
+                            document: geometry(document.documentElement), body: geometry(document.body),
+                            topbar: geometry(document.querySelector('.legacy-topbar')), ancestors } };
                     let frame = 0, expiry = 0;
                     const sample = (reason, event) => {
                         if (state.stopped) return;
@@ -905,6 +933,14 @@ public sealed class CustomerDetailBrowserTests(
                         const value = { ms: Math.round(performance.now() - started), reason,
                             connected: element.isConnected,
                             rect: { x: rect.x, y: rect.y, width: rect.width, height: rect.height },
+                            rectCornerQuad: [rect.left, rect.top, rect.right, rect.top,
+                                rect.right, rect.bottom, rect.left, rect.bottom],
+                            clientRects: Array.from(element.getClientRects()).slice(0, 2)
+                                .map(value => ({ x: value.x, y: value.y, width: value.width, height: value.height })),
+                            mainRect: bounds(main),
+                            documentScrollTop: document.documentElement.scrollTop, bodyScrollTop: document.body.scrollTop,
+                            visual: window.visualViewport ? { height: visualViewport.height, width: visualViewport.width,
+                                offsetTop: visualViewport.offsetTop, offsetLeft: visualViewport.offsetLeft, scale: visualViewport.scale } : null,
                             mainScrollTop: main?.scrollTop ?? null,
                             mainScrollHeight: main?.scrollHeight ?? null,
                             mainClientHeight: main?.clientHeight ?? null,
@@ -917,7 +953,7 @@ public sealed class CustomerDetailBrowserTests(
                             if (state.samples.length > 16) state.samples.shift();
                         }
                     };
-                    const events = ['scroll', 'focusin', 'pointerdown', 'mousedown', 'click'];
+                    const events = ['scroll', 'focusin', 'pointerdown', 'mousedown', 'click', 'resize'];
                     const listener = event => {
                         sample(event.type, event);
                         if (event.type === 'scroll' && !frame) frame = requestAnimationFrame(() => {
@@ -929,6 +965,7 @@ public sealed class CustomerDetailBrowserTests(
                         if (state.stopped) return;
                         state.stopped = true;
                         for (const type of events) document.removeEventListener(type, listener, true);
+                        window.removeEventListener('resize', listener);
                         cancelAnimationFrame(frame);
                         clearTimeout(expiry);
                         if (registry[key] === state) delete registry[key];
@@ -937,21 +974,23 @@ public sealed class CustomerDetailBrowserTests(
                     };
                     registry[key] = state;
                     for (const type of events) document.addEventListener(type, listener, { capture: true, passive: true });
+                    window.addEventListener('resize', listener, { passive: true });
                     expiry = setTimeout(state.stop, 45000);
                     sample('before-click');
-                    return 'installed';
+                    return JSON.stringify({ installed: true, timeOrigin: state.timeOrigin,
+                        started: state.started, expiryAt: state.expiryAt });
                 }
                 """, traceKey, new LocatorEvaluateOptions { Timeout = 2000 }).WaitAsync(TimeSpan.FromSeconds(2));
-            trajectory = "trajectory installed";
         }
         catch (Exception diagnosticFailure)
         {
             trajectory = "trajectory installation unavailable: " + diagnosticFailure.GetType().Name;
         }
+        var installation = trajectory.Length <= 1024 ? trajectory : trajectory[..1024];
         try { await control.ClickAsync(); }
         catch (TimeoutException exception)
         {
-            trajectory = await ReadAndReleaseClickTrajectoryAsync(control.Page, traceKey, trajectory);
+            trajectory = await ReadAndReleaseClickTrajectoryAsync(control.Page, traceKey, installation);
             string geometry;
             try
             {
@@ -1010,7 +1049,7 @@ public sealed class CustomerDetailBrowserTests(
         }
         finally
         {
-            await ReadAndReleaseClickTrajectoryAsync(control.Page, traceKey, trajectory);
+            await ReadAndReleaseClickTrajectoryAsync(control.Page, traceKey, installation);
         }
     }
 
@@ -1019,22 +1058,28 @@ public sealed class CustomerDetailBrowserTests(
         try
         {
             return await page.EvaluateAsync<string>("""
-                key => {
+                ({ key, installation }) => {
+                    const serializeBounded = value => {
+                        let result = JSON.stringify(value);
+                        while (result.length > 8192 && value.samples?.length) {
+                            value.samples.shift();
+                            result = JSON.stringify(value);
+                        }
+                        return result.length <= 8192 ? result : JSON.stringify({
+                            unavailable: 'trajectory exceeded bounded output', stopped: value.stopped ?? null });
+                    };
                     const registry = window.__malievClickTrajectories;
                     const state = registry?.[key];
-                    if (!state) return 'trajectory absent or already released';
+                    if (!state) return serializeBounded({ available: false,
+                        reason: registry ? 'entry absent' : 'registry absent', installation: installation,
+                        readTimeOrigin: performance.timeOrigin, readPerformanceNow: performance.now() });
                     state.stop();
-                    const serialize = () => JSON.stringify({ initial: state.initial, samples: state.samples,
-                        observed: state.observed, stopped: state.stopped });
-                    let result = serialize();
-                    while (result.length > 8192 && state.samples.length) {
-                        state.samples.shift();
-                        result = serialize();
-                    }
-                    return result.length <= 8192 ? result : JSON.stringify({
-                        unavailable: 'trajectory exceeded bounded output', stopped: state.stopped });
+                    return serializeBounded({ initial: state.initial, samples: state.samples,
+                        layout: state.layout, timeOrigin: state.timeOrigin, started: state.started,
+                        expiryAt: state.expiryAt, readPerformanceNow: performance.now(),
+                        observed: state.observed, stopped: state.stopped, installation });
                 }
-                """, key).WaitAsync(TimeSpan.FromSeconds(2));
+                """, new { key, installation = fallback }).WaitAsync(TimeSpan.FromSeconds(2));
         }
         catch (Exception diagnosticFailure)
         {
