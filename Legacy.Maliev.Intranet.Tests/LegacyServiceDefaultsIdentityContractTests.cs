@@ -4,6 +4,7 @@ public sealed class LegacyServiceDefaultsIdentityContractTests
 {
     private const string DotNetPatchVersion = "10.0.12";
     private const string NativeLoggingReplacementCommit = "4517cf16f5f1159318e184969732d46eae4a8308";
+    private const string QualifiedAuthIssuerCommit = "f7079f133b1e607b8909636a5114ebccc73b27bc";
 
     [Fact]
     public void HostsAndDeliveryPinSharedNativeLoggingReplacement()
@@ -120,6 +121,8 @@ public sealed class LegacyServiceDefaultsIdentityContractTests
         Assert.Contains("repository: MALIEV-Co-Ltd/Legacy.Maliev.ServiceDefaults", workflow, StringComparison.Ordinal);
         Assert.Contains("path: .dependencies/Legacy.Maliev.ServiceDefaults", workflow, StringComparison.Ordinal);
         Assert.Contains($"ref: {NativeLoggingReplacementCommit}", workflow, StringComparison.Ordinal);
+        Assert.Matches($@"repository: MALIEV-Co-Ltd/Legacy\.Maliev\.AuthService\r?\n\s+ref: {QualifiedAuthIssuerCommit}\r?\n\s+path: \.dependencies/Legacy\.Maliev\.AuthService", workflow);
+        Assert.Contains($"test \"$(git -C .dependencies/Legacy.Maliev.AuthService rev-parse HEAD)\" = {QualifiedAuthIssuerCommit}", workflow, StringComparison.Ordinal);
         Assert.Contains("repository: MALIEV-Co-Ltd/Legacy.Maliev.CompatibilityContracts", workflow, StringComparison.Ordinal);
         Assert.Contains("path: .dependencies/Legacy.Maliev.CompatibilityContracts", workflow, StringComparison.Ordinal);
         Assert.DoesNotContain("repository: MALIEV-Co-Ltd/Maliev.Aspire", workflow, StringComparison.Ordinal);
