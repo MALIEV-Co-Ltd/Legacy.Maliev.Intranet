@@ -18,7 +18,7 @@ METHODS = {
     "LostRealProfileAcknowledgement_RequiresReadbackWithoutIdentityOrReplay": 1,
 }
 PINS = {
-    "auth": (".dependencies/Legacy.Maliev.AuthService", "2d01cd55a27526a23291793a115fdd490e04cf0e"),  # Public immutable Git commit SHA, not a credential. gitleaks:allow
+    "auth": (".dependencies/Legacy.Maliev.AuthService", "f7079f133b1e607b8909636a5114ebccc73b27bc"),  # Public immutable Git commit SHA, not a credential. gitleaks:allow
     "customer": (".dependencies/Legacy.Maliev.CustomerService", "f80f574354c40e9b67fa26c94a3fead352ad22dd"),
     "defaults": (".dependencies/Legacy.Maliev.ServiceDefaults", "4517cf16f5f1159318e184969732d46eae4a8308"),
     "contracts": (".dependencies/Legacy.Maliev.CompatibilityContracts", "78e48ffc4ee000df0510cba5e7c7a3c4c4d539d7"),

@@ -492,11 +492,15 @@ public sealed class PrivateDependencyOperationHostTests(ITestOutputHelper output
     }
 
     [Fact]
-    public async Task CatalogActualFactory_RetainsInfiniteNativeTimeoutAndSharedStandardBudgets()
+    public async Task CatalogActualFactory_RetainsInfiniteNativeTimeoutAndDistinctStandardBudgets()
     {
         await using var host = new Host(false, (_, _) => Task.FromResult(Response(HttpStatusCode.OK, "{}")));
         Assert.Equal(Timeout.InfiniteTimeSpan, host.SelectedClientTimeout());
-        var options = host.CatalogStandardOptions();
+        var typedOptions = host.CatalogStandardOptions();
+        Assert.Equal(TimeSpan.FromSeconds(10), typedOptions.AttemptTimeout.Timeout);
+        Assert.Equal(TimeSpan.FromSeconds(30), typedOptions.TotalRequestTimeout.Timeout);
+        Assert.Equal(TimeSpan.FromSeconds(30), typedOptions.CircuitBreaker.SamplingDuration);
+        var options = host.SharedStandardOptions();
         Assert.Equal(TimeSpan.FromSeconds(30), options.AttemptTimeout.Timeout);
         Assert.Equal(TimeSpan.FromSeconds(60), options.TotalRequestTimeout.Timeout);
         Assert.Equal(TimeSpan.FromSeconds(65), options.CircuitBreaker.SamplingDuration);
@@ -612,6 +616,10 @@ public sealed class PrivateDependencyOperationHostTests(ITestOutputHelper output
         public HttpStandardResilienceOptions CatalogStandardOptions() =>
             Services.GetRequiredService<IOptionsMonitor<HttpStandardResilienceOptions>>()
                 .Get(nameof(ILegacyCatalogClient) + "-standard");
+
+        public HttpStandardResilienceOptions SharedStandardOptions() =>
+            Services.GetRequiredService<IOptionsMonitor<HttpStandardResilienceOptions>>()
+                .Get("-standard");
 
         public async Task CallCatalogSiteAsync(int site, CancellationToken token)
         {

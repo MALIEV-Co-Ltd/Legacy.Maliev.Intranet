@@ -143,7 +143,8 @@ public sealed class BffOrdersProxyContractTests
         Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
         Assert.Contains("OrderService unavailable", body, StringComparison.Ordinal);
         Assert.DoesNotContain("source-private-response-body", body, StringComparison.Ordinal);
-        Assert.Equal(statusCode == HttpStatusCode.ServiceUnavailable ? 3 : 1, downstream.RequestCount);
+        // This mapping fixture constructs a direct client without resilience handlers.
+        Assert.Equal(1, downstream.RequestCount);
     }
 
     [Fact]
