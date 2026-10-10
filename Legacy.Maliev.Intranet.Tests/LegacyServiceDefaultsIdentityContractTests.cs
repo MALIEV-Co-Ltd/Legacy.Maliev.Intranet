@@ -3,7 +3,7 @@ namespace Legacy.Maliev.Intranet.Tests;
 public sealed class LegacyServiceDefaultsIdentityContractTests
 {
     private const string DotNetPatchVersion = "10.0.12";
-    private const string NativeLoggingReplacementCommit = "7edcd961024868513fd5f373cab3dcb261197f77";
+    private const string NativeLoggingReplacementCommit = "4517cf16f5f1159318e184969732d46eae4a8308";
 
     [Fact]
     public void HostsAndDeliveryPinSharedNativeLoggingReplacement()

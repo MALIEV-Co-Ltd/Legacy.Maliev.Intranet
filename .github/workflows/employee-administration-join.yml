@@ -29,7 +29,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           repository: MALIEV-Co-Ltd/Legacy.Maliev.ServiceDefaults
-          ref: 7edcd961024868513fd5f373cab3dcb261197f77
+          ref: 4517cf16f5f1159318e184969732d46eae4a8308
           path: .dependencies/Legacy.Maliev.ServiceDefaults
           persist-credentials: false
       - name: Check out exact CompatibilityContracts
@@ -67,7 +67,7 @@ jobs:
           test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
           test "$(git -C .dependencies/Legacy.Maliev.AuthService rev-parse HEAD)" = ef74d99f56cb53b600efc7f85819d9adc28f8935
           test "$(git -C .dependencies/Legacy.Maliev.EmployeeService rev-parse HEAD)" = 8a8a619b021e9dc71607fa279aa12257844b6359
-          test "$(git -C .dependencies/Legacy.Maliev.ServiceDefaults rev-parse HEAD)" = 7edcd961024868513fd5f373cab3dcb261197f77
+          test "$(git -C .dependencies/Legacy.Maliev.ServiceDefaults rev-parse HEAD)" = 4517cf16f5f1159318e184969732d46eae4a8308
           test "$(git -C .dependencies/Legacy.Maliev.CompatibilityContracts rev-parse HEAD)" = 78e48ffc4ee000df0510cba5e7c7a3c4c4d539d7
       - name: Build joined project before tests
         run: |

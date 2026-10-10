@@ -75,7 +75,7 @@ builder.Services.AddHttpClient<ILegacyCatalogClient, LegacyCatalogClient>(client
     client.BaseAddress = new Uri(builder.Configuration["Services:Catalog"]
         ?? throw new InvalidOperationException("Services:Catalog is required."));
     client.Timeout = TimeSpan.FromSeconds(10);
-}).AddPrivateFailureOperationObservation("CatalogService")
+}).AddPrivateFailureSourceObservation("CatalogService")
     .AddHttpMessageHandler<LegacyServiceAuthenticationHandler>().AddStandardResilienceHandler();
 builder.Services.AddHttpClient<ILegacyProcurementClient, LegacyProcurementClient>(client =>
 {
