@@ -19,6 +19,68 @@ namespace Legacy.Maliev.Intranet.Tests;
 public sealed class BffEmployeeRecoveryContractTests
 {
     [Theory]
+    [InlineData("employee@example.com", true)]
+    [InlineData("\"employee@office\"@example.com", true)]
+    [InlineData("Employee <employee@example.com>", false)]
+    [InlineData(" employee@example.com ", false)]
+    [InlineData("invalid-address", false)]
+    [InlineData("", false)]
+    [InlineData("overlong", false)]
+    [InlineData("maximum", true)]
+    [InlineData("employee\r\n@example.com", false)]
+    [InlineData("employee\t@example.com", false)]
+    public async Task RecoveryEmail_HistoricalBareSyntaxGatesRequestsAndCompletions(string email, bool accepted)
+    {
+        if (email == "overlong") email = new string('a', 310) + "@maliev.test";
+        if (email == "maximum") email = new string('a', 308) + "@maliev.test";
+        if (email.StartsWith('"'))
+        {
+            Assert.Equal(email, new System.Net.Mail.MailAddress(email).Address);
+            Assert.False(new System.ComponentModel.DataAnnotations.EmailAddressAttribute().IsValid(email));
+        }
+        var downstream = new RecoveryDownstreamHandler();
+        await using var factory = new RecoveryBffFactory(downstream);
+        using var client = CreateClient(factory);
+        var csrf = await GetCsrfTokenAsync(client);
+        foreach (var action in new[] { "password-reset", "email-confirmation" })
+        {
+            using var requested = await SendAsync(client, $"/bff/employee-recovery/{action}/request", new { email }, csrf);
+            Assert.Equal(accepted ? HttpStatusCode.Accepted : HttpStatusCode.BadRequest, requested.StatusCode);
+            using var completed = await SendAsync(client, $"/bff/employee-recovery/{action}/complete",
+                new { email, token = new string('a', 43), password = "replacement-password", confirmPassword = "replacement-password" }, csrf);
+            Assert.Equal(accepted ? HttpStatusCode.NoContent : HttpStatusCode.BadRequest, completed.StatusCode);
+        }
+        if (!accepted) Assert.Empty(downstream.Requests);
+        else
+        {
+            Assert.Equal(4, downstream.Requests.Count);
+            foreach (var item in downstream.Requests)
+            {
+                using var body = JsonDocument.Parse(item.Body);
+                Assert.Equal(email, body.RootElement.GetProperty("email").GetString());
+            }
+        }
+    }
+
+    [Fact]
+    public async Task RecoveryEmail_RequiredNullCannotReachAnyAuthOrNotificationBoundary()
+    {
+        var downstream = new RecoveryDownstreamHandler();
+        await using var factory = new RecoveryBffFactory(downstream);
+        using var client = CreateClient(factory);
+        var csrf = await GetCsrfTokenAsync(client);
+        foreach (var action in new[] { "password-reset", "email-confirmation" })
+        {
+            using var requested = await SendAsync(client, $"/bff/employee-recovery/{action}/request", new { email = (string?)null }, csrf);
+            Assert.Equal(HttpStatusCode.BadRequest, requested.StatusCode);
+            using var completed = await SendAsync(client, $"/bff/employee-recovery/{action}/complete",
+                new { email = (string?)null, token = new string('a', 43), password = "replacement-password", confirmPassword = "replacement-password" }, csrf);
+            Assert.Equal(HttpStatusCode.BadRequest, completed.StatusCode);
+        }
+        Assert.Empty(downstream.Requests);
+    }
+
+    [Theory]
     [InlineData(false)]
     [InlineData(true)]
     public async Task PasswordResetRequest_CallerAbortDuringAcquisitionOrDeliveryPropagates(bool delivery)
