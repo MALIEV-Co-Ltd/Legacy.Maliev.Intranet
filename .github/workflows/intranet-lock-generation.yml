@@ -64,6 +64,9 @@ jobs:
           timeout --signal=TERM --kill-after=20s 5m dotnet restore Legacy.Maliev.Intranet/Legacy.Maliev.Intranet.csproj --locked-mode --warnaserror -p:UseLocalMalievDependencies=true
           timeout --signal=TERM --kill-after=20s 5m dotnet restore Legacy.Maliev.Intranet.Bff/Legacy.Maliev.Intranet.Bff.csproj --locked-mode --warnaserror -p:UseLocalMalievDependencies=true
           python3 -B scripts/intranet-lock-generation.py verified
+      - name: Retain rejected raw generation evidence without admitting changes
+        if: failure()
+        run: python3 -B scripts/intranet-lock-generation.py rejected
       - name: Retain generated locks and exact-source receipt before cleanup
         id: upload
         if: always()

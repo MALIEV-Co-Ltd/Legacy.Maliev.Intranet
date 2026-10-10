@@ -176,6 +176,38 @@ class LockDeltaTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "Project schema"):
             locks.validate_delta(graph({}), graph({"legacy.maliev.servicedefaults": row}))
 
+    def test_rejected_raw_retained_with_explicit_nonacceptance(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp) / "repo"
+            custody = Path(temp) / "custody"
+            evidence = Path(temp) / "evidence"
+            root.mkdir()
+            custody.mkdir()
+            baseline = root / "build/nuget-locks/Legacy.Maliev.CompatibilityContracts/packages.lock.json"
+            baseline.parent.mkdir(parents=True)
+            baseline.write_bytes(b'{"version":1,"dependencies":{"net10.0":{}}}\r\n')
+            generated = root / locks.CONTRACT_LOCK
+            generated.parent.mkdir(parents=True)
+            generated.write_bytes(b'{"version":1,"dependencies":{"net10.0":{}}}\n')
+            key = baseline.relative_to(root).as_posix()
+            before = {"source": "a" * 40, "inputs": {key: locks.digest(baseline.read_bytes()), locks.CONTRACT_LOCK: "before"}}
+            (custody / "before.json").write_text(json.dumps(before))
+            with patch.object(locks, "identity", return_value="a" * 40), patch.object(locks, "check_owner"), patch.object(locks, "owner", return_value={"run": "test"}), patch.object(locks, "inventory", return_value={key: before["inputs"][key], locks.CONTRACT_LOCK: "after"}):
+                locks.rejected(root, custody, evidence)
+            receipt = json.loads((evidence / "receipt.json").read_text())
+            self.assertEqual("REJECTED_GENERATION_NOT_ACCEPTED", receipt["classification"])
+            self.assertEqual("NOT_ACCEPTED", receipt["lockedRestore"])
+            self.assertEqual(generated.read_bytes(), (evidence / "rejected-raw" / locks.CONTRACT_LOCK).read_bytes())
+            self.assertEqual(baseline.read_bytes(), (evidence / "contracts-before.json").read_bytes())
+
+    def test_rejected_foreign_custody_preserved(self):
+        with tempfile.TemporaryDirectory() as temp:
+            path = Path(temp)
+            with patch.object(locks, "identity", return_value="a" * 40), patch.object(locks, "check_owner", side_effect=ValueError("Foreign")):
+                with self.assertRaisesRegex(ValueError, "Foreign"):
+                    locks.rejected(path, path, path / "evidence")
+            self.assertFalse((path / "evidence").exists())
+
 
 if __name__ == "__main__":
     unittest.main()

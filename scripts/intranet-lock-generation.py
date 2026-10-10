@@ -221,9 +221,54 @@ def verified(root, custody, evidence):
     (evidence / "receipt.json").write_text(json.dumps(receipt, indent=2) + "\n")
 
 
+def rejected(root, custody, evidence):
+    """Retain bounded raw failure evidence without changing any admission rule."""
+    sha = identity(root)
+    check_owner(custody)
+    if evidence.exists():
+        check_owner(evidence)
+    else:
+        evidence.mkdir()
+        (evidence / "owner.json").write_text(json.dumps(owner()))
+    before = json.loads(read(custody / "before.json"))
+    if before["source"] != sha:
+        raise ValueError("Rejected receipt source mismatch")
+    after = inventory(root)
+    changed = {p: {"before": before["inputs"].get(p), "after": after.get(p)}
+               for p in sorted(set(before["inputs"]) | set(after))
+               if before["inputs"].get(p) != after.get(p)}
+    rows = []
+    for p in (*OUTPUTS, PRODUCER_LOCK, CONTRACT_LOCK):
+        if (root / p).exists():
+            data = read(root / p)
+            target = evidence / "rejected-raw" / p
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_bytes(data)
+            rows.append({"path": p, "bytes": len(data), "sha256": digest(data)})
+    baselines = []
+    for p in OUTPUTS:
+        original_path = custody / "baseline" / p
+        if original_path.exists():
+            original_data = read(original_path)
+            target = evidence / "original-baseline" / p
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_bytes(original_data)
+            baselines.append({"path": p, "bytes": len(original_data), "sha256": digest(original_data)})
+    contracts_before = root / "build/nuget-locks/Legacy.Maliev.CompatibilityContracts/packages.lock.json"
+    original = read(contracts_before)
+    if digest(original) != before["inputs"][contracts_before.relative_to(root).as_posix()]:
+        raise ValueError("Committed Contracts baseline changed")
+    (evidence / "contracts-before.json").write_bytes(original)
+    receipt = {"classification": "REJECTED_GENERATION_NOT_ACCEPTED", "source": sha,
+        "defaults": DEFAULTS, "contracts": CONTRACTS, "changedInputs": changed,
+        "rawFiles": rows, "baselineFiles": baselines, "inputBefore": before["inputs"], "inputAfter": after,
+        "lockedRestore": "NOT_ACCEPTED", "admissionRulesUnchanged": True}
+    (evidence / "receipt.json").write_text(json.dumps(receipt, indent=2) + "\n")
+
+
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("phase", choices=("prepare", "retain", "verified", "cleanup"))
+    parser.add_argument("phase", choices=("prepare", "retain", "verified", "rejected", "cleanup"))
     args = parser.parse_args()
     root = Path.cwd().resolve()
     temp = Path(os.environ["RUNNER_TEMP"]).resolve()
@@ -234,6 +279,8 @@ def main():
         retain(root, custody, evidence)
     elif args.phase == "verified":
         verified(root, custody, evidence)
+    elif args.phase == "rejected":
+        rejected(root, custody, evidence)
     else:
         # Only these exact job-local paths; retained GitHub artifact survives cleanup.
         for path in (custody, evidence):
