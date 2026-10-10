@@ -631,7 +631,9 @@ public sealed class CustomerDetailBrowserTests(
         var writes = 0;
         await page.RouteAsync("**/bff/customers/69738/versioned", route => route.FulfillAsync(new()
         {
-            Status = 200, ContentType = "application/json", Body = profile.ToJsonString(),
+            Status = 200,
+            ContentType = "application/json",
+            Body = profile.ToJsonString(),
             Headers = new Dictionary<string, string> { ["etag"] = originalRevision },
         }));
         await page.RouteAsync("**/bff/customers/relation-countries", route => route.FulfillAsync(new()
@@ -643,10 +645,16 @@ public sealed class CustomerDetailBrowserTests(
             {
                 await route.FulfillAsync(new()
                 {
-                    Status = 200, ContentType = "application/json",
+                    Status = 200,
+                    ContentType = "application/json",
                     Headers = new Dictionary<string, string> { ["etag"] = relationVersion, ["x-customer-etag"] = originalRevision },
-                    Body = JsonSerializer.Serialize(new { customerId = 69738, relationId,
-                        company = kind == "company" ? profile[field] : null, address = kind == "company" ? null : profile[field] }),
+                    Body = JsonSerializer.Serialize(new
+                    {
+                        customerId = 69738,
+                        relationId,
+                        company = kind == "company" ? profile[field] : null,
+                        address = kind == "company" ? null : profile[field]
+                    }),
                 });
                 return;
             }
@@ -663,8 +671,12 @@ public sealed class CustomerDetailBrowserTests(
             payload["id"] = relationId.Value;
             profile[field] = payload;
             profile[field + "Id"] = relationId.Value;
-            await route.FulfillAsync(new() { Status = 204, Headers = new Dictionary<string, string>
-                { ["etag"] = relationVersion, ["x-customer-etag"] = "\"00000002\"", ["x-relation-id"] = relationId.Value.ToString(System.Globalization.CultureInfo.InvariantCulture) } });
+            await route.FulfillAsync(new()
+            {
+                Status = 204,
+                Headers = new Dictionary<string, string>
+                { ["etag"] = relationVersion, ["x-customer-etag"] = "\"00000002\"", ["x-relation-id"] = relationId.Value.ToString(System.Globalization.CultureInfo.InvariantCulture) }
+            });
         });
         await page.GotoAsync(new Uri(server.BaseUri, "Customers/View?id=69738").AbsoluteUri);
         var thai = culture == "th-TH";
@@ -684,7 +696,10 @@ public sealed class CustomerDetailBrowserTests(
     }
 
     [Theory]
-    [InlineData(409)] [InlineData(412)] [InlineData(502)] [InlineData(503)]
+    [InlineData(409)]
+    [InlineData(412)]
+    [InlineData(502)]
+    [InlineData(503)]
     public async Task UncertainOrStaleRelationWriteRequiresFreshReadBeforeAnotherSubmission(int status)
     {
         await using var context = await playwright.Browser.NewContextAsync(new() { ViewportSize = new() { Width = 1280, Height = 900 } });
@@ -694,9 +709,13 @@ public sealed class CustomerDetailBrowserTests(
         await page.RouteAsync("**/bff/customers/69738/relations/company/77", async route =>
         {
             if (route.Request.Method == "PUT") { writes++; await route.FulfillAsync(new() { Status = status }); return; }
-            await route.FulfillAsync(new() { Status = 200, ContentType = "application/json",
+            await route.FulfillAsync(new()
+            {
+                Status = 200,
+                ContentType = "application/json",
                 Headers = new Dictionary<string, string> { ["etag"] = "\"" + new string('a', 64) + "\"", ["x-customer-etag"] = "\"00000001\"" },
-                Body = JsonSerializer.Serialize(new { customerId = 69738, relationId = 77, company = new { id = 77, name = "Original" }, address = (object?)null }) });
+                Body = JsonSerializer.Serialize(new { customerId = 69738, relationId = 77, company = new { id = 77, name = "Original" }, address = (object?)null })
+            });
         });
         await page.GotoAsync(new Uri(server.BaseUri, "Customers/View?id=69738").AbsoluteUri);
         await page.GetByRole(AriaRole.Button, new() { Name = "Edit company", Exact = true }).ClickAsync();
@@ -734,10 +753,19 @@ public sealed class CustomerDetailBrowserTests(
         await page.RouteAsync("**/bff/customers/69738/relations/**", async route =>
         {
             if (route.Request.Method == "PUT") { writes++; await route.FulfillAsync(new() { Status = 500 }); return; }
-            await route.FulfillAsync(new() { Status = 200, ContentType = "application/json",
+            await route.FulfillAsync(new()
+            {
+                Status = 200,
+                ContentType = "application/json",
                 Headers = new Dictionary<string, string> { ["etag"] = "\"" + new string('a', 64) + "\"", ["x-customer-etag"] = "\"00000001\"" },
-                Body = JsonSerializer.Serialize(new { customerId = 69738, relationId = 101, company = (object?)null,
-                    address = new { id = 101, addressLine1 = "Original", countryId = 764 } }) });
+                Body = JsonSerializer.Serialize(new
+                {
+                    customerId = 69738,
+                    relationId = 101,
+                    company = (object?)null,
+                    address = new { id = 101, addressLine1 = "Original", countryId = 764 }
+                })
+            });
         });
         await page.GotoAsync(new Uri(server.BaseUri, "Customers/View?id=69738").AbsoluteUri);
         await page.GetByRole(AriaRole.Button, new() { Name = "Edit billing address", Exact = true }).ClickAsync();
@@ -769,8 +797,13 @@ public sealed class CustomerDetailBrowserTests(
         await page.RouteAsync("**/bff/customers/69738/versioned", route =>
         {
             reads.Add("profile:" + (profile["companyId"]?.GetValue<int>().ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "new"));
-            return route.FulfillAsync(new() { Status = 200, ContentType = "application/json", Body = profile.ToJsonString(),
-                Headers = new Dictionary<string, string> { ["etag"] = customerVersion } });
+            return route.FulfillAsync(new()
+            {
+                Status = 200,
+                ContentType = "application/json",
+                Body = profile.ToJsonString(),
+                Headers = new Dictionary<string, string> { ["etag"] = customerVersion }
+            });
         });
         await page.RouteAsync("**/bff/customers/69738/relations/company/*", async route =>
         {
@@ -779,10 +812,19 @@ public sealed class CustomerDetailBrowserTests(
             {
                 reads.Add("relation:" + selected);
                 Assert.Equal(profile["companyId"]?.GetValue<int>().ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "new", selected);
-                await route.FulfillAsync(new() { Status = 200, ContentType = "application/json",
+                await route.FulfillAsync(new()
+                {
+                    Status = 200,
+                    ContentType = "application/json",
                     Headers = new Dictionary<string, string> { ["etag"] = relationVersion, ["x-customer-etag"] = customerVersion },
-                    Body = JsonSerializer.Serialize(new { customerId = 69738, relationId = profile["companyId"]?.GetValue<int>(),
-                        company = profile["company"], address = (object?)null }) });
+                    Body = JsonSerializer.Serialize(new
+                    {
+                        customerId = 69738,
+                        relationId = profile["companyId"]?.GetValue<int>(),
+                        company = profile["company"],
+                        address = (object?)null
+                    })
+                });
                 return;
             }
             Assert.Equal("PUT", route.Request.Method);
@@ -807,8 +849,12 @@ public sealed class CustomerDetailBrowserTests(
             Assert.Equal("200", selected);
             relationVersion = "\"" + new string('c', 64) + "\"";
             customerVersion = "\"00000003\"";
-            await route.FulfillAsync(new() { Status = 204, Headers = new Dictionary<string, string>
-                { ["etag"] = relationVersion, ["x-customer-etag"] = customerVersion, ["x-relation-id"] = "200" } });
+            await route.FulfillAsync(new()
+            {
+                Status = 204,
+                Headers = new Dictionary<string, string>
+                { ["etag"] = relationVersion, ["x-customer-etag"] = customerVersion, ["x-relation-id"] = "200" }
+            });
         });
         await page.GotoAsync(new Uri(server.BaseUri, "Customers/View?id=69738").AbsoluteUri);
         await page.GetByRole(AriaRole.Button, new() { Name = "Edit company", Exact = true }).ClickAsync();

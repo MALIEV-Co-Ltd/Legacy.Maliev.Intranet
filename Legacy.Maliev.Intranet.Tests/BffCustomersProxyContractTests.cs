@@ -1221,8 +1221,14 @@ public sealed class BffCustomersProxyContractTests
     }
 
     [Theory]
-    [InlineData(400)] [InlineData(401)] [InlineData(403)] [InlineData(404)]
-    [InlineData(409)] [InlineData(412)] [InlineData(429)] [InlineData(503)]
+    [InlineData(400)]
+    [InlineData(401)]
+    [InlineData(403)]
+    [InlineData(404)]
+    [InlineData(409)]
+    [InlineData(412)]
+    [InlineData(429)]
+    [InlineData(503)]
     public async Task Relations_ProducerWriteFailureIsBoundedAndNotReplayed(int status)
     {
         var downstream = new RelationHandler("shipping", "79") { WriteStatus = status };
@@ -1235,7 +1241,9 @@ public sealed class BffCustomersProxyContractTests
     }
 
     [Theory]
-    [InlineData("unknown", "77", 400)] [InlineData("company", "0", 400)] [InlineData("billing", "-1", 400)]
+    [InlineData("unknown", "77", 400)]
+    [InlineData("company", "0", 400)]
+    [InlineData("billing", "-1", 400)]
     [InlineData("company", "077", 400)]
     public async Task Relations_InvalidKindOrIdentifierIsRejectedBeforeAnyDownstream(string kind, string relation, int expected)
     {
