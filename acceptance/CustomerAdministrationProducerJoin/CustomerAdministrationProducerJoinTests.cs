@@ -7,6 +7,7 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
@@ -14,6 +15,7 @@ using System.Text.Json;
 using Legacy.Maliev.AuthService.Infrastructure;
 using Legacy.Maliev.CustomerService.Data;
 using Legacy.Maliev.CustomerService.Domain;
+using Legacy.Maliev.Intranet.Auth;
 using Legacy.Maliev.Intranet.Contracts;
 using Maliev.Aspire.ServiceDefaults.IAM;
 using Microsoft.AspNetCore.Hosting;
@@ -23,6 +25,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Http;
+using Microsoft.IdentityModel.Tokens;
 using Npgsql;
 using StackExchange.Redis;
 using Testcontainers.PostgreSql;
@@ -31,6 +34,8 @@ using AuthProgram = AuthApi::Program;
 using BffProgram = Bff::Program;
 using CustomerProgram = CustomerApi::Program;
 using IdentityClient = Bff::Legacy.Maliev.Intranet.Bff.Customers.CustomerAdministrationIdentityClient;
+using RelationCountries = Bff::Legacy.Maliev.Intranet.Bff.Employees.EmployeeAdministrationCountryClient;
+using RelationClient = Bff::Legacy.Maliev.Intranet.Bff.Customers.CustomerRelationClient;
 using ProfileClient = Bff::Legacy.Maliev.Intranet.Bff.Customers.CustomerAdministrationProfileClient;
 
 namespace CustomerAdministrationProducerJoin.Acceptance;
@@ -250,6 +255,120 @@ public sealed class CustomerAdministrationProducerJoinTests(SharedContainers con
         Assert.Equal(before.IdentityCount, after.IdentityCount);
     }
 
+    [Theory]
+    [InlineData("company", "1")]
+    [InlineData("company", "new")]
+    [InlineData("billing", "1")]
+    [InlineData("billing", "new")]
+    [InlineData("shipping", "1")]
+    [InlineData("shipping", "new")]
+    public async Task GenuineCurrentEmployeeIssuer_MissingRelationScopes_RejectsBeforeCustomerTransport(string kind, string relation)
+    {
+        await using var fixture = new JoinedFixture(containers);
+        await fixture.InitializeAsync();
+        using var client = await fixture.SignedInAsync();
+        var before = await fixture.SnapshotAsync();
+        var issued = new JwtSecurityTokenHandler().ReadJwtToken(fixture.ActorToken);
+        Assert.Contains(issued.Claims, claim => claim.Type == "permissions" && claim.Value == "legacy-customer.customers.update");
+        foreach (var required in new[] { "legacy-customer.companies.read", "legacy-customer.companies.create", "legacy-customer.companies.update",
+            "legacy-customer.addresses.read", "legacy-customer.addresses.create", "legacy-customer.addresses.update" })
+            Assert.DoesNotContain(issued.Claims, claim => claim.Type == "permissions" && claim.Value == required);
+        using var read = await client.GetAsync($"/bff/customers/1/relations/{kind}/{relation}");
+        Assert.Equal(HttpStatusCode.Forbidden, read.StatusCode);
+        using var request = new HttpRequestMessage(HttpMethod.Put,
+            $"/bff/customers/1/relations/{kind}/{(kind == "company" ? "" : "address/")}{relation}")
+        {
+            Content = kind == "company" ? JsonContent.Create(new CustomerCompanyEdit { Name = "Must not write" })
+                : JsonContent.Create(new CustomerAddressEdit { AddressLine1 = "Must not write", CountryId = 764 }),
+        };
+        request.Headers.Add("X-CSRF-TOKEN", await CsrfAsync(client));
+        request.Headers.TryAddWithoutValidation("If-Match", "\"" + new string('a', 64) + "\"");
+        request.Headers.TryAddWithoutValidation("X-Customer-If-Match", "\"00000001\"");
+        using var result = await client.SendAsync(request);
+        Assert.Equal(HttpStatusCode.Forbidden, result.StatusCode);
+        Assert.Equal(0, fixture.RelationCalls);
+        Assert.Empty(fixture.Writes);
+        Assert.Equal(before, await fixture.SnapshotAsync());
+    }
+
+    [Theory]
+    [InlineData("company")]
+    [InlineData("billing")]
+    [InlineData("shipping")]
+    public async Task ControlledRelationClaims_BffProducerPersistedClear_ReplacesExistingOptionalMetadataWithoutReattachment(string kind)
+    {
+        // Explicit controlled-claims contract proof, not ordinary Auth-issuer acceptance.
+        await using var fixture = new JoinedFixture(containers) { ControlledRelationKind = kind };
+        await fixture.InitializeAsync();
+        foreach (var seededKind in new[] { "company", "billing", "shipping" }) await fixture.SeedOptionalMetadataAsync(seededKind);
+        using var client = await fixture.SignedInAsync();
+        var before = await fixture.SnapshotAsync();
+        var metadataBefore = await fixture.RelationMetadataAsync(kind);
+        var otherKinds = new[] { "company", "billing", "shipping" }.Where(value => value != kind).ToArray();
+        var untouched = new List<RelationMetadata>();
+        foreach (var otherKind in otherKinds) untouched.Add(await fixture.RelationMetadataAsync(otherKind));
+        Assert.All(metadataBefore.Optional, value => Assert.False(string.IsNullOrWhiteSpace(value)));
+        var relationId = kind == "company" ? 1 : kind == "billing" ? 1 : 2;
+        using var read = await client.GetAsync($"/bff/customers/1/relations/{kind}/{relationId}");
+        Assert.Equal(HttpStatusCode.OK, read.StatusCode);
+        var version = read.Headers.ETag!.ToString();
+        var customerVersion = Assert.Single(read.Headers.GetValues("X-Customer-ETag"));
+        var value = await read.Content.ReadFromJsonAsync<CustomerRelationDetail>();
+        Assert.NotNull(value);
+        Assert.Equal(relationId, value.RelationId);
+        using var request = new HttpRequestMessage(HttpMethod.Put,
+            $"/bff/customers/1/relations/{kind}/{(kind == "company" ? "" : "address/")}{relationId}")
+        {
+            Content = kind == "company" ? JsonContent.Create(new CustomerCompanyEdit { Name = value.Company!.Name,
+                TaxNumber = null, Registrar = null }) : JsonContent.Create(new CustomerAddressEdit { AddressLine1 = value.Address!.AddressLine1,
+                CountryId = value.Address!.CountryId, Building = null, AddressLine2 = null, City = null, State = null, PostalCode = null }),
+        };
+        request.Headers.Add("X-CSRF-TOKEN", await CsrfAsync(client));
+        request.Headers.TryAddWithoutValidation("If-Match", version);
+        request.Headers.TryAddWithoutValidation("X-Customer-If-Match", customerVersion);
+        using var saved = await client.SendAsync(request);
+        Assert.Equal(HttpStatusCode.NoContent, saved.StatusCode);
+        Assert.Equal(relationId.ToString(System.Globalization.CultureInfo.InvariantCulture), Assert.Single(saved.Headers.GetValues("X-Relation-Id")));
+        Assert.NotEqual(version, saved.Headers.ETag!.ToString());
+        Assert.NotEqual(customerVersion, Assert.Single(saved.Headers.GetValues("X-Customer-ETag")));
+        Assert.Equal(1, fixture.RelationWrites);
+        Assert.Equal(version, fixture.RelationIfMatch);
+        Assert.Equal(customerVersion, fixture.RelationCustomerIfMatch);
+        using var upstream = JsonDocument.Parse(fixture.RelationPayload!);
+        Assert.Equal(kind == "company" ? new[] { "Name" } : new[] { "AddressLine1", "CountryId" },
+            upstream.RootElement.EnumerateObject().Select(field => field.Name).ToArray());
+        // Independent PostgreSQL-backed EF read and producer HTTP read check persisted nullable replacements.
+        var metadataAfter = await fixture.RelationMetadataAsync(kind);
+        Assert.All(metadataAfter.Optional, value => Assert.Null(value));
+        Assert.Equal(metadataBefore with { Optional = metadataAfter.Optional }, metadataAfter);
+        for (var index = 0; index < otherKinds.Length; index++)
+        {
+            var stillUntouched = await fixture.RelationMetadataAsync(otherKinds[index]);
+            Assert.Equal(untouched[index].Optional, stillUntouched.Optional);
+            Assert.Equal(untouched[index] with { Optional = stillUntouched.Optional }, stillUntouched);
+        }
+        using var reread = await client.GetAsync($"/bff/customers/1/relations/{kind}/{relationId}");
+        Assert.Equal(HttpStatusCode.OK, reread.StatusCode);
+        var cleared = await reread.Content.ReadFromJsonAsync<CustomerRelationDetail>();
+        Assert.NotNull(cleared);
+        Assert.Equal(relationId, cleared.RelationId);
+        if (kind == "company") { Assert.Null(cleared.Company!.TaxNumber); Assert.Null(cleared.Company!.Registrar); }
+        else
+        {
+            Assert.Null(cleared.Address!.Building); Assert.Null(cleared.Address!.AddressLine2);
+            Assert.Null(cleared.Address!.City); Assert.Null(cleared.Address!.State); Assert.Null(cleared.Address!.PostalCode);
+        }
+        var after = await fixture.SnapshotAsync();
+        Assert.Equal(before.Profile with { ModifiedDate = after.Profile.ModifiedDate }, after.Profile);
+        Assert.Equal(before.OtherProfile, after.OtherProfile);
+        Assert.Equal(before.Identity, after.Identity);
+        Assert.Equal(before.OtherIdentity, after.OtherIdentity);
+        Assert.Equal(before.ProfileCount, after.ProfileCount);
+        Assert.Equal(before.IdentityCount, after.IdentityCount);
+        Assert.Equal(1, fixture.RelationWrites); // Neither independent read caused a replay.
+        Assert.Empty(fixture.TransportFailures); // A caught IAM tuple rejection must fail this controlled-authority case.
+    }
+
     private static CustomerAdministrationSaveRequest Input(CustomerAdministrationEdit edit) =>
         new("Updated", "Updated family", "updated@maliev.test", "+6621111111", "+66811111111", "+6622222222",
             new DateTime(1990, 1, 2), false, true, false, edit.ProfileVersion, edit.IdentityVersion);
@@ -275,6 +394,8 @@ public sealed class CustomerAdministrationProducerJoinTests(SharedContainers con
         request.Headers.Add("X-CSRF-TOKEN", await CsrfAsync(client));
         return await client.SendAsync(request);
     }
+
+    private sealed record RelationMetadata(int Id, string Required, int? CountryId, DateTime? CreatedDate, string?[] Optional, int CompanyCount, int AddressCount);
 
     private sealed record IdentityState(string? UserName, string? Email, bool EmailConfirmed, string? PhoneNumber,
         bool PhoneNumberConfirmed, bool LockoutEnabled, bool TwoFactorEnabled, DateTimeOffset? LockoutEnd,
@@ -304,6 +425,12 @@ public sealed class CustomerAdministrationProducerJoinTests(SharedContainers con
         private WebApplicationFactory<BffProgram>? bff;
         private WebApplicationFactory<CustomerProgram>? customer;
         public WebApplicationFactory<CustomerProgram> Customer => customer!;
+        public int RelationCalls;
+        public string? ControlledRelationKind { get; init; }
+        public int RelationWrites;
+        public string? RelationIfMatch;
+        public string? RelationCustomerIfMatch;
+        public string? RelationPayload;
         public ConcurrentQueue<string> Writes { get; } = new();
         public ConcurrentQueue<string> TransportFailures { get; } = new();
         public TaskCompletionSource IdentityEntered { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -411,6 +538,41 @@ public sealed class CustomerAdministrationProducerJoinTests(SharedContainers con
                 identity.PasswordHash, identity.SecurityStamp, identity.ConcurrencyStamp, identity.FaxNumber, identity.MobileNumber);
             return new(I(identityRows.Single(row => row.DatabaseID == 1)), I(identityRows.Single(row => row.DatabaseID == 2)),
                 P(customers[0]), P(customers[1]), relations, customers.Length, await identities.Users.CountAsync());
+        }
+
+        public async Task SeedOptionalMetadataAsync(string kind)
+        {
+            await using var context = ProfileContext();
+            if (kind == "company")
+            {
+                var row = await context.Companies.SingleAsync(row => row.Id == 1);
+                row.TaxNumber = "existing tax metadata";
+                row.Registrar = "existing registrar metadata";
+            }
+            else
+            {
+                var id = kind == "billing" ? 1 : 2;
+                var row = await context.Addresses.SingleAsync(row => row.Id == id);
+                row.Building = "existing building"; row.AddressLine2 = "existing second line";
+                row.City = "existing city"; row.State = "existing state"; row.PostalCode = "existing postal code";
+            }
+            await context.SaveChangesAsync();
+        }
+
+        public async Task<RelationMetadata> RelationMetadataAsync(string kind)
+        {
+            await using var context = ProfileContext();
+            var companies = await context.Companies.CountAsync();
+            var addresses = await context.Addresses.CountAsync();
+            if (kind == "company")
+            {
+                var row = await context.Companies.AsNoTracking().SingleAsync(row => row.Id == 1);
+                return new(row.Id, row.Name, null, row.CreatedDate, [row.TaxNumber, row.Registrar], companies, addresses);
+            }
+            var id = kind == "billing" ? 1 : 2;
+            var address = await context.Addresses.AsNoTracking().SingleAsync(row => row.Id == id);
+            return new(address.Id, address.AddressLine1, address.CountryId, address.CreatedDate,
+                [address.Building, address.AddressLine2, address.City, address.State, address.PostalCode], companies, addresses);
         }
 
         public async Task MoveProfileAsync()
@@ -572,17 +734,84 @@ public sealed class CustomerAdministrationProducerJoinTests(SharedContainers con
                 builder.ConfigureServices(services =>
                 {
                     services.AddHttpClient<Legacy.Maliev.Intranet.Auth.ILegacyAuthClient, Legacy.Maliev.Intranet.Auth.LegacyAuthClient>()
-                        .ConfigurePrimaryHttpMessageHandler(() => fixture.auth!.Server.CreateHandler());
+                        .ConfigurePrimaryHttpMessageHandler(() => fixture.ControlledRelationKind is null ? fixture.auth!.Server.CreateHandler()
+                            : new ControlledRelationLoginTransport(fixture) { InnerHandler = fixture.auth!.Server.CreateHandler() });
+                    services.AddHttpClient<RelationClient>().ConfigurePrimaryHttpMessageHandler(() => fixture.ControlledRelationKind is null
+                        ? new RejectedRelationTransport(fixture) : new PersistedRelationTransport(fixture) { InnerHandler = fixture.Customer.Server.CreateHandler() });
+                    services.AddHttpClient<RelationCountries>().ConfigurePrimaryHttpMessageHandler(() => new ControlledCountriesTransport());
                     services.AddHttpClient<IdentityClient>().ConfigurePrimaryHttpMessageHandler(() => new OrderedTransport(fixture, true)
                     { InnerHandler = fixture.auth!.Server.CreateHandler() });
                     services.AddHttpClient<ProfileClient>().ConfigurePrimaryHttpMessageHandler(() => new OrderedTransport(fixture, false)
                     { InnerHandler = fixture.Customer.Server.CreateHandler() });
                     services.ConfigureAll<HttpClientFactoryOptions>(options => options.HttpMessageHandlerBuilderActions.Add(handler =>
                     {
-                        if (!new[] { nameof(Legacy.Maliev.Intranet.Auth.ILegacyAuthClient), typeof(IdentityClient).Name, typeof(ProfileClient).Name }.Contains(handler.Name))
+                        if (!new[] { nameof(Legacy.Maliev.Intranet.Auth.ILegacyAuthClient), typeof(IdentityClient).Name, typeof(ProfileClient).Name, typeof(RelationClient).Name, typeof(RelationCountries).Name }.Contains(handler.Name))
                             handler.PrimaryHandler = new BlockOutbound();
                     }));
                 });
+            }
+        }
+
+        private sealed class ControlledRelationLoginTransport(JoinedFixture fixture) : DelegatingHandler
+        {
+            protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken token)
+            {
+                var response = await base.SendAsync(request, token);
+                if (request.Method != HttpMethod.Post || request.RequestUri!.AbsolutePath != "/auth/v1/login" || !response.IsSuccessStatusCode) return response;
+                var envelope = await response.Content.ReadFromJsonAsync<AuthTokenResponse>(token) ?? throw new InvalidOperationException("Missing real login envelope.");
+                var original = new JwtSecurityTokenHandler().ReadJwtToken(envelope.AccessToken);
+                var domain = fixture.ControlledRelationKind == "company" ? "companies" : "addresses";
+                // Test-only signed claims, deliberately distinct from the genuine issuer six-denial proof.
+                var claims = original.Claims.Where(claim => claim.Type is not ("iss" or "aud" or "exp" or "nbf" or "iat")).Concat(
+                    new[] { new Claim("permissions", $"legacy-customer.{domain}.read"), new Claim("permissions", $"legacy-customer.{domain}.update"),
+                        new Claim("fixture_relation_authority", "controlled-persisted-contract-only") });
+                var controlled = new JwtSecurityToken(original.Issuer, original.Audiences.Single(), claims,
+                    original.ValidFrom, original.ValidTo, new SigningCredentials(new RsaSecurityKey(fixture.rsa), SecurityAlgorithms.RsaSha256));
+                var previousContent = response.Content;
+                response.Content = JsonContent.Create(envelope with { AccessToken = new JwtSecurityTokenHandler().WriteToken(controlled) });
+                previousContent.Dispose();
+                return response;
+            }
+        }
+
+        private sealed class PersistedRelationTransport(JoinedFixture fixture) : DelegatingHandler
+        {
+            protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken token)
+            {
+                Interlocked.Increment(ref fixture.RelationCalls);
+                Assert.Equal("Bearer", request.Headers.Authorization?.Scheme);
+                Assert.False(string.IsNullOrWhiteSpace(request.Headers.Authorization?.Parameter));
+                var controlled = new JwtSecurityTokenHandler().ReadJwtToken(request.Headers.Authorization!.Parameter!);
+                Assert.Equal("controlled-persisted-contract-only", controlled.Claims.Single(claim => claim.Type == "fixture_relation_authority").Value);
+                Assert.Equal("employee", controlled.Claims.Single(claim => claim.Type == "identity_kind").Value);
+                if (request.Method == HttpMethod.Put)
+                {
+                    Interlocked.Increment(ref fixture.RelationWrites);
+                    fixture.RelationIfMatch = request.Headers.IfMatch.Single().ToString();
+                    fixture.RelationCustomerIfMatch = request.Headers.GetValues("X-Customer-If-Match").Single();
+                    fixture.RelationPayload = await request.Content!.ReadAsStringAsync(token);
+                }
+                return await base.SendAsync(request, token);
+            }
+        }
+
+        private sealed class ControlledCountriesTransport : HttpMessageHandler
+        {
+            protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken token)
+            {
+                Assert.Equal(HttpMethod.Get, request.Method);
+                Assert.Equal("/Countries", request.RequestUri!.AbsolutePath);
+                return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+                    { Content = JsonContent.Create(new[] { new { Id = 764, Name = "Thailand" } }) });
+            }
+        }
+
+        private sealed class RejectedRelationTransport(JoinedFixture fixture) : HttpMessageHandler
+        {
+            protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken token)
+            {
+                Interlocked.Increment(ref fixture.RelationCalls);
+                throw new InvalidOperationException("Genuine issuer rejection must happen before Customer transport.");
             }
         }
 
@@ -655,6 +884,9 @@ public sealed class CustomerAdministrationProducerJoinTests(SharedContainers con
                 {
                     "legacy-auth.customer-identities.read" or "legacy-auth.customer-identities.update" => resource == "global",
                     "legacy-customer.customers.read" or "legacy-customer.customers.update" => resource == "/customers/1",
+                    "legacy-customer.companies.read" or "legacy-customer.companies.update" => fixture.ControlledRelationKind == "company" && resource == "/companies/1",
+                    "legacy-customer.addresses.read" or "legacy-customer.addresses.update" => fixture.ControlledRelationKind == "billing" && resource == "/addresses/1"
+                        || fixture.ControlledRelationKind == "shipping" && resource == "/addresses/2",
                     _ => false,
                 };
                 Assert.True(allowed, "Unexpected permission/resource tuple in controlled IAM transport.");

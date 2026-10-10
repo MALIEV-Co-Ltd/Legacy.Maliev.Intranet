@@ -43,15 +43,15 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           repository: MALIEV-Co-Ltd/Legacy.Maliev.AuthService
-          # Accepted issuer supplies all four Customer edit grants; fixture verifies genuine claims.
-          ref: 2d01cd55a27526a23291793a115fdd490e04cf0e
+          # Accepted issuer supplies profile/identity scopes; six relation controls prove missing scopes fail closed.
+          ref: f7079f133b1e607b8909636a5114ebccc73b27bc
           path: .dependencies/Legacy.Maliev.AuthService
           persist-credentials: false
       - name: Check out exact Customer conditional writer
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           repository: MALIEV-Co-Ltd/Legacy.Maliev.CustomerService
-          ref: f80f574354c40e9b67fa26c94a3fead352ad22dd
+          ref: 94808c01016acde41a7f264f95b8ee6b95573691
           path: .dependencies/Legacy.Maliev.CustomerService
           persist-credentials: false
       - name: Set up .NET
@@ -64,8 +64,8 @@ jobs:
           docker info
       - name: Verify immutable producer and dependency identities before build
         run: |
-          test "$(git -C .dependencies/Legacy.Maliev.AuthService rev-parse HEAD)" = 2d01cd55a27526a23291793a115fdd490e04cf0e
-          test "$(git -C .dependencies/Legacy.Maliev.CustomerService rev-parse HEAD)" = f80f574354c40e9b67fa26c94a3fead352ad22dd
+          test "$(git -C .dependencies/Legacy.Maliev.AuthService rev-parse HEAD)" = f7079f133b1e607b8909636a5114ebccc73b27bc
+          test "$(git -C .dependencies/Legacy.Maliev.CustomerService rev-parse HEAD)" = 94808c01016acde41a7f264f95b8ee6b95573691
           test "$(git -C .dependencies/Legacy.Maliev.ServiceDefaults rev-parse HEAD)" = 7edcd961024868513fd5f373cab3dcb261197f77
           test "$(git -C .dependencies/Legacy.Maliev.CompatibilityContracts rev-parse HEAD)" = 78e48ffc4ee000df0510cba5e7c7a3c4c4d539d7
       - name: Build joined project before tests
@@ -76,7 +76,7 @@ jobs:
         run: |
           export GITHUB_ACTIONS=false
           dotnet test acceptance/CustomerAdministrationProducerJoin/CustomerAdministrationProducerJoin.AcceptanceTests.csproj --configuration Release --no-build --no-restore -p:UseLocalMalievDependencies=true --logger 'trx;LogFileName=customer-administration-producer-join.trx' --results-directory "$RUNNER_TEMP/customer-administration-producer-join-results" --nologo
-      - name: Verify all five actual executions and retain immutable graph
+      - name: Verify all fourteen actual executions and retain immutable graph
         id: customer_join_proof
         env:
           JOIN_RESULTS: ${{ runner.temp }}/customer-administration-producer-join-results
