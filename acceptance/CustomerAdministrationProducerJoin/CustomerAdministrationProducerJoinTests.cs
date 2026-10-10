@@ -481,6 +481,14 @@ public sealed class CustomerAdministrationProducerJoinTests(SharedContainers con
             using (var client = auth.CreateClient())
             {
                 using var login = await client.PostAsJsonAsync("/auth/v1/login", new { userName = "actor@maliev.test", password = "disposable", identityKind = 1 });
+                var loginCategory = login.StatusCode switch
+                {
+                    HttpStatusCode.Unauthorized => "credentials-rejected",
+                    HttpStatusCode.BadRequest => "request-or-exception-rejected",
+                    _ => "unexpected-status",
+                };
+                Assert.True(login.StatusCode == HttpStatusCode.OK,
+                    $"Fixture login HTTP {(int)login.StatusCode}; category={loginCategory}; transport failure types={string.Join(",", TransportFailures.Take(4))}.");
                 Assert.Equal(HttpStatusCode.OK, login.StatusCode);
                 using var body = JsonDocument.Parse(await login.Content.ReadAsStringAsync());
                 ActorToken = body.RootElement.GetProperty("accessToken").GetString()!;
@@ -499,12 +507,13 @@ public sealed class CustomerAdministrationProducerJoinTests(SharedContainers con
         private async Task<string> DatabaseAsync()
         {
             var name = "customer_join_" + Guid.NewGuid().ToString("N");
-            await using var connection = new NpgsqlConnection(postgres.GetConnectionString());
+            // Unique per-case databases must not retain idle process-wide pools after context/host disposal.
+            await using var connection = new NpgsqlConnection(new NpgsqlConnectionStringBuilder(postgres.GetConnectionString()) { Pooling = false }.ConnectionString);
             await connection.OpenAsync();
             await using var command = connection.CreateCommand();
             command.CommandText = $"CREATE DATABASE \"{name}\"";
             await command.ExecuteNonQueryAsync();
-            return new NpgsqlConnectionStringBuilder(postgres.GetConnectionString()) { Database = name }.ConnectionString;
+            return new NpgsqlConnectionStringBuilder(postgres.GetConnectionString()) { Database = name, Pooling = false }.ConnectionString;
         }
 
         private CustomerDbContext ProfileContext() => new(new DbContextOptionsBuilder<CustomerDbContext>().UseNpgsql(profileConnection).Options);
