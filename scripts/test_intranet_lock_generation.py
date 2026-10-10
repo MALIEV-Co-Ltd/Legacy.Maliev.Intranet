@@ -197,7 +197,10 @@ class LockDeltaTests(unittest.TestCase):
             receipt = json.loads((evidence / "receipt.json").read_text())
             self.assertEqual("REJECTED_GENERATION_NOT_ACCEPTED", receipt["classification"])
             self.assertEqual("NOT_ACCEPTED", receipt["lockedRestore"])
-            self.assertEqual(generated.read_bytes(), (evidence / "rejected-raw" / locks.CONTRACT_LOCK).read_bytes())
+            artifact_path = "rejected-raw/" + locks.CONTRACT_LOCK.replace(".dependencies/", "dependency-inputs/", 1)
+            self.assertEqual(generated.read_bytes(), (evidence / artifact_path).read_bytes())
+            self.assertEqual(artifact_path, receipt["rawFiles"][0]["artifactPath"])
+            self.assertFalse(any(part.startswith(".") for part in Path(artifact_path).parts))
             self.assertEqual(baseline.read_bytes(), (evidence / "contracts-before.json").read_bytes())
 
     def test_rejected_foreign_custody_preserved(self):

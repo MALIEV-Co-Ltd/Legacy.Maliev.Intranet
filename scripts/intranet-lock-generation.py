@@ -241,10 +241,11 @@ def rejected(root, custody, evidence):
     for p in (*OUTPUTS, PRODUCER_LOCK, CONTRACT_LOCK):
         if (root / p).exists():
             data = read(root / p)
-            target = evidence / "rejected-raw" / p
+            artifact_path = "rejected-raw/" + p.replace(".dependencies/", "dependency-inputs/", 1)
+            target = evidence / artifact_path
             target.parent.mkdir(parents=True, exist_ok=True)
             target.write_bytes(data)
-            rows.append({"path": p, "bytes": len(data), "sha256": digest(data)})
+            rows.append({"path": p, "artifactPath": artifact_path, "bytes": len(data), "sha256": digest(data)})
     baselines = []
     for p in OUTPUTS:
         original_path = custody / "baseline" / p
