@@ -16,10 +16,12 @@ METHODS = {
     "StaleOriginalVersion_RejectsBeforeEitherWrite": 2,
     "ActualAuthConflict_AfterProfileCommit_ReportsPartialWithoutReplay": 1,
     "LostRealProfileAcknowledgement_RequiresReadbackWithoutIdentityOrReplay": 1,
+    "GenuineCurrentEmployeeIssuer_MissingRelationScopes_RejectsBeforeCustomerTransport": 6,
+    "ControlledRelationClaims_BffProducerPersistedClear_ReplacesExistingOptionalMetadataWithoutReattachment": 3,
 }
 PINS = {
-    "auth": (".dependencies/Legacy.Maliev.AuthService", "2d01cd55a27526a23291793a115fdd490e04cf0e"),  # Public immutable Git commit SHA, not a credential. gitleaks:allow
-    "customer": (".dependencies/Legacy.Maliev.CustomerService", "f80f574354c40e9b67fa26c94a3fead352ad22dd"),
+    "auth": (".dependencies/Legacy.Maliev.AuthService", "f7079f133b1e607b8909636a5114ebccc73b27bc"),  # Public immutable Git commit SHA, not a credential. gitleaks:allow
+    "customer": (".dependencies/Legacy.Maliev.CustomerService", "94808c01016acde41a7f264f95b8ee6b95573691"),
     "defaults": (".dependencies/Legacy.Maliev.ServiceDefaults", "7edcd961024868513fd5f373cab3dcb261197f77"),
     "contracts": (".dependencies/Legacy.Maliev.CompatibilityContracts", "78e48ffc4ee000df0510cba5e7c7a3c4c4d539d7"),
 }
@@ -61,8 +63,8 @@ def validate(report):
         raise ValueError("Invalid joined TRX root")
     rows = report.findall("./t:Results/t:UnitTestResult", NS)
     definitions = report.findall("./t:TestDefinitions/t:UnitTest", NS)
-    if len(rows) != 5 or not definitions:
-        raise ValueError("Expected five actual joined results")
+    if len(rows) != 14 or not definitions:
+        raise ValueError("Expected fourteen actual joined results")
     declared, anchors = {}, set()
     for definition in definitions:
         methods = definition.findall("./t:TestMethod", NS)
@@ -87,7 +89,7 @@ def validate(report):
         method = declared.get(identifier)
         name = row.get("testName", "")
         expected_name = CLASS + "." + method if method is not None else ""
-        named = name == expected_name or (method == "StaleOriginalVersion_RejectsBeforeEitherWrite" and name.startswith(expected_name + "("))
+        named = name == expected_name or (method in ("StaleOriginalVersion_RejectsBeforeEitherWrite", "GenuineCurrentEmployeeIssuer_MissingRelationScopes_RejectsBeforeCustomerTransport", "ControlledRelationClaims_BffProducerPersistedClear_ReplacesExistingOptionalMetadataWithoutReattachment") and name.startswith(expected_name + "("))
         if row.get("outcome") != "Passed" or not execution or execution in executions or method is None or not named or name in names:
             raise ValueError("Invalid joined execution")
         executions.add(execution)
@@ -100,7 +102,7 @@ def validate(report):
     if len(summaries) != 1 or summaries[0].get("outcome") != "Completed":
         raise ValueError("Invalid joined summary")
     counters = summaries[0].findall("./t:Counters", NS)
-    required = dict.fromkeys(("total", "executed", "passed"), 5)
+    required = dict.fromkeys(("total", "executed", "passed"), 14)
     required.update(dict.fromkeys(("failed", "error", "timeout", "aborted", "inconclusive",
         "passedButRunAborted", "notRunnable", "notExecuted", "disconnected", "warning",
         "completed", "inProgress", "pending"), 0))
@@ -122,7 +124,7 @@ def main():
         if actual != expected:
             raise ValueError("Immutable joined graph mismatch")
         graph[name] = actual
-    proof = {"passed": 5, "failed": 0, "skipped": 0, "methods": methods, "graph": graph,
+    proof = {"passed": 14, "failed": 0, "skipped": 0, "methods": methods, "graph": graph,
         "trxSha256": hashlib.sha256(raw).hexdigest(),
         "liveIamAcceptance": False, "productionDataParity": False, "deploymentAcceptance": False}
     evidence = pathlib.Path(os.environ["JOIN_EVIDENCE"])
@@ -136,7 +138,7 @@ def main():
     with destination.open("x", encoding="utf-8") as output:
         json.dump(proof, output, indent=2)
         output.write("\n")
-    print("Verified five actual joined customer administration executions")
+    print("Verified fourteen actual joined customer administration executions")
 
 if __name__ == "__main__":
     try:

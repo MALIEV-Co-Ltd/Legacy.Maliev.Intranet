@@ -1,0 +1,193 @@
+@namespace Legacy.Maliev.Intranet.Client.Features.Customers.Components
+@implements IDisposable
+@using Microsoft.AspNetCore.Components.Forms
+@inject HttpClient Http
+
+<section class="customer-relations" aria-labelledby="customer-relations-heading">
+    <h2 id="customer-relations-heading">@Localize("RelationEditing")</h2>
+    <p>@Localize("RelationEditingDescription")</p>
+    @if (!new[] { "company", "billing", "shipping" }.Any(CanEditRelation)) { <p>@Localize("RelationPermissionRequired")</p> }
+    <div class="customer-relations__actions">
+        @foreach (var item in new[] { "company", "billing", "shipping" })
+        {
+            var selected = item;
+            <ShadcnButton ButtonType="ShadcnButtonType.Button" Variant="ShadcnButtonVariant.Outline" Disabled="@(Locked || !CanEditRelation(selected) || loading || saving || kind is not null)" OnClick="@(() => BeginAsync(selected))">@Localize("EditRelation_" + selected)</ShadcnButton>
+        }
+    </div>
+    @if (loading) { <p role="status" aria-live="polite">@Localize("Loading")</p> }
+    @if (error is not null) { <p role="alert">@error</p> }
+    @if (saved is not null) { <p role="status" aria-live="polite">@saved</p> }
+    @if (kind is not null && !loading)
+    {
+        @if (editContext is null)
+        {
+            <ShadcnButton ButtonType="ShadcnButtonType.Button" OnClick="@(() => BeginAsync(kind!))">@Localize("ReloadRelation")</ShadcnButton>
+            <ShadcnButton ButtonType="ShadcnButtonType.Button" OnClick="CancelAsync">@Localize("Cancel")</ShadcnButton>
+        }
+        else
+        {
+        <EditForm EditContext="editContext" OnValidSubmit="SaveAsync">
+            <DataAnnotationsValidator /><ValidationSummary />
+            <div class="customer-relations__fields">
+                @if (kind == "company")
+                {
+                    <ShadcnFormField Id="relation-company-name" Label="@Localize("CompanyName")"><Control><ShadcnInput TValue="string" id="relation-company-name" @bind-Value="company.Name" Disabled="@(saving || needsReload)" /></Control></ShadcnFormField>
+                    <ShadcnFormField Id="relation-tax" Label="@Localize("TaxNumber")"><Control><ShadcnInput TValue="string" id="relation-tax" @bind-Value="company.TaxNumber" Disabled="@(saving || needsReload)" /></Control></ShadcnFormField>
+                    <ShadcnFormField Id="relation-registrar" Label="@Localize("Registrar")"><Control><ShadcnInput TValue="string" id="relation-registrar" @bind-Value="company.Registrar" Disabled="@(saving || needsReload)" /></Control></ShadcnFormField>
+                }
+                else
+                {
+<ShadcnFormField Id="relation-Building" Label="@Localize("Building")"><Control><ShadcnInput TValue="string" id="relation-Building" @bind-Value="address.Building" Disabled="@(saving || needsReload)" /></Control></ShadcnFormField>
+<ShadcnFormField Id="relation-AddressLine1" Label="@Localize("AddressLine1")"><Control><ShadcnInput TValue="string" id="relation-AddressLine1" @bind-Value="address.AddressLine1" Disabled="@(saving || needsReload)" /></Control></ShadcnFormField>
+<ShadcnFormField Id="relation-AddressLine2" Label="@Localize("AddressLine2")"><Control><ShadcnInput TValue="string" id="relation-AddressLine2" @bind-Value="address.AddressLine2" Disabled="@(saving || needsReload)" /></Control></ShadcnFormField>
+<ShadcnFormField Id="relation-City" Label="@Localize("City")"><Control><ShadcnInput TValue="string" id="relation-City" @bind-Value="address.City" Disabled="@(saving || needsReload)" /></Control></ShadcnFormField>
+<ShadcnFormField Id="relation-State" Label="@Localize("State")"><Control><ShadcnInput TValue="string" id="relation-State" @bind-Value="address.State" Disabled="@(saving || needsReload)" /></Control></ShadcnFormField>
+<ShadcnFormField Id="relation-PostalCode" Label="@Localize("PostalCode")"><Control><ShadcnInput TValue="string" id="relation-PostalCode" @bind-Value="address.PostalCode" Disabled="@(saving || needsReload)" /></Control></ShadcnFormField>
+                    <ShadcnFormField Id="relation-country" Label="@Localize("Country")"><Control>
+                        <ShadcnSelect TValue="int" id="relation-country" @bind-Value="address.CountryId" Options="@CountryOptions" Placeholder="@Localize("SelectCountry")" Disabled="@(saving || needsReload)" />
+                    </Control></ShadcnFormField>
+                }
+            </div>
+            <div class="customer-relations__actions">
+                <ShadcnButton ButtonType="ShadcnButtonType.Submit" Disabled="@(saving || needsReload)">@(saving ? Localize("Saving") : Localize("SaveRelation"))</ShadcnButton>
+                @if (needsReload) { <ShadcnButton ButtonType="ShadcnButtonType.Button" OnClick="@(() => BeginAsync(kind!))" Disabled="@saving">@Localize("ReloadRelation")</ShadcnButton> }
+                <ShadcnButton ButtonType="ShadcnButtonType.Button" Variant="ShadcnButtonVariant.Ghost" OnClick="CancelAsync" Disabled="@saving">@Localize("Cancel")</ShadcnButton>
+            </div>
+        </EditForm>
+        }
+    }
+</section>
+
+@code {
+    [Parameter, EditorRequired] public CustomerDetail Customer { get; set; } = null!;
+    [Parameter] public IReadOnlyCollection<string> Permissions { get; set; } = [];
+    [Parameter] public bool Locked { get; set; }
+    [Parameter] public EventCallback<bool> EditingChanged { get; set; }
+    [Parameter] public EventCallback<string> Saved { get; set; }
+    [Parameter, EditorRequired] public Func<string, string> Localize { get; set; } = null!;
+    private readonly CancellationTokenSource lifetime = new();
+    private string? kind, relation, version, customerVersion, error, saved;
+    private bool loading, saving, needsReload;
+    private CustomerCompanyEdit company = new();
+    private CustomerAddressEdit address = new();
+    private EmployeeAdministrationCountry[] countries = [];
+    private EditContext? editContext;
+    private IReadOnlyList<ShadcnSelectOption<int>> CountryOptions => countries.Select(country => new ShadcnSelectOption<int>(country.Id, country.Name)).ToArray();
+
+    private bool CanEditRelation(string selected)
+    {
+        var id = selected == "company" ? Customer.CompanyId : selected == "billing" ? Customer.BillingAddressId : Customer.ShippingAddressId;
+        var domain = selected == "company" ? "companies" : "addresses";
+        return Permissions.Contains("legacy-customer.customers.update", StringComparer.Ordinal) &&
+            (id is null ? Permissions.Contains($"legacy-customer.{domain}.create", StringComparer.Ordinal) :
+                Permissions.Contains($"legacy-customer.{domain}.read", StringComparer.Ordinal) && Permissions.Contains($"legacy-customer.{domain}.update", StringComparer.Ordinal));
+    }
+
+    private async Task BeginAsync(string selected)
+    {
+        if (Locked || !CanEditRelation(selected) || loading || saving) return;
+        kind = selected;
+        loading = true;
+        needsReload = false;
+        error = saved = null;
+        version = customerVersion = null;
+        editContext = null;
+        await EditingChanged.InvokeAsync(true);
+        try
+        {
+            // Re-resolve attachment IDs after uncertain creation or a concurrent reattachment.
+            using var profileResponse = await Http.GetForPresentationAsync($"/bff/customers/{Customer.Id}/versioned", lifetime.Token);
+            if (!profileResponse.IsSuccessStatusCode) { error = Failure(profileResponse.StatusCode); return; }
+            var latest = await profileResponse.Content.ReadFromJsonAsync<CustomerDetail>(lifetime.Token);
+            if (latest is null || latest.Id != Customer.Id || !ValidVersion(profileResponse.Headers.ETag?.ToString(), 8))
+            { error = Localize("InvalidResponse"); return; }
+            var id = kind == "company" ? latest.CompanyId : kind == "billing" ? latest.BillingAddressId : latest.ShippingAddressId;
+            relation = id?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "new";
+            using var response = await Http.GetForPresentationAsync($"/bff/customers/{Customer.Id}/relations/{kind}/{relation}", lifetime.Token);
+            if (!response.IsSuccessStatusCode) { error = Failure(response.StatusCode); return; }
+            version = response.Headers.ETag?.ToString();
+            customerVersion = response.Headers.TryGetValues("X-Customer-ETag", out var values) ? values.SingleOrDefault() : null;
+            var value = await response.Content.ReadFromJsonAsync<CustomerRelationDetail>(lifetime.Token);
+            if (value is null || value.CustomerId != Customer.Id || value.RelationId != id ||
+                !ValidVersion(version, 64) || !ValidVersion(customerVersion, 8) ||
+                (kind == "company" ? value.Address is not null || (id is null ? value.Company is not null : value.Company is null || value.Company.Id != id)
+                    : value.Company is not null || (id is null ? value.Address is not null : value.Address is null || value.Address.Id != id)))
+            { error = Localize("InvalidResponse"); return; }
+            company = new() { Name = value.Company?.Name ?? string.Empty, TaxNumber = value.Company?.TaxNumber, Registrar = value.Company?.Registrar };
+            address = new() { Building = value.Address?.Building, AddressLine1 = value.Address?.AddressLine1 ?? string.Empty,
+                AddressLine2 = value.Address?.AddressLine2, City = value.Address?.City, State = value.Address?.State,
+                PostalCode = value.Address?.PostalCode, CountryId = value.Address?.CountryId ?? 0 };
+            if (kind != "company")
+            {
+                using var countryResponse = await Http.GetForPresentationAsync("/bff/customers/relation-countries", lifetime.Token);
+                if (!countryResponse.IsSuccessStatusCode) { error = Localize("CountriesUnavailable"); return; }
+                countries = await countryResponse.Content.ReadFromJsonAsync<EmployeeAdministrationCountry[]>(lifetime.Token) ?? [];
+                if (countries.Length == 0 || countries.Any(country => country.Id <= 0 || string.IsNullOrWhiteSpace(country.Name)) || countries.Select(country => country.Id).Distinct().Count() != countries.Length ||
+                    address.CountryId != 0 && countries.All(country => country.Id != address.CountryId))
+                { error = Localize("CountriesUnavailable"); return; }
+            }
+            editContext = new(kind == "company" ? (object)company : address);
+        }
+        catch (OperationCanceledException) when (lifetime.IsCancellationRequested) { }
+        catch (Exception exception) when (exception is HttpRequestException or OperationCanceledException or System.Text.Json.JsonException or InvalidOperationException)
+        { error = Localize("RelationUnavailable"); }
+        finally { loading = false; }
+    }
+
+    private async Task SaveAsync()
+    {
+        if (saving || needsReload || kind is null || version is null || customerVersion is null || editContext is null || !editContext.Validate()) return;
+        saving = true;
+        error = null;
+        var sent = false;
+        try
+        {
+            using var sessionResponse = await Http.GetForPresentationAsync("/bff/session", lifetime.Token);
+            if (!sessionResponse.IsSuccessStatusCode) { error = Failure(sessionResponse.StatusCode); return; }
+            var session = await sessionResponse.Content.ReadFromJsonAsync<EmployeeSessionSummary>(lifetime.Token);
+            if (string.IsNullOrWhiteSpace(session?.CsrfToken)) { error = Localize("RelationUnavailable"); return; }
+            using var request = new HttpRequestMessage(HttpMethod.Put,
+                $"/bff/customers/{Customer.Id}/relations/{kind}/{(kind == "company" ? "" : "address/")}{relation}")
+            { Content = kind == "company" ? JsonContent.Create(company) : JsonContent.Create(address) };
+            request.Headers.Add("X-CSRF-TOKEN", session.CsrfToken);
+            request.Headers.TryAddWithoutValidation("If-Match", version);
+            request.Headers.TryAddWithoutValidation("X-Customer-If-Match", customerVersion);
+            sent = true;
+            using var response = await Http.SendAsync(request, lifetime.Token);
+            if (!response.IsSuccessStatusCode)
+            {
+                needsReload = response.StatusCode is HttpStatusCode.NotFound or HttpStatusCode.PreconditionFailed or HttpStatusCode.Conflict || (int)response.StatusCode >= 500;
+                error = needsReload ? Localize("RelationReloadRequired") : Failure(response.StatusCode);
+                return;
+            }
+            // Confirm the scoped producer acknowledgement before reporting success.
+            var newVersion = response.Headers.ETag?.ToString();
+            var newCustomerVersion = response.Headers.TryGetValues("X-Customer-ETag", out var headers) ? headers.SingleOrDefault() : null;
+            var newId = response.Headers.TryGetValues("X-Relation-Id", out var ids) ? ids.SingleOrDefault() : null;
+            if (response.StatusCode != HttpStatusCode.NoContent || !ValidVersion(newVersion, 64) || !ValidVersion(newCustomerVersion, 8) ||
+                !int.TryParse(newId, out var boundId) || boundId <= 0 || relation != "new" && newId != relation)
+            { needsReload = true; error = Localize("RelationReloadRequired"); return; }
+            var savedKind = kind;
+            saved = Localize("RelationSaved_" + kind);
+            kind = null;
+            editContext = null;
+            await EditingChanged.InvokeAsync(false);
+            await Saved.InvokeAsync(savedKind);
+        }
+        catch (OperationCanceledException) when (lifetime.IsCancellationRequested) { }
+        catch (Exception exception) when (exception is HttpRequestException or OperationCanceledException or System.Text.Json.JsonException or InvalidOperationException)
+        { needsReload = sent; error = Localize(sent ? "RelationReloadRequired" : "RelationUnavailable"); }
+        finally { saving = false; }
+    }
+
+    private string Failure(HttpStatusCode status) => Localize(status switch
+    {
+        HttpStatusCode.Unauthorized => "RelationSessionExpired", HttpStatusCode.Forbidden => "ForbiddenUpdate",
+        HttpStatusCode.NotFound => "RelationReloadRequired", HttpStatusCode.BadRequest => "ValidationFailed",
+        HttpStatusCode.TooManyRequests => "RateLimited", _ => "RelationUnavailable",
+    });
+    private static bool ValidVersion(string? value, int length) => value is not null && value.Length == length + 2 && value[0] == '"' && value[^1] == '"' &&
+        value.AsSpan(1, length).IndexOfAnyExcept("0123456789abcdefABCDEF".AsSpan()) < 0;
+    private async Task CancelAsync() { kind = null; editContext = null; error = null; await EditingChanged.InvokeAsync(false); }
+    public void Dispose() { lifetime.Cancel(); lifetime.Dispose(); }
+}

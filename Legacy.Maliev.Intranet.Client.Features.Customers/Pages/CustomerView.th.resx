@@ -119,4 +119,27 @@
   <data name="Yes" xml:space="preserve"><value>ใช่</value></data>
   <data name="No" xml:space="preserve"><value>ไม่</value></data>
   <data name="Documents" xml:space="preserve"><value>เอกสาร</value></data>
+  <data name="RelationEditing" xml:space="preserve"><value>บริษัทและที่อยู่</value></data>
+  <data name="RelationEditingDescription" xml:space="preserve"><value>บันทึกแต่ละส่วนแยกกัน การแก้ไขบริษัทหรือที่อยู่ที่ลูกค้ารายอื่นใช้ร่วมกันจะมีผลต่อลูกค้าเหล่านั้นด้วย</value></data>
+  <data name="EditRelation_company" xml:space="preserve"><value>แก้ไขบริษัท</value></data>
+  <data name="EditRelation_billing" xml:space="preserve"><value>แก้ไขที่อยู่ใบแจ้งหนี้</value></data>
+  <data name="EditRelation_shipping" xml:space="preserve"><value>แก้ไขที่อยู่จัดส่ง</value></data>
+  <data name="SaveRelation" xml:space="preserve"><value>บันทึกส่วนนี้</value></data>
+  <data name="ReloadRelation" xml:space="preserve"><value>โหลดข้อมูลส่วนนี้ใหม่</value></data>
+  <data name="RelationReloadRequired" xml:space="preserve"><value>ข้อมูลเปลี่ยนแปลงหรือยังยืนยันผลการบันทึกไม่ได้ กรุณาโหลดข้อมูลส่วนนี้ใหม่ก่อนบันทึกอีกครั้ง</value></data>
+  <data name="RelationUnavailable" xml:space="preserve"><value>ส่วนนี้ไม่พร้อมใช้งานชั่วคราว กรุณายกเลิกแล้วลองโหลดใหม่</value></data>
+  <data name="RelationSessionExpired" xml:space="preserve"><value>เซสชันหมดอายุ กรุณาเข้าสู่ระบบอีกครั้งก่อนแก้ไข</value></data>
+  <data name="CountriesUnavailable" xml:space="preserve"><value>ไม่สามารถโหลดตัวเลือกประเทศได้ ยังไม่ได้ส่งการแก้ไขที่อยู่</value></data>
+  <data name="RelationSaved_company" xml:space="preserve"><value>บันทึกบริษัทแล้ว</value></data>
+  <data name="RelationSaved_billing" xml:space="preserve"><value>บันทึกที่อยู่ใบแจ้งหนี้แล้ว</value></data>
+  <data name="RelationSaved_shipping" xml:space="preserve"><value>บันทึกที่อยู่จัดส่งแล้ว</value></data>
+  <data name="Building" xml:space="preserve"><value>อาคาร</value></data>
+  <data name="AddressLine1" xml:space="preserve"><value>ที่อยู่บรรทัดที่ 1</value></data>
+  <data name="AddressLine2" xml:space="preserve"><value>ที่อยู่บรรทัดที่ 2</value></data>
+  <data name="City" xml:space="preserve"><value>เมือง / อำเภอ</value></data>
+  <data name="State" xml:space="preserve"><value>รัฐ / จังหวัด</value></data>
+  <data name="PostalCode" xml:space="preserve"><value>รหัสไปรษณีย์</value></data>
+  <data name="Country" xml:space="preserve"><value>ประเทศ</value></data>
+  <data name="SelectCountry" xml:space="preserve"><value>เลือกประเทศ</value></data>
+  <data name="RelationPermissionRequired" xml:space="preserve"><value>สิทธิ์ปัจจุบันของคุณไม่อนุญาตให้แก้ไขบริษัทหรือที่อยู่</value></data>
 </root>

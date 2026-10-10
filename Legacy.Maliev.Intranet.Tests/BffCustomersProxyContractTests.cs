@@ -22,6 +22,8 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.IdentityModel.Tokens;
 using BffProgram = Bff::Program;
 using CustomersProxy = Bff::Legacy.Maliev.Intranet.Bff.Customers.CustomersProxy;
+using RelationCountryClient = Bff::Legacy.Maliev.Intranet.Bff.Employees.EmployeeAdministrationCountryClient;
+using CustomerRelationClient = Bff::Legacy.Maliev.Intranet.Bff.Customers.CustomerRelationClient;
 using CustomerUpdateProxy = Bff::Legacy.Maliev.Intranet.Bff.Customers.CustomerUpdateProxy;
 
 namespace Legacy.Maliev.Intranet.Tests;
@@ -1136,6 +1138,273 @@ public sealed class BffCustomersProxyContractTests
         new TaskCanceledException("customer timeout"),
     };
 
+    [Theory]
+    [InlineData("company", "77")]
+    [InlineData("company", "new")]
+    [InlineData("billing", "78")]
+    [InlineData("billing", "new")]
+    [InlineData("shipping", "79")]
+    [InlineData("shipping", "new")]
+    public async Task Relations_ExistingAndNewWritesKeepLiteralFieldsBothVersionsAndEmployeeCredential(string kind, string relation)
+    {
+        var downstream = new RelationHandler(kind, relation);
+        await using var factory = RelationFactory(downstream);
+        using var client = CreateClient(factory);
+        await SignInAsync(client);
+        using var read = await client.GetAsync($"/bff/customers/42/relations/{kind}/{relation}");
+        Assert.Equal(HttpStatusCode.OK, read.StatusCode);
+        Assert.Equal(RelationHandler.Version, read.Headers.ETag!.ToString());
+        Assert.Equal("\"00000001\"", Assert.Single(read.Headers.GetValues("X-Customer-ETag")));
+        Assert.Contains("no-store", read.Headers.CacheControl!.ToString(), StringComparison.Ordinal);
+        using var write = await SendRelationAsync(client, kind, relation);
+        Assert.Equal(HttpStatusCode.NoContent, write.StatusCode);
+        Assert.Equal(RelationHandler.Version, downstream.IfMatch);
+        Assert.Equal("\"00000001\"", downstream.CustomerIfMatch);
+        Assert.Equal("Bearer server-only-access-token", downstream.Authorization);
+        Assert.Equal(1, downstream.Writes);
+        using var payload = System.Text.Json.JsonDocument.Parse(downstream.Payload!);
+        Assert.Equal(kind == "company" ? 3 : 7, payload.RootElement.EnumerateObject().Count());
+        Assert.Equal(" บริษัท ไทย ", payload.RootElement.GetProperty(kind == "company" ? "Name" : "AddressLine1").GetString());
+        Assert.DoesNotContain("relationId", downstream.Payload!, StringComparison.Ordinal);
+        Assert.DoesNotContain("modifiedDate", downstream.Payload!, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("company", "77")]
+    [InlineData("company", "new")]
+    [InlineData("billing", "78")]
+    [InlineData("shipping", "new")]
+    public async Task Relations_MissingExactCurrentPermissionRejectsBeforeDownstream(string kind, string relation)
+    {
+        var downstream = new RelationHandler(kind, relation);
+        await using var factory = RelationFactory(downstream, []);
+        using var client = CreateClient(factory);
+        await SignInAsync(client);
+        using var read = await client.GetAsync($"/bff/customers/42/relations/{kind}/{relation}");
+        using var write = await SendRelationAsync(client, kind, relation);
+        Assert.Equal(HttpStatusCode.Forbidden, read.StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, write.StatusCode);
+        Assert.Equal(0, downstream.Reads + downstream.Writes);
+    }
+
+    [Theory]
+    [InlineData(false, "valid", "valid", 400)]
+    [InlineData(true, null, "valid", 428)]
+    [InlineData(true, "valid", null, 428)]
+    [InlineData(true, "W/\"bad\"", "valid", 400)]
+    [InlineData(true, "valid", "*", 400)]
+    public async Task Relations_CsrfAndBothCapturedValidatorsAreRequiredBeforeAnyDownstream(bool csrf, string? version, string? customerVersion, int expected)
+    {
+        var downstream = new RelationHandler("company", "77");
+        await using var factory = RelationFactory(downstream);
+        using var client = CreateClient(factory);
+        await SignInAsync(client);
+        using var response = await SendRelationAsync(client, "company", "77", csrf, version, customerVersion);
+        Assert.Equal(expected, (int)response.StatusCode);
+        Assert.Equal(0, downstream.Reads + downstream.Writes);
+    }
+
+    [Theory]
+    [InlineData("owner", 404)]
+    [InlineData("relation-version", 412)]
+    [InlineData("customer-version", 412)]
+    [InlineData("projection", 502)]
+    public async Task Relations_BoundIdOrStaleEitherVersionNeverStartsWrite(string rejection, int expected)
+    {
+        var downstream = new RelationHandler("billing", "78") { Rejection = rejection };
+        await using var factory = RelationFactory(downstream);
+        using var client = CreateClient(factory);
+        await SignInAsync(client);
+        using var response = await SendRelationAsync(client, "billing", "78");
+        Assert.Equal(expected, (int)response.StatusCode);
+        Assert.Equal(0, downstream.Writes);
+    }
+
+    [Theory]
+    [InlineData(400)]
+    [InlineData(401)]
+    [InlineData(403)]
+    [InlineData(404)]
+    [InlineData(409)]
+    [InlineData(412)]
+    [InlineData(429)]
+    [InlineData(503)]
+    public async Task Relations_ProducerWriteFailureIsBoundedAndNotReplayed(int status)
+    {
+        var downstream = new RelationHandler("shipping", "79") { WriteStatus = status };
+        await using var factory = RelationFactory(downstream);
+        using var client = CreateClient(factory);
+        await SignInAsync(client);
+        using var response = await SendRelationAsync(client, "shipping", "79");
+        Assert.Equal(status, (int)response.StatusCode);
+        Assert.Equal(1, downstream.Writes);
+    }
+
+    [Theory]
+    [InlineData("unknown", "77", 400)]
+    [InlineData("company", "0", 400)]
+    [InlineData("billing", "-1", 400)]
+    [InlineData("company", "077", 400)]
+    public async Task Relations_InvalidKindOrIdentifierIsRejectedBeforeAnyDownstream(string kind, string relation, int expected)
+    {
+        var downstream = new RelationHandler("company", "77");
+        await using var factory = RelationFactory(downstream);
+        using var client = CreateClient(factory);
+        await SignInAsync(client);
+        using var response = await SendRelationAsync(client, kind, relation);
+        Assert.Equal(expected, (int)response.StatusCode);
+        Assert.Equal(0, downstream.Reads + downstream.Writes);
+    }
+
+    [Fact]
+    public async Task Relations_AnonymousRequestIsUnauthorizedBeforeDownstream()
+    {
+        var downstream = new RelationHandler("company", "77");
+        await using var factory = RelationFactory(downstream);
+        using var client = CreateClient(factory);
+        using var response = await client.GetAsync("/bff/customers/42/relations/company/77");
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        Assert.Equal(0, downstream.Reads + downstream.Writes);
+    }
+
+    [Theory]
+    [InlineData("company", "{\"name\":\" \",\"taxNumber\":null,\"registrar\":null}")]
+    [InlineData("company", "{\"name\":\"Valid\",\"relationId\":9}")]
+    [InlineData("billing", "{\"addressLine1\":\"Valid\",\"countryId\":0}")]
+    [InlineData("shipping", "{\"addressLine1\":\"Valid\",\"countryId\":1,\"customerId\":99}")]
+    public async Task Relations_InvalidPayloadCannotMassAssignOrStartTransport(string kind, string payload)
+    {
+        var downstream = new RelationHandler(kind, "new");
+        await using var factory = RelationFactory(downstream);
+        using var client = CreateClient(factory);
+        await SignInAsync(client);
+        using var session = await client.GetAsync("/bff/session");
+        var state = await session.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>();
+        using var request = new HttpRequestMessage(HttpMethod.Put, $"/bff/customers/42/relations/{kind}/{(kind == "company" ? "" : "address/")}new")
+        { Content = new StringContent(payload, Encoding.UTF8, "application/json") };
+        request.Headers.Add("X-CSRF-TOKEN", state.GetProperty("csrfToken").GetString());
+        request.Headers.TryAddWithoutValidation("If-Match", RelationHandler.Version);
+        request.Headers.TryAddWithoutValidation("X-Customer-If-Match", "\"00000001\"");
+        using var response = await client.SendAsync(request);
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal(0, downstream.Reads + downstream.Writes);
+    }
+
+    [Fact]
+    public async Task Relations_MalformedCommittedAcknowledgementIsNotAcceptedOrReplayed()
+    {
+        var downstream = new RelationHandler("company", "new") { OmitSuccessVersions = true };
+        await using var factory = RelationFactory(downstream);
+        using var client = CreateClient(factory);
+        await SignInAsync(client);
+        using var response = await SendRelationAsync(client, "company", "new");
+        Assert.Equal(HttpStatusCode.BadGateway, response.StatusCode);
+        Assert.Equal(1, downstream.Writes);
+    }
+
+    [Fact]
+    public async Task Relations_UnregisteredCountryRejectsBeforeCustomerTransport()
+    {
+        var downstream = new RelationHandler("shipping", "new");
+        await using var factory = RelationFactory(downstream);
+        using var client = CreateClient(factory);
+        await SignInAsync(client);
+        using var session = await client.GetAsync("/bff/session");
+        var state = await session.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>();
+        using var request = new HttpRequestMessage(HttpMethod.Put, "/bff/customers/42/relations/shipping/address/new")
+        { Content = JsonContent.Create(new CustomerAddressEdit { AddressLine1 = "Literal", CountryId = 999 }) };
+        request.Headers.Add("X-CSRF-TOKEN", state.GetProperty("csrfToken").GetString());
+        request.Headers.TryAddWithoutValidation("If-Match", RelationHandler.Version);
+        request.Headers.TryAddWithoutValidation("X-Customer-If-Match", "\"00000001\"");
+        using var response = await client.SendAsync(request);
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal(0, downstream.Reads + downstream.Writes);
+    }
+
+    [Fact]
+    public async Task Relations_UpstreamCompanyWireUsesPascalCaseAndOmitsNullMetadata()
+    {
+        var downstream = new RelationHandler("company", "new");
+        await using var factory = RelationFactory(downstream);
+        using var client = CreateClient(factory);
+        await SignInAsync(client);
+        using var response = await SendRelationAsync(client, "company", "new", omitOptional: true);
+        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+        using var payload = System.Text.Json.JsonDocument.Parse(downstream.Payload!);
+        var field = Assert.Single(payload.RootElement.EnumerateObject());
+        Assert.Equal("Name", field.Name);
+        Assert.Equal(" บริษัท ไทย ", field.Value.GetString());
+    }
+
+    private static CustomersBffFactory RelationFactory(RelationHandler handler, string[]? permissions = null) =>
+        new(handler, false, hasReadPermission: true, hasUpdatePermission: true, updateDownstream: handler,
+            relationPermissions: permissions ?? ["legacy-customer.companies.read", "legacy-customer.companies.update", "legacy-customer.companies.create",
+                "legacy-customer.addresses.read", "legacy-customer.addresses.update", "legacy-customer.addresses.create"]);
+
+    private static async Task<HttpResponseMessage> SendRelationAsync(HttpClient client, string kind, string relation,
+        bool csrf = true, string? version = "valid", string? customerVersion = "valid", bool omitOptional = false)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Put,
+            $"/bff/customers/42/relations/{kind}/{(kind == "company" ? "" : "address/")}{relation}")
+        {
+            Content = kind == "company" ? JsonContent.Create(new CustomerCompanyEdit { Name = " บริษัท ไทย ", TaxNumber = omitOptional ? null : " 010 ", Registrar = omitOptional ? null : " กรุงเทพ " })
+                : JsonContent.Create(new CustomerAddressEdit { Building = " อาคาร ", AddressLine1 = " บริษัท ไทย ", AddressLine2 = " ชั้น 2 ", City = " กรุงเทพ ", State = " กรุงเทพ ", PostalCode = " 10100 ", CountryId = 1 }),
+        };
+        if (csrf)
+        {
+            using var sessionResponse = await client.GetAsync("/bff/session");
+            var session = await sessionResponse.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>();
+            request.Headers.Add("X-CSRF-TOKEN", session.GetProperty("csrfToken").GetString());
+        }
+        if (version is not null) request.Headers.TryAddWithoutValidation("If-Match", version == "valid" ? RelationHandler.Version : version);
+        if (customerVersion is not null) request.Headers.TryAddWithoutValidation("X-Customer-If-Match", customerVersion == "valid" ? "\"00000001\"" : customerVersion);
+        return await client.SendAsync(request);
+    }
+
+    private sealed class RelationHandler(string kind, string relation) : HttpMessageHandler
+    {
+        public static string Version => "\"" + new string('a', 64) + "\"";
+        public int Reads { get; private set; }
+        public int Writes { get; private set; }
+        public string? IfMatch { get; private set; }
+        public string? CustomerIfMatch { get; private set; }
+        public string? Payload { get; private set; }
+        public string? Authorization { get; private set; }
+        public string? Rejection { get; init; }
+        public int WriteStatus { get; init; } = 204;
+        public bool OmitSuccessVersions { get; init; }
+        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken token)
+        {
+            Authorization = request.Headers.Authorization?.ToString();
+            var id = relation == "new" ? (int?)null : int.Parse(relation, System.Globalization.CultureInfo.InvariantCulture);
+            var value = new CustomerRelationDetail(Rejection == "projection" ? 99 : 42, id,
+                kind == "company" && id is not null ? new(id.Value, "Original", null, null, null, null) : null,
+                kind != "company" && id is not null ? new(id.Value, null, "Original", null, null, null, null, 1, null, null) : null);
+            HttpResponseMessage response;
+            if (request.Method == HttpMethod.Get)
+            {
+                Reads++;
+                Assert.Equal($"/customers/42/relations/{kind}/{(kind == "company" ? "" : "address/")}{relation}{(relation == "new" ? "" : "/edit")}", request.RequestUri!.AbsolutePath);
+                response = new(Rejection == "owner" ? HttpStatusCode.NotFound : HttpStatusCode.OK) { Content = JsonContent.Create(value) };
+            }
+            else
+            {
+                Writes++;
+                Assert.Equal(HttpMethod.Put, request.Method);
+                Assert.Equal($"/customers/42/relations/{kind}/{(kind == "company" ? "" : "address/")}{relation}/versioned", request.RequestUri!.AbsolutePath);
+                IfMatch = Assert.Single(request.Headers.GetValues("If-Match"));
+                CustomerIfMatch = Assert.Single(request.Headers.GetValues("X-Customer-If-Match"));
+                Payload = await request.Content!.ReadAsStringAsync(token);
+                response = new((HttpStatusCode)WriteStatus);
+                response.Headers.Add("X-Relation-Id", (id ?? 80).ToString(System.Globalization.CultureInfo.InvariantCulture));
+            }
+            if (request.Method == HttpMethod.Put && OmitSuccessVersions) return response;
+            response.Headers.ETag = new(Rejection == "relation-version" ? "\"" + new string('b', 64) + "\"" : Version);
+            response.Headers.Add("X-Customer-ETag", Rejection == "customer-version" ? "\"00000002\"" : "\"00000001\"");
+            return response;
+        }
+    }
+
     private static HttpClient CreateClient(WebApplicationFactory<BffProgram> factory) =>
         factory.CreateClient(new WebApplicationFactoryClientOptions
         {
@@ -1238,7 +1507,8 @@ public sealed class BffCustomersProxyContractTests
         HttpMessageHandler? identityDownstream = null,
         bool hasReadPermission = false,
         bool hasUpdatePermission = false,
-        HttpMessageHandler? updateDownstream = null)
+        HttpMessageHandler? updateDownstream = null,
+        string[]? relationPermissions = null)
         : WebApplicationFactory<BffProgram>
     {
         protected override void ConfigureWebHost(IWebHostBuilder builder)
@@ -1251,12 +1521,16 @@ public sealed class BffCustomersProxyContractTests
             builder.ConfigureServices(services =>
             {
                 services.RemoveAll<ILegacyAuthClient>();
-                services.AddSingleton<ILegacyAuthClient>(new CustomersAuthClient(hasPermission, hasCreatePermission, hasReadPermission, hasUpdatePermission));
+                services.AddSingleton<ILegacyAuthClient>(new CustomersAuthClient(hasPermission, hasCreatePermission, hasReadPermission, hasUpdatePermission, relationPermissions));
                 services.RemoveAll<IServiceAccessTokenProvider>();
                 services.AddSingleton<IServiceAccessTokenProvider>(new CustomersServiceTokenProvider(serviceToken));
                 services.AddHttpClient<CustomersProxy>()
                     .ConfigurePrimaryHttpMessageHandler(() => downstream);
                 services.AddHttpClient<CustomerUpdateProxy>()
+                    .ConfigurePrimaryHttpMessageHandler(() => updateDownstream ?? downstream);
+                services.AddHttpClient<RelationCountryClient>()
+                    .ConfigurePrimaryHttpMessageHandler(() => new RecordingCustomerHandler(HttpStatusCode.OK, "[{\"id\":1,\"name\":\"Thailand\"}]"));
+                services.AddHttpClient<CustomerRelationClient>()
                     .ConfigurePrimaryHttpMessageHandler(() => updateDownstream ?? downstream);
                 services.RemoveAll<ICustomerProfileCreationClient>();
                 services.AddHttpClient<ICustomerProfileCreationClient, CustomerProfileCreationClient>()
@@ -1278,7 +1552,7 @@ public sealed class BffCustomersProxyContractTests
         }
     }
 
-    private sealed class CustomersAuthClient(bool hasPermission, bool hasCreatePermission, bool hasReadPermission, bool hasUpdatePermission) : ILegacyAuthClient
+    private sealed class CustomersAuthClient(bool hasPermission, bool hasCreatePermission, bool hasReadPermission, bool hasUpdatePermission, string[]? relationPermissions = null) : ILegacyAuthClient
     {
         public Task<EmployeeLoginResult> LoginAsync(string email, string password, CancellationToken cancellationToken) =>
             Task.FromResult(new EmployeeLoginResult(
@@ -1289,6 +1563,7 @@ public sealed class BffCustomersProxyContractTests
                     email,
                     email,
                     [
+                        .. relationPermissions ?? Array.Empty<string>(),
                         .. hasPermission ? ["legacy-customer.customers.list"] : Array.Empty<string>(),
                         .. hasCreatePermission ? ["legacy-customer.customers.create"] : Array.Empty<string>(),
                         .. hasReadPermission ? ["legacy-customer.customers.read"] : Array.Empty<string>(),

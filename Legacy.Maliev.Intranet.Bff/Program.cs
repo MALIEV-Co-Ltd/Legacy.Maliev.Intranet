@@ -159,6 +159,14 @@ builder.Services.AddHttpClient<CustomerUpdateProxy>(client =>
     client.Timeout = TimeSpan.FromSeconds(10);
 }).RemoveAllResilienceHandlers()
     .AddHttpMessageHandler<LegacyServiceAuthenticationHandler>();
+builder.Services.AddHttpClient<CustomerRelationClient>(client =>
+{
+    client.BaseAddress = new Uri(builder.Configuration["Services:Customer"]
+        ?? throw new InvalidOperationException("Services:Customer is required."));
+    client.Timeout = TimeSpan.FromSeconds(10);
+    client.MaxResponseContentBufferSize = 65536;
+}).RemoveAllResilienceHandlers()
+    .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler { AllowAutoRedirect = false });
 builder.Services.AddHttpClient<EmployeesProxy>(client =>
 {
     client.BaseAddress = new Uri(builder.Configuration["Services:Employee"]
@@ -2101,6 +2109,17 @@ app.MapGet("/bff/customers/{id:int}/versioned", CustomerVersionedEndpointMapper.
     .RequireAuthorization(LegacyEmployeePermissions.CustomersRead);
 
 app.MapPut("/bff/customers/{id:int}/versioned", CustomerVersionedEndpointMapper.UpdateAsync)
+    .AddEndpointFilter<AntiforgeryValidationFilter>()
+    .RequireAuthorization(LegacyEmployeePermissions.CustomersUpdate);
+
+app.MapGet("/bff/customers/relation-countries", CustomerRelationEndpointMapper.CountriesAsync)
+    .RequireAuthorization(LegacyEmployeePermissions.CustomersUpdate);
+app.MapGet("/bff/customers/{id:int}/relations/{kind}/{relation}", CustomerRelationEndpointMapper.ReadAsync)
+    .RequireAuthorization(LegacyEmployeePermissions.CustomersUpdate);
+app.MapPut("/bff/customers/{id:int}/relations/company/{relation}", CustomerRelationEndpointMapper.SaveCompanyAsync)
+    .AddEndpointFilter<AntiforgeryValidationFilter>()
+    .RequireAuthorization(LegacyEmployeePermissions.CustomersUpdate);
+app.MapPut("/bff/customers/{id:int}/relations/{kind}/address/{relation}", CustomerRelationEndpointMapper.SaveAddressAsync)
     .AddEndpointFilter<AntiforgeryValidationFilter>()
     .RequireAuthorization(LegacyEmployeePermissions.CustomersUpdate);
 

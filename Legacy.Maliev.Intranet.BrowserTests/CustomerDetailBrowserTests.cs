@@ -610,6 +610,483 @@ public sealed class CustomerDetailBrowserTests(
         return directory?.FullName ?? throw new DirectoryNotFoundException("Could not locate repository root.");
     }
 
+    [Theory]
+    [InlineData("company", false, "en-US")]
+    [InlineData("company", true, "th-TH")]
+    [InlineData("billing", false, "en-US")]
+    [InlineData("billing", true, "th-TH")]
+    [InlineData("shipping", false, "en-US")]
+    [InlineData("shipping", true, "th-TH")]
+    public async Task CompanyAndAddressEditorsPreserveLiteralValuesScopedVersionsAndReload(string kind, bool create, string culture)
+    {
+        await using var context = await playwright.Browser.NewContextAsync(new() { ViewportSize = new() { Width = 390, Height = 900 } });
+        await context.AddInitScriptAsync($"localStorage.setItem('maliev_culture', '{culture}')");
+        var page = await context.NewPageAsync();
+        await StubCustomerDetailBoundariesAsync(page, ["legacy-customer.customers.read", "legacy-customer.customers.update", "legacy-customer.companies.read", "legacy-customer.companies.update", "legacy-customer.companies.create", "legacy-customer.addresses.read", "legacy-customer.addresses.update", "legacy-customer.addresses.create"]);
+        var profile = System.Text.Json.Nodes.JsonNode.Parse(JsonSerializer.Serialize(CreateCustomer()))!;
+        var field = kind == "company" ? "company" : kind == "billing" ? "billingAddress" : "shippingAddress";
+        if (create) { profile[field + "Id"] = null; profile[field] = null; }
+        var originalRevision = "\"00000001\"";
+        var relationVersion = "\"" + new string('a', 64) + "\"";
+        var writes = 0;
+        await page.RouteAsync("**/bff/customers/69738/versioned", route => route.FulfillAsync(new()
+        {
+            Status = 200,
+            ContentType = "application/json",
+            Body = profile.ToJsonString(),
+            Headers = new Dictionary<string, string> { ["etag"] = originalRevision },
+        }));
+        await page.RouteAsync("**/bff/customers/relation-countries", route => route.FulfillAsync(new()
+        { Status = 200, ContentType = "application/json", Body = "[{\"id\":764,\"name\":\"Thailand\"}]" }));
+        await page.RouteAsync("**/bff/customers/69738/relations/**", async route =>
+        {
+            var relationId = profile[field + "Id"]?.GetValue<int>();
+            if (route.Request.Method == "GET")
+            {
+                await route.FulfillAsync(new()
+                {
+                    Status = 200,
+                    ContentType = "application/json",
+                    Headers = new Dictionary<string, string> { ["etag"] = relationVersion, ["x-customer-etag"] = originalRevision },
+                    Body = JsonSerializer.Serialize(new
+                    {
+                        customerId = 69738,
+                        relationId,
+                        company = kind == "company" ? profile[field] : null,
+                        address = kind == "company" ? null : profile[field]
+                    }),
+                });
+                return;
+            }
+            Assert.Equal(originalRevision, route.Request.Headers["x-customer-if-match"]);
+            Assert.Equal(relationVersion, route.Request.Headers["if-match"]);
+            Assert.Equal("customer-detail-browser-csrf", route.Request.Headers["x-csrf-token"]);
+            Assert.Contains(kind == "company" ? $"/relations/company/{(create ? "new" : "77")}" : $"/relations/{kind}/address/{(create ? "new" : kind == "billing" ? "101" : "102")}", route.Request.Url, StringComparison.Ordinal);
+            var payload = System.Text.Json.Nodes.JsonNode.Parse(route.Request.PostData!)!;
+            Assert.Equal(" บริษัท ไทย ", payload[kind == "company" ? "name" : "addressLine1"]!.GetValue<string>());
+            Assert.Null(payload["relationId"]);
+            Assert.Null(payload["modifiedDate"]);
+            writes++;
+            relationId ??= 200;
+            payload["id"] = relationId.Value;
+            profile[field] = payload;
+            profile[field + "Id"] = relationId.Value;
+            await route.FulfillAsync(new()
+            {
+                Status = 204,
+                Headers = new Dictionary<string, string>
+                { ["etag"] = relationVersion, ["x-customer-etag"] = "\"00000002\"", ["x-relation-id"] = relationId.Value.ToString(System.Globalization.CultureInfo.InvariantCulture) }
+            });
+        });
+        await page.GotoAsync(new Uri(server.BaseUri, "Customers/View?id=69738").AbsoluteUri);
+        var thai = culture == "th-TH";
+        var editName = kind == "company" ? (thai ? "แก้ไขบริษัท" : "Edit company") : kind == "billing" ? (thai ? "แก้ไขที่อยู่ใบแจ้งหนี้" : "Edit billing address") : thai ? "แก้ไขที่อยู่จัดส่ง" : "Edit shipping address";
+        await ClickWithGeometryDiagnosticsAsync(page.GetByRole(AriaRole.Button, new() { Name = editName, Exact = true }));
+        await page.Locator(kind == "company" ? "#relation-company-name" : "#relation-AddressLine1").FillAsync(" บริษัท ไทย ");
+        if (create && kind != "company")
+        {
+            await ClickWithGeometryDiagnosticsAsync(page.Locator("#relation-country"));
+            await ClickWithGeometryDiagnosticsAsync(page.GetByRole(AriaRole.Option, new() { Name = "Thailand", Exact = true }));
+        }
+        await ClickWithGeometryDiagnosticsAsync(page.GetByRole(AriaRole.Button, new() { Name = thai ? "บันทึกส่วนนี้" : "Save this section", Exact = true }));
+        var success = kind == "company" ? (thai ? "บันทึกบริษัทแล้ว" : "Company saved.") : kind == "billing" ? (thai ? "บันทึกที่อยู่ใบแจ้งหนี้แล้ว" : "Billing address saved.") : thai ? "บันทึกที่อยู่จัดส่งแล้ว" : "Shipping address saved.";
+        await page.GetByText(success, new() { Exact = true }).WaitForAsync();
+        Assert.Equal(1, writes);
+        Assert.Equal(390, await page.EvaluateAsync<int>("() => document.documentElement.scrollWidth"));
+    }
+
+    [Theory]
+    [InlineData(409)]
+    [InlineData(412)]
+    [InlineData(502)]
+    [InlineData(503)]
+    public async Task UncertainOrStaleRelationWriteRequiresFreshReadBeforeAnotherSubmission(int status)
+    {
+        await using var context = await playwright.Browser.NewContextAsync(new() { ViewportSize = new() { Width = 1280, Height = 900 } });
+        var page = await context.NewPageAsync();
+        await StubCustomerDetailBoundariesAsync(page, ["legacy-customer.customers.read", "legacy-customer.customers.update", "legacy-customer.companies.read", "legacy-customer.companies.update", "legacy-customer.companies.create", "legacy-customer.addresses.read", "legacy-customer.addresses.update", "legacy-customer.addresses.create"]);
+        var writes = 0;
+        await page.RouteAsync("**/bff/customers/69738/relations/company/77", async route =>
+        {
+            if (route.Request.Method == "PUT") { writes++; await route.FulfillAsync(new() { Status = status }); return; }
+            await route.FulfillAsync(new()
+            {
+                Status = 200,
+                ContentType = "application/json",
+                Headers = new Dictionary<string, string> { ["etag"] = "\"" + new string('a', 64) + "\"", ["x-customer-etag"] = "\"00000001\"" },
+                Body = JsonSerializer.Serialize(new { customerId = 69738, relationId = 77, company = new { id = 77, name = "Original" }, address = (object?)null })
+            });
+        });
+        await page.GotoAsync(new Uri(server.BaseUri, "Customers/View?id=69738").AbsoluteUri);
+        await page.GetByRole(AriaRole.Button, new() { Name = "Edit company", Exact = true }).ClickAsync();
+        var save = page.GetByRole(AriaRole.Button, new() { Name = "Save this section", Exact = true });
+        await save.ClickAsync();
+        await Assertions.Expect(save).ToBeDisabledAsync();
+        Assert.Equal(1, writes);
+        Assert.Equal(1, await page.GetByRole(AriaRole.Button, new() { Name = "Reload this section", Exact = true }).CountAsync());
+        await page.GetByRole(AriaRole.Button, new() { Name = "Reload this section", Exact = true }).ClickAsync();
+        await Assertions.Expect(save).ToBeEnabledAsync();
+        Assert.Equal(1, writes);
+    }
+
+    [Fact]
+    public async Task CurrentIssuerPermissionsLeaveRelationEditorsDisabled()
+    {
+        await using var context = await playwright.Browser.NewContextAsync();
+        var page = await context.NewPageAsync();
+        // Current issuer has profile permissions, but no company/address permission claims.
+        await StubCustomerDetailBoundariesAsync(page);
+        await page.GotoAsync(new Uri(server.BaseUri, "Customers/View?id=69738").AbsoluteUri);
+        foreach (var name in new[] { "Edit company", "Edit billing address", "Edit shipping address" })
+            await Assertions.Expect(page.GetByRole(AriaRole.Button, new() { Name = name, Exact = true })).ToBeDisabledAsync();
+        await page.GetByText("Your current permissions do not allow company or address edits.", new() { Exact = true }).WaitForAsync();
+    }
+
+    [Fact]
+    public async Task CountryReadFailureDoesNotOfferOrSendAnAddressWrite()
+    {
+        await using var context = await playwright.Browser.NewContextAsync();
+        var page = await context.NewPageAsync();
+        await StubCustomerDetailBoundariesAsync(page, ["legacy-customer.customers.read", "legacy-customer.customers.update", "legacy-customer.addresses.read", "legacy-customer.addresses.update"]);
+        var writes = 0;
+        await page.RouteAsync("**/bff/customers/relation-countries", route => route.FulfillAsync(new() { Status = 503 }));
+        await page.RouteAsync("**/bff/customers/69738/relations/**", async route =>
+        {
+            if (route.Request.Method == "PUT") { writes++; await route.FulfillAsync(new() { Status = 500 }); return; }
+            await route.FulfillAsync(new()
+            {
+                Status = 200,
+                ContentType = "application/json",
+                Headers = new Dictionary<string, string> { ["etag"] = "\"" + new string('a', 64) + "\"", ["x-customer-etag"] = "\"00000001\"" },
+                Body = JsonSerializer.Serialize(new
+                {
+                    customerId = 69738,
+                    relationId = 101,
+                    company = (object?)null,
+                    address = new { id = 101, addressLine1 = "Original", countryId = 764 }
+                })
+            });
+        });
+        await page.GotoAsync(new Uri(server.BaseUri, "Customers/View?id=69738").AbsoluteUri);
+        await page.GetByRole(AriaRole.Button, new() { Name = "Edit billing address", Exact = true }).ClickAsync();
+        await page.GetByText("Country choices are unavailable. No address change has been sent.", new() { Exact = true }).WaitForAsync();
+        Assert.Equal(0, await page.GetByRole(AriaRole.Button, new() { Name = "Save this section", Exact = true }).CountAsync());
+        Assert.Equal(0, writes);
+        await page.GetByRole(AriaRole.Button, new() { Name = "Cancel", Exact = true }).ClickAsync();
+        await Assertions.Expect(page.GetByRole(AriaRole.Button, new() { Name = "Edit customer", Exact = true })).ToBeEnabledAsync();
+    }
+
+    [Theory]
+    [InlineData(false, 404)]
+    [InlineData(true, 503)]
+    [InlineData(true, 204)]
+    public async Task ChangedBindingOrUncertainCreationReloadsFreshAttachmentBeforeExplicitNextWrite(bool create, int firstStatus)
+    {
+        await using var context = await playwright.Browser.NewContextAsync(new() { ViewportSize = new() { Width = 390, Height = 900 } });
+        var page = await context.NewPageAsync();
+        // Controlled claims and producer responses exercise the actual published WASM component.
+        await StubCustomerDetailBoundariesAsync(page, ["legacy-customer.customers.read", "legacy-customer.customers.update",
+            "legacy-customer.companies.read", "legacy-customer.companies.update", "legacy-customer.companies.create"]);
+        var profile = System.Text.Json.Nodes.JsonNode.Parse(JsonSerializer.Serialize(CreateCustomer()))!;
+        if (create) { profile["companyId"] = null; profile["company"] = null; }
+        var writes = 0;
+        var creations = 0;
+        var reads = new List<string>();
+        var relationVersion = "\"" + new string('a', 64) + "\"";
+        var customerVersion = "\"00000001\"";
+        await page.RouteAsync("**/bff/customers/69738/versioned", route =>
+        {
+            reads.Add("profile:" + (profile["companyId"]?.GetValue<int>().ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "new"));
+            return route.FulfillAsync(new()
+            {
+                Status = 200,
+                ContentType = "application/json",
+                Body = profile.ToJsonString(),
+                Headers = new Dictionary<string, string> { ["etag"] = customerVersion }
+            });
+        });
+        await page.RouteAsync("**/bff/customers/69738/relations/company/*", async route =>
+        {
+            var selected = new Uri(route.Request.Url).Segments[^1];
+            if (route.Request.Method == "GET")
+            {
+                reads.Add("relation:" + selected);
+                Assert.Equal(profile["companyId"]?.GetValue<int>().ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "new", selected);
+                await route.FulfillAsync(new()
+                {
+                    Status = 200,
+                    ContentType = "application/json",
+                    Headers = new Dictionary<string, string> { ["etag"] = relationVersion, ["x-customer-etag"] = customerVersion },
+                    Body = JsonSerializer.Serialize(new
+                    {
+                        customerId = 69738,
+                        relationId = profile["companyId"]?.GetValue<int>(),
+                        company = profile["company"],
+                        address = (object?)null
+                    })
+                });
+                return;
+            }
+            Assert.Equal("PUT", route.Request.Method);
+            Assert.Equal(relationVersion, route.Request.Headers["if-match"]);
+            Assert.Equal(customerVersion, route.Request.Headers["x-customer-if-match"]);
+            Assert.Equal("customer-detail-browser-csrf", route.Request.Headers["x-csrf-token"]);
+            writes++;
+            if (selected == "new") creations++;
+            if (writes == 1)
+            {
+                Assert.Equal(create ? "new" : "77", selected);
+                // 404 means a different writer changed the binding. An uncertain create may have committed.
+                profile["companyId"] = 200;
+                profile["company"] = System.Text.Json.Nodes.JsonNode.Parse("{\"id\":200,\"name\":\"Fresh attached company\"}");
+                relationVersion = "\"" + new string('b', 64) + "\"";
+                customerVersion = "\"00000002\"";
+                // The 204 deliberately has no validators/ID: it is an invalid acknowledgement, not success proof.
+                await route.FulfillAsync(new() { Status = firstStatus });
+                return;
+            }
+            Assert.Equal(2, writes);
+            Assert.Equal("200", selected);
+            relationVersion = "\"" + new string('c', 64) + "\"";
+            customerVersion = "\"00000003\"";
+            await route.FulfillAsync(new()
+            {
+                Status = 204,
+                Headers = new Dictionary<string, string>
+                { ["etag"] = relationVersion, ["x-customer-etag"] = customerVersion, ["x-relation-id"] = "200" }
+            });
+        });
+        await page.GotoAsync(new Uri(server.BaseUri, "Customers/View?id=69738").AbsoluteUri);
+        await ClickWithGeometryDiagnosticsAsync(page.GetByRole(AriaRole.Button, new() { Name = "Edit company", Exact = true }));
+        if (create) await page.Locator("#relation-company-name").FillAsync("New company");
+        var save = page.GetByRole(AriaRole.Button, new() { Name = "Save this section", Exact = true });
+        await ClickWithGeometryDiagnosticsAsync(save);
+        await Assertions.Expect(save).ToBeDisabledAsync();
+        await page.GetByText("The record changed or the save outcome is uncertain. Reload this section before saving again.", new() { Exact = true }).WaitForAsync();
+        Assert.Equal(1, writes);
+        Assert.Equal(create ? 1 : 0, creations);
+        var beforeReload = reads.Count;
+        await ClickWithGeometryDiagnosticsAsync(page.GetByRole(AriaRole.Button, new() { Name = "Reload this section", Exact = true }));
+        await Assertions.Expect(save).ToBeEnabledAsync();
+        Assert.Equal(new[] { "profile:200", "relation:200" }, reads.Skip(beforeReload).ToArray());
+        await Assertions.Expect(page.Locator("#relation-company-name")).ToHaveValueAsync("Fresh attached company");
+        Assert.Equal(1, writes);
+        Assert.Equal(create ? 1 : 0, creations);
+        // Only this new employee action may issue a second PUT; it must update 200, never create again.
+        await ClickWithGeometryDiagnosticsAsync(save);
+        await page.GetByText("Company saved.", new() { Exact = true }).WaitForAsync();
+        Assert.Equal(2, writes);
+        Assert.Equal(create ? 1 : 0, creations);
+    }
+
+    private static async Task ClickWithGeometryDiagnosticsAsync(ILocator control)
+    {
+        var traceKey = Guid.NewGuid().ToString("N");
+        var trajectory = "trajectory not installed";
+        try
+        {
+            trajectory = await control.EvaluateAsync<string>("""
+                (element, key) => {
+                    const registry = window.__malievClickTrajectories ??= Object.create(null);
+                    const main = element.closest('.legacy-main-content');
+                    const describe = node => node ? { tag: String(node.tagName ?? '').slice(0, 32),
+                        classes: Array.from(node.classList ?? []).slice(0, 2).map(value => value.slice(0, 32)) } : null;
+                    const bounds = node => {
+                        if (!node) return null;
+                        const rect = node.getBoundingClientRect();
+                        return { x: rect.x, y: rect.y, width: rect.width, height: rect.height };
+                    };
+                    const geometry = node => {
+                        if (!node) return null;
+                        const style = getComputedStyle(node);
+                        return { node: describe(node), rect: bounds(node),
+                            clientHeight: node.clientHeight, scrollHeight: node.scrollHeight,
+                            clientWidth: node.clientWidth, scrollWidth: node.scrollWidth,
+                            scrollTop: node.scrollTop, scrollLeft: node.scrollLeft,
+                            style: Object.fromEntries(['display', 'position', 'transform', 'zoom', 'overflowX', 'overflowY',
+                                'contain', 'contentVisibility', 'overflowAnchor',
+                                'scrollSnapType', 'scrollPaddingTop', 'scrollMarginTop']
+                                .map(name => [name, String(style[name] ?? '').slice(0, 64)])) };
+                    };
+                    const started = performance.now();
+                    const ancestors = [];
+                    for (let node = element.parentElement, depth = 0; node && depth < 20; node = node.parentElement, depth++) {
+                        const style = getComputedStyle(node);
+                        if (node !== main && node !== document.body && node !== document.documentElement &&
+                            /auto|scroll|hidden|clip/.test(style.overflowX + style.overflowY)) ancestors.push(geometry(node));
+                        if (ancestors.length === 8) break;
+                    }
+                    const state = { initial: null, samples: [], observed: 0, stopped: false,
+                        started, timeOrigin: performance.timeOrigin, expiryAt: started + 45000,
+                        layout: { control: geometry(element), main: geometry(main),
+                            document: geometry(document.documentElement), body: geometry(document.body),
+                            topbar: geometry(document.querySelector('.legacy-topbar')), ancestors } };
+                    let frame = 0, expiry = 0;
+                    const sample = (reason, event) => {
+                        if (state.stopped) return;
+                        const rect = element.getBoundingClientRect();
+                        const x = rect.x + rect.width / 2, y = rect.y + rect.height / 2;
+                        const hit = document.elementFromPoint(x, y);
+                        const pointer = event && Number.isFinite(event.clientX) ?
+                            { x: event.clientX, y: event.clientY,
+                                hit: describe(document.elementFromPoint(event.clientX, event.clientY)) } : null;
+                        const value = { ms: Math.round(performance.now() - started), reason,
+                            connected: element.isConnected,
+                            rect: { x: rect.x, y: rect.y, width: rect.width, height: rect.height },
+                            rectCornerQuad: [rect.left, rect.top, rect.right, rect.top,
+                                rect.right, rect.bottom, rect.left, rect.bottom],
+                            clientRects: Array.from(element.getClientRects()).slice(0, 2)
+                                .map(value => ({ x: value.x, y: value.y, width: value.width, height: value.height })),
+                            mainRect: bounds(main),
+                            documentScrollTop: document.documentElement.scrollTop, bodyScrollTop: document.body.scrollTop,
+                            visual: window.visualViewport ? { height: visualViewport.height, width: visualViewport.width,
+                                offsetTop: visualViewport.offsetTop, offsetLeft: visualViewport.offsetLeft, scale: visualViewport.scale } : null,
+                            mainScrollTop: main?.scrollTop ?? null,
+                            mainScrollHeight: main?.scrollHeight ?? null,
+                            mainClientHeight: main?.clientHeight ?? null,
+                            active: describe(document.activeElement), eventTarget: describe(event?.target),
+                            centerHit: describe(hit), centerBelongs: !!hit && element.contains(hit), pointer };
+                        state.observed++;
+                        if (!state.initial) state.initial = value;
+                        else {
+                            state.samples.push(value);
+                            if (state.samples.length > 16) state.samples.shift();
+                        }
+                    };
+                    const events = ['scroll', 'focusin', 'pointerdown', 'mousedown', 'click', 'resize'];
+                    const listener = event => {
+                        sample(event.type, event);
+                        if (event.type === 'scroll' && !frame) frame = requestAnimationFrame(() => {
+                            frame = 0;
+                            sample('scroll-frame');
+                        });
+                    };
+                    state.stop = () => {
+                        if (state.stopped) return;
+                        state.stopped = true;
+                        for (const type of events) document.removeEventListener(type, listener, true);
+                        window.removeEventListener('resize', listener);
+                        cancelAnimationFrame(frame);
+                        clearTimeout(expiry);
+                        if (registry[key] === state) delete registry[key];
+                        if (window.__malievClickTrajectories === registry && Object.keys(registry).length === 0)
+                            delete window.__malievClickTrajectories;
+                    };
+                    registry[key] = state;
+                    for (const type of events) document.addEventListener(type, listener, { capture: true, passive: true });
+                    window.addEventListener('resize', listener, { passive: true });
+                    expiry = setTimeout(state.stop, 45000);
+                    sample('before-click');
+                    return JSON.stringify({ installed: true, timeOrigin: state.timeOrigin,
+                        started: state.started, expiryAt: state.expiryAt });
+                }
+                """, traceKey, new LocatorEvaluateOptions { Timeout = 2000 }).WaitAsync(TimeSpan.FromSeconds(2));
+        }
+        catch (Exception diagnosticFailure)
+        {
+            trajectory = "trajectory installation unavailable: " + diagnosticFailure.GetType().Name;
+        }
+        var installation = trajectory.Length <= 1024 ? trajectory : trajectory[..1024];
+        try { await control.ClickAsync(); }
+        catch (TimeoutException exception)
+        {
+            trajectory = await ReadAndReleaseClickTrajectoryAsync(control.Page, traceKey, installation);
+            string geometry;
+            try
+            {
+                geometry = await control.EvaluateAsync<string>("""
+                    element => {
+                        const describe = node => {
+                            const rect = node.getBoundingClientRect();
+                            const style = getComputedStyle(node);
+                            return {
+                                tag: node.tagName,
+                                classes: Array.from(node.classList).slice(0, 8).map(value => value.slice(0, 64)),
+                                rect: { x: rect.x, y: rect.y, width: rect.width, height: rect.height },
+                                style: Object.fromEntries(['display', 'position', 'transform', 'overflow',
+                                    'height', 'lineHeight', 'pointerEvents', 'zIndex'].map(key => [key, style[key]]))
+                            };
+                        };
+                        const rect = element.getBoundingClientRect();
+                        const x = rect.x + rect.width / 2, y = rect.y + rect.height / 2;
+                        const ancestors = [];
+                        for (let node = element.parentElement; node && ancestors.length < 6; node = node.parentElement)
+                            ancestors.push(describe(node));
+                        const scrollports = [];
+                        for (let node = element.parentElement, depth = 0; node && depth < 20; node = node.parentElement, depth++) {
+                            const style = getComputedStyle(node);
+                            if (!/auto|scroll|hidden|clip/.test(style.overflowX + style.overflowY)) continue;
+                            const rect = node.getBoundingClientRect();
+                            scrollports.push({ tag: node.tagName,
+                                classes: Array.from(node.classList).slice(0, 8).map(value => value.slice(0, 64)),
+                                rect: { x: rect.x, y: rect.y, width: rect.width, height: rect.height },
+                                clientHeight: node.clientHeight, scrollHeight: node.scrollHeight, scrollTop: node.scrollTop,
+                                clientWidth: node.clientWidth, scrollWidth: node.scrollWidth, scrollLeft: node.scrollLeft,
+                                overflowX: style.overflowX, overflowY: style.overflowY, scrollBehavior: style.scrollBehavior,
+                                scrollSnapType: style.scrollSnapType, contain: style.contain, zoom: style.zoom
+                            });
+                            if (scrollports.length === 8) break;
+                        }
+                        const visual = window.visualViewport;
+                        return JSON.stringify({ control: describe(element), scrollports,
+                            visualViewport: visual ? { width: visual.width, height: visual.height,
+                                offsetTop: visual.offsetTop, offsetLeft: visual.offsetLeft, scale: visual.scale } : null,
+                            ancestors,
+                            centerHit: document.elementFromPoint(x, y)?.tagName ?? null,
+                            hitBelongsToControl: element.contains(document.elementFromPoint(x, y)),
+                            hits: document.elementsFromPoint(x, y).slice(0, 4).map(describe),
+                            viewport: { width: innerWidth, height: innerHeight, scrollX, scrollY }
+                        }).slice(0, 8192);
+                    }
+                    """, options: new LocatorEvaluateOptions { Timeout = 2000 }).WaitAsync(TimeSpan.FromSeconds(2));
+            }
+            catch (Exception diagnosticFailure)
+            {
+                geometry = "geometry unavailable: " + diagnosticFailure.GetType().Name;
+            }
+            throw new TimeoutException(exception.Message + "\nBounded click trajectory: " + trajectory +
+                "\nBounded control geometry: " + geometry, exception);
+        }
+        finally
+        {
+            await ReadAndReleaseClickTrajectoryAsync(control.Page, traceKey, installation);
+        }
+    }
+
+    private static async Task<string> ReadAndReleaseClickTrajectoryAsync(IPage page, string key, string fallback)
+    {
+        try
+        {
+            return await page.EvaluateAsync<string>("""
+                ({ key, installation }) => {
+                    const serializeBounded = value => {
+                        let result = JSON.stringify(value);
+                        while (result.length > 8192 && value.samples?.length) {
+                            value.samples.shift();
+                            result = JSON.stringify(value);
+                        }
+                        return result.length <= 8192 ? result : JSON.stringify({
+                            unavailable: 'trajectory exceeded bounded output', stopped: value.stopped ?? null });
+                    };
+                    const registry = window.__malievClickTrajectories;
+                    const state = registry?.[key];
+                    if (!state) return serializeBounded({ available: false,
+                        reason: registry ? 'entry absent' : 'registry absent', installation: installation,
+                        readTimeOrigin: performance.timeOrigin, readPerformanceNow: performance.now() });
+                    state.stop();
+                    return serializeBounded({ initial: state.initial, samples: state.samples,
+                        layout: state.layout, timeOrigin: state.timeOrigin, started: state.started,
+                        expiryAt: state.expiryAt, readPerformanceNow: performance.now(),
+                        observed: state.observed, stopped: state.stopped, installation });
+                }
+                """, new { key, installation = fallback }).WaitAsync(TimeSpan.FromSeconds(2));
+        }
+        catch (Exception diagnosticFailure)
+        {
+            return fallback + "; trajectory release unavailable: " + diagnosticFailure.GetType().Name;
+        }
+    }
+
     private static async Task StubCustomerDetailBoundariesAsync(
         IPage page,
         IReadOnlyList<string>? permissions = null,
