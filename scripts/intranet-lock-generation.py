@@ -28,6 +28,38 @@ PINS = {
 }
 POLICY = json.loads(Path(__file__).with_name("intranet-lock-policy.json").read_text())
 PROJECT_POLICY = json.loads(Path(__file__).with_name("intranet-qualified-project.json").read_text())
+PRUNING_INPUTS = json.loads(Path(__file__).with_name("intranet-pruning-inputs.json").read_text())
+CONTRACTS_BASELINE_SHA = "98540f8c8005e000cc83cffb4598281f61900a13426b470f1d1114c62b54a63d"
+
+
+def verify_pruning_inputs(dotnet_root):
+    selected = os.environ.get("INTRANET_SELECTED_SDK")
+    if selected != PRUNING_INPUTS["sdkVersion"]:
+        raise ValueError("Selected SDK version mismatch")
+    if not (dotnet_root / "sdk" / PRUNING_INPUTS["sdkVersion"]).is_dir():
+        raise ValueError("Qualified SDK source version missing")
+    preferred = dotnet_root / PRUNING_INPUTS["requiredAbsentPreferredRoot"]
+    if preferred.exists() or preferred.is_symlink():
+        raise ValueError("Unexpected preferred pruning data; targeting-pack fallback not proven")
+    for relative, expected in PRUNING_INPUTS["dataInputs"].items():
+        if digest(read(dotnet_root / relative)) != expected:
+            raise ValueError("Qualified pruning input hash mismatch")
+    return {**PRUNING_INPUTS, "selectedSdkVersion": selected, "preferredPruningRootAbsent": True}
+
+
+def restore_unchanged_contracts_baseline(root):
+    original = read(root / "build/nuget-locks/Legacy.Maliev.CompatibilityContracts/packages.lock.json")
+    generated = read(root / CONTRACT_LOCK)
+    if digest(original) != CONTRACTS_BASELINE_SHA:
+        raise ValueError("Unexpected immutable Contracts baseline")
+    if generated == original:
+        return None
+    if generated + b"\n" != original or lock(generated) != lock(original):
+        raise ValueError("Unexpected Contracts semantic or encoding drift")
+    # Recopy the immutable committed baseline in this disposable dependency checkout.
+    (root / CONTRACT_LOCK).write_bytes(original)
+    return {"generatedSha256": digest(generated), "restoredSha256": digest(original),
+            "difference": "one trailing LF", "semanticGraphUnchanged": True}
 
 
 def check_owner(path):
@@ -162,6 +194,7 @@ def inventory(root):
 
 def prepare(root, custody):
     sha = identity(root)
+    pruning = verify_pruning_inputs(Path(os.environ["DOTNET_ROOT"]))
     if custody.exists():
         raise ValueError("Custody already exists")
     custody.mkdir()
@@ -174,7 +207,7 @@ def prepare(root, custody):
         target = custody / "baseline" / p
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_bytes(read(root / p))
-    (custody / "before.json").write_text(json.dumps({"source": sha, "inputs": inventory(root)}, indent=2))
+    (custody / "before.json").write_text(json.dumps({"source": sha, "inputs": inventory(root), "pruning": pruning}, indent=2))
 
 
 def retain(root, custody, evidence):
@@ -183,6 +216,10 @@ def retain(root, custody, evidence):
     before = json.loads(read(custody / "before.json"))
     if before["source"] != sha or evidence.exists():
         raise ValueError("Custody mismatch")
+    pruning = verify_pruning_inputs(Path(os.environ["DOTNET_ROOT"]))
+    if before["pruning"] != pruning:
+        raise ValueError("Pruning custody mismatch")
+    contracts_normalization = restore_unchanged_contracts_baseline(root)
     (root / OUTPUTS[0]).write_bytes(read(root / PRODUCER_LOCK))
     after = inventory(root)
     allowed = set(OUTPUTS) | {PRODUCER_LOCK}
@@ -201,7 +238,8 @@ def retain(root, custody, evidence):
         rows.append({"path": p, "bytes": len(data), "sha256": digest(data), "changes": changes})
     receipt = {"classification": "GENERATED_LOCKS_NOT_ACCEPTED", "source": sha,
         "defaults": DEFAULTS, "contracts": CONTRACTS, "files": rows,
-        "contractsLockUnchanged": True, "lockedRestore": "PENDING", "inputInventory": after}
+        "contractsLockUnchanged": True, "lockedRestore": "PENDING", "inputInventory": after,
+        "contractsNormalization": contracts_normalization, "pruningInputs": pruning}
     (evidence / "receipt.json").write_text(json.dumps(receipt, indent=2) + "\n")
 
 
@@ -212,6 +250,9 @@ def verified(root, custody, evidence):
     receipt = json.loads(read(evidence / "receipt.json"))
     if receipt["source"] != sha or receipt["defaults"] != DEFAULTS or receipt["contracts"] != CONTRACTS:
         raise ValueError("Receipt identity mismatch")
+    pruning = verify_pruning_inputs(Path(os.environ["DOTNET_ROOT"]))
+    if receipt["pruningInputs"] != pruning:
+        raise ValueError("Pruning receipt mismatch")
     if inventory(root) != receipt["inputInventory"]:
         raise ValueError("Inputs changed during strict restore")
     for row in receipt["files"]:
@@ -269,12 +310,14 @@ def rejected(root, custody, evidence):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("phase", choices=("prepare", "retain", "verified", "rejected", "cleanup"))
+    parser.add_argument("phase", choices=("inputs", "prepare", "retain", "verified", "rejected", "cleanup"))
     args = parser.parse_args()
     root = Path.cwd().resolve()
     temp = Path(os.environ["RUNNER_TEMP"]).resolve()
     custody, evidence = temp / "intranet-lock-custody", temp / "intranet-lock-artifact"
-    if args.phase == "prepare":
+    if args.phase == "inputs":
+        verify_pruning_inputs(Path(os.environ["DOTNET_ROOT"]).resolve())
+    elif args.phase == "prepare":
         prepare(root, custody)
     elif args.phase == "retain":
         retain(root, custody, evidence)

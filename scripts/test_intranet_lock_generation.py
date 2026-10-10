@@ -17,7 +17,7 @@ def graph(packages, framework="net10.0"):
 def valid(name):
     row = locks.POLICY[name]
     return {"type": "Transitive", "resolved": row["resolved"], "contentHash": row["contentHash"],
-            "dependencies": row["dependencies"]}
+            "dependencies": dict(row["dependencies"])}
 
 
 class LockDeltaTests(unittest.TestCase):
@@ -210,6 +210,63 @@ class LockDeltaTests(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, "Foreign"):
                     locks.rejected(path, path, path / "evidence")
             self.assertFalse((path / "evidence").exists())
+
+    def test_signed_archive_hash_cannot_replace_nuget_content_hash(self):
+        row = valid("MassTransit")
+        row["contentHash"] = locks.POLICY["MassTransit"]["archiveSha512"]
+        with self.assertRaisesRegex(ValueError, "hash"):
+            locks.validate_delta(graph({}), graph({"MassTransit": row}))
+
+    def test_arbitrary_pruned_edge_version_rejected(self):
+        row = valid("MassTransit")
+        row["dependencies"]["Microsoft.Extensions.Options"] = "99.0.0"
+        with self.assertRaisesRegex(ValueError, "edges"):
+            locks.validate_delta(graph({}), graph({"MassTransit": row}))
+
+    def test_exact_missing_trailing_lf_restores_immutable_contracts(self):
+        data = b'{\n  "version": 1,\n  "dependencies": {\n    "net10.0": {}\n  }\n}\n'
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            source = root / "build/nuget-locks/Legacy.Maliev.CompatibilityContracts/packages.lock.json"
+            generated = root / locks.CONTRACT_LOCK
+            source.parent.mkdir(parents=True)
+            generated.parent.mkdir(parents=True)
+            source.write_bytes(data)
+            generated.write_bytes(data[:-1])
+            result = locks.restore_unchanged_contracts_baseline(root)
+            self.assertEqual("one trailing LF", result["difference"])
+            self.assertEqual(data, generated.read_bytes())
+            generated.write_bytes(data.replace(b'{}', b'{"Unknown":{}}'))
+            with self.assertRaisesRegex(ValueError, "semantic"):
+                locks.restore_unchanged_contracts_baseline(root)
+            generated.write_bytes(data.replace(b'\n', b'\r\n'))
+            with self.assertRaisesRegex(ValueError, "encoding"):
+                locks.restore_unchanged_contracts_baseline(root)
+
+    def test_pruning_source_hash_and_sdk_version_checked(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            metadata = root / "packs/data.txt"
+            metadata.parent.mkdir(parents=True)
+            metadata.write_bytes(b'Known|10.0.0')
+            (root / "sdk/10.0.401").mkdir(parents=True)
+            inputs = {"sdkVersion": "10.0.401", "dataInputs": {"packs/data.txt": locks.digest(metadata.read_bytes())}, "requiredAbsentPreferredRoot": "sdk/10.0.401/PrunePackageData"}
+            with patch.object(locks, "PRUNING_INPUTS", inputs), patch.dict(locks.os.environ, {"INTRANET_SELECTED_SDK": "10.0.401"}):
+                self.assertEqual({**inputs, "selectedSdkVersion": "10.0.401", "preferredPruningRootAbsent": True}, locks.verify_pruning_inputs(root))
+                with patch.dict(locks.os.environ, {"INTRANET_SELECTED_SDK": "10.0.402"}):
+                    with self.assertRaisesRegex(ValueError, "Selected SDK"):
+                        locks.verify_pruning_inputs(root)
+                preferred = root / inputs["requiredAbsentPreferredRoot"]
+                preferred.mkdir()
+                with self.assertRaisesRegex(ValueError, "preferred pruning"):
+                    locks.verify_pruning_inputs(root)
+                preferred.rmdir()
+                metadata.write_bytes(b'Known|99.0.0')
+                with self.assertRaisesRegex(ValueError, "hash"):
+                    locks.verify_pruning_inputs(root)
+                (root / "sdk/10.0.401").rmdir()
+                with self.assertRaisesRegex(ValueError, "version"):
+                    locks.verify_pruning_inputs(root)
 
 
 if __name__ == "__main__":

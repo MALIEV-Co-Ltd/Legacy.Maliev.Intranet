@@ -8,6 +8,7 @@ on:
       - 'scripts/test_intranet_lock_generation.py'
       - 'scripts/intranet-lock-policy.json'
       - 'scripts/intranet-qualified-project.json'
+      - 'scripts/intranet-pruning-inputs.json'
 
 permissions:
   contents: read
@@ -42,27 +43,42 @@ jobs:
           ref: 78e48ffc4ee000df0510cba5e7c7a3c4c4d539d7
           path: .dependencies/Legacy.Maliev.CompatibilityContracts
           persist-credentials: false
-      - name: Install existing .NET major
+      - name: Install exact qualified SDK
         uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68
         with:
-          dotnet-version: 10.0.x
+          dotnet-version: 10.0.401
       - name: Verify offline lock rejection controls and snapshot exact inputs
         run: |
+          export INTRANET_SELECTED_SDK="$(timeout --signal=TERM --kill-after=5s 30s dotnet --version)"
+          test "$INTRANET_SELECTED_SDK" = "10.0.401"
+          echo "INTRANET_SELECTED_SDK=$INTRANET_SELECTED_SDK" >> "$GITHUB_ENV"
           python3 -B scripts/test_intranet_lock_generation.py
           python3 -B scripts/intranet-lock-generation.py prepare
       - name: Generate actual consumer and producer locks sequentially
         run: |
           export GITHUB_ACTIONS=false
           # Only this disposable generation phase reevaluates locks.
-          timeout --signal=TERM --kill-after=20s 5m dotnet restore Legacy.Maliev.Intranet/Legacy.Maliev.Intranet.csproj --force-evaluate --use-lock-file --warnaserror -p:UseLocalMalievDependencies=true -p:RestoreLockedMode=false
-          timeout --signal=TERM --kill-after=20s 5m dotnet restore Legacy.Maliev.Intranet.Bff/Legacy.Maliev.Intranet.Bff.csproj --force-evaluate --use-lock-file --warnaserror -p:UseLocalMalievDependencies=true -p:RestoreLockedMode=false
+          export INTRANET_SELECTED_SDK="$(timeout --signal=TERM --kill-after=5s 30s dotnet --version)"
+          test "$INTRANET_SELECTED_SDK" = "10.0.401"
+          python3 -B scripts/intranet-lock-generation.py inputs
+          timeout --signal=TERM --kill-after=20s 5m dotnet restore Legacy.Maliev.Intranet/Legacy.Maliev.Intranet.csproj --force-evaluate --use-lock-file --warnaserror -p:UseLocalMalievDependencies=true -p:PrunePackageDataRoot="$DOTNET_ROOT/sdk/10.0.401/PrunePackageData" -p:PrunePackageTargetingPackRoots="$DOTNET_ROOT/packs" -p:RestoreLockedMode=false
+          export INTRANET_SELECTED_SDK="$(timeout --signal=TERM --kill-after=5s 30s dotnet --version)"
+          test "$INTRANET_SELECTED_SDK" = "10.0.401"
+          python3 -B scripts/intranet-lock-generation.py inputs
+          timeout --signal=TERM --kill-after=20s 5m dotnet restore Legacy.Maliev.Intranet.Bff/Legacy.Maliev.Intranet.Bff.csproj --force-evaluate --use-lock-file --warnaserror -p:UseLocalMalievDependencies=true -p:PrunePackageDataRoot="$DOTNET_ROOT/sdk/10.0.401/PrunePackageData" -p:PrunePackageTargetingPackRoots="$DOTNET_ROOT/packs" -p:RestoreLockedMode=false
       - name: Reject unexpected changes and retain real raw lock bytes
         run: python3 -B scripts/intranet-lock-generation.py retain
       - name: Require both generated graphs to restore in strict locked mode
         run: |
           export GITHUB_ACTIONS=false
-          timeout --signal=TERM --kill-after=20s 5m dotnet restore Legacy.Maliev.Intranet/Legacy.Maliev.Intranet.csproj --locked-mode --warnaserror -p:UseLocalMalievDependencies=true
-          timeout --signal=TERM --kill-after=20s 5m dotnet restore Legacy.Maliev.Intranet.Bff/Legacy.Maliev.Intranet.Bff.csproj --locked-mode --warnaserror -p:UseLocalMalievDependencies=true
+          export INTRANET_SELECTED_SDK="$(timeout --signal=TERM --kill-after=5s 30s dotnet --version)"
+          test "$INTRANET_SELECTED_SDK" = "10.0.401"
+          python3 -B scripts/intranet-lock-generation.py inputs
+          timeout --signal=TERM --kill-after=20s 5m dotnet restore Legacy.Maliev.Intranet/Legacy.Maliev.Intranet.csproj --locked-mode --warnaserror -p:UseLocalMalievDependencies=true -p:PrunePackageDataRoot="$DOTNET_ROOT/sdk/10.0.401/PrunePackageData" -p:PrunePackageTargetingPackRoots="$DOTNET_ROOT/packs"
+          export INTRANET_SELECTED_SDK="$(timeout --signal=TERM --kill-after=5s 30s dotnet --version)"
+          test "$INTRANET_SELECTED_SDK" = "10.0.401"
+          python3 -B scripts/intranet-lock-generation.py inputs
+          timeout --signal=TERM --kill-after=20s 5m dotnet restore Legacy.Maliev.Intranet.Bff/Legacy.Maliev.Intranet.Bff.csproj --locked-mode --warnaserror -p:UseLocalMalievDependencies=true -p:PrunePackageDataRoot="$DOTNET_ROOT/sdk/10.0.401/PrunePackageData" -p:PrunePackageTargetingPackRoots="$DOTNET_ROOT/packs"
           python3 -B scripts/intranet-lock-generation.py verified
       - name: Retain rejected raw generation evidence without admitting changes
         if: failure()

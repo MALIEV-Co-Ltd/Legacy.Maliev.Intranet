@@ -1,91 +1,111 @@
 {
   "MassTransit": {
     "resolved": "9.2.3",
-    "contentHash": "A17oHOUWrYCYa517/orEyUzBA9xh1NULeqZvWtSmK9xHVs6DeNBrVAd8gOxA4rhOqW2T/Iz5XjNRlil2HgRMtg==",
+    "contentHash": "exbI8yF4w8swAOj5cHiZVyWWWb/O/d0x1hBrD8nvFcAk4iMjEyvg1i+8zvgOsfYkSZp4horycBJVLAQPv1gFbw==",
     "dependencies": {
-      "MassTransit.Abstractions": "9.2.3",
+      "MassTransit.Abstractions": "9.2.3"
+    },
+    "selectedSourceFramework": "net10.0",
+    "url": "https://api.nuget.org/v3-flatcontainer/masstransit/9.2.3/masstransit.9.2.3.nupkg",
+    "nupkgSha256": "42baf52f178c7eda00c647c51a55eebfef9aadd46116b5b89d0a5d56527a78e2",
+    "archiveSha512": "A17oHOUWrYCYa517/orEyUzBA9xh1NULeqZvWtSmK9xHVs6DeNBrVAd8gOxA4rhOqW2T/Iz5XjNRlil2HgRMtg==",
+    "prunedEdges": {
       "Microsoft.Extensions.DependencyInjection.Abstractions": "10.0.0",
       "Microsoft.Extensions.Diagnostics.HealthChecks": "10.0.0",
       "Microsoft.Extensions.Hosting.Abstractions": "10.0.0",
       "Microsoft.Extensions.Logging.Abstractions": "10.0.0",
       "Microsoft.Extensions.Options": "10.0.0"
-    },
-    "selectedSourceFramework": "net10.0",
-    "url": "https://api.nuget.org/v3-flatcontainer/masstransit/9.2.3/masstransit.9.2.3.nupkg",
-    "nupkgSha256": "42baf52f178c7eda00c647c51a55eebfef9aadd46116b5b89d0a5d56527a78e2"
+    }
   },
   "MassTransit.Abstractions": {
     "resolved": "9.2.3",
-    "contentHash": "kGb9v5EO0EOlHMtlpcWW6/trxrU25j5Rih3ySIk2BusO0bQtBdVg0SIarEpkn4fx1PN6hiWs21GQD7ARIZN2bQ==",
+    "contentHash": "D0y98XbWq4Su8YCn1Y3WvQKy3Mn6SS5DGp1vkICy0TpPPzGQI6EPTMmITiim0KCf/WXgh/mRIP9UswIZVDuRjw==",
     "dependencies": {},
     "selectedSourceFramework": "net10.0",
     "url": "https://api.nuget.org/v3-flatcontainer/masstransit.abstractions/9.2.3/masstransit.abstractions.9.2.3.nupkg",
-    "nupkgSha256": "f3b86ef545cbc35391da6f033adba6ab0cce9717073d7d4ef66cd7ea6834d6c0"
+    "nupkgSha256": "f3b86ef545cbc35391da6f033adba6ab0cce9717073d7d4ef66cd7ea6834d6c0",
+    "archiveSha512": "kGb9v5EO0EOlHMtlpcWW6/trxrU25j5Rih3ySIk2BusO0bQtBdVg0SIarEpkn4fx1PN6hiWs21GQD7ARIZN2bQ==",
+    "prunedEdges": {}
   },
   "MassTransit.RabbitMQ": {
     "resolved": "9.2.3",
-    "contentHash": "QqCXKn3dDdzp/pWd0ZViALfWc5a+xSatNol0OJtdDIzl+wptk6WWc3blXh8Yjm4Q8du4JhGN8NLi2CJyWdKDtQ==",
+    "contentHash": "leInIa/ogii5hzKmqbU8DdlYGDUwODoUcIcx8Vlu4NZjjmGoiCdPybDdgeRpSt/ebmar0MHL9m4sainogXU6jQ==",
     "dependencies": {
       "MassTransit": "9.2.3",
       "RabbitMQ.Client": "7.2.2"
     },
     "selectedSourceFramework": "net10.0",
     "url": "https://api.nuget.org/v3-flatcontainer/masstransit.rabbitmq/9.2.3/masstransit.rabbitmq.9.2.3.nupkg",
-    "nupkgSha256": "11c8e25f54ae63e33953908fd8a4cd50fc080129af496047f7620e204acdf43d"
+    "nupkgSha256": "11c8e25f54ae63e33953908fd8a4cd50fc080129af496047f7620e204acdf43d",
+    "archiveSha512": "QqCXKn3dDdzp/pWd0ZViALfWc5a+xSatNol0OJtdDIzl+wptk6WWc3blXh8Yjm4Q8du4JhGN8NLi2CJyWdKDtQ==",
+    "prunedEdges": {}
   },
   "Scalar.AspNetCore": {
     "resolved": "2.17.13",
-    "contentHash": "Ek3NWL82E1TL9CYyoQJIgGb0S3c5ieYWdPQ2ukbffRkrHs4E3B/idhY0pMvPOQEKHkD2B5HcY/Nuj5UlonsoCQ==",
+    "contentHash": "+R0eJtJIIHW9owY61rIOgR2lywjZnjqUPAM7ll+lZYML7mZ4LxokG6wpAmkuyaLS1Ml4fI4kdAC2U6KkdrDDiA==",
     "dependencies": {},
     "selectedSourceFramework": "net10.0",
     "url": "https://api.nuget.org/v3-flatcontainer/scalar.aspnetcore/2.17.13/scalar.aspnetcore.2.17.13.nupkg",
-    "nupkgSha256": "1690a666f885283b3b4b7168d6e0bf96e741117143573c178af120a269a42647"
+    "nupkgSha256": "1690a666f885283b3b4b7168d6e0bf96e741117143573c178af120a269a42647",
+    "archiveSha512": "Ek3NWL82E1TL9CYyoQJIgGb0S3c5ieYWdPQ2ukbffRkrHs4E3B/idhY0pMvPOQEKHkD2B5HcY/Nuj5UlonsoCQ==",
+    "prunedEdges": {}
   },
   "Microsoft.AspNet.WebApi.Client": {
     "resolved": "6.0.0",
-    "contentHash": "R9UJg0zKQjyppjk+5La3xWFJ2T2ulqwCsHEs05v9ZClpQCqTqMupJBceAQPJFaOriS4gpU5JlDE48FCcHVG8zQ==",
+    "contentHash": "zXeWP03dTo67AoDHUzR+/urck0KFssdCKOC+dq7Nv1V2YbFh/nIg09L0/3wSvyRONEdwxGB/ssEGmPNIIhAcAw==",
     "dependencies": {
       "Newtonsoft.Json.Bson": "1.0.2",
-      "Newtonsoft.Json": "13.0.1",
-      "System.Memory": "4.5.5",
-      "System.Threading.Tasks.Extensions": "4.5.4"
+      "Newtonsoft.Json": "13.0.1"
     },
     "selectedSourceFramework": ".NETStandard2.0",
     "url": "https://api.nuget.org/v3-flatcontainer/microsoft.aspnet.webapi.client/6.0.0/microsoft.aspnet.webapi.client.6.0.0.nupkg",
-    "nupkgSha256": "94d2f90b85bbfe9f21a265a8a0eff764a0d94363341544c38b1270a9604f55ba"
+    "nupkgSha256": "94d2f90b85bbfe9f21a265a8a0eff764a0d94363341544c38b1270a9604f55ba",
+    "archiveSha512": "R9UJg0zKQjyppjk+5La3xWFJ2T2ulqwCsHEs05v9ZClpQCqTqMupJBceAQPJFaOriS4gpU5JlDE48FCcHVG8zQ==",
+    "prunedEdges": {
+      "System.Memory": "4.5.5",
+      "System.Threading.Tasks.Extensions": "4.5.4"
+    }
   },
   "Newtonsoft.Json": {
     "resolved": "13.0.1",
-    "contentHash": "g3MbZi6vBTeaI/hEbvR7vBETSd1DWLe9i1E4P+nPY34v5i94zqUqDXvdWC3G+7tYN9SnsdU9zzegrnRz4h7nsQ==",
+    "contentHash": "ppPFpBcvxdsfUonNcvITKqLl3bqxWbDCZIzDWHzjpdAHRFfZe0Dw9HmA0+za13IdyrgJwpkDTDA9fHaxOrt20A==",
     "dependencies": {},
     "selectedSourceFramework": ".NETStandard2.0",
     "url": "https://api.nuget.org/v3-flatcontainer/newtonsoft.json/13.0.1/newtonsoft.json.13.0.1.nupkg",
-    "nupkgSha256": "2b6b52556e27e1b7913f33eedeb95568110c746bd64afff74357f1683878323a"
+    "nupkgSha256": "2b6b52556e27e1b7913f33eedeb95568110c746bd64afff74357f1683878323a",
+    "archiveSha512": "g3MbZi6vBTeaI/hEbvR7vBETSd1DWLe9i1E4P+nPY34v5i94zqUqDXvdWC3G+7tYN9SnsdU9zzegrnRz4h7nsQ==",
+    "prunedEdges": {}
   },
   "Newtonsoft.Json.Bson": {
     "resolved": "1.0.2",
-    "contentHash": "M52Tfhn8KzsfmTKHl9/KjVHvA6zWxuYa46HZ3ldqlT4U3N/pEeHvwtyzYx+3/jVnLb4t62hB2zWNVwDGl0VHfg==",
+    "contentHash": "QYFyxhaABwmq3p/21VrZNYvCg3DaEoN/wUuw5nmfAf0X3HLjgupwhkEWdgfb9nvGAUIv3osmZoD3kKl4jxEmYQ==",
     "dependencies": {
       "Newtonsoft.Json": "12.0.1"
     },
     "selectedSourceFramework": ".NETStandard2.0",
     "url": "https://api.nuget.org/v3-flatcontainer/newtonsoft.json.bson/1.0.2/newtonsoft.json.bson.1.0.2.nupkg",
-    "nupkgSha256": "6548fa60548c669e4266d5e26a6c38f5e6666e9d62601b8db0828d9e3c5c4730"
+    "nupkgSha256": "6548fa60548c669e4266d5e26a6c38f5e6666e9d62601b8db0828d9e3c5c4730",
+    "archiveSha512": "M52Tfhn8KzsfmTKHl9/KjVHvA6zWxuYa46HZ3ldqlT4U3N/pEeHvwtyzYx+3/jVnLb4t62hB2zWNVwDGl0VHfg==",
+    "prunedEdges": {}
   },
   "System.Memory": {
     "resolved": "4.5.5",
-    "contentHash": "6MjlNsl7lKw0Q8lAsw2tQ89ul9x6jD2Yk3EEj+dOFoYGOE9eAUO9wNhvd4O/n97oQXlkyzqKXXUnE+kLElFy3A==",
+    "contentHash": "XIWiDvKPXaTveaB7HVganDlOCRoj03l+jrwNvcge/t8vhGYKvqV+dMv6G4SAX2NoNmN0wZfVPTAlFwZcZvVOUw==",
     "dependencies": {},
     "selectedSourceFramework": ".NETCoreApp2.1",
     "url": "https://api.nuget.org/v3-flatcontainer/system.memory/4.5.5/system.memory.4.5.5.nupkg",
-    "nupkgSha256": "10f43da352a29fb2b3188e4edd4dcf5100194c8b526e4f61fe2e2b5623775a22"
+    "nupkgSha256": "10f43da352a29fb2b3188e4edd4dcf5100194c8b526e4f61fe2e2b5623775a22",
+    "archiveSha512": "6MjlNsl7lKw0Q8lAsw2tQ89ul9x6jD2Yk3EEj+dOFoYGOE9eAUO9wNhvd4O/n97oQXlkyzqKXXUnE+kLElFy3A==",
+    "prunedEdges": {}
   },
   "System.Threading.Tasks.Extensions": {
     "resolved": "4.5.4",
-    "contentHash": "aAUghud9PHGYc3o9oWPWd0C3xE+TJQw5ZZs78htlR6mr9ky/QEgfXHjyQ2GvOq9H1S0YizcVVKCSin92ZcH8FA==",
+    "contentHash": "zteT+G8xuGu6mS+mzDzYXbzS7rd3K6Fjb9RiZlYlJPam2/hU7JCBZBVEcywNuR+oZ1ncTvc/cq0faRr3P01OVg==",
     "dependencies": {},
     "selectedSourceFramework": ".NETCoreApp2.1",
     "url": "https://api.nuget.org/v3-flatcontainer/system.threading.tasks.extensions/4.5.4/system.threading.tasks.extensions.4.5.4.nupkg",
-    "nupkgSha256": "a304a963cc0796c5179f9c6b7d8022bbce3b2fa7c029eb6196f631f7b462d678"
+    "nupkgSha256": "a304a963cc0796c5179f9c6b7d8022bbce3b2fa7c029eb6196f631f7b462d678",
+    "archiveSha512": "aAUghud9PHGYc3o9oWPWd0C3xE+TJQw5ZZs78htlR6mr9ky/QEgfXHjyQ2GvOq9H1S0YizcVVKCSin92ZcH8FA==",
+    "prunedEdges": {}
   }
 }
