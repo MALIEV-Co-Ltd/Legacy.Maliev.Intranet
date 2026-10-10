@@ -773,7 +773,12 @@ internal sealed class SupplierCompanyBrowserObserver(IPage page, string url, boo
           check(originalResponse === expectedResponse, 'same original response');
           check(await originalResponse.text() === body, 'original body preserved');
           const result = await f.state.close();
-          check(settled(result) && result.body === body && result.receipt.captureSucceeded && f.target.fetch === f.original, 'clone joins');
+          check(settled(result) && result.body === body && result.receipt.captureSucceeded && f.target.fetch === f.original,
+            'clone joins ' + JSON.stringify({ settled: settled(result), bodyMatches: result.body === body,
+              captureSucceeded: result.receipt.captureSucceeded, fetchRestored: f.target.fetch === f.original,
+              status: result.receipt.status, capturedBytes: result.receipt.capturedBytes,
+              errorCategory: result.error === null ? 'none' : result.error === 'Clone deadline exceeded' ? 'deadline'
+                : result.error === 'Response contract differs' ? 'response-contract' : 'other' }));
           passed.push('same-promise-response-args-receiver');
           await f.target.fetch(url);
           check(f.calls === 2 && f.state.count === 1 && f.state.tasks.length === 1, 'restored pass through');
