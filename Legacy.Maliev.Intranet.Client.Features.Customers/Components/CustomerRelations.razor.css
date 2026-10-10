@@ -1,0 +1,39 @@
+.customer-relations {
+    min-width: 0;
+    padding: 1rem;
+    border: 1px solid var(--shadcn-border);
+    border-radius: var(--shadcn-radius-lg);
+    background: var(--shadcn-card);
+    color: var(--shadcn-card-foreground);
+}
+
+.customer-relations__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--shadcn-border);
+}
+
+.customer-relations__fields {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.875rem 1rem;
+    min-width: 0;
+}
+
+.customer-relations__fields ::deep .shadcn-field {
+    min-width: 0;
+    margin: 0;
+}
+
+@media (pointer: coarse), (max-width: 760px) {
+    .customer-relations__fields {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .customer-relations__actions ::deep .shadcn-button {
+        min-height: 44px;
+    }
+}

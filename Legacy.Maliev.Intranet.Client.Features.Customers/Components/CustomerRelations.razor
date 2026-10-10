@@ -3,11 +3,11 @@
 @using Microsoft.AspNetCore.Components.Forms
 @inject HttpClient Http
 
-<section class="customer-overview__section" aria-labelledby="customer-relations-heading">
+<section class="customer-relations" aria-labelledby="customer-relations-heading">
     <h2 id="customer-relations-heading">@Localize("RelationEditing")</h2>
     <p>@Localize("RelationEditingDescription")</p>
     @if (!new[] { "company", "billing", "shipping" }.Any(CanEditRelation)) { <p>@Localize("RelationPermissionRequired")</p> }
-    <div class="customer-overview__form-actions">
+    <div class="customer-relations__actions">
         @foreach (var item in new[] { "company", "billing", "shipping" })
         {
             var selected = item;
@@ -28,7 +28,7 @@
         {
         <EditForm EditContext="editContext" OnValidSubmit="SaveAsync">
             <DataAnnotationsValidator /><ValidationSummary />
-            <div class="customer-overview__form-grid">
+            <div class="customer-relations__fields">
                 @if (kind == "company")
                 {
                     <ShadcnFormField Id="relation-company-name" Label="@Localize("CompanyName")"><Control><ShadcnInput TValue="string" id="relation-company-name" @bind-Value="company.Name" Disabled="@(saving || needsReload)" /></Control></ShadcnFormField>
@@ -48,7 +48,7 @@
                     </Control></ShadcnFormField>
                 }
             </div>
-            <div class="customer-overview__form-actions">
+            <div class="customer-relations__actions">
                 <ShadcnButton ButtonType="ShadcnButtonType.Submit" Disabled="@(saving || needsReload)">@(saving ? Localize("Saving") : Localize("SaveRelation"))</ShadcnButton>
                 @if (needsReload) { <ShadcnButton ButtonType="ShadcnButtonType.Button" OnClick="@(() => BeginAsync(kind!))" Disabled="@saving">@Localize("ReloadRelation")</ShadcnButton> }
                 <ShadcnButton ButtonType="ShadcnButtonType.Button" Variant="ShadcnButtonVariant.Ghost" OnClick="CancelAsync" Disabled="@saving">@Localize("Cancel")</ShadcnButton>
@@ -96,14 +96,14 @@
         try
         {
             // Re-resolve attachment IDs after uncertain creation or a concurrent reattachment.
-            using var profileResponse = await Http.GetAsync($"/bff/customers/{Customer.Id}/versioned", lifetime.Token);
+            using var profileResponse = await Http.GetForPresentationAsync($"/bff/customers/{Customer.Id}/versioned", lifetime.Token);
             if (!profileResponse.IsSuccessStatusCode) { error = Failure(profileResponse.StatusCode); return; }
             var latest = await profileResponse.Content.ReadFromJsonAsync<CustomerDetail>(lifetime.Token);
             if (latest is null || latest.Id != Customer.Id || !ValidVersion(profileResponse.Headers.ETag?.ToString(), 8))
             { error = Localize("InvalidResponse"); return; }
             var id = kind == "company" ? latest.CompanyId : kind == "billing" ? latest.BillingAddressId : latest.ShippingAddressId;
             relation = id?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "new";
-            using var response = await Http.GetAsync($"/bff/customers/{Customer.Id}/relations/{kind}/{relation}", lifetime.Token);
+            using var response = await Http.GetForPresentationAsync($"/bff/customers/{Customer.Id}/relations/{kind}/{relation}", lifetime.Token);
             if (!response.IsSuccessStatusCode) { error = Failure(response.StatusCode); return; }
             version = response.Headers.ETag?.ToString();
             customerVersion = response.Headers.TryGetValues("X-Customer-ETag", out var values) ? values.SingleOrDefault() : null;
@@ -119,7 +119,7 @@
                 PostalCode = value.Address?.PostalCode, CountryId = value.Address?.CountryId ?? 0 };
             if (kind != "company")
             {
-                using var countryResponse = await Http.GetAsync("/bff/customers/relation-countries", lifetime.Token);
+                using var countryResponse = await Http.GetForPresentationAsync("/bff/customers/relation-countries", lifetime.Token);
                 if (!countryResponse.IsSuccessStatusCode) { error = Localize("CountriesUnavailable"); return; }
                 countries = await countryResponse.Content.ReadFromJsonAsync<EmployeeAdministrationCountry[]>(lifetime.Token) ?? [];
                 if (countries.Length == 0 || countries.Any(country => country.Id <= 0 || string.IsNullOrWhiteSpace(country.Name)) || countries.Select(country => country.Id).Distinct().Count() != countries.Length ||
@@ -142,7 +142,7 @@
         var sent = false;
         try
         {
-            using var sessionResponse = await Http.GetAsync("/bff/session", lifetime.Token);
+            using var sessionResponse = await Http.GetForPresentationAsync("/bff/session", lifetime.Token);
             if (!sessionResponse.IsSuccessStatusCode) { error = Failure(sessionResponse.StatusCode); return; }
             var session = await sessionResponse.Content.ReadFromJsonAsync<EmployeeSessionSummary>(lifetime.Token);
             if (string.IsNullOrWhiteSpace(session?.CsrfToken)) { error = Localize("RelationUnavailable"); return; }

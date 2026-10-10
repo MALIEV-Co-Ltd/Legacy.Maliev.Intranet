@@ -11,6 +11,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Metadata;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.Routing;
+using Microsoft.AspNetCore.Routing.Template;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using BffProgram = Bff::Program;
@@ -147,17 +148,15 @@ public sealed class BffHttpMethodSurfaceTests
     {
         await using var factory = new AuthenticatedBffFactory();
         using var client = CreateClient(factory);
-        var routes = GetBffEndpoints(factory)
+        var endpoints = GetBffEndpoints(factory).ToArray();
+        var routes = endpoints
             .GroupBy(endpoint => endpoint.RoutePattern.RawText!, StringComparer.Ordinal)
             .OrderBy(group => group.Key, StringComparer.Ordinal);
 
         foreach (var routeGroup in routes)
         {
-            var allowed = routeGroup
-                .SelectMany(endpoint => endpoint.Metadata.GetMetadata<IHttpMethodMetadata>()!.HttpMethods)
-                .ToHashSet(StringComparer.OrdinalIgnoreCase);
-
             var route = MaterializeRoute(routeGroup.Key);
+            var allowed = AllowedMethodsForRoute(endpoints, route);
             foreach (var method in RequestedMethods.Where(method => !allowed.Contains(method)))
             {
                 using var request = new HttpRequestMessage(new HttpMethod(method), route);
@@ -273,7 +272,26 @@ public sealed class BffHttpMethodSurfaceTests
             .ToArray();
 
     private static string MaterializeRoute(string routeTemplate) =>
-        Regex.Replace(routeTemplate, "\\{[^}]+\\}", "1", RegexOptions.CultureInvariant);
+        Regex.Replace(routeTemplate, "\\{[^}]+\\}",
+            match => match.Value == "{kind}" ? "billing" : "1", RegexOptions.CultureInvariant);
+
+    private static HashSet<string> AllowedMethodsForRoute(IEnumerable<RouteEndpoint> endpoints, string route) =>
+        endpoints.Where(endpoint => new TemplateMatcher(
+                TemplateParser.Parse(endpoint.RoutePattern.RawText!), new RouteValueDictionary())
+            .TryMatch(new PathString(route), new RouteValueDictionary()))
+            .SelectMany(endpoint => endpoint.Metadata.GetMetadata<IHttpMethodMetadata>()!.HttpMethods)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+    [Fact]
+    public void ConcreteCompanyRelationRoute_IncludesBothReadAndWriteTemplates()
+    {
+        using var factory = new AnonymousBffFactory();
+        var allowed = AllowedMethodsForRoute(GetBffEndpoints(factory), "/bff/customers/1/relations/company/1");
+
+        Assert.Equal(new[] { "GET", "PUT" }, allowed.Order(StringComparer.Ordinal));
+        Assert.Equal("/bff/customers/1/relations/billing/1",
+            MaterializeRoute("/bff/customers/{id:int}/relations/{kind}/{relation}"));
+    }
 
     private static string[] ExpectedEndpointSurface =>
         """
