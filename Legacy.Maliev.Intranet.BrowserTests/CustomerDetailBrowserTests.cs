@@ -681,14 +681,14 @@ public sealed class CustomerDetailBrowserTests(
         await page.GotoAsync(new Uri(server.BaseUri, "Customers/View?id=69738").AbsoluteUri);
         var thai = culture == "th-TH";
         var editName = kind == "company" ? (thai ? "แก้ไขบริษัท" : "Edit company") : kind == "billing" ? (thai ? "แก้ไขที่อยู่ใบแจ้งหนี้" : "Edit billing address") : thai ? "แก้ไขที่อยู่จัดส่ง" : "Edit shipping address";
-        await page.GetByRole(AriaRole.Button, new() { Name = editName, Exact = true }).ClickAsync();
+        await ClickWithGeometryDiagnosticsAsync(page.GetByRole(AriaRole.Button, new() { Name = editName, Exact = true }));
         await page.Locator(kind == "company" ? "#relation-company-name" : "#relation-AddressLine1").FillAsync(" บริษัท ไทย ");
         if (create && kind != "company")
         {
-            await page.Locator("#relation-country").ClickAsync();
-            await page.GetByRole(AriaRole.Option, new() { Name = "Thailand", Exact = true }).ClickAsync();
+            await ClickWithGeometryDiagnosticsAsync(page.Locator("#relation-country"));
+            await ClickWithGeometryDiagnosticsAsync(page.GetByRole(AriaRole.Option, new() { Name = "Thailand", Exact = true }));
         }
-        await page.GetByRole(AriaRole.Button, new() { Name = thai ? "บันทึกส่วนนี้" : "Save this section", Exact = true }).ClickAsync();
+        await ClickWithGeometryDiagnosticsAsync(page.GetByRole(AriaRole.Button, new() { Name = thai ? "บันทึกส่วนนี้" : "Save this section", Exact = true }));
         var success = kind == "company" ? (thai ? "บันทึกบริษัทแล้ว" : "Company saved.") : kind == "billing" ? (thai ? "บันทึกที่อยู่ใบแจ้งหนี้แล้ว" : "Billing address saved.") : thai ? "บันทึกที่อยู่จัดส่งแล้ว" : "Shipping address saved.";
         await page.GetByText(success, new() { Exact = true }).WaitForAsync();
         Assert.Equal(1, writes);
@@ -857,26 +857,69 @@ public sealed class CustomerDetailBrowserTests(
             });
         });
         await page.GotoAsync(new Uri(server.BaseUri, "Customers/View?id=69738").AbsoluteUri);
-        await page.GetByRole(AriaRole.Button, new() { Name = "Edit company", Exact = true }).ClickAsync();
+        await ClickWithGeometryDiagnosticsAsync(page.GetByRole(AriaRole.Button, new() { Name = "Edit company", Exact = true }));
         if (create) await page.Locator("#relation-company-name").FillAsync("New company");
         var save = page.GetByRole(AriaRole.Button, new() { Name = "Save this section", Exact = true });
-        await save.ClickAsync();
+        await ClickWithGeometryDiagnosticsAsync(save);
         await Assertions.Expect(save).ToBeDisabledAsync();
         await page.GetByText("The record changed or the save outcome is uncertain. Reload this section before saving again.", new() { Exact = true }).WaitForAsync();
         Assert.Equal(1, writes);
         Assert.Equal(create ? 1 : 0, creations);
         var beforeReload = reads.Count;
-        await page.GetByRole(AriaRole.Button, new() { Name = "Reload this section", Exact = true }).ClickAsync();
+        await ClickWithGeometryDiagnosticsAsync(page.GetByRole(AriaRole.Button, new() { Name = "Reload this section", Exact = true }));
         await Assertions.Expect(save).ToBeEnabledAsync();
         Assert.Equal(new[] { "profile:200", "relation:200" }, reads.Skip(beforeReload).ToArray());
         await Assertions.Expect(page.Locator("#relation-company-name")).ToHaveValueAsync("Fresh attached company");
         Assert.Equal(1, writes);
         Assert.Equal(create ? 1 : 0, creations);
         // Only this new employee action may issue a second PUT; it must update 200, never create again.
-        await save.ClickAsync();
+        await ClickWithGeometryDiagnosticsAsync(save);
         await page.GetByText("Company saved.", new() { Exact = true }).WaitForAsync();
         Assert.Equal(2, writes);
         Assert.Equal(create ? 1 : 0, creations);
+    }
+
+    private static async Task ClickWithGeometryDiagnosticsAsync(ILocator control)
+    {
+        try { await control.ClickAsync(); }
+        catch (TimeoutException exception)
+        {
+            string geometry;
+            try
+            {
+                geometry = await control.EvaluateAsync<string>("""
+                    element => {
+                        const describe = node => {
+                            const rect = node.getBoundingClientRect();
+                            const style = getComputedStyle(node);
+                            return {
+                                tag: node.tagName,
+                                classes: Array.from(node.classList).slice(0, 8).map(value => value.slice(0, 64)),
+                                rect: { x: rect.x, y: rect.y, width: rect.width, height: rect.height },
+                                style: Object.fromEntries(['display', 'position', 'transform', 'overflow',
+                                    'height', 'lineHeight', 'pointerEvents', 'zIndex'].map(key => [key, style[key]]))
+                            };
+                        };
+                        const rect = element.getBoundingClientRect();
+                        const x = rect.x + rect.width / 2, y = rect.y + rect.height / 2;
+                        const ancestors = [];
+                        for (let node = element.parentElement; node && ancestors.length < 6; node = node.parentElement)
+                            ancestors.push(describe(node));
+                        return JSON.stringify({ control: describe(element), ancestors,
+                            centerHit: document.elementFromPoint(x, y)?.tagName ?? null,
+                            hitBelongsToControl: element.contains(document.elementFromPoint(x, y)),
+                            hits: document.elementsFromPoint(x, y).slice(0, 4).map(describe),
+                            viewport: { width: innerWidth, height: innerHeight, scrollX, scrollY }
+                        }).slice(0, 8192);
+                    }
+                    """, options: new LocatorEvaluateOptions { Timeout = 2000 }).WaitAsync(TimeSpan.FromSeconds(2));
+            }
+            catch (Exception diagnosticFailure)
+            {
+                geometry = "geometry unavailable: " + diagnosticFailure.GetType().Name;
+            }
+            throw new TimeoutException(exception.Message + "\nBounded control geometry: " + geometry, exception);
+        }
     }
 
     private static async Task StubCustomerDetailBoundariesAsync(
