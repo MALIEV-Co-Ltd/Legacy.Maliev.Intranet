@@ -144,10 +144,30 @@ class IdentityRetentionTests(unittest.TestCase):
                 (evidence / "compiler-inputs.sha256").write_text(str(source) + "|" + RET.digest(source.read_bytes()))
                 (evidence / "compiler-outputs.sha256").write_text("\n".join(binaries))
                 (evidence / "emitted-sources.sha256").write_text("")
+                (evidence / "symbol-policy.txt").write_text("portable|true|true\n")
             captured = RET.retain_compiler_custody(root)
             self.assertEqual(len(captured), 4)
             self.assertTrue(all(not item["compiledMembershipCertified"] for item in captured.values()))
             self.assertTrue(all(not item["generatedInclusiveCertified"] for item in captured.values()))
+            contracts = "Legacy.Maliev.Intranet.Contracts"
+            contract_evidence = root / contracts / "obj/Release/net10.0/intranet-validation"
+            original_outputs = (contract_evidence / "compiler-outputs.sha256").read_text()
+            dll_only = original_outputs.splitlines()[0]
+            (contract_evidence / "compiler-outputs.sha256").write_text(dll_only)
+            with self.assertRaises(RET.InvalidEvidence): RET.retain_compiler_custody(root)
+            (contract_evidence / "symbol-policy.txt").write_text("None|false|\n")
+            self.assertEqual(RET.retain_compiler_custody(root)[contracts]["symbolPolicy"]["debugType"], "none")
+            for invalid in ("None|false|true", "portable|false|", "None|true|", "unknown|true|", "None|false|private"):
+                (contract_evidence / "symbol-policy.txt").write_text(invalid)
+                with self.assertRaises(RET.InvalidEvidence): RET.retain_compiler_custody(root)
+            (contract_evidence / "symbol-policy.txt").write_text("None|false|\n")
+            (contract_evidence / "compiler-outputs.sha256").write_text(original_outputs)
+            with self.assertRaises(RET.InvalidEvidence): RET.retain_compiler_custody(root)
+            (contract_evidence / "compiler-outputs.sha256").write_text(dll_only)
+            server_policy = root / "Legacy.Maliev.Intranet.Server/obj/Release/net10.0/intranet-validation/symbol-policy.txt"
+            server_policy.write_text("None|false|\n")
+            with self.assertRaises(RET.InvalidEvidence): RET.retain_compiler_custody(root)
+            server_policy.write_text("portable|true|true\n")
             (root / "Legacy.Maliev.Intranet.Server/Legacy.Maliev.Intranet.Server.dll").write_bytes(b"stale mismatch")
             with self.assertRaises(RET.InvalidEvidence): RET.retain_compiler_custody(root)
 

@@ -162,6 +162,19 @@ def retain_compiler_custody(workspace):
     for project in projects:
         directory = workspace / project / "obj/Release/net10.0/intranet-validation"
         groups = {}
+        policy = directory / "symbol-policy.txt"
+        require(policy.is_file() and not policy.is_symlink() and policy.stat().st_size <= 128)
+        fields = policy.read_text(encoding="utf-8-sig").strip().split("|")
+        require(len(fields) == 3)
+        debug_type, debug_symbols, coverage_symbols = (field.lower() for field in fields)
+        require(coverage_symbols in ("", "true", "false"))
+        without_symbols = debug_type == "none" and debug_symbols == "false"
+        if without_symbols:
+            require(project == "Legacy.Maliev.Intranet.Contracts" and coverage_symbols != "true")
+        else:
+            require(debug_type in ("portable", "full", "pdbonly") and debug_symbols == "true")
+        groups["symbolPolicy"] = {"debugType": debug_type, "debugSymbols": debug_symbols,
+                                  "enableCoverageSymbols": coverage_symbols}
         for name in ("compiler-inputs", "compiler-outputs", "emitted-sources"):
             manifest = directory / (name + ".sha256")
             require(manifest.is_file() and not manifest.is_symlink() and manifest.stat().st_size <= 1024 * 1024)
@@ -182,7 +195,10 @@ def retain_compiler_custody(workspace):
                 rows.append({"path": relative, "sha256": actual})
             require(name == "emitted-sources" or len(rows) > 0)
             if name == "compiler-outputs":
-                require({pathlib.Path(row["path"]).name for row in rows} == {project + ".dll", project + ".pdb"})
+                expected_names = {project + ".dll"}
+                if not without_symbols:
+                    expected_names.add(project + ".pdb")
+                require({pathlib.Path(row["path"]).name for row in rows} == expected_names)
             groups[name] = sorted(rows, key=lambda row: row["path"])
         groups["origin"] = "MSBuild CoreCompile item snapshot and build-output capture"
         groups["compiledMembershipCertified"] = False

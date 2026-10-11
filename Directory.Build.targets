@@ -14,9 +14,12 @@
   <Target Name="CaptureIntranetCompilerOutputs" AfterTargets="Build"
           Condition="'$(MalievCaptureValidationEvidence)' == 'true' And '$(IntranetEvidenceProject)' == 'true'">
     <ItemGroup>
-      <IntranetCompilerOutputs Include="$(TargetPath);$([System.IO.Path]::ChangeExtension('$(TargetPath)', '.pdb'))" />
+      <IntranetCompilerOutputs Include="$(TargetPath)" />
+      <IntranetCompilerOutputs Include="$([System.IO.Path]::ChangeExtension('$(TargetPath)', '.pdb'))" Condition="'$(DebugType)' != 'None' And '$(DebugType)' != 'none' And '$(DebugSymbols)' != 'false'" />
       <IntranetEmittedSources Include="$(CompilerGeneratedFilesOutputPath)/**/*.cs" Condition="'$(EmitCompilerGeneratedFiles)' == 'true' And '$(CompilerGeneratedFilesOutputPath)' != ''" />
     </ItemGroup>
+    <WriteLinesToFile File="$(IntermediateOutputPath)intranet-validation/symbol-policy.txt" Overwrite="true" Encoding="UTF-8"
+                      Lines="$(DebugType)|$(DebugSymbols)|$(EnableCoverageSymbols)" />
     <GetFileHash Files="@(IntranetCompilerOutputs)" Algorithm="SHA256">
       <Output TaskParameter="Items" ItemName="IntranetCompilerHashedOutputs" />
     </GetFileHash>
