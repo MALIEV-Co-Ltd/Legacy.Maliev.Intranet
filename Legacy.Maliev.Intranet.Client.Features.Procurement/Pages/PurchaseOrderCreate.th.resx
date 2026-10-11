@@ -39,6 +39,6 @@
   <data name="Unavailable" xml:space="preserve"><value>ข้อมูลที่ใช้สร้างใบสั่งซื้อไม่พร้อมใช้งานชั่วคราว</value></data>
   <data name="OutcomeUnknown" xml:space="preserve"><value>ยังยืนยันผลการสร้างใบสั่งซื้อไม่ได้ โปรดอย่าสร้างใบสั่งซื้อซ้ำ และตรวจสอบผลของคำขอนี้ก่อนลองอีกครั้ง</value></data>
   <data name="RetrySafe" xml:space="preserve"><value>ยังยืนยันผลการสร้างใบสั่งซื้อไม่ได้ โปรดตรวจสอบรายการใบสั่งซื้อ แล้วส่งคำขอเดิมซ้ำเฉพาะเมื่อยังไม่มีรายการถูกสร้างขึ้น</value></data>
-  <data name="CreateFailed" xml:space="preserve"><value>สร้างใบสั่งซื้อไม่สำเร็จ ระบบได้ยกเลิกการเปลี่ยนแปลงบางส่วนแล้ว</value></data>
+  <data name="CreateFailed" xml:space="preserve"><value>สร้างใบสั่งซื้อไม่สำเร็จ โปรดตรวจสอบผลของคำขอนี้ก่อนลองอีกครั้ง</value></data>
   <data name="InvalidResponse" xml:space="preserve"><value>ระบบเดิมส่งข้อมูลกลับมาไม่ถูกต้อง</value></data>
 </root>
