@@ -75,6 +75,37 @@ class FocusTests(unittest.TestCase):
             first=next(iter(RET.FOCUSED_BASELINE["sourceFiles"]))
             target=workspace/first;target.write_bytes(target.read_bytes()+b"changed")
             with self.assertRaises(RET.InvalidEvidence):RET.retain_focus(RET.ET.tostring(fixture()),workspace,"1"*40)
+    def test_pinned_adapter_summary_is_allowed_but_other_output_is_refused(self):
+        status="[xUnit.net 00:00:00.00] xUnit.net VSTest Adapter v3.1.4+50e68bbb8b (64-bit .NET 10.0.12)\n[xUnit.net 00:00:00.19]   Discovering: Legacy.Maliev.Intranet.Tests\n[xUnit.net 00:00:00.81]   Discovered:  Legacy.Maliev.Intranet.Tests\n[xUnit.net 00:00:00.84]   Starting:    Legacy.Maliev.Intranet.Tests\n[xUnit.net 00:00:01.23]   Finished:    Legacy.Maliev.Intranet.Tests\n"
+        for ending in ("\n","\r\n"):
+            root=fixture();summary=RET.one_child(root,"ResultSummary")
+            RET.ET.SubElement(RET.ET.SubElement(summary,"Output"),"StdOut").text=status.replace("\n",ending)
+            self.assertEqual(RET.retain_focus(RET.ET.tostring(root),ROOT,"1"*40)["counters"]["passed"],2)
+        for failure in ("private-text","extra-line","other-assembly","other-version","test-output","stderr"):
+            root=fixture();summary=RET.one_child(root,"ResultSummary")
+            text=status
+            if failure=="private-text":text="private-diagnostic"
+            if failure=="extra-line":text+="private-diagnostic\n"
+            if failure=="other-assembly":text=text.replace("Intranet.Tests","Intranet.Other")
+            if failure=="other-version":text=text.replace("v3.1.4","v3.1.5")
+            parent=list(RET.one_child(root,"Results"))[0] if failure=="test-output" else summary
+            tag="StdErr" if failure=="stderr" else "StdOut"
+            RET.ET.SubElement(RET.ET.SubElement(parent,"Output"),tag).text=text
+            with self.subTest(failure=failure),self.assertRaises(RET.InvalidEvidence):RET.retain_focus(RET.ET.tostring(root),ROOT,"1"*40)
+    def test_output_shape_rejects_hidden_nested_sibling_tail_and_attributes(self):
+        status="[xUnit.net 00:00:00.00] xUnit.net VSTest Adapter v3.1.4+50e68bbb8b (64-bit .NET 10.0.12)\n[xUnit.net 00:00:00.19]   Discovering: Legacy.Maliev.Intranet.Tests\n[xUnit.net 00:00:00.81]   Discovered:  Legacy.Maliev.Intranet.Tests\n[xUnit.net 00:00:00.84]   Starting:    Legacy.Maliev.Intranet.Tests\n[xUnit.net 00:00:01.23]   Finished:    Legacy.Maliev.Intranet.Tests\n"
+        for failure in ("nested","sibling","tail","stdout-attribute","output-attribute","output-text","output-tail","empty-row-nested","duplicate"):
+            root=fixture();summary=RET.one_child(root,"ResultSummary");output=RET.ET.SubElement(summary,"Output");stdout=RET.ET.SubElement(output,"StdOut");stdout.text=status
+            if failure=="nested":RET.ET.SubElement(stdout,"Private").text="private-diagnostic"
+            if failure=="sibling":RET.ET.SubElement(output,"Private").text="private-diagnostic"
+            if failure=="tail":stdout.tail="private-diagnostic"
+            if failure=="stdout-attribute":stdout.set("Private","private-diagnostic")
+            if failure=="output-attribute":output.set("Private","private-diagnostic")
+            if failure=="output-text":output.text="private-diagnostic"
+            if failure=="output-tail":output.tail="private-diagnostic"
+            if failure=="empty-row-nested":RET.ET.SubElement(RET.ET.SubElement(RET.ET.SubElement(list(RET.one_child(root,"Results"))[0],"Output"),"StdOut"),"Private").text="private-diagnostic"
+            if failure=="duplicate":RET.ET.SubElement(output,"StdOut").text=status
+            with self.subTest(failure=failure),self.assertRaises(RET.InvalidEvidence):RET.retain_focus(RET.ET.tostring(root),ROOT,"1"*40)
     def test_dtd_refused(self):
         with self.assertRaises(RET.InvalidEvidence):RET.retain_focus(b'<!DOCTYPE TestRun>'+RET.ET.tostring(fixture()),ROOT,"1"*40)
 if __name__=="__main__":unittest.main()
