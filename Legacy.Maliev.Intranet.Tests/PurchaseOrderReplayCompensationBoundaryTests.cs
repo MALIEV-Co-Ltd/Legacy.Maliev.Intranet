@@ -26,8 +26,13 @@ public sealed class PurchaseOrderReplayCompensationBoundaryTests
         const string attempt = "0f727e0f-a4f3-4e1c-995a-c0d37ea2a972";
         var request = new PurchaseOrderCreateRequest
         {
-            SupplierId = 4, ShippingAddressId = 1, BillingAddressId = 2, EmployeeId = 7,
-            ShippingCompanyName = "MALIEV", BillingCompanyName = "MALIEV", Notes = " literal notes ",
+            SupplierId = 4,
+            ShippingAddressId = 1,
+            BillingAddressId = 2,
+            EmployeeId = 7,
+            ShippingCompanyName = "MALIEV",
+            BillingCompanyName = "MALIEV",
+            Notes = " literal notes ",
             Items = [new() { PartNumber = " P-1 ", Description = "first", Quantity = 2, UnitPrice = 3m },
                 new() { Description = "second", Quantity = 1, UnitPrice = 4m }],
         };
