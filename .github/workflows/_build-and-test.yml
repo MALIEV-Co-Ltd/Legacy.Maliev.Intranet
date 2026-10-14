@@ -240,6 +240,37 @@ jobs:
             --logger 'console;verbosity=normal' \
             --logger 'trx;LogFileName=employee-creation-email.trx' \
             --results-directory TestResults/employee-creation-email
+      - name: Verify localized purchase-order focus rejection controls
+        shell: bash
+        run: python3 -B tests/fixtures/purchase-order-message-focus/test_retainer.py
+      - name: Execute both localized purchase-order failure guidance regressions
+        timeout-minutes: 3
+        shell: bash
+        env:
+          DOTNET_PROCESSOR_COUNT: '1'
+        run: |
+          export GITHUB_ACTIONS=false
+          test ! -e TestResults/purchase-order-message-focus
+          dotnet test Legacy.Maliev.Intranet.Tests/Legacy.Maliev.Intranet.Tests.csproj \
+            --configuration Release --no-build --no-restore -p:UseLocalMalievDependencies=true \
+            --filter 'FullyQualifiedName=Legacy.Maliev.Intranet.Tests.PurchaseOrderFailureMessageContractTests.UnconfirmedFailureGuidanceRequiresReconciliationWithoutClaimingRollback' \
+            --logger 'trx;LogFileName=localized-two.trx' \
+            --results-directory TestResults/purchase-order-message-focus
+      - name: Verify original localized purchase-order identity joins
+        shell: bash
+        run: |
+          python3 -B scripts/verify-purchase-order-message-focus.py \
+            --trx TestResults/purchase-order-message-focus/localized-two.trx \
+            --workspace "$GITHUB_WORKSPACE" --source-revision "$(git rev-parse HEAD)" \
+            --output-directory "$RUNNER_TEMP/purchase-order-message-focus-proof"
+      - name: Preserve original localized purchase-order proof
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: purchase-order-message-focus-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/purchase-order-message-focus-proof/
+          retention-days: 7
+          if-no-files-found: error
+          include-hidden-files: false
       - name: Validate .NET solution
         uses: MALIEV-Co-Ltd/Legacy.Maliev.Workflows/actions/dotnet-validate@d7efac266bc66273bc45eab583618871292ecbd6
         env:
