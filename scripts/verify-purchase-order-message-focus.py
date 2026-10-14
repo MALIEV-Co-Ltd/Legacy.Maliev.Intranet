@@ -59,6 +59,9 @@ def retain(raw, baseline, source_revision):
     require(b"<!DOCTYPE" not in raw.upper() and b"<!ENTITY" not in raw.upper())
     root = ET.fromstring(raw)
     require(local_tag(root) == "TestRun")
+    # Direct sections must be the only sections anywhere in the document.
+    for name in ("TestRun", "TestDefinitions", "TestEntries", "Results", "ResultSummary", "Counters"):
+        require(sum(local_tag(node) == name for node in root.iter()) == 1)
     definitions = one_child(root, "TestDefinitions")
     entries = one_child(root, "TestEntries")
     results = one_child(root, "Results")
@@ -79,6 +82,10 @@ def retain(raw, baseline, source_revision):
     for name, value in counters.attrib.items():
         if name not in {"total", "executed", "passed"}:
             require(int(value) == 0)
+    for parent, name in ((definitions, "UnitTest"), (entries, "TestEntry"), (results, "UnitTestResult")):
+        require([node for node in root.iter() if local_tag(node) == name] == list(parent))
+    for name in ("Execution", "TestMethod"):
+        require(sum(local_tag(node) == name for node in root.iter()) == total)
     declared = {}
     retained_definitions = []
     roster = collections.Counter()

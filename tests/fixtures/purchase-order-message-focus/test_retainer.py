@@ -106,6 +106,27 @@ class FocusTests(unittest.TestCase):
             if failure=="empty-row-nested":RET.ET.SubElement(RET.ET.SubElement(RET.ET.SubElement(list(RET.one_child(root,"Results"))[0],"Output"),"StdOut"),"Private").text="private-diagnostic"
             if failure=="duplicate":RET.ET.SubElement(output,"StdOut").text=status
             with self.subTest(failure=failure),self.assertRaises(RET.InvalidEvidence):RET.retain_focus(RET.ET.tostring(root),ROOT,"1"*40)
+    def test_nested_failed_summary_and_extra_result_are_refused(self):
+        root=fixture()
+        wrapper=RET.ET.SubElement(root,"ForeignEvidence")
+        summary=RET.ET.SubElement(wrapper,"ResultSummary",outcome="Failed")
+        counters=copy.deepcopy(RET.one_child(RET.one_child(root,"ResultSummary"),"Counters"))
+        counters.set("total","1");counters.set("executed","1");counters.set("passed","0");counters.set("failed","1")
+        summary.append(counters)
+        extra=copy.deepcopy(list(RET.one_child(root,"Results"))[0])
+        extra.set("outcome","Failed")
+        RET.ET.SubElement(wrapper,"Results").append(extra)
+        with self.assertRaises(RET.InvalidEvidence):
+            RET.retain_focus(RET.ET.tostring(root),ROOT,"1"*40)
+    def test_foreign_nested_identity_sections_and_rows_are_refused(self):
+        for tag in ("TestRun","ResultSummary","Counters","TestDefinitions","TestEntries","Results",
+                    "UnitTest","TestEntry","UnitTestResult","Execution","TestMethod"):
+            root=fixture()
+            original=next(node for node in root.iter() if RET.local_tag(node)==tag)
+            extra=copy.deepcopy(original)
+            RET.ET.SubElement(root,"ForeignEvidence").append(extra)
+            with self.subTest(tag=tag),self.assertRaises(RET.InvalidEvidence):
+                RET.retain_focus(RET.ET.tostring(root),ROOT,"1"*40)
     def test_dtd_refused(self):
         with self.assertRaises(RET.InvalidEvidence):RET.retain_focus(b'<!DOCTYPE TestRun>'+RET.ET.tostring(fixture()),ROOT,"1"*40)
 if __name__=="__main__":unittest.main()
