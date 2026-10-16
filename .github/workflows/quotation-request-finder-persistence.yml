@@ -1,0 +1,108 @@
+name: Joined quotation request finder persistence
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: quotation-request-finder-persistence-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  finder-persistence:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      MalievWorkspaceRoot: ${{ github.workspace }}/.dependencies
+      LEGACY_DEPLOY_ENABLED: 'false'
+      MALIEV_OBSERVABILITY_STANDBY: 'true'
+      DOTNET_PROCESSOR_COUNT: '2'
+      TZ: UTC
+      FINDER_JOIN_RESOURCES: ${{ runner.temp }}/finder-join-resources
+      FINDER_JOIN_RESULTS: ${{ runner.temp }}/finder-join-results
+      FINDER_JOIN_EVIDENCE: ${{ runner.temp }}/finder-join-evidence
+    steps:
+      - name: Check out same proposed consumer head
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Check out exact ServiceDefaults
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: MALIEV-Co-Ltd/Legacy.Maliev.ServiceDefaults
+          ref: 7edcd961024868513fd5f373cab3dcb261197f77
+          path: .dependencies/Legacy.Maliev.ServiceDefaults
+          persist-credentials: false
+      - name: Check out exact CompatibilityContracts
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: MALIEV-Co-Ltd/Legacy.Maliev.CompatibilityContracts
+          ref: 78e48ffc4ee000df0510cba5e7c7a3c4c4d539d7
+          path: .dependencies/Legacy.Maliev.CompatibilityContracts
+          persist-credentials: false
+      - name: Check out exact Quotation producer
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: MALIEV-Co-Ltd/Legacy.Maliev.QuotationService
+          ref: 3c7fd8562cb61bd8e5b67095ed540c6aed1a9ecf
+          path: .dependencies/Legacy.Maliev.QuotationService
+          persist-credentials: false
+      - name: Verify exact source identities and hosted runtime
+        shell: bash
+        run: |
+          test "$RUNNER_ENVIRONMENT" = github-hosted
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test "$(git -C .dependencies/Legacy.Maliev.ServiceDefaults rev-parse HEAD)" = 7edcd961024868513fd5f373cab3dcb261197f77
+          test "$(git -C .dependencies/Legacy.Maliev.CompatibilityContracts rev-parse HEAD)" = 78e48ffc4ee000df0510cba5e7c7a3c4c4d539d7
+          test "$(git -C .dependencies/Legacy.Maliev.QuotationService rev-parse HEAD)" = 3c7fd8562cb61bd8e5b67095ed540c6aed1a9ecf
+          docker info
+      - name: Set up .NET 10 only
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68
+        with:
+          dotnet-version: 10.0.x
+      - name: Build joined acceptance before execution
+        shell: bash
+        run: |
+          export GITHUB_ACTIONS=false
+          dotnet build acceptance/QuotationRequestFinderPersistence/QuotationRequestFinderPersistence.AcceptanceTests.csproj --configuration Release --warnaserror -p:UseLocalMalievDependencies=true --nologo
+      - name: Execute fourteen joined persistence and refusal cases
+        id: finder_execution
+        timeout-minutes: 15
+        shell: bash
+        run: |
+          export GITHUB_ACTIONS=false
+          dotnet test acceptance/QuotationRequestFinderPersistence/QuotationRequestFinderPersistence.AcceptanceTests.csproj --configuration Release --no-build --no-restore -p:UseLocalMalievDependencies=true --logger 'trx;LogFileName=finder-join.trx' --results-directory "$FINDER_JOIN_RESULTS" --nologo
+      - name: Verify exact disposable containers exited
+        if: ${{ always() && steps.finder_execution.outcome != 'skipped' }}
+        run: python3 -B acceptance/QuotationRequestFinderPersistence/verify_resources.py
+      - name: Verify complete actual execution joins
+        id: finder_proof
+        run: python3 -B acceptance/QuotationRequestFinderPersistence/verify_join.py
+      - name: Build existing browser cohort at same head
+        shell: bash
+        run: |
+          export GITHUB_ACTIONS=false
+          dotnet build Legacy.Maliev.Intranet.BrowserTests/Legacy.Maliev.Intranet.BrowserTests.csproj --configuration Release --warnaserror -p:UseLocalMalievDependencies=true --nologo
+          pwsh -NoProfile -File Legacy.Maliev.Intranet.BrowserTests/bin/Release/net10.0/playwright.ps1 install --with-deps chromium
+      - name: Run unchanged finder browser cohort including EN and TH
+        timeout-minutes: 10
+        shell: bash
+        run: |
+          export GITHUB_ACTIONS=false
+          dotnet test Legacy.Maliev.Intranet.BrowserTests/Legacy.Maliev.Intranet.BrowserTests.csproj --configuration Release --no-build --no-restore -p:UseLocalMalievDependencies=true --filter 'FullyQualifiedName~QuotationRequestFinderBrowserTests' --logger 'trx;LogFileName=finder-browser.trx' --results-directory "$RUNNER_TEMP/finder-browser-results" --nologo
+      - name: Verify unchanged same-head EN and TH browser executions
+        id: browser_proof
+        run: python3 -B acceptance/QuotationRequestFinderPersistence/verify_browser.py
+      - name: Preserve sanitized joined and browser proof
+        if: ${{ always() && steps.finder_proof.outcome == 'success' && steps.browser_proof.outcome == 'success' }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: quotation-request-finder-persistence-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/finder-join-evidence/
+          if-no-files-found: error
+          retention-days: 7
