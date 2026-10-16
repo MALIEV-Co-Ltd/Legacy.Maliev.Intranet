@@ -141,9 +141,9 @@ public sealed class FinderPersistenceTests(OwnedContainers containers) : IClassF
         var view = new RequestView { Id = id };
         Set(view, "Http", client);
         Set(view, "Navigation", new FixtureNavigation());
-        Set(view, "Text", new ResourceManagerStringLocalizerFactory(
+        Set(view, "Text", new StringLocalizer<RequestView>(new ResourceManagerStringLocalizerFactory(
             Microsoft.Extensions.Options.Options.Create(new LocalizationOptions()),
-            Microsoft.Extensions.Logging.Abstractions.NullLoggerFactory.Instance).Create(typeof(RequestView)));
+            Microsoft.Extensions.Logging.Abstractions.NullLoggerFactory.Instance)));
         await InvokeAsync(view, "LoadAsync").WaitAsync(TimeSpan.FromSeconds(20));
         Assert.Null(Field<string?>(view, "error"));
         Assert.Null(Field<string?>(view, "qualificationError"));
