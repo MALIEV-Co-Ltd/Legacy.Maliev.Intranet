@@ -25,6 +25,8 @@ internal static class TestHostLifecycle
     // Arbitrary metadata, previews and later patches still require a separate source review.
     internal static bool IsReviewedFrameworkVersion(string? version) => version is
         "10.0.12" or "10.0.12+cb21a42eafcd44cc35fad48d99dc82ff7512ce2f" or
+        // Microsoft's exact VMR release maps this build to the same reviewed component source.
+        "10.0.12+95017c711e6afc1085133d440e42b4bd78155701" or
         "10.0.13" or "10.0.13+0ef4bbfa3291b306a21e5001cb0491277bdd35bc";
 
     internal static void Configure(IWebHostBuilder builder) => builder.ConfigureServices(services =>

@@ -37,6 +37,7 @@ public sealed class TestHostLimiterDisposalContractTests(ITestOutputHelper outpu
     [Theory]
     [InlineData("10.0.12")]
     [InlineData("10.0.12+cb21a42eafcd44cc35fad48d99dc82ff7512ce2f")]
+    [InlineData("10.0.12+95017c711e6afc1085133d440e42b4bd78155701")]
     [InlineData("10.0.13")]
     [InlineData("10.0.13+0ef4bbfa3291b306a21e5001cb0491277bdd35bc")]
     public void RuntimeGuard_AcceptsOnlyReviewedReleaseIdentities(string version)
@@ -47,6 +48,8 @@ public sealed class TestHostLimiterDisposalContractTests(ITestOutputHelper outpu
     [Theory]
     [InlineData("10.0.14")]
     [InlineData("10.0.14+0ef4bbfa3291b306a21e5001cb0491277bdd35bc")]
+    [InlineData("10.0.13+95017c711e6afc1085133d440e42b4bd78155701")]
+    [InlineData("10.0.14+95017c711e6afc1085133d440e42b4bd78155701")]
     [InlineData("10.0.12-unreviewed")]
     [InlineData("10.0.13-unreviewed")]
     [InlineData("10.0.12+unreviewed")]
