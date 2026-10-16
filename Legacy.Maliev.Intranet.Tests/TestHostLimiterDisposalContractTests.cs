@@ -40,6 +40,7 @@ public sealed class TestHostLimiterDisposalContractTests(ITestOutputHelper outpu
     [InlineData("10.0.12+95017c711e6afc1085133d440e42b4bd78155701")]
     [InlineData("10.0.13")]
     [InlineData("10.0.13+0ef4bbfa3291b306a21e5001cb0491277bdd35bc")]
+    [InlineData("10.0.13+4099f83977f4d29604a9aeb971fb0a7bc1d5f699")]
     public void RuntimeGuard_AcceptsOnlyReviewedReleaseIdentities(string version)
     {
         Assert.True(TestHostLifecycle.IsReviewedFrameworkVersion(version));
@@ -50,6 +51,10 @@ public sealed class TestHostLimiterDisposalContractTests(ITestOutputHelper outpu
     [InlineData("10.0.14+0ef4bbfa3291b306a21e5001cb0491277bdd35bc")]
     [InlineData("10.0.13+95017c711e6afc1085133d440e42b4bd78155701")]
     [InlineData("10.0.14+95017c711e6afc1085133d440e42b4bd78155701")]
+    [InlineData("10.0.12+4099f83977f4d29604a9aeb971fb0a7bc1d5f699")]
+    [InlineData("10.0.14+4099f83977f4d29604a9aeb971fb0a7bc1d5f699")]
+    [InlineData("10.0.13+4099f83977f4d29604a9aeb971fb0a7bc1d5f699+unreviewed")]
+    [InlineData("10.0.13+4099f83977f4d29604a9aeb971fb0a7bc1d5f699 ")]
     [InlineData("10.0.12-unreviewed")]
     [InlineData("10.0.13-unreviewed")]
     [InlineData("10.0.12+unreviewed")]
