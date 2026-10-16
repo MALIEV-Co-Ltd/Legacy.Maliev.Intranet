@@ -23,10 +23,11 @@ jobs:
       MALIEV_OBSERVABILITY_STANDBY: 'true'
       DOTNET_PROCESSOR_COUNT: '2'
       TZ: UTC
-      FINDER_JOIN_RESOURCES: ${{ runner.temp }}/finder-join-resources
-      FINDER_JOIN_RESULTS: ${{ runner.temp }}/finder-join-results
-      FINDER_JOIN_EVIDENCE: ${{ runner.temp }}/finder-join-evidence
     steps:
+      - name: Initialize runner-owned evidence paths
+        shell: bash
+        run: |
+          printf '%s\n' "FINDER_JOIN_RESOURCES=$RUNNER_TEMP/finder-join-resources" "FINDER_JOIN_RESULTS=$RUNNER_TEMP/finder-join-results" "FINDER_JOIN_EVIDENCE=$RUNNER_TEMP/finder-join-evidence" >> "$GITHUB_ENV"
       - name: Check out same proposed consumer head
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
