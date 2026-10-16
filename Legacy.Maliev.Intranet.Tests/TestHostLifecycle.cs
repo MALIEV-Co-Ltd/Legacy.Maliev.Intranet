@@ -27,7 +27,8 @@ internal static class TestHostLifecycle
     internal static bool IsReviewedFrameworkVersion(string? version) => version is
         "10.0.12" or "10.0.12+cb21a42eafcd44cc35fad48d99dc82ff7512ce2f" or
         "10.0.12+95017c711e6afc1085133d440e42b4bd78155701" or
-        "10.0.13" or "10.0.13+0ef4bbfa3291b306a21e5001cb0491277bdd35bc";
+        "10.0.13" or "10.0.13+0ef4bbfa3291b306a21e5001cb0491277bdd35bc" or
+        "10.0.13+4099f83977f4d29604a9aeb971fb0a7bc1d5f699";
 
     internal static void Configure(IWebHostBuilder builder) => builder.ConfigureServices(services =>
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IStartupFilter, LimiterDisposalStartupFilter>()));
