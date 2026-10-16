@@ -21,6 +21,19 @@ namespace Legacy.Maliev.Intranet.Tests;
 [Collection("Test host lifecycle")]
 public sealed class TestHostLimiterDisposalContractTests(ITestOutputHelper output)
 {
+    [Fact]
+    public void RuntimeGuard_BindsActualLoadedFrameworkIdentities()
+    {
+        // Public framework metadata only: no host, environment, path or application state.
+        var assemblies = new[] { typeof(UseMiddlewareExtensions).Assembly, typeof(RateLimiterApplicationBuilderExtensions).Assembly };
+        foreach (var assembly in assemblies.Distinct())
+        {
+            var version = assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion;
+            Assert.True(TestHostLifecycle.IsReviewedFrameworkVersion(version),
+                $"Framework assembly {assembly.GetName().Name} has unreviewed identity {version ?? "<missing>"}.");
+        }
+    }
+
     [Theory]
     [InlineData("10.0.12")]
     [InlineData("10.0.12+cb21a42eafcd44cc35fad48d99dc82ff7512ce2f")]
