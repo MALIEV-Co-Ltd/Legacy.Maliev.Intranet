@@ -299,6 +299,37 @@ jobs:
             exit 1
           fi
           pwsh -NoProfile -File scripts/verify-test-coverage.ps1 -CoverageFile "$coverage_file"
+      - name: Verify recovery mailbox proof rejection controls
+        shell: bash
+        run: python3 -B tests/fixtures/recovery-email/test_focus_retainer.py
+      - name: Execute historical recovery mailbox HTTP admission cases
+        timeout-minutes: 5
+        shell: bash
+        env:
+          DOTNET_PROCESSOR_COUNT: '1'
+        run: |
+          export GITHUB_ACTIONS=false
+          test ! -e TestResults/recovery-email
+          dotnet test Legacy.Maliev.Intranet.Tests/Legacy.Maliev.Intranet.Tests.csproj \
+            --configuration Release --no-build --no-restore \
+            -p:UseLocalMalievDependencies=true -p:EnableCoverageSymbols=true \
+            --filter 'FullyQualifiedName=Legacy.Maliev.Intranet.Tests.BffEmployeeRecoveryContractTests.RecoveryEmail_HistoricalBareSyntaxGatesRequestsAndCompletions|FullyQualifiedName=Legacy.Maliev.Intranet.Tests.BffEmployeeRecoveryContractTests.RecoveryEmail_RequiredNullCannotReachAnyAuthOrNotificationBoundary' \
+            --logger 'trx;LogFileName=recovery-email.trx' --results-directory TestResults/recovery-email
+      - name: Verify exact eleven actual recovery mailbox executions
+        id: recovery_email_proof
+        env:
+          EXPECTED_SOURCE_REVISION: ${{ github.sha }}
+          FOCUS_RESULTS: ${{ github.workspace }}/TestResults/recovery-email
+          FOCUS_EVIDENCE: ${{ runner.temp }}/recovery-email-evidence
+        run: python3 -B scripts/verify-recovery-email-focus.py
+      - name: Preserve sanitized recovery mailbox named proof
+        if: ${{ always() && steps.recovery_email_proof.outcome == 'success' }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: recovery-email-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/recovery-email-evidence/
+          if-no-files-found: error
+          retention-days: 7
       - name: Verify Customers private failure proof rejection controls
         shell: bash
         run: python3 -B tests/fixtures/customers-private-failure/test_focus_retainer.py
