@@ -1,0 +1,123 @@
+name: Framework dependency projection only
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '**/*.csproj'
+      - '**/packages.lock.json'
+      - '.github/workflows/framework-dependency-projection.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: framework-dependency-projection-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  projection:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      MalievWorkspaceRoot: ${{ github.workspace }}/.dependencies
+      LEGACY_DEPLOY_ENABLED: 'false'
+      DOTNET_PROCESSOR_COUNT: '2'
+    steps:
+      - name: Check out proposed source without write credentials
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Check out exact ServiceDefaults
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: MALIEV-Co-Ltd/Legacy.Maliev.ServiceDefaults
+          ref: 7edcd961024868513fd5f373cab3dcb261197f77
+          path: .dependencies/Legacy.Maliev.ServiceDefaults
+          persist-credentials: false
+      - name: Check out exact CompatibilityContracts
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: MALIEV-Co-Ltd/Legacy.Maliev.CompatibilityContracts
+          ref: 78e48ffc4ee000df0510cba5e7c7a3c4c4d539d7
+          path: .dependencies/Legacy.Maliev.CompatibilityContracts
+          persist-credentials: false
+      - name: Set up ordinary .NET 10 SDK
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68
+        with:
+          dotnet-version: 10.0.x
+      - name: Project only the two reviewed security package pins
+        run: |
+          python3 - <<'PY'
+          import hashlib, json, os
+          from pathlib import Path
+          changes = []
+          for path, package in [
+              ('Legacy.Maliev.Intranet.Bff/Legacy.Maliev.Intranet.Bff.csproj', 'Microsoft.AspNetCore.Components.WebAssembly.Server'),
+              ('Legacy.Maliev.Intranet.Server/Legacy.Maliev.Intranet.Server.csproj', 'Microsoft.AspNetCore.DataProtection.StackExchangeRedis'),
+          ]:
+              file = Path(path)
+              raw = file.read_bytes()
+              old = f'Include="{package}" Version="10.0.12"'.encode()
+              new = f'Include="{package}" Version="10.0.13"'.encode()
+              if raw.count(old) == 1 and raw.count(new) == 0:
+                  projected = raw.replace(old, new)
+              elif raw.count(old) == 0 and raw.count(new) == 1:
+                  projected = raw
+              else:
+                  raise SystemExit('Unexpected package preimage; projection refused')
+              file.write_bytes(projected)
+              changes.append({'path': path, 'before': hashlib.sha256(raw).hexdigest(), 'after': hashlib.sha256(projected).hexdigest()})
+          output = Path(os.environ['RUNNER_TEMP']) / 'framework-projection'
+          output.mkdir()
+          baseline = {}
+          for file in Path.cwd().rglob('packages.lock.json'):
+              relative = file.relative_to(Path.cwd())
+              if not any(part.startswith('.') or part in ('bin', 'obj') for part in relative.parts):
+                  if file.is_symlink() or file.stat().st_size > 8 * 1024 * 1024:
+                      raise SystemExit('Unsafe baseline lock')
+                  baseline[str(relative)] = hashlib.sha256(file.read_bytes()).hexdigest()
+          (output / 'projection.json').write_text(json.dumps({'head': os.environ['GITHUB_SHA'], 'acceptance': False, 'scope': 'ephemeral two-package dependency projection only', 'changes': changes, 'baselineLocks': baseline}, indent=2))
+          PY
+      - name: Restore projected graph with audit still enforced
+        id: projected_restore
+        timeout-minutes: 8
+        run: |
+          export GITHUB_ACTIONS=false
+          dotnet --info
+          dotnet restore Legacy.Maliev.Intranet.slnx --force-evaluate -p:RestorePackagesWithLockFile=true -p:UseLocalMalievDependencies=true -p:NuGetAudit=true
+          dotnet restore Legacy.Maliev.Intranet.BrowserTests/Legacy.Maliev.Intranet.BrowserTests.csproj --force-evaluate -p:RestorePackagesWithLockFile=true -p:UseLocalMalievDependencies=true -p:NuGetAudit=true
+      - name: Retain observed lock bytes with explicit restore outcome
+        if: always()
+        env:
+          PROJECTION_RESTORE_OUTCOME: ${{ steps.projected_restore.outcome }}
+        run: |
+          python3 - <<'PY'
+          import hashlib, json, os, shutil
+          from pathlib import Path
+          root = Path.cwd()
+          output = Path(os.environ['RUNNER_TEMP']) / 'framework-projection'
+          output.mkdir(exist_ok=True)
+          files = [p for p in root.rglob('packages.lock.json') if not any(part.startswith('.') or part in ('bin', 'obj') for part in p.relative_to(root).parts)]
+          if len(files) > 100:
+              raise SystemExit('Unexpected lock inventory')
+          projection = json.loads((output / 'projection.json').read_text())
+          observed = []
+          for file in files:
+              if file.is_symlink() or file.stat().st_size > 8 * 1024 * 1024:
+                  raise SystemExit('Unsafe lock artifact')
+              target = output / 'locks' / file.relative_to(root)
+              target.parent.mkdir(parents=True, exist_ok=True)
+              shutil.copyfile(file, target)
+              relative = str(file.relative_to(root))
+              observed.append({'path': relative, 'before': projection['baselineLocks'].get(relative), 'after': hashlib.sha256(file.read_bytes()).hexdigest()})
+          (output / 'lock-observation.json').write_text(json.dumps({'acceptance': False, 'restoreOutcome': os.environ['PROJECTION_RESTORE_OUTCOME'], 'locks': observed}, indent=2))
+          PY
+      - name: Preserve projection evidence not migration acceptance
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: framework-projection-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/framework-projection
+          retention-days: 7
+          if-no-files-found: error
