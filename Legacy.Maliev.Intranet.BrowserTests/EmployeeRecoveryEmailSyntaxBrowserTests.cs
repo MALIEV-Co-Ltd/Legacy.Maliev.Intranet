@@ -23,7 +23,8 @@ public sealed class EmployeeRecoveryEmailSyntaxBrowserTests(IntranetClientServer
         await page.RouteAsync("https://accounts.google.com/**", route => route.AbortAsync());
         await page.RouteAsync("**/bff/session", route => route.FulfillAsync(new()
         {
-            Status = 200, ContentType = "application/json",
+            Status = 200,
+            ContentType = "application/json",
             Body = "{\"isAuthenticated\":false,\"employeeId\":null,\"displayName\":null,\"roles\":[],\"csrfToken\":\"browser-csrf\"}",
         }));
         await page.RouteAsync($"**/bff/employee-recovery/{action}/request", async route =>
