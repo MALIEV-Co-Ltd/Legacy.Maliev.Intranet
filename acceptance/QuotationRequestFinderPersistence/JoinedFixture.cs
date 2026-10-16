@@ -328,9 +328,10 @@ internal sealed class JoinedFixture(OwnedContainers containers) : IAsyncDisposab
                 using var json = JsonDocument.Parse(await request.Content!.ReadAsStringAsync(cancellationToken));
                 if (fromBff && uri.AbsolutePath == "/auth/v1/login")
                 {
-                    var email = json.RootElement.GetProperty("email").GetString();
+                    var email = json.RootElement.GetProperty("userName").GetString();
                     Assert.Contains(email, new[] { "finder@maliev.com", "reader@maliev.com" });
                     Assert.Equal("fixture-only", json.RootElement.GetProperty("password").GetString());
+                    Assert.Equal(1, json.RootElement.GetProperty("identityKind").GetInt32());
                     return Json(new { accessToken = fixture.Token("employee-finder", "employee", email == "finder@maliev.com"), refreshToken = "fixture-refresh", tokenType = "Bearer", expiresIn = 900, refreshExpiresAt = DateTimeOffset.UtcNow.AddHours(1) });
                 }
                 if (uri.AbsolutePath == "/auth/v1/service/login")
