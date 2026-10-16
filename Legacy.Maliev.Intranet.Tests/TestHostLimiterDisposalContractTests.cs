@@ -21,6 +21,32 @@ namespace Legacy.Maliev.Intranet.Tests;
 [Collection("Test host lifecycle")]
 public sealed class TestHostLimiterDisposalContractTests(ITestOutputHelper output)
 {
+    [Theory]
+    [InlineData("10.0.12")]
+    [InlineData("10.0.12+cb21a42eafcd44cc35fad48d99dc82ff7512ce2f")]
+    [InlineData("10.0.13")]
+    [InlineData("10.0.13+0ef4bbfa3291b306a21e5001cb0491277bdd35bc")]
+    public void RuntimeGuard_AcceptsOnlyReviewedReleaseIdentities(string version)
+    {
+        Assert.True(TestHostLifecycle.IsReviewedFrameworkVersion(version));
+    }
+
+    [Theory]
+    [InlineData("10.0.14")]
+    [InlineData("10.0.14+0ef4bbfa3291b306a21e5001cb0491277bdd35bc")]
+    [InlineData("10.0.12-unreviewed")]
+    [InlineData("10.0.13-unreviewed")]
+    [InlineData("10.0.12+unreviewed")]
+    [InlineData("10.0.13+unreviewed")]
+    [InlineData("10.0.12+0ef4bbfa3291b306a21e5001cb0491277bdd35bc")]
+    [InlineData("10.0.13+cb21a42eafcd44cc35fad48d99dc82ff7512ce2f")]
+    [InlineData("")]
+    [InlineData(null)]
+    public void RuntimeGuard_RejectsUnreviewedPatchOrMetadata(string? version)
+    {
+        Assert.False(TestHostLifecycle.IsReviewedFrameworkVersion(version));
+    }
+
     [Fact]
     public Task Dispose_DisposesActualRegisteredEndpointLimiter() => VerifyAsync(false);
 
@@ -251,7 +277,7 @@ public sealed class TestHostLimiterDisposalContractTests(ITestOutputHelper outpu
         private static void RequireReviewedVersion(Type type)
         {
             var version = type.Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion;
-            if (version != "10.0.12" && version?.StartsWith("10.0.12+", StringComparison.Ordinal) != true)
+            if (!TestHostLifecycle.IsReviewedFrameworkVersion(version))
                 throw new InvalidOperationException("Limiter diagnostic requires the reviewed ASP.NET Core version.");
         }
 

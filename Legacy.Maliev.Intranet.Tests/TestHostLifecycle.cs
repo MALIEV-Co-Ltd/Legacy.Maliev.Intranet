@@ -21,10 +21,16 @@ internal interface ITestHostLimiterDisposalDiagnostics
 
 internal static class TestHostLifecycle
 {
+    // Exact public release identities reviewed against byte-identical limiter/binder source.
+    // Arbitrary metadata, previews and later patches still require a separate source review.
+    internal static bool IsReviewedFrameworkVersion(string? version) => version is
+        "10.0.12" or "10.0.12+cb21a42eafcd44cc35fad48d99dc82ff7512ce2f" or
+        "10.0.13" or "10.0.13+0ef4bbfa3291b306a21e5001cb0491277bdd35bc";
+
     internal static void Configure(IWebHostBuilder builder) => builder.ConfigureServices(services =>
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IStartupFilter, LimiterDisposalStartupFilter>()));
 
-    // ASP.NET Core 10.0.12 creates its endpoint limiter outside DI and never disposes it.
+    // Reviewed ASP.NET Core 10.0.12/10.0.13 source creates its endpoint limiter outside DI and never disposes it.
     // Its heartbeat captures the test-host startup context, rooting each disposed pipeline.
     // https://github.com/dotnet/aspnetcore/issues/66434
     // Keep the real middleware/policies intact and supply only the missing shutdown ownership.
@@ -105,7 +111,7 @@ internal static class TestHostLifecycle
         private static void RequireReviewedVersion(Type type)
         {
             var version = type.Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion;
-            if (version != "10.0.12" && version?.StartsWith("10.0.12+", StringComparison.Ordinal) != true)
+            if (!IsReviewedFrameworkVersion(version))
                 throw new InvalidOperationException("Rate-limiter lifecycle workaround needs review for this ASP.NET Core version.");
         }
 

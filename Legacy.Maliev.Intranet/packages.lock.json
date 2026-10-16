@@ -89,8 +89,8 @@
       },
       "Microsoft.AspNetCore.DataProtection.StackExchangeRedis": {
         "type": "Transitive",
-        "resolved": "10.0.12",
-        "contentHash": "secUkbBZ3PVVMhb0E+WVtNSFrKmDYNQwKrmsqkSftk9AgHjtb/Aaknsd9xD3E0iD7gwDvUTsSLUmAKb6FluXgA==",
+        "resolved": "10.0.13",
+        "contentHash": "/1GfT2ctt6tU98RSx52WTWgun7GNBBHsXyzK9QrNOyK+KwSfUNfraut3N5cOshOeMoUahRKPnPWvf8dekQpS8g==",
         "dependencies": {
           "StackExchange.Redis": "2.7.27"
         }
@@ -429,7 +429,7 @@
         "type": "Project",
         "dependencies": {
           "Legacy.Maliev.Intranet.Contracts": "[1.0.0, )",
-          "Microsoft.AspNetCore.DataProtection.StackExchangeRedis": "[10.0.12, )",
+          "Microsoft.AspNetCore.DataProtection.StackExchangeRedis": "[10.0.13, )",
           "Microsoft.Extensions.Caching.StackExchangeRedis": "[10.0.12, )",
           "System.IdentityModel.Tokens.Jwt": "[8.23.0, )"
         }
