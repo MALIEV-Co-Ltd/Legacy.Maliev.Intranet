@@ -28,8 +28,8 @@ public sealed class CustomerDocumentDecidedEvidenceWireTests
     public async Task ActualMappedEvidenceRefusesMalformedDecisionsAndPreservesValidStates(
         string route, string status, string fault, HttpStatusCode expected)
     {
-        var document = Guid.NewGuid();
-        var version = Guid.NewGuid();
+        var document = Guid.Parse("bff12a8c-2743-41d7-b813-000000000001");
+        var version = Guid.Parse("bff00000-0000-4000-8000-000000000002");
         var digest = new string('a', 64);
         var at = new DateTimeOffset(2026, 10, 8, 12, 0, 0, TimeSpan.Zero);
         string? actor = status == "PendingVerification" ? null : "synthetic-employee";
@@ -66,7 +66,8 @@ public sealed class CustomerDocumentDecidedEvidenceWireTests
             ? await http.PostAsJsonAsync(path, new CustomerDocumentVerificationRequest(7, status, "Synthetic exact evidence review"))
             : await http.GetAsync(path);
         Assert.Equal(expected, response.StatusCode);
-        Assert.Equal(path.Replace("/bff", "", StringComparison.Ordinal), handler.Path);
+        Assert.StartsWith("/bff/", path, StringComparison.Ordinal);
+        Assert.Equal(path["/bff".Length..], handler.Path);
         Assert.Equal("Bearer synthetic-acting-token", handler.Authorization);
         var body = await response.Content.ReadAsStringAsync();
         Assert.DoesNotContain("synthetic-acting-token", body);

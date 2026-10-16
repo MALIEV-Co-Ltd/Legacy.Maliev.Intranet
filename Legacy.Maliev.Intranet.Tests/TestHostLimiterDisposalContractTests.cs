@@ -22,6 +22,53 @@ namespace Legacy.Maliev.Intranet.Tests;
 public sealed class TestHostLimiterDisposalContractTests(ITestOutputHelper output)
 {
     [Fact]
+    public void RuntimeGuard_BindsActualLoadedFrameworkIdentities()
+    {
+        // Public framework metadata only: no host, environment, path or application state.
+        var assemblies = new[] { typeof(UseMiddlewareExtensions).Assembly, typeof(RateLimiterApplicationBuilderExtensions).Assembly };
+        foreach (var assembly in assemblies.Distinct())
+        {
+            var version = assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion;
+            Assert.True(TestHostLifecycle.IsReviewedFrameworkVersion(version),
+                $"Framework assembly {assembly.GetName().Name} has unreviewed identity {version ?? "<missing>"}.");
+        }
+    }
+
+    [Theory]
+    [InlineData("10.0.12")]
+    [InlineData("10.0.12+cb21a42eafcd44cc35fad48d99dc82ff7512ce2f")]
+    [InlineData("10.0.12+95017c711e6afc1085133d440e42b4bd78155701")]
+    [InlineData("10.0.13")]
+    [InlineData("10.0.13+0ef4bbfa3291b306a21e5001cb0491277bdd35bc")]
+    [InlineData("10.0.13+4099f83977f4d29604a9aeb971fb0a7bc1d5f699")]
+    public void RuntimeGuard_AcceptsOnlyReviewedReleaseIdentities(string version)
+    {
+        Assert.True(TestHostLifecycle.IsReviewedFrameworkVersion(version));
+    }
+
+    [Theory]
+    [InlineData("10.0.14")]
+    [InlineData("10.0.14+0ef4bbfa3291b306a21e5001cb0491277bdd35bc")]
+    [InlineData("10.0.13+95017c711e6afc1085133d440e42b4bd78155701")]
+    [InlineData("10.0.14+95017c711e6afc1085133d440e42b4bd78155701")]
+    [InlineData("10.0.12+4099f83977f4d29604a9aeb971fb0a7bc1d5f699")]
+    [InlineData("10.0.14+4099f83977f4d29604a9aeb971fb0a7bc1d5f699")]
+    [InlineData("10.0.13+4099f83977f4d29604a9aeb971fb0a7bc1d5f699+unreviewed")]
+    [InlineData("10.0.13+4099f83977f4d29604a9aeb971fb0a7bc1d5f699 ")]
+    [InlineData("10.0.12-unreviewed")]
+    [InlineData("10.0.13-unreviewed")]
+    [InlineData("10.0.12+unreviewed")]
+    [InlineData("10.0.13+unreviewed")]
+    [InlineData("10.0.12+0ef4bbfa3291b306a21e5001cb0491277bdd35bc")]
+    [InlineData("10.0.13+cb21a42eafcd44cc35fad48d99dc82ff7512ce2f")]
+    [InlineData("")]
+    [InlineData(null)]
+    public void RuntimeGuard_RejectsUnreviewedPatchOrMetadata(string? version)
+    {
+        Assert.False(TestHostLifecycle.IsReviewedFrameworkVersion(version));
+    }
+
+    [Fact]
     public Task Dispose_DisposesActualRegisteredEndpointLimiter() => VerifyAsync(false);
 
     [Fact]
@@ -251,7 +298,7 @@ public sealed class TestHostLimiterDisposalContractTests(ITestOutputHelper outpu
         private static void RequireReviewedVersion(Type type)
         {
             var version = type.Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion;
-            if (version != "10.0.12" && version?.StartsWith("10.0.12+", StringComparison.Ordinal) != true)
+            if (!TestHostLifecycle.IsReviewedFrameworkVersion(version))
                 throw new InvalidOperationException("Limiter diagnostic requires the reviewed ASP.NET Core version.");
         }
 
