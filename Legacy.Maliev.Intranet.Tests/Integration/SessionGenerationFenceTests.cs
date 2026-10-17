@@ -671,8 +671,7 @@ public sealed class SessionGenerationFenceTests : IAsyncLifetime
     [Fact]
     public async Task OutcomeBrowser_ChangedRefreshOwnerCannotBecomeTheForwardedEmployee()
     {
-        using var scenario = OutcomeScenario("qualification");
-        scenario.WrongRefreshOwner = true;
+        using var scenario = OutcomeScenario("qualification", wrongRefreshOwner: true);
         await using var factory = new Factory(redis.GetConnectionString(), scenario);
         using var browser = Client(factory);
         await LoginAsync(browser, factory);
@@ -698,8 +697,9 @@ public sealed class SessionGenerationFenceTests : IAsyncLifetime
         _ => "/quotationrequests/qualification-outcomes/readback",
     };
 
-    private static Scenario OutcomeScenario(string source) => new()
+    private static Scenario OutcomeScenario(string source, bool wrongRefreshOwner = false) => new()
     {
+        WrongRefreshOwner = wrongRefreshOwner,
         OutcomePermissions = source switch
         {
             "quotation" => [LegacyEmployeePermissions.QuotationsRead],
