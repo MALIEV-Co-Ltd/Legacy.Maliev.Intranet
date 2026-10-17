@@ -867,16 +867,24 @@ app.Use(async (context, next) =>
 
     context.Response.OnStarting(() =>
     {
-        context.Response.Headers["Content-Security-Policy"] =
-            "default-src 'self'; " +
-            "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://accounts.google.com; " +
-            "style-src 'self' 'unsafe-inline'; " +
-            "img-src 'self' data: https:; " +
-            "font-src 'self' data:; " +
-            "connect-src 'self' http: https:; " +
-            "frame-src https://accounts.google.com; " +
-            "frame-ancestors 'none'; " +
-            "base-uri 'self'";
+        if (OutcomeReadbackEndpointMapper.IsBrowserReceipt(context))
+        {
+            context.Response.Headers["Content-Security-Policy"] =
+                "default-src 'none'; frame-ancestors 'none'; base-uri 'none'";
+        }
+        else
+        {
+            context.Response.Headers["Content-Security-Policy"] =
+                "default-src 'self'; " +
+                "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://accounts.google.com; " +
+                "style-src 'self' 'unsafe-inline'; " +
+                "img-src 'self' data: https:; " +
+                "font-src 'self' data:; " +
+                "connect-src 'self' http: https:; " +
+                "frame-src https://accounts.google.com; " +
+                "frame-ancestors 'none'; " +
+                "base-uri 'self'";
+        }
 
         if (context.Response.StatusCode == StatusCodes.Status404NotFound &&
             context.Request.Path.StartsWithSegments("/_framework", StringComparison.OrdinalIgnoreCase))
@@ -923,6 +931,8 @@ app.MapGet("/bff/error-context", (HttpContext context) =>
 })
     .RequireAuthorization();
 
+app.MapGet(OutcomeReadbackEndpointMapper.BrowserReceiptPath, OutcomeReadbackEndpointMapper.GetAsync)
+    .RequireAuthorization();
 app.MapGet("/Operations/OutcomeReadback", OutcomeReadbackEndpointMapper.GetAsync)
     .RequireAuthorization();
 app.MapGet("/Analytics/OutcomeReadback", OutcomeReadbackEndpointMapper.GetAsync)
