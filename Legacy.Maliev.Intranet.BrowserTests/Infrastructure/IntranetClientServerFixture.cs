@@ -146,10 +146,10 @@ public sealed class IntranetClientServerFixture : IAsyncLifetime
         });
         builder.WebHost.UseUrls("http://127.0.0.1:0");
         _publishedHost = builder.Build();
-        var types = new Microsoft.AspNetCore.StaticFiles.FileExtensionContentTypeProvider();
-        types.Mappings[".wasm"] = "application/wasm";
         _publishedHost.UseDefaultFiles();
-        _publishedHost.UseStaticFiles(new Microsoft.AspNetCore.Builder.StaticFileOptions { ContentTypeProvider = types });
+        // Match the existing BFF: ICU .dat and other framework assets need Blazor MIME/encoding handling.
+        _publishedHost.UseBlazorFrameworkFiles();
+        _publishedHost.UseStaticFiles();
         _publishedHost.MapFallbackToFile("index.html");
         using var startDeadline = new CancellationTokenSource(TimeSpan.FromSeconds(30));
         await _publishedHost.StartAsync(startDeadline.Token);
