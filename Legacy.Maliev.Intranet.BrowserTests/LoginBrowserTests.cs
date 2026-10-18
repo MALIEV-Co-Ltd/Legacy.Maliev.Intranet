@@ -341,7 +341,7 @@ public sealed class LoginBrowserTests(
         var sessionsBeforeInvalid = Volatile.Read(ref sessions);
         var form = page.Locator("form.employee-create__form");
         await form.EvaluateAsync("form => form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }))");
-        await Assertions.Expect(page.Locator("main.employee-create [role='alert']")).ToContainTextAsync(
+        await Assertions.Expect(page.Locator("main.employee-create .employee-create__alert[role='alert']")).ToContainTextAsync(
             culture == "th-TH" ? "โปรดตรวจสอบช่องที่ระบุ แล้วลองอีกครั้ง" : "Review the highlighted fields and try again.");
         Assert.Equal(sessionsBeforeInvalid, Volatile.Read(ref sessions));
         Assert.Empty(creates);
