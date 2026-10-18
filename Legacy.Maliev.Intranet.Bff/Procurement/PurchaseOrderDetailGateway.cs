@@ -1,3 +1,4 @@
+using Maliev.Aspire.ServiceDefaults.Diagnostics;
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
@@ -41,7 +42,7 @@ public sealed class PurchaseOrderDetailGateway(IHttpClientFactory clients) : IPu
 
     private async Task<T?> GetOptionalAsync<T>(string clientName, string uri, CancellationToken cancellationToken)
     {
-        using var response = await clients.CreateClient(clientName).GetAsync(uri, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+        using var response = await clients.CreateClient(clientName).SendWithPrivateFailureObservationAsync(new HttpRequestMessage(HttpMethod.Get, uri), cancellationToken, new PrivateDependencyFailureObservation(), HttpCompletionOption.ResponseHeadersRead);
         if (response.StatusCode == HttpStatusCode.NotFound) return default;
         EnsureSuccess(response);
         try { return await response.Content.ReadFromJsonAsync<T>(cancellationToken); }
@@ -50,7 +51,7 @@ public sealed class PurchaseOrderDetailGateway(IHttpClientFactory clients) : IPu
 
     private async Task DeleteAsync(string clientName, string uri, CancellationToken cancellationToken)
     {
-        using var response = await clients.CreateClient(clientName).DeleteAsync(uri, cancellationToken);
+        using var response = await clients.CreateClient(clientName).SendWithPrivateFailureObservationAsync(new HttpRequestMessage(HttpMethod.Delete, uri), cancellationToken, new PrivateDependencyFailureObservation(), HttpCompletionOption.ResponseContentRead);
         if (response.StatusCode != HttpStatusCode.NotFound) EnsureSuccess(response);
     }
 

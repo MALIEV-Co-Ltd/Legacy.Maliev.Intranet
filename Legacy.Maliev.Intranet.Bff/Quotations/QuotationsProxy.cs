@@ -1,3 +1,4 @@
+using Maliev.Aspire.ServiceDefaults.Diagnostics;
 using Legacy.Maliev.Intranet.Contracts;
 
 namespace Legacy.Maliev.Intranet.Bff.Quotations;
@@ -43,7 +44,7 @@ public sealed class QuotationsProxy(HttpClient httpClient)
     private async Task<HttpResponseMessage> SendAsync(string path, CancellationToken cancellationToken)
     {
         using var request = new HttpRequestMessage(HttpMethod.Get, path);
-        return await httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+        return await httpClient.SendWithPrivateFailureObservationAsync(request, cancellationToken, new PrivateDependencyFailureObservation(), HttpCompletionOption.ResponseHeadersRead);
     }
 }
 
@@ -52,8 +53,5 @@ public sealed class QuotationFileProxy(HttpClient httpClient)
 {
     /// <summary>Gets a short-lived URL for a known clean object.</summary>
     public Task<HttpResponseMessage> GetSignedUrlAsync(string bucket, string objectName, CancellationToken cancellationToken) =>
-        httpClient.SendAsync(
-            new HttpRequestMessage(HttpMethod.Get, $"/uploads/SignedUrl?bucket={Uri.EscapeDataString(bucket)}&objectName={Uri.EscapeDataString(objectName)}"),
-            HttpCompletionOption.ResponseHeadersRead,
-            cancellationToken);
+        httpClient.SendWithPrivateFailureObservationAsync(new HttpRequestMessage(HttpMethod.Get, $"/uploads/SignedUrl?bucket={Uri.EscapeDataString(bucket)}&objectName={Uri.EscapeDataString(objectName)}"), cancellationToken, new PrivateDependencyFailureObservation(), HttpCompletionOption.ResponseHeadersRead);
 }

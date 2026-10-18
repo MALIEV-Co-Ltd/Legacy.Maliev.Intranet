@@ -1,3 +1,4 @@
+using Maliev.Aspire.ServiceDefaults.Diagnostics;
 using System.Net.Http.Json;
 using Legacy.Maliev.Intranet.Contracts;
 
@@ -99,7 +100,7 @@ public sealed class OrderCreateProxy(HttpClient httpClient)
     }
 
     private Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) =>
-        httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+        httpClient.SendWithPrivateFailureObservationAsync(request, cancellationToken, new PrivateDependencyFailureObservation(), HttpCompletionOption.ResponseHeadersRead);
 }
 
 /// <summary>Sends an optional order-created confirmation through NotificationService.</summary>
@@ -107,9 +108,7 @@ public sealed class OrderNotificationProxy(HttpClient httpClient)
 {
     /// <summary>Sends provider-independent notification content after the creation saga commits.</summary>
     public Task<HttpResponseMessage> SendCreatedAsync(string email, int orderId, CancellationToken cancellationToken) =>
-        httpClient.PostAsJsonAsync(
-            "/notifications/v1/email/NoReply",
-            new
+        httpClient.SendWithPrivateFailureObservationAsync(new HttpRequestMessage(HttpMethod.Post, "/notifications/v1/email/NoReply") { Content = JsonContent.Create(new
             {
                 To = email,
                 Subject = $"Manufacturing Order #{orderId}",
@@ -117,6 +116,5 @@ public sealed class OrderNotificationProxy(HttpClient httpClient)
                 ReplyTo = (string?)null,
                 Cc = (IReadOnlyList<string>?)null,
                 Bcc = new[] { "mail-tracking@maliev.com" },
-            },
-            cancellationToken);
+            }) }, cancellationToken, new PrivateDependencyFailureObservation(), HttpCompletionOption.ResponseContentRead);
 }

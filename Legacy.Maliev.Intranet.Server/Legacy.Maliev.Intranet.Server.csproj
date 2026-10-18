@@ -1,7 +1,14 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <SharedLibraryVersion Condition="'$(SharedLibraryVersion)' == ''">1.0.*-*</SharedLibraryVersion>
   </PropertyGroup>
+  <ItemGroup Condition="'$(GITHUB_ACTIONS)' != 'true' Or '$(UseLocalMalievDependencies)' == 'true'">
+    <ProjectReference Include="$(MalievWorkspaceRoot)\Legacy.Maliev.ServiceDefaults\src\Legacy.Maliev.ServiceDefaults\Legacy.Maliev.ServiceDefaults.csproj" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(GITHUB_ACTIONS)' == 'true' And '$(UseLocalMalievDependencies)' != 'true'">
+    <PackageReference Include="Legacy.Maliev.ServiceDefaults" Version="$(SharedLibraryVersion)" />
+  </ItemGroup>
   <ItemGroup>
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
     <PackageReference Include="Microsoft.AspNetCore.DataProtection.StackExchangeRedis" Version="10.0.13" />

@@ -1,3 +1,4 @@
+using Maliev.Aspire.ServiceDefaults.Diagnostics;
 using System.Net.Http.Json;
 
 using Legacy.Maliev.Intranet.Contracts;
@@ -11,7 +12,7 @@ public sealed class EmployeesProxy(HttpClient httpClient)
     public async Task<HttpResponseMessage> GetByIdAsync(int id, CancellationToken cancellationToken)
     {
         using var request = new HttpRequestMessage(HttpMethod.Get, $"/employees/{id}");
-        return await httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+        return await httpClient.SendWithPrivateFailureObservationAsync(request, cancellationToken, new PrivateDependencyFailureObservation(), HttpCompletionOption.ResponseHeadersRead);
     }
 
     /// <summary>Updates only the authenticated employee's owned profile fields.</summary>
@@ -24,7 +25,7 @@ public sealed class EmployeesProxy(HttpClient httpClient)
         {
             Content = JsonContent.Create(profile),
         };
-        return await httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+        return await httpClient.SendWithPrivateFailureObservationAsync(request, cancellationToken, new PrivateDependencyFailureObservation(), HttpCompletionOption.ResponseHeadersRead);
     }
 
     /// <summary>Gets the requested employee page from EmployeeService.</summary>
@@ -37,6 +38,6 @@ public sealed class EmployeesProxy(HttpClient httpClient)
     {
         var path = $"/employees?sort={sort}&search={Uri.EscapeDataString(search ?? string.Empty)}&index={index}&size={size}";
         using var request = new HttpRequestMessage(HttpMethod.Get, path);
-        return await httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+        return await httpClient.SendWithPrivateFailureObservationAsync(request, cancellationToken, new PrivateDependencyFailureObservation(), HttpCompletionOption.ResponseHeadersRead);
     }
 }

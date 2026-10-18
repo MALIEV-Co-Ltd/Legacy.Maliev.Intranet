@@ -1,3 +1,4 @@
+using Maliev.Aspire.ServiceDefaults.Diagnostics;
 using Legacy.Maliev.Intranet.Contracts;
 
 namespace Legacy.Maliev.Intranet.Bff.Catalog;
@@ -74,7 +75,7 @@ public sealed class CatalogMaterialsProxy(HttpClient httpClient)
     public Task<HttpResponseMessage> GetByIdAsync(int id, CancellationToken cancellationToken)
     {
         var request = new HttpRequestMessage(HttpMethod.Get, $"/Materials/{id}");
-        return httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+        return httpClient.SendWithPrivateFailureObservationAsync(request, cancellationToken, new PrivateDependencyFailureObservation(), HttpCompletionOption.ResponseHeadersRead);
     }
 
     /// <summary>Gets the requested material page with the employee token kept server-side.</summary>
@@ -87,7 +88,7 @@ public sealed class CatalogMaterialsProxy(HttpClient httpClient)
     {
         var path = $"/Materials?sort={sort}&search={Uri.EscapeDataString(search ?? string.Empty)}&index={index}&size={size}";
         var request = new HttpRequestMessage(HttpMethod.Get, path);
-        return httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+        return httpClient.SendWithPrivateFailureObservationAsync(request, cancellationToken, new PrivateDependencyFailureObservation(), HttpCompletionOption.ResponseHeadersRead);
     }
 
     private Task<HttpResponseMessage> SendAsync(
@@ -102,6 +103,6 @@ public sealed class CatalogMaterialsProxy(HttpClient httpClient)
             request.Content = System.Net.Http.Json.JsonContent.Create(content);
         }
 
-        return httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+        return httpClient.SendWithPrivateFailureObservationAsync(request, cancellationToken, new PrivateDependencyFailureObservation(), HttpCompletionOption.ResponseHeadersRead);
     }
 }

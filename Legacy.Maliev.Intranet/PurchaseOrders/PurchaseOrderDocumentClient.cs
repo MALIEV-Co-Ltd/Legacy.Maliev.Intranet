@@ -1,3 +1,4 @@
+using Maliev.Aspire.ServiceDefaults.Diagnostics;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json.Serialization;
@@ -12,7 +13,7 @@ public sealed class PurchaseOrderDocumentClient(HttpClient httpClient) : IPurcha
     {
         using var message = new HttpRequestMessage(HttpMethod.Post, "/Pdfs/purchaseorder") { Content = JsonContent.Create(request) };
         message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
-        using var response = await httpClient.SendAsync(message, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+        using var response = await httpClient.SendWithPrivateFailureObservationAsync(message, cancellationToken, new PrivateDependencyFailureObservation(), HttpCompletionOption.ResponseHeadersRead);
         response.EnsureSuccessStatusCode();
         if (response.Content.Headers.ContentType?.MediaType is not "application/pdf") throw new InvalidOperationException("DocumentService did not return a PDF.");
         return await response.Content.ReadAsByteArrayAsync(cancellationToken);

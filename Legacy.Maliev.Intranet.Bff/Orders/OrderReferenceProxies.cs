@@ -1,3 +1,4 @@
+using Maliev.Aspire.ServiceDefaults.Diagnostics;
 using System.Net;
 using System.Net.Http.Json;
 using Legacy.Maliev.Intranet.Contracts;
@@ -10,7 +11,7 @@ public sealed class OrderCatalogReferenceProxy(HttpClient httpClient)
     /// <summary>Gets a bounded material lookup page.</summary>
     public async Task<IReadOnlyList<OrderLookupItem>> GetMaterialsAsync(CancellationToken cancellationToken)
     {
-        using var response = await httpClient.GetAsync("/Materials?sort=MaterialId_Ascending&search=&index=1&size=1000", cancellationToken);
+        using var response = await httpClient.SendWithPrivateFailureObservationAsync(new HttpRequestMessage(HttpMethod.Get, "/Materials?sort=MaterialId_Ascending&search=&index=1&size=1000"), cancellationToken, new PrivateDependencyFailureObservation(), HttpCompletionOption.ResponseContentRead);
         if (response.StatusCode == HttpStatusCode.NotFound) return [];
         response.EnsureSuccessStatusCode();
         return (await response.Content.ReadFromJsonAsync<OrderMaterialPage>(cancellationToken))?.Items
@@ -39,7 +40,7 @@ public sealed class OrderCatalogReferenceProxy(HttpClient httpClient)
 
     private async Task<IReadOnlyList<T>> GetListAsync<T>(string path, CancellationToken cancellationToken)
     {
-        using var response = await httpClient.GetAsync(path, cancellationToken);
+        using var response = await httpClient.SendWithPrivateFailureObservationAsync(new HttpRequestMessage(HttpMethod.Get, path), cancellationToken, new PrivateDependencyFailureObservation(), HttpCompletionOption.ResponseContentRead);
         if (response.StatusCode == HttpStatusCode.NotFound) return [];
         response.EnsureSuccessStatusCode();
         return await response.Content.ReadFromJsonAsync<List<T>>(cancellationToken) ?? [];
@@ -55,7 +56,7 @@ public sealed class OrderEmployeeReferenceProxy(HttpClient httpClient)
     /// <summary>Gets a bounded employee lookup page.</summary>
     public async Task<IReadOnlyList<OrderLookupItem>> GetEmployeesAsync(CancellationToken cancellationToken)
     {
-        using var response = await httpClient.GetAsync("/employees?sort=EmployeeId_Ascending&search=&index=1&size=250", cancellationToken);
+        using var response = await httpClient.SendWithPrivateFailureObservationAsync(new HttpRequestMessage(HttpMethod.Get, "/employees?sort=EmployeeId_Ascending&search=&index=1&size=250"), cancellationToken, new PrivateDependencyFailureObservation(), HttpCompletionOption.ResponseContentRead);
         if (response.StatusCode == HttpStatusCode.NotFound) return [];
         response.EnsureSuccessStatusCode();
         var page = await response.Content.ReadFromJsonAsync<OrderEmployeePage>(cancellationToken);

@@ -1,3 +1,4 @@
+using Maliev.Aspire.ServiceDefaults.Diagnostics;
 using System.Net;
 using System.Net.Http.Json;
 using Microsoft.AspNetCore.WebUtilities;
@@ -32,8 +33,7 @@ public sealed class LegacyEmployeeConfirmationDelivery(
 
             var callback = QueryHelpers.AddQueryString(new Uri(origin, "/Employees/EmailConfirmation").ToString(),
                 new Dictionary<string, string?> { ["email"] = email.Trim(), ["token"] = challenge.Token });
-            using var notification = await clients.CreateClient("employee-confirmation-notification")
-                .PostAsJsonAsync("/notifications/v1/email/NoReply", new
+            using var notification = await clients.CreateClient("employee-confirmation-notification").SendWithPrivateFailureObservationAsync(new HttpRequestMessage(HttpMethod.Post, "/notifications/v1/email/NoReply") { Content = JsonContent.Create(new
                 {
                     To = email.Trim(),
                     Subject = "Confirm your MALIEV Intranet email",
@@ -41,7 +41,7 @@ public sealed class LegacyEmployeeConfirmationDelivery(
                     ReplyTo = (string?)null,
                     Cc = (IReadOnlyList<string>?)null,
                     Bcc = (IReadOnlyList<string>?)null,
-                }, cancellationToken);
+                }) }, cancellationToken, new PrivateDependencyFailureObservation(), HttpCompletionOption.ResponseContentRead);
             return notification.IsSuccessStatusCode;
         }
         catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException)

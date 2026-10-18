@@ -1,3 +1,4 @@
+using Maliev.Aspire.ServiceDefaults.Diagnostics;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
@@ -15,7 +16,7 @@ public sealed class LegacyFileClient(HttpClient httpClient) : ILegacyFileClient
         content.Add(file, "files", $"PurchaseOrder_{purchaseOrderId}.pdf");
         var path = $"purchaseorders/{DateTime.UtcNow:yyyy/MM/dd}";
         using var request = Create(HttpMethod.Post, $"/Uploads?bucket=maliev.com&path={Uri.EscapeDataString(path)}", token); request.Content = content;
-        using var response = await httpClient.SendAsync(request, cancellationToken); response.EnsureSuccessStatusCode();
+        using var response = await httpClient.SendWithPrivateFailureObservationAsync(request, cancellationToken, new PrivateDependencyFailureObservation(), HttpCompletionOption.ResponseContentRead); response.EnsureSuccessStatusCode();
         var result = await response.Content.ReadFromJsonAsync<UploadResultResponse>(cancellationToken) ?? throw new InvalidOperationException("Empty FileService response.");
         return result.Object.Single();
     }
@@ -36,7 +37,7 @@ public sealed class LegacyFileClient(HttpClient httpClient) : ILegacyFileClient
         var path = $"uploads/{customerId}/{DateTime.UtcNow:yyyy-MM-dd}";
         using var request = Create(HttpMethod.Post, $"/Uploads?bucket=maliev.com&path={Uri.EscapeDataString(path)}", token);
         request.Content = content;
-        using var response = await httpClient.SendAsync(request, cancellationToken);
+        using var response = await httpClient.SendWithPrivateFailureObservationAsync(request, cancellationToken, new PrivateDependencyFailureObservation(), HttpCompletionOption.ResponseContentRead);
         response.EnsureSuccessStatusCode();
         var result = await response.Content.ReadFromJsonAsync<UploadResultResponse>(cancellationToken)
             ?? throw new InvalidOperationException("Empty FileService response.");
@@ -46,14 +47,14 @@ public sealed class LegacyFileClient(HttpClient httpClient) : ILegacyFileClient
     public async Task<Uri?> GetSignedUrlAsync(string bucket, string objectName, string token, CancellationToken cancellationToken)
     {
         using var request = Create(HttpMethod.Get, $"/uploads/SignedUrl?bucket={Uri.EscapeDataString(bucket)}&objectName={Uri.EscapeDataString(objectName)}", token);
-        using var response = await httpClient.SendAsync(request, cancellationToken); if (response.StatusCode == HttpStatusCode.NotFound) return null; response.EnsureSuccessStatusCode();
+        using var response = await httpClient.SendWithPrivateFailureObservationAsync(request, cancellationToken, new PrivateDependencyFailureObservation(), HttpCompletionOption.ResponseContentRead); if (response.StatusCode == HttpStatusCode.NotFound) return null; response.EnsureSuccessStatusCode();
         return await response.Content.ReadFromJsonAsync<Uri>(cancellationToken);
     }
     /// <inheritdoc />
     public async Task DeleteAsync(string bucket, string objectName, string token, CancellationToken cancellationToken)
     {
         using var request = Create(HttpMethod.Delete, $"/Uploads?bucket={Uri.EscapeDataString(bucket)}&objectName={Uri.EscapeDataString(objectName)}", token);
-        using var response = await httpClient.SendAsync(request, cancellationToken); if (response.StatusCode != HttpStatusCode.NotFound) response.EnsureSuccessStatusCode();
+        using var response = await httpClient.SendWithPrivateFailureObservationAsync(request, cancellationToken, new PrivateDependencyFailureObservation(), HttpCompletionOption.ResponseContentRead); if (response.StatusCode != HttpStatusCode.NotFound) response.EnsureSuccessStatusCode();
     }
     private static HttpRequestMessage Create(HttpMethod method, string uri, string token)
     {
