@@ -275,6 +275,18 @@ public sealed class LoginBrowserTests(
             ContentType = "text/javascript",
             Body = "",
         }));
+        // Login initializes this external BFF nonce request alongside the excluded Google provider.
+        await page.RouteAsync("**/bff/google/nonce", route => route.FulfillAsync(new()
+        {
+            Status = 200,
+            ContentType = "application/json",
+            Body = System.Text.Json.JsonSerializer.Serialize(new
+            {
+                clientId = "test-google-client-id",
+                nonce = "nonce-at-least-32-characters-long-value",
+                expiresAtUtc = DateTimeOffset.UtcNow.AddMinutes(10),
+            }),
+        }));
         await page.RouteAsync("**/bff/session", route =>
         {
             Interlocked.Increment(ref sessions);
