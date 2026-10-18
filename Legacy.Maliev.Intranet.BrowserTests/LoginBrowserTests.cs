@@ -241,12 +241,23 @@ public sealed class LoginBrowserTests(
         var pageErrors = 0;
         var failedAssets = 0;
         var consoleErrors = 0;
+        var consoleDiagnostics = new System.Collections.Concurrent.ConcurrentQueue<string>();
         var authenticated = false;
         var sessions = 0;
         var logins = new System.Collections.Concurrent.ConcurrentQueue<(string? Csrf, string Body)>();
         var creates = new System.Collections.Concurrent.ConcurrentQueue<(string? Csrf, string Body)>();
         page.PageError += (_, _) => Interlocked.Increment(ref pageErrors);
-        page.Console += (_, message) => { if (message.Type == "error") Interlocked.Increment(ref consoleErrors); };
+        page.Console += (_, message) =>
+        {
+            if (message.Type != "error") return;
+            if (Interlocked.Increment(ref consoleErrors) > 8) return;
+            var text = message.Text;
+            if (new[] { "token", "authorization", "csrf", "password", "cookie", "credential", "email", "@" }
+                .Any(value => text.Contains(value, StringComparison.OrdinalIgnoreCase)))
+                text = "[redacted sensitive console diagnostic]";
+            text = System.Text.RegularExpressions.Regex.Replace(text, @"https?://[^\s""'<>]+", "[url]");
+            consoleDiagnostics.Enqueue(text.Length <= 1024 ? text : text[..1024]);
+        };
         page.RequestFailed += (_, request) =>
         {
             if (new Uri(request.Url).Authority == published.BaseUri.Authority)
@@ -363,7 +374,8 @@ public sealed class LoginBrowserTests(
             Assert.Equal("new-employee@example.invalid", body.RootElement.GetProperty("email").GetString());
         }
         Assert.Equal(0, Volatile.Read(ref pageErrors));
-        Assert.Equal(0, Volatile.Read(ref consoleErrors));
+        Assert.True(Volatile.Read(ref consoleErrors) == 0,
+            "Unexpected synthetic-fixture console errors: " + string.Join(" | ", consoleDiagnostics));
         Assert.Equal(0, Volatile.Read(ref failedAssets));
     }
 
