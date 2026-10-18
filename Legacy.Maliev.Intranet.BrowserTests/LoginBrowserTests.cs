@@ -260,19 +260,26 @@ public sealed class LoginBrowserTests(
         };
         await page.RouteAsync("https://accounts.google.com/**", route => route.FulfillAsync(new()
         {
-            Status = 200, ContentType = "text/javascript", Body = "",
+            Status = 200,
+            ContentType = "text/javascript",
+            Body = "",
         }));
         await page.RouteAsync("**/bff/session", route =>
         {
             Interlocked.Increment(ref sessions);
             return route.FulfillAsync(new()
             {
-                Status = 200, ContentType = "application/json",
+                Status = 200,
+                ContentType = "application/json",
                 Body = System.Text.Json.JsonSerializer.Serialize(new
                 {
-                    isAuthenticated = authenticated, employeeId = authenticated ? "published-employee" : null,
-                    displayName = authenticated ? "Synthetic Employee" : null, roles = new[] { "Employee" },
-                    csrfToken = "published-form-csrf", legacyDatabaseId = (int?)null, permissions = Array.Empty<string>(),
+                    isAuthenticated = authenticated,
+                    employeeId = authenticated ? "published-employee" : null,
+                    displayName = authenticated ? "Synthetic Employee" : null,
+                    roles = new[] { "Employee" },
+                    csrfToken = "published-form-csrf",
+                    legacyDatabaseId = (int?)null,
+                    permissions = Array.Empty<string>(),
                 }),
             });
         });
@@ -282,7 +289,9 @@ public sealed class LoginBrowserTests(
             authenticated = true;
             await route.FulfillAsync(new()
             {
-                Status = 200, ContentType = "application/json", Body = "{\"redirectUrl\":\"/Employees/Create\"}",
+                Status = 200,
+                ContentType = "application/json",
+                Body = "{\"redirectUrl\":\"/Employees/Create\"}",
             });
         });
         await page.RouteAsync("**/bff/employees", route =>
@@ -290,7 +299,9 @@ public sealed class LoginBrowserTests(
             creates.Enqueue((route.Request.Headers.GetValueOrDefault("x-csrf-token"), route.Request.PostData ?? ""));
             return route.FulfillAsync(new()
             {
-                Status = 201, ContentType = "application/json", Body = "{\"id\":42,\"confirmationEmailSent\":true}",
+                Status = 201,
+                ContentType = "application/json",
+                Body = "{\"id\":42,\"confirmationEmailSent\":true}",
             });
         });
 
@@ -364,11 +375,14 @@ public sealed class LoginBrowserTests(
         var page = await context.NewPageAsync();
         await page.RouteAsync("https://accounts.google.com/**", route => route.FulfillAsync(new()
         {
-            Status = 200, ContentType = "text/javascript", Body = "",
+            Status = 200,
+            ContentType = "text/javascript",
+            Body = "",
         }));
         await page.RouteAsync("**/bff/session", route => route.FulfillAsync(new()
         {
-            Status = 200, ContentType = "application/json",
+            Status = 200,
+            ContentType = "application/json",
             Body = "{\"isAuthenticated\":false,\"employeeId\":null,\"displayName\":null,\"roles\":[],\"csrfToken\":\"published-form-csrf\",\"permissions\":[]}",
         }));
         await page.GotoAsync(new Uri(published.BaseUri, "Login").AbsoluteUri);
