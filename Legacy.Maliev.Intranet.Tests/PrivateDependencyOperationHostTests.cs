@@ -540,6 +540,7 @@ public sealed class PrivateDependencyOperationHostTests(ITestOutputHelper output
                 services.AddLogging(logging =>
                 {
                     logging.SetMinimumLevel(LogLevel.Debug);
+                    logging.AddFilter<FailureLogs>("Maliev.Aspire.ServiceDefaults.Diagnostics.PrivateDependencyFailureHandler", LogLevel.Debug);
                     logging.AddFilter(typeof(LegacyAuthClient).FullName, callerLogging ? LogLevel.Debug : LogLevel.None);
                 });
                 // First filter wraps all existing filters; its readback happens after their changes.
