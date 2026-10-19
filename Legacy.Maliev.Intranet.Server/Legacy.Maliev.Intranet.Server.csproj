@@ -20,4 +20,10 @@
   <ItemGroup>
     <ProjectReference Include="..\Legacy.Maliev.Intranet.Contracts\Legacy.Maliev.Intranet.Contracts.csproj" />
   </ItemGroup>
+  <!-- Server has no OpenAPI document consumer. Keep package APIs/XML docs and every other analyzer. -->
+  <Target Name="RemoveUnusedServerOpenApiXmlCommentGenerator" BeforeTargets="CoreCompile">
+    <ItemGroup>
+      <Analyzer Remove="$(NuGetPackageRoot)microsoft.aspnetcore.openapi/10.0.12/analyzers/dotnet/cs/Microsoft.AspNetCore.OpenApi.SourceGenerators.dll" />
+    </ItemGroup>
+  </Target>
 </Project>
