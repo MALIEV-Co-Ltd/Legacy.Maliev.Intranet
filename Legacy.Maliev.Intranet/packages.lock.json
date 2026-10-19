@@ -453,6 +453,7 @@
           "Legacy.Maliev.Intranet.Contracts": "[1.0.0, )",
           "Legacy.Maliev.ServiceDefaults": "[1.0.0, )",
           "Microsoft.AspNetCore.DataProtection.StackExchangeRedis": "[10.0.13, )",
+          "Microsoft.AspNetCore.OpenApi": "[10.0.12, )",
           "Microsoft.Extensions.Caching.StackExchangeRedis": "[10.0.12, )",
           "System.IdentityModel.Tokens.Jwt": "[8.23.0, )"
         }
