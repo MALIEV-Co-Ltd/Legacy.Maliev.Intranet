@@ -41,7 +41,7 @@ the audited producer SHAs and runs all three tests; ordinary solution builds do
 not need those repositories. For this #197 slice, use Intranet base
 `455b81ca`, CustomerService
 `cebf45e8e1eeb600d760a565f8b0970c7f434148`, and AuthService
-`8319b23e8ffab0c85b66c886a0109f7dac034c6f`. Prepare an isolated
+`f7079f133b1e607b8909636a5114ebccc73b27bc`. Prepare an isolated
 workspace root containing source copies of `Legacy.Maliev.CustomerService`,
 `Legacy.Maliev.AuthService`, `Legacy.Maliev.ServiceDefaults`, and
 `Legacy.Maliev.CompatibilityContracts` at the workflow-pinned SHAs.
