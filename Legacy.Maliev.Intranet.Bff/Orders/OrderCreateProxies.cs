@@ -108,7 +108,9 @@ public sealed class OrderNotificationProxy(HttpClient httpClient)
 {
     /// <summary>Sends provider-independent notification content after the creation saga commits.</summary>
     public Task<HttpResponseMessage> SendCreatedAsync(string email, int orderId, CancellationToken cancellationToken) =>
-        httpClient.SendWithPrivateFailureObservationAsync(new HttpRequestMessage(HttpMethod.Post, "/notifications/v1/email/NoReply") { Content = JsonContent.Create(new
+        httpClient.SendWithPrivateFailureObservationAsync(new HttpRequestMessage(HttpMethod.Post, "/notifications/v1/email/NoReply")
+        {
+            Content = JsonContent.Create(new
             {
                 To = email,
                 Subject = $"Manufacturing Order #{orderId}",
@@ -116,5 +118,6 @@ public sealed class OrderNotificationProxy(HttpClient httpClient)
                 ReplyTo = (string?)null,
                 Cc = (IReadOnlyList<string>?)null,
                 Bcc = new[] { "mail-tracking@maliev.com" },
-            }) }, cancellationToken, new PrivateDependencyFailureObservation(), HttpCompletionOption.ResponseContentRead);
+            })
+        }, cancellationToken, new PrivateDependencyFailureObservation(), HttpCompletionOption.ResponseContentRead);
 }

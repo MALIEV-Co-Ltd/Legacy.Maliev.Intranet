@@ -14,7 +14,9 @@ public sealed class CustomerAccountNotificationProxy(HttpClient httpClient)
         string customerName,
         string setupUrl,
         CancellationToken cancellationToken) =>
-        httpClient.SendWithPrivateFailureObservationAsync(new HttpRequestMessage(HttpMethod.Post, "/notifications/v1/email/NoReply") { Content = JsonContent.Create(new
+        httpClient.SendWithPrivateFailureObservationAsync(new HttpRequestMessage(HttpMethod.Post, "/notifications/v1/email/NoReply")
+        {
+            Content = JsonContent.Create(new
             {
                 To = email,
                 Subject = "Your MALIEV customer account",
@@ -22,5 +24,6 @@ public sealed class CustomerAccountNotificationProxy(HttpClient httpClient)
                 ReplyTo = (string?)null,
                 Cc = (IReadOnlyList<string>?)null,
                 Bcc = (IReadOnlyList<string>?)null,
-            }) }, cancellationToken, new PrivateDependencyFailureObservation(), HttpCompletionOption.ResponseContentRead);
+            })
+        }, cancellationToken, new PrivateDependencyFailureObservation(), HttpCompletionOption.ResponseContentRead);
 }
