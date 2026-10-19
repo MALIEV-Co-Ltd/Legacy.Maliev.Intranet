@@ -266,6 +266,7 @@ public sealed class SupplierResourceControls
         await Assert.ThrowsAsync<AggregateException>(async () => await owner.DisposeAsync());
         Assert.False(removed);
         startup.SetResult();
+        await host.Startup!.WaitAsync(TimeSpan.FromSeconds(5));
         await owner.DisposeAsync();
         Assert.True(removed);
     }
