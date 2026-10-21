@@ -1,0 +1,8 @@
+{
+  "sdkVersion": "10.0.401",
+  "dataInputs": {
+    "packs/Microsoft.NETCore.App.Ref/10.0.12/data/PackageOverrides.txt": "6f23ddca65be3b262a56d025c9f564a7a4f4e1c610ffcbe046b77d22a89c47c2",
+    "packs/Microsoft.AspNetCore.App.Ref/10.0.12/data/PackageOverrides.txt": "e16e73725152c809effe44f02c8bc568bae0f646ca3a49d3990757998b9a4704"
+  },
+  "requiredAbsentPreferredRoot": "sdk/10.0.401/PrunePackageData"
+}

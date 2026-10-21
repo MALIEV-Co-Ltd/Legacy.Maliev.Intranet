@@ -30,7 +30,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           repository: MALIEV-Co-Ltd/Legacy.Maliev.ServiceDefaults
-          ref: 7edcd961024868513fd5f373cab3dcb261197f77
+          ref: 4517cf16f5f1159318e184969732d46eae4a8308
           path: .dependencies/Legacy.Maliev.ServiceDefaults
           persist-credentials: false
       - name: Check out exact CompatibilityContracts
@@ -46,7 +46,7 @@ jobs:
           dotnet-version: 10.0.x
       - name: Verify immutable dependencies and offline verifier controls
         run: |
-          test "$(git -C .dependencies/Legacy.Maliev.ServiceDefaults rev-parse HEAD)" = 7edcd961024868513fd5f373cab3dcb261197f77
+          test "$(git -C .dependencies/Legacy.Maliev.ServiceDefaults rev-parse HEAD)" = 4517cf16f5f1159318e184969732d46eae4a8308
           test "$(git -C .dependencies/Legacy.Maliev.CompatibilityContracts rev-parse HEAD)" = 78e48ffc4ee000df0510cba5e7c7a3c4c4d539d7
           python3 -B -m unittest discover -s acceptance/CustomerAdministration -p 'test_*.py'
       - name: Build actual consumer project before focused executions

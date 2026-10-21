@@ -127,6 +127,25 @@ public sealed class BffOrdersProxyContractTests
         Assert.Equal(statusCode, response.StatusCode);
     }
 
+    [Theory]
+    [InlineData(HttpStatusCode.BadRequest)]
+    [InlineData(HttpStatusCode.Conflict)]
+    [InlineData(HttpStatusCode.ServiceUnavailable)]
+    public async Task TerminalSourceStatus_RetainsGenericUnavailablePublicMapping(HttpStatusCode statusCode)
+    {
+        var downstream = new RecordingOrderHandler("source-private-response-body") { StatusCode = statusCode };
+        await using var factory = new OrdersBffFactory(downstream, ordersRead: true, catalogRead: true);
+        using var client = CreateClient(factory);
+        await SignInAsync(client);
+
+        using var response = await client.GetAsync("/bff/orders");
+        var body = await response.Content.ReadAsStringAsync();
+        Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
+        Assert.Contains("OrderService unavailable", body, StringComparison.Ordinal);
+        Assert.DoesNotContain("source-private-response-body", body, StringComparison.Ordinal);
+        Assert.Equal(statusCode == HttpStatusCode.ServiceUnavailable ? 3 : 1, downstream.RequestCount);
+    }
+
     [Fact]
     public async Task NotFound_BecomesEmptyLegacyShapes()
     {
