@@ -1,3 +1,4 @@
+using Maliev.Aspire.ServiceDefaults.Diagnostics;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
@@ -57,7 +58,7 @@ public sealed class QuotationQualificationClient(
                 || (requiredPermissions is not null && requiredPermissions.Any(required => !acquired.Permissions.Contains(required, StringComparer.Ordinal))))
                 return new(HttpStatusCode.Forbidden);
             request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", acquired.AccessToken);
-            return await httpClient.SendAsync(request, HttpCompletionOption.ResponseContentRead, token);
+            return await httpClient.SendWithPrivateFailureObservationAsync(request, token, new PrivateDependencyFailureObservation(), HttpCompletionOption.ResponseContentRead);
         }
     }
 }

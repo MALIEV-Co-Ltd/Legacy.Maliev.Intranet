@@ -246,6 +246,47 @@ public sealed class LoginBrowserTests(
         var sessions = 0;
         var logins = new System.Collections.Concurrent.ConcurrentQueue<(string? Csrf, string Body)>();
         var creates = new System.Collections.Concurrent.ConcurrentQueue<(string? Csrf, string Body)>();
+        var failedAssetDiagnostics = new System.Collections.Concurrent.ConcurrentQueue<string>();
+        var failedAssetDiagnosticGate = new object();
+        var failedAssetDiagnosticOverflow = 0;
+        void CountAndCaptureFailedAsset(IRequest request, Uri uri, int status, string failureCategory)
+        {
+            lock (failedAssetDiagnosticGate)
+            {
+                Interlocked.Increment(ref failedAssets);
+                if (failedAssetDiagnostics.Count >= 8)
+                {
+                    Interlocked.Exchange(ref failedAssetDiagnosticOverflow, 1);
+                    return;
+                }
+                var resourceType = request.ResourceType switch
+                {
+                    "document" => "document",
+                    "stylesheet" => "stylesheet",
+                    "image" => "image",
+                    "media" => "media",
+                    "font" => "font",
+                    "script" => "script",
+                    "xhr" => "xhr",
+                    "fetch" => "fetch",
+                    "manifest" => "manifest",
+                    _ => "other",
+                };
+                var pathCategory = uri.AbsolutePath.StartsWith("/bff/", StringComparison.Ordinal) ? "bff"
+                    : uri.AbsolutePath.StartsWith("/_framework/", StringComparison.Ordinal) ? "framework"
+                    : resourceType == "document" ? "document"
+                    : resourceType is "stylesheet" or "image" or "media" or "font" or "script" or "manifest"
+                        || uri.AbsolutePath.StartsWith("/_content/", StringComparison.Ordinal) ? "public-asset"
+                    : "other";
+                failedAssetDiagnostics.Enqueue(System.Text.Json.JsonSerializer.Serialize(new
+                {
+                    resourceType,
+                    pathCategory,
+                    status,
+                    failureCategory,
+                }));
+            }
+        }
         page.PageError += (_, _) => Interlocked.Increment(ref pageErrors);
         page.Console += (_, message) =>
         {
@@ -260,14 +301,27 @@ public sealed class LoginBrowserTests(
         };
         page.RequestFailed += (_, request) =>
         {
-            if (new Uri(request.Url).Authority == published.BaseUri.Authority)
-                Interlocked.Increment(ref failedAssets);
+            var uri = new Uri(request.Url);
+            if (uri.Authority == published.BaseUri.Authority)
+            {
+                var failureCategory = request.Failure switch
+                {
+                    "net::ERR_ABORTED" => "canceled",
+                    "net::ERR_CONNECTION_RESET" or "net::ERR_CONNECTION_CLOSED" or "net::ERR_CONNECTION_REFUSED"
+                        or "net::ERR_NAME_NOT_RESOLVED" or "net::ERR_INTERNET_DISCONNECTED" or "net::ERR_TIMED_OUT"
+                        or "net::ERR_NETWORK_CHANGED" or "net::ERR_ADDRESS_UNREACHABLE" => "network",
+                    _ => "unknown",
+                };
+                CountAndCaptureFailedAsset(request, uri, 0, failureCategory);
+            }
         };
         page.Response += (_, response) =>
         {
             var uri = new Uri(response.Url);
             if (uri.Authority == published.BaseUri.Authority && !uri.AbsolutePath.StartsWith("/bff/", StringComparison.Ordinal) && response.Status >= 400)
-                Interlocked.Increment(ref failedAssets);
+            {
+                CountAndCaptureFailedAsset(response.Request, uri, response.Status, "unknown");
+            }
         };
         await page.RouteAsync("https://accounts.google.com/**", route => route.FulfillAsync(new()
         {
@@ -388,7 +442,22 @@ public sealed class LoginBrowserTests(
         Assert.Equal(0, Volatile.Read(ref pageErrors));
         Assert.True(Volatile.Read(ref consoleErrors) == 0,
             "Unexpected synthetic-fixture console errors: " + string.Join(" | ", consoleDiagnostics));
-        Assert.Equal(0, Volatile.Read(ref failedAssets));
+        lock (failedAssetDiagnosticGate)
+        {
+            var failedAssetEnvelope = "[" + string.Join(",", failedAssetDiagnostics) + "]";
+            Assert.False(Volatile.Read(ref failedAssetDiagnosticOverflow) != 0,
+                "Sanitized same-origin asset diagnostic capacity exceeded: " + failedAssetEnvelope);
+            try
+            {
+                Assert.Equal(0, Volatile.Read(ref failedAssets));
+            }
+            catch (Xunit.Sdk.XunitException)
+            {
+                throw new Xunit.Sdk.XunitException(
+                    "Expected failedAssets=0; actual=" + Volatile.Read(ref failedAssets)
+                    + "; sanitized diagnostics=" + failedAssetEnvelope);
+            }
+        }
     }
 
     [Fact]

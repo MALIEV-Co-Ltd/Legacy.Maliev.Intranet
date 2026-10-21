@@ -1,3 +1,4 @@
+using Maliev.Aspire.ServiceDefaults.Diagnostics;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
@@ -12,7 +13,7 @@ public sealed class LegacyEmployeeClient(HttpClient httpClient) : ILegacyEmploye
     {
         var query = $"/employees?sort={sort}&search={Uri.EscapeDataString(search ?? string.Empty)}&index={index}&size={size}";
         using var request = CreateRequest(HttpMethod.Get, query, accessToken);
-        using var response = await httpClient.SendAsync(request, cancellationToken);
+        using var response = await httpClient.SendWithPrivateFailureObservationAsync(request, cancellationToken, new PrivateDependencyFailureObservation(), HttpCompletionOption.ResponseContentRead);
         if (response.StatusCode == HttpStatusCode.NotFound) return null;
         response.EnsureSuccessStatusCode();
         return await response.Content.ReadFromJsonAsync<PaginatedResponse<EmployeeResponse>>(cancellationToken);
@@ -22,7 +23,7 @@ public sealed class LegacyEmployeeClient(HttpClient httpClient) : ILegacyEmploye
     public async Task<EmployeeResponse?> GetEmployeeAsync(int id, string accessToken, CancellationToken cancellationToken)
     {
         using var request = CreateRequest(HttpMethod.Get, $"/employees/{id}", accessToken);
-        using var response = await httpClient.SendAsync(request, cancellationToken);
+        using var response = await httpClient.SendWithPrivateFailureObservationAsync(request, cancellationToken, new PrivateDependencyFailureObservation(), HttpCompletionOption.ResponseContentRead);
         if (response.StatusCode == HttpStatusCode.NotFound) return null;
         response.EnsureSuccessStatusCode();
         return await response.Content.ReadFromJsonAsync<EmployeeResponse>(cancellationToken);
@@ -33,7 +34,7 @@ public sealed class LegacyEmployeeClient(HttpClient httpClient) : ILegacyEmploye
     {
         using var request = CreateRequest(HttpMethod.Post, "/employees", accessToken);
         request.Content = JsonContent.Create(profile);
-        using var response = await httpClient.SendAsync(request, cancellationToken);
+        using var response = await httpClient.SendWithPrivateFailureObservationAsync(request, cancellationToken, new PrivateDependencyFailureObservation(), HttpCompletionOption.ResponseContentRead);
         response.EnsureSuccessStatusCode();
         return await response.Content.ReadFromJsonAsync<EmployeeResponse>(cancellationToken)
             ?? throw new InvalidOperationException("EmployeeService returned an empty create response.");
@@ -43,7 +44,7 @@ public sealed class LegacyEmployeeClient(HttpClient httpClient) : ILegacyEmploye
     public async Task DeleteEmployeeAsync(int id, string accessToken, CancellationToken cancellationToken)
     {
         using var request = CreateRequest(HttpMethod.Delete, $"/employees/{id}", accessToken);
-        using var response = await httpClient.SendAsync(request, cancellationToken);
+        using var response = await httpClient.SendWithPrivateFailureObservationAsync(request, cancellationToken, new PrivateDependencyFailureObservation(), HttpCompletionOption.ResponseContentRead);
         if (response.StatusCode != HttpStatusCode.NotFound) response.EnsureSuccessStatusCode();
     }
 

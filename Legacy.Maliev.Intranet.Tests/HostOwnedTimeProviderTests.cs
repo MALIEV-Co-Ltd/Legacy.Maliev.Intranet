@@ -186,6 +186,7 @@ public sealed class HostOwnedTimeProviderTests
         var callbackEntered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var clock = new BlockedNativeCreationClock(creationEntered, creationRelease);
         var owner = new HostOwnedTimeProvider(clock);
+        List<Exception> failures = [];
         var creation = Task.Run(() => owner.CreateTimer(_ =>
         {
             callbackEntered.TrySetResult();
@@ -206,24 +207,41 @@ public sealed class HostOwnedTimeProviderTests
             callbackRelease.Set();
             await shutdown.WaitAsync(TimeSpan.FromSeconds(5));
         }
+        catch (Exception error) { failures.Add(error); }
         finally
         {
             creationRelease.Set();
             callbackRelease.Set();
             try { await creation.WaitAsync(TimeSpan.FromSeconds(5)); }
             catch (ObjectDisposedException) { }
-            await owner.DisposeAsync().AsTask().WaitAsync(TimeSpan.FromSeconds(5));
+            catch (Exception error) { failures.Add(error); }
+            try
+            {
+                await Task.WhenAll(clock.DrainTimedOutTimerAsync(), owner.DisposeAsync().AsTask())
+                    .WaitAsync(TimeSpan.FromSeconds(5));
+            }
+            catch (Exception error) { failures.Add(error); }
         }
+        if (failures.Count == 1) System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(failures[0]).Throw();
+        if (failures.Count > 1) throw new AggregateException(failures);
     }
 
     private sealed class BlockedNativeCreationClock(ManualResetEventSlim entered, ManualResetEventSlim release) : TimeProvider
     {
+        private readonly TaskCompletionSource<Task> nativeCleanup = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public Task DrainTimedOutTimerAsync() => nativeCleanup.Task.Unwrap();
+
         public override ITimer CreateTimer(TimerCallback callback, object? state, TimeSpan dueTime, TimeSpan period)
         {
             var timer = TimeProvider.System.CreateTimer(callback, state, dueTime, period);
             entered.Set();
-            if (release.Wait(TimeSpan.FromSeconds(5))) return timer;
-            timer.Dispose();
+            if (release.Wait(TimeSpan.FromSeconds(5)))
+            {
+                nativeCleanup.SetResult(Task.CompletedTask);
+                return timer;
+            }
+            nativeCleanup.SetResult(timer.DisposeAsync().AsTask());
             throw new TimeoutException("Native timer creation was not released.");
         }
     }

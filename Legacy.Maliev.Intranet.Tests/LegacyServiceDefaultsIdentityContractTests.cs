@@ -5,7 +5,7 @@ namespace Legacy.Maliev.Intranet.Tests;
 public sealed class LegacyServiceDefaultsIdentityContractTests
 {
     private const string DotNetPatchVersion = "10.0.12";
-    private const string NativeLoggingReplacementCommit = "7edcd961024868513fd5f373cab3dcb261197f77";
+    private const string NativeLoggingReplacementCommit = "02377791d346e25216c114522b3bfdb6f0f19a16";
 
     [Theory]
     [InlineData("Microsoft.AspNetCore.Components.Authorization", "10.0.12")]

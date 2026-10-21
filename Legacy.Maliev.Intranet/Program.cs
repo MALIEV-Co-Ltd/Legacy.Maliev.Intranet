@@ -39,13 +39,13 @@ builder.Services.AddHttpClient<ILegacyAuthClient, LegacyAuthClient>(client =>
     client.BaseAddress = new Uri(builder.Configuration["Services:Auth"]
         ?? throw new InvalidOperationException("Services:Auth is required."));
     client.Timeout = TimeSpan.FromSeconds(10);
-}).AddStandardResilienceHandler();
+}).AddPrivateFailureObservation("AuthService").AddStandardResilienceHandler();
 builder.Services.AddHttpClient("service-auth", client =>
 {
     client.BaseAddress = new Uri(builder.Configuration["Services:Auth"]
         ?? throw new InvalidOperationException("Services:Auth is required."));
     client.Timeout = TimeSpan.FromSeconds(10);
-}).AddStandardResilienceHandler();
+}).AddPrivateFailureSourceObservation("AuthService").AddStandardResilienceHandler();
 builder.Services.AddHttpClient("employee-confirmation-auth", client =>
 {
     client.BaseAddress = new Uri(builder.Configuration["Services:Auth"]
@@ -57,62 +57,62 @@ builder.Services.AddHttpClient("employee-confirmation-notification", client =>
     client.BaseAddress = new Uri(builder.Configuration["Services:Notification"]
         ?? throw new InvalidOperationException("Services:Notification is required."));
     client.Timeout = TimeSpan.FromSeconds(10);
-}).AddHttpMessageHandler<LegacyServiceAuthenticationHandler>();
+}).AddPrivateFailureSourceObservation("NotificationService").AddHttpMessageHandler<LegacyServiceAuthenticationHandler>();
 builder.Services.AddHttpClient<ILegacyCustomerClient, LegacyCustomerClient>(client =>
 {
     client.BaseAddress = new Uri(builder.Configuration["Services:Customer"]
         ?? throw new InvalidOperationException("Services:Customer is required."));
     client.Timeout = TimeSpan.FromSeconds(10);
-}).AddHttpMessageHandler<LegacyServiceAuthenticationHandler>().AddStandardResilienceHandler();
+}).AddPrivateFailureSourceObservation("CustomerService").AddHttpMessageHandler<LegacyServiceAuthenticationHandler>().AddStandardResilienceHandler();
 builder.Services.AddHttpClient<ILegacyEmployeeClient, LegacyEmployeeClient>(client =>
 {
     client.BaseAddress = new Uri(builder.Configuration["Services:Employee"]
         ?? throw new InvalidOperationException("Services:Employee is required."));
     client.Timeout = TimeSpan.FromSeconds(10);
-}).AddHttpMessageHandler<LegacyServiceAuthenticationHandler>().AddStandardResilienceHandler();
+}).AddPrivateFailureSourceObservation("EmployeeService").AddHttpMessageHandler<LegacyServiceAuthenticationHandler>().AddStandardResilienceHandler();
 builder.Services.AddHttpClient<ILegacyCatalogClient, LegacyCatalogClient>(client =>
 {
     client.BaseAddress = new Uri(builder.Configuration["Services:Catalog"]
         ?? throw new InvalidOperationException("Services:Catalog is required."));
     client.Timeout = TimeSpan.FromSeconds(10);
-}).AddPrivateFailureOperationObservation("CatalogService")
+}).AddPrivateFailureSourceObservation("CatalogService")
     .AddHttpMessageHandler<LegacyServiceAuthenticationHandler>().AddStandardResilienceHandler();
 builder.Services.AddHttpClient<ILegacyProcurementClient, LegacyProcurementClient>(client =>
 {
     client.BaseAddress = new Uri(builder.Configuration["Services:Procurement"]
         ?? throw new InvalidOperationException("Services:Procurement is required."));
     client.Timeout = TimeSpan.FromSeconds(10);
-}).AddHttpMessageHandler<LegacyServiceAuthenticationHandler>().AddStandardResilienceHandler();
+}).AddPrivateFailureSourceObservation("ProcurementService").AddHttpMessageHandler<LegacyServiceAuthenticationHandler>().AddStandardResilienceHandler();
 builder.Services.AddHttpClient<ILegacyOrderClient, LegacyOrderClient>(client =>
 {
     client.BaseAddress = new Uri(builder.Configuration["Services:Order"]
         ?? throw new InvalidOperationException("Services:Order is required."));
     client.Timeout = TimeSpan.FromSeconds(10);
-}).AddHttpMessageHandler<LegacyServiceAuthenticationHandler>().AddStandardResilienceHandler();
+}).AddPrivateFailureSourceObservation("OrderService").AddHttpMessageHandler<LegacyServiceAuthenticationHandler>().AddStandardResilienceHandler();
 builder.Services.AddHttpClient<IPurchaseOrderDocumentClient, PurchaseOrderDocumentClient>(client =>
 {
     client.BaseAddress = new Uri(builder.Configuration["Services:Document"]
         ?? throw new InvalidOperationException("Services:Document is required."));
     client.Timeout = TimeSpan.FromSeconds(30);
-}).AddHttpMessageHandler<LegacyServiceAuthenticationHandler>().AddStandardResilienceHandler();
+}).AddPrivateFailureSourceObservation("DocumentService").AddHttpMessageHandler<LegacyServiceAuthenticationHandler>().AddStandardResilienceHandler();
 builder.Services.AddHttpClient<IOrderDocumentClient, OrderDocumentClient>(client =>
 {
     client.BaseAddress = new Uri(builder.Configuration["Services:Document"]
         ?? throw new InvalidOperationException("Services:Document is required."));
     client.Timeout = TimeSpan.FromSeconds(30);
-}).AddHttpMessageHandler<LegacyServiceAuthenticationHandler>().AddStandardResilienceHandler();
+}).AddPrivateFailureSourceObservation("DocumentService").AddHttpMessageHandler<LegacyServiceAuthenticationHandler>().AddStandardResilienceHandler();
 builder.Services.AddHttpClient<ILegacyFileClient, LegacyFileClient>(client =>
 {
     client.BaseAddress = new Uri(builder.Configuration["Services:File"]
         ?? throw new InvalidOperationException("Services:File is required."));
     client.Timeout = TimeSpan.FromMinutes(3);
-}).AddHttpMessageHandler<LegacyServiceAuthenticationHandler>().AddStandardResilienceHandler();
+}).AddPrivateFailureSourceObservation("FileService").AddHttpMessageHandler<LegacyServiceAuthenticationHandler>().AddStandardResilienceHandler();
 builder.Services.AddHttpClient<ILegacyOrderNotificationClient, LegacyOrderNotificationClient>(client =>
 {
     client.BaseAddress = new Uri(builder.Configuration["Services:Notification"]
         ?? throw new InvalidOperationException("Services:Notification is required."));
     client.Timeout = TimeSpan.FromSeconds(10);
-}).AddHttpMessageHandler<LegacyServiceAuthenticationHandler>().AddStandardResilienceHandler();
+}).AddPrivateFailureSourceObservation("NotificationService").AddHttpMessageHandler<LegacyServiceAuthenticationHandler>().AddStandardResilienceHandler();
 builder.Services
     .AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
     .AddCookie(options =>

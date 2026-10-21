@@ -1,3 +1,4 @@
+using Maliev.Aspire.ServiceDefaults.Diagnostics;
 using System.Net.Http.Json;
 
 namespace Legacy.Maliev.Intranet.Bff.Orders;
@@ -8,7 +9,7 @@ public sealed class OrderDocumentProxy(HttpClient httpClient)
     /// <summary>Renders an order label and validates the returned media type.</summary>
     public async Task<byte[]?> RenderAsync(OrderLabelPayload payload, CancellationToken cancellationToken)
     {
-        using var response = await httpClient.PostAsJsonAsync("/Pdfs/orderlabel", payload, cancellationToken);
+        using var response = await httpClient.SendWithPrivateFailureObservationAsync(new HttpRequestMessage(HttpMethod.Post, "/Pdfs/orderlabel") { Content = JsonContent.Create(payload) }, cancellationToken, new PrivateDependencyFailureObservation(), HttpCompletionOption.ResponseContentRead);
         response.EnsureSuccessStatusCode();
         if (!string.Equals(response.Content.Headers.ContentType?.MediaType, "application/pdf", StringComparison.OrdinalIgnoreCase))
         {
