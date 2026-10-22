@@ -103,6 +103,64 @@ internal static partial class AggregateOutcomePayload
         }
     }
 
+    /// <summary>Projects an already validated qualification response without request or attribution identifiers.</summary>
+    internal static JsonElement SummarizeQualification(JsonElement validated)
+    {
+        var states = new Dictionary<string, int>(StringComparer.Ordinal)
+        {
+            ["unreviewed"] = 0,
+            ["qualified"] = 0,
+            ["not_qualified"] = 0,
+            ["duplicate"] = 0,
+            ["stale"] = 0,
+            ["incomplete"] = 0,
+        };
+        var persisted = 0;
+        var identityComplete = 0;
+        var qualified = 0;
+        var qualifiedIdentityComplete = 0;
+        foreach (var request in validated.GetProperty("requests").EnumerateArray())
+        {
+            persisted++;
+            var state = request.GetProperty("state").GetString()!;
+            states[state]++;
+            var complete = request.TryGetProperty("transactionId", out _) && request.TryGetProperty("journeyId", out _);
+            if (complete)
+            {
+                identityComplete++;
+            }
+
+            if (state == "qualified")
+            {
+                qualified++;
+                if (complete)
+                {
+                    qualifiedIdentityComplete++;
+                }
+            }
+        }
+
+        return JsonSerializer.SerializeToElement(new
+        {
+            fromUtc = validated.GetProperty("fromUtc"),
+            toUtc = validated.GetProperty("toUtc"),
+            qualificationBasis = "current_employee_projection",
+            historicalAsOfUtc = (string?)null,
+            counts = new
+            {
+                persistedRequestCount = persisted,
+                identityCompleteRequestCount = identityComplete,
+                employeeQualifiedRequestCount = qualified,
+                qualifiedWithCompleteIdentityRequestCount = qualifiedIdentityComplete,
+            },
+            states,
+            adAttributionAvailability = "unavailable",
+            staffTestExclusionAvailability = "unavailable",
+            matureDelayAvailability = "unavailable",
+            qualifiedCustomerCount = (int?)null,
+        });
+    }
+
     private static bool ValidateQualification(JsonElement root, DateTime fromUtc, DateTime toUtc)
     {
         if (!HasExactKeys(root, ["fromUtc", "toUtc", "requests"]) ||

@@ -1,0 +1,124 @@
+{
+  "schema": 1,
+  "scope": "CompatibilityRazorhostONLY; notWASM; noNode/Gulp/npmgraph",
+  "originalSourceCommit": "065249346034c984123a833f55d08006e059b28c",
+  "originalLock": {
+    "repository": "MALIEV-Co-Ltd/maliev-web",
+    "path": "Maliev.Intranet/package-lock.json",
+    "blob": "8f46597510c81ec079157cdf39720812302d30c4"
+  },
+  "assets": [
+    {
+      "path": "Legacy.Maliev.Intranet/wwwroot/lib/compat-validation/jquery-3.7.1.min.js",
+      "preBlob": null,
+      "postBlob": "7f37b5d99122b4928505d1e0ac5ca7279edd56ed",
+      "source": {
+        "package": "jquery",
+        "version": "3.7.1",
+        "sourcePath": "package/dist/jquery.min.js",
+        "sha256": "fc9a93dd241f6b045cbff0481cf4e1901becd0e12fb45166a8f17f95823f0b1a",
+        "tarball": "https://registry.npmjs.org/jquery/-/jquery-3.7.1.tgz",
+        "tarballIntegrity": "sha512-m4avr8yL8kmFN8psrbFFFmB/If14iN5o9nw/NgnnM+kybDJpRsAynV2BsfpTYrTRysYUdADVD7CkUUizgkpLfg=="
+      }
+    },
+    {
+      "path": "Legacy.Maliev.Intranet/wwwroot/lib/compat-validation/jquery.validate-1.22.1.min.js",
+      "preBlob": null,
+      "postBlob": "acbae614f38d2c7f9a91b4d9859e705a1659e78b",
+      "source": {
+        "package": "jquery-validation",
+        "version": "1.22.1",
+        "sourcePath": "package/dist/jquery.validate.min.js",
+        "sha256": "d48b8fee4fe0f9df7cfebe7e0f52365f6c3ec61055249fac853ec3d645d7898b",
+        "tarball": "https://registry.npmjs.org/jquery-validation/-/jquery-validation-1.22.1.tgz",
+        "tarballIntegrity": "sha512-ePLXLWK7Rh5eR652YsuIu7YPeGlCXrsJUteVw5iZopiU17yaMd3FaDggs6yyNMl56p8TYVeDRmKGK3fPZrMeQw=="
+      }
+    },
+    {
+      "path": "Legacy.Maliev.Intranet/wwwroot/lib/compat-validation/jquery.validate.unobtrusive-3.2.12.min.js",
+      "preBlob": null,
+      "postBlob": "c2f8f1c8f82d1227d471dcc6e62aefd2503a7566",
+      "source": {
+        "package": "jquery-validation-unobtrusive",
+        "version": "3.2.12",
+        "sourcePath": "package/dist/jquery.validate.unobtrusive.min.js",
+        "sha256": "1fc39d86f356a710875ddf4eb30f11ef23ac5a3f4240a183325ba361506c60cc",
+        "tarball": "https://registry.npmjs.org/jquery-validation-unobtrusive/-/jquery-validation-unobtrusive-3.2.12.tgz",
+        "tarballIntegrity": "sha512-kPixGhVcuat7vZXngGFfSIksy4VlzZcHyRgnBIZdsfVneCU+D5sITC8T8dD/9c9K/Q+qkMlgp7ufJHz93nKSuQ=="
+      }
+    },
+    {
+      "path": "Legacy.Maliev.Intranet/wwwroot/lib/compat-validation/jquery-LICENSE.txt",
+      "preBlob": null,
+      "postBlob": "f642c3f7a77a5833bc3dfee643ad8ca6387b23e7",
+      "source": {
+        "package": "jquery",
+        "version": "3.7.1",
+        "sourcePath": "package/LICENSE.txt",
+        "sha256": "d4db9ebe6f29f5168eac45ad713f055623ac5d0dcd5ba92da23d650ae012020d",
+        "tarball": "https://registry.npmjs.org/jquery/-/jquery-3.7.1.tgz",
+        "tarballIntegrity": "sha512-m4avr8yL8kmFN8psrbFFFmB/If14iN5o9nw/NgnnM+kybDJpRsAynV2BsfpTYrTRysYUdADVD7CkUUizgkpLfg=="
+      }
+    },
+    {
+      "path": "Legacy.Maliev.Intranet/wwwroot/lib/compat-validation/jquery.validate-LICENSE.md",
+      "preBlob": null,
+      "postBlob": "dc377cc031064ba146e9af3cb64155522ade5cfa",
+      "source": {
+        "package": "jquery-validation",
+        "version": "1.22.1",
+        "sourcePath": "package/LICENSE.md",
+        "sha256": "f398878cab338b869638bdac1aeae76bf3ac11b2b89da6e0b68bc1a645733440",
+        "tarball": "https://registry.npmjs.org/jquery-validation/-/jquery-validation-1.22.1.tgz",
+        "tarballIntegrity": "sha512-ePLXLWK7Rh5eR652YsuIu7YPeGlCXrsJUteVw5iZopiU17yaMd3FaDggs6yyNMl56p8TYVeDRmKGK3fPZrMeQw=="
+      }
+    },
+    {
+      "path": "Legacy.Maliev.Intranet/wwwroot/lib/compat-validation/jquery.validate.unobtrusive-LICENSE.txt",
+      "preBlob": null,
+      "postBlob": "b807281756f9606bd188ba8c36b38249b8b1b881",
+      "source": {
+        "package": "jquery-validation-unobtrusive",
+        "version": "3.2.12",
+        "sourcePath": "package/LICENSE.txt",
+        "sha256": "68173f9ff9cef5eb2fab47bcd06e7b94460ba27bc4e5d28a520a28cda8957cb3",
+        "tarball": "https://registry.npmjs.org/jquery-validation-unobtrusive/-/jquery-validation-unobtrusive-3.2.12.tgz",
+        "tarballIntegrity": "sha512-kPixGhVcuat7vZXngGFfSIksy4VlzZcHyRgnBIZdsfVneCU+D5sITC8T8dD/9c9K/Q+qkMlgp7ufJHz93nKSuQ=="
+      },
+      "appendLicense": {
+        "url": "https://www.apache.org/licenses/LICENSE-2.0.txt",
+        "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+        "bytes": 11358
+      }
+    }
+  ],
+  "licensing": "jquery+validation MIT notices verbatim. unobtrusive original587B Apache2 notice verbatim followed by official11358B fullApache2 license.",
+  "integrity": "All3tarballsSHA512 verifiedBEFOREsafeheader/selectedentryread; JSbytesunmodified, Git-textnormalizationdisabledonlythisvendorfolder",
+  "retrievalLimits": {
+    "timeoutSeconds": 30,
+    "compressedBytes": 3145728,
+    "unpackedBytes": 16777216,
+    "maxEntryBytes": 8388608,
+    "maxEntries": 5000
+  },
+  "security": {
+    "status": "LIMITED_ADVISORY_REVIEW_NOT_COMPREHENSIVE_JAVASCRIPT_CLEARANCE",
+    "ordinaryDotnetAuditDoesNotCoverVendoredJs": true,
+    "maintainerSources": [
+      {
+        "url": "https://github.com/jquery/jquery/security/advisories/GHSA-jpcq-cgw6-v4j6",
+        "finding": "affected<3.5.0;locked3.7.1outsideknownrange"
+      },
+      {
+        "url": "https://github.com/jquery-validation/jquery-validation/security/advisories/GHSA-ffmh-x56j-9rc3",
+        "finding": "affected1.19.4;patched1.19.5;locked1.22.1outsideknownrange"
+      },
+      {
+        "url": "https://github.com/aspnet/jquery-validation-unobtrusive/security/advisories",
+        "finding": "No publishedrepositoryadvisories listed atinspection; notproofabsenceofvulnerabilities"
+      }
+    ],
+    "supportRisk": "Maintainerlatest-onlysupportpolicies; oldunobtrusivemajor/sourceexactversionsrequireexplicitreview, notautomaticupgrade"
+  },
+  "cleanup": "No diskfiles/nativeprocesses/install/scripts; perfetchreader cancellation/release,timer clear,buffersfinallyreleased"
+}

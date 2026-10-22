@@ -1,3 +1,4 @@
+using Maliev.Aspire.ServiceDefaults.Diagnostics;
 using System.Net.Http.Json;
 using Legacy.Maliev.Intranet.Contracts;
 using Legacy.Maliev.Intranet.Suppliers;
@@ -19,7 +20,7 @@ public sealed class SupplierManagementClient(HttpClient httpClient) : ISupplierM
     public Task<HttpResponseMessage> UpdateAddressAsync(int id, SupplierCreateRequest request, CancellationToken ct) => SendAsync(Json(HttpMethod.Put, $"/suppliers/addresses/{id}", Address(request)), ct);
     /// <inheritdoc />
     public Task<HttpResponseMessage> DeleteProfileAsync(int id, CancellationToken ct) => SendAsync(new(HttpMethod.Delete, $"/Suppliers/{id}"), ct);
-    private async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct) { using (request) return await httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, ct); }
+    private async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct) { using (request) return await httpClient.SendWithPrivateFailureObservationAsync(request, ct, new PrivateDependencyFailureObservation(), HttpCompletionOption.ResponseHeadersRead); }
     private static HttpRequestMessage Json(HttpMethod method, string path, object body) => new(method, path) { Content = JsonContent.Create(body) };
     private static AddressPayload Address(SupplierCreateRequest value) => new(value.Building, value.Address1, value.Address2, value.City, value.State, value.PostalCode, value.CountryId);
     private sealed record Profile(string Name, string? Website, string? TaxNumber, string? Email, string? Note, string? Telephone, string? Mobile, string? Fax);

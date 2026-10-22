@@ -29,7 +29,7 @@ OUTCOMES = {"Passed", "Failed", "NotExecuted", "Aborted", "Timeout", "Error", "I
 PINS = {
     "Legacy.Maliev.CatalogService": "3f426723743570a6c20d2c014499445abb0774e1",
     "Legacy.Maliev.ProcurementService": "614a157ab5c8739c144554797a387c45990ba7fe",
-    "Legacy.Maliev.ServiceDefaults": "7b3099bf67d0f17e56cfdb3dcf36541304abaac2",
+    "Legacy.Maliev.ServiceDefaults": "02377791d346e25216c114522b3bfdb6f0f19a16",
     "Legacy.Maliev.CompatibilityContracts": "99529ad665503b227184c0baa946ad4e62db978a",
 }
 

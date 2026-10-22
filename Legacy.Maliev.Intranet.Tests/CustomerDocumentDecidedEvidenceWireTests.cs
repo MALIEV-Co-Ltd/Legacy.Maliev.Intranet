@@ -28,9 +28,8 @@ public sealed class CustomerDocumentDecidedEvidenceWireTests
     public async Task ActualMappedEvidenceRefusesMalformedDecisionsAndPreservesValidStates(
         string route, string status, string fault, HttpStatusCode expected)
     {
-        // Embedded /bff segments in identifiers must survive removal of the route prefix.
-        var document = Guid.Parse("bff00000-0000-0000-0000-000000000001");
-        var version = Guid.Parse("bff00000-0000-0000-0000-000000000002");
+        var document = Guid.Parse("bff12a8c-2743-41d7-b813-000000000001");
+        var version = Guid.Parse("bff00000-0000-4000-8000-000000000002");
         var digest = new string('a', 64);
         var at = new DateTimeOffset(2026, 10, 8, 12, 0, 0, TimeSpan.Zero);
         string? actor = status == "PendingVerification" ? null : "synthetic-employee";

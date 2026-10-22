@@ -63,6 +63,9 @@
     {
         <main id="main-content" class="shell anonymous-shell" tabindex="-1">@RenderBody()</main>
     }
+    <script src="~/lib/compat-validation/jquery-3.7.1.min.js" asp-append-version="true"></script>
+    <script src="~/lib/compat-validation/jquery.validate-1.22.1.min.js" asp-append-version="true"></script>
+    <script src="~/lib/compat-validation/jquery.validate.unobtrusive-3.2.12.min.js" asp-append-version="true"></script>
     @await RenderSectionAsync("Scripts", required: false)
     <script src="~/js/compat-shell.js" asp-append-version="true"></script>
 </body>

@@ -1,3 +1,4 @@
+using Maliev.Aspire.ServiceDefaults.Diagnostics;
 using System.Globalization;
 using System.Net.Http.Json;
 using Legacy.Maliev.Intranet.Contracts;
@@ -100,5 +101,5 @@ public sealed class OrderDetailProxy(HttpClient httpClient)
         SendAsync(new HttpRequestMessage(HttpMethod.Delete, $"/orders/files/{fileId}"), cancellationToken);
 
     private Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) =>
-        httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+        httpClient.SendWithPrivateFailureObservationAsync(request, cancellationToken, new PrivateDependencyFailureObservation(), HttpCompletionOption.ResponseHeadersRead);
 }

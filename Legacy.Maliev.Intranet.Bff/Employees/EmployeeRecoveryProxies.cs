@@ -1,3 +1,4 @@
+using Maliev.Aspire.ServiceDefaults.Diagnostics;
 using System.Net.Http.Json;
 using Legacy.Maliev.Intranet.Contracts;
 
@@ -51,9 +52,9 @@ public sealed class EmployeeRecoveryNotificationProxy(HttpClient httpClient)
         string email,
         string callbackUrl,
         CancellationToken cancellationToken) =>
-        httpClient.PostAsJsonAsync(
-            "/notifications/v1/email/NoReply",
-            new
+        httpClient.SendWithPrivateFailureObservationAsync(new HttpRequestMessage(HttpMethod.Post, "/notifications/v1/email/NoReply")
+        {
+            Content = JsonContent.Create(new
             {
                 To = email,
                 Subject = "Confirm your MALIEV Intranet email",
@@ -61,17 +62,17 @@ public sealed class EmployeeRecoveryNotificationProxy(HttpClient httpClient)
                 ReplyTo = (string?)null,
                 Cc = (IReadOnlyList<string>?)null,
                 Bcc = (IReadOnlyList<string>?)null,
-            },
-            cancellationToken);
+            })
+        }, cancellationToken, new PrivateDependencyFailureObservation(), HttpCompletionOption.ResponseContentRead);
 
     /// <summary>Sends a provider-independent no-reply password recovery message.</summary>
     public Task<HttpResponseMessage> SendPasswordResetAsync(
         string email,
         string callbackUrl,
         CancellationToken cancellationToken) =>
-        httpClient.PostAsJsonAsync(
-            "/notifications/v1/email/NoReply",
-            new
+        httpClient.SendWithPrivateFailureObservationAsync(new HttpRequestMessage(HttpMethod.Post, "/notifications/v1/email/NoReply")
+        {
+            Content = JsonContent.Create(new
             {
                 To = email,
                 Subject = "MALIEV Intranet password reset",
@@ -79,8 +80,8 @@ public sealed class EmployeeRecoveryNotificationProxy(HttpClient httpClient)
                 ReplyTo = (string?)null,
                 Cc = (IReadOnlyList<string>?)null,
                 Bcc = (IReadOnlyList<string>?)null,
-            },
-            cancellationToken);
+            })
+        }, cancellationToken, new PrivateDependencyFailureObservation(), HttpCompletionOption.ResponseContentRead);
 }
 
 /// <summary>Trusted AuthService challenge envelope retained only inside the BFF.</summary>

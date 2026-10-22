@@ -47,6 +47,40 @@ public sealed class CoverageWorkflowContractTests
         Assert.Contains("'$(EnableCoverageSymbols)' != 'true'", contractsProject, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void Ci_ExecutesRecoveryFormComponentsAndNativeBrowserSubmissionBeforeFullValidation()
+    {
+        var root = FindRepositoryRoot();
+        var workflow = File.ReadAllText(Path.Combine(root, ".github", "workflows", "_build-and-test.yml"));
+        var full = workflow.IndexOf("      - name: Validate .NET solution", StringComparison.Ordinal);
+        var unit = workflow.IndexOf("      - name: Execute employee creation email boundaries before full validation", StringComparison.Ordinal);
+        var browser = workflow.IndexOf("      - name: Execute recovery form native email admission before full validation", StringComparison.Ordinal);
+        Assert.True(unit >= 0 && browser > unit && full > browser);
+        var unitStep = workflow[unit..browser];
+        Assert.Contains("FullyQualifiedName~EmployeeCreationEmailValidationTests", unitStep, StringComparison.Ordinal);
+        Assert.Contains("FullyQualifiedName~EmployeeCreateEmailBoundaryComponentTests", unitStep, StringComparison.Ordinal);
+        Assert.Contains("FullyQualifiedName~BffEmployeesCreateContractTests.ProfileEmailStorageBoundary_PreservesAcceptedInputAndRejectsOversizeBeforeDownstreamWrites", unitStep, StringComparison.Ordinal);
+        Assert.Contains("FullyQualifiedName~EmployeeRecoveryEmailValidationComponentTests", unitStep, StringComparison.Ordinal);
+        Assert.Contains("FullyQualifiedName~CoverageWorkflowContractTests", unitStep, StringComparison.Ordinal);
+        var browserStep = workflow[browser..full];
+        Assert.Contains("Legacy.Maliev.Intranet.BrowserTests/Legacy.Maliev.Intranet.BrowserTests.csproj", browserStep, StringComparison.Ordinal);
+        Assert.Contains("FullyQualifiedName=Legacy.Maliev.Intranet.BrowserTests.EmployeeRecoveryEmailSyntaxBrowserTests.NativeSubmit_UsesHistoricalPredicateInsteadOfHtmlEmailSyntax", browserStep, StringComparison.Ordinal);
+        Assert.Contains("--configuration Release --no-build --no-restore", browserStep, StringComparison.Ordinal);
+        Assert.Contains("test ! -e TestResults/recovery-email-browser", browserStep, StringComparison.Ordinal);
+        Assert.Contains("trx;LogFileName=recovery-email-browser.trx", browserStep, StringComparison.Ordinal);
+        Assert.Contains("\"total\":\"4\",\"executed\":\"4\",\"passed\":\"4\",\"failed\":\"0\",\"notExecuted\":\"0\"", browserStep, StringComparison.Ordinal);
+        foreach (var prerequisite in new[]
+        {
+            "      - name: Build BrowserTests Release with zero warnings",
+            "      - name: Require valid browser executables before browser regressions",
+            "      - name: Publish isolated Documents WASM fixture for focused and full browser validation",
+        })
+        {
+            var setup = workflow.IndexOf(prerequisite, StringComparison.Ordinal);
+            Assert.True(setup >= 0 && setup < browser);
+        }
+    }
+
     private static string FindRepositoryRoot()
     {
         var directory = new DirectoryInfo(AppContext.BaseDirectory);

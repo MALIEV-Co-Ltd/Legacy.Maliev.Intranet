@@ -1,3 +1,4 @@
+using Maliev.Aspire.ServiceDefaults.Diagnostics;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
@@ -65,7 +66,7 @@ public sealed class CustomerAdministrationIdentityClient(HttpClient client, Empl
             timeout.Token.ThrowIfCancellationRequested();
             if (Failure(acquired, additionalPermission is null ? [permission] : [permission, additionalPermission]) is { } failure) return failure;
             request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", acquired.AccessToken);
-            return await target.SendAsync(request, HttpCompletionOption.ResponseContentRead, timeout.Token);
+            return await target.SendWithPrivateFailureObservationAsync(request, timeout.Token, new PrivateDependencyFailureObservation(), HttpCompletionOption.ResponseContentRead);
         }
     }
 

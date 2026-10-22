@@ -118,3 +118,60 @@ path never falls back to an unattributed service-only create. Accounting remains
 cryptographic claim validation and durable actor/intent admission. This switch does not implement
 invoice status/resume or lost-response recovery; issue #203 remains open until those separate
 Accounting and NotificationService contracts are proven.
+
+# Employee aggregate outcome readback
+
+The source browser receipt/session changes from
+`53db8bef32a63da73661092e3846d9a0d6d80433` and
+`d23065d499333ece5ef73013b085a8aaa062b163` are adapted to the existing BFF,
+not a new authentication or analytics system.
+
+After ordinary employee BFF sign-in, use the authenticated, read-only
+`/Operations/Check` route with `source=quotation`, `invoice`, or
+`qualification`, and explicit `fromUtc`/`toUtc` parameters. The increasing
+half-open UTC window must be at most 31 days and cannot end in the future.
+Current source-specific employee permissions still apply. The existing
+server-side cookie/ticket/token flow acquires or refreshes the employee token
+without a Dashboard visit; unavailable credentials produce an unavailable
+receipt, not an anonymous producer call. Tokens and employee identity keys
+remain server-side.
+
+For example (synthetic reporting window, not production evidence):
+
+```text
+/Operations/Check?source=qualification&fromUtc=2026-08-25T17:00:00Z&toUtc=2026-09-01T17:00:00Z
+```
+
+The browser response is no-store HTML with an HTML-encoded JSON receipt in a
+`<pre>` element, no scripts, nosniff, and a receipt-only strict Content Security
+Policy. Its outer HTTP 200 means a receipt was returned, **not** that the source
+is available: inspect `httpStatus` and nullable `payload`. Failed/denied producer
+responses expose status only, never raw error bodies. Invalid source/window
+requests are rejected before producer access.
+
+Quotation/invoice payloads keep their existing validated daily aggregates and
+PascalCase producer properties. Qualification is validated first and then
+reduced to four request/identity-completeness/employee-qualified counts and six
+disjoint state counters. It exposes no request, transaction, journey or employee
+identifiers. Its basis is `current_employee_projection`;
+`historicalAsOfUtc` and `qualifiedCustomerCount` are null. Ad attribution,
+staff/test exclusion and maturity remain `unavailable`. An explicitly empty
+validated request array means available zero request/state counts, not known
+zero qualified customers or revenue. Qualification is a current employee-owned
+projection, not a historical as-of result, Ads attribution or a qualified
+customer classification.
+
+The existing `/Operations/OutcomeReadback` and
+`/Analytics/OutcomeReadback` JSON routes retain their contracts. In particular,
+their allowed qualification payload is request-level and is **not** an
+aggregate-only browser receipt: do not publish its raw rows to reporting Pages.
+The browser summary is not interchangeable with that machine/offline contract.
+Only the three fixed producer destinations are allowed.
+
+The new `OutcomeBrowser_*` cases in `SessionGenerationFenceTests` exercise
+the actual BFF cookie/CSRF/JWT/Redis ticket services with synthetic external
+Auth/producer HTTP transports; these are not live employee or deployed producer
+acceptance. Exact-head hosted build, focused/full suites, static/security,
+formatting, coverage, fresh protected-main checks, and later owner Aspire
+verification remain required. This change does not deploy applications, change
+traffic or reporting tags, or modify production data.

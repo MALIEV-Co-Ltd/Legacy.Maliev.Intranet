@@ -183,7 +183,7 @@ def verify_focused_output(root):
     require(len(summary_stdout)<=1)
     prefix=r"\[xUnit\.net [0-9]{2}:[0-5][0-9]:[0-5][0-9]\.[0-9]{2}\] "
     patterns=[
-        prefix+r"xUnit\.net VSTest Adapter v3\.1\.4\+50e68bbb8b \(64-bit \.NET 10\.0\.12\)",
+        prefix+r"xUnit\.net VSTest Adapter v3\.1\.4\+50e68bbb8b \(64-bit \.NET 10\.0\.13\)",
         prefix+r"  Discovering: Legacy\.Maliev\.Intranet\.Tests",
         prefix+r"  Discovered:  Legacy\.Maliev\.Intranet\.Tests",
         prefix+r"  Starting:    Legacy\.Maliev\.Intranet\.Tests",
