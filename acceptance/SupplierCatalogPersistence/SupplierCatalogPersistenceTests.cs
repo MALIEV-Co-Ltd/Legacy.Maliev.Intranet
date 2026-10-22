@@ -296,7 +296,9 @@ public sealed class SupplierCatalogPersistenceTests
             producer.Timeout = TimeSpan.FromSeconds(20);
             var request = new PurchaseOrderCreateRequest
             {
-                SupplierId = 4, EmployeeId = 7, Notes = " literal replay notes ",
+                SupplierId = 4,
+                EmployeeId = 7,
+                Notes = " literal replay notes ",
                 Items = [new() { PartNumber = " P-1 ", Description = "first", Quantity = 2, UnitPrice = 3m },
                     new() { Description = "second", Quantity = 1, UnitPrice = 4m }],
             };
