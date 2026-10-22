@@ -43,7 +43,7 @@ concurrency:
 
 jobs:
   supplier-catalog-edit-persistence:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 25
     env:
       MalievWorkspaceRoot: ${{ github.workspace }}/.dependencies
