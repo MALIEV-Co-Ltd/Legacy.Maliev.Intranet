@@ -13,6 +13,9 @@ jobs:
     timeout-minutes: 120
     env:
       MalievWorkspaceRoot: ${{ github.workspace }}/.dependencies
+      PLAYWRIGHT_DOWNLOAD_CONNECTION_TIMEOUT: '30000'
+      TASK4_INTERACTIVE_ASSET_ROOT: ${{ github.workspace }}/.customer-documents-published/wwwroot
+      TASK4_BROWSER_EVIDENCE: ${{ github.workspace }}/TestResults/customer-documents-switch/evidence
     steps:
       - name: Check out Intranet
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
@@ -22,7 +25,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           repository: MALIEV-Co-Ltd/Legacy.Maliev.ServiceDefaults
-          ref: 7edcd961024868513fd5f373cab3dcb261197f77
+          ref: 02377791d346e25216c114522b3bfdb6f0f19a16
           path: .dependencies/Legacy.Maliev.ServiceDefaults
           persist-credentials: false
       - name: Check out Legacy.Maliev.CompatibilityContracts
@@ -43,28 +46,133 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           repository: MALIEV-Co-Ltd/Legacy.Maliev.AuthService
-          ref: 8319b23e8ffab0c85b66c886a0109f7dac034c6f
+          ref: f7079f133b1e607b8909636a5114ebccc73b27bc
           path: .dependencies/Legacy.Maliev.AuthService
           persist-credentials: false
       - name: Verify exact Customers validation dependency identities
         shell: bash
         run: |
           test "$(git rev-parse HEAD)" = "${{ github.sha }}"
-          test "$(git -C .dependencies/Legacy.Maliev.ServiceDefaults rev-parse HEAD)" = 7edcd961024868513fd5f373cab3dcb261197f77
+          test "$(git -C .dependencies/Legacy.Maliev.ServiceDefaults rev-parse HEAD)" = 02377791d346e25216c114522b3bfdb6f0f19a16
           test "$(git -C .dependencies/Legacy.Maliev.CompatibilityContracts rev-parse HEAD)" = 78e48ffc4ee000df0510cba5e7c7a3c4c4d539d7
           test "$(git -C .dependencies/Legacy.Maliev.CustomerService rev-parse HEAD)" = cebf45e8e1eeb600d760a565f8b0970c7f434148
-          test "$(git -C .dependencies/Legacy.Maliev.AuthService rev-parse HEAD)" = 8319b23e8ffab0c85b66c886a0109f7dac034c6f
+          test "$(git -C .dependencies/Legacy.Maliev.AuthService rev-parse HEAD)" = f7079f133b1e607b8909636a5114ebccc73b27bc
       - name: Verify Docker integration-test runtime
         run: docker info
-      - name: Install Playwright Chromium
+      - name: Verify bounded browser installer source controls
+        timeout-minutes: 2
         shell: bash
         run: |
-          dotnet restore Legacy.Maliev.Intranet.BrowserTests/Legacy.Maliev.Intranet.BrowserTests.csproj
-          dotnet build Legacy.Maliev.Intranet.BrowserTests/Legacy.Maliev.Intranet.BrowserTests.csproj \
-            --configuration Release \
-            --no-restore
-          pwsh -NoProfile -File Legacy.Maliev.Intranet.BrowserTests/bin/Release/net10.0/playwright.ps1 \
-            install --with-deps chromium
+          printf 'PLAYWRIGHT_BROWSERS_PATH=%s/intranet-playwright\n' "$RUNNER_TEMP" >> "$GITHUB_ENV"
+          python3 -B -c "from pathlib import Path; files=[Path('scripts/verify-playwright-cache.py'),Path('scripts/test_verify_playwright_cache.py')]; [compile(p.read_text(),str(p),'exec') for p in files]"
+          python3 -B -m unittest discover -s scripts -p 'test_verify_playwright_cache.py'
+      - name: Restore BrowserTests packages
+        timeout-minutes: 6
+        shell: bash
+        run: |
+          export GITHUB_ACTIONS=false
+          timeout --signal=TERM --kill-after=20s 5m dotnet restore Legacy.Maliev.Intranet.BrowserTests/Legacy.Maliev.Intranet.BrowserTests.csproj -p:UseLocalMalievDependencies=true
+      - name: Build BrowserTests Release with zero warnings
+        timeout-minutes: 9
+        shell: bash
+        run: |
+          export GITHUB_ACTIONS=false
+          timeout --signal=TERM --kill-after=20s 8m dotnet build Legacy.Maliev.Intranet.BrowserTests/Legacy.Maliev.Intranet.BrowserTests.csproj \
+            --configuration Release --no-restore --warnaserror -p:UseLocalMalievDependencies=true
+      - name: Read exact built Playwright browser revisions
+        id: playwright_metadata
+        timeout-minutes: 2
+        shell: bash
+        run: |
+          python3 -B scripts/verify-playwright-cache.py \
+            --package Legacy.Maliev.Intranet.BrowserTests/bin/Release/net10.0/.playwright/package \
+            --project Legacy.Maliev.Intranet.BrowserTests/Legacy.Maliev.Intranet.BrowserTests.csproj \
+            --github-output "$GITHUB_OUTPUT"
+      - name: Restore exact-version Playwright browser cache
+        timeout-minutes: 3
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+        with:
+          path: ${{ env.PLAYWRIGHT_BROWSERS_PATH }}
+          key: ${{ runner.os }}-${{ runner.arch }}-playwright-${{ steps.playwright_metadata.outputs.host-platform }}-${{ steps.playwright_metadata.outputs.package-version }}-${{ steps.playwright_metadata.outputs.driver-version }}-${{ steps.playwright_metadata.outputs.browser-fingerprint }}
+      - name: Install Chromium operating-system dependencies
+        timeout-minutes: 6
+        shell: bash
+        run: |
+          timeout --signal=TERM --kill-after=20s 5m pwsh -NoProfile \
+            -File Legacy.Maliev.Intranet.BrowserTests/bin/Release/net10.0/playwright.ps1 install-deps chromium
+      - name: Verify cached browser executables and versions
+        id: playwright_cache
+        timeout-minutes: 2
+        shell: bash
+        run: |
+          python3 -B scripts/verify-playwright-cache.py \
+            --package Legacy.Maliev.Intranet.BrowserTests/bin/Release/net10.0/.playwright/package \
+            --project Legacy.Maliev.Intranet.BrowserTests/Legacy.Maliev.Intranet.BrowserTests.csproj \
+            --cache "$PLAYWRIGHT_BROWSERS_PATH" --cache-parent "$RUNNER_TEMP" \
+            --discard-invalid --github-output "$GITHUB_OUTPUT"
+      - name: Download exact Playwright Chromium when cache is invalid or absent
+        if: steps.playwright_cache.outputs.valid != 'true'
+        timeout-minutes: 6
+        shell: bash
+        run: |
+          timeout --signal=TERM --kill-after=20s 5m pwsh -NoProfile \
+            -File Legacy.Maliev.Intranet.BrowserTests/bin/Release/net10.0/playwright.ps1 install chromium
+      - name: Require valid browser executables before browser regressions
+        timeout-minutes: 2
+        shell: bash
+        run: |
+          python3 -B scripts/verify-playwright-cache.py \
+            --package Legacy.Maliev.Intranet.BrowserTests/bin/Release/net10.0/.playwright/package \
+            --project Legacy.Maliev.Intranet.BrowserTests/Legacy.Maliev.Intranet.BrowserTests.csproj \
+            --cache "$PLAYWRIGHT_BROWSERS_PATH" --require
+      - name: Publish isolated Documents WASM fixture for focused and full browser validation
+        timeout-minutes: 9
+        shell: bash
+        env:
+          DOTNET_PROCESSOR_COUNT: '1'
+        run: |
+          export GITHUB_ACTIONS=false
+          timeout --signal=TERM --kill-after=20s 8m dotnet publish \
+            tests/fixtures/customer-documents-interactive/CustomerDocuments.InteractiveFixture.csproj \
+            --configuration Release --warnaserror -m:1 \
+            -p:UseLocalMalievDependencies=true -p:UseSharedCompilation=false \
+            -p:RestorePackagesWithLockFile=true \
+            --output .customer-documents-published
+          test -f "$TASK4_INTERACTIVE_ASSET_ROOT/index.html"
+          test -f "$TASK4_INTERACTIVE_ASSET_ROOT/_framework/blazor.webassembly.js"
+      - name: Retain generated Documents fixture dependency lock
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: customer-documents-fixture-lock-${{ github.run_id }}-${{ github.run_attempt }}
+          path: tests/fixtures/customer-documents-interactive/packages.lock.json
+          if-no-files-found: error
+          retention-days: 7
+      - name: Diagnose exact ten Documents interactive cases before full validation
+        timeout-minutes: 5
+        shell: bash
+        env:
+          DOTNET_PROCESSOR_COUNT: '1'
+        run: |
+          export GITHUB_ACTIONS=false
+          mkdir -p "$TASK4_BROWSER_EVIDENCE"
+          timeout --signal=TERM --kill-after=20s 4m dotnet test \
+            Legacy.Maliev.Intranet.BrowserTests/Legacy.Maliev.Intranet.BrowserTests.csproj \
+            --configuration Release --no-build --no-restore -p:UseLocalMalievDependencies=true \
+            --filter 'FullyQualifiedName~CustomerDocumentsCustomerSwitchBrowserTests|FullyQualifiedName~CustomerDocumentsLifecycleBrowserTests' \
+            --blame-hang --blame-hang-timeout 90s --blame-hang-dump-type none \
+            --logger 'console;verbosity=normal' \
+            --logger 'trx;LogFileName=customer-documents-switch.trx' \
+            --results-directory TestResults/customer-documents-switch
+          python3 -B -c 'import xml.etree.ElementTree as E; r=E.parse("TestResults/customer-documents-switch/customer-documents-switch.trx").getroot(); ns={"t":"http://microsoft.com/schemas/VisualStudio/TeamTest/2010"}; c=r.find("t:ResultSummary/t:Counters",ns); assert c is not None and all(c.get(k)==v for k,v in {"total":"10","executed":"10","passed":"10","failed":"0","notExecuted":"0"}.items()), E.tostring(r,encoding="unicode")[-4000:]'
+      - name: Retain Documents switch failure and success diagnostics
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: customer-documents-switch-${{ github.run_id }}-${{ github.run_attempt }}
+          path: TestResults/customer-documents-switch/
+          if-no-files-found: warn
+          retention-days: 7
       - name: Diagnose current-main pooled lifecycle and order presentation
         id: current_main_diagnostics
         timeout-minutes: 20
@@ -97,7 +205,7 @@ jobs:
             --head "$REVIEWED_PR_HEAD" > isolated-pool-results/root-metadata.json
       - name: Preserve allowlisted synthetic pooled-host root metadata only
         if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: intranet-isolated-pool-${{ github.sha }}
           path: isolated-pool-results/root-metadata.json
@@ -128,10 +236,27 @@ jobs:
           # regression supplements the unchanged full-suite validation below.
           dotnet test Legacy.Maliev.Intranet.Tests/Legacy.Maliev.Intranet.Tests.csproj \
             --configuration Release --no-build --no-restore -p:UseLocalMalievDependencies=true \
-            --filter 'FullyQualifiedName~EmployeeCreationEmailValidationTests|FullyQualifiedName~EmployeeCreateEmailBoundaryComponentTests|FullyQualifiedName~BffEmployeesCreateContractTests.ProfileEmailStorageBoundary_PreservesAcceptedInputAndRejectsOversizeBeforeDownstreamWrites' \
+            --filter 'FullyQualifiedName~EmployeeCreationEmailValidationTests|FullyQualifiedName~EmployeeCreateEmailBoundaryComponentTests|FullyQualifiedName~BffEmployeesCreateContractTests.ProfileEmailStorageBoundary_PreservesAcceptedInputAndRejectsOversizeBeforeDownstreamWrites|FullyQualifiedName~EmployeeRecoveryEmailValidationComponentTests|FullyQualifiedName~CoverageWorkflowContractTests' \
             --logger 'console;verbosity=normal' \
             --logger 'trx;LogFileName=employee-creation-email.trx' \
             --results-directory TestResults/employee-creation-email
+      - name: Execute recovery form native email admission before full validation
+        timeout-minutes: 5
+        shell: bash
+        env:
+          DOTNET_PROCESSOR_COUNT: '1'
+        run: |
+          export GITHUB_ACTIONS=false
+          test ! -e TestResults/recovery-email-browser
+          timeout --signal=TERM --kill-after=20s 4m dotnet test \
+            Legacy.Maliev.Intranet.BrowserTests/Legacy.Maliev.Intranet.BrowserTests.csproj \
+            --configuration Release --no-build --no-restore -p:UseLocalMalievDependencies=true \
+            --filter 'FullyQualifiedName=Legacy.Maliev.Intranet.BrowserTests.EmployeeRecoveryEmailSyntaxBrowserTests.NativeSubmit_UsesHistoricalPredicateInsteadOfHtmlEmailSyntax' \
+            --blame-hang --blame-hang-timeout 90s --blame-hang-dump-type none \
+            --logger 'console;verbosity=normal' \
+            --logger 'trx;LogFileName=recovery-email-browser.trx' \
+            --results-directory TestResults/recovery-email-browser
+          python3 -B -c 'import xml.etree.ElementTree as E; r=E.parse("TestResults/recovery-email-browser/recovery-email-browser.trx").getroot(); ns={"t":"http://microsoft.com/schemas/VisualStudio/TeamTest/2010"}; c=r.find("t:ResultSummary/t:Counters",ns); assert c is not None and all(c.get(k)==v for k,v in {"total":"4","executed":"4","passed":"4","failed":"0","notExecuted":"0"}.items()), "Recovery form browser focus must execute and pass exactly four cases"'
       - name: Validate .NET solution
         uses: MALIEV-Co-Ltd/Legacy.Maliev.Workflows/actions/dotnet-validate@d7efac266bc66273bc45eab583618871292ecbd6
         env:
@@ -191,6 +316,37 @@ jobs:
             exit 1
           fi
           pwsh -NoProfile -File scripts/verify-test-coverage.ps1 -CoverageFile "$coverage_file"
+      - name: Verify recovery mailbox proof rejection controls
+        shell: bash
+        run: python3 -B tests/fixtures/recovery-email/test_focus_retainer.py
+      - name: Execute historical recovery mailbox HTTP admission cases
+        timeout-minutes: 5
+        shell: bash
+        env:
+          DOTNET_PROCESSOR_COUNT: '1'
+        run: |
+          export GITHUB_ACTIONS=false
+          test ! -e TestResults/recovery-email
+          dotnet test Legacy.Maliev.Intranet.Tests/Legacy.Maliev.Intranet.Tests.csproj \
+            --configuration Release --no-build --no-restore \
+            -p:UseLocalMalievDependencies=true -p:EnableCoverageSymbols=true \
+            --filter 'FullyQualifiedName=Legacy.Maliev.Intranet.Tests.BffEmployeeRecoveryContractTests.RecoveryEmail_HistoricalBareSyntaxGatesRequestsAndCompletions|FullyQualifiedName=Legacy.Maliev.Intranet.Tests.BffEmployeeRecoveryContractTests.RecoveryEmail_RequiredNullCannotReachAnyAuthOrNotificationBoundary' \
+            --logger 'trx;LogFileName=recovery-email.trx' --results-directory TestResults/recovery-email
+      - name: Verify exact eleven actual recovery mailbox executions
+        id: recovery_email_proof
+        env:
+          EXPECTED_SOURCE_REVISION: ${{ github.sha }}
+          FOCUS_RESULTS: ${{ github.workspace }}/TestResults/recovery-email
+          FOCUS_EVIDENCE: ${{ runner.temp }}/recovery-email-evidence
+        run: python3 -B scripts/verify-recovery-email-focus.py
+      - name: Preserve sanitized recovery mailbox named proof
+        if: ${{ always() && steps.recovery_email_proof.outcome == 'success' }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: recovery-email-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/recovery-email-evidence/
+          if-no-files-found: error
+          retention-days: 7
       - name: Verify Customers private failure proof rejection controls
         shell: bash
         run: python3 -B tests/fixtures/customers-private-failure/test_focus_retainer.py
@@ -218,7 +374,7 @@ jobs:
         run: python3 -B scripts/verify-customers-private-failure-focus.py
       - name: Preserve sanitized Customers named proof
         if: ${{ always() && steps.customers_private_failure_proof.outcome == 'success' }}
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: customers-private-failure-${{ github.run_id }}-${{ github.run_attempt }}
           path: ${{ runner.temp }}/customers-private-failure-evidence/

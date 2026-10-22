@@ -1,9 +1,43 @@
+using System.Xml.Linq;
+
 namespace Legacy.Maliev.Intranet.Tests;
 
 public sealed class LegacyServiceDefaultsIdentityContractTests
 {
     private const string DotNetPatchVersion = "10.0.12";
-    private const string NativeLoggingReplacementCommit = "7edcd961024868513fd5f373cab3dcb261197f77";
+    private const string NativeLoggingReplacementCommit = "02377791d346e25216c114522b3bfdb6f0f19a16";
+
+    [Theory]
+    [InlineData("Microsoft.AspNetCore.Components.Authorization", "10.0.12")]
+    [InlineData("Microsoft.AspNetCore.Components.Web", "10.0.12")]
+    [InlineData("Microsoft.AspNetCore.Components.WebAssembly", "10.0.12")]
+    [InlineData("Microsoft.AspNetCore.Components.WebAssembly.DevServer", "10.0.12")]
+    [InlineData("Microsoft.AspNetCore.Components.WebAssembly.Server", "10.0.13")]
+    [InlineData("Microsoft.AspNetCore.DataProtection.StackExchangeRedis", "10.0.13")]
+    [InlineData("Microsoft.AspNetCore.Mvc.Testing", "10.0.12")]
+    [InlineData("Microsoft.Extensions.Caching.StackExchangeRedis", "10.0.12")]
+    [InlineData("Microsoft.Extensions.Localization", "10.0.12")]
+    [InlineData("Microsoft.Extensions.Localization.Abstractions", "10.0.12")]
+    public void DirectPackageBoundary_RequiresEveryOccurrenceAndRejectsWrongDuplicate(string package, string expected)
+    {
+        var exact = new XElement("PackageReference", new XAttribute("Include", package), new XAttribute("Version", expected));
+        var repeated = new XElement(exact);
+        Assert.True(AllDirectOccurrencesUseExpectedPatch([exact, repeated], package));
+        Assert.False(AllDirectOccurrencesUseExpectedPatch([], package));
+        var wrongCaseDuplicate = new XElement("PackageReference", new XAttribute("Include", package.ToLowerInvariant()), new XAttribute("Version", "10.0.14"));
+        Assert.False(AllDirectOccurrencesUseExpectedPatch([exact, wrongCaseDuplicate], package));
+        var overridden = new XElement(exact);
+        overridden.Add(new XAttribute("VersionOverride", "10.0.14"));
+        Assert.False(AllDirectOccurrencesUseExpectedPatch([exact, overridden], package));
+        var childOverridden = new XElement(exact);
+        childOverridden.Add(new XElement("VersionOverride", "10.0.14"));
+        Assert.False(AllDirectOccurrencesUseExpectedPatch([exact, childOverridden], package));
+        foreach (var wrong in new[] { "10.0.11", expected == "10.0.12" ? "10.0.13" : "10.0.12", "10.0.14", expected + "-unreviewed" })
+        {
+            var other = new XElement("PackageReference", new XAttribute("Include", package), new XAttribute("Version", wrong));
+            Assert.False(AllDirectOccurrencesUseExpectedPatch([exact, other], package));
+        }
+    }
 
     [Fact]
     public void HostsAndDeliveryPinSharedNativeLoggingReplacement()
@@ -66,6 +100,8 @@ public sealed class LegacyServiceDefaultsIdentityContractTests
 
         var source = string.Join(Environment.NewLine, projectSources);
         Assert.DoesNotMatch("Microsoft\\.[^\"]+\" Version=\"10\\.0\\.(?:[0-9]|1[01])\"", source);
+        var directReferences = projectSources.SelectMany(project => XDocument.Parse(project)
+            .Descendants().Where(element => element.Name.LocalName == "PackageReference")).ToArray();
 
         foreach (var package in new[]
         {
@@ -81,8 +117,25 @@ public sealed class LegacyServiceDefaultsIdentityContractTests
             "Microsoft.Extensions.Localization.Abstractions",
         })
         {
-            Assert.Contains($"Include=\"{package}\" Version=\"{DotNetPatchVersion}\"", source, StringComparison.Ordinal);
+            Assert.True(AllDirectOccurrencesUseExpectedPatch(directReferences, package),
+                $"Every direct {package} occurrence must use exactly {ExpectedFrameworkPatch(package)}.");
         }
+    }
+
+    private static string ExpectedFrameworkPatch(string package) => package is
+        "Microsoft.AspNetCore.Components.WebAssembly.Server" or "Microsoft.AspNetCore.DataProtection.StackExchangeRedis"
+            ? "10.0.13" : DotNetPatchVersion;
+
+    private static bool AllDirectOccurrencesUseExpectedPatch(IEnumerable<XElement> references, string package)
+    {
+        // NuGet IDs are case-insensitive; differently cased duplicates remain in this boundary.
+        var occurrences = references.Where(reference => string.Equals(
+            (string?)reference.Attribute("Include") ?? (string?)reference.Attribute("Update"), package, StringComparison.OrdinalIgnoreCase)).ToArray();
+        return occurrences.Length > 0 && occurrences.All(reference =>
+            reference.Attribute("VersionOverride") is null &&
+            !reference.Elements().Any(element => element.Name.LocalName == "VersionOverride") &&
+            ((string?)reference.Attribute("Version") ?? reference.Elements().SingleOrDefault(element => element.Name.LocalName == "Version")?.Value)
+                == ExpectedFrameworkPatch(package));
     }
 
     [Fact]

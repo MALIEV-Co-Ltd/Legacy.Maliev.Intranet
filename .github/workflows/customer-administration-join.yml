@@ -30,7 +30,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           repository: MALIEV-Co-Ltd/Legacy.Maliev.ServiceDefaults
-          ref: 7edcd961024868513fd5f373cab3dcb261197f77
+          ref: 02377791d346e25216c114522b3bfdb6f0f19a16
           path: .dependencies/Legacy.Maliev.ServiceDefaults
           persist-credentials: false
       - name: Check out exact CompatibilityContracts
@@ -46,7 +46,7 @@ jobs:
           dotnet-version: 10.0.x
       - name: Verify immutable dependencies and offline verifier controls
         run: |
-          test "$(git -C .dependencies/Legacy.Maliev.ServiceDefaults rev-parse HEAD)" = 7edcd961024868513fd5f373cab3dcb261197f77
+          test "$(git -C .dependencies/Legacy.Maliev.ServiceDefaults rev-parse HEAD)" = 02377791d346e25216c114522b3bfdb6f0f19a16
           test "$(git -C .dependencies/Legacy.Maliev.CompatibilityContracts rev-parse HEAD)" = 78e48ffc4ee000df0510cba5e7c7a3c4c4d539d7
           python3 -B -m unittest discover -s acceptance/CustomerAdministration -p 'test_*.py'
       - name: Build actual consumer project before focused executions
@@ -62,7 +62,7 @@ jobs:
           python3 -B acceptance/CustomerAdministration/retain.py --root . --source "$(git rev-parse HEAD)" --results "$RUNNER_TEMP/customer-administration-results" --output "$RUNNER_TEMP/customer-administration-sanitized"
       - name: Retain sanitized focused receipt and actual raw coverage
         if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: customer-administration-consumer-${{ github.run_id }}-${{ github.run_attempt }}
           path: ${{ runner.temp }}/customer-administration-sanitized/

@@ -42,18 +42,28 @@
       },
       "MassTransit.Abstractions": {
         "type": "Direct",
-        "requested": "[9.2.2, )",
-        "resolved": "9.2.2",
-        "contentHash": "IiHPBPoeZ8kjvC00xMsUT/mwHIqEkyQuf+KCupGu4kmeBUU9huuK7iBSH666S83azr/yYkYMVxa1o5ZbZLvISw=="
+        "requested": "[9.2.3, )",
+        "resolved": "9.2.3",
+        "contentHash": "D0y98XbWq4Su8YCn1Y3WvQKy3Mn6SS5DGp1vkICy0TpPPzGQI6EPTMmITiim0KCf/WXgh/mRIP9UswIZVDuRjw=="
       },
       "MassTransit.RabbitMQ": {
         "type": "Direct",
-        "requested": "[9.2.2, )",
-        "resolved": "9.2.2",
-        "contentHash": "Nf8ldx5tgZrfulK4mzkRIt149cMEpVGJAbiS+FA0GGDgnRZRNJtFJPzwdx4iV9knaJH1vXsmJVChQaSRS/myjg==",
+        "requested": "[9.2.3, )",
+        "resolved": "9.2.3",
+        "contentHash": "leInIa/ogii5hzKmqbU8DdlYGDUwODoUcIcx8Vlu4NZjjmGoiCdPybDdgeRpSt/ebmar0MHL9m4sainogXU6jQ==",
         "dependencies": {
-          "MassTransit": "9.2.2",
+          "MassTransit": "9.2.3",
           "RabbitMQ.Client": "7.2.2"
+        }
+      },
+      "Microsoft.AspNet.WebApi.Client": {
+        "type": "Direct",
+        "requested": "[6.0.0, )",
+        "resolved": "6.0.0",
+        "contentHash": "zXeWP03dTo67AoDHUzR+/urck0KFssdCKOC+dq7Nv1V2YbFh/nIg09L0/3wSvyRONEdwxGB/ssEGmPNIIhAcAw==",
+        "dependencies": {
+          "Newtonsoft.Json": "13.0.1",
+          "Newtonsoft.Json.Bson": "1.0.2"
         }
       },
       "Microsoft.AspNetCore.Authentication.JwtBearer": {
@@ -184,9 +194,9 @@
       },
       "Scalar.AspNetCore": {
         "type": "Direct",
-        "requested": "[2.17.10, )",
-        "resolved": "2.17.10",
-        "contentHash": "lASwa/do5YYLNp+EQ/LTfm9gxBykypyzQh52aJNYnYkMfFJDwsQ+W7+mKSFejfxA1jGaorFPSeUQHHslnBsdtA=="
+        "requested": "[2.17.13, )",
+        "resolved": "2.17.13",
+        "contentHash": "+R0eJtJIIHW9owY61rIOgR2lywjZnjqUPAM7ll+lZYML7mZ4LxokG6wpAmkuyaLS1Ml4fI4kdAC2U6KkdrDDiA=="
       },
       "System.IdentityModel.Tokens.Jwt": {
         "type": "Direct",
@@ -221,10 +231,10 @@
       },
       "MassTransit": {
         "type": "Transitive",
-        "resolved": "9.2.2",
-        "contentHash": "ihHu8frvV6/sLPxYurx9uvfmLGoRoqQGtYpDpoqSeXOYeQSwN5LgXJcL8SqIQZI84Zoo9Z9aXnWPb4uukIxeQQ==",
+        "resolved": "9.2.3",
+        "contentHash": "exbI8yF4w8swAOj5cHiZVyWWWb/O/d0x1hBrD8nvFcAk4iMjEyvg1i+8zvgOsfYkSZp4horycBJVLAQPv1gFbw==",
         "dependencies": {
-          "MassTransit.Abstractions": "9.2.2"
+          "MassTransit.Abstractions": "9.2.3"
         }
       },
       "Microsoft.Bcl.Cryptography": {
@@ -366,6 +376,19 @@
         "dependencies": {
           "Microsoft.Bcl.Cryptography": "10.0.2",
           "Microsoft.IdentityModel.Logging": "8.23.0"
+        }
+      },
+      "Newtonsoft.Json": {
+        "type": "Transitive",
+        "resolved": "13.0.1",
+        "contentHash": "ppPFpBcvxdsfUonNcvITKqLl3bqxWbDCZIzDWHzjpdAHRFfZe0Dw9HmA0+za13IdyrgJwpkDTDA9fHaxOrt20A=="
+      },
+      "Newtonsoft.Json.Bson": {
+        "type": "Transitive",
+        "resolved": "1.0.2",
+        "contentHash": "QYFyxhaABwmq3p/21VrZNYvCg3DaEoN/wUuw5nmfAf0X3HLjgupwhkEWdgfb9nvGAUIv3osmZoD3kKl4jxEmYQ==",
+        "dependencies": {
+          "Newtonsoft.Json": "12.0.1"
         }
       },
       "Npgsql": {

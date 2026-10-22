@@ -9,6 +9,7 @@
 @inject AuthenticationStateProvider AuthenticationStateProvider
 @inject IStringLocalizer<CustomerView> Text
 @inject IJSRuntime JS
+@inject Microsoft.Extensions.Configuration.IConfiguration DocumentFeatureConfiguration
 
 <PageTitle>@(customer is null ? Text["PageTitle"] : Text["CustomerPageTitle", customer.FullName])</PageTitle>
 
@@ -57,6 +58,7 @@
                     <ShadcnTabsList aria-label="@Text["CustomerWorkspaceTabs"]">
                         <ShadcnTabsTrigger Value="overview">@Text["Overview"]</ShadcnTabsTrigger>
                         <ShadcnTabsTrigger Value="activity">@Text["Activity"]</ShadcnTabsTrigger>
+                        @if (string.Equals(DocumentFeatureConfiguration["CustomerDocuments:Enabled"], "true", StringComparison.OrdinalIgnoreCase)) { <ShadcnTabsTrigger Value="documents">@Text["Documents"]</ShadcnTabsTrigger> }
                         @if (canReadOrders) { <ShadcnTabsTrigger Value="orders">@Text["Orders"]</ShadcnTabsTrigger> }
                         @if (canReadQuotations) { <ShadcnTabsTrigger Value="quotations">@Text["Quotations"]</ShadcnTabsTrigger> }
                         @if (canReadInvoices) { <ShadcnTabsTrigger Value="invoices">@Text["Invoices"]</ShadcnTabsTrigger> }
@@ -93,6 +95,7 @@
                                                 Retry="LoadInternalRemarkAsync"
                                                 Localize="Localize" />
                     </ShadcnTabsContent>
+                    @if (string.Equals(DocumentFeatureConfiguration["CustomerDocuments:Enabled"], "true", StringComparison.OrdinalIgnoreCase)) { <ShadcnTabsContent Value="documents"><CustomerDocuments CustomerId="Id" /></ShadcnTabsContent> }
                     <ShadcnTabsContent Value="activity" ForceMount="true">
                         <CustomerActivity Page="@activityPage"
                                           Loading="@activityLoading"

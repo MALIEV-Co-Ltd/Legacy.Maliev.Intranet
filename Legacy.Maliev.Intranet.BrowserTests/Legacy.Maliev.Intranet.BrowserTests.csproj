@@ -9,5 +9,6 @@
   <ItemGroup><Using Include="Xunit" /></ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Legacy.Maliev.Intranet.Client\Legacy.Maliev.Intranet.Client.csproj" ReferenceOutputAssembly="false" />
+    <ProjectReference Include="..\Legacy.Maliev.Intranet.Tests\Legacy.Maliev.Intranet.Tests.csproj" />
   </ItemGroup>
 </Project>

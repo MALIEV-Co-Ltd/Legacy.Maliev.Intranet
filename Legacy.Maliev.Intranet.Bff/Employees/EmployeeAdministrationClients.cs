@@ -1,3 +1,4 @@
+using Maliev.Aspire.ServiceDefaults.Diagnostics;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
@@ -14,7 +15,7 @@ internal sealed class EmployeeAdministrationCredentialRejection(HttpStatusCode s
 public sealed class EmployeeAdministrationCountryClient(HttpClient client)
 {
     /// <summary>Uses the producer's anonymous reference route, without exposing service URLs to the browser.</summary>
-    public Task<HttpResponseMessage> ReadAsync(CancellationToken token) => client.GetAsync("/Countries", token);
+    public Task<HttpResponseMessage> ReadAsync(CancellationToken token) => client.SendWithPrivateFailureObservationAsync(new HttpRequestMessage(HttpMethod.Get, "/Countries"), token, new PrivateDependencyFailureObservation(), HttpCompletionOption.ResponseContentRead);
 }
 
 /// <summary>Forwards the acting employee's server-held credential, never workload credentials.</summary>
@@ -43,7 +44,7 @@ public sealed class EmployeeAdministrationCredentialSender(EmployeeSessionServic
             request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", acquired.AccessToken);
             // These dedicated clients must have all inherited resilience handlers removed.
             // A lost acknowledgement is not evidence that the write did not commit.
-            return await client.SendAsync(request, HttpCompletionOption.ResponseContentRead, token);
+            return await client.SendWithPrivateFailureObservationAsync(request, token, new PrivateDependencyFailureObservation(), HttpCompletionOption.ResponseContentRead);
         }
     }
 

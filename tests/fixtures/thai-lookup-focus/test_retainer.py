@@ -42,6 +42,18 @@ def fixture(expected, outcome="Passed"):
 
 
 class RetainerTests(unittest.TestCase):
+    def test_workflow_unit_filter_selects_only_reviewed_classes(self):
+        workflow = SCRIPT.parent.parent / ".github/workflows/thai-lookup-focus.yml"
+        command = next(line for line in workflow.read_text(encoding="utf-8").splitlines()
+                       if "--filter" in line and "lookup-unit.trx" in line)
+        actual = command.split("--filter '", 1)[1].split("'", 1)[0]
+        expected = "|".join("FullyQualifiedName~" + name + "."
+                            for name in GATE.EXPECTED["lookup-unit.trx"])
+        self.assertEqual(expected, actual)
+        unrelated = ("Legacy.Maliev.Intranet.Tests."
+                     "QuotationRequestCompanyLookupComponentTests.EnglishSelectionUsesExistingSaveAndPreservesUnrelatedFields")
+        self.assertFalse(any(part.split("~", 1)[1] in unrelated for part in actual.split("|")))
+
     def run_receipt(self, failed=False, missing=False, source_valid=True, build="success"):
         with tempfile.TemporaryDirectory() as directory:
             results, evidence = Path(directory) / "results", Path(directory) / "evidence"
