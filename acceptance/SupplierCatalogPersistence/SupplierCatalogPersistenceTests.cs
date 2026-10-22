@@ -278,8 +278,15 @@ public sealed class SupplierCatalogPersistenceTests
                 ["DataProtection:CertificatePassword"] = password,
             };
             var options = new DbContextOptionsBuilder<PurchaseOrderDbContext>().UseNpgsql(backends.Postgres.GetConnectionString()).Options;
+            int addressId;
             await using (var schema = new PurchaseOrderDbContext(options))
+            {
                 await schema.Database.EnsureCreatedAsync(timeout.Token); // This owner allocated a fresh disposable database.
+                var address = new Legacy.Maliev.ProcurementService.Domain.PurchaseOrderAddress { AddressLine1 = "owned replay address" };
+                schema.Addresses.Add(address);
+                await schema.SaveChangesAsync(timeout.Token);
+                addressId = address.Id;
+            }
 
             // No authorization handler or production permission is replaced. Unmatched live checks deny.
             var iam = Substitute.For<IIamServiceClient>();
@@ -298,6 +305,8 @@ public sealed class SupplierCatalogPersistenceTests
             {
                 SupplierId = 4,
                 EmployeeId = 7,
+                ShippingAddressId = addressId,
+                BillingAddressId = addressId,
                 Notes = " literal replay notes ",
                 Items = [new() { PartNumber = " P-1 ", Description = "first", Quantity = 2, UnitPrice = 3m },
                     new() { Description = "second", Quantity = 1, UnitPrice = 4m }],
@@ -372,6 +381,9 @@ public sealed class SupplierCatalogPersistenceTests
                 Assert.Equal(2, await readback.PurchaseOrders.CountAsync(timeout.Token));
                 var root = await readback.PurchaseOrders.AsNoTracking().SingleAsync(value => value.Id == transport.RootIds[0], timeout.Token);
                 Assert.Equal(request.Notes, root.Notes);
+                Assert.Equal(addressId, root.ShippingAddressId);
+                Assert.Equal(addressId, root.BillingAddressId);
+                Assert.Equal("owned replay address", (await readback.Addresses.AsNoTracking().SingleAsync(timeout.Token)).AddressLine1);
                 Assert.NotNull(root.CreatedDate);
                 var children = await readback.OrderItems.AsNoTracking().Where(value => value.PurchaseOrderId == root.Id).OrderBy(value => value.Id).ToListAsync(timeout.Token);
                 Assert.Equal(transport.ItemIds.Order(), children.Select(value => value.Id));
