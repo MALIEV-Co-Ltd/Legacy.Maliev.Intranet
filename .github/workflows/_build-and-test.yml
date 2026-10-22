@@ -380,6 +380,11 @@ jobs:
           path: ${{ runner.temp }}/customers-private-failure-evidence/
           if-no-files-found: error
           retention-days: 7
+      - name: Retain tracked-input drift names for coverage admission diagnosis
+        if: always()
+        timeout-minutes: 1
+        shell: bash
+        run: git diff --name-status HEAD --
       - name: Preserve actual runner validation evidence
         if: always()
         uses: MALIEV-Co-Ltd/Legacy.Maliev.Workflows/actions/preserve-validation-evidence@45ced0919a604459c7bb5baf7f38d7bc53d708ba

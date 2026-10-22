@@ -4,20 +4,20 @@ namespace Legacy.Maliev.Intranet.Tests;
 
 public sealed class LegacyServiceDefaultsIdentityContractTests
 {
-    private const string DotNetPatchVersion = "10.0.12";
+    private const string DotNetPatchVersion = "10.0.13";
     private const string NativeLoggingReplacementCommit = "02377791d346e25216c114522b3bfdb6f0f19a16";
 
     [Theory]
-    [InlineData("Microsoft.AspNetCore.Components.Authorization", "10.0.12")]
-    [InlineData("Microsoft.AspNetCore.Components.Web", "10.0.12")]
-    [InlineData("Microsoft.AspNetCore.Components.WebAssembly", "10.0.12")]
-    [InlineData("Microsoft.AspNetCore.Components.WebAssembly.DevServer", "10.0.12")]
+    [InlineData("Microsoft.AspNetCore.Components.Authorization", "10.0.13")]
+    [InlineData("Microsoft.AspNetCore.Components.Web", "10.0.13")]
+    [InlineData("Microsoft.AspNetCore.Components.WebAssembly", "10.0.13")]
+    [InlineData("Microsoft.AspNetCore.Components.WebAssembly.DevServer", "10.0.13")]
     [InlineData("Microsoft.AspNetCore.Components.WebAssembly.Server", "10.0.13")]
     [InlineData("Microsoft.AspNetCore.DataProtection.StackExchangeRedis", "10.0.13")]
     [InlineData("Microsoft.AspNetCore.Mvc.Testing", "10.0.12")]
-    [InlineData("Microsoft.Extensions.Caching.StackExchangeRedis", "10.0.12")]
-    [InlineData("Microsoft.Extensions.Localization", "10.0.12")]
-    [InlineData("Microsoft.Extensions.Localization.Abstractions", "10.0.12")]
+    [InlineData("Microsoft.Extensions.Caching.StackExchangeRedis", "10.0.13")]
+    [InlineData("Microsoft.Extensions.Localization", "10.0.13")]
+    [InlineData("Microsoft.Extensions.Localization.Abstractions", "10.0.13")]
     public void DirectPackageBoundary_RequiresEveryOccurrenceAndRejectsWrongDuplicate(string package, string expected)
     {
         var exact = new XElement("PackageReference", new XAttribute("Include", package), new XAttribute("Version", expected));
@@ -122,9 +122,8 @@ public sealed class LegacyServiceDefaultsIdentityContractTests
         }
     }
 
-    private static string ExpectedFrameworkPatch(string package) => package is
-        "Microsoft.AspNetCore.Components.WebAssembly.Server" or "Microsoft.AspNetCore.DataProtection.StackExchangeRedis"
-            ? "10.0.13" : DotNetPatchVersion;
+    private static string ExpectedFrameworkPatch(string package) =>
+        package == "Microsoft.AspNetCore.Mvc.Testing" ? "10.0.12" : DotNetPatchVersion;
 
     private static bool AllDirectOccurrencesUseExpectedPatch(IEnumerable<XElement> references, string package)
     {
