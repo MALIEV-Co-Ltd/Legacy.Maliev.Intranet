@@ -257,6 +257,16 @@ jobs:
             --logger 'trx;LogFileName=recovery-email-browser.trx' \
             --results-directory TestResults/recovery-email-browser
           python3 -B -c 'import xml.etree.ElementTree as E; r=E.parse("TestResults/recovery-email-browser/recovery-email-browser.trx").getroot(); ns={"t":"http://microsoft.com/schemas/VisualStudio/TeamTest/2010"}; c=r.find("t:ResultSummary/t:Counters",ns); assert c is not None and all(c.get(k)==v for k,v in {"total":"4","executed":"4","passed":"4","failed":"0","notExecuted":"0"}.items()), "Recovery form browser focus must execute and pass exactly four cases"'
+      - name: Verify the exact owned framework package boundary before the full suite
+        timeout-minutes: 2
+        shell: bash
+        run: >-
+          dotnet test Legacy.Maliev.Intranet.Tests/Legacy.Maliev.Intranet.Tests.csproj
+          --configuration Release --no-build --no-restore
+          -p:UseLocalMalievDependencies=true -p:CI=false -p:VSTestCollect=
+          --filter "FullyQualifiedName~LegacyServiceDefaultsIdentityContractTests"
+          --logger 'trx;LogFileName=framework-package-boundary.trx'
+          --results-directory TestResults/framework-package-boundary
       - name: Validate .NET solution
         uses: MALIEV-Co-Ltd/Legacy.Maliev.Workflows/actions/dotnet-validate@d7efac266bc66273bc45eab583618871292ecbd6
         env:
