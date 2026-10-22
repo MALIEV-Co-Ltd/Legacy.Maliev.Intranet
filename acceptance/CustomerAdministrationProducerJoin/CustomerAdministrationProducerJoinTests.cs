@@ -81,6 +81,74 @@ public sealed class CustomerAdministrationProducerJoinTests(SharedContainers con
         "legacy-auth.customer-identities.read", "legacy-auth.customer-identities.update",
     ];
 
+    // Frozen Auth 2d01 issuer contract plus exactly the accepted Auth150 additions.
+    private static readonly string[] PreviousEmployeePermissions =
+    [
+        "legacy-catalog.materials.read",
+        "legacy-catalog.materials.create",
+        "legacy-catalog.materials.update",
+        "legacy-catalog.currencies.read",
+        "legacy-customer.customers.list",
+        "legacy-customer.customers.create",
+        "legacy-customer.customers.read",
+        "legacy-customer.customers.update",
+        "legacy-auth.customer-identities.create",
+        "legacy-auth.customer-identities.read",
+        "legacy-auth.customer-identities.update",
+        "legacy-auth.customer-identities.delete",
+        "legacy-auth.employee-identities.create",
+        "legacy-auth.employee-identities.read",
+        "legacy-auth.employee-identities.update",
+        "legacy-auth.employee-identities.delete",
+        "legacy.accounting.read",
+        "legacy.accounting.create",
+        "legacy.accounting.update",
+        "legacy.accounting.delete",
+        "legacy.accounting-files.read",
+        "legacy.accounting-files.write",
+        "legacy.accounting-files.delete",
+        "legacy.quotation-requests.read",
+        "legacy.quotation-requests.update",
+        "legacy.quotations.read",
+        "legacy.quotations.create",
+        "legacy.quotations.update",
+        "legacy.quotation-lines.write",
+        "legacy.quotation-orders.read",
+        "legacy.quotation-orders.write",
+        "legacy.quotation-files.read",
+        "legacy-employee.employees.list",
+        "legacy-employee.employees.create",
+        "legacy-employee.employees.read",
+        "legacy.orders.read",
+        "legacy.orders.create",
+        "legacy-procurement.suppliers.read",
+        "legacy-procurement.suppliers.create",
+        "legacy-procurement.suppliers.update",
+        "legacy-procurement.suppliers.delete",
+        "legacy-procurement.purchase-orders.read",
+        "legacy-procurement.purchase-orders.create",
+        "legacy-procurement.purchase-orders.delete",
+        "legacy.order-catalog.read",
+        "legacy.orders.update",
+        "legacy.order-files.read",
+        "legacy.order-files.write",
+        "legacy.order-files.delete",
+        "legacy.order-status.read",
+        "legacy.order-status.write",
+        "legacy-file.uploads.create",
+        "legacy-file.uploads.read",
+        "legacy-file.uploads.delete",
+    ];
+
+    private static readonly string[] AcceptedEmployeePermissionAdditions =
+    [
+        "legacy-employee.employees.update",
+        "legacy-employee.addresses.read",
+        "legacy-employee.addresses.create",
+        "legacy-employee.addresses.update",
+        "legacy-employee.roles.read",
+    ];
+
     [Fact]
     public async Task RealEmployeeSession_ProfileThenIdentity_PreservesProtectedFieldsAndRelations()
     {
@@ -363,6 +431,13 @@ public sealed class CustomerAdministrationProducerJoinTests(SharedContainers con
                 // Fail closed on an old issuer: the fixture must never manufacture grants.
                 foreach (var permission in Permissions)
                     Assert.Contains(issued.Claims, claim => claim.Type == "permissions" && claim.Value == permission);
+                var expectedPermissions = PreviousEmployeePermissions.Concat(AcceptedEmployeePermissionAdditions)
+                    .OrderBy(value => value, StringComparer.Ordinal).ToArray();
+                var actualPermissions = issued.Claims.Where(claim => claim.Type == "permissions")
+                    .Select(claim => claim.Value).OrderBy(value => value, StringComparer.Ordinal).ToArray();
+                Assert.Equal(expectedPermissions, actualPermissions);
+                Assert.Equal("Employee", Assert.Single(issued.Claims, claim => claim.Type == "role").Value);
+                Assert.DoesNotContain(issued.Claims, claim => claim.Type is "user_type" or "service_name" or "purpose" or "azp");
             }
             customer = new CustomerFactory(this);
             using var initialized = customer.CreateClient();

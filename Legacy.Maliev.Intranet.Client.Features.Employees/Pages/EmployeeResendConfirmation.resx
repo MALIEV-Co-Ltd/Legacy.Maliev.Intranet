@@ -14,4 +14,5 @@
   <data name="RateLimited" xml:space="preserve"><value>Too many requests. Wait and try again.</value></data>
   <data name="Unavailable" xml:space="preserve"><value>Confirmation is temporarily unavailable. Please try again later.</value></data>
   <data name="BackToLogin" xml:space="preserve"><value>Back to sign in</value></data>
+  <data name="EmailInvalid" xml:space="preserve"><value>Enter a valid email address.</value></data>
 </root>

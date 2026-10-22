@@ -1,3 +1,4 @@
+using Maliev.Aspire.ServiceDefaults.Diagnostics;
 using System.Globalization;
 using System.Net.Http.Headers;
 
@@ -31,9 +32,6 @@ public sealed class AggregateOutcomeProxy(IHttpClientFactory clients)
             + "&toUtc=" + Uri.EscapeDataString(toUtc.ToString("O", CultureInfo.InvariantCulture));
         using var request = new HttpRequestMessage(HttpMethod.Get, path);
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
-        return await clients.CreateClient(clientName).SendAsync(
-            request,
-            HttpCompletionOption.ResponseHeadersRead,
-            cancellationToken);
+        return await clients.CreateClient(clientName).SendWithPrivateFailureObservationAsync(request, cancellationToken, new PrivateDependencyFailureObservation(), HttpCompletionOption.ResponseHeadersRead);
     }
 }

@@ -14,4 +14,5 @@
   <data name="RateLimited" xml:space="preserve"><value>มีคำขอมากเกินไป โปรดรอแล้วลองอีกครั้ง</value></data>
   <data name="Unavailable" xml:space="preserve"><value>ระบบยืนยันไม่พร้อมใช้งานชั่วคราว โปรดลองอีกครั้งภายหลัง</value></data>
   <data name="BackToLogin" xml:space="preserve"><value>กลับไปเข้าสู่ระบบ</value></data>
+  <data name="EmailInvalid" xml:space="preserve"><value>โปรดระบุอีเมลที่ถูกต้อง</value></data>
 </root>

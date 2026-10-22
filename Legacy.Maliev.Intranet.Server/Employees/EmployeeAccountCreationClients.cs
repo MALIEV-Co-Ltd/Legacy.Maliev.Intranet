@@ -1,3 +1,4 @@
+using Maliev.Aspire.ServiceDefaults.Diagnostics;
 using Legacy.Maliev.Intranet.Contracts;
 using System.Net.Http.Json;
 using System.Text.Json;
@@ -24,14 +25,14 @@ public sealed class EmployeeProfileCreationClient(HttpClient httpClient) : IEmpl
                 request.RoleId, request.FirstName, request.LastName, request.PhoneNumber,
                 request.Email, request.DateOfBirth, null), options: LegacyJson),
         };
-        return await httpClient.SendAsync(message, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+        return await httpClient.SendWithPrivateFailureObservationAsync(message, cancellationToken, new PrivateDependencyFailureObservation(), HttpCompletionOption.ResponseHeadersRead);
     }
 
     /// <inheritdoc />
     public async Task<HttpResponseMessage> DeleteAsync(int employeeId, CancellationToken cancellationToken)
     {
         using var message = new HttpRequestMessage(HttpMethod.Delete, $"/employees/{employeeId}");
-        return await httpClient.SendAsync(message, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+        return await httpClient.SendWithPrivateFailureObservationAsync(message, cancellationToken, new PrivateDependencyFailureObservation(), HttpCompletionOption.ResponseHeadersRead);
     }
 
     private sealed record EmployeeProfileRequest(int? RoleId, string FirstName, string LastName, string? PhoneNumber, string Email, DateTime? DateOfBirth, int? HomeAddressId);
@@ -51,7 +52,7 @@ public sealed class EmployeeIdentityCreationClient(HttpClient httpClient) : IEmp
             Content = JsonContent.Create(new EmployeeIdentityRequest(
                 request.Email, request.Email, request.Password, false, request.PhoneNumber)),
         };
-        return await httpClient.SendAsync(message, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+        return await httpClient.SendWithPrivateFailureObservationAsync(message, cancellationToken, new PrivateDependencyFailureObservation(), HttpCompletionOption.ResponseHeadersRead);
     }
 
     private sealed record EmployeeIdentityRequest(string UserName, string Email, string Password, bool EmailConfirmed, string? PhoneNumber);

@@ -129,7 +129,7 @@ public sealed class BffCustomersPrivateFailureObservationTests
         Assert.Single(transport.Requests);
         AssertAuthenticatedTransport(transport);
         Assert.Equal(ServiceToken, Assert.Single(factory.Tokens.Invalidated));
-        Assert.Empty(factory.Logs.Entries);
+        AssertFailure(factory.Logs, status);
         AssertPublicBodySafe(await response.Content.ReadAsStringAsync());
     }
 
@@ -160,12 +160,14 @@ public sealed class BffCustomersPrivateFailureObservationTests
         Assert.Equal("DependencyRequestFailure", entry.EventId.Name);
         Assert.Null(entry.Exception);
         var keys = status.HasValue
-            ? new[] { "Dependency", "EventName", "Operation", "StatusCode" }
-            : new[] { "Dependency", "EventName", "Operation" };
+            ? new[] { "Dependency", "EventName", "ExceptionType", "Method", "Operation", "StatusCode" }
+            : new[] { "Dependency", "EventName", "ExceptionType", "Method", "Operation" };
         Assert.Equal(keys, entry.Values.Keys.Order(StringComparer.Ordinal).ToArray());
         Assert.Equal("DependencyRequestFailure", entry.Values["EventName"]);
         Assert.Equal("CustomerService", entry.Values["Dependency"]);
         Assert.Equal("Customers.Get", entry.Values["Operation"]);
+        Assert.Equal("GET", entry.Values["Method"]);
+        Assert.Equal(status.HasValue ? null : "HttpRequestException", entry.Values["ExceptionType"]);
         if (status.HasValue) Assert.Equal(status.Value, entry.Values["StatusCode"]);
         var captured = entry.Message + JsonSerializer.Serialize(entry.Values);
         foreach (var probe in new[] { ServiceToken, QueryProbe, HeaderProbe, BodyProbe, ExceptionProbe, "http://customer/", "server-only-access-token", "server-only-refresh-token" })

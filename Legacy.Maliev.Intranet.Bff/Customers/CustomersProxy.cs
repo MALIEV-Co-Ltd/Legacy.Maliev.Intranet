@@ -1,3 +1,4 @@
+using Maliev.Aspire.ServiceDefaults.Diagnostics;
 using Legacy.Maliev.Intranet.Contracts;
 
 namespace Legacy.Maliev.Intranet.Bff.Customers;
@@ -9,14 +10,14 @@ public sealed class CustomersProxy(HttpClient httpClient)
     public async Task<HttpResponseMessage> GetByIdAsync(int id, CancellationToken cancellationToken)
     {
         using var request = new HttpRequestMessage(HttpMethod.Get, $"/customers/{id}");
-        return await httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+        return await httpClient.SendWithPrivateFailureObservationAsync(request, cancellationToken, new PrivateDependencyFailureObservation(), HttpCompletionOption.ResponseHeadersRead);
     }
 
     /// <summary>Gets an uncached profile and revision for an opt-in editor.</summary>
     public async Task<HttpResponseMessage> GetVersionedByIdAsync(int id, CancellationToken cancellationToken)
     {
         using var request = new HttpRequestMessage(HttpMethod.Get, $"/customers/{id}/versioned");
-        return await httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+        return await httpClient.SendWithPrivateFailureObservationAsync(request, cancellationToken, new PrivateDependencyFailureObservation(), HttpCompletionOption.ResponseHeadersRead);
     }
 
     /// <summary>Gets the requested customer page from CustomerService.</summary>
@@ -29,6 +30,6 @@ public sealed class CustomersProxy(HttpClient httpClient)
     {
         var path = $"/customers?sort={sort}&search={Uri.EscapeDataString(search ?? string.Empty)}&index={index}&size={size}";
         var request = new HttpRequestMessage(HttpMethod.Get, path);
-        return httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+        return httpClient.SendWithPrivateFailureObservationAsync(request, cancellationToken, new PrivateDependencyFailureObservation(), HttpCompletionOption.ResponseHeadersRead);
     }
 }

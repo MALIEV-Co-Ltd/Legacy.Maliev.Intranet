@@ -80,7 +80,7 @@ public sealed class DeliveryContractTests
             Assert.Contains("dotnet/aspnet:10.0.13-alpine3.24@sha256:819bd3649d8bf53f35527c68d62e17b348ef6f24ae73073f497f00a878348062", dockerfile, StringComparison.Ordinal);
             Assert.Contains("USER $APP_UID", dockerfile, StringComparison.Ordinal);
             Assert.Contains("Legacy.Maliev.ServiceDefaults.git", dockerfile, StringComparison.Ordinal);
-            Assert.Contains("checkout 7edcd961024868513fd5f373cab3dcb261197f77", dockerfile, StringComparison.Ordinal);
+            Assert.Contains("checkout 02377791d346e25216c114522b3bfdb6f0f19a16", dockerfile, StringComparison.Ordinal);
             Assert.Contains("Legacy.Maliev.CompatibilityContracts.git", dockerfile, StringComparison.Ordinal);
             Assert.Contains("checkout 78e48ffc4ee000df0510cba5e7c7a3c4c4d539d7", dockerfile, StringComparison.Ordinal);
             Assert.DoesNotContain("Maliev.Aspire.git", dockerfile, StringComparison.Ordinal);

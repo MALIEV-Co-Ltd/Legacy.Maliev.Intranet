@@ -1,3 +1,4 @@
+using Maliev.Aspire.ServiceDefaults.Diagnostics;
 using Legacy.Maliev.Intranet.Contracts;
 
 namespace Legacy.Maliev.Intranet.Bff.Procurement;
@@ -15,6 +16,6 @@ public sealed class PurchaseOrdersProxy(HttpClient httpClient)
     {
         var path = $"/PurchaseOrders?sort={sort}&search={Uri.EscapeDataString(search ?? string.Empty)}&index={index}&size={size}";
         using var request = new HttpRequestMessage(HttpMethod.Get, path);
-        return await httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+        return await httpClient.SendWithPrivateFailureObservationAsync(request, cancellationToken, new PrivateDependencyFailureObservation(), HttpCompletionOption.ResponseHeadersRead);
     }
 }

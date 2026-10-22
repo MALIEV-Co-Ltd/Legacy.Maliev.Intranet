@@ -1,3 +1,4 @@
+using Maliev.Aspire.ServiceDefaults.Diagnostics;
 using System.Globalization;
 using System.Net.Http.Json;
 
@@ -24,7 +25,7 @@ public sealed class QuotationDecisionProxy(HttpClient httpClient)
             "X-Expected-Modified-Date",
             expectedUtc.ToString("O", CultureInfo.InvariantCulture));
 
-        return await httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+        return await httpClient.SendWithPrivateFailureObservationAsync(request, cancellationToken, new PrivateDependencyFailureObservation(), HttpCompletionOption.ResponseHeadersRead);
     }
 
     private sealed record QuotationDecisionServiceRequest(bool Accepted, bool EmployeeInitiated);

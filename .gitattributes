@@ -1,3 +1,5 @@
 * text=auto eol=lf
 *.cs text eol=crlf
 
+# Preserve source-locked third-party scripts and license bytes verbatim.
+Legacy.Maliev.Intranet/wwwroot/lib/compat-validation/* -text
