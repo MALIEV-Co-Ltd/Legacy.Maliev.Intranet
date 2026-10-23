@@ -102,6 +102,10 @@ jobs:
         timeout-minutes: 6
         shell: bash
         run: |
+          # Use the signed official HTTPS archive after repeated hosted Azure mirror timeouts.
+          test -s /etc/apt/apt-mirrors.txt
+          python3 -c 'from pathlib import Path; s=Path("/etc/apt/sources.list.d/ubuntu.sources").read_text(); assert "mirror+file:/etc/apt/apt-mirrors.txt" in s and "Signed-By:" in s, "Unexpected hosted Ubuntu source policy"'
+          printf '%s\n' 'https://archive.ubuntu.com/ubuntu/' | sudo tee /etc/apt/apt-mirrors.txt > /dev/null
           timeout --signal=TERM --kill-after=20s 5m pwsh -NoProfile \
             -File Legacy.Maliev.Intranet.BrowserTests/bin/Release/net10.0/playwright.ps1 install-deps chromium
       - name: Verify cached browser executables and versions
