@@ -483,7 +483,15 @@ public sealed class PrivateDependencyOperationHostTests(ITestOutputHelper output
         Assert.Equal(status == 404 ? LogLevel.Debug : LogLevel.Error, record.Level);
         Assert.Equal(status, record.Fields["StatusCode"]);
         Assert.Equal("GET", record.Fields["Method"]);
-        Assert.Null(record.Fields["ExceptionType"]);
+        if (status == 404)
+        {
+            Assert.Equal("DependencyResourceNotFound", record.Fields["EventName"]);
+            Assert.False(record.Fields.ContainsKey("ExceptionType"));
+        }
+        else
+        {
+            Assert.Null(record.Fields["ExceptionType"]);
+        }
         AssertSafeFailure(record);
         AssertHandlerOrder(host);
         AssertRequestBoundary(host, bff);
