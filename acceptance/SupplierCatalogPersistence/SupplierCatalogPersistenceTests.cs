@@ -241,6 +241,236 @@ public sealed class SupplierCatalogPersistenceTests
         if (executionFailure is not null) System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(executionFailure).Throw();
     }
 
+    /// <summary>Joins the real consumer and pinned producer; Auth/IAM are exact synthetic test dependencies.</summary>
+    [Fact]
+    public async Task PurchaseOrderReplay_RealProducerRowsSurviveLostAcknowledgementAndLaterChildFailure()
+    {
+        const string actor = "service:supplier-proof";
+        const string createPermission = "legacy-procurement.purchase-orders.create";
+        const string itemPermission = "legacy-procurement.order-items.write";
+        var owner = new SupplierResourceScope(TimeSpan.FromMinutes(6));
+        Exception? executionFailure = null;
+        try
+        {
+            using var timeout = CancellationTokenSource.CreateLinkedTokenSource(owner.Token);
+            timeout.CancelAfter(TimeSpan.FromMinutes(4));
+            var backends = owner.AcquireBackend("postgres-and-redis", () => new SupplierBackends(owner), (value, token) => value.ReleaseAsync(token));
+            var backendLease = owner.RegisterBackend("backend-startup", _ => Task.CompletedTask);
+            await owner.StartAsync(backendLease, backends.StartAsync);
+            var signingKey = owner.Acquire("signing-key", () => RSA.Create(2048), (key, _) => { key.Dispose(); return Task.CompletedTask; }, phase: 5);
+            var protectionKey = owner.Acquire("protection-key", () => RSA.Create(2048), (key, _) => { key.Dispose(); return Task.CompletedTask; }, phase: 5);
+            var certificate = owner.Acquire("certificate", () => new CertificateRequest("CN=disposable-supplier-proof", protectionKey,
+                HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1).CreateSelfSigned(
+                    DateTimeOffset.UtcNow.AddMinutes(-1), DateTimeOffset.UtcNow.AddHours(1)),
+                (value, _) => { value.Dispose(); return Task.CompletedTask; }, phase: 5);
+            var password = Convert.ToHexString(RandomNumberGenerator.GetBytes(24));
+            var settings = new Dictionary<string, string?>
+            {
+                ["Jwt:Issuer"] = Issuer,
+                ["Jwt:Audience"] = Audience,
+                ["Jwt:PublicKey"] = Convert.ToBase64String(Encoding.UTF8.GetBytes(signingKey.ExportSubjectPublicKeyInfoPem())),
+                ["ConnectionStrings:redis"] = backends.Redis.GetConnectionString(),
+                ["ConnectionStrings:SupplierDbContext"] = backends.Postgres.GetConnectionString(),
+                ["ConnectionStrings:PurchaseOrderDbContext"] = backends.Postgres.GetConnectionString(),
+                ["Services:Auth"] = "https://127.0.0.1/",
+                ["Services:IAM"] = "https://127.0.0.1/",
+                ["DataProtection:CertificatePfxBase64"] = Convert.ToBase64String(certificate.Export(X509ContentType.Pfx, password)),
+                ["DataProtection:CertificatePassword"] = password,
+            };
+            var options = new DbContextOptionsBuilder<PurchaseOrderDbContext>().UseNpgsql(backends.Postgres.GetConnectionString()).Options;
+            int addressId;
+            await using (var schema = new PurchaseOrderDbContext(options))
+            {
+                await schema.Database.EnsureCreatedAsync(timeout.Token); // This owner allocated a fresh disposable database.
+                var address = new Legacy.Maliev.ProcurementService.Domain.PurchaseOrderAddress { AddressLine1 = "owned replay address" };
+                schema.Addresses.Add(address);
+                await schema.SaveChangesAsync(timeout.Token);
+                addressId = address.Id;
+            }
+
+            // No authorization handler or production permission is replaced. Unmatched live checks deny.
+            var iam = Substitute.For<IIamServiceClient>();
+            var allowRoot = false;
+            iam.CheckPermissionLiveAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>()).Returns(Task.FromResult(false));
+            iam.CheckPermissionLiveAsync(actor, createPermission, "global", Arg.Any<CancellationToken>()).Returns(_ => Task.FromResult(allowRoot));
+            iam.CheckPermissionLiveAsync(actor, itemPermission, "global", Arg.Any<CancellationToken>()).Returns(Task.FromResult(true));
+            var procurement = owner.Acquire("procurement-factory", () => new RuntimeFactory<ProcurementApi::Program>(owner, settings, "Production", liveIam: iam), (value, _) => value.DisposeAsync().AsTask(), phase: 3);
+            var procurementLease = owner.Register("procurement-startup", _ => Task.CompletedTask);
+            procurement.UseKestrel(0);
+            HttpClient producer = null!;
+            owner.Register("procurement-http", _ => { producer?.Dispose(); return Task.CompletedTask; });
+            await owner.StartAsync(procurementLease, token => Task.Run(() => producer = procurement.CreateClient(), token));
+            producer.Timeout = TimeSpan.FromSeconds(20);
+            var request = new PurchaseOrderCreateRequest
+            {
+                SupplierId = 4,
+                EmployeeId = 7,
+                ShippingAddressId = addressId,
+                BillingAddressId = addressId,
+                Notes = " literal replay notes ",
+                Items = [new() { PartNumber = " P-1 ", Description = "first", Quantity = 2, UnitPrice = 3m },
+                    new() { Description = "second", Quantity = 1, UnitPrice = 4m }],
+            };
+
+            producer.DefaultRequestHeaders.Authorization = new("Bearer", Token(signingKey, true, []));
+            using (var denied = await producer.PostAsJsonAsync("/PurchaseOrders", new { request.SupplierId, request.EmployeeId, request.Notes }, timeout.Token))
+                Assert.Equal(HttpStatusCode.Forbidden, denied.StatusCode);
+            allowRoot = true;
+            producer.DefaultRequestHeaders.Authorization = new("Bearer", Token(signingKey, false, []));
+            using (var wrongActor = await producer.PostAsJsonAsync("/PurchaseOrders", new { request.SupplierId, request.EmployeeId, request.Notes }, timeout.Token))
+                Assert.Equal(HttpStatusCode.Forbidden, wrongActor.StatusCode);
+            await using (var deniedReadback = new PurchaseOrderDbContext(options))
+            {
+                Assert.Empty(await deniedReadback.PurchaseOrders.AsNoTracking().ToListAsync(timeout.Token));
+                Assert.Empty(await deniedReadback.OrderItems.AsNoTracking().ToListAsync(timeout.Token));
+            }
+            producer.DefaultRequestHeaders.Authorization = new("Bearer", Token(signingKey, true, []));
+
+            int foreignOrderId;
+            int foreignItemId;
+            await using (var seed = new PurchaseOrderDbContext(options))
+            {
+                var foreign = new Legacy.Maliev.ProcurementService.Domain.PurchaseOrder { Notes = "foreign invocation" };
+                seed.PurchaseOrders.Add(foreign);
+                await seed.SaveChangesAsync(timeout.Token);
+                var foreignItem = new Legacy.Maliev.ProcurementService.Domain.OrderItem { PurchaseOrderId = foreign.Id, Description = "foreign child", Quantity = 1, UnitPrice = 8m };
+                seed.OrderItems.Add(foreignItem);
+                await seed.SaveChangesAsync(timeout.Token);
+                foreignOrderId = foreign.Id;
+                foreignItemId = foreignItem.Id;
+            }
+
+            var transport = new PurchaseOrderJoinTransport(producer);
+            var consumerHttp = owner.Acquire("purchase-order-consumer-http", () => new HttpClient(transport)
+            { BaseAddress = producer.BaseAddress, Timeout = TimeSpan.FromSeconds(30) }, (value, _) => { value.Dispose(); return Task.CompletedTask; });
+            var service = new Legacy.Maliev.Intranet.PurchaseOrders.PurchaseOrderCreationService(
+                new Bff::Legacy.Maliev.Intranet.Bff.Procurement.PurchaseOrderCreationGateway(new PurchaseOrderJoinClients(consumerHttp)),
+                Microsoft.Extensions.Logging.Abstractions.NullLogger<Legacy.Maliev.Intranet.PurchaseOrders.PurchaseOrderCreationService>.Instance);
+            var attempt = Guid.NewGuid().ToString("D");
+            var first = await service.CreateAsync(request, attempt, timeout.Token);
+            Assert.Equal(Legacy.Maliev.Intranet.PurchaseOrders.PurchaseOrderCreationStatus.OutcomeUnknown, first.Status);
+            Assert.Equal(2, transport.ItemIds.Count);
+            var originalIds = transport.ItemIds.ToArray();
+            await using (var committed = new PurchaseOrderDbContext(options))
+            {
+                Assert.Equal(2, await committed.PurchaseOrders.CountAsync(timeout.Token));
+                Assert.Equal(originalIds.Order(), await committed.OrderItems.Where(value => value.PurchaseOrderId == transport.RootIds[0]).OrderBy(value => value.Id).Select(value => value.Id).ToArrayAsync(timeout.Token));
+            }
+
+            var second = await service.CreateAsync(request, attempt, timeout.Token);
+            Assert.Equal(Legacy.Maliev.Intranet.PurchaseOrders.PurchaseOrderCreationStatus.OutcomeUnknown, second.Status);
+            Assert.Equal(0, transport.Deletes);
+            Assert.Equal(2, transport.RootIds.Count);
+            Assert.Equal(transport.RootIds[0], transport.RootIds[1]);
+            Assert.NotEqual(foreignOrderId, transport.RootIds[0]);
+            // The pinned producer ignores child idempotency keys: the repeated first child is a NEW row.
+            Assert.Equal(3, transport.ItemIds.Distinct().Count());
+            Assert.Equal(6, transport.Keys.Count);
+            Assert.Equal(attempt, transport.Keys[0]);
+            Assert.Equal(attempt, transport.Keys[3]);
+            for (var index = 0; index < 3; index++)
+            {
+                Assert.Equal(transport.Keys[index], transport.Keys[index + 3]);
+                Assert.Equal(transport.Bodies[index], transport.Bodies[index + 3]);
+            }
+            Assert.NotEqual(transport.Keys[1], transport.Keys[2]);
+            Assert.Contains(" literal replay notes ", transport.Bodies[0], StringComparison.Ordinal);
+            Assert.Contains(" P-1 ", transport.Bodies[1], StringComparison.Ordinal);
+            await using (var readback = new PurchaseOrderDbContext(options))
+            {
+                Assert.Equal(2, await readback.PurchaseOrders.CountAsync(timeout.Token));
+                var root = await readback.PurchaseOrders.AsNoTracking().SingleAsync(value => value.Id == transport.RootIds[0], timeout.Token);
+                Assert.Equal(request.Notes, root.Notes);
+                Assert.Equal(addressId, root.ShippingAddressId);
+                Assert.Equal(addressId, root.BillingAddressId);
+                Assert.Equal("owned replay address", (await readback.Addresses.AsNoTracking().SingleAsync(timeout.Token)).AddressLine1);
+                Assert.NotNull(root.CreatedDate);
+                var children = await readback.OrderItems.AsNoTracking().Where(value => value.PurchaseOrderId == root.Id).OrderBy(value => value.Id).ToListAsync(timeout.Token);
+                Assert.Equal(transport.ItemIds.Order(), children.Select(value => value.Id));
+                Assert.All(originalIds, id => Assert.Contains(children, value => value.Id == id));
+                Assert.Equal(2, children.Count(value => value.PartNumber == " P-1 " && value.Description == "first" && value.Quantity == 2 && value.UnitPrice == 3m && value.Subtotal == 6m));
+                Assert.Single(children, value => value.Description == "second" && value.Quantity == 1 && value.UnitPrice == 4m && value.Subtotal == 4m);
+                Assert.Equal("foreign invocation", (await readback.PurchaseOrders.AsNoTracking().SingleAsync(value => value.Id == foreignOrderId, timeout.Token)).Notes);
+                var foreignItem = await readback.OrderItems.AsNoTracking().SingleAsync(value => value.Id == foreignItemId, timeout.Token);
+                Assert.Equal(foreignOrderId, foreignItem.PurchaseOrderId);
+                Assert.Equal("foreign child", foreignItem.Description);
+                Assert.Equal(4, await readback.OrderItems.CountAsync(timeout.Token));
+            }
+            var checks = iam.ReceivedCalls().ToArray();
+            Assert.Equal(7, checks.Length);
+            Assert.All(checks, call =>
+            {
+                Assert.Equal(nameof(IIamServiceClient.CheckPermissionLiveAsync), call.GetMethodInfo().Name);
+                var arguments = call.GetArguments();
+                Assert.Equal("global", arguments[2]);
+                Assert.True((Equals(arguments[0], actor) && (Equals(arguments[1], createPermission) || Equals(arguments[1], itemPermission))) ||
+                    (Equals(arguments[0], "supplier-proof-employee") && Equals(arguments[1], createPermission)));
+            });
+            Assert.Equal(3, checks.Count(call => Equals(call.GetArguments()[0], actor) && Equals(call.GetArguments()[1], createPermission)));
+            Assert.Equal(3, checks.Count(call => Equals(call.GetArguments()[1], itemPermission)));
+        }
+        catch (Exception error) { executionFailure = error; }
+        finally
+        {
+            try { await owner.DisposeAsync(); }
+            catch (Exception cleanupFailure) when (executionFailure is not null)
+            { throw new AggregateException("Purchase-order join and exact owned cleanup failed.", executionFailure, cleanupFailure); }
+        }
+        if (executionFailure is not null) System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(executionFailure).Throw();
+    }
+
+    private sealed class PurchaseOrderJoinClients(HttpClient client) : IHttpClientFactory
+    {
+        public HttpClient CreateClient(string name)
+        {
+            Assert.Equal(Bff::Legacy.Maliev.Intranet.Bff.Procurement.PurchaseOrderCreationGateway.ProcurementClient, name);
+            return client;
+        }
+    }
+
+    private sealed class PurchaseOrderJoinTransport(HttpClient producer) : HttpMessageHandler
+    {
+        internal List<string> Keys { get; } = [];
+        internal List<string> Bodies { get; } = [];
+        internal List<int> RootIds { get; } = [];
+        internal List<int> ItemIds { get; } = [];
+        internal int Deletes { get; private set; }
+        private int itemCalls;
+
+        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            if (request.Method == HttpMethod.Delete)
+            {
+                Deletes++;
+                throw new InvalidOperationException("Automatic compensation attempted a forbidden DELETE.");
+            }
+            Assert.Equal(HttpMethod.Post, request.Method);
+            var path = request.RequestUri!.AbsolutePath;
+            Assert.Contains(path, new[] { "/PurchaseOrders", "/purchaseorders/orderitems" });
+            Keys.Add(Assert.Single(request.Headers.GetValues("Idempotency-Key")));
+            Bodies.Add(await request.Content!.ReadAsStringAsync(cancellationToken));
+            if (path == "/purchaseorders/orderitems" && ++itemCalls == 4)
+                return new(HttpStatusCode.ServiceUnavailable); // A later child is rejected before dispatch.
+            using var forwarded = new HttpRequestMessage(request.Method, new Uri(producer.BaseAddress!, path))
+            { Content = new StringContent(Bodies[^1], Encoding.UTF8, "application/json") };
+            forwarded.Headers.Add("Idempotency-Key", Keys[^1]);
+            var response = await producer.SendAsync(forwarded, cancellationToken);
+            try
+            {
+                Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+                using var body = JsonDocument.Parse(await response.Content.ReadAsStringAsync(cancellationToken));
+                var id = body.RootElement.GetProperty("Id").GetInt32();
+                Assert.True(id > 0);
+                if (path == "/PurchaseOrders") RootIds.Add(id);
+                else ItemIds.Add(id);
+                if (path == "/purchaseorders/orderitems" && itemCalls == 2)
+                    throw new HttpRequestException("Synthetic acknowledgement loss after the actual producer committed its child.");
+                return response;
+            }
+            catch { response.Dispose(); throw; }
+        }
+    }
+
     private static async Task SignInAsync(IBrowserContext context, string origin, string email)
     {
         using var session = JsonDocument.Parse(await (await context.APIRequest.GetAsync(origin + "/bff/session")).TextAsync());
@@ -293,7 +523,7 @@ public sealed class SupplierCatalogPersistenceTests
         return app;
     }
 
-    private sealed class RuntimeFactory<T>(SupplierResourceScope owner, Dictionary<string, string?> settings, string environment, bool catalog = false, bool bff = false)
+    private sealed class RuntimeFactory<T>(SupplierResourceScope owner, Dictionary<string, string?> settings, string environment, bool catalog = false, bool bff = false, IIamServiceClient? liveIam = null)
         : WebApplicationFactory<T> where T : class
     {
         protected override IHost CreateHost(IHostBuilder builder)
@@ -336,7 +566,7 @@ public sealed class SupplierCatalogPersistenceTests
                     services.RemoveAll<IIamServiceClient>();
                     var iam = Substitute.For<IIamServiceClient>();
                     iam.CheckPermissionAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>()).Returns(Task.FromResult(false));
-                    services.AddScoped<IIamServiceClient>(_ => iam);
+                    services.AddScoped<IIamServiceClient>(_ => liveIam ?? iam);
                 }
                 if (catalog)
                 {

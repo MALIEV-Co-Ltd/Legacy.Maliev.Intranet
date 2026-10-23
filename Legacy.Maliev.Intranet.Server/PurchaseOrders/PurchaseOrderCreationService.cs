@@ -21,7 +21,7 @@ public enum PurchaseOrderCreationStatus
     RateLimited,
     /// <summary>A successful downstream response could not be validated.</summary>
     BadGateway,
-    /// <summary>The workflow failed and all created resources were removed.</summary>
+    /// <summary>A downstream boundary was unavailable without an acknowledged workflow creation.</summary>
     Unavailable,
     /// <summary>The workflow failed and complete compensation could not be proven.</summary>
     OutcomeUnknown,
@@ -154,7 +154,7 @@ public interface IPurchaseOrderCreationGateway
     Task DeleteOrderAsync(int purchaseOrderId, CancellationToken cancellationToken);
 }
 
-/// <summary>Owns purchase-order, PDF, upload, metadata and compensation behavior outside the BFF.</summary>
+/// <summary>Owns purchase-order, PDF, upload, metadata and failure ownership fencing outside the BFF.</summary>
 public sealed class PurchaseOrderCreationService(
     IPurchaseOrderCreationGateway gateway,
     ILogger<PurchaseOrderCreationService> logger)
@@ -185,7 +185,7 @@ public sealed class PurchaseOrderCreationService(
         }
     }
 
-    /// <summary>Creates the complete purchase-order artifact workflow with reverse compensation.</summary>
+    /// <summary>Creates the artifact workflow while fencing cleanup when replay ownership or a write outcome is unproven.</summary>
     /// <param name="request">Validated browser-safe purchase-order input.</param>
     /// <param name="attemptId">Stable replay identifier forwarded to idempotent downstream writes.</param>
     /// <param name="cancellationToken">Token to cancel the browser-owned operation.</param>
@@ -195,19 +195,19 @@ public sealed class PurchaseOrderCreationService(
         string attemptId,
         CancellationToken cancellationToken)
     {
-        int? orderId = null;
-        int? fileId = null;
-        PurchaseOrderStoredFile? storedFile = null;
-        var itemIds = new List<int>();
+        var rootWritePending = false;
+        var acknowledgedWithoutOwnership = false;
         try
         {
+            rootWritePending = true;
             var order = await gateway.CreateOrderAsync(request, attemptId, cancellationToken);
             if (order.Id <= 0)
             {
-                return new(PurchaseOrderCreationStatus.BadGateway);
+                throw new PurchaseOrderGatewayException(PurchaseOrderCreationStatus.BadGateway);
             }
 
-            orderId = order.Id;
+            rootWritePending = false;
+            acknowledgedWithoutOwnership = true;
             for (var itemIndex = 0; itemIndex < request.Items.Count; itemIndex++)
             {
                 var itemId = await gateway.CreateItemAsync(order.Id, request.Items[itemIndex], attemptId, itemIndex, cancellationToken);
@@ -216,7 +216,6 @@ public sealed class PurchaseOrderCreationService(
                     throw new PurchaseOrderGatewayException(PurchaseOrderCreationStatus.BadGateway);
                 }
 
-                itemIds.Add(itemId);
             }
 
             var references = await gateway.GetDocumentReferencesAsync(request, cancellationToken);
@@ -227,13 +226,13 @@ public sealed class PurchaseOrderCreationService(
                 throw new PurchaseOrderGatewayException(PurchaseOrderCreationStatus.BadGateway);
             }
 
-            storedFile = await gateway.UploadPdfAsync(order.Id, pdf, attemptId, cancellationToken);
+            var storedFile = await gateway.UploadPdfAsync(order.Id, pdf, attemptId, cancellationToken);
             if (string.IsNullOrWhiteSpace(storedFile.Bucket) || string.IsNullOrWhiteSpace(storedFile.ObjectName))
             {
                 throw new PurchaseOrderGatewayException(PurchaseOrderCreationStatus.BadGateway);
             }
 
-            fileId = await gateway.LinkFileAsync(order.Id, storedFile, attemptId, cancellationToken);
+            var fileId = await gateway.LinkFileAsync(order.Id, storedFile, attemptId, cancellationToken);
             if (fileId <= 0)
             {
                 throw new PurchaseOrderGatewayException(PurchaseOrderCreationStatus.BadGateway);
@@ -243,9 +242,15 @@ public sealed class PurchaseOrderCreationService(
         }
         catch (Exception exception) when (IsRecoverable(exception))
         {
-            var compensated = await CompensateAsync(orderId, itemIds, storedFile, fileId);
-            if (!compensated)
+            // Stable keys and returned IDs do not prove that this invocation owns a replayed resource.
+            // A failed write may also have committed without returning its acknowledgement.
+            // Current producers expose no exclusive invocation-ownership proof: never delete on that basis.
+            var definitiveRootRejection = !acknowledgedWithoutOwnership && exception is PurchaseOrderGatewayException rejection &&
+                rejection.Status is PurchaseOrderCreationStatus.BadRequest or PurchaseOrderCreationStatus.Unauthorized or
+                    PurchaseOrderCreationStatus.Forbidden or PurchaseOrderCreationStatus.Conflict or PurchaseOrderCreationStatus.RateLimited;
+            if (acknowledgedWithoutOwnership || (rootWritePending && !definitiveRootRejection))
             {
+                logger.LogWarning("Purchase-order cleanup fenced: acknowledged replay ownership or pending write outcome is unproven.");
                 return new(PurchaseOrderCreationStatus.OutcomeUnknown);
             }
 
@@ -314,47 +319,6 @@ public sealed class PurchaseOrderCreationService(
             countries.GetValueOrDefault(value.CountryId, string.Empty),
             value.PostalCode,
             value.State);
-
-    private async Task<bool> CompensateAsync(
-        int? orderId,
-        IReadOnlyList<int> itemIds,
-        PurchaseOrderStoredFile? storedFile,
-        int? fileId)
-    {
-        using var cleanup = new CancellationTokenSource(TimeSpan.FromSeconds(30));
-        var succeeded = true;
-        if (fileId is not null)
-        {
-            succeeded &= await TryCompensateAsync("file metadata", orderId, () => gateway.DeleteFileLinkAsync(fileId.Value, cleanup.Token));
-        }
-        if (storedFile is not null)
-        {
-            succeeded &= await TryCompensateAsync("stored PDF", orderId, () => gateway.DeleteStoredFileAsync(storedFile, cleanup.Token));
-        }
-        foreach (var itemId in itemIds.Reverse())
-        {
-            succeeded &= await TryCompensateAsync("line item", orderId, () => gateway.DeleteItemAsync(itemId, cleanup.Token));
-        }
-        if (orderId is not null)
-        {
-            succeeded &= await TryCompensateAsync("purchase order", orderId, () => gateway.DeleteOrderAsync(orderId.Value, cleanup.Token));
-        }
-        return succeeded;
-    }
-
-    private async Task<bool> TryCompensateAsync(string resource, int? orderId, Func<Task> action)
-    {
-        try
-        {
-            await action();
-            return true;
-        }
-        catch (Exception exception) when (IsRecoverable(exception))
-        {
-            logger.LogError(exception, "Failed to roll back purchase-order {Resource} for order {PurchaseOrderId}.", resource, orderId);
-            return false;
-        }
-    }
 
     private static bool IsRecoverable(Exception exception) =>
         exception is PurchaseOrderGatewayException or HttpRequestException or OperationCanceledException ||
