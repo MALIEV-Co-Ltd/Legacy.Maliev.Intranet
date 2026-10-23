@@ -11,6 +11,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Metadata;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.Routing;
+using Microsoft.AspNetCore.Routing.Template;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using BffProgram = Bff::Program;
@@ -61,10 +62,10 @@ public sealed class BffHttpMethodSurfaceTests
             .ToArray();
 
         Assert.Equal(ExpectedEndpointSurface, actual);
-        Assert.Equal(105, actual.Length);
-        Assert.Equal(58, actual.Count(value => value.StartsWith("GET ", StringComparison.Ordinal)));
+        Assert.Equal(109, actual.Length);
+        Assert.Equal(60, actual.Count(value => value.StartsWith("GET ", StringComparison.Ordinal)));
         Assert.Equal(24, actual.Count(value => value.StartsWith("POST ", StringComparison.Ordinal)));
-        Assert.Equal(14, actual.Count(value => value.StartsWith("PUT ", StringComparison.Ordinal)));
+        Assert.Equal(16, actual.Count(value => value.StartsWith("PUT ", StringComparison.Ordinal)));
         Assert.Equal(9, actual.Count(value => value.StartsWith("DELETE ", StringComparison.Ordinal)));
     }
 
@@ -147,17 +148,16 @@ public sealed class BffHttpMethodSurfaceTests
     {
         await using var factory = new AuthenticatedBffFactory();
         using var client = CreateClient(factory);
-        var routes = GetBffEndpoints(factory)
+        var endpoints = GetBffEndpoints(factory).ToArray();
+        var routes = endpoints
             .GroupBy(endpoint => endpoint.RoutePattern.RawText!, StringComparer.Ordinal)
             .OrderBy(group => group.Key, StringComparer.Ordinal);
 
         foreach (var routeGroup in routes)
         {
-            var allowed = routeGroup
-                .SelectMany(endpoint => endpoint.Metadata.GetMetadata<IHttpMethodMetadata>()!.HttpMethods)
-                .ToHashSet(StringComparer.OrdinalIgnoreCase);
-
             var route = MaterializeRoute(routeGroup.Key);
+            var allowed = AllowedMethodsForRoute(endpoints, route,
+                factory.Services.GetRequiredService<IInlineConstraintResolver>());
             foreach (var method in RequestedMethods.Where(method => !allowed.Contains(method)))
             {
                 using var request = new HttpRequestMessage(new HttpMethod(method), route);
@@ -273,7 +273,45 @@ public sealed class BffHttpMethodSurfaceTests
             .ToArray();
 
     private static string MaterializeRoute(string routeTemplate) =>
-        Regex.Replace(routeTemplate, "\\{[^}]+\\}", "1", RegexOptions.CultureInvariant);
+        Regex.Replace(routeTemplate, "\\{[^}]+\\}",
+            match => match.Value == "{kind}" ? "billing" : "1", RegexOptions.CultureInvariant);
+
+    private static HashSet<string> AllowedMethodsForRoute(
+        IEnumerable<RouteEndpoint> endpoints, string route, IInlineConstraintResolver resolver) =>
+        endpoints.Where(endpoint => MatchesConstrainedRoute(endpoint, route, resolver))
+            .SelectMany(endpoint => endpoint.Metadata.GetMetadata<IHttpMethodMetadata>()!.HttpMethods)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+    private static bool MatchesConstrainedRoute(RouteEndpoint endpoint, string route, IInlineConstraintResolver resolver)
+    {
+        var template = TemplateParser.Parse(endpoint.RoutePattern.RawText!);
+        var values = new RouteValueDictionary();
+        if (!new TemplateMatcher(template, new RouteValueDictionary()).TryMatch(new PathString(route), values))
+            return false;
+
+        var context = new DefaultHttpContext();
+        context.Request.Path = route;
+        return template.Parameters.All(parameter => parameter.InlineConstraints.All(inline =>
+        {
+            var constraint = resolver.ResolveConstraint(inline.Constraint);
+            Assert.NotNull(constraint);
+            return constraint.Match(context, null!, parameter.Name!, values, RouteDirection.IncomingRequest);
+        }));
+    }
+
+    [Fact]
+    public void ConcreteCompanyRelationRoute_IncludesBothReadAndWriteTemplates()
+    {
+        using var factory = new AnonymousBffFactory();
+        var resolver = factory.Services.GetRequiredService<IInlineConstraintResolver>();
+        var allowed = AllowedMethodsForRoute(GetBffEndpoints(factory), "/bff/customers/1/relations/company/1", resolver);
+
+        Assert.Equal(new[] { "GET", "PUT" }, allowed.Order(StringComparer.Ordinal));
+        Assert.Equal("/bff/customers/1/relations/billing/1",
+            MaterializeRoute("/bff/customers/{id:int}/relations/{kind}/{relation}"));
+        Assert.Equal(new[] { "GET" }, AllowedMethodsForRoute(GetBffEndpoints(factory),
+            "/bff/customers/relation-countries", resolver).Order(StringComparer.Ordinal));
+    }
 
     private static string[] ExpectedEndpointSurface =>
         """
@@ -287,6 +325,7 @@ public sealed class BffHttpMethodSurfaceTests
         GET /bff/catalog/materials/{id:int}/surface-finishes
         GET /bff/catalog/surface-finishes
         GET /bff/customers
+        GET /bff/customers/relation-countries
         GET /bff/customers/{customerId:int}/activity
         GET /bff/customers/{customerId:int}/invoices
         GET /bff/customers/{customerId:int}/orders
@@ -294,6 +333,7 @@ public sealed class BffHttpMethodSurfaceTests
         GET /bff/customers/{id:int}
         GET /bff/customers/{id:int}/edit
         GET /bff/customers/{id:int}/internal-remark
+        GET /bff/customers/{id:int}/relations/{kind}/{relation}
         GET /bff/customers/{id:int}/versioned
         GET /bff/dashboard
         GET /bff/diagnostics/events
@@ -363,6 +403,8 @@ public sealed class BffHttpMethodSurfaceTests
         PUT /bff/customers/{id:int}
         PUT /bff/customers/{id:int}/edit
         PUT /bff/customers/{id:int}/internal-remark
+        PUT /bff/customers/{id:int}/relations/company/{relation}
+        PUT /bff/customers/{id:int}/relations/{kind}/address/{relation}
         PUT /bff/customers/{id:int}/versioned
         PUT /bff/employees/{id:int}/edit
         PUT /bff/finances/{id:int}

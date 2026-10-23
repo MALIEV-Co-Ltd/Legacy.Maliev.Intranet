@@ -221,6 +221,27 @@ jobs:
         env:
           DIAGNOSTIC_OUTCOME: ${{ steps.current_main_diagnostics.outcome }}
         run: test "$DIAGNOSTIC_OUTCOME" = success
+      - name: Verify customer relation read and correction contracts before full validation
+        timeout-minutes: 8
+        shell: bash
+        env:
+          DOTNET_PROCESSOR_COUNT: '1'
+        run: |
+          export GITHUB_ACTIONS=false
+          timeout --signal=TERM --kill-after=20s 7m dotnet test Legacy.Maliev.Intranet.Tests/Legacy.Maliev.Intranet.Tests.csproj \
+            --configuration Release --no-build --no-restore -p:UseLocalMalievDependencies=true \
+            --filter 'FullyQualifiedName~BffCustomersProxyContractTests' \
+            --logger 'console;verbosity=normal' \
+            --logger 'trx;LogFileName=customer-relation-contracts.trx' \
+            --results-directory TestResults/customer-relation-contracts
+      - name: Retain synthetic customer relation contract results
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: customer-relation-contracts-${{ github.sha }}
+          path: TestResults/customer-relation-contracts/*.trx
+          if-no-files-found: ignore
+          retention-days: 7
       - name: Verify current candidate formatting before full validation
         timeout-minutes: 8
         shell: bash
@@ -315,6 +336,32 @@ jobs:
             --logger 'trx;LogFileName=published-login-lifecycle.trx' \
             --results-directory TestResults/published-login-lifecycle
           python3 -B -c 'import xml.etree.ElementTree as E; r=E.parse("TestResults/published-login-lifecycle/published-login-lifecycle.trx").getroot(); ns={"t":"http://microsoft.com/schemas/VisualStudio/TeamTest/2010"}; c=r.find("t:ResultSummary/t:Counters",ns); assert c is not None and all(c.get(k)==v for k,v in {"total":"5","executed":"5","passed":"5","failed":"0","notExecuted":"0"}.items()), "Published login focus must pass all four locale/viewport cases and the canceled-request refusal control"'
+      - name: Execute customer relation editing and reachability regressions
+        timeout-minutes: 15
+        shell: bash
+        env:
+          DOTNET_PROCESSOR_COUNT: '1'
+        run: |
+          export GITHUB_ACTIONS=false
+          timeout --signal=TERM --kill-after=20s 14m dotnet test \
+            Legacy.Maliev.Intranet.BrowserTests/Legacy.Maliev.Intranet.BrowserTests.csproj \
+            --configuration Release --no-build --no-restore -p:UseLocalMalievDependencies=true \
+            --filter 'FullyQualifiedName~CompanyAndAddressEditorsPreserveLiteralValuesScopedVersionsAndReload|FullyQualifiedName~UncertainOrStaleRelationWriteRequiresFreshReadBeforeAnotherSubmission|FullyQualifiedName~CurrentIssuerPermissionsLeaveRelationEditorsDisabled|FullyQualifiedName~CountryReadFailureDoesNotOfferOrSendAnAddressWrite|FullyQualifiedName~ChangedBindingOrUncertainCreationReloadsFreshAttachmentBeforeExplicitNextWrite|FullyQualifiedName~CompanySaveRemainsReachableAfterInputFocus' \
+            --blame-hang --blame-hang-timeout 90s --blame-hang-dump-type none \
+            --logger 'console;verbosity=normal' \
+            --logger 'trx;LogFileName=customer-relations.trx' \
+            --results-directory TestResults/customer-relations
+          python3 -B -c 'import xml.etree.ElementTree as E; r=E.parse("TestResults/customer-relations/customer-relations.trx").getroot(); ns={"t":"http://microsoft.com/schemas/VisualStudio/TeamTest/2010"}; c=r.find("t:ResultSummary/t:Counters",ns); assert c is not None and all(c.get(k)==v for k,v in {"total":"21","executed":"21","passed":"21","failed":"0","notExecuted":"0"}.items()), "All 21 relation and reachability cases must pass"'
+      - name: Retain synthetic customer relation browser results
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: customer-relations-browser-${{ github.sha }}
+          path: |
+            TestResults/customer-relations/*.trx
+            TestResults/customer-relations/*.png
+          if-no-files-found: ignore
+          retention-days: 7
       - name: Validate .NET solution
         uses: MALIEV-Co-Ltd/Legacy.Maliev.Workflows/actions/dotnet-validate@d7efac266bc66273bc45eab583618871292ecbd6
         env:

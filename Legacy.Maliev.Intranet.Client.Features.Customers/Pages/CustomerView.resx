@@ -119,4 +119,27 @@
   <data name="Yes" xml:space="preserve"><value>Yes</value></data>
   <data name="No" xml:space="preserve"><value>No</value></data>
   <data name="Documents" xml:space="preserve"><value>Documents</value></data>
+  <data name="RelationEditing" xml:space="preserve"><value>Company and addresses</value></data>
+  <data name="RelationEditingDescription" xml:space="preserve"><value>Save each section separately. Changes to company or address records shared by other customers also affect those customers.</value></data>
+  <data name="EditRelation_company" xml:space="preserve"><value>Edit company</value></data>
+  <data name="EditRelation_billing" xml:space="preserve"><value>Edit billing address</value></data>
+  <data name="EditRelation_shipping" xml:space="preserve"><value>Edit shipping address</value></data>
+  <data name="SaveRelation" xml:space="preserve"><value>Save this section</value></data>
+  <data name="ReloadRelation" xml:space="preserve"><value>Reload this section</value></data>
+  <data name="RelationReloadRequired" xml:space="preserve"><value>The record changed or the save outcome is uncertain. Reload this section before saving again.</value></data>
+  <data name="RelationUnavailable" xml:space="preserve"><value>This section is temporarily unavailable. Cancel and try loading it again.</value></data>
+  <data name="RelationSessionExpired" xml:space="preserve"><value>Your session expired. Sign in again before editing.</value></data>
+  <data name="CountriesUnavailable" xml:space="preserve"><value>Country choices are unavailable. No address change has been sent.</value></data>
+  <data name="RelationSaved_company" xml:space="preserve"><value>Company saved.</value></data>
+  <data name="RelationSaved_billing" xml:space="preserve"><value>Billing address saved.</value></data>
+  <data name="RelationSaved_shipping" xml:space="preserve"><value>Shipping address saved.</value></data>
+  <data name="Building" xml:space="preserve"><value>Building</value></data>
+  <data name="AddressLine1" xml:space="preserve"><value>Address line 1</value></data>
+  <data name="AddressLine2" xml:space="preserve"><value>Address line 2</value></data>
+  <data name="City" xml:space="preserve"><value>City / district</value></data>
+  <data name="State" xml:space="preserve"><value>State / province</value></data>
+  <data name="PostalCode" xml:space="preserve"><value>Postal code</value></data>
+  <data name="Country" xml:space="preserve"><value>Country</value></data>
+  <data name="SelectCountry" xml:space="preserve"><value>Select country</value></data>
+  <data name="RelationPermissionRequired" xml:space="preserve"><value>Your current permissions do not allow company or address edits.</value></data>
 </root>
