@@ -221,6 +221,27 @@ jobs:
         env:
           DIAGNOSTIC_OUTCOME: ${{ steps.current_main_diagnostics.outcome }}
         run: test "$DIAGNOSTIC_OUTCOME" = success
+      - name: Verify customer relation read and correction contracts before full validation
+        timeout-minutes: 8
+        shell: bash
+        env:
+          DOTNET_PROCESSOR_COUNT: '1'
+        run: |
+          export GITHUB_ACTIONS=false
+          timeout --signal=TERM --kill-after=20s 7m dotnet test Legacy.Maliev.Intranet.Tests/Legacy.Maliev.Intranet.Tests.csproj \
+            --configuration Release --no-build --no-restore -p:UseLocalMalievDependencies=true \
+            --filter 'FullyQualifiedName~BffCustomersProxyContractTests' \
+            --logger 'console;verbosity=normal' \
+            --logger 'trx;LogFileName=customer-relation-contracts.trx' \
+            --results-directory TestResults/customer-relation-contracts
+      - name: Retain synthetic customer relation contract results
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: customer-relation-contracts-${{ github.sha }}
+          path: TestResults/customer-relation-contracts/*.trx
+          if-no-files-found: ignore
+          retention-days: 7
       - name: Verify current candidate formatting before full validation
         timeout-minutes: 8
         shell: bash

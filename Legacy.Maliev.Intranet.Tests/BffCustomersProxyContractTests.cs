@@ -985,6 +985,33 @@ public sealed class BffCustomersProxyContractTests
         Assert.Equal(1, downstream.RequestCount);
     }
 
+    [Theory]
+    [InlineData("Company", "Name", "")]
+    [InlineData("Company", "Name", "  ")]
+    [InlineData("BillingAddress", "AddressLine1", "")]
+    [InlineData("BillingAddress", "AddressLine1", "  ")]
+    [InlineData("ShippingAddress", "AddressLine1", "")]
+    [InlineData("ShippingAddress", "AddressLine1", "  ")]
+    public async Task VersionedRead_PreservesIncompleteExistingRelationForCorrection(string relation, string field, string literal)
+    {
+        var profile = System.Text.Json.Nodes.JsonNode.Parse(CustomerDetailJson)!;
+        profile[relation]![field] = literal;
+        var downstream = new ConcurrentCustomerHandler(profile.ToJsonString(), includeRevision: true);
+        await using var factory = new CustomersBffFactory(downstream, hasPermission: true, hasReadPermission: true);
+        using var client = CreateClient(factory);
+        await SignInAsync(client);
+
+        using var response = await client.GetAsync("/bff/customers/42/versioned");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal("\"00000001\"", response.Headers.ETag!.ToString());
+        Assert.Contains("no-store", response.Headers.CacheControl!.ToString(), StringComparison.Ordinal);
+        var actual = await response.Content.ReadFromJsonAsync<CustomerDetail>();
+        Assert.NotNull(actual);
+        Assert.Equal(literal, relation == "Company" ? actual.Company!.Name : relation == "BillingAddress" ? actual.BillingAddress!.AddressLine1 : actual.ShippingAddress!.AddressLine1);
+        Assert.Equal(1, downstream.RequestCount);
+    }
+
     [Fact]
     public async Task InternalRemark_AuthorizedEmployee_ReadsOnlyTheDedicatedPrivateContract()
     {
@@ -1336,6 +1363,39 @@ public sealed class BffCustomersProxyContractTests
         Assert.Equal(" บริษัท ไทย ", field.Value.GetString());
     }
 
+    [Theory]
+    [InlineData("company", "77", "")]
+    [InlineData("company", "77", "  ")]
+    [InlineData("billing", "78", "")]
+    [InlineData("billing", "78", "  ")]
+    [InlineData("shipping", "79", "")]
+    [InlineData("shipping", "79", "  ")]
+    public async Task Relations_IncompleteExistingMetadataCanBeReadThenExplicitlyCorrected(string kind, string relation, string literal)
+    {
+        var downstream = new RelationHandler(kind, relation) { ExistingLiteral = literal };
+        await using var factory = RelationFactory(downstream);
+        using var client = CreateClient(factory);
+        await SignInAsync(client);
+
+        using var read = await client.GetAsync($"/bff/customers/42/relations/{kind}/{relation}");
+        Assert.Equal(HttpStatusCode.OK, read.StatusCode);
+        var value = await read.Content.ReadFromJsonAsync<CustomerRelationDetail>();
+        Assert.NotNull(value);
+        Assert.Equal(literal, kind == "company" ? value.Company!.Name : value.Address!.AddressLine1);
+        Assert.Equal(RelationHandler.Version, read.Headers.ETag!.ToString());
+        Assert.Equal(0, downstream.Writes);
+
+        using var write = await SendRelationAsync(client, kind, relation);
+        Assert.Equal(HttpStatusCode.NoContent, write.StatusCode);
+        Assert.Equal(2, downstream.Reads);
+        Assert.Equal(1, downstream.Writes);
+        Assert.Equal(RelationHandler.Version, downstream.IfMatch);
+        Assert.Equal("\"00000001\"", downstream.CustomerIfMatch);
+        Assert.Equal("Bearer server-only-access-token", downstream.Authorization);
+        using var payload = System.Text.Json.JsonDocument.Parse(downstream.Payload!);
+        Assert.Equal(" บริษัท ไทย ", payload.RootElement.GetProperty(kind == "company" ? "Name" : "AddressLine1").GetString());
+    }
+
     private static CustomersBffFactory RelationFactory(RelationHandler handler, string[]? permissions = null) =>
         new(handler, false, hasReadPermission: true, hasUpdatePermission: true, updateDownstream: handler,
             relationPermissions: permissions ?? ["legacy-customer.companies.read", "legacy-customer.companies.update", "legacy-customer.companies.create",
@@ -1373,13 +1433,14 @@ public sealed class BffCustomersProxyContractTests
         public string? Rejection { get; init; }
         public int WriteStatus { get; init; } = 204;
         public bool OmitSuccessVersions { get; init; }
+        public string ExistingLiteral { get; init; } = "Original";
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken token)
         {
             Authorization = request.Headers.Authorization?.ToString();
             var id = relation == "new" ? (int?)null : int.Parse(relation, System.Globalization.CultureInfo.InvariantCulture);
             var value = new CustomerRelationDetail(Rejection == "projection" ? 99 : 42, id,
-                kind == "company" && id is not null ? new(id.Value, "Original", null, null, null, null) : null,
-                kind != "company" && id is not null ? new(id.Value, null, "Original", null, null, null, null, 1, null, null) : null);
+                kind == "company" && id is not null ? new(id.Value, ExistingLiteral, null, null, null, null) : null,
+                kind != "company" && id is not null ? new(id.Value, null, ExistingLiteral, null, null, null, null, 1, null, null) : null);
             HttpResponseMessage response;
             if (request.Method == HttpMethod.Get)
             {
