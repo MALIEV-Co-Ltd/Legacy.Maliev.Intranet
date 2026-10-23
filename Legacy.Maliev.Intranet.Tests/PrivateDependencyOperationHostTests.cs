@@ -89,6 +89,7 @@ public sealed class PrivateDependencyOperationHostTests(ITestOutputHelper output
         Assert.Equal(LogLevel.Error, record.Level);
         Assert.Equal(status, record.Fields["StatusCode"]);
         Assert.Equal("GET", record.Fields["Method"]);
+        Assert.Null(record.Fields["ExceptionType"]);
         AssertSafeFailure(record);
         AssertRequestBoundary(host, bff);
     }
@@ -164,31 +165,45 @@ public sealed class PrivateDependencyOperationHostTests(ITestOutputHelper output
     {
         var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         CancellationToken transportToken = default;
+        OperationCanceledException? terminalCancellation = null;
         await using var host = new Host(true, async (_, token) =>
         {
             transportToken = token;
             entered.TrySetResult();
-            await Task.Delay(Timeout.InfiniteTimeSpan, token);
+            try { await Task.Delay(Timeout.InfiniteTimeSpan, token); }
+            catch (OperationCanceledException failure) { terminalCancellation = failure; throw; }
             return Response(HttpStatusCode.OK, "{}");
         });
-        var pending = host.ReadAsync(CancellationToken.None);
-        await entered.Task.WaitAsync(TimeSpan.FromSeconds(10));
-        var actual = await Assert.ThrowsAsync<TaskCanceledException>(() => pending.WaitAsync(TimeSpan.FromSeconds(30)));
-        Assert.IsType<TimeoutException>(actual.InnerException);
-        Assert.False(CancellationToken.None.IsCancellationRequested);
-        Assert.True(transportToken.IsCancellationRequested);
-        Assert.Single(host.Transport.Requests);
-        Assert.Empty(host.Tokens.Invalidated);
-        AssertHandlerOrder(host);
-        AssertRequestBoundary(host, true);
-        output.WriteLine("Actual registered Orders HttpClient deadline propagated as {0} with inner {1}; safe dependency events: {2}",
-            actual.GetType().Name, actual.InnerException!.GetType().Name, host.Logs.Failures.Count());
-        var record = Assert.Single(host.Logs.Failures);
-        Assert.Equal(LogLevel.Error, record.Level);
-        Assert.Equal("OrderService", record.Fields["Dependency"]);
-        Assert.Equal("Orders.Get", record.Fields["Operation"]);
-        Assert.False(record.Fields.ContainsKey("StatusCode"));
-        AssertSafeFailure(record);
+        using var caller = new CancellationTokenSource();
+        var pending = host.ReadAsync(caller.Token);
+        try
+        {
+            Assert.Equal(TimeSpan.FromSeconds(10), host.SelectedClientTimeout());
+            await entered.Task.WaitAsync(TimeSpan.FromSeconds(10));
+            var actual = await Assert.ThrowsAsync<TaskCanceledException>(() => pending.WaitAsync(TimeSpan.FromSeconds(30)));
+            var timeout = Assert.IsType<TimeoutException>(actual.InnerException);
+            Assert.Same(terminalCancellation, timeout.InnerException);
+            Assert.False(caller.IsCancellationRequested);
+            Assert.True(transportToken.IsCancellationRequested);
+            Assert.Single(host.Transport.Requests);
+            Assert.Empty(host.Tokens.Invalidated);
+            AssertHandlerOrder(host);
+            AssertRequestBoundary(host, true);
+            output.WriteLine("Actual registered Orders HttpClient deadline propagated as {0} with inner {1}; safe dependency events: {2}",
+                actual.GetType().Name, actual.InnerException!.GetType().Name, host.Logs.Failures.Count());
+            var record = Assert.Single(host.Logs.Failures);
+            Assert.Equal(LogLevel.Error, record.Level);
+            Assert.Equal("OrderService", record.Fields["Dependency"]);
+            Assert.Equal("Orders.Get", record.Fields["Operation"]);
+            Assert.Equal("TaskCanceledException", record.Fields["ExceptionType"]);
+            Assert.False(record.Fields.ContainsKey("StatusCode"));
+            AssertSafeFailure(record);
+        }
+        finally
+        {
+            caller.Cancel();
+            try { await pending.WaitAsync(TimeSpan.FromSeconds(5)); } catch (OperationCanceledException) { }
+        }
     }
 
     // Literal original-source-owned registrations; no business handler or financial operation is invoked.
