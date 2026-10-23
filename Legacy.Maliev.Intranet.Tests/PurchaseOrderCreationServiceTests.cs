@@ -27,21 +27,19 @@ public sealed class PurchaseOrderCreationServiceTests
     }
 
     [Fact]
-    public async Task CreateAsync_FileLinkFailure_CompensatesStoredFileItemsAndOrderInReverseOwnershipOrder()
+    public async Task CreateAsync_FileLinkFailure_PreservesResourcesWithoutProvenInvocationOwnership()
     {
         var gateway = new Gateway { FailFileLink = true };
         var service = new PurchaseOrderCreationService(gateway, NullLogger<PurchaseOrderCreationService>.Instance);
 
         var result = await service.CreateAsync(Request, "attempt-2", CancellationToken.None);
 
-        Assert.Equal(PurchaseOrderCreationStatus.Unavailable, result.Status);
-        Assert.Equal(
-            ["stored:purchaseorders/84.pdf", "item:10", "item:9", "order:84"],
-            gateway.Compensations);
+        Assert.Equal(PurchaseOrderCreationStatus.OutcomeUnknown, result.Status);
+        Assert.Empty(gateway.Compensations);
     }
 
     [Fact]
-    public async Task CreateAsync_WhenCompensationCannotConfirmOrderDeletion_ReturnsOutcomeUnknown()
+    public async Task CreateAsync_UnknownWriteOutcome_DoesNotAttemptDestructiveCompensation()
     {
         var gateway = new Gateway { FailFileLink = true, FailOrderDelete = true };
         var service = new PurchaseOrderCreationService(gateway, NullLogger<PurchaseOrderCreationService>.Instance);
@@ -49,9 +47,48 @@ public sealed class PurchaseOrderCreationServiceTests
         var result = await service.CreateAsync(Request, "attempt-unknown", CancellationToken.None);
 
         Assert.Equal(PurchaseOrderCreationStatus.OutcomeUnknown, result.Status);
-        Assert.Equal(
-            ["stored:purchaseorders/84.pdf", "item:10", "item:9", "order:84"],
-            gateway.Compensations);
+        Assert.Empty(gateway.Compensations);
+    }
+
+    [Theory]
+    [InlineData(PurchaseOrderCreationStatus.BadRequest)]
+    [InlineData(PurchaseOrderCreationStatus.Unauthorized)]
+    [InlineData(PurchaseOrderCreationStatus.Forbidden)]
+    [InlineData(PurchaseOrderCreationStatus.Conflict)]
+    [InlineData(PurchaseOrderCreationStatus.RateLimited)]
+    public async Task CreateAsync_DefinitiveRootRejectionPreservesStatusWithoutCleanup(PurchaseOrderCreationStatus status)
+    {
+        var gateway = new Gateway { RootFailureStatus = status };
+        var service = new PurchaseOrderCreationService(gateway, NullLogger<PurchaseOrderCreationService>.Instance);
+        var result = await service.CreateAsync(Request, "rejected-attempt", CancellationToken.None);
+        Assert.Equal(status, result.Status);
+        Assert.Empty(gateway.Compensations);
+        Assert.Empty(gateway.CreatedItemIds);
+    }
+
+    [Theory]
+    [InlineData(PurchaseOrderCreationStatus.Conflict)]
+    [InlineData(PurchaseOrderCreationStatus.Unavailable)]
+    public async Task CreateAsync_ChildFailureAfterRootAcknowledgementFencesUnprovenOwnership(PurchaseOrderCreationStatus status)
+    {
+        var gateway = new Gateway { ItemFailureStatus = status };
+        var service = new PurchaseOrderCreationService(gateway, NullLogger<PurchaseOrderCreationService>.Instance);
+        var result = await service.CreateAsync(Request, "shared-attempt", CancellationToken.None);
+        Assert.Equal(PurchaseOrderCreationStatus.OutcomeUnknown, result.Status);
+        Assert.Empty(gateway.Compensations);
+    }
+
+    [Theory]
+    [InlineData(PurchaseOrderCreationStatus.Unavailable)]
+    [InlineData(PurchaseOrderCreationStatus.BadGateway)]
+    public async Task CreateAsync_UncertainRootWriteDoesNotClaimSafeRetryOrCleanup(PurchaseOrderCreationStatus status)
+    {
+        var gateway = new Gateway { RootFailureStatus = status };
+        var service = new PurchaseOrderCreationService(gateway, NullLogger<PurchaseOrderCreationService>.Instance);
+        var result = await service.CreateAsync(Request, "uncertain-root", CancellationToken.None);
+        Assert.Equal(PurchaseOrderCreationStatus.OutcomeUnknown, result.Status);
+        Assert.Empty(gateway.Compensations);
+        Assert.Empty(gateway.CreatedItemIds);
     }
 
     private static readonly PurchaseOrderCreateRequest Request = new()
@@ -78,6 +115,8 @@ public sealed class PurchaseOrderCreationServiceTests
     {
         private int nextItemId = 9;
 
+        public PurchaseOrderCreationStatus? RootFailureStatus { get; init; }
+        public PurchaseOrderCreationStatus? ItemFailureStatus { get; init; }
         public bool FailFileLink { get; init; }
         public bool FailOrderDelete { get; init; }
         public List<int> CreatedItemIds { get; } = [];
@@ -91,11 +130,15 @@ public sealed class PurchaseOrderCreationServiceTests
         public Task<PurchaseOrderCreateOptions> GetOptionsAsync(CancellationToken cancellationToken) =>
             Task.FromResult(new PurchaseOrderCreateOptions([], [], []));
 
-        public Task<PurchaseOrderCreatedData> CreateOrderAsync(PurchaseOrderCreateRequest request, string attemptId, CancellationToken cancellationToken) =>
-            Task.FromResult(new PurchaseOrderCreatedData(84, new DateTime(2030, 7, 15, 10, 30, 0, DateTimeKind.Utc)));
+        public Task<PurchaseOrderCreatedData> CreateOrderAsync(PurchaseOrderCreateRequest request, string attemptId, CancellationToken cancellationToken)
+        {
+            if (RootFailureStatus is { } status) throw new PurchaseOrderGatewayException(status);
+            return Task.FromResult(new PurchaseOrderCreatedData(84, new DateTime(2030, 7, 15, 10, 30, 0, DateTimeKind.Utc)));
+        }
 
         public Task<int> CreateItemAsync(int purchaseOrderId, PurchaseOrderCreateItem item, string attemptId, int itemIndex, CancellationToken cancellationToken)
         {
+            if (ItemFailureStatus is { } status) throw new PurchaseOrderGatewayException(status);
             var id = nextItemId++;
             CreatedItemIds.Add(id);
             ItemAttempts.Add((attemptId, itemIndex));

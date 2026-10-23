@@ -13,6 +13,9 @@ on:
       - 'Legacy.Maliev.Intranet.Bff/Procurement/Supplier*.cs'
       - 'Legacy.Maliev.Intranet.Bff/Catalog/Lookup*.cs'
       - 'Legacy.Maliev.Intranet.Server/Suppliers/**'
+      - 'Legacy.Maliev.Intranet.Server/PurchaseOrders/**'
+      - 'Legacy.Maliev.Intranet.Bff/Procurement/PurchaseOrder*.cs'
+      - 'Legacy.Maliev.Intranet.Contracts/PurchaseOrder*.cs'
       - 'Legacy.Maliev.Intranet.Bff/Program.cs'
   pull_request:
     branches: [main]
@@ -26,6 +29,9 @@ on:
       - 'Legacy.Maliev.Intranet.Bff/Procurement/Supplier*.cs'
       - 'Legacy.Maliev.Intranet.Bff/Catalog/Lookup*.cs'
       - 'Legacy.Maliev.Intranet.Server/Suppliers/**'
+      - 'Legacy.Maliev.Intranet.Server/PurchaseOrders/**'
+      - 'Legacy.Maliev.Intranet.Bff/Procurement/PurchaseOrder*.cs'
+      - 'Legacy.Maliev.Intranet.Contracts/PurchaseOrder*.cs'
       - 'Legacy.Maliev.Intranet.Bff/Program.cs'
 
 permissions:
@@ -122,7 +128,34 @@ jobs:
         timeout-minutes: 8
         run: |
           export GITHUB_ACTIONS=false
-          dotnet test acceptance/SupplierCatalogPersistence/SupplierCatalogPersistence.AcceptanceTests.csproj -c Release --no-build --no-restore -p:UseLocalMalievDependencies=true --filter 'FullyQualifiedName~SupplierCatalogPersistenceTests' --logger 'trx;LogFileName=supplier-persistence.trx' --results-directory "$RUNNER_TEMP/supplier-persistence-results" --nologo
+          dotnet test acceptance/SupplierCatalogPersistence/SupplierCatalogPersistence.AcceptanceTests.csproj -c Release --no-build --no-restore -p:UseLocalMalievDependencies=true --filter 'FullyQualifiedName=SupplierCatalogPersistence.Acceptance.SupplierCatalogPersistenceTests.CatalogPostcodeSelection_RealSupplierSave_ApiReadbackAndReloadPreserveAddress' --logger 'trx;LogFileName=supplier-persistence.trx' --results-directory "$RUNNER_TEMP/supplier-persistence-results" --nologo
+      - name: Exercise actual purchase-order consumer and producer persistence
+        id: purchase_order_join
+        if: ${{ !cancelled() && steps.build.outcome == 'success' && steps.resource_controls.outcome == 'success' }}
+        env:
+          SUPPLIER_RESOURCE_EVIDENCE: ${{ runner.temp }}/purchase-order-replay-evidence
+        timeout-minutes: 8
+        run: |
+          export GITHUB_ACTIONS=false
+          dotnet test acceptance/SupplierCatalogPersistence/SupplierCatalogPersistence.AcceptanceTests.csproj -c Release --no-build --no-restore -p:UseLocalMalievDependencies=true --filter 'FullyQualifiedName=SupplierCatalogPersistence.Acceptance.SupplierCatalogPersistenceTests.PurchaseOrderReplay_RealProducerRowsSurviveLostAcknowledgementAndLaterChildFailure' --logger 'trx;LogFileName=purchase-order-replay.trx' --results-directory "$RUNNER_TEMP/supplier-persistence-results" --nologo
+      - name: Retain exact purchase-order join and ownership proof
+        if: always()
+        env:
+          PROOF_RESULTS: ${{ runner.temp }}/supplier-persistence-results
+          PROOF_EVIDENCE: ${{ runner.temp }}/purchase-order-replay-evidence
+          CANDIDATE_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+          BUILD_OUTCOME: ${{ steps.build.outcome }}
+          EXECUTION_OUTCOME: ${{ steps.purchase_order_join.outcome }}
+          RESOURCE_CONTROLS_OUTCOME: ${{ steps.resource_controls.outcome }}
+        run: python3 -B acceptance/SupplierCatalogPersistence/retain_purchase_order.py
+      - name: Upload sanitized purchase-order join proof
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: purchase-order-replay-persistence-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/purchase-order-replay-evidence/*.json*
+          if-no-files-found: error
+          retention-days: 7
       - name: Retain actual journey and ownership-control results with bound cleanup and source graph
         if: always()
         env:
