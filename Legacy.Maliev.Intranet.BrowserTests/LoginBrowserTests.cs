@@ -462,7 +462,15 @@ public sealed class LoginBrowserTests(
         await signIn.PressAsync("Enter");
         var first = page.Locator("#employee-create-first-name");
         await first.WaitForAsync();
-        await loginFinished.Task.WaitAsync(TimeSpan.FromSeconds(10));
+        try
+        {
+            await loginFinished.Task.WaitAsync(TimeSpan.FromSeconds(10));
+        }
+        catch (TimeoutException)
+        {
+            AssertNoFailedAssets();
+            throw;
+        }
         var login = Assert.Single(logins);
         Assert.Equal("published-form-csrf", login.Csrf);
         using (var body = System.Text.Json.JsonDocument.Parse(login.Body))
