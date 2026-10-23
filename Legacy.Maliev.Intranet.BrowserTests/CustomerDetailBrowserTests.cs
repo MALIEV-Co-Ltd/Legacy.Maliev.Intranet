@@ -693,6 +693,7 @@ public sealed class CustomerDetailBrowserTests(
         await page.GetByText(success, new() { Exact = true }).WaitForAsync();
         Assert.Equal(1, writes);
         Assert.Equal(390, await page.EvaluateAsync<int>("() => document.documentElement.scrollWidth"));
+        await CaptureRelationScreenshotAsync(page, $"relation-{kind}-{(create ? "new" : "existing")}-{culture}");
     }
 
     [Theory]
@@ -967,6 +968,14 @@ public sealed class CustomerDetailBrowserTests(
         Assert.Equal(1, writes);
         await page.GetByText("Reachable company", new() { Exact = true }).WaitForAsync();
         Assert.False(await page.EvaluateAsync<bool>("() => !!window.__malievClickTrajectories"));
+        await CaptureRelationScreenshotAsync(page, $"relation-reachability-{width}-{reachability}");
+    }
+
+    private static async Task CaptureRelationScreenshotAsync(IPage page, string name)
+    {
+        var directory = Path.Combine(FindRepositoryRoot(), "TestResults", "customer-relations");
+        Directory.CreateDirectory(directory);
+        await page.ScreenshotAsync(new() { Path = Path.Combine(directory, name + ".png"), Timeout = 5000 });
     }
 
     private static async Task ClickWithGeometryDiagnosticsAsync(ILocator control)

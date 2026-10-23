@@ -35,7 +35,7 @@
 
 .customer-detail__tabs {
     min-width: 0;
-    overflow: hidden;
+    overflow: clip;
     border: 1px solid var(--shadcn-border);
     border-radius: var(--shadcn-radius-lg);
     background: var(--shadcn-card);

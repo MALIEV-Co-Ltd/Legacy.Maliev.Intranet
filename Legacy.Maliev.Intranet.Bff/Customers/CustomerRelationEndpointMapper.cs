@@ -105,8 +105,8 @@ internal static partial class CustomerRelationEndpointMapper
     private static bool ValidProjection(CustomerRelationDetail? value, int id, string kind, string relation) =>
         !(value is null || value.CustomerId != id ||
                 (relation == "new" ? value.RelationId is not null : value.RelationId != int.Parse(relation, CultureInfo.InvariantCulture)) ||
-                (kind == "company" ? value.Address is not null || (relation == "new" ? value.Company is not null : value.Company is null || value.Company.Id != value.RelationId || string.IsNullOrWhiteSpace(value.Company.Name))
-                    : value.Company is not null || (relation == "new" ? value.Address is not null : value.Address is null || value.Address.Id != value.RelationId || string.IsNullOrWhiteSpace(value.Address.AddressLine1) || value.Address.CountryId <= 0)));
+                (kind == "company" ? value.Address is not null || (relation == "new" ? value.Company is not null : value.Company is null || value.Company.Id != value.RelationId || value.Company.Name is null)
+                    : value.Company is not null || (relation == "new" ? value.Address is not null : value.Address is null || value.Address.Id != value.RelationId || value.Address.AddressLine1 is null || value.Address.CountryId <= 0)));
 
     private static bool CopyVersions(HttpResponseMessage response, HttpContext context)
     {

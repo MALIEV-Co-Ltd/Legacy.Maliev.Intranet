@@ -970,7 +970,7 @@ public sealed class BffCustomersProxyContractTests
     public async Task VersionedRead_InvalidRevisionOrNestedProfile_FailsClosed(bool invalidNestedProfile, bool includeRevision)
     {
         var profile = invalidNestedProfile
-            ? CustomerDetailJson.Replace("\"AddressLine1\":\"1 Logic Road\"", "\"AddressLine1\":\"\"", StringComparison.Ordinal)
+            ? CustomerDetailJson.Replace("\"BillingAddress\":{\"Id\":13", "\"BillingAddress\":{\"Id\":99", StringComparison.Ordinal)
             : CustomerDetailJson;
         var downstream = new ConcurrentCustomerHandler(profile, includeRevision);
         await using var factory = new CustomersBffFactory(
@@ -1396,8 +1396,32 @@ public sealed class BffCustomersProxyContractTests
         Assert.Equal(" บริษัท ไทย ", payload.RootElement.GetProperty(kind == "company" ? "Name" : "AddressLine1").GetString());
     }
 
-    private static CustomersBffFactory RelationFactory(RelationHandler handler, string[]? permissions = null) =>
-        new(handler, false, hasReadPermission: true, hasUpdatePermission: true, updateDownstream: handler,
+    [Theory]
+    [InlineData("company", "77", "Company", "Name")]
+    [InlineData("billing", "78", "BillingAddress", "AddressLine1")]
+    [InlineData("shipping", "79", "ShippingAddress", "AddressLine1")]
+    public async Task Relations_NullRequiredProducerMetadataStillFailsClosed(string kind, string relation, string property, string field)
+    {
+        var profile = System.Text.Json.Nodes.JsonNode.Parse(CustomerDetailJson)!;
+        profile[property]![field] = null;
+        var current = new ConcurrentCustomerHandler(profile.ToJsonString());
+        var downstream = new RelationHandler(kind, relation) { NullRequiredField = true };
+        await using var factory = RelationFactory(downstream, profile: current);
+        using var client = CreateClient(factory);
+        await SignInAsync(client);
+
+        using var versioned = await client.GetAsync("/bff/customers/42/versioned");
+        using var selected = await client.GetAsync($"/bff/customers/42/relations/{kind}/{relation}");
+
+        Assert.Equal(HttpStatusCode.BadGateway, versioned.StatusCode);
+        Assert.Equal(HttpStatusCode.BadGateway, selected.StatusCode);
+        Assert.Equal(1, current.RequestCount);
+        Assert.Equal(1, downstream.Reads);
+        Assert.Equal(0, downstream.Writes);
+    }
+
+    private static CustomersBffFactory RelationFactory(RelationHandler handler, string[]? permissions = null, HttpMessageHandler? profile = null) =>
+        new(profile ?? handler, false, hasReadPermission: true, hasUpdatePermission: true, updateDownstream: handler,
             relationPermissions: permissions ?? ["legacy-customer.companies.read", "legacy-customer.companies.update", "legacy-customer.companies.create",
                 "legacy-customer.addresses.read", "legacy-customer.addresses.update", "legacy-customer.addresses.create"]);
 
@@ -1434,13 +1458,16 @@ public sealed class BffCustomersProxyContractTests
         public int WriteStatus { get; init; } = 204;
         public bool OmitSuccessVersions { get; init; }
         public string ExistingLiteral { get; init; } = "Original";
+        public bool NullRequiredField { get; init; }
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken token)
         {
             Authorization = request.Headers.Authorization?.ToString();
             var id = relation == "new" ? (int?)null : int.Parse(relation, System.Globalization.CultureInfo.InvariantCulture);
+            // Null is an explicit invalid producer-response control, not a valid edit input.
+            var literal = NullRequiredField ? null! : ExistingLiteral;
             var value = new CustomerRelationDetail(Rejection == "projection" ? 99 : 42, id,
-                kind == "company" && id is not null ? new(id.Value, ExistingLiteral, null, null, null, null) : null,
-                kind != "company" && id is not null ? new(id.Value, null, ExistingLiteral, null, null, null, null, 1, null, null) : null);
+                kind == "company" && id is not null ? new(id.Value, literal, null, null, null, null) : null,
+                kind != "company" && id is not null ? new(id.Value, null, literal, null, null, null, null, 1, null, null) : null);
             HttpResponseMessage response;
             if (request.Method == HttpMethod.Get)
             {
