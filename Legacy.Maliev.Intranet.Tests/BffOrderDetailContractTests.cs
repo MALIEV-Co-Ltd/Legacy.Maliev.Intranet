@@ -21,6 +21,75 @@ namespace Legacy.Maliev.Intranet.Tests;
 
 public sealed class BffOrderDetailContractTests
 {
+    [Theory]
+    [InlineData("null", true)]
+    [InlineData("empty", true)]
+    [InlineData("literal", true)]
+    [InlineData("thai250", true)]
+    [InlineData("thai251", false)]
+    [InlineData("supplementary250", true)]
+    [InlineData("supplementary252", false)]
+    [InlineData("mixed250", true)]
+    [InlineData("mixed251", false)]
+    public async Task Update_TrackingNumberPreservesNullableLiteralSourceBoundBeforeDownstream(string vector, bool accepted)
+    {
+        string? tracking = vector switch
+        {
+            "null" => null,
+            "empty" => string.Empty,
+            "literal" => "  \u00a0พัสดุ\U0001F4E6  ",
+            "thai250" => new string('ก', 250),
+            "thai251" => new string('ก', 251),
+            "supplementary250" => string.Concat(Enumerable.Repeat("\U0001F4E6", 125)),
+            "supplementary252" => string.Concat(Enumerable.Repeat("\U0001F4E6", 126)),
+            "mixed250" => "ก" + string.Concat(Enumerable.Repeat("ก\U0001F4E6", 83)),
+            "mixed251" => "กก" + string.Concat(Enumerable.Repeat("ก\U0001F4E6", 83)),
+            _ => throw new ArgumentOutOfRangeException(nameof(vector)),
+        };
+        var downstream = new OrderDetailHandler();
+        await using var factory = new OrderDetailBffFactory(downstream, AllPermissions);
+        using var client = CreateClient(factory);
+        var csrf = await SignInAsync(client);
+        downstream.Requests.Clear();
+        using var request = new HttpRequestMessage(HttpMethod.Put, "/bff/orders/84")
+        {
+            Content = JsonContent.Create(new
+            {
+                name = "Tracking fixture", processId = 3, quantity = 1, manufactured = 0,
+                trackingNumber = tracking, modifiedDate = "2030-07-15T08:30:00Z",
+            }),
+        };
+        request.Headers.Add("X-CSRF-TOKEN", csrf);
+        using var response = await client.SendAsync(request);
+
+        Assert.Equal(accepted ? HttpStatusCode.NoContent : HttpStatusCode.BadRequest, response.StatusCode);
+        if (accepted)
+        {
+            Assert.Equal(2, downstream.Requests.Count);
+            Assert.Single(downstream.Requests, item => item.Method == "GET" && item.Path == "/Orders/84");
+            var write = Assert.Single(downstream.Requests, item => item.Method == "PUT" && item.Path == "/Orders/84");
+            using var body = System.Text.Json.JsonDocument.Parse(write.Body!);
+            Assert.Equal(tracking, body.RootElement.GetProperty("trackingNumber").GetString());
+            Assert.Equal(42, body.RootElement.GetProperty("customerId").GetInt32());
+            Assert.Equal("Tracking fixture", body.RootElement.GetProperty("name").GetString());
+            Assert.Equal("2030-07-15T08:30:00.0000000Z", write.ExpectedModifiedDate);
+        }
+        else
+        {
+            Assert.Empty(downstream.Requests);
+            using var problem = System.Text.Json.JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+            Assert.True(problem.RootElement.GetProperty("errors").TryGetProperty("TrackingNumber", out _));
+        }
+
+        var retainedInput = new Legacy.Maliev.Intranet.Orders.OrderInput { TrackingNumber = tracking };
+        var validation = new System.ComponentModel.DataAnnotations.ValidationContext(retainedInput)
+        {
+            MemberName = nameof(retainedInput.TrackingNumber),
+        };
+        Assert.Equal(accepted, System.ComponentModel.DataAnnotations.Validator.TryValidateProperty(tracking, validation, []));
+        Assert.Equal(tracking, retainedInput.ToRequest().TrackingNumber);
+    }
+
     [Fact]
     public async Task FileUpload_CombinedFilesOver100MiB_AreRejectedBeforeOrderOrFileServiceCall()
     {

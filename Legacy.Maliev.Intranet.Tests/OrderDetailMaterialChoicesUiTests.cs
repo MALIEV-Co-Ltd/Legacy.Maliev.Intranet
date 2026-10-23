@@ -16,6 +16,52 @@ namespace Legacy.Maliev.Intranet.Tests;
 /// <summary>Actual OrderDetail/Shadcn rendering with only the same-origin HTTP boundary controlled.</summary>
 public sealed class OrderDetailMaterialChoicesUiTests
 {
+    [Theory]
+    [InlineData("en", 125, true)]
+    [InlineData("th", 125, true)]
+    [InlineData("en", 126, false)]
+    [InlineData("th", 126, false)]
+    public async Task TrackingNumber_UsesSourceUtf16BoundAndRefusesOversizeBeforeSave(string language, int characters, bool accepted)
+    {
+        var originalCulture = System.Globalization.CultureInfo.CurrentCulture;
+        var originalUiCulture = System.Globalization.CultureInfo.CurrentUICulture;
+        try
+        {
+            System.Globalization.CultureInfo.CurrentCulture = System.Globalization.CultureInfo.CurrentUICulture =
+                System.Globalization.CultureInfo.GetCultureInfo(language);
+            using var handler = new Transport();
+            using var context = Context(handler);
+            var cut = Render(context);
+            Ready(cut);
+            var tracking = string.Concat(Enumerable.Repeat("\U0001F4E6", characters));
+            var input = cut.FindComponents<ShadcnInput<string>>()
+                .Single(item => item.FindAll("#order-tracking").Count != 0);
+            var maximum = input.Find("#order-tracking").GetAttribute("maxlength");
+            await cut.InvokeAsync(() => input.Instance.ValueChanged.InvokeAsync(tracking));
+            await cut.Find("form").SubmitAsync();
+            if (accepted)
+            {
+                var write = Assert.Single(handler.Writes);
+                Assert.Equal(tracking, write.TrackingNumber);
+                Assert.Equal("Synthetic order", write.Name);
+                Assert.Equal(1, write.ProcessId);
+                Assert.Equal(7, write.SurfaceFinishId);
+                Assert.Equal(9, write.ColorId);
+            }
+            else
+            {
+                Assert.Empty(handler.Writes);
+                Assert.NotEmpty(cut.Find("[role='alert']").TextContent);
+            }
+            Assert.Equal("250", maximum);
+        }
+        finally
+        {
+            System.Globalization.CultureInfo.CurrentCulture = originalCulture;
+            System.Globalization.CultureInfo.CurrentUICulture = originalUiCulture;
+        }
+    }
+
     [Fact]
     public async Task InitialSelections_NoScopedReadAndUnchangedWritePreservesCustomFinishAndColor()
     {

@@ -221,6 +221,19 @@ jobs:
         env:
           DIAGNOSTIC_OUTCOME: ${{ steps.current_main_diagnostics.outcome }}
         run: test "$DIAGNOSTIC_OUTCOME" = success
+      - name: Verify tracking-number consumer source boundaries
+        timeout-minutes: 5
+        shell: bash
+        env:
+          DOTNET_PROCESSOR_COUNT: '1'
+        run: |
+          export GITHUB_ACTIONS=false
+          test ! -e TestResults/order-tracking-source
+          timeout --signal=TERM --kill-after=20s 4m dotnet test Legacy.Maliev.Intranet.Tests/Legacy.Maliev.Intranet.Tests.csproj \
+            --configuration Release --no-build --no-restore -p:UseLocalMalievDependencies=true \
+            --filter 'FullyQualifiedName=Legacy.Maliev.Intranet.Tests.BffOrderDetailContractTests.Update_TrackingNumberPreservesNullableLiteralSourceBoundBeforeDownstream|FullyQualifiedName=Legacy.Maliev.Intranet.Tests.OrderDetailMaterialChoicesUiTests.TrackingNumber_UsesSourceUtf16BoundAndRefusesOversizeBeforeSave' \
+            --logger 'trx;LogFileName=order-tracking-source.trx' --results-directory TestResults/order-tracking-source
+          python3 -B -c 'import xml.etree.ElementTree as E; r=E.parse("TestResults/order-tracking-source/order-tracking-source.trx").getroot(); c=r.find(".//{*}Counters"); assert c is not None and all(c.get(k)==v for k,v in {"total":"13","executed":"13","passed":"13","failed":"0","notExecuted":"0"}.items()), "All thirteen tracking-number consumer controls must pass"'
       - name: Verify customer relation read and correction contracts before full validation
         timeout-minutes: 8
         shell: bash
