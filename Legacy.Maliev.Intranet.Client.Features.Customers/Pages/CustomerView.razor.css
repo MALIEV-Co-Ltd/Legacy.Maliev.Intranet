@@ -1,4 +1,9 @@
-.customer-detail-page { width: min(100%, 90rem); margin-inline: auto; }
+.customer-detail-page {
+    width: min(100%, 90rem);
+    margin-inline: auto;
+    /* Keep automatic anchoring from moving relation controls during employee input. */
+    overflow-anchor: none;
+}
 
 .customer-detail {
     display: grid;
@@ -35,7 +40,7 @@
 
 .customer-detail__tabs {
     min-width: 0;
-    overflow: clip;
+    overflow: hidden;
     border: 1px solid var(--shadcn-border);
     border-radius: var(--shadcn-radius-lg);
     background: var(--shadcn-card);
