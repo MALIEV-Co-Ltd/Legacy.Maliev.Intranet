@@ -221,4 +221,382 @@ public sealed class LoginBrowserTests(
         Assert.Equal(string.Empty, await password.InputValueAsync());
         Assert.Empty(errors);
     }
+
+    [Theory]
+    [InlineData("en-US", 375)]
+    [InlineData("en-US", 1440)]
+    [InlineData("th-TH", 375)]
+    [InlineData("th-TH", 1440)]
+    public Task PublishedForms_RejectInvalidInputBeforeHttpAndKeepValidCsrfSubmission(string culture, int width) =>
+        AssertPublishedFormsAsync(culture, width);
+
+    [Fact]
+    public async Task PublishedForms_CanceledNonceStillFailsBeforeLogin()
+    {
+        var failure = await Assert.ThrowsAsync<Xunit.Sdk.XunitException>(() =>
+            AssertPublishedFormsAsync("en-US", 1440, abortNonce: true));
+        Assert.Contains("Expected failedAssets=0; actual=1", failure.Message, StringComparison.Ordinal);
+        Assert.Contains("\"pathCategory\":\"bff\"", failure.Message, StringComparison.Ordinal);
+        Assert.Contains("\"failureCategory\":\"canceled\"", failure.Message, StringComparison.Ordinal);
+    }
+
+    private async Task AssertPublishedFormsAsync(string culture, int width, bool abortNonce = false)
+    {
+        // Real published Client, generated shell, lazy employee feature and form handlers.
+        // Only the external BFF boundary is controlled: this is not an auth/DB or full-Aspire proof.
+        var published = await server.GetPublishedClientAsync();
+        await using var context = await playwright.Browser.NewContextAsync(new()
+        {
+            ViewportSize = new() { Width = width, Height = 900 },
+        });
+        await context.AddInitScriptAsync($"localStorage.setItem('maliev_culture', {System.Text.Json.JsonSerializer.Serialize(culture)});");
+        var page = await context.NewPageAsync();
+        var pageErrors = 0;
+        var failedAssets = 0;
+        var consoleErrors = 0;
+        var consoleDiagnostics = new System.Collections.Concurrent.ConcurrentQueue<string>();
+        var authenticated = false;
+        var sessions = 0;
+        var logins = new System.Collections.Concurrent.ConcurrentQueue<(string? Csrf, string Body)>();
+        var creates = new System.Collections.Concurrent.ConcurrentQueue<(string? Csrf, string Body)>();
+        var failedAssetDiagnostics = new System.Collections.Concurrent.ConcurrentQueue<string>();
+        var failedAssetDiagnosticGate = new object();
+        var failedAssetDiagnosticOverflow = 0;
+        IRequest? nonceRequest = null;
+        IRequest? loginRequest = null;
+        var nonceRoute = new TaskCompletionSource<IRoute>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var nonceFinished = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var nonceFailed = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var loginFinished = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        void CountAndCaptureFailedAsset(IRequest request, Uri uri, int status, string failureCategory)
+        {
+            lock (failedAssetDiagnosticGate)
+            {
+                Interlocked.Increment(ref failedAssets);
+                if (failedAssetDiagnostics.Count >= 8)
+                {
+                    Interlocked.Exchange(ref failedAssetDiagnosticOverflow, 1);
+                    return;
+                }
+                var resourceType = request.ResourceType switch
+                {
+                    "document" => "document",
+                    "stylesheet" => "stylesheet",
+                    "image" => "image",
+                    "media" => "media",
+                    "font" => "font",
+                    "script" => "script",
+                    "xhr" => "xhr",
+                    "fetch" => "fetch",
+                    "manifest" => "manifest",
+                    _ => "other",
+                };
+                var pathCategory = uri.AbsolutePath.StartsWith("/bff/", StringComparison.Ordinal) ? "bff"
+                    : uri.AbsolutePath.StartsWith("/_framework/", StringComparison.Ordinal) ? "framework"
+                    : resourceType == "document" ? "document"
+                    : resourceType is "stylesheet" or "image" or "media" or "font" or "script" or "manifest"
+                        || uri.AbsolutePath.StartsWith("/_content/", StringComparison.Ordinal) ? "public-asset"
+                    : "other";
+                failedAssetDiagnostics.Enqueue(System.Text.Json.JsonSerializer.Serialize(new
+                {
+                    resourceType,
+                    pathCategory,
+                    status,
+                    failureCategory,
+                }));
+            }
+        }
+        page.PageError += (_, _) => Interlocked.Increment(ref pageErrors);
+        page.Console += (_, message) =>
+        {
+            if (message.Type != "error") return;
+            if (Interlocked.Increment(ref consoleErrors) > 8) return;
+            var text = message.Text;
+            if (new[] { "token", "authorization", "csrf", "password", "cookie", "credential", "email", "@" }
+                .Any(value => text.Contains(value, StringComparison.OrdinalIgnoreCase)))
+                text = "[redacted sensitive console diagnostic]";
+            text = System.Text.RegularExpressions.Regex.Replace(text, @"https?://[^\s""'<>]+", "[url]");
+            consoleDiagnostics.Enqueue(text.Length <= 1024 ? text : text[..1024]);
+        };
+        page.RequestFinished += (_, request) =>
+        {
+            if (ReferenceEquals(request, nonceRequest))
+            {
+                nonceFinished.TrySetResult();
+            }
+            if (ReferenceEquals(request, loginRequest))
+            {
+                loginFinished.TrySetResult();
+            }
+        };
+        page.RequestFailed += (_, request) =>
+        {
+            var uri = new Uri(request.Url);
+            if (uri.Authority == published.BaseUri.Authority)
+            {
+                var failureCategory = request.Failure switch
+                {
+                    "net::ERR_ABORTED" => "canceled",
+                    "net::ERR_CONNECTION_RESET" or "net::ERR_CONNECTION_CLOSED" or "net::ERR_CONNECTION_REFUSED"
+                        or "net::ERR_NAME_NOT_RESOLVED" or "net::ERR_INTERNET_DISCONNECTED" or "net::ERR_TIMED_OUT"
+                        or "net::ERR_NETWORK_CHANGED" or "net::ERR_ADDRESS_UNREACHABLE" => "network",
+                    _ => "unknown",
+                };
+                CountAndCaptureFailedAsset(request, uri, 0, failureCategory);
+                if (ReferenceEquals(request, nonceRequest))
+                {
+                    nonceFailed.TrySetResult();
+                }
+            }
+        };
+        page.Response += (_, response) =>
+        {
+            var uri = new Uri(response.Url);
+            if (uri.Authority == published.BaseUri.Authority && !uri.AbsolutePath.StartsWith("/bff/", StringComparison.Ordinal) && response.Status >= 400)
+            {
+                CountAndCaptureFailedAsset(response.Request, uri, response.Status, "unknown");
+            }
+        };
+        await page.RouteAsync("https://accounts.google.com/**", route => route.FulfillAsync(new()
+        {
+            Status = 200,
+            ContentType = "text/javascript",
+            Body = "",
+        }));
+        // Hold the independent nonce fixture while invalid inputs are exercised. Its exact browser
+        // request must finish before valid email sign-in deliberately replaces the document.
+        await page.RouteAsync("**/bff/google/nonce", route =>
+        {
+            nonceRequest = route.Request;
+            nonceRoute.TrySetResult(route);
+            // The owning context keeps this request paused. No callback task can outlive it.
+            return Task.CompletedTask;
+        });
+        await page.RouteAsync("**/bff/session", route =>
+        {
+            Interlocked.Increment(ref sessions);
+            return route.FulfillAsync(new()
+            {
+                Status = 200,
+                ContentType = "application/json",
+                Body = System.Text.Json.JsonSerializer.Serialize(new
+                {
+                    isAuthenticated = authenticated,
+                    employeeId = authenticated ? "published-employee" : null,
+                    displayName = authenticated ? "Synthetic Employee" : null,
+                    roles = new[] { "Employee" },
+                    csrfToken = "published-form-csrf",
+                    legacyDatabaseId = (int?)null,
+                    permissions = Array.Empty<string>(),
+                }),
+            });
+        });
+        await page.RouteAsync("**/bff/login", async route =>
+        {
+            loginRequest = route.Request;
+            logins.Enqueue((route.Request.Headers.GetValueOrDefault("x-csrf-token"), route.Request.PostData ?? ""));
+            authenticated = true;
+            await route.FulfillAsync(new()
+            {
+                Status = 200,
+                ContentType = "application/json",
+                Body = "{\"redirectUrl\":\"/Employees/Create\"}",
+            });
+        });
+        await page.RouteAsync("**/bff/employees", route =>
+        {
+            creates.Enqueue((route.Request.Headers.GetValueOrDefault("x-csrf-token"), route.Request.PostData ?? ""));
+            return route.FulfillAsync(new()
+            {
+                Status = 201,
+                ContentType = "application/json",
+                Body = "{\"id\":42,\"confirmationEmailSent\":true}",
+            });
+        });
+
+        await page.GotoAsync(new Uri(published.BaseUri, "Login").AbsoluteUri);
+        var email = page.Locator("#legacy-login-email");
+        await email.WaitForAsync();
+        await email.FillAsync("not-a-work-address@example.invalid");
+        await email.PressAsync("Tab");
+        await email.Locator("xpath=ancestor::form").EvaluateAsync("form => form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }))");
+        await Assertions.Expect(page.Locator("#legacy-login-email-error")).ToContainTextAsync(
+            culture == "th-TH" ? "ใช้อีเมลที่ทำงานของ MALIEV" : "Use your MALIEV work email.");
+        Assert.Empty(logins);
+        await email.FillAsync("published@maliev.com");
+        await email.PressAsync("Tab");
+        await Assertions.Expect(page.Locator(".legacy-login-primary")).ToBeEnabledAsync();
+        await page.Locator(".legacy-login-primary").PressAsync("Enter");
+        var password = page.Locator("#legacy-login-password");
+        await password.WaitForAsync();
+        await Assertions.Expect(password).ToBeFocusedAsync();
+        Assert.Empty(logins);
+        await password.FillAsync(new string('s', 16));
+        await password.PressAsync("Tab");
+        var signIn = password.Locator("xpath=ancestor::form").GetByRole(AriaRole.Button,
+            new() { Name = culture == "th-TH" ? "เข้าสู่ระบบด้วยอีเมล" : "Sign in with email", Exact = true });
+        await Assertions.Expect(signIn).ToBeEnabledAsync();
+        var pendingNonce = await nonceRoute.Task.WaitAsync(TimeSpan.FromSeconds(10));
+        Assert.False(nonceFinished.Task.IsCompleted);
+        Assert.Empty(logins);
+        if (abortNonce)
+        {
+            await pendingNonce.AbortAsync("aborted");
+            await nonceFailed.Task.WaitAsync(TimeSpan.FromSeconds(10));
+            Assert.Empty(logins);
+            AssertNoFailedAssets();
+            throw new InvalidOperationException("A canceled nonce escaped failed-request detection.");
+        }
+        await pendingNonce.FulfillAsync(new()
+        {
+            Status = 200,
+            ContentType = "application/json",
+            Body = System.Text.Json.JsonSerializer.Serialize(new
+            {
+                clientId = "test-google-client-id",
+                nonce = "nonce-at-least-32-characters-long-value",
+                expiresAtUtc = DateTimeOffset.UtcNow.AddMinutes(10),
+            }),
+        });
+        await nonceFinished.Task.WaitAsync(TimeSpan.FromSeconds(10));
+        await signIn.PressAsync("Enter");
+        var first = page.Locator("#employee-create-first-name");
+        await first.WaitForAsync();
+        await loginFinished.Task.WaitAsync(TimeSpan.FromSeconds(10));
+        var login = Assert.Single(logins);
+        Assert.Equal("published-form-csrf", login.Csrf);
+        using (var body = System.Text.Json.JsonDocument.Parse(login.Body))
+        {
+            Assert.Equal("published@maliev.com", body.RootElement.GetProperty("email").GetString());
+            Assert.Equal(new string('s', 16), body.RootElement.GetProperty("password").GetString());
+        }
+
+        var sessionsBeforeInvalid = Volatile.Read(ref sessions);
+        var form = page.Locator("form.employee-create__form");
+        await form.EvaluateAsync("form => form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }))");
+        await Assertions.Expect(page.Locator("main.employee-create .employee-create__alert[role='alert']")).ToContainTextAsync(
+            culture == "th-TH" ? "โปรดตรวจสอบช่องที่ระบุ แล้วลองอีกครั้ง" : "Review the highlighted fields and try again.");
+        Assert.Equal(sessionsBeforeInvalid, Volatile.Read(ref sessions));
+        Assert.Empty(creates);
+        await first.FocusAsync();
+        await Assertions.Expect(first).ToBeFocusedAsync();
+        await first.FillAsync("Synthetic");
+        await page.Locator("#employee-create-last-name").FillAsync("Employee");
+        await page.Locator("#employee-create-email").FillAsync("new-employee@example.invalid");
+        await page.Locator("#employee-create-password").FillAsync(new string('s', 16));
+        await page.Locator("#employee-create-confirm-password").FillAsync(new string('s', 16));
+        await page.Locator("form.employee-create__form button[type='submit']").ClickAsync();
+        await page.Locator("a[href='/Employees/View?id=42']").WaitForAsync();
+        var create = Assert.Single(creates);
+        Assert.Equal("published-form-csrf", create.Csrf);
+        using (var body = System.Text.Json.JsonDocument.Parse(create.Body))
+        {
+            Assert.Equal("Synthetic", body.RootElement.GetProperty("firstName").GetString());
+            Assert.Equal("Employee", body.RootElement.GetProperty("lastName").GetString());
+            Assert.Equal("new-employee@example.invalid", body.RootElement.GetProperty("email").GetString());
+        }
+        Assert.Equal(0, Volatile.Read(ref pageErrors));
+        Assert.True(Volatile.Read(ref consoleErrors) == 0,
+            "Unexpected synthetic-fixture console errors: " + string.Join(" | ", consoleDiagnostics));
+        AssertNoFailedAssets();
+
+        void AssertNoFailedAssets()
+        {
+            lock (failedAssetDiagnosticGate)
+            {
+                var failedAssetEnvelope = "[" + string.Join(",", failedAssetDiagnostics) + "]";
+                Assert.False(Volatile.Read(ref failedAssetDiagnosticOverflow) != 0,
+                    "Sanitized same-origin asset diagnostic capacity exceeded: " + failedAssetEnvelope);
+                try
+                {
+                    Assert.Equal(0, Volatile.Read(ref failedAssets));
+                }
+                catch (Xunit.Sdk.XunitException)
+                {
+                    throw new Xunit.Sdk.XunitException(
+                        "Expected failedAssets=0; actual=" + Volatile.Read(ref failedAssets)
+                        + "; sanitized diagnostics=" + failedAssetEnvelope);
+                }
+            }
+        }
+    }
+
+    [Fact]
+    public async Task PublishedShell_ServesEveryDeclaredLocalAssetWithoutDuplicateScriptsInDependencyOrder()
+    {
+        var published = await server.GetPublishedClientAsync();
+        await using var context = await playwright.Browser.NewContextAsync();
+        var page = await context.NewPageAsync();
+        await page.RouteAsync("https://accounts.google.com/**", route => route.FulfillAsync(new()
+        {
+            Status = 200,
+            ContentType = "text/javascript",
+            Body = "",
+        }));
+        await page.RouteAsync("**/bff/session", route => route.FulfillAsync(new()
+        {
+            Status = 200,
+            ContentType = "application/json",
+            Body = "{\"isAuthenticated\":false,\"employeeId\":null,\"displayName\":null,\"roles\":[],\"csrfToken\":\"published-form-csrf\",\"permissions\":[]}",
+        }));
+        await page.GotoAsync(new Uri(published.BaseUri, "Login").AbsoluteUri);
+        await page.Locator("#legacy-login-email").WaitForAsync();
+        var document = await context.APIRequest.GetAsync(new Uri(published.BaseUri, "index.html").AbsoluteUri, new() { Timeout = 15000 });
+        string html;
+        try
+        {
+            Assert.Equal(200, document.Status);
+            var bytes = await document.BodyAsync();
+            Assert.InRange(bytes.Length, 1, 256 * 1024);
+            Assert.Equal(await File.ReadAllBytesAsync(Path.Combine(published.Root, "index.html")), bytes);
+            html = System.Text.Encoding.UTF8.GetString(bytes);
+        }
+        finally { await document.DisposeAsync(); }
+        var scripts = await page.EvaluateAsync<string[]>(
+            """
+            html => Array.from(new DOMParser().parseFromString(html, 'text/html').querySelectorAll('script[src]'))
+                .map(element => new URL(element.getAttribute('src'), location.origin))
+                .filter(url => url.origin === location.origin).map(url => url.pathname)
+            """, html);
+        Assert.Equal(new[]
+        {
+            "/js/google-identity-signin.js", "/js/workspace-culture.js", "/js/workspace-focus.js",
+            "/js/workspace-navigation.js", "/js/customer-workspace.js", "/js/dashboard-refresh.js",
+            "/_framework/blazor.webassembly.js",
+        }, scripts);
+        var renderedScripts = await page.Locator("script[src]").EvaluateAllAsync<string[]>(
+            "elements => elements.map(element => new URL(element.src)).filter(url => url.origin === location.origin).map(url => url.pathname)");
+        Assert.Equal(scripts, renderedScripts);
+        var assets = await page.EvaluateAsync<string[]>(
+            """
+            html => Array.from(new DOMParser().parseFromString(html, 'text/html').querySelectorAll('script[src],link[href],img[src]'))
+                .map(element => new URL(element.getAttribute('src') || element.getAttribute('href'), location.origin))
+                .filter(url => url.origin === location.origin).map(url => url.pathname)
+            """, html);
+        Assert.Equal(assets.Length, assets.Distinct(StringComparer.Ordinal).Count());
+        Assert.Contains("/_content/Maliev.ShadcnBlazor/css/shadcn-forms.css", assets);
+        Assert.Contains("/Legacy.Maliev.Intranet.Client.styles.css", assets);
+        foreach (var asset in assets)
+        {
+            var path = Path.GetFullPath(Path.Combine(published.Root, asset.TrimStart('/')));
+            Assert.StartsWith(published.Root + Path.DirectorySeparatorChar, path, StringComparison.Ordinal);
+            Assert.InRange(new FileInfo(path).Length, 1L, 8L * 1024 * 1024);
+            var expected = await File.ReadAllBytesAsync(path);
+            var response = await context.APIRequest.GetAsync(new Uri(published.BaseUri, asset).AbsoluteUri, new() { Timeout = 15000 });
+            try
+            {
+                Assert.Equal(200, response.Status);
+                Assert.NotEmpty(expected);
+                Assert.Equal(expected, await response.BodyAsync());
+                var contentType = response.Headers.GetValueOrDefault("content-type") ?? "";
+                Assert.DoesNotContain("text/html", contentType, StringComparison.OrdinalIgnoreCase);
+                if (asset.EndsWith(".css", StringComparison.Ordinal))
+                    Assert.StartsWith("text/css", contentType, StringComparison.OrdinalIgnoreCase);
+                if (asset.EndsWith(".js", StringComparison.Ordinal))
+                    Assert.Contains(contentType.Split(';')[0].Trim().ToLowerInvariant(),
+                        new[] { "text/javascript", "application/javascript" });
+            }
+            finally { await response.DisposeAsync(); }
+        }
+    }
 }

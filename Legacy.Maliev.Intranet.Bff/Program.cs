@@ -68,7 +68,7 @@ builder.Services.AddHttpClient<Legacy.Maliev.Intranet.Bff.Customers.CustomerAcco
     client.BaseAddress = new Uri(builder.Configuration["Services:Notification"]
         ?? "https+http://legacy-maliev-notification-service");
     client.Timeout = TimeSpan.FromSeconds(30);
-}).RemoveAllResilienceHandlers()
+}).AddPrivateFailureSourceObservation("NotificationService").RemoveAllResilienceHandlers()
     .AddHttpMessageHandler<LegacyServiceAuthenticationHandler>();
 #pragma warning restore EXTEXP0001
 builder.Services.AddScoped<Legacy.Maliev.Intranet.Employees.EmployeeAccountCreationService>();
@@ -84,58 +84,57 @@ builder.Services.AddHttpClient<Legacy.Maliev.Intranet.Customers.ICustomerProfile
     client.BaseAddress = new Uri(builder.Configuration["Services:Customer"]
         ?? throw new InvalidOperationException("Services:Customer is required."));
     client.Timeout = TimeSpan.FromSeconds(10);
-}).RemoveAllResilienceHandlers()
+}).AddPrivateFailureSourceObservation("CustomerService").RemoveAllResilienceHandlers()
     .AddHttpMessageHandler<LegacyServiceAuthenticationHandler>();
 builder.Services.AddHttpClient<Legacy.Maliev.Intranet.Customers.ICustomerIdentityCreationClient, Legacy.Maliev.Intranet.Customers.CustomerIdentityCreationClient>(client =>
 {
     client.BaseAddress = new Uri(builder.Configuration["Services:Auth"]
         ?? throw new InvalidOperationException("Services:Auth is required."));
     client.Timeout = TimeSpan.FromSeconds(10);
-}).RemoveAllResilienceHandlers()
+}).AddPrivateFailureSourceObservation("AuthService").RemoveAllResilienceHandlers()
     .AddHttpMessageHandler<LegacyServiceAuthenticationHandler>();
 builder.Services.AddHttpClient<Legacy.Maliev.Intranet.Employees.IEmployeeProfileCreationClient, Legacy.Maliev.Intranet.Employees.EmployeeProfileCreationClient>(client =>
 {
     client.BaseAddress = new Uri(builder.Configuration["Services:Employee"]
         ?? throw new InvalidOperationException("Services:Employee is required."));
     client.Timeout = TimeSpan.FromSeconds(10);
-}).RemoveAllResilienceHandlers()
+}).AddPrivateFailureSourceObservation("EmployeeService").RemoveAllResilienceHandlers()
     .AddHttpMessageHandler<LegacyServiceAuthenticationHandler>();
 builder.Services.AddHttpClient<Legacy.Maliev.Intranet.Employees.IEmployeeIdentityCreationClient, Legacy.Maliev.Intranet.Employees.EmployeeIdentityCreationClient>(client =>
 {
     client.BaseAddress = new Uri(builder.Configuration["Services:Auth"]
         ?? throw new InvalidOperationException("Services:Auth is required."));
     client.Timeout = TimeSpan.FromSeconds(10);
-}).RemoveAllResilienceHandlers()
+}).AddPrivateFailureSourceObservation("AuthService").RemoveAllResilienceHandlers()
     .AddHttpMessageHandler<LegacyServiceAuthenticationHandler>();
 builder.Services.AddHttpClient<Legacy.Maliev.Intranet.Suppliers.ISupplierProfileCreationClient, SupplierProfileCreationClient>(client =>
 {
     client.BaseAddress = new Uri(builder.Configuration["Services:Procurement"]
         ?? throw new InvalidOperationException("Services:Procurement is required."));
     client.Timeout = TimeSpan.FromSeconds(10);
-}).RemoveAllResilienceHandlers()
+}).AddPrivateFailureSourceObservation("ProcurementService").RemoveAllResilienceHandlers()
     .AddHttpMessageHandler<LegacyServiceAuthenticationHandler>();
 builder.Services.AddHttpClient<Legacy.Maliev.Intranet.Suppliers.ISupplierAddressCreationClient, SupplierAddressCreationClient>(client =>
 {
     client.BaseAddress = new Uri(builder.Configuration["Services:Procurement"]
         ?? throw new InvalidOperationException("Services:Procurement is required."));
     client.Timeout = TimeSpan.FromSeconds(10);
-}).RemoveAllResilienceHandlers()
+}).AddPrivateFailureSourceObservation("ProcurementService").RemoveAllResilienceHandlers()
     .AddHttpMessageHandler<LegacyServiceAuthenticationHandler>();
 builder.Services.AddHttpClient<Legacy.Maliev.Intranet.Suppliers.ISupplierManagementClient, SupplierManagementClient>(client =>
 {
     client.BaseAddress = new Uri(builder.Configuration["Services:Procurement"]
         ?? throw new InvalidOperationException("Services:Procurement is required."));
     client.Timeout = TimeSpan.FromSeconds(10);
-}).RemoveAllResilienceHandlers()
+}).AddPrivateFailureSourceObservation("ProcurementService").RemoveAllResilienceHandlers()
     .AddHttpMessageHandler<LegacyServiceAuthenticationHandler>();
 builder.Services.AddHttpClient<CustomersProxy>(client =>
 {
     client.BaseAddress = new Uri(builder.Configuration["Services:Customer"]
         ?? throw new InvalidOperationException("Services:Customer is required."));
     client.Timeout = TimeSpan.FromSeconds(10);
-}).RemoveAllResilienceHandlers()
+}).AddPrivateFailureSourceObservation("CustomerService").RemoveAllResilienceHandlers()
     .AddHttpMessageHandler<LegacyServiceAuthenticationHandler>()
-    .AddPrivateFailureOperationObservation("CustomerService")
     .AddResilienceHandler("customer-list", pipeline =>
 {
     pipeline.AddRetry(new Microsoft.Extensions.Http.Resilience.HttpRetryStrategyOptions
@@ -157,7 +156,7 @@ builder.Services.AddHttpClient<CustomerUpdateProxy>(client =>
     client.BaseAddress = new Uri(builder.Configuration["Services:Customer"]
         ?? throw new InvalidOperationException("Services:Customer is required."));
     client.Timeout = TimeSpan.FromSeconds(10);
-}).RemoveAllResilienceHandlers()
+}).AddPrivateFailureSourceObservation("CustomerService").RemoveAllResilienceHandlers()
     .AddHttpMessageHandler<LegacyServiceAuthenticationHandler>();
 builder.Services.AddHttpClient<CustomerRelationClient>(client =>
 {
@@ -172,7 +171,7 @@ builder.Services.AddHttpClient<EmployeesProxy>(client =>
     client.BaseAddress = new Uri(builder.Configuration["Services:Employee"]
         ?? throw new InvalidOperationException("Services:Employee is required."));
     client.Timeout = TimeSpan.FromSeconds(10);
-}).RemoveAllResilienceHandlers()
+}).AddPrivateFailureSourceObservation("EmployeeService").RemoveAllResilienceHandlers()
     .AddHttpMessageHandler<LegacyServiceAuthenticationHandler>()
     .AddResilienceHandler("employee-list", pipeline =>
 {
@@ -197,7 +196,7 @@ builder.Services.AddHttpClient<CustomerAdministrationIdentityClient>(client =>
         ?? throw new InvalidOperationException("Services:Auth is required."));
     client.Timeout = LegacyPresentation.RequestTimeout;
     client.MaxResponseContentBufferSize = 65536;
-}).RemoveAllResilienceHandlers()
+}).AddPrivateFailureSourceObservation("AuthService").RemoveAllResilienceHandlers()
     .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler { AllowAutoRedirect = false });
 builder.Services.AddHttpClient<CustomerAdministrationProfileClient>(client =>
 {
@@ -205,7 +204,7 @@ builder.Services.AddHttpClient<CustomerAdministrationProfileClient>(client =>
         ?? throw new InvalidOperationException("Services:Customer is required."));
     client.Timeout = LegacyPresentation.RequestTimeout;
     client.MaxResponseContentBufferSize = 65536;
-}).RemoveAllResilienceHandlers()
+}).AddPrivateFailureSourceObservation("CustomerService").RemoveAllResilienceHandlers()
     .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler { AllowAutoRedirect = false });
 builder.Services.AddHttpClient<EmployeeAdministrationCountryClient>(client =>
 {
@@ -213,7 +212,7 @@ builder.Services.AddHttpClient<EmployeeAdministrationCountryClient>(client =>
         ?? throw new InvalidOperationException("Services:Catalog is required."));
     client.Timeout = TimeSpan.FromSeconds(10);
     client.MaxResponseContentBufferSize = 262144;
-}).RemoveAllResilienceHandlers()
+}).AddPrivateFailureSourceObservation("CatalogService").RemoveAllResilienceHandlers()
     .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler { AllowAutoRedirect = false });
 builder.Services.AddHttpClient<EmployeeAdministrationIdentityClient>(client =>
 {
@@ -221,7 +220,7 @@ builder.Services.AddHttpClient<EmployeeAdministrationIdentityClient>(client =>
         ?? throw new InvalidOperationException("Services:Auth is required."));
     client.Timeout = TimeSpan.FromSeconds(10);
     client.MaxResponseContentBufferSize = 262144;
-}).RemoveAllResilienceHandlers()
+}).AddPrivateFailureSourceObservation("AuthService").RemoveAllResilienceHandlers()
     .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler { AllowAutoRedirect = false });
 builder.Services.AddHttpClient<EmployeeAdministrationProfileClient>(client =>
 {
@@ -229,7 +228,7 @@ builder.Services.AddHttpClient<EmployeeAdministrationProfileClient>(client =>
         ?? throw new InvalidOperationException("Services:Employee is required."));
     client.Timeout = TimeSpan.FromSeconds(10);
     client.MaxResponseContentBufferSize = 262144;
-}).RemoveAllResilienceHandlers()
+}).AddPrivateFailureSourceObservation("EmployeeService").RemoveAllResilienceHandlers()
     .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler { AllowAutoRedirect = false });
 builder.Services.AddHttpClient<EmployeeRecoveryAuthProxy>(client =>
 {
@@ -243,15 +242,14 @@ builder.Services.AddHttpClient<EmployeeRecoveryNotificationProxy>(client =>
     client.BaseAddress = new Uri(builder.Configuration["Services:Notification"]
         ?? throw new InvalidOperationException("Services:Notification is required."));
     client.Timeout = TimeSpan.FromSeconds(10);
-}).RemoveAllResilienceHandlers()
+}).AddPrivateFailureSourceObservation("NotificationService").RemoveAllResilienceHandlers()
     .AddHttpMessageHandler<LegacyServiceAuthenticationHandler>();
 builder.Services.AddHttpClient<OrdersProxy>(client =>
 {
     client.BaseAddress = new Uri(builder.Configuration["Services:Order"]
         ?? throw new InvalidOperationException("Services:Order is required."));
     client.Timeout = TimeSpan.FromSeconds(10);
-}).RemoveAllResilienceHandlers()
-    .AddPrivateFailureOperationObservation("OrderService")
+}).AddPrivateFailureSourceObservation("OrderService").RemoveAllResilienceHandlers()
     .AddHttpMessageHandler<LegacyServiceAuthenticationHandler>()
     .AddResilienceHandler("order-index", pipeline =>
 {
@@ -274,7 +272,7 @@ builder.Services.AddHttpClient<FinancesProxy>(client =>
     client.BaseAddress = new Uri(builder.Configuration["Services:Accounting"]
         ?? "https+http://legacy-maliev-accounting-service");
     client.Timeout = TimeSpan.FromSeconds(10);
-}).RemoveAllResilienceHandlers()
+}).AddPrivateFailureSourceObservation("AccountingService").RemoveAllResilienceHandlers()
     .AddHttpMessageHandler<LegacyServiceAuthenticationHandler>()
     .AddResilienceHandler("finance-index", pipeline =>
 {
@@ -297,7 +295,7 @@ builder.Services.AddHttpClient<InvoicesProxy>(client =>
     client.BaseAddress = new Uri(builder.Configuration["Services:Accounting"]
         ?? "https+http://legacy-maliev-accounting-service");
     client.Timeout = TimeSpan.FromSeconds(10);
-}).RemoveAllResilienceHandlers()
+}).AddPrivateFailureSourceObservation("AccountingService").RemoveAllResilienceHandlers()
     .AddHttpMessageHandler<LegacyServiceAuthenticationHandler>()
     .AddResilienceHandler("invoice-index", pipeline =>
 {
@@ -320,14 +318,14 @@ builder.Services.AddHttpClient<InvoiceDetailProxy>(client =>
     client.BaseAddress = new Uri(builder.Configuration["Services:Accounting"]
         ?? "https+http://legacy-maliev-accounting-service");
     client.Timeout = TimeSpan.FromSeconds(10);
-}).RemoveAllResilienceHandlers()
+}).AddPrivateFailureSourceObservation("AccountingService").RemoveAllResilienceHandlers()
     .AddHttpMessageHandler<LegacyServiceAuthenticationHandler>();
 builder.Services.AddHttpClient<InvoiceCreationProxy>(client =>
 {
     client.BaseAddress = new Uri(builder.Configuration["Services:Accounting"]
         ?? "https+http://legacy-maliev-accounting-service");
     client.Timeout = TimeSpan.FromSeconds(45);
-}).RemoveAllResilienceHandlers()
+}).AddPrivateFailureSourceObservation("AccountingService").RemoveAllResilienceHandlers()
     .AddHttpMessageHandler<LegacyServiceAuthenticationHandler>();
 builder.Services.AddOptions<InvoiceDelegationOptions>()
     .Bind(builder.Configuration.GetSection("InvoiceDelegation"));
@@ -344,7 +342,7 @@ builder.Services.AddHttpClient<InvoiceFileProxy>(client =>
     client.BaseAddress = new Uri(builder.Configuration["Services:File"]
         ?? "https+http://legacy-maliev-file-service");
     client.Timeout = TimeSpan.FromSeconds(30);
-}).RemoveAllResilienceHandlers()
+}).AddPrivateFailureSourceObservation("FileService").RemoveAllResilienceHandlers()
     .AddHttpMessageHandler<LegacyServiceAuthenticationHandler>();
 builder.Services.AddScoped<InvoiceDetailAggregator>();
 builder.Services.AddOptions<QuotationQualificationOptions>()
@@ -354,7 +352,7 @@ builder.Services.AddHttpClient<QuotationQualificationClient>(client =>
     client.BaseAddress = new Uri(builder.Configuration["Services:Quotation"]
         ?? "https+http://legacy-maliev-quotation-service");
     client.Timeout = TimeSpan.FromSeconds(10);
-}).RemoveAllResilienceHandlers()
+}).AddPrivateFailureSourceObservation("QuotationService").RemoveAllResilienceHandlers()
     .ConfigurePrimaryHttpMessageHandler((handler, _) =>
     {
         if (handler is SocketsHttpHandler sockets) sockets.AllowAutoRedirect = false;
@@ -366,14 +364,14 @@ builder.Services.AddHttpClient<QuotationRequestsProxy>(client =>
     client.BaseAddress = new Uri(builder.Configuration["Services:Quotation"]
         ?? "https+http://legacy-maliev-quotation-service");
     client.Timeout = TimeSpan.FromSeconds(10);
-}).RemoveAllResilienceHandlers()
+}).AddPrivateFailureSourceObservation("QuotationService").RemoveAllResilienceHandlers()
     .AddHttpMessageHandler<LegacyServiceAuthenticationHandler>();
 builder.Services.AddHttpClient<QuotationRequestFilesProxy>(client =>
 {
     client.BaseAddress = new Uri(builder.Configuration["Services:File"]
         ?? "https+http://legacy-maliev-file-service");
     client.Timeout = TimeSpan.FromSeconds(10);
-}).RemoveAllResilienceHandlers()
+}).AddPrivateFailureSourceObservation("FileService").RemoveAllResilienceHandlers()
     .AddHttpMessageHandler<LegacyServiceAuthenticationHandler>()
     .AddResilienceHandler("quotation-request-file-read", pipeline =>
 {
@@ -396,7 +394,7 @@ builder.Services.AddHttpClient<QuotationsProxy>(client =>
     client.BaseAddress = new Uri(builder.Configuration["Services:Quotation"]
         ?? "https+http://legacy-maliev-quotation-service");
     client.Timeout = TimeSpan.FromSeconds(10);
-}).RemoveAllResilienceHandlers()
+}).AddPrivateFailureSourceObservation("QuotationService").RemoveAllResilienceHandlers()
     .AddHttpMessageHandler<LegacyServiceAuthenticationHandler>()
     .AddResilienceHandler("quotation-index", pipeline =>
 {
@@ -419,14 +417,14 @@ builder.Services.AddHttpClient<QuotationDecisionProxy>(client =>
     client.BaseAddress = new Uri(builder.Configuration["Services:Quotation"]
         ?? "https+http://legacy-maliev-quotation-service");
     client.Timeout = TimeSpan.FromSeconds(10);
-}).RemoveAllResilienceHandlers()
+}).AddPrivateFailureSourceObservation("QuotationService").RemoveAllResilienceHandlers()
     .AddHttpMessageHandler<LegacyServiceAuthenticationHandler>();
 builder.Services.AddHttpClient<QuotationFileProxy>(client =>
 {
     client.BaseAddress = new Uri(builder.Configuration["Services:File"]
         ?? "https+http://legacy-maliev-file-service");
     client.Timeout = TimeSpan.FromSeconds(10);
-}).RemoveAllResilienceHandlers()
+}).AddPrivateFailureSourceObservation("FileService").RemoveAllResilienceHandlers()
     .AddHttpMessageHandler<LegacyServiceAuthenticationHandler>()
     .AddStandardResilienceHandler();
 builder.Services.AddScoped<QuotationDetailAggregator>();
@@ -435,13 +433,13 @@ builder.Services.AddHttpClient(AggregateOutcomeProxy.AccountingClient, client =>
     client.BaseAddress = new Uri(builder.Configuration["Services:Accounting"]
         ?? "https+http://legacy-maliev-accounting-service");
     client.Timeout = TimeSpan.FromSeconds(10);
-}).RemoveAllResilienceHandlers();
+}).AddPrivateFailureSourceObservation("AccountingService").RemoveAllResilienceHandlers();
 builder.Services.AddHttpClient(AggregateOutcomeProxy.QuotationClient, client =>
 {
     client.BaseAddress = new Uri(builder.Configuration["Services:Quotation"]
         ?? "https+http://legacy-maliev-quotation-service");
     client.Timeout = TimeSpan.FromSeconds(10);
-}).RemoveAllResilienceHandlers();
+}).AddPrivateFailureSourceObservation("QuotationService").RemoveAllResilienceHandlers();
 builder.Services.AddScoped<AggregateOutcomeProxy>();
 builder.Services.AddScoped<IQuotationCreationGateway, QuotationCreationGateway>();
 builder.Services.AddScoped<QuotationCreationWorkflow>();
@@ -458,7 +456,7 @@ builder.Services.AddHttpClient<SuppliersProxy>(client =>
     client.BaseAddress = new Uri(builder.Configuration["Services:Procurement"]
         ?? throw new InvalidOperationException("Services:Procurement is required."));
     client.Timeout = TimeSpan.FromSeconds(10);
-}).RemoveAllResilienceHandlers()
+}).AddPrivateFailureSourceObservation("ProcurementService").RemoveAllResilienceHandlers()
     .AddHttpMessageHandler<LegacyServiceAuthenticationHandler>()
     .AddResilienceHandler("supplier-index", pipeline =>
 {
@@ -481,7 +479,7 @@ builder.Services.AddHttpClient<PurchaseOrdersProxy>(client =>
     client.BaseAddress = new Uri(builder.Configuration["Services:Procurement"]
         ?? throw new InvalidOperationException("Services:Procurement is required."));
     client.Timeout = TimeSpan.FromSeconds(10);
-}).RemoveAllResilienceHandlers()
+}).AddPrivateFailureSourceObservation("ProcurementService").RemoveAllResilienceHandlers()
     .AddHttpMessageHandler<LegacyServiceAuthenticationHandler>()
     .AddResilienceHandler("purchase-order-index", pipeline =>
 {
@@ -509,6 +507,18 @@ void AddPurchaseOrderClient(string name, string configurationKey, string fallbac
     {
         client.BaseAddress = new Uri(builder.Configuration[configurationKey] ?? fallback);
         client.Timeout = timeout;
+    }).AddPrivateFailureSourceObservation(configurationKey switch
+    {
+        "Services:Procurement" => "ProcurementService",
+        "Services:Employee" => "EmployeeService",
+        "Services:Catalog" => "CatalogService",
+        "Services:Document" => "DocumentService",
+        "Services:File" => "FileService",
+        "Services:Quotation" => "QuotationService",
+        "Services:Order" => "OrderService",
+        "Services:Customer" => "CustomerService",
+        "Services:Notification" => "NotificationService",
+        _ => throw new InvalidOperationException("Unknown source-owned dependency.")
     }).RemoveAllResilienceHandlers().AddHttpMessageHandler<LegacyServiceAuthenticationHandler>();
 AddQuotationCreateClient(QuotationCreationGateway.QuotationClient, "Services:Quotation", "https+http://legacy-maliev-quotation-service", TimeSpan.FromSeconds(30));
 AddQuotationCreateClient(QuotationCreationGateway.OrderClient, "Services:Order", "https+http://legacy-maliev-order-service", TimeSpan.FromSeconds(30));
@@ -523,46 +533,58 @@ void AddQuotationCreateClient(string name, string configurationKey, string fallb
     {
         client.BaseAddress = new Uri(builder.Configuration[configurationKey] ?? fallback);
         client.Timeout = timeout;
+    }).AddPrivateFailureSourceObservation(configurationKey switch
+    {
+        "Services:Procurement" => "ProcurementService",
+        "Services:Employee" => "EmployeeService",
+        "Services:Catalog" => "CatalogService",
+        "Services:Document" => "DocumentService",
+        "Services:File" => "FileService",
+        "Services:Quotation" => "QuotationService",
+        "Services:Order" => "OrderService",
+        "Services:Customer" => "CustomerService",
+        "Services:Notification" => "NotificationService",
+        _ => throw new InvalidOperationException("Unknown source-owned dependency.")
     }).RemoveAllResilienceHandlers().AddHttpMessageHandler<LegacyServiceAuthenticationHandler>();
 builder.Services.AddHttpClient<OrderDetailProxy>(client =>
 {
     client.BaseAddress = new Uri(builder.Configuration["Services:Order"]
         ?? throw new InvalidOperationException("Services:Order is required."));
     client.Timeout = TimeSpan.FromSeconds(30);
-}).RemoveAllResilienceHandlers()
+}).AddPrivateFailureSourceObservation("OrderService").RemoveAllResilienceHandlers()
     .AddHttpMessageHandler<LegacyServiceAuthenticationHandler>();
 builder.Services.AddHttpClient<OrderCreateProxy>(client =>
 {
     client.BaseAddress = new Uri(builder.Configuration["Services:Order"]
         ?? throw new InvalidOperationException("Services:Order is required."));
     client.Timeout = TimeSpan.FromSeconds(30);
-}).RemoveAllResilienceHandlers()
+}).AddPrivateFailureSourceObservation("OrderService").RemoveAllResilienceHandlers()
     .AddHttpMessageHandler<LegacyServiceAuthenticationHandler>();
 builder.Services.AddHttpClient<OrderCatalogReferenceProxy>(client =>
 {
     client.BaseAddress = new Uri(builder.Configuration["Services:Catalog"]
         ?? throw new InvalidOperationException("Services:Catalog is required."));
     client.Timeout = TimeSpan.FromSeconds(30);
-}).AddHttpMessageHandler<LegacyServiceAuthenticationHandler>().AddStandardResilienceHandler();
+}).AddPrivateFailureSourceObservation("CatalogService").AddHttpMessageHandler<LegacyServiceAuthenticationHandler>().AddStandardResilienceHandler();
 builder.Services.AddHttpClient<OrderEmployeeReferenceProxy>(client =>
 {
     client.BaseAddress = new Uri(builder.Configuration["Services:Employee"]
         ?? throw new InvalidOperationException("Services:Employee is required."));
     client.Timeout = TimeSpan.FromSeconds(30);
-}).AddHttpMessageHandler<LegacyServiceAuthenticationHandler>().AddStandardResilienceHandler();
+}).AddPrivateFailureSourceObservation("EmployeeService").AddHttpMessageHandler<LegacyServiceAuthenticationHandler>().AddStandardResilienceHandler();
 builder.Services.AddHttpClient<OrderFileProxy>(client =>
 {
     client.BaseAddress = new Uri(builder.Configuration["Services:File"]
         ?? "https+http://legacy-maliev-file-service");
     client.Timeout = TimeSpan.FromMinutes(5);
-}).RemoveAllResilienceHandlers()
+}).AddPrivateFailureSourceObservation("FileService").RemoveAllResilienceHandlers()
     .AddHttpMessageHandler<LegacyServiceAuthenticationHandler>();
 builder.Services.AddHttpClient<FinanceFileProxy>(client =>
 {
     client.BaseAddress = new Uri(builder.Configuration["Services:File"]
         ?? "https+http://legacy-maliev-file-service");
     client.Timeout = TimeSpan.FromMinutes(5);
-}).RemoveAllResilienceHandlers()
+}).AddPrivateFailureSourceObservation("FileService").RemoveAllResilienceHandlers()
     .AddHttpMessageHandler<LegacyServiceAuthenticationHandler>();
 builder.Services.AddScoped<FinanceDetailAggregator>();
 builder.Services.AddScoped<FinanceFileWorkflow>();
@@ -571,14 +593,14 @@ builder.Services.AddHttpClient<OrderDocumentProxy>(client =>
     client.BaseAddress = new Uri(builder.Configuration["Services:Document"]
         ?? "https+http://legacy-maliev-document-service");
     client.Timeout = TimeSpan.FromSeconds(30);
-}).RemoveAllResilienceHandlers()
+}).AddPrivateFailureSourceObservation("DocumentService").RemoveAllResilienceHandlers()
     .AddHttpMessageHandler<LegacyServiceAuthenticationHandler>();
 builder.Services.AddHttpClient<OrderNotificationProxy>(client =>
 {
     client.BaseAddress = new Uri(builder.Configuration["Services:Notification"]
         ?? "https+http://legacy-maliev-notification-service");
     client.Timeout = TimeSpan.FromSeconds(30);
-}).RemoveAllResilienceHandlers()
+}).AddPrivateFailureSourceObservation("NotificationService").RemoveAllResilienceHandlers()
     .AddHttpMessageHandler<LegacyServiceAuthenticationHandler>();
 builder.Services.AddScoped<OrderDetailAggregator>();
 builder.Services.AddScoped<OrderFileWorkflow>();
@@ -596,7 +618,7 @@ builder.Services.AddHttpClient<CatalogMaterialsProxy>(client =>
     client.BaseAddress = new Uri(builder.Configuration["Services:Catalog"]
         ?? throw new InvalidOperationException("Services:Catalog is required."));
     client.Timeout = TimeSpan.FromSeconds(10);
-}).RemoveAllResilienceHandlers()
+}).AddPrivateFailureSourceObservation("CatalogService").RemoveAllResilienceHandlers()
     .AddHttpMessageHandler<LegacyServiceAuthenticationHandler>()
     .AddResilienceHandler("catalog-materials", pipeline =>
 {
@@ -620,13 +642,13 @@ builder.Services.AddHttpClient("service-auth", client =>
     client.BaseAddress = new Uri(builder.Configuration["Services:Auth"]
         ?? throw new InvalidOperationException("Services:Auth is required."));
     client.Timeout = TimeSpan.FromSeconds(10);
-}).AddStandardResilienceHandler();
+}).AddPrivateFailureSourceObservation("AuthService").AddStandardResilienceHandler();
 builder.Services.AddHttpClient<ILegacyAuthClient, LegacyAuthClient>(client =>
 {
     client.BaseAddress = new Uri(builder.Configuration["Services:Auth"]
         ?? throw new InvalidOperationException("Services:Auth is required."));
     client.Timeout = TimeSpan.FromSeconds(10);
-}).AddStandardResilienceHandler();
+}).AddPrivateFailureObservation("AuthService").AddStandardResilienceHandler();
 builder.Services.AddHttpClient<IGoogleIdentityAuthClient, GoogleIdentityAuthClient>(client =>
 {
     client.BaseAddress = new Uri(builder.Configuration["Services:Auth"]
@@ -875,16 +897,24 @@ app.Use(async (context, next) =>
 
     context.Response.OnStarting(() =>
     {
-        context.Response.Headers["Content-Security-Policy"] =
-            "default-src 'self'; " +
-            "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://accounts.google.com; " +
-            "style-src 'self' 'unsafe-inline'; " +
-            "img-src 'self' data: https:; " +
-            "font-src 'self' data:; " +
-            "connect-src 'self' http: https:; " +
-            "frame-src https://accounts.google.com; " +
-            "frame-ancestors 'none'; " +
-            "base-uri 'self'";
+        if (OutcomeReadbackEndpointMapper.IsBrowserReceipt(context))
+        {
+            context.Response.Headers["Content-Security-Policy"] =
+                "default-src 'none'; frame-ancestors 'none'; base-uri 'none'";
+        }
+        else
+        {
+            context.Response.Headers["Content-Security-Policy"] =
+                "default-src 'self'; " +
+                "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://accounts.google.com; " +
+                "style-src 'self' 'unsafe-inline'; " +
+                "img-src 'self' data: https:; " +
+                "font-src 'self' data:; " +
+                "connect-src 'self' http: https:; " +
+                "frame-src https://accounts.google.com; " +
+                "frame-ancestors 'none'; " +
+                "base-uri 'self'";
+        }
 
         if (context.Response.StatusCode == StatusCodes.Status404NotFound &&
             context.Request.Path.StartsWithSegments("/_framework", StringComparison.OrdinalIgnoreCase))
@@ -931,6 +961,8 @@ app.MapGet("/bff/error-context", (HttpContext context) =>
 })
     .RequireAuthorization();
 
+app.MapGet(OutcomeReadbackEndpointMapper.BrowserReceiptPath, OutcomeReadbackEndpointMapper.GetAsync)
+    .RequireAuthorization();
 app.MapGet("/Operations/OutcomeReadback", OutcomeReadbackEndpointMapper.GetAsync)
     .RequireAuthorization();
 app.MapGet("/Analytics/OutcomeReadback", OutcomeReadbackEndpointMapper.GetAsync)

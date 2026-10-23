@@ -1,3 +1,4 @@
+using Maliev.Aspire.ServiceDefaults.Diagnostics;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 
@@ -51,7 +52,7 @@ public sealed class OrderFileProxy(HttpClient httpClient)
             Content = content,
         };
         if (!string.IsNullOrWhiteSpace(idempotencyKey)) request.Headers.Add("Idempotency-Key", idempotencyKey);
-        return await httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+        return await httpClient.SendWithPrivateFailureObservationAsync(request, cancellationToken, new PrivateDependencyFailureObservation(), HttpCompletionOption.ResponseHeadersRead);
     }
 
     /// <summary>Gets a short-lived URL for a known clean object.</summary>
@@ -59,24 +60,18 @@ public sealed class OrderFileProxy(HttpClient httpClient)
         string bucket,
         string objectName,
         CancellationToken cancellationToken) =>
-        httpClient.SendAsync(
-            new HttpRequestMessage(
+        httpClient.SendWithPrivateFailureObservationAsync(new HttpRequestMessage(
                 HttpMethod.Get,
-                $"/uploads/SignedUrl?bucket={Uri.EscapeDataString(bucket)}&objectName={Uri.EscapeDataString(objectName)}"),
-            HttpCompletionOption.ResponseHeadersRead,
-            cancellationToken);
+                $"/uploads/SignedUrl?bucket={Uri.EscapeDataString(bucket)}&objectName={Uri.EscapeDataString(objectName)}"), cancellationToken, new PrivateDependencyFailureObservation(), HttpCompletionOption.ResponseHeadersRead);
 
     /// <summary>Deletes the exact server-resolved object.</summary>
     public Task<HttpResponseMessage> DeleteAsync(
         string bucket,
         string objectName,
         CancellationToken cancellationToken) =>
-        httpClient.SendAsync(
-            new HttpRequestMessage(
+        httpClient.SendWithPrivateFailureObservationAsync(new HttpRequestMessage(
                 HttpMethod.Delete,
-                $"/Uploads?bucket={Uri.EscapeDataString(bucket)}&objectName={Uri.EscapeDataString(objectName)}"),
-            HttpCompletionOption.ResponseHeadersRead,
-            cancellationToken);
+                $"/Uploads?bucket={Uri.EscapeDataString(bucket)}&objectName={Uri.EscapeDataString(objectName)}"), cancellationToken, new PrivateDependencyFailureObservation(), HttpCompletionOption.ResponseHeadersRead);
 }
 
 /// <summary>FileService clean-object response.</summary>

@@ -773,12 +773,24 @@ internal sealed class SupplierCompanyBrowserObserver(IPage page, string url, boo
           check(originalResponse === expectedResponse, 'same original response');
           check(await originalResponse.text() === body, 'original body preserved');
           const result = await f.state.close();
+          const cloneJoinState = {
+            closed: result.receipt.closed === true,
+            fetchIdentityRestored: result.receipt.fetchIdentityRestored === true,
+            activeTasksZero: result.receipt.activeTasks === 0,
+            activeTimersZero: result.receipt.activeTimers === 0,
+            readSettled: result.receipt.readSettled === true,
+            cancelSettled: result.receipt.cancelSettled === true,
+            bodyMatches: result.body === body,
+            captureSucceeded: result.receipt.captureSucceeded === true,
+            originalFetchRestored: f.target.fetch === f.original,
+            error: result.error === null ? 'none' :
+              result.error === 'Clone deadline exceeded' ? 'deadline' :
+              result.error === 'Clone byte cap exceeded' ? 'byte-cap' :
+              result.error === 'Response contract differs' ? 'response-contract' :
+              result.error === 'Response stream missing' ? 'missing-stream' : 'other'
+          };
           check(settled(result) && result.body === body && result.receipt.captureSucceeded && f.target.fetch === f.original,
-            'clone joins ' + JSON.stringify({ settled: settled(result), bodyMatches: result.body === body,
-              captureSucceeded: result.receipt.captureSucceeded, fetchRestored: f.target.fetch === f.original,
-              status: result.receipt.status, capturedBytes: result.receipt.capturedBytes,
-              errorCategory: result.error === null ? 'none' : result.error === 'Clone deadline exceeded' ? 'deadline'
-                : result.error === 'Response contract differs' ? 'response-contract' : 'other' }));
+            'clone joins ' + JSON.stringify(cloneJoinState));
           passed.push('same-promise-response-args-receiver');
           await f.target.fetch(url);
           check(f.calls === 2 && f.state.count === 1 && f.state.tasks.length === 1, 'restored pass through');

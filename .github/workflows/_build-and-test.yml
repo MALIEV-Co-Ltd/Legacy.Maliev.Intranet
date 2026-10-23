@@ -21,11 +21,15 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           persist-credentials: false
+      - name: Select .NET 10 SDK for all validation steps
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68
+        with:
+          dotnet-version: 10.0.402
       - name: Check out Legacy.Maliev.ServiceDefaults
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           repository: MALIEV-Co-Ltd/Legacy.Maliev.ServiceDefaults
-          ref: 7edcd961024868513fd5f373cab3dcb261197f77
+          ref: 02377791d346e25216c114522b3bfdb6f0f19a16
           path: .dependencies/Legacy.Maliev.ServiceDefaults
           persist-credentials: false
       - name: Check out Legacy.Maliev.CompatibilityContracts
@@ -46,17 +50,17 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           repository: MALIEV-Co-Ltd/Legacy.Maliev.AuthService
-          ref: 8319b23e8ffab0c85b66c886a0109f7dac034c6f
+          ref: f7079f133b1e607b8909636a5114ebccc73b27bc
           path: .dependencies/Legacy.Maliev.AuthService
           persist-credentials: false
       - name: Verify exact Customers validation dependency identities
         shell: bash
         run: |
           test "$(git rev-parse HEAD)" = "${{ github.sha }}"
-          test "$(git -C .dependencies/Legacy.Maliev.ServiceDefaults rev-parse HEAD)" = 7edcd961024868513fd5f373cab3dcb261197f77
+          test "$(git -C .dependencies/Legacy.Maliev.ServiceDefaults rev-parse HEAD)" = 02377791d346e25216c114522b3bfdb6f0f19a16
           test "$(git -C .dependencies/Legacy.Maliev.CompatibilityContracts rev-parse HEAD)" = 78e48ffc4ee000df0510cba5e7c7a3c4c4d539d7
           test "$(git -C .dependencies/Legacy.Maliev.CustomerService rev-parse HEAD)" = cebf45e8e1eeb600d760a565f8b0970c7f434148
-          test "$(git -C .dependencies/Legacy.Maliev.AuthService rev-parse HEAD)" = 8319b23e8ffab0c85b66c886a0109f7dac034c6f
+          test "$(git -C .dependencies/Legacy.Maliev.AuthService rev-parse HEAD)" = f7079f133b1e607b8909636a5114ebccc73b27bc
       - name: Verify Docker integration-test runtime
         run: docker info
       - name: Verify bounded browser installer source controls
@@ -236,10 +240,105 @@ jobs:
           # regression supplements the unchanged full-suite validation below.
           dotnet test Legacy.Maliev.Intranet.Tests/Legacy.Maliev.Intranet.Tests.csproj \
             --configuration Release --no-build --no-restore -p:UseLocalMalievDependencies=true \
-            --filter 'FullyQualifiedName~EmployeeCreationEmailValidationTests|FullyQualifiedName~EmployeeCreateEmailBoundaryComponentTests|FullyQualifiedName~BffEmployeesCreateContractTests.ProfileEmailStorageBoundary_PreservesAcceptedInputAndRejectsOversizeBeforeDownstreamWrites' \
+            --filter 'FullyQualifiedName~EmployeeCreationEmailValidationTests|FullyQualifiedName~EmployeeCreateEmailBoundaryComponentTests|FullyQualifiedName~BffEmployeesCreateContractTests.ProfileEmailStorageBoundary_PreservesAcceptedInputAndRejectsOversizeBeforeDownstreamWrites|FullyQualifiedName~EmployeeRecoveryEmailValidationComponentTests|FullyQualifiedName~CoverageWorkflowContractTests' \
             --logger 'console;verbosity=normal' \
             --logger 'trx;LogFileName=employee-creation-email.trx' \
             --results-directory TestResults/employee-creation-email
+      - name: Execute recovery form native email admission before full validation
+        timeout-minutes: 5
+        shell: bash
+        env:
+          DOTNET_PROCESSOR_COUNT: '1'
+        run: |
+          export GITHUB_ACTIONS=false
+          test ! -e TestResults/recovery-email-browser
+          timeout --signal=TERM --kill-after=20s 4m dotnet test \
+            Legacy.Maliev.Intranet.BrowserTests/Legacy.Maliev.Intranet.BrowserTests.csproj \
+            --configuration Release --no-build --no-restore -p:UseLocalMalievDependencies=true \
+            --filter 'FullyQualifiedName=Legacy.Maliev.Intranet.BrowserTests.EmployeeRecoveryEmailSyntaxBrowserTests.NativeSubmit_UsesHistoricalPredicateInsteadOfHtmlEmailSyntax' \
+            --blame-hang --blame-hang-timeout 90s --blame-hang-dump-type none \
+            --logger 'console;verbosity=normal' \
+            --logger 'trx;LogFileName=recovery-email-browser.trx' \
+            --results-directory TestResults/recovery-email-browser
+          python3 -B -c 'import xml.etree.ElementTree as E; r=E.parse("TestResults/recovery-email-browser/recovery-email-browser.trx").getroot(); ns={"t":"http://microsoft.com/schemas/VisualStudio/TeamTest/2010"}; c=r.find("t:ResultSummary/t:Counters",ns); assert c is not None and all(c.get(k)==v for k,v in {"total":"4","executed":"4","passed":"4","failed":"0","notExecuted":"0"}.items()), "Recovery form browser focus must execute and pass exactly four cases"'
+      - name: Verify localized purchase-order focus rejection controls
+        shell: bash
+        run: python3 -B tests/fixtures/purchase-order-message-focus/test_retainer.py
+      - name: Execute both localized purchase-order failure guidance regressions
+        timeout-minutes: 3
+        shell: bash
+        env:
+          DOTNET_PROCESSOR_COUNT: '1'
+        run: |
+          export GITHUB_ACTIONS=false
+          test ! -e TestResults/purchase-order-message-focus
+          dotnet test Legacy.Maliev.Intranet.Tests/Legacy.Maliev.Intranet.Tests.csproj \
+            --configuration Release --no-build --no-restore -p:UseLocalMalievDependencies=true \
+            --filter 'FullyQualifiedName=Legacy.Maliev.Intranet.Tests.PurchaseOrderFailureMessageContractTests.UnconfirmedFailureGuidanceRequiresReconciliationWithoutClaimingRollback' \
+            --logger 'trx;LogFileName=localized-two.trx' \
+            --results-directory TestResults/purchase-order-message-focus
+      - name: Verify original localized purchase-order identity joins
+        shell: bash
+        run: |
+          python3 -B scripts/verify-purchase-order-message-focus.py \
+            --trx TestResults/purchase-order-message-focus/localized-two.trx \
+            --workspace "$GITHUB_WORKSPACE" --source-revision "$(git rev-parse HEAD)" \
+            --output-directory "$RUNNER_TEMP/purchase-order-message-focus-proof"
+      - name: Preserve original localized purchase-order proof
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: purchase-order-message-focus-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/purchase-order-message-focus-proof/
+          retention-days: 7
+          if-no-files-found: error
+          include-hidden-files: false
+      - name: Verify published login fixture formatting before browser proof
+        shell: bash
+        run: |
+          dotnet format style Legacy.Maliev.Intranet.BrowserTests/Legacy.Maliev.Intranet.BrowserTests.csproj \
+            --no-restore --verify-no-changes --severity warn \
+            --include Legacy.Maliev.Intranet.BrowserTests/LoginBrowserTests.cs
+      - name: Execute published login request lifecycle and cancellation regressions
+        timeout-minutes: 12
+        shell: bash
+        env:
+          DOTNET_PROCESSOR_COUNT: '1'
+        run: |
+          export GITHUB_ACTIONS=false
+          test ! -e TestResults/published-login-lifecycle
+          timeout --signal=TERM --kill-after=20s 11m dotnet test \
+            Legacy.Maliev.Intranet.BrowserTests/Legacy.Maliev.Intranet.BrowserTests.csproj \
+            --configuration Release --no-build --no-restore -p:UseLocalMalievDependencies=true \
+            --filter 'FullyQualifiedName=Legacy.Maliev.Intranet.BrowserTests.LoginBrowserTests.PublishedForms_RejectInvalidInputBeforeHttpAndKeepValidCsrfSubmission|FullyQualifiedName=Legacy.Maliev.Intranet.BrowserTests.LoginBrowserTests.PublishedForms_CanceledNonceStillFailsBeforeLogin' \
+            --blame-hang --blame-hang-timeout 90s --blame-hang-dump-type none \
+            --logger 'console;verbosity=normal' \
+            --logger 'trx;LogFileName=published-login-lifecycle.trx' \
+            --results-directory TestResults/published-login-lifecycle
+          python3 -B -c 'import xml.etree.ElementTree as E; r=E.parse("TestResults/published-login-lifecycle/published-login-lifecycle.trx").getroot(); ns={"t":"http://microsoft.com/schemas/VisualStudio/TeamTest/2010"}; c=r.find("t:ResultSummary/t:Counters",ns); assert c is not None and all(c.get(k)==v for k,v in {"total":"5","executed":"5","passed":"5","failed":"0","notExecuted":"0"}.items()), "Published login focus must pass all four locale/viewport cases and the canceled-request refusal control"'
+      - name: Execute customer relation editing and reachability regressions
+        timeout-minutes: 15
+        shell: bash
+        env:
+          DOTNET_PROCESSOR_COUNT: '1'
+        run: |
+          export GITHUB_ACTIONS=false
+          timeout --signal=TERM --kill-after=20s 14m dotnet test \
+            Legacy.Maliev.Intranet.BrowserTests/Legacy.Maliev.Intranet.BrowserTests.csproj \
+            --configuration Release --no-build --no-restore -p:UseLocalMalievDependencies=true \
+            --filter 'FullyQualifiedName~CompanyAndAddressEditorsPreserveLiteralValuesScopedVersionsAndReload|FullyQualifiedName~UncertainOrStaleRelationWriteRequiresFreshReadBeforeAnotherSubmission|FullyQualifiedName~CurrentIssuerPermissionsLeaveRelationEditorsDisabled|FullyQualifiedName~CountryReadFailureDoesNotOfferOrSendAnAddressWrite|FullyQualifiedName~ChangedBindingOrUncertainCreationReloadsFreshAttachmentBeforeExplicitNextWrite|FullyQualifiedName~CompanySaveRemainsReachableAfterInputFocus' \
+            --blame-hang --blame-hang-timeout 90s --blame-hang-dump-type none \
+            --logger 'console;verbosity=normal' \
+            --logger 'trx;LogFileName=customer-relations.trx' \
+            --results-directory TestResults/customer-relations
+          python3 -B -c 'import xml.etree.ElementTree as E; r=E.parse("TestResults/customer-relations/customer-relations.trx").getroot(); ns={"t":"http://microsoft.com/schemas/VisualStudio/TeamTest/2010"}; c=r.find("t:ResultSummary/t:Counters",ns); assert c is not None and all(c.get(k)==v for k,v in {"total":"21","executed":"21","passed":"21","failed":"0","notExecuted":"0"}.items()), "All 21 relation and reachability cases must pass"'
+      - name: Retain synthetic customer relation browser results
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: customer-relations-browser-${{ github.sha }}
+          path: TestResults/customer-relations/*.trx
+          if-no-files-found: ignore
+          retention-days: 7
       - name: Validate .NET solution
         uses: MALIEV-Co-Ltd/Legacy.Maliev.Workflows/actions/dotnet-validate@d7efac266bc66273bc45eab583618871292ecbd6
         env:
@@ -299,6 +398,37 @@ jobs:
             exit 1
           fi
           pwsh -NoProfile -File scripts/verify-test-coverage.ps1 -CoverageFile "$coverage_file"
+      - name: Verify recovery mailbox proof rejection controls
+        shell: bash
+        run: python3 -B tests/fixtures/recovery-email/test_focus_retainer.py
+      - name: Execute historical recovery mailbox HTTP admission cases
+        timeout-minutes: 5
+        shell: bash
+        env:
+          DOTNET_PROCESSOR_COUNT: '1'
+        run: |
+          export GITHUB_ACTIONS=false
+          test ! -e TestResults/recovery-email
+          dotnet test Legacy.Maliev.Intranet.Tests/Legacy.Maliev.Intranet.Tests.csproj \
+            --configuration Release --no-build --no-restore \
+            -p:UseLocalMalievDependencies=true -p:EnableCoverageSymbols=true \
+            --filter 'FullyQualifiedName=Legacy.Maliev.Intranet.Tests.BffEmployeeRecoveryContractTests.RecoveryEmail_HistoricalBareSyntaxGatesRequestsAndCompletions|FullyQualifiedName=Legacy.Maliev.Intranet.Tests.BffEmployeeRecoveryContractTests.RecoveryEmail_RequiredNullCannotReachAnyAuthOrNotificationBoundary' \
+            --logger 'trx;LogFileName=recovery-email.trx' --results-directory TestResults/recovery-email
+      - name: Verify exact eleven actual recovery mailbox executions
+        id: recovery_email_proof
+        env:
+          EXPECTED_SOURCE_REVISION: ${{ github.sha }}
+          FOCUS_RESULTS: ${{ github.workspace }}/TestResults/recovery-email
+          FOCUS_EVIDENCE: ${{ runner.temp }}/recovery-email-evidence
+        run: python3 -B scripts/verify-recovery-email-focus.py
+      - name: Preserve sanitized recovery mailbox named proof
+        if: ${{ always() && steps.recovery_email_proof.outcome == 'success' }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: recovery-email-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/recovery-email-evidence/
+          if-no-files-found: error
+          retention-days: 7
       - name: Verify Customers private failure proof rejection controls
         shell: bash
         run: python3 -B tests/fixtures/customers-private-failure/test_focus_retainer.py

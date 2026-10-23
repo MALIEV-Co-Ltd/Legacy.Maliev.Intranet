@@ -21,8 +21,8 @@ METHODS = {
 }
 PINS = {
     "auth": (".dependencies/Legacy.Maliev.AuthService", "f7079f133b1e607b8909636a5114ebccc73b27bc"),  # Public immutable Git commit SHA, not a credential. gitleaks:allow
-    "customer": (".dependencies/Legacy.Maliev.CustomerService", "94808c01016acde41a7f264f95b8ee6b95573691"),
-    "defaults": (".dependencies/Legacy.Maliev.ServiceDefaults", "7edcd961024868513fd5f373cab3dcb261197f77"),
+    "customer": (".dependencies/Legacy.Maliev.CustomerService", "f80f574354c40e9b67fa26c94a3fead352ad22dd"),
+    "defaults": (".dependencies/Legacy.Maliev.ServiceDefaults", "02377791d346e25216c114522b3bfdb6f0f19a16"),
     "contracts": (".dependencies/Legacy.Maliev.CompatibilityContracts", "78e48ffc4ee000df0510cba5e7c7a3c4c4d539d7"),
 }
 

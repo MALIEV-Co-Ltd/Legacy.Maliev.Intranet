@@ -1,3 +1,4 @@
+using Maliev.Aspire.ServiceDefaults.Diagnostics;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
@@ -102,7 +103,7 @@ public sealed class QuotationCreationGateway(
     {
         using var request = new HttpRequestMessage(HttpMethod.Post, $"/orderstatuses/histories/{orderId}/quoted");
         request.Headers.Add("Idempotency-Key", idempotencyKey);
-        using var response = await clients.CreateClient(OrderClient).SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+        using var response = await clients.CreateClient(OrderClient).SendWithPrivateFailureObservationAsync(request, cancellationToken, new PrivateDependencyFailureObservation(), HttpCompletionOption.ResponseHeadersRead);
         response.EnsureSuccessStatusCode();
     }
 
@@ -149,7 +150,7 @@ public sealed class QuotationCreationGateway(
             Content = content is null ? null : JsonContent.Create(content, options: TransportJson),
         };
         request.Headers.Add("Idempotency-Key", idempotencyKey);
-        using var response = await clients.CreateClient(clientName).SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+        using var response = await clients.CreateClient(clientName).SendWithPrivateFailureObservationAsync(request, cancellationToken, new PrivateDependencyFailureObservation(), HttpCompletionOption.ResponseHeadersRead);
         response.EnsureSuccessStatusCode();
         var result = await response.Content.ReadFromJsonAsync<CreatedId>(TransportJson, cancellationToken)
             ?? throw new InvalidDataException("The downstream create response did not contain an identifier.");
@@ -158,7 +159,7 @@ public sealed class QuotationCreationGateway(
 
     private async Task<T> GetAsync<T>(string clientName, string uri, CancellationToken cancellationToken)
     {
-        using var response = await clients.CreateClient(clientName).GetAsync(uri, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+        using var response = await clients.CreateClient(clientName).SendWithPrivateFailureObservationAsync(new HttpRequestMessage(HttpMethod.Get, uri), cancellationToken, new PrivateDependencyFailureObservation(), HttpCompletionOption.ResponseHeadersRead);
         response.EnsureSuccessStatusCode();
         return await response.Content.ReadFromJsonAsync<T>(TransportJson, cancellationToken)
             ?? throw new InvalidDataException("The downstream response body was empty.");
@@ -170,7 +171,7 @@ public sealed class QuotationCreationGateway(
         {
             Content = JsonContent.Create(document, options: TransportJson),
         };
-        using var response = await clients.CreateClient(DocumentClient).SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+        using var response = await clients.CreateClient(DocumentClient).SendWithPrivateFailureObservationAsync(request, cancellationToken, new PrivateDependencyFailureObservation(), HttpCompletionOption.ResponseHeadersRead);
         response.EnsureSuccessStatusCode();
         if (response.Content.Headers.ContentType?.MediaType != "application/pdf")
         {
@@ -197,7 +198,7 @@ public sealed class QuotationCreationGateway(
         {
             Content = multipart,
         };
-        using var response = await clients.CreateClient(FileClient).SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+        using var response = await clients.CreateClient(FileClient).SendWithPrivateFailureObservationAsync(request, cancellationToken, new PrivateDependencyFailureObservation(), HttpCompletionOption.ResponseHeadersRead);
         response.EnsureSuccessStatusCode();
         var upload = await response.Content.ReadFromJsonAsync<UploadResult>(TransportJson, cancellationToken)
             ?? throw new InvalidDataException("FileService returned an empty upload response.");
@@ -208,7 +209,7 @@ public sealed class QuotationCreationGateway(
     private async Task LinkFileAsync(int quotationId, StoredObject stored, CancellationToken cancellationToken)
     {
         var uri = $"/quotations/{quotationId}/files?bucket={Uri.EscapeDataString(stored.Bucket)}&objectName={Uri.EscapeDataString(stored.ObjectName)}";
-        using var response = await clients.CreateClient(QuotationClient).PostAsync(uri, content: null, cancellationToken);
+        using var response = await clients.CreateClient(QuotationClient).SendWithPrivateFailureObservationAsync(new HttpRequestMessage(HttpMethod.Post, uri) { Content = null }, cancellationToken, new PrivateDependencyFailureObservation(), HttpCompletionOption.ResponseContentRead);
         response.EnsureSuccessStatusCode();
     }
 
@@ -228,7 +229,7 @@ public sealed class QuotationCreationGateway(
                   "&bcc=mail-tracking%40maliev.com" +
                   $"&subject={Uri.EscapeDataString($"Quotation #{quotationId}")}" +
                   $"&body={Uri.EscapeDataString(BuildEmailBody(customer.FullName))}";
-        using var response = await clients.CreateClient(NotificationClient).PostAsync(uri, multipart, cancellationToken);
+        using var response = await clients.CreateClient(NotificationClient).SendWithPrivateFailureObservationAsync(new HttpRequestMessage(HttpMethod.Post, uri) { Content = multipart }, cancellationToken, new PrivateDependencyFailureObservation(), HttpCompletionOption.ResponseContentRead);
         response.EnsureSuccessStatusCode();
     }
 

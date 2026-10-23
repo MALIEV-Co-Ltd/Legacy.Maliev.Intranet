@@ -879,6 +879,96 @@ public sealed class CustomerDetailBrowserTests(
         Assert.Equal(create ? 1 : 0, creations);
     }
 
+    [Theory]
+    [InlineData(390, "automatic")]
+    [InlineData(1280, "automatic")]
+    [InlineData(390, "wheel")]
+    [InlineData(1280, "wheel")]
+    [InlineData(390, "keyboard")]
+    [InlineData(1280, "keyboard")]
+    public async Task CompanySaveRemainsReachableAfterInputFocus(int width, string reachability)
+    {
+        await using var context = await playwright.Browser.NewContextAsync(new()
+        {
+            ViewportSize = new() { Width = width, Height = 900 },
+            ReducedMotion = ReducedMotion.Reduce
+        });
+        var page = await context.NewPageAsync();
+        await StubCustomerDetailBoundariesAsync(page,
+            ["legacy-customer.customers.read", "legacy-customer.customers.update",
+                "legacy-customer.companies.read", "legacy-customer.companies.update"]);
+        var profile = System.Text.Json.Nodes.JsonNode.Parse(JsonSerializer.Serialize(CreateCustomer()))!;
+        var relationVersion = "\"" + new string('a', 64) + "\"";
+        var customerVersion = "\"00000001\"";
+        var writes = 0;
+        await page.RouteAsync("**/bff/customers/69738/versioned", route => route.FulfillAsync(new()
+        {
+            Status = 200,
+            ContentType = "application/json",
+            Body = profile.ToJsonString(),
+            Headers = new Dictionary<string, string> { ["etag"] = customerVersion }
+        }));
+        await page.RouteAsync("**/bff/customers/69738/relations/company/77", async route =>
+        {
+            if (route.Request.Method == "GET")
+            {
+                await route.FulfillAsync(new()
+                {
+                    Status = 200,
+                    ContentType = "application/json",
+                    Headers = new Dictionary<string, string> { ["etag"] = relationVersion, ["x-customer-etag"] = customerVersion },
+                    Body = JsonSerializer.Serialize(new { customerId = 69738, relationId = 77, company = profile["company"], address = (object?)null })
+                });
+                return;
+            }
+            Assert.Equal("PUT", route.Request.Method);
+            Assert.Equal(relationVersion, route.Request.Headers["if-match"]);
+            Assert.Equal(customerVersion, route.Request.Headers["x-customer-if-match"]);
+            Assert.Equal("customer-detail-browser-csrf", route.Request.Headers["x-csrf-token"]);
+            using var body = JsonDocument.Parse(route.Request.PostData!);
+            Assert.Equal("Reachable company", body.RootElement.GetProperty("name").GetString());
+            writes++;
+            profile["company"]!["name"] = "Reachable company";
+            relationVersion = "\"" + new string('b', 64) + "\"";
+            customerVersion = "\"00000002\"";
+            await route.FulfillAsync(new()
+            {
+                Status = 204,
+                Headers = new Dictionary<string, string>
+                { ["etag"] = relationVersion, ["x-customer-etag"] = customerVersion, ["x-relation-id"] = "77" }
+            });
+        });
+        await page.GotoAsync(new Uri(server.BaseUri, "Customers/View?id=69738").AbsoluteUri);
+        await ClickWithGeometryDiagnosticsAsync(page.GetByRole(AriaRole.Button, new() { Name = "Edit company", Exact = true }));
+        var input = page.Locator("#relation-company-name");
+        await input.FillAsync("Reachable company");
+        await input.FocusAsync();
+        await Assertions.Expect(input).ToBeFocusedAsync();
+        var save = page.GetByRole(AriaRole.Button, new() { Name = "Save this section", Exact = true });
+        // These are ordinary employee reachability actions BEFORE capture.
+        // The automatic case leaves the focused input and scroll state intact.
+        if (reachability == "wheel")
+        {
+            await page.Mouse.MoveAsync(width / 2f, 500);
+            await page.Mouse.WheelAsync(0, 4000);
+            await Assertions.Expect(save).ToBeInViewportAsync();
+        }
+        else if (reachability == "keyboard")
+        {
+            await page.Keyboard.PressAsync("Tab"); // Tax number.
+            await page.Keyboard.PressAsync("Tab"); // Registrar.
+            await page.Keyboard.PressAsync("Tab"); // Submit button.
+            await Assertions.Expect(save).ToBeFocusedAsync();
+            await Assertions.Expect(save).ToBeInViewportAsync();
+            await page.Keyboard.PressAsync("Enter");
+        }
+        if (reachability != "keyboard") await ClickWithGeometryDiagnosticsAsync(save);
+        await page.GetByText("Company saved.", new() { Exact = true }).WaitForAsync();
+        Assert.Equal(1, writes);
+        await page.GetByText("Reachable company", new() { Exact = true }).WaitForAsync();
+        Assert.False(await page.EvaluateAsync<bool>("() => !!window.__malievClickTrajectories"));
+    }
+
     private static async Task ClickWithGeometryDiagnosticsAsync(ILocator control)
     {
         var traceKey = Guid.NewGuid().ToString("N");
@@ -916,7 +1006,7 @@ public sealed class CustomerDetailBrowserTests(
                             /auto|scroll|hidden|clip/.test(style.overflowX + style.overflowY)) ancestors.push(geometry(node));
                         if (ancestors.length === 8) break;
                     }
-                    const state = { initial: null, samples: [], observed: 0, stopped: false,
+                    const state = { initial: null, samples: [], observed: 0, stopped: false, control: element, scrollSequence: 0,
                         started, timeOrigin: performance.timeOrigin, expiryAt: started + 45000,
                         layout: { control: geometry(element), main: geometry(main),
                             document: geometry(document.documentElement), body: geometry(document.body),
@@ -953,8 +1043,9 @@ public sealed class CustomerDetailBrowserTests(
                             if (state.samples.length > 16) state.samples.shift();
                         }
                     };
-                    const events = ['scroll', 'focusin', 'pointerdown', 'mousedown', 'click', 'resize'];
+                    const events = ['scroll', 'focusin', 'pointermove', 'mousemove', 'pointerdown', 'mousedown', 'click', 'resize'];
                     const listener = event => {
+                        if (event.type === 'scroll') state.scrollSequence++;
                         sample(event.type, event);
                         if (event.type === 'scroll' && !frame) frame = requestAnimationFrame(() => {
                             frame = 0;
@@ -987,9 +1078,13 @@ public sealed class CustomerDetailBrowserTests(
             trajectory = "trajectory installation unavailable: " + diagnosticFailure.GetType().Name;
         }
         var installation = trajectory.Length <= 1024 ? trajectory : trajectory[..1024];
+        using var protocolLifetime = new CancellationTokenSource(TimeSpan.FromSeconds(40));
+        var protocolCapture = ClickProtocolDiagnostics.CaptureAsync(control.Page, traceKey, protocolLifetime.Token);
         try { await control.ClickAsync(); }
         catch (TimeoutException exception)
         {
+            await protocolLifetime.CancelAsync();
+            var protocol = await protocolCapture;
             trajectory = await ReadAndReleaseClickTrajectoryAsync(control.Page, traceKey, installation);
             string geometry;
             try
@@ -1045,10 +1140,13 @@ public sealed class CustomerDetailBrowserTests(
                 geometry = "geometry unavailable: " + diagnosticFailure.GetType().Name;
             }
             throw new TimeoutException(exception.Message + "\nBounded click trajectory: " + trajectory +
+                "\nBounded protocol geometry: " + protocol +
                 "\nBounded control geometry: " + geometry, exception);
         }
         finally
         {
+            await protocolLifetime.CancelAsync();
+            await protocolCapture;
             await ReadAndReleaseClickTrajectoryAsync(control.Page, traceKey, installation);
         }
     }

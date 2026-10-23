@@ -1,3 +1,4 @@
+using Maliev.Aspire.ServiceDefaults.Diagnostics;
 using Legacy.Maliev.Intranet.Contracts;
 using System.Net.Http.Json;
 
@@ -27,7 +28,7 @@ public sealed class CustomerProfileCreationClient(HttpClient httpClient) : ICust
                 null)),
         };
         message.Headers.Add("Idempotency-Key", operationId.ToString("D"));
-        return await httpClient.SendAsync(message, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+        return await httpClient.SendWithPrivateFailureObservationAsync(message, cancellationToken, new PrivateDependencyFailureObservation(), HttpCompletionOption.ResponseHeadersRead);
     }
 
     private sealed record CustomerProfileRequest(
@@ -57,7 +58,7 @@ public sealed class CustomerIdentityCreationClient(HttpClient httpClient) : ICus
         {
             Content = IdentityContent(request, bootstrapSecret),
         };
-        return await httpClient.SendAsync(message, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+        return await httpClient.SendWithPrivateFailureObservationAsync(message, cancellationToken, new PrivateDependencyFailureObservation(), HttpCompletionOption.ResponseHeadersRead);
     }
 
     /// <inheritdoc />
@@ -73,7 +74,7 @@ public sealed class CustomerIdentityCreationClient(HttpClient httpClient) : ICus
             Content = IdentityContent(request, bootstrapSecret),
         };
         message.Headers.Add("Idempotency-Key", operationId.ToString("D"));
-        return await httpClient.SendAsync(message, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+        return await httpClient.SendWithPrivateFailureObservationAsync(message, cancellationToken, new PrivateDependencyFailureObservation(), HttpCompletionOption.ResponseHeadersRead);
     }
 
     private static JsonContent IdentityContent(CreateCustomerAccountRequest request, string bootstrapSecret) =>
@@ -95,7 +96,7 @@ public sealed class CustomerIdentityCreationClient(HttpClient httpClient) : ICus
         using var message = new HttpRequestMessage(
             HttpMethod.Post,
             $"/auth/v1/customer-identities/{customerId}/password-setup");
-        return await httpClient.SendAsync(message, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+        return await httpClient.SendWithPrivateFailureObservationAsync(message, cancellationToken, new PrivateDependencyFailureObservation(), HttpCompletionOption.ResponseHeadersRead);
     }
 
     private sealed record CustomerIdentityRequest(

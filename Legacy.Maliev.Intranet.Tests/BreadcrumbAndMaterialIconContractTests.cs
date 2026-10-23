@@ -176,12 +176,28 @@ public sealed class BreadcrumbAndMaterialIconContractTests : BunitContext
     [InlineData("Client/Page.razor", "<img src=\"data:image/svg+xml,%3Csvg%3E%3C/svg%3E\" alt=\"\">")]
     [InlineData("Client/IconAliases.cs", "using Glyphs = MudBlazor.Icons; var icon = Glyphs.Custom.Home;")]
     [InlineData("Client/wwwroot/js/icons.js", "const icons = 'https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined';")]
+    [InlineData("Client/wwwroot/js/icons.js", "const family = 'Font Awesome';")]
+    [InlineData("Client/wwwroot/js/icons.js", "const family = 'FontAwesome';")]
+    [InlineData("Client/wwwroot/css/icons.css", ".fa-home::before { content: 'home'; }")]
+    [InlineData("Client/Page.razor", "<i class='fa-home'></i>")]
+    [InlineData("Client/Page.razor", "<i class=fa-home></i>")]
+    [InlineData("Client/wwwroot/js/icons.js", "const classes = ['fa-home'];")]
     [InlineData("packages.lock.json", "{ \"dependencies\": { \"FontAwesome.Free\": { \"type\": \"Transitive\" } } }")]
     public void Icon_inventory_rejects_non_Material_aliases_Font_Awesome_and_any_Google_Fonts_runtime_dependency(
         string path,
         string source)
     {
         Assert.NotEmpty(FindIconInventoryViolations([new(path, source)]));
+    }
+
+    [Theory]
+    [InlineData(@"[\da-fA-F]")]
+    [InlineData("%[0-9A-Fa-f]{2}")]
+    public void Icon_inventory_allows_hexadecimal_regex_ranges_without_Font_Awesome_class_tokens(string source)
+    {
+        Assert.Empty(FindIconInventoryViolations([
+            new("Client/wwwroot/js/validation.js", source)
+        ]));
     }
 
     [Fact]
@@ -409,7 +425,7 @@ public sealed class BreadcrumbAndMaterialIconContractTests : BunitContext
                     file.Source.Replace("Maliev.ShadcnBlazor.Icons.Lucide", string.Empty, StringComparison.Ordinal),
                     @"Icons\.(?!Material\.)",
                     RegexOptions.CultureInvariant)
-                || Regex.IsMatch(file.Source, @"Font[ -]?Awesome|\bfa-[a-z]", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)
+                || Regex.IsMatch(file.Source, @"Font[ -]?Awesome|(?<![A-Za-z0-9_-])fa-[a-z]", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)
                 || Regex.IsMatch(
                     file.Source,
                     "font-family\\s*:\\s*['\\\"]?(?:Material\\s+(?:Icons|Symbols)|Font\\s*Awesome)",
