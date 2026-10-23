@@ -227,7 +227,20 @@ public sealed class LoginBrowserTests(
     [InlineData("en-US", 1440)]
     [InlineData("th-TH", 375)]
     [InlineData("th-TH", 1440)]
-    public async Task PublishedForms_RejectInvalidInputBeforeHttpAndKeepValidCsrfSubmission(string culture, int width)
+    public Task PublishedForms_RejectInvalidInputBeforeHttpAndKeepValidCsrfSubmission(string culture, int width) =>
+        AssertPublishedFormsAsync(culture, width);
+
+    [Fact]
+    public async Task PublishedForms_CanceledNonceStillFailsBeforeLogin()
+    {
+        var failure = await Assert.ThrowsAsync<Xunit.Sdk.XunitException>(() =>
+            AssertPublishedFormsAsync("en-US", 1440, abortNonce: true));
+        Assert.Contains("Expected failedAssets=0; actual=1", failure.Message, StringComparison.Ordinal);
+        Assert.Contains("\"pathCategory\":\"bff\"", failure.Message, StringComparison.Ordinal);
+        Assert.Contains("\"failureCategory\":\"canceled\"", failure.Message, StringComparison.Ordinal);
+    }
+
+    private async Task AssertPublishedFormsAsync(string culture, int width, bool abortNonce = false)
     {
         // Real published Client, generated shell, lazy employee feature and form handlers.
         // Only the external BFF boundary is controlled: this is not an auth/DB or full-Aspire proof.
@@ -249,6 +262,12 @@ public sealed class LoginBrowserTests(
         var failedAssetDiagnostics = new System.Collections.Concurrent.ConcurrentQueue<string>();
         var failedAssetDiagnosticGate = new object();
         var failedAssetDiagnosticOverflow = 0;
+        IRequest? nonceRequest = null;
+        IRequest? loginRequest = null;
+        var nonceRoute = new TaskCompletionSource<IRoute>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var nonceFinished = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var nonceFailed = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var loginFinished = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         void CountAndCaptureFailedAsset(IRequest request, Uri uri, int status, string failureCategory)
         {
             lock (failedAssetDiagnosticGate)
@@ -299,6 +318,17 @@ public sealed class LoginBrowserTests(
             text = System.Text.RegularExpressions.Regex.Replace(text, @"https?://[^\s""'<>]+", "[url]");
             consoleDiagnostics.Enqueue(text.Length <= 1024 ? text : text[..1024]);
         };
+        page.RequestFinished += (_, request) =>
+        {
+            if (ReferenceEquals(request, nonceRequest))
+            {
+                nonceFinished.TrySetResult();
+            }
+            if (ReferenceEquals(request, loginRequest))
+            {
+                loginFinished.TrySetResult();
+            }
+        };
         page.RequestFailed += (_, request) =>
         {
             var uri = new Uri(request.Url);
@@ -313,6 +343,10 @@ public sealed class LoginBrowserTests(
                     _ => "unknown",
                 };
                 CountAndCaptureFailedAsset(request, uri, 0, failureCategory);
+                if (ReferenceEquals(request, nonceRequest))
+                {
+                    nonceFailed.TrySetResult();
+                }
             }
         };
         page.Response += (_, response) =>
@@ -329,18 +363,15 @@ public sealed class LoginBrowserTests(
             ContentType = "text/javascript",
             Body = "",
         }));
-        // Login initializes this external BFF nonce request alongside the excluded Google provider.
-        await page.RouteAsync("**/bff/google/nonce", route => route.FulfillAsync(new()
+        // Hold the independent nonce fixture while invalid inputs are exercised. Its exact browser
+        // request must finish before valid email sign-in deliberately replaces the document.
+        await page.RouteAsync("**/bff/google/nonce", route =>
         {
-            Status = 200,
-            ContentType = "application/json",
-            Body = System.Text.Json.JsonSerializer.Serialize(new
-            {
-                clientId = "test-google-client-id",
-                nonce = "nonce-at-least-32-characters-long-value",
-                expiresAtUtc = DateTimeOffset.UtcNow.AddMinutes(10),
-            }),
-        }));
+            nonceRequest = route.Request;
+            nonceRoute.TrySetResult(route);
+            // The owning context keeps this request paused. No callback task can outlive it.
+            return Task.CompletedTask;
+        });
         await page.RouteAsync("**/bff/session", route =>
         {
             Interlocked.Increment(ref sessions);
@@ -362,6 +393,7 @@ public sealed class LoginBrowserTests(
         });
         await page.RouteAsync("**/bff/login", async route =>
         {
+            loginRequest = route.Request;
             logins.Enqueue((route.Request.Headers.GetValueOrDefault("x-csrf-token"), route.Request.PostData ?? ""));
             authenticated = true;
             await route.FulfillAsync(new()
@@ -404,9 +436,33 @@ public sealed class LoginBrowserTests(
         var signIn = password.Locator("xpath=ancestor::form").GetByRole(AriaRole.Button,
             new() { Name = culture == "th-TH" ? "เข้าสู่ระบบด้วยอีเมล" : "Sign in with email", Exact = true });
         await Assertions.Expect(signIn).ToBeEnabledAsync();
+        var pendingNonce = await nonceRoute.Task.WaitAsync(TimeSpan.FromSeconds(10));
+        Assert.False(nonceFinished.Task.IsCompleted);
+        Assert.Empty(logins);
+        if (abortNonce)
+        {
+            await pendingNonce.AbortAsync("aborted");
+            await nonceFailed.Task.WaitAsync(TimeSpan.FromSeconds(10));
+            Assert.Empty(logins);
+            AssertNoFailedAssets();
+            throw new InvalidOperationException("A canceled nonce escaped failed-request detection.");
+        }
+        await pendingNonce.FulfillAsync(new()
+        {
+            Status = 200,
+            ContentType = "application/json",
+            Body = System.Text.Json.JsonSerializer.Serialize(new
+            {
+                clientId = "test-google-client-id",
+                nonce = "nonce-at-least-32-characters-long-value",
+                expiresAtUtc = DateTimeOffset.UtcNow.AddMinutes(10),
+            }),
+        });
+        await nonceFinished.Task.WaitAsync(TimeSpan.FromSeconds(10));
         await signIn.PressAsync("Enter");
         var first = page.Locator("#employee-create-first-name");
         await first.WaitForAsync();
+        await loginFinished.Task.WaitAsync(TimeSpan.FromSeconds(10));
         var login = Assert.Single(logins);
         Assert.Equal("published-form-csrf", login.Csrf);
         using (var body = System.Text.Json.JsonDocument.Parse(login.Body))
@@ -442,20 +498,25 @@ public sealed class LoginBrowserTests(
         Assert.Equal(0, Volatile.Read(ref pageErrors));
         Assert.True(Volatile.Read(ref consoleErrors) == 0,
             "Unexpected synthetic-fixture console errors: " + string.Join(" | ", consoleDiagnostics));
-        lock (failedAssetDiagnosticGate)
+        AssertNoFailedAssets();
+
+        void AssertNoFailedAssets()
         {
-            var failedAssetEnvelope = "[" + string.Join(",", failedAssetDiagnostics) + "]";
-            Assert.False(Volatile.Read(ref failedAssetDiagnosticOverflow) != 0,
-                "Sanitized same-origin asset diagnostic capacity exceeded: " + failedAssetEnvelope);
-            try
+            lock (failedAssetDiagnosticGate)
             {
-                Assert.Equal(0, Volatile.Read(ref failedAssets));
-            }
-            catch (Xunit.Sdk.XunitException)
-            {
-                throw new Xunit.Sdk.XunitException(
-                    "Expected failedAssets=0; actual=" + Volatile.Read(ref failedAssets)
-                    + "; sanitized diagnostics=" + failedAssetEnvelope);
+                var failedAssetEnvelope = "[" + string.Join(",", failedAssetDiagnostics) + "]";
+                Assert.False(Volatile.Read(ref failedAssetDiagnosticOverflow) != 0,
+                    "Sanitized same-origin asset diagnostic capacity exceeded: " + failedAssetEnvelope);
+                try
+                {
+                    Assert.Equal(0, Volatile.Read(ref failedAssets));
+                }
+                catch (Xunit.Sdk.XunitException)
+                {
+                    throw new Xunit.Sdk.XunitException(
+                        "Expected failedAssets=0; actual=" + Volatile.Read(ref failedAssets)
+                        + "; sanitized diagnostics=" + failedAssetEnvelope);
+                }
             }
         }
     }
