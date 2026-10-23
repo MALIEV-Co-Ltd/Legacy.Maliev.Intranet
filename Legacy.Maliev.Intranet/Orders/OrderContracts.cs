@@ -72,7 +72,7 @@ public sealed class OrderInput
     /// <summary>Whether online payment is enabled.</summary>
     public bool AllowPayment { get; set; }
     /// <summary>Shipment tracking number.</summary>
-    [StringLength(256)] public string? TrackingNumber { get; set; }
+    [StringLength(250)] public string? TrackingNumber { get; set; }
     /// <summary>Whether to send the optional order-created message.</summary>
     public bool SendConfirmationEmail { get; set; }
     /// <summary>Concurrency token returned by OrderService.</summary>

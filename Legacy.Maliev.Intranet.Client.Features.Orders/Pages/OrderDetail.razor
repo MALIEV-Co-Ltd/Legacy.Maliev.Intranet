@@ -73,7 +73,7 @@ else if (page is not null)
                 <ShadcnFormField Id="order-lead-time" Label="@Text["LeadTime"]"><Control><ShadcnInput TValue="int?" id="order-lead-time" Type="number" min="0" @bind-Value="edit.LeadTime" /></Control></ShadcnFormField>
                 <ShadcnFormField Id="order-promised-date" Label="@Text["PromisedDate"]"><Control><ShadcnDatePicker id="order-promised-date" @bind-Value="PromisedDate" Clearable="true" /></Control></ShadcnFormField>
                 <ShadcnFormField Id="order-finished-date" Label="@Text["FinishedDate"]"><Control><ShadcnDatePicker id="order-finished-date" @bind-Value="FinishedDate" Clearable="true" /></Control></ShadcnFormField>
-                <ShadcnFormField Id="order-tracking" Label="@Text["TrackingNumber"]"><Control><ShadcnInput TValue="string" id="order-tracking" Type="text" @bind-Value="edit.TrackingNumber" /></Control></ShadcnFormField>
+                <ShadcnFormField Id="order-tracking" Label="@Text["TrackingNumber"]"><Control><ShadcnInput TValue="string" id="order-tracking" Type="text" @bind-Value="edit.TrackingNumber" maxlength="250" /></Control></ShadcnFormField>
             </div></ShadcnAccordionContent></ShadcnAccordionItem>
 
             <ShadcnAccordionItem Value="requirements"><ShadcnAccordionTrigger>@Text["Requirements"]</ShadcnAccordionTrigger><ShadcnAccordionContent>
@@ -189,7 +189,7 @@ else if (page is not null)
     private async Task SaveAsync()
     {
         if (page is null || session?.CsrfToken is null || submitting || finishLoading || finishError is not null) return;
-        if (edit.ProcessId <= 0 || edit.Quantity <= 0 || edit.Manufactured < 0 || string.IsNullOrWhiteSpace(edit.Name)) { error = Text["InvalidRequest"]; return; }
+        if (edit.ProcessId <= 0 || edit.Quantity <= 0 || edit.Manufactured < 0 || string.IsNullOrWhiteSpace(edit.Name) || edit.TrackingNumber is { Length: > 250 }) { error = Text["InvalidRequest"]; return; }
         await SendWriteAsync(HttpMethod.Put, $"/bff/orders/{page.Order.Id}", JsonContent.Create(edit.ToRequest()), Text["OrderSaved"]);
     }
 

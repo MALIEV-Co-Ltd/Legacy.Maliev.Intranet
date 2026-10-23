@@ -53,7 +53,7 @@ public sealed record OrderUpdateRequest(
     bool AllowSocialMedia,
     bool AllowCancellation,
     bool AllowPayment,
-    [property: StringLength(256)] string? TrackingNumber,
+    [property: StringLength(250)] string? TrackingNumber,
     DateTime? ModifiedDate);
 
 /// <summary>Small identifier and display label used by the order editor.</summary>

@@ -20,6 +20,7 @@ EXPECTED = {
     "FailedChoices_PreservesSelectionsLocksWriteAndRequiresExplicitRetry": 6,
     "NewerMaterial_CancelsHeldReadAndLateResponseCannotOverwriteScopedChoices": 1,
     "Dispose_CancelsPendingReadWithoutWriteOrLateRender": 1,
+    "TrackingNumber_UsesSourceUtf16BoundAndRefusesOversizeBeforeSave": 4,
 }
 COUNTERS = {
     "total", "executed", "passed", "error", "failed", "timeout", "aborted", "inconclusive",
@@ -77,7 +78,7 @@ def verify_trx(root):
     counters = counter_elements[0].attrib
     if any(not re.fullmatch(r"\d+", value) for value in counters.values()):
         raise ValueError("invalid counters")
-    if any(int(counters[key]) != (14 if key in {"total", "executed", "passed"} else 0) for key in COUNTERS):
+    if any(int(counters[key]) != (18 if key in {"total", "executed", "passed"} else 0) for key in COUNTERS):
         raise ValueError("nonpassing counters")
     if len(root.findall(tag("TestDefinitions"))) != 1 or len(root.findall(tag("Results"))) != 1:
         raise ValueError("invalid TRX")
@@ -112,7 +113,7 @@ def verify_trx(root):
         method = definitions[test_id]
         counts[method] += 1
         records.append({"method": method, "testId": test_id, "executionId": execution_id, "outcome": "Passed"})
-    if counts != EXPECTED or len(records) != 14 or used_bindings != bindings:
+    if counts != EXPECTED or len(records) != 18 or used_bindings != bindings:
         raise ValueError("method cardinality mismatch")
     return records
 
@@ -144,7 +145,7 @@ def retain(repository, results, output, expected_revision):
     output.mkdir(parents=True)
     (output / "named-results.json").write_bytes(sanitized)
     manifest = {
-        "schemaVersion": 1, "sourceRevision": revision, "complete": True, "passedCases": 14,
+        "schemaVersion": 1, "sourceRevision": revision, "complete": True, "passedCases": 18,
         "methodCardinalities": EXPECTED, "sources": sources,
         "actualRawTrxSha256": hashlib.sha256(raw).hexdigest(),
         "files": [{"path": "named-results.json", "bytes": len(sanitized), "sha256": hashlib.sha256(sanitized).hexdigest()}],
@@ -152,7 +153,7 @@ def retain(repository, results, output, expected_revision):
         "scope": "Actual focused UI execution inventory only; not full suite, coverage, browser, BFF/Catalog or migration acceptance",
     }
     (output / "manifest.json").write_text(json.dumps(manifest, sort_keys=True, indent=2) + "\n", encoding="utf-8")
-    print("[order-material-focus] actual 14 passed executions verified; sanitized evidence retained")
+    print("[order-material-focus] actual 18 passed executions verified; sanitized evidence retained")
 
 
 def main():

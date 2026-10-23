@@ -30,7 +30,7 @@ def valid_trx():
             result = ET.SubElement(results, TAG("UnitTestResult"), testId=identity, executionId=execution, outcome="Passed", testName="private-parameter-canary")
             ET.SubElement(ET.SubElement(result, TAG("Output")), TAG("StdOut")).text = "private-output-canary"
     summary = ET.SubElement(root, TAG("ResultSummary"), outcome="Completed")
-    ET.SubElement(summary, TAG("Counters"), **{key: "14" if key in {"total", "executed", "passed"} else "0" for key in FOCUS.COUNTERS})
+    ET.SubElement(summary, TAG("Counters"), **{key: "18" if key in {"total", "executed", "passed"} else "0" for key in FOCUS.COUNTERS})
     return root
 
 
@@ -41,7 +41,7 @@ class FocusRetainerControls(unittest.TestCase):
 
     def test_complete_method_matrix_and_parameter_redaction(self):
         records = FOCUS.verify_trx(valid_trx())
-        self.assertEqual(14, len(records))
+        self.assertEqual(18, len(records))
         self.assertEqual(FOCUS.EXPECTED, {method: sum(row["method"] == method for row in records) for method in FOCUS.EXPECTED})
         self.assertNotIn("private-", json.dumps(records))
 
@@ -55,9 +55,9 @@ class FocusRetainerControls(unittest.TestCase):
             definition.set("id", shared[method])
             result.set("testId", shared[method])
         records = FOCUS.verify_trx(root)
-        self.assertEqual(14, len(records))
+        self.assertEqual(18, len(records))
         self.assertEqual(len(FOCUS.EXPECTED), len({row["testId"] for row in records}))
-        self.assertEqual(14, len({row["executionId"] for row in records}))
+        self.assertEqual(18, len({row["executionId"] for row in records}))
 
     def test_shared_test_id_conflicting_methods_are_rejected(self):
         root = valid_trx()
@@ -191,7 +191,7 @@ class FocusRetainerControls(unittest.TestCase):
             self.assertEqual({"named-results.json", "manifest.json"}, {path.name for path in output.iterdir()})
             manifest = json.loads((output / "manifest.json").read_text())
             self.assertEqual(REVISION, manifest["sourceRevision"])
-            self.assertEqual(14, manifest["passedCases"])
+            self.assertEqual(18, manifest["passedCases"])
             self.assertEqual(len(FOCUS.SOURCES), len(manifest["sources"]))
             self.assertFalse(manifest["rawTrxRetained"])
             self.assertFalse(manifest["paramsOrOutputRetained"])
