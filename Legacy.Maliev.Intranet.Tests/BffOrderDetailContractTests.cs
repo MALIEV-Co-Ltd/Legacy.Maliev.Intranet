@@ -55,8 +55,12 @@ public sealed class BffOrderDetailContractTests
         {
             Content = JsonContent.Create(new
             {
-                name = "Tracking fixture", processId = 3, quantity = 1, manufactured = 0,
-                trackingNumber = tracking, modifiedDate = "2030-07-15T08:30:00Z",
+                name = "Tracking fixture",
+                processId = 3,
+                quantity = 1,
+                manufactured = 0,
+                trackingNumber = tracking,
+                modifiedDate = "2030-07-15T08:30:00Z",
             }),
         };
         request.Headers.Add("X-CSRF-TOKEN", csrf);
