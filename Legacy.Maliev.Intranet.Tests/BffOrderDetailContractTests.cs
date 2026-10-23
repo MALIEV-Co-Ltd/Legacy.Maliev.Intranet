@@ -31,6 +31,14 @@ public sealed class BffOrderDetailContractTests
     [InlineData("supplementary252", false)]
     [InlineData("mixed250", true)]
     [InlineData("mixed251", false)]
+    [InlineData("ascii-limit-space", true)]
+    [InlineData("supplementary-limit-space", true)]
+    [InlineData("mixed-overflow-spaces", true)]
+    [InlineData("all-spaces", true)]
+    [InlineData("ascii-limit-nonbreaking-space", false)]
+    [InlineData("ascii-limit-tab", false)]
+    [InlineData("space-then-nonspace", false)]
+    [InlineData("padded-prefix", true)]
     public async Task Update_TrackingNumberPreservesNullableLiteralSourceBoundBeforeDownstream(string vector, bool accepted)
     {
         string? tracking = vector switch
@@ -44,6 +52,14 @@ public sealed class BffOrderDetailContractTests
             "supplementary252" => string.Concat(Enumerable.Repeat("\U0001F4E6", 126)),
             "mixed250" => "ก" + string.Concat(Enumerable.Repeat("ก\U0001F4E6", 83)),
             "mixed251" => "กก" + string.Concat(Enumerable.Repeat("ก\U0001F4E6", 83)),
+            "ascii-limit-space" => new string('A', 250) + " ",
+            "supplementary-limit-space" => string.Concat(Enumerable.Repeat("\U0001F4E6", 125)) + " ",
+            "mixed-overflow-spaces" => "ก" + string.Concat(Enumerable.Repeat("ก\U0001F4E6", 83)) + "   ",
+            "all-spaces" => new string(' ', 251),
+            "ascii-limit-nonbreaking-space" => new string('A', 250) + "\u00a0",
+            "ascii-limit-tab" => new string('A', 250) + "\t",
+            "space-then-nonspace" => new string('A', 250) + " A",
+            "padded-prefix" => "  พัสดุ  " + new string(' ', 250),
             _ => throw new ArgumentOutOfRangeException(nameof(vector)),
         };
         var downstream = new OrderDetailHandler();
