@@ -56,14 +56,35 @@ internal static class OutcomeReadbackEndpointMapper
 
         context.Response.Headers.CacheControl = "no-store";
         context.Response.Headers.Pragma = "no-cache";
-        var accessToken = await sessions.GetAccessTokenAsync(context, cancellationToken);
-        if (string.IsNullOrWhiteSpace(accessToken))
+        var browserReceipt = IsBrowserReceipt(context);
+        var accessToken = browserReceipt ? null : await sessions.GetAccessTokenAsync(context, cancellationToken);
+        if (!browserReceipt && string.IsNullOrWhiteSpace(accessToken))
         {
             return Receipt(source, StatusCodes.Status401Unauthorized, null, timeProvider, context);
         }
 
         try
         {
+            if (browserReceipt)
+            {
+                var acquired = await sessions.AcquireAccessTokenAsync(context, cancellationToken);
+                if (acquired.Status == EmployeeAccessTokenStatus.Unavailable &&
+                    acquired.FailureCause is EmployeeAccessTokenFailureCause.Transport or EmployeeAccessTokenFailureCause.Timeout)
+                {
+                    var status = acquired.FailureCause == EmployeeAccessTokenFailureCause.Timeout
+                        ? StatusCodes.Status504GatewayTimeout
+                        : StatusCodes.Status502BadGateway;
+                    return Receipt(source, status, null, timeProvider, context);
+                }
+
+                accessToken = acquired.AccessToken;
+            }
+
+            if (string.IsNullOrWhiteSpace(accessToken))
+            {
+                return Receipt(source, StatusCodes.Status401Unauthorized, null, timeProvider, context);
+            }
+
             using var response = await outcomes.GetAsync(source, from, to, accessToken, cancellationToken);
             if (response.StatusCode != HttpStatusCode.OK)
             {
