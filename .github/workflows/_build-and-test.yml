@@ -267,6 +267,96 @@ jobs:
         run: |
           export GITHUB_ACTIONS=false
           dotnet format Legacy.Maliev.Intranet.slnx --verify-no-changes --no-restore
+      - name: Verify Company input capacity through the rendered editor
+        timeout-minutes: 5
+        shell: bash
+        env:
+          DOTNET_PROCESSOR_COUNT: '1'
+        run: |
+          export GITHUB_ACTIONS=false
+          test ! -e TestResults/company-input-capacity
+          timeout --signal=TERM --kill-after=20s 4m dotnet test Legacy.Maliev.Intranet.Tests/Legacy.Maliev.Intranet.Tests.csproj \
+            --configuration Release --no-build --no-restore -p:UseLocalMalievDependencies=true \
+            --filter 'FullyQualifiedName~Legacy.Maliev.Intranet.Tests.CustomerCompanyInputCapacityComponentTests' \
+            --logger 'trx;LogFileName=company-input-capacity.trx' --results-directory TestResults/company-input-capacity
+          python3 -B - <<'PY'
+          import pathlib
+          import uuid
+          import xml.etree.ElementTree as E
+          path = pathlib.Path("TestResults/company-input-capacity/company-input-capacity.trx")
+          data = path.read_bytes()
+          def require(condition, reason):
+              if not condition:
+                  raise ValueError(reason)
+          require(len(data) <= 2 * 1024 * 1024 and b"<!DOCTYPE" not in data.upper() and b"<!ENTITY" not in data.upper(), "Invalid Company XML")
+          root = E.fromstring(data)
+          tag = lambda name: "{http://microsoft.com/schemas/VisualStudio/TeamTest/2010}" + name
+          cls = "Legacy.Maliev.Intranet.Tests.CustomerCompanyInputCapacityComponentTests"
+          expected = {f'{cls}.{method}(language: "{language}", create: {create})'
+                      for method in ("RenderedInputs_RetainOriginal256UnitLimitForBothRelationStates", "AcceptedBoundary_SubmitsLiteralPaddingAndSupplementaryUnitsWithoutTrimming")
+                      for language in ("en", "th") for create in ("False", "True")}
+          expected |= {f'{cls}.ProgrammaticOverflow_RemainsInvalidBeforeSessionOrWrite(create: {create}, id: "{field}")'
+                       for create in ("False", "True") for field in ("relation-company-name", "relation-tax", "relation-registrar")}
+          expected |= {f"{cls}.OptionalNulls_RemainNullAndRequiredNameStillRefusesBlank(create: {create})" for create in ("False", "True")}
+          require(root.tag == tag("TestRun") and not root.findall(".//" + tag("RunInfo")) and not root.findall(".//" + tag("ErrorInfo")), "Invalid Company run")
+          for name in ("TestRun", "ResultSummary", "Results", "TestDefinitions", "TestEntries", "Counters"):
+              require(len(list(root.iter(tag(name)))) == 1, "Extra or nested Company " + name)
+          for name in ("UnitTest", "TestMethod", "Execution", "UnitTestResult", "TestEntry"):
+              require(len(list(root.iter(tag(name)))) == 16, "Extra or missing Company " + name)
+          def one(parent, name):
+              found = parent.findall(tag(name))
+              require(len(found) == 1, "Missing or ambiguous Company " + name)
+              return found[0]
+          summary = one(root, "ResultSummary")
+          require(summary.get("outcome") == "Completed", "Incomplete Company run")
+          zero = "failed error timeout aborted inconclusive passedButRunAborted notRunnable notExecuted disconnected warning completed inProgress pending".split()
+          counters = {"total": "16", "executed": "16", "passed": "16", **dict.fromkeys(zero, "0")}
+          require(one(summary, "Counters").attrib == counters, "Nonpassing Company counters")
+          def identity(value):
+              require(isinstance(value, str) and str(uuid.UUID(value)) == value.lower(), "Invalid Company identity")
+              return value.lower()
+          expected_assembly = pathlib.Path("Legacy.Maliev.Intranet.Tests/bin/Release/net10.0/Legacy.Maliev.Intranet.Tests.dll").resolve()
+          def assembly(value, storage=False):
+              if not isinstance(value, str) or not pathlib.Path(value).is_absolute():
+                  return False
+              actual = str(pathlib.Path(value).resolve())
+              expected_path = str(expected_assembly)
+              return actual.casefold() == expected_path.casefold() if storage else actual == expected_path
+          definitions = {}
+          for definition in one(root, "TestDefinitions"):
+              require(definition.tag == tag("UnitTest"), "Unexpected Company definition")
+              test_id = identity(definition.get("id"))
+              method = one(definition, "TestMethod")
+              name = definition.get("name")
+              require(test_id not in definitions and name in expected and assembly(definition.get("storage"), storage=True) and assembly(method.get("codeBase")), "Invalid Company assembly or definition")
+              require(method.get("className") == cls and method.get("name") == name[len(cls) + 1:].split("(", 1)[0], "Invalid Company method")
+              definitions[test_id] = (identity(one(definition, "Execution").get("id")), name)
+          require(len(definitions) == 16 and {name for _, name in definitions.values()} == expected, "Wrong Company case roster")
+          results = {}
+          for row in one(root, "Results"):
+              require(row.tag == tag("UnitTestResult") and row.get("outcome") == "Passed", "Nonpassing Company result")
+              test_id = identity(row.get("testId"))
+              binding = (identity(row.get("executionId")), row.get("testName"))
+              require(test_id not in results and definitions.get(test_id) == binding, "Company result-definition mismatch")
+              results[test_id] = binding
+          require(results == definitions and len({execution for execution, _ in results.values()}) == 16, "Incomplete Company executions")
+          entries = set()
+          for entry in one(root, "TestEntries"):
+              require(entry.tag == tag("TestEntry"), "Unexpected Company entry")
+              binding = (identity(entry.get("testId")), identity(entry.get("executionId")))
+              require(binding not in entries, "Duplicate Company entry")
+              entries.add(binding)
+          require(entries == {(test_id, execution) for test_id, (execution, _) in results.items()}, "Company entry-result mismatch")
+          PY
+      - name: Retain actual Company input capacity results
+        timeout-minutes: 3
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: company-input-capacity-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: TestResults/company-input-capacity/*.trx
+          if-no-files-found: error
+          retention-days: 7
       - name: Execute employee creation email boundaries before full validation
         timeout-minutes: 8
         shell: bash
