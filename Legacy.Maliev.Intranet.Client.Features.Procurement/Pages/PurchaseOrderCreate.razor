@@ -32,6 +32,7 @@
             <div class="purchase-order-addresses">
                 <section class="purchase-order-section" aria-labelledby="purchase-order-shipping-heading">
                     <h2 id="purchase-order-shipping-heading">@Text["Shipping"]</h2>
+                    <LookupCompanyAssist Id="purchase-order-shipping-company-lookup" Selected="ApplyShippingCompanySuggestion" Disabled="@submitting" />
                     <div class="purchase-order-address-grid">
                         <ProcurementSelectField TValue="int" Id="purchase-order-shipping-address" Label="@Text["Address"]" @bind-Value="model.ShippingAddressId" Options="@AddressOptions" Placeholder="@Text["Address"]" Required="true" Disabled="@submitting" />
                         <ProcurementInputField TValue="string" Id="purchase-order-shipping-company" Label="@Text["CompanyName"]" @bind-Value="model.ShippingCompanyName" Required="true" Disabled="@submitting" />
@@ -43,6 +44,7 @@
                 </section>
                 <section class="purchase-order-section" aria-labelledby="purchase-order-billing-heading">
                     <h2 id="purchase-order-billing-heading">@Text["Billing"]</h2>
+                    <LookupCompanyAssist Id="purchase-order-billing-company-lookup" Selected="ApplyBillingCompanySuggestion" Disabled="@submitting" />
                     <div class="purchase-order-address-grid">
                         <ProcurementSelectField TValue="int" Id="purchase-order-billing-address" Label="@Text["Address"]" @bind-Value="model.BillingAddressId" Options="@AddressOptions" Placeholder="@Text["Address"]" Required="true" Disabled="@submitting" />
                         <ProcurementInputField TValue="string" Id="purchase-order-billing-company" Label="@Text["CompanyName"]" @bind-Value="model.BillingCompanyName" Required="true" Disabled="@submitting" />
@@ -122,6 +124,26 @@
         }
         catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException) { error = Text["Unavailable"]; }
         finally { loading = false; }
+    }
+
+    private void ApplyShippingCompanySuggestion(LookupCompany value)
+    {
+        if (submitting) return;
+        var name = CultureInfo.CurrentUICulture.TwoLetterISOLanguageName == "th"
+            ? value.NameTh ?? value.NameEn : value.NameEn ?? value.NameTh;
+        if (string.IsNullOrWhiteSpace(name)) return;
+        model.ShippingCompanyName = name;
+        editContext.NotifyFieldChanged(new FieldIdentifier(model, nameof(model.ShippingCompanyName)));
+    }
+
+    private void ApplyBillingCompanySuggestion(LookupCompany value)
+    {
+        if (submitting) return;
+        var name = CultureInfo.CurrentUICulture.TwoLetterISOLanguageName == "th"
+            ? value.NameTh ?? value.NameEn : value.NameEn ?? value.NameTh;
+        if (string.IsNullOrWhiteSpace(name)) return;
+        model.BillingCompanyName = name;
+        editContext.NotifyFieldChanged(new FieldIdentifier(model, nameof(model.BillingCompanyName)));
     }
 
     private void AddLineItem() => model.Items.Add(new());

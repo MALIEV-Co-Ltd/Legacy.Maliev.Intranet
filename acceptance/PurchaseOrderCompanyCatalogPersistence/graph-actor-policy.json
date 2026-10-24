@@ -1,0 +1,15 @@
+{
+  "schema": 1,
+  "sdk": "Testcontainers 4.10.0",
+  "images": ["postgres:18-alpine", "testcontainers/ryuk:0.14.0"],
+  "sessionLabel": "org.testcontainers.session-id",
+  "reaperLabel": "org.testcontainers.resource-reaper-session",
+  "ryukImage": "testcontainers/ryuk:0.14.0",
+  "requiredLabels": {"org.testcontainers": "true", "org.testcontainers.lang": "dotnet"},
+  "primarySources": [
+    "https://github.com/testcontainers/testcontainers-dotnet/blob/4.10.0/src/Testcontainers/Clients/TestcontainersClient.cs",
+    "https://github.com/testcontainers/testcontainers-dotnet/blob/4.10.0/src/Testcontainers/Clients/DefaultLabels.cs",
+    "https://github.com/testcontainers/testcontainers-dotnet/blob/4.10.0/src/Testcontainers/Containers/ResourceReaper.cs"
+  ],
+  "scope": "Original immutable File/Employee Postgres fixtures and SDK default Ryuk only; image cache retained, no resource deletion or SDK-object Dispose claim"
+}

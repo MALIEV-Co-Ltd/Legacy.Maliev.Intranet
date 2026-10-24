@@ -1,0 +1,138 @@
+[
+  {
+    "repository": "Legacy.Maliev.Intranet",
+    "revision": "3f5f7542c93cb085757130971c4fc7cf61043f01",
+    "path": ".gitattributes",
+    "gitBlob": "697a284ede5aed9fc2012ce936fca9da6dc5bc69",
+    "bytes": 39,
+    "canonicalSha256": "d659a5a32a52085fc2ef5ca8b58cded13e1091f177651a87a6c9ee3e0751e68f"
+  },
+  {
+    "repository": "Legacy.Maliev.Intranet",
+    "revision": "3f5f7542c93cb085757130971c4fc7cf61043f01",
+    "path": "Legacy.Maliev.Intranet/PurchaseOrders/LegacyFileClient.cs",
+    "gitBlob": "f69b4ea56ed6d027f684792d24a7156a9580ecf3",
+    "bytes": 5156,
+    "canonicalSha256": "98a4b2954e9dede6c3d237af1ae9b42198dec7f61835af22a61e601ded731bea"
+  },
+  {
+    "repository": "Legacy.Maliev.Workflows",
+    "revision": "0159e67a033712a7120d52173819e8bde214cf6e",
+    "path": "AGENTS.md",
+    "gitBlob": "ac7611cee31750cbcff75291b60b9bbbd6128be1",
+    "bytes": 733,
+    "canonicalSha256": "d4a5ee81db241d922427060cfeaf7a023dee5cbc6234eeaf87586b54a61cebc9"
+  },
+  {
+    "repository": "Legacy.Maliev.Workflows",
+    "revision": "0159e67a033712a7120d52173819e8bde214cf6e",
+    "path": "scripts/New-OfflineImageOnlyDeploymentPlan.ps1",
+    "gitBlob": "d1bb446d6ed25bbefc226e3856020804d6650099",
+    "bytes": 6447,
+    "canonicalSha256": "4f09e547e58569847479fc5d94925cd3b32cde6693c7cc05c0ad21557a8a1d4e"
+  },
+  {
+    "repository": "Legacy.Maliev.Workflows",
+    "revision": "0159e67a033712a7120d52173819e8bde214cf6e",
+    "path": "scripts/Assert-OfflineReleaseSource.ps1",
+    "gitBlob": "8cd167cd691754a0a467a7d5858d950e14a79978",
+    "bytes": 4700,
+    "canonicalSha256": "06e0d8710b4de9b9e2b59ba1cf1dc013547d15848827674d5d5b30688297e85c"
+  },
+  {
+    "repository": "Legacy.Maliev.Workflows",
+    "revision": "0159e67a033712a7120d52173819e8bde214cf6e",
+    "path": "scripts/offline_release_source.py",
+    "gitBlob": "2c745d83c5c5be15f68b8cd63f78aa1e253ac9a8",
+    "bytes": 7531,
+    "canonicalSha256": "b91f780dd2d18d91962d500f1090e82772358559346fb13977b04cdd4509a82f"
+  },
+  {
+    "repository": "Legacy.Maliev.DocumentService",
+    "revision": "b12b9499d3f33113d2f0be196db831759ea3a03c",
+    "path": "Legacy.Maliev.DocumentService.Tests/Legacy.Maliev.DocumentService.Tests.csproj",
+    "gitBlob": "379bac8d3a9659ee4a51f4f47a90f3e0387543b4",
+    "bytes": 3577,
+    "canonicalSha256": "c4ecc81fc035a57603ae2d017d901b17f8ceb81229a853edb7ffca186985510d"
+  },
+  {
+    "repository": "Legacy.Maliev.DocumentService",
+    "revision": "b12b9499d3f33113d2f0be196db831759ea3a03c",
+    "path": "docs/document-contract-applicability-policy.json",
+    "gitBlob": "f2f153b57bf9f3823a073c8ba88da3909bf88ef7",
+    "bytes": 712,
+    "canonicalSha256": "b424bd9f4fad6bf29bf5990eebbe30a9e3dbe3cee8356bb5deccd286bba4ac77"
+  },
+  {
+    "repository": "Legacy.Maliev.DocumentService",
+    "revision": "b12b9499d3f33113d2f0be196db831759ea3a03c",
+    "path": "scripts/verify-document-application-proof.py",
+    "gitBlob": "28557748bc18c38ccced108ffc54b66274709140",
+    "bytes": 3031,
+    "canonicalSha256": "383804ffd9166f39806b878489708ffae3a02bda40d71a537500ce2f076e1f98"
+  },
+  {
+    "repository": "Legacy.Maliev.DocumentService",
+    "revision": "b12b9499d3f33113d2f0be196db831759ea3a03c",
+    "path": "scripts/read-document-contract-applicability.py",
+    "gitBlob": "398f93a7e80aefb4ae5c556bff3869fa1bfb8f10",
+    "bytes": 7916,
+    "canonicalSha256": "00971e346fc5edaae3635c7b40553416afdbcd899f86a93584f868579a2920f5"
+  },
+  {
+    "repository": "Legacy.Maliev.DocumentService",
+    "revision": "b12b9499d3f33113d2f0be196db831759ea3a03c",
+    "path": "scripts/Read-DocumentContractAssembly.ps1",
+    "gitBlob": "eeb804296bce8777214802236267cff684cb01ab",
+    "bytes": 8920,
+    "canonicalSha256": "2406222d7dc518128a2efa706c6929e46798e30fd2444d3a8c68a81a21a5942a"
+  },
+  {
+    "repository": "Legacy.Maliev.DocumentService",
+    "revision": "b12b9499d3f33113d2f0be196db831759ea3a03c",
+    "path": "scripts/capture_document_contract_support.py",
+    "gitBlob": "9eef4970867ab8c004f7048f04b58eebe21bf8b4",
+    "bytes": 452,
+    "canonicalSha256": "49a273f5c854da29707b100b2d851dd9a582a994dbfc5f8a0ee020e4ba8971b0"
+  },
+  {
+    "repository": "Legacy.Maliev.DocumentService",
+    "revision": "b12b9499d3f33113d2f0be196db831759ea3a03c",
+    "path": "scripts/test-document-contract-controls.py",
+    "gitBlob": "1abd83b73fb7fb0cc3537d6be2b9702309b5d09d",
+    "bytes": 6096,
+    "canonicalSha256": "e16fe329a97ee004acf564403e1e0b935374698676276d9f15004331829fe7b1"
+  },
+  {
+    "repository": "Legacy.Maliev.DocumentService",
+    "revision": "b12b9499d3f33113d2f0be196db831759ea3a03c",
+    "path": "scripts/read-receipt-evidence.py",
+    "gitBlob": "51ce0ef8691d4f0395b04c7cef49192a28325185",
+    "bytes": 10852,
+    "canonicalSha256": "f3217e5ae2697dcc2a1cfa813d6e7f9e2555835471f120a2a61dcb6a01b0839b"
+  },
+  {
+    "repository": "Legacy.Maliev.DocumentService",
+    "revision": "b12b9499d3f33113d2f0be196db831759ea3a03c",
+    "path": "scripts/capture-document-contract-proof.py",
+    "gitBlob": "54f22c286acfaf9a7ce1e781ef6a96e17dc6ae11",
+    "bytes": 2630,
+    "canonicalSha256": "d2f11b0d336d00fd8167bc415b8a657b008007d5c3a825d68537af2193d69a50"
+  },
+  {
+    "repository": "Legacy.Maliev.FileService",
+    "revision": "d478d2674b57a25c939f62aa838efbedd8591055",
+    "path": "Legacy.Maliev.FileService.Tests/Legacy.Maliev.FileService.Tests.csproj",
+    "gitBlob": "5023105ed4c098c58ea4633ca0a135bc19cd66cc",
+    "bytes": 2271,
+    "canonicalSha256": "2e063ce00fd2383045714de9cd0fbd7656e9990ab45375ec74f0a2ff7868245f"
+  },
+  {
+    "repository": "Legacy.Maliev.EmployeeService",
+    "revision": "5ace8e2b7b1de498100c2e3cd7d2327451578ea7",
+    "path": "Legacy.Maliev.EmployeeService.Tests/Legacy.Maliev.EmployeeService.Tests.csproj",
+    "gitBlob": "47ad58a4b45bdea224decc71a34f08ee8b445df0",
+    "bytes": 1613,
+    "canonicalSha256": "843efa58a1f622058dece181439012803459dba1b1aca5083fa3d0e3f9164a3e"
+  }
+]
