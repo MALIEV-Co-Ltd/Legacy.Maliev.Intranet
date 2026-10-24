@@ -9,7 +9,7 @@ permissions:
 jobs:
   validate:
     name: validate
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 120
     env:
       MalievWorkspaceRoot: ${{ github.workspace }}/.dependencies
@@ -389,6 +389,16 @@ jobs:
             --logger 'trx;LogFileName=recovery-email-browser.trx' \
             --results-directory TestResults/recovery-email-browser
           python3 -B -c 'import xml.etree.ElementTree as E; r=E.parse("TestResults/recovery-email-browser/recovery-email-browser.trx").getroot(); ns={"t":"http://microsoft.com/schemas/VisualStudio/TeamTest/2010"}; c=r.find("t:ResultSummary/t:Counters",ns); assert c is not None and all(c.get(k)==v for k,v in {"total":"4","executed":"4","passed":"4","failed":"0","notExecuted":"0"}.items()), "Recovery form browser focus must execute and pass exactly four cases"'
+      - name: Verify the exact owned framework package boundary before the full suite
+        timeout-minutes: 2
+        shell: bash
+        run: >-
+          dotnet test Legacy.Maliev.Intranet.Tests/Legacy.Maliev.Intranet.Tests.csproj
+          --configuration Release --no-build --no-restore
+          -p:UseLocalMalievDependencies=true -p:CI=false -p:VSTestCollect=
+          --filter "FullyQualifiedName~LegacyServiceDefaultsIdentityContractTests"
+          --logger 'trx;LogFileName=framework-package-boundary.trx'
+          --results-directory TestResults/framework-package-boundary
       - name: Verify localized purchase-order focus rejection controls
         shell: bash
         run: python3 -B tests/fixtures/purchase-order-message-focus/test_retainer.py
@@ -592,6 +602,11 @@ jobs:
           path: ${{ runner.temp }}/customers-private-failure-evidence/
           if-no-files-found: error
           retention-days: 7
+      - name: Retain tracked-input drift names for coverage admission diagnosis
+        if: always()
+        timeout-minutes: 1
+        shell: bash
+        run: git diff --name-status HEAD --
       - name: Preserve actual runner validation evidence
         if: always()
         uses: MALIEV-Co-Ltd/Legacy.Maliev.Workflows/actions/preserve-validation-evidence@45ced0919a604459c7bb5baf7f38d7bc53d708ba
