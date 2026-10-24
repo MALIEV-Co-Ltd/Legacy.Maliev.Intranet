@@ -31,9 +31,9 @@
             <div class="customer-relations__fields">
                 @if (kind == "company")
                 {
-                    <ShadcnFormField Id="relation-company-name" Label="@Localize("CompanyName")"><Control><ShadcnInput TValue="string" id="relation-company-name" @bind-Value="company.Name" Disabled="@(saving || needsReload)" /></Control></ShadcnFormField>
-                    <ShadcnFormField Id="relation-tax" Label="@Localize("TaxNumber")"><Control><ShadcnInput TValue="string" id="relation-tax" @bind-Value="company.TaxNumber" Disabled="@(saving || needsReload)" /></Control></ShadcnFormField>
-                    <ShadcnFormField Id="relation-registrar" Label="@Localize("Registrar")"><Control><ShadcnInput TValue="string" id="relation-registrar" @bind-Value="company.Registrar" Disabled="@(saving || needsReload)" /></Control></ShadcnFormField>
+                    <ShadcnFormField Id="relation-company-name" Label="@Localize("CompanyName")"><Control><ShadcnInput TValue="string" id="relation-company-name" maxlength="256" @bind-Value="company.Name" Disabled="@(saving || needsReload)" /></Control></ShadcnFormField>
+                    <ShadcnFormField Id="relation-tax" Label="@Localize("TaxNumber")"><Control><ShadcnInput TValue="string" id="relation-tax" maxlength="256" @bind-Value="company.TaxNumber" Disabled="@(saving || needsReload)" /></Control></ShadcnFormField>
+                    <ShadcnFormField Id="relation-registrar" Label="@Localize("Registrar")"><Control><ShadcnInput TValue="string" id="relation-registrar" maxlength="256" @bind-Value="company.Registrar" Disabled="@(saving || needsReload)" /></Control></ShadcnFormField>
                 }
                 else
                 {
