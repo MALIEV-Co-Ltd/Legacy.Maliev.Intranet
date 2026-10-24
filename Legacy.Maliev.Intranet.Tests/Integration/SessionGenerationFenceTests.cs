@@ -651,6 +651,128 @@ public sealed class SessionGenerationFenceTests : IAsyncLifetime
             Assert.NotNull(await factory.Services.GetRequiredService<DistributedTicketStore>().RetrieveAsync(factory.Probe.LastKey!));
     }
 
+    [Theory]
+    [InlineData("transport", 502)]
+    [InlineData("timeout", 504)]
+    public async Task OutcomeBrowser_RefreshTransportFailurePreservesSafeUnavailableReceipt(string fault, int expected)
+    {
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+        using var scenario = OutcomeScenario("qualification");
+        scenario.OutcomeRefreshFault = fault;
+        await using var factory = new Factory(redis.GetConnectionString(), scenario);
+        using var browser = Client(factory);
+        await LoginAsync(browser, factory);
+        var key = factory.Probe.LastKey!;
+        scenario.Clock.Advance(TimeSpan.FromMinutes(14));
+        using var response = await browser.GetAsync(OutcomeRoute("qualification"), timeout.Token);
+        using var receipt = await BrowserReceiptAsync(response);
+        Assert.Equal(expected, receipt.RootElement.GetProperty("httpStatus").GetInt32());
+        Assert.Equal(JsonValueKind.Null, receipt.RootElement.GetProperty("payload").ValueKind);
+        Assert.Equal(1, scenario.ControlledRefreshCalls);
+        Assert.Equal(0, scenario.RefreshCalls);
+        Assert.Equal(0, scenario.OutcomeReads);
+        Assert.DoesNotContain("private-refresh-marker", await response.Content.ReadAsStringAsync(timeout.Token), StringComparison.Ordinal);
+        var retained = await factory.Services.GetRequiredService<DistributedTicketStore>().RetrieveAsync(key);
+        Assert.NotNull(retained);
+        Assert.True(retained.Properties.GetTokenValue("legacy_refresh_token") == "synthetic-rotation-1");
+    }
+
+    [Theory]
+    [InlineData("/Operations/OutcomeReadback", "transport")]
+    [InlineData("/Operations/OutcomeReadback", "timeout")]
+    [InlineData("/Analytics/OutcomeReadback", "transport")]
+    [InlineData("/Analytics/OutcomeReadback", "timeout")]
+    public async Task OutcomeMachine_RefreshTransportFailureRetainsLegacyUnauthorizedReceipt(string path, string fault)
+    {
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+        using var scenario = OutcomeScenario("qualification");
+        scenario.OutcomeRefreshFault = fault;
+        await using var factory = new Factory(redis.GetConnectionString(), scenario);
+        using var browser = Client(factory);
+        await LoginAsync(browser, factory);
+        scenario.Clock.Advance(TimeSpan.FromMinutes(14));
+        using var response = await browser.GetAsync(OutcomeRoute("qualification", path), timeout.Token);
+        var body = await response.Content.ReadAsStringAsync(timeout.Token);
+        using var receipt = JsonDocument.Parse(body);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal("application/json", response.Content.Headers.ContentType!.MediaType);
+        Assert.Equal("no-store", response.Headers.CacheControl!.ToString());
+        Assert.Equal(401, receipt.RootElement.GetProperty("httpStatus").GetInt32());
+        Assert.Equal(JsonValueKind.Null, receipt.RootElement.GetProperty("payload").ValueKind);
+        Assert.Equal(1, scenario.ControlledRefreshCalls);
+        Assert.Equal(0, scenario.RefreshCalls);
+        Assert.Equal(0, scenario.OutcomeReads);
+        Assert.DoesNotContain("private-refresh-marker", body, StringComparison.Ordinal);
+        Assert.DoesNotContain("synthetic-rotation-", body, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("forbidden")]
+    [InlineData("malformed-json")]
+    public async Task OutcomeBrowser_SemanticRefreshFailureRetainsUnauthorizedReceipt(string failure)
+    {
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+        using var scenario = OutcomeScenario("qualification");
+        if (failure == "forbidden") scenario.OutcomeRefreshStatus = HttpStatusCode.Forbidden;
+        else scenario.OutcomeRefreshFault = failure;
+        await using var factory = new Factory(redis.GetConnectionString(), scenario);
+        using var browser = Client(factory);
+        await LoginAsync(browser, factory);
+        scenario.Clock.Advance(TimeSpan.FromMinutes(14));
+        using var response = await browser.GetAsync(OutcomeRoute("qualification"), timeout.Token);
+        using var receipt = await BrowserReceiptAsync(response);
+        Assert.Equal(401, receipt.RootElement.GetProperty("httpStatus").GetInt32());
+        Assert.Equal(JsonValueKind.Null, receipt.RootElement.GetProperty("payload").ValueKind);
+        Assert.Equal(1, scenario.RefreshCalls);
+        Assert.Equal(0, scenario.ControlledRefreshCalls);
+        Assert.Equal(0, scenario.OutcomeReads);
+        Assert.DoesNotContain("private-refresh-marker", await response.Content.ReadAsStringAsync(timeout.Token), StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("transport")]
+    [InlineData("timeout")]
+    public async Task OutcomeBrowser_PeerRenewalWinsOverEarlierRefreshTransportFailure(string fault)
+    {
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+        using var scenario = OutcomeScenario("qualification");
+        scenario.OutcomeRefreshFault = fault;
+        scenario.BlockOutcomeRefreshFault = true;
+        await using var factory = new Factory(redis.GetConnectionString(), scenario);
+        using var browser = Client(factory);
+        await LoginAsync(browser, factory);
+        var key = factory.Probe.LastKey!;
+        var store = factory.Services.GetRequiredService<DistributedTicketStore>();
+        var peerContext = new DefaultHttpContext { RequestServices = factory.Services };
+        var ticket = await store.RetrieveAsync(key, peerContext, timeout.Token);
+        Assert.NotNull(ticket);
+        scenario.Clock.Advance(TimeSpan.FromMinutes(14));
+        var pending = browser.GetAsync(OutcomeRoute("qualification"), timeout.Token);
+        try
+        {
+            await scenario.RefreshEntered.Task.WaitAsync(TimeSpan.FromSeconds(15), timeout.Token);
+            SetRotatedTokens(ticket, scenario);
+            var peerToken = ticket.Properties.GetTokenValue("legacy_access_token");
+            await store.RenewAsync(key, ticket, peerContext, timeout.Token);
+            scenario.ReleaseRefresh.TrySetResult();
+            using var response = await pending;
+            using var receipt = await BrowserReceiptAsync(response);
+            Assert.Equal(200, receipt.RootElement.GetProperty("httpStatus").GetInt32());
+            Assert.Equal(1, scenario.ControlledRefreshCalls);
+            Assert.Equal(0, scenario.RefreshCalls);
+            Assert.Equal(1, scenario.OutcomeReads);
+            Assert.True(peerToken == scenario.LastOutcomeAccessToken);
+            var retained = await store.RetrieveAsync(key, peerContext, timeout.Token);
+            Assert.NotNull(retained);
+            Assert.True(retained.Properties.GetTokenValue("legacy_refresh_token") == "synthetic-rotation-2");
+        }
+        finally
+        {
+            scenario.ReleaseRefresh.TrySetResult();
+            using var drained = await pending;
+        }
+    }
+
     [Fact]
     public async Task OutcomeBrowser_ExpiredCookieCannotUseAnOtherwiseStoredAccessToken()
     {
@@ -795,6 +917,18 @@ public sealed class SessionGenerationFenceTests : IAsyncLifetime
                 services.AddSingleton<TimeProvider>(scenario.Clock);
                 services.Configure<CookieAuthenticationOptions>("Cookies", options => options.TimeProvider = scenario.Clock);
                 services.AddSingleton<IHttpMessageHandlerBuilderFilter>(new TransportFilter(scenario));
+                if (scenario.OutcomeRefreshFault is "transport" or "timeout")
+                {
+                    // Control the failure after HTTP resilience, preserving the actual session,
+                    // cookie/JWT/Redis and endpoint path. This does not qualify HTTP retry behavior.
+                    var registration = Assert.Single(services, item => item.ServiceType == typeof(ILegacyAuthClient));
+                    var create = registration.ImplementationFactory;
+                    Assert.NotNull(create);
+                    services.Remove(registration);
+                    services.AddTransient<ILegacyAuthClient>(provider =>
+                        new ControlledRefreshAuthClient((ILegacyAuthClient)create(provider), scenario));
+                }
+
                 services.RemoveAll<IDistributedCache>();
                 services.AddSingleton<IDistributedCache>(provider =>
                 {
@@ -856,9 +990,12 @@ public sealed class SessionGenerationFenceTests : IAsyncLifetime
         public string? OutcomeFault { get; set; }
         public bool SuccessfulOutcomeRefresh { get; set; }
         public HttpStatusCode? OutcomeRefreshStatus { get; set; }
+        public string? OutcomeRefreshFault { get; set; }
+        public bool BlockOutcomeRefreshFault { get; set; }
         public int OutcomeReads;
         public int LoginCalls;
         public int RefreshCalls;
+        public int ControlledRefreshCalls;
         public string? LastIssuedAccessToken { get; private set; }
         public string? LastOutcomeAccessToken { get; set; }
         public string? LastOutcomeScheme { get; set; }
@@ -901,6 +1038,29 @@ public sealed class SessionGenerationFenceTests : IAsyncLifetime
         { next(builder); builder.PrimaryHandler = new AuthTransport(scenario); };
     }
 
+    private sealed class ControlledRefreshAuthClient(ILegacyAuthClient inner, Scenario scenario) : ILegacyAuthClient
+    {
+        public Task<EmployeeLoginResult> LoginAsync(string email, string password, CancellationToken cancellationToken) =>
+            inner.LoginAsync(email, password, cancellationToken);
+        public async Task<EmployeeRefreshResult?> RefreshAsync(string refreshToken, CancellationToken cancellationToken)
+        {
+            Interlocked.Increment(ref scenario.ControlledRefreshCalls);
+            if (scenario.BlockOutcomeRefreshFault)
+            {
+                scenario.RefreshEntered.TrySetResult();
+                await scenario.ReleaseRefresh.Task.WaitAsync(cancellationToken);
+            }
+            if (scenario.OutcomeRefreshFault == "transport") throw new HttpRequestException("private-refresh-marker");
+            if (scenario.OutcomeRefreshFault == "timeout") throw new TaskCanceledException("private-refresh-marker");
+            throw new InvalidOperationException("Unknown controlled refresh fault.");
+        }
+        public Task RevokeAsync(string refreshToken, CancellationToken cancellationToken) => inner.RevokeAsync(refreshToken, cancellationToken);
+        public Task<CustomerIdentityResponse?> CreateCustomerIdentityAsync(int databaseId, CreateCustomerIdentityRequest request,
+            string accessToken, CancellationToken cancellationToken) => inner.CreateCustomerIdentityAsync(databaseId, request, accessToken, cancellationToken);
+        public Task<EmployeeIdentityResponse?> CreateEmployeeIdentityAsync(int databaseId, CreateEmployeeIdentityRequest request,
+            string accessToken, CancellationToken cancellationToken) => inner.CreateEmployeeIdentityAsync(databaseId, request, accessToken, cancellationToken);
+    }
+
     private sealed class AuthTransport(Scenario scenario) : HttpMessageHandler
     {
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken token)
@@ -913,6 +1073,8 @@ public sealed class SessionGenerationFenceTests : IAsyncLifetime
                 case "/auth/v1/revoke": return new(HttpStatusCode.NoContent);
                 case "/auth/v1/refresh":
                     Interlocked.Increment(ref scenario.RefreshCalls);
+                    if (scenario.OutcomeRefreshFault == "malformed-json") return new(HttpStatusCode.OK)
+                    { Content = new StringContent("private-refresh-marker", System.Text.Encoding.UTF8, "application/json") };
                     if (scenario.SuccessfulOutcomeRefresh) return new(HttpStatusCode.OK) { Content = JsonContent.Create(scenario.Envelope(rotated: true)) };
                     if (scenario.OutcomeRefreshStatus is { } refreshStatus) return new(refreshStatus);
                     if (scenario.WrongRefreshOwner) return new(HttpStatusCode.OK) { Content = JsonContent.Create(scenario.Envelope(rotated: true)) };

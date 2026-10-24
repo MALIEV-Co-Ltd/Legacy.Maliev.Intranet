@@ -13,9 +13,24 @@ public enum EmployeeAccessTokenStatus
     Throttled,
 }
 
+/// <summary>Classifies a refresh failure without exposing authentication details.</summary>
+public enum EmployeeAccessTokenFailureCause
+{
+    /// <summary>No transport failure was retained after session reconciliation.</summary>
+    None,
+    /// <summary>Refresh failed before receiving an HTTP status.</summary>
+    Transport,
+    /// <summary>Refresh timed out independently of caller cancellation.</summary>
+    Timeout,
+}
+
 /// <summary>Pairs a server-held credential with its validated current permission projection.</summary>
 public sealed record EmployeeAccessTokenAcquisition(
     EmployeeAccessTokenStatus Status,
     string? AccessToken,
     IReadOnlyList<string> Permissions,
-    int? RetryAfterSeconds = null);
+    int? RetryAfterSeconds = null)
+{
+    /// <summary>Retains a safe refresh cause for server-side browser receipt mapping.</summary>
+    public EmployeeAccessTokenFailureCause FailureCause { get; init; }
+}
