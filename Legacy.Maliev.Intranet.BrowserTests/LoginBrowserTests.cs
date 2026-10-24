@@ -238,6 +238,8 @@ public sealed class LoginBrowserTests(
         Assert.Contains("Expected failedAssets=0; actual=1", failure.Message, StringComparison.Ordinal);
         Assert.Contains("\"pathCategory\":\"bff\"", failure.Message, StringComparison.Ordinal);
         Assert.Contains("\"failureCategory\":\"canceled\"", failure.Message, StringComparison.Ordinal);
+        Assert.Contains("\"requestRole\":\"nonce\"", failure.Message, StringComparison.Ordinal);
+        Assert.Contains("capturedLoginRequestFailure=not-observed", failure.Message, StringComparison.Ordinal);
     }
 
     private async Task AssertPublishedFormsAsync(string culture, int width, bool abortNonce = false)
@@ -268,6 +270,7 @@ public sealed class LoginBrowserTests(
         var nonceFinished = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var nonceFailed = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var loginFinished = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var loginFailed = new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously);
         void CountAndCaptureFailedAsset(IRequest request, Uri uri, int status, string failureCategory)
         {
             lock (failedAssetDiagnosticGate)
@@ -297,10 +300,14 @@ public sealed class LoginBrowserTests(
                     : resourceType is "stylesheet" or "image" or "media" or "font" or "script" or "manifest"
                         || uri.AbsolutePath.StartsWith("/_content/", StringComparison.Ordinal) ? "public-asset"
                     : "other";
+                var requestRole = ReferenceEquals(request, loginRequest) ? "login"
+                    : ReferenceEquals(request, nonceRequest) ? "nonce"
+                    : pathCategory == "bff" ? "other-bff" : "public";
                 failedAssetDiagnostics.Enqueue(System.Text.Json.JsonSerializer.Serialize(new
                 {
                     resourceType,
                     pathCategory,
+                    requestRole,
                     status,
                     failureCategory,
                 }));
@@ -342,6 +349,10 @@ public sealed class LoginBrowserTests(
                         or "net::ERR_NETWORK_CHANGED" or "net::ERR_ADDRESS_UNREACHABLE" => "network",
                     _ => "unknown",
                 };
+                if (ReferenceEquals(request, loginRequest))
+                {
+                    loginFailed.TrySetResult(failureCategory);
+                }
                 CountAndCaptureFailedAsset(request, uri, 0, failureCategory);
                 if (ReferenceEquals(request, nonceRequest))
                 {
@@ -523,7 +534,9 @@ public sealed class LoginBrowserTests(
                 {
                     throw new Xunit.Sdk.XunitException(
                         "Expected failedAssets=0; actual=" + Volatile.Read(ref failedAssets)
-                        + "; sanitized diagnostics=" + failedAssetEnvelope);
+                        + "; sanitized diagnostics=" + failedAssetEnvelope
+                        + "; capturedLoginRequestFailure="
+                        + (loginFailed.Task.IsCompletedSuccessfully ? loginFailed.Task.Result : "not-observed"));
                 }
             }
         }
