@@ -12,6 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 120
     env:
+      MalievCaptureValidationEvidence: 'true'
       MalievWorkspaceRoot: ${{ github.workspace }}/.dependencies
       PLAYWRIGHT_DOWNLOAD_CONNECTION_TIMEOUT: '30000'
       TASK4_INTERACTIVE_ASSET_ROOT: ${{ github.workspace }}/.customer-documents-published/wwwroot
@@ -592,6 +593,26 @@ jobs:
           path: ${{ runner.temp }}/customers-private-failure-evidence/
           if-no-files-found: error
           retention-days: 7
+      - name: Verify test identity retention rejection controls
+        shell: bash
+        run: python3 -B tests/fixtures/intranet-validation-identity/test_retainer.py
+      - name: Retain original full native identities before shared outcome transform
+        shell: bash
+        run: |
+          python3 -B scripts/retain-intranet-test-identities.py \
+            --trx TestResults/coverage-native/coverage.trx \
+            --baseline tests/fixtures/intranet-validation-identity/frozen-purchase-order-roster.json \
+            --workspace "$GITHUB_WORKSPACE" \
+            --source-revision "$(git rev-parse HEAD)" \
+            --output "$RUNNER_TEMP/intranet-identity-proof/identity-sidecar.json"
+      - name: Preserve original identity and compiler custody proof
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: intranet-identity-proof-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/intranet-identity-proof/
+          retention-days: 7
+          if-no-files-found: error
+          include-hidden-files: false
       - name: Preserve actual runner validation evidence
         if: always()
         uses: MALIEV-Co-Ltd/Legacy.Maliev.Workflows/actions/preserve-validation-evidence@45ced0919a604459c7bb5baf7f38d7bc53d708ba
