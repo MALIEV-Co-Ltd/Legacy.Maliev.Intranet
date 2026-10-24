@@ -225,6 +225,71 @@ jobs:
         env:
           DIAGNOSTIC_OUTCOME: ${{ steps.current_main_diagnostics.outcome }}
         run: test "$DIAGNOSTIC_OUTCOME" = success
+      - name: Verify eighteen browser auth transport receipt controls
+        id: auth_receipt_focus
+        timeout-minutes: 5
+        shell: bash
+        env:
+          DOTNET_PROCESSOR_COUNT: '1'
+        run: |
+          export GITHUB_ACTIONS=false
+          test ! -e TestResults/auth-receipt-source
+          timeout --signal=TERM --kill-after=20s 4m dotnet test Legacy.Maliev.Intranet.Tests/Legacy.Maliev.Intranet.Tests.csproj \
+            --configuration Release --no-build --no-restore -p:UseLocalMalievDependencies=true \
+            --filter 'FullyQualifiedName=Legacy.Maliev.Intranet.Tests.EmployeeSessionContractTests.RefreshTransportFailure_PreservesTypedStatusAndLegacyNullProjection|FullyQualifiedName=Legacy.Maliev.Intranet.Tests.EmployeeSessionContractTests.RefreshCallerCancellation_IsNeverConvertedToUnavailable|FullyQualifiedName=Legacy.Maliev.Intranet.Tests.EmployeeSessionContractTests.RefreshSemanticFailure_PreservesExistingStatusAndRetryProjection|FullyQualifiedName=Legacy.Maliev.Intranet.Tests.EmployeeSessionContractTests.AccessTokenAcquisition_RetainsFourArgumentConstructorAndDeconstruction|FullyQualifiedName=Legacy.Maliev.Intranet.Tests.Integration.SessionGenerationFenceTests.OutcomeBrowser_RefreshTransportFailurePreservesSafeUnavailableReceipt|FullyQualifiedName=Legacy.Maliev.Intranet.Tests.Integration.SessionGenerationFenceTests.OutcomeMachine_RefreshTransportFailureRetainsLegacyUnauthorizedReceipt|FullyQualifiedName=Legacy.Maliev.Intranet.Tests.Integration.SessionGenerationFenceTests.OutcomeBrowser_SemanticRefreshFailureRetainsUnauthorizedReceipt|FullyQualifiedName=Legacy.Maliev.Intranet.Tests.Integration.SessionGenerationFenceTests.OutcomeBrowser_PeerRenewalWinsOverEarlierRefreshTransportFailure' \
+            --logger 'trx;LogFileName=auth-receipt-source.trx' --results-directory TestResults/auth-receipt-source
+          python3 -B - <<'PY'
+          import xml.etree.ElementTree as E
+          root = E.parse("TestResults/auth-receipt-source/auth-receipt-source.trx").getroot()
+          ns = {"t": "http://microsoft.com/schemas/VisualStudio/TeamTest/2010"}
+          counters = root.find("t:ResultSummary/t:Counters", ns)
+          rows = root.findall("t:Results/t:UnitTestResult", ns)
+          zero = "failed error timeout aborted inconclusive passedButRunAborted notRunnable notExecuted disconnected warning completed inProgress pending".split()
+          expected = {"total": "18", "executed": "18", "passed": "18", **dict.fromkeys(zero, "0")}
+          if counters is None or counters.attrib != expected or len(rows) != 18 or any(row.get("outcome") != "Passed" for row in rows):
+              raise ValueError("All eighteen auth receipt controls must execute and pass")
+          PY
+      - name: Retain named auth receipt results without runtime diagnostics
+        timeout-minutes: 2
+        if: always() && steps.auth_receipt_focus.outcome != 'skipped'
+        shell: bash
+        run: |
+          python3 -B - <<'PY'
+          from pathlib import Path
+          import hashlib
+          import json
+          import xml.etree.ElementTree as E
+          path = Path("TestResults/auth-receipt-source/auth-receipt-source.trx")
+          raw_sha = named_sha = None
+          removed = 0
+          try:
+              data = path.read_bytes()
+              raw_sha = hashlib.sha256(data).hexdigest()
+              if len(data) > 2 * 1024 * 1024 or b"<!DOCTYPE" in data.upper() or b"<!ENTITY" in data.upper():
+                  raise ValueError("Invalid bounded auth receipt XML")
+              root = E.fromstring(data)
+              ns = "{http://microsoft.com/schemas/VisualStudio/TeamTest/2010}"
+              for parent in root.iter():
+                  for child in list(parent):
+                      if child.tag in {ns + name for name in ("Output", "RunInfo", "ResultFiles", "CollectorDataEntries")}:
+                          parent.remove(child)
+                          removed += 1
+              named = path.with_name("auth-receipt-source-named.trx")
+              E.ElementTree(root).write(named, encoding="utf-8", xml_declaration=True)
+              named_sha = hashlib.sha256(named.read_bytes()).hexdigest()
+          finally:
+              path.unlink(missing_ok=True)  # Never include diagnostic-bearing originals in later broad artifacts.
+              print(json.dumps({"rawInputSha256": raw_sha, "namedOutputSha256": named_sha, "removedTagCount": removed}))
+          PY
+      - name: Preserve actual named auth receipt case identities
+        timeout-minutes: 3
+        if: always() && steps.auth_receipt_focus.outcome != 'skipped'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: auth-receipt-source-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: TestResults/auth-receipt-source/auth-receipt-source-named.trx
+          if-no-files-found: error
+          retention-days: 7
       - name: Verify tracking-number consumer source boundaries
         timeout-minutes: 5
         shell: bash

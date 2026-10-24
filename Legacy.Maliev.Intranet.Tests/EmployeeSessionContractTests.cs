@@ -298,6 +298,91 @@ public sealed partial class EmployeeSessionContractTests
         Assert.False(authentication.SignedOut);
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task RefreshTransportFailure_PreservesTypedStatusAndLegacyNullProjection(bool timedOut)
+    {
+        var auth = new StubAuthClient
+        {
+            RefreshException = timedOut ? new TaskCanceledException("controlled timeout") : new HttpRequestException("controlled transport"),
+        };
+        var authentication = new RecordingAuthenticationService(CreateTokenProperties(Now.AddMinutes(1)));
+        var context = CreateHttpContext(authentication);
+        using var services = (ServiceProvider)context.RequestServices;
+        var sessions = CreateSessionService(auth);
+        var acquired = await sessions.AcquireAccessTokenAsync(context, CancellationToken.None);
+        Assert.Equal(EmployeeAccessTokenStatus.Unavailable, acquired.Status);
+        Assert.Null(acquired.AccessToken);
+        Assert.Empty(acquired.Permissions);
+        Assert.Null(acquired.RetryAfterSeconds);
+        Assert.Null(await sessions.GetAccessTokenAsync(context, CancellationToken.None));
+        Assert.False(authentication.SignedOut);
+        Assert.Equal(2, auth.RefreshAttempts);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task RefreshCallerCancellation_IsNeverConvertedToUnavailable(bool taskCanceled)
+    {
+        using var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(15));
+        var auth = new StubAuthClient
+        {
+            OnRefreshAttempt = cancellation.Cancel,
+            RefreshException = taskCanceled
+                ? new TaskCanceledException("controlled caller cancellation", null, cancellation.Token)
+                : new OperationCanceledException("controlled caller cancellation", cancellation.Token),
+        };
+        var authentication = new RecordingAuthenticationService(CreateTokenProperties(Now.AddMinutes(1)));
+        var context = CreateHttpContext(authentication);
+        using var services = (ServiceProvider)context.RequestServices;
+        var exception = await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
+            CreateSessionService(auth).AcquireAccessTokenAsync(context, cancellation.Token));
+        Assert.Equal(cancellation.Token, exception.CancellationToken);
+        Assert.False(authentication.SignedOut);
+        Assert.Equal(1, auth.RefreshAttempts);
+    }
+
+    [Theory]
+    [InlineData("http-status")]
+    [InlineData("malformed-json")]
+    [InlineData("throttled")]
+    public async Task RefreshSemanticFailure_PreservesExistingStatusAndRetryProjection(string failure)
+    {
+        var auth = new StubAuthClient
+        {
+            RefreshException = failure switch
+            {
+                "http-status" => new HttpRequestException("controlled status", null, HttpStatusCode.ServiceUnavailable),
+                "malformed-json" => new System.Text.Json.JsonException("controlled malformed payload"),
+                _ => new LegacyAuthRateLimitedException(30),
+            },
+        };
+        var authentication = new RecordingAuthenticationService(CreateTokenProperties(Now.AddMinutes(1)));
+        var context = CreateHttpContext(authentication);
+        using var services = (ServiceProvider)context.RequestServices;
+        var acquired = await CreateSessionService(auth).AcquireAccessTokenAsync(context, CancellationToken.None);
+        Assert.Equal(failure == "throttled" ? EmployeeAccessTokenStatus.Throttled : EmployeeAccessTokenStatus.Unavailable, acquired.Status);
+        Assert.Equal(failure == "throttled" ? (int?)30 : null, acquired.RetryAfterSeconds);
+        Assert.Null(acquired.AccessToken);
+        Assert.Empty(acquired.Permissions);
+        Assert.False(authentication.SignedOut);
+    }
+
+    [Fact]
+    public void AccessTokenAcquisition_RetainsFourArgumentConstructorAndDeconstruction()
+    {
+        string[] permissions = [LegacyEmployeePermissions.QuotationRequestsRead];
+        var acquisition = new EmployeeAccessTokenAcquisition(EmployeeAccessTokenStatus.Available, "controlled-token", permissions, 12);
+        var (status, token, projectedPermissions, retryAfter) = acquisition;
+        Assert.Equal(EmployeeAccessTokenStatus.Available, status);
+        Assert.Equal("controlled-token", token);
+        Assert.Same(permissions, projectedPermissions);
+        Assert.Equal(12, retryAfter);
+        Assert.Equal(acquisition, new EmployeeAccessTokenAcquisition(status, token, projectedPermissions, retryAfter));
+    }
+
     [Fact]
     public async Task GetAccessToken_WhenRefreshSubjectChanges_ClearsLocalSession()
     {
