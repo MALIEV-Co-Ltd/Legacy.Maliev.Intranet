@@ -294,11 +294,11 @@
       },
       "Microsoft.AspNetCore.Components.Authorization": {
         "type": "Transitive",
-        "resolved": "10.0.12",
-        "contentHash": "UPlqUD1pYuG0iknIlUaR0Dq9WnesJ0qpVYJjGPfLEwz1o0RFBNw2gIzlSpZ8wdzaTSZOGax2MRUF1mnV7rWlcg==",
+        "resolved": "10.0.13",
+        "contentHash": "cIEc6Eqx2f6w4wXvuEBazpjjfgVcETIAHlBRN2LoneDziS1cup+Q3ddwpWNOoIbZ1RMRvITXKZDcuXif68iinQ==",
         "dependencies": {
-          "Microsoft.AspNetCore.Authorization": "10.0.12",
-          "Microsoft.AspNetCore.Components": "10.0.12"
+          "Microsoft.AspNetCore.Authorization": "10.0.13",
+          "Microsoft.AspNetCore.Components": "10.0.13"
         }
       },
       "Microsoft.AspNetCore.Components.Forms": {
@@ -491,12 +491,9 @@
       },
       "Microsoft.Extensions.Caching.StackExchangeRedis": {
         "type": "Transitive",
-        "resolved": "10.0.12",
-        "contentHash": "iQoMgbt02dl49cv7GLNeh771xstAbg9xKpuWosYmnOU0CJ9ni10F3+1IrgvbjyaV0JGulauGRrNir50QKWonKQ==",
+        "resolved": "10.0.13",
+        "contentHash": "DeQ6TbJFMoHqjT6GCUjZsVHZP1f1ADJ7SBN109jsS1r7AB0cTROllAihc/EMA4RMQ/sgd7IVs7Hq/ZZ3ukfmbQ==",
         "dependencies": {
-          "Microsoft.Extensions.Caching.Abstractions": "10.0.12",
-          "Microsoft.Extensions.Logging.Abstractions": "10.0.12",
-          "Microsoft.Extensions.Options": "10.0.12",
           "StackExchange.Redis": "2.7.27"
         }
       },
@@ -769,19 +766,19 @@
       },
       "Microsoft.Extensions.Localization": {
         "type": "Transitive",
-        "resolved": "10.0.12",
-        "contentHash": "xRUC4uO2SBZ2PCx5mSoJIW1c9mFPZSLjxTPe6TGNDstRatDU1LiPcjafu4PQ/3re7OijDwGvvfIgRNT3wh8Drw==",
+        "resolved": "10.0.13",
+        "contentHash": "dSU2p47bH9X92LbofZZ5DmjXAmWBmR2jqve8JvjRCn6emRWXsM0KbrFUtkrwU28jfaCR3VyIK/7BCoAZgpe3/w==",
         "dependencies": {
-          "Microsoft.Extensions.DependencyInjection.Abstractions": "10.0.12",
-          "Microsoft.Extensions.Localization.Abstractions": "10.0.12",
-          "Microsoft.Extensions.Logging.Abstractions": "10.0.12",
-          "Microsoft.Extensions.Options": "10.0.12"
+          "Microsoft.Extensions.DependencyInjection.Abstractions": "10.0.13",
+          "Microsoft.Extensions.Localization.Abstractions": "10.0.13",
+          "Microsoft.Extensions.Logging.Abstractions": "10.0.13",
+          "Microsoft.Extensions.Options": "10.0.13"
         }
       },
       "Microsoft.Extensions.Localization.Abstractions": {
         "type": "Transitive",
-        "resolved": "10.0.12",
-        "contentHash": "yB5BhsXB6wD0R1dTYtrI+YleVynL1XiVLbsO+QHw+bFsPAqH7SX1EPDaXpVNhuKtHRFSRfaL2B9aUDsUq2tc8Q=="
+        "resolved": "10.0.13",
+        "contentHash": "f9/eI5sYNGaDyneg580D4mFzJBe0rRxJtnmRj/W1m8rrEMus3r+NO4Ttld/KCuD7Ex9FPE7zSrD3TDRXJOsnzg=="
       },
       "Microsoft.Extensions.Logging": {
         "type": "Transitive",
@@ -1359,9 +1356,9 @@
           "Legacy.Maliev.Intranet.Contracts": "[1.0.0, )",
           "Maliev.ShadcnBlazor": "[2.2.1, )",
           "Maliev.ShadcnBlazor.Icons.Lucide": "[2.2.1, )",
-          "Microsoft.AspNetCore.Components.Authorization": "[10.0.12, )",
-          "Microsoft.AspNetCore.Components.WebAssembly": "[10.0.12, )",
-          "Microsoft.Extensions.Localization": "[10.0.12, )"
+          "Microsoft.AspNetCore.Components.Authorization": "[10.0.13, )",
+          "Microsoft.AspNetCore.Components.WebAssembly": "[10.0.13, )",
+          "Microsoft.Extensions.Localization": "[10.0.13, )"
         }
       },
       "legacy.maliev.intranet.client.features.accounting": {
@@ -1370,7 +1367,7 @@
           "Legacy.Maliev.Intranet.Client.Shared": "[1.0.0, )",
           "Legacy.Maliev.Intranet.Contracts": "[1.0.0, )",
           "Maliev.ShadcnBlazor": "[2.2.1, )",
-          "Microsoft.AspNetCore.Components.Web": "[10.0.12, )"
+          "Microsoft.AspNetCore.Components.Web": "[10.0.13, )"
         }
       },
       "legacy.maliev.intranet.client.features.catalog": {
@@ -1379,7 +1376,7 @@
           "Legacy.Maliev.Intranet.Client.Shared": "[1.0.0, )",
           "Legacy.Maliev.Intranet.Contracts": "[1.0.0, )",
           "Maliev.ShadcnBlazor": "[2.2.1, )",
-          "Microsoft.AspNetCore.Components.Web": "[10.0.12, )"
+          "Microsoft.AspNetCore.Components.Web": "[10.0.13, )"
         }
       },
       "legacy.maliev.intranet.client.features.customers": {
@@ -1388,8 +1385,8 @@
           "Legacy.Maliev.Intranet.Client.Shared": "[1.0.0, )",
           "Legacy.Maliev.Intranet.Contracts": "[1.0.0, )",
           "Maliev.ShadcnBlazor": "[2.2.1, )",
-          "Microsoft.AspNetCore.Components.Authorization": "[10.0.12, )",
-          "Microsoft.AspNetCore.Components.Web": "[10.0.12, )"
+          "Microsoft.AspNetCore.Components.Authorization": "[10.0.13, )",
+          "Microsoft.AspNetCore.Components.Web": "[10.0.13, )"
         }
       },
       "legacy.maliev.intranet.client.features.diagnostics": {
@@ -1398,7 +1395,7 @@
           "Legacy.Maliev.Intranet.Client.Shared": "[1.0.0, )",
           "Legacy.Maliev.Intranet.Contracts": "[1.0.0, )",
           "Maliev.ShadcnBlazor": "[2.2.1, )",
-          "Microsoft.AspNetCore.Components.Web": "[10.0.12, )"
+          "Microsoft.AspNetCore.Components.Web": "[10.0.13, )"
         }
       },
       "legacy.maliev.intranet.client.features.employees": {
@@ -1407,7 +1404,7 @@
           "Legacy.Maliev.Intranet.Client.Shared": "[1.0.0, )",
           "Legacy.Maliev.Intranet.Contracts": "[1.0.0, )",
           "Maliev.ShadcnBlazor": "[2.2.1, )",
-          "Microsoft.AspNetCore.Components.Web": "[10.0.12, )"
+          "Microsoft.AspNetCore.Components.Web": "[10.0.13, )"
         }
       },
       "legacy.maliev.intranet.client.features.orders": {
@@ -1417,7 +1414,7 @@
           "Legacy.Maliev.Intranet.Contracts": "[1.0.0, )",
           "Maliev.ShadcnBlazor": "[2.2.1, )",
           "Maliev.ShadcnBlazor.Icons.Lucide": "[2.2.1, )",
-          "Microsoft.AspNetCore.Components.Web": "[10.0.12, )"
+          "Microsoft.AspNetCore.Components.Web": "[10.0.13, )"
         }
       },
       "legacy.maliev.intranet.client.features.procurement": {
@@ -1427,7 +1424,7 @@
           "Legacy.Maliev.Intranet.Contracts": "[1.0.0, )",
           "Maliev.ShadcnBlazor": "[2.2.1, )",
           "Maliev.ShadcnBlazor.Icons.Lucide": "[2.2.1, )",
-          "Microsoft.AspNetCore.Components.Web": "[10.0.12, )"
+          "Microsoft.AspNetCore.Components.Web": "[10.0.13, )"
         }
       },
       "legacy.maliev.intranet.client.features.quotations": {
@@ -1437,8 +1434,8 @@
           "Legacy.Maliev.Intranet.Contracts": "[1.0.0, )",
           "Maliev.ShadcnBlazor": "[2.2.1, )",
           "Maliev.ShadcnBlazor.Icons.Lucide": "[2.2.1, )",
-          "Microsoft.AspNetCore.Components.Authorization": "[10.0.12, )",
-          "Microsoft.AspNetCore.Components.Web": "[10.0.12, )"
+          "Microsoft.AspNetCore.Components.Authorization": "[10.0.13, )",
+          "Microsoft.AspNetCore.Components.Web": "[10.0.13, )"
         }
       },
       "legacy.maliev.intranet.client.shared": {
@@ -1447,8 +1444,8 @@
           "Legacy.Maliev.Intranet.Contracts": "[1.0.0, )",
           "Maliev.ShadcnBlazor": "[2.2.1, )",
           "Maliev.ShadcnBlazor.Icons.Lucide": "[2.2.1, )",
-          "Microsoft.AspNetCore.Components.Web": "[10.0.12, )",
-          "Microsoft.Extensions.Localization.Abstractions": "[10.0.12, )"
+          "Microsoft.AspNetCore.Components.Web": "[10.0.13, )",
+          "Microsoft.Extensions.Localization.Abstractions": "[10.0.13, )"
         }
       },
       "legacy.maliev.intranet.contracts": {
@@ -1461,7 +1458,7 @@
           "Legacy.Maliev.ServiceDefaults": "[1.0.0, )",
           "Microsoft.AspNetCore.DataProtection.StackExchangeRedis": "[10.0.13, )",
           "Microsoft.AspNetCore.OpenApi": "[10.0.12, )",
-          "Microsoft.Extensions.Caching.StackExchangeRedis": "[10.0.12, )",
+          "Microsoft.Extensions.Caching.StackExchangeRedis": "[10.0.13, )",
           "System.IdentityModel.Tokens.Jwt": "[8.23.0, )"
         }
       },

@@ -181,8 +181,8 @@
       },
       "Microsoft.Extensions.Caching.StackExchangeRedis": {
         "type": "Transitive",
-        "resolved": "10.0.12",
-        "contentHash": "iQoMgbt02dl49cv7GLNeh771xstAbg9xKpuWosYmnOU0CJ9ni10F3+1IrgvbjyaV0JGulauGRrNir50QKWonKQ==",
+        "resolved": "10.0.13",
+        "contentHash": "DeQ6TbJFMoHqjT6GCUjZsVHZP1f1ADJ7SBN109jsS1r7AB0cTROllAihc/EMA4RMQ/sgd7IVs7Hq/ZZ3ukfmbQ==",
         "dependencies": {
           "StackExchange.Redis": "2.7.27"
         }
@@ -494,7 +494,7 @@
           "Legacy.Maliev.Intranet.Contracts": "[1.0.0, )",
           "Maliev.ShadcnBlazor": "[2.2.1, )",
           "Maliev.ShadcnBlazor.Icons.Lucide": "[2.2.1, )",
-          "Microsoft.AspNetCore.Components.WebAssembly": "[10.0.12, )"
+          "Microsoft.AspNetCore.Components.WebAssembly": "[10.0.13, )"
         }
       },
       "legacy.maliev.intranet.client.features.accounting": {
@@ -582,7 +582,7 @@
           "Legacy.Maliev.ServiceDefaults": "[1.0.0, )",
           "Microsoft.AspNetCore.DataProtection.StackExchangeRedis": "[10.0.13, )",
           "Microsoft.AspNetCore.OpenApi": "[10.0.12, )",
-          "Microsoft.Extensions.Caching.StackExchangeRedis": "[10.0.12, )",
+          "Microsoft.Extensions.Caching.StackExchangeRedis": "[10.0.13, )",
           "System.IdentityModel.Tokens.Jwt": "[8.23.0, )"
         }
       },
