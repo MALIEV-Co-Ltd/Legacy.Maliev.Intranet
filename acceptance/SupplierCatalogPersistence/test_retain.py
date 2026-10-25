@@ -7,6 +7,7 @@ import tempfile
 import unittest
 from unittest import mock
 import retain
+import retain_purchase_order as join
 
 class RetainerTests(unittest.TestCase):
     def controls_xml(self, names=None, outcome="Passed", summary="Completed", overrides=None):
@@ -301,6 +302,36 @@ class RetainerTests(unittest.TestCase):
                 with self.subTest(mutation=mutation):
                     self.write_release_rows(root, births, absent, changed)
                     self.assertFalse(retain.resource_release(root))
+
+    def test_join_requires_its_exact_completed_single_pass(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = pathlib.Path(directory) / "join.trx"
+            path.write_text(self.controls_xml(names=[join.EXPECTED]))
+            self.assertTrue(join.actual_join(path))
+            for arguments in [dict(names=[]), dict(names=[retain.EXPECTED]), dict(names=[join.EXPECTED] * 2),
+                              dict(names=[join.EXPECTED], outcome="NotExecuted"), dict(names=[join.EXPECTED], summary="Aborted"),
+                              dict(names=[join.EXPECTED], overrides={"warning": 1})]:
+                path.write_text(self.controls_xml(**arguments))
+                self.assertFalse(join.actual_join(path))
+
+    def test_join_custody_requires_literal_exact_roster_and_preserves_old_default(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = pathlib.Path(directory)
+            births, absent, scopes = self.release_rows()
+            for row in scopes:
+                row["clients"] = [dict(Name=name, Phase=phase, Released=True, startupSettled=True)
+                                  for name, phase in join.CLIENT_PHASES.items()]
+            self.write_release_rows(root, births, absent, scopes)
+            self.assertTrue(retain.resource_release(root, join.CLIENT_PHASES))
+            self.assertFalse(retain.resource_release(root))
+            for mutation in ("missing", "extra", "foreign"):
+                changed = copy.deepcopy(scopes)
+                for row in changed:
+                    if mutation == "missing": row["clients"].pop()
+                    if mutation == "extra": row["clients"].append(dict(Name="foreign", Phase=0, Released=True, startupSettled=True))
+                    if mutation == "foreign": row["clients"][0]["Name"] = "foreign"
+                self.write_release_rows(root, births, absent, changed)
+                self.assertFalse(retain.resource_release(root, join.CLIENT_PHASES))
 
 if __name__ == "__main__":
     unittest.main()

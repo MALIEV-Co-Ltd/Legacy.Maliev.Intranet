@@ -68,7 +68,7 @@
                             <DataAnnotationsValidator />
                             <CustomerOverview Customer="@customer"
                                               EditModel="@editModel"
-                                              CanEdit="@canEdit"
+                                              CanEdit="@(canEdit && !relationEditing)"
                                               Editing="@editing"
                                               Submitting="@submitting"
                                               BeginEdit="BeginEdit"
@@ -83,7 +83,7 @@
                         <CustomerInternalRemark Value="@internalRemark"
                                                 EditModel="@internalRemarkEditModel"
                                                 EditContext="@internalRemarkEditContext"
-                                                CanEdit="@canEdit"
+                                                CanEdit="@(canEdit && !relationEditing)"
                                                 Editing="@internalRemarkEditing"
                                                 Loading="@internalRemarkLoading"
                                                 Submitting="@internalRemarkSubmitting"
@@ -94,6 +94,12 @@
                                                 CancelEdit="CancelInternalRemarkEdit"
                                                 Retry="LoadInternalRemarkAsync"
                                                 Localize="Localize" />
+                        @if (relationSuccess is not null) { <p role="status" aria-live="polite">@relationSuccess</p> }
+                        @if (canEdit)
+                        {
+                            <CustomerRelations @key="customer.Id" Customer="customer" Permissions="relationPermissions" Locked="@(editing || submitting || internalRemarkEditing || internalRemarkSubmitting)"
+                                               EditingChanged="@(value => relationEditing = value)" Saved="ReloadAfterRelationAsync" Localize="Localize" />
+                        }
                     </ShadcnTabsContent>
                     @if (string.Equals(DocumentFeatureConfiguration["CustomerDocuments:Enabled"], "true", StringComparison.OrdinalIgnoreCase)) { <ShadcnTabsContent Value="documents"><CustomerDocuments CustomerId="Id" /></ShadcnTabsContent> }
                     <ShadcnTabsContent Value="activity" ForceMount="true">
@@ -184,6 +190,9 @@
     private bool internalRemarkSaved;
     private CancellationTokenSource? internalRemarkLoadCts;
     private bool canEdit;
+    private bool relationEditing;
+    private string[] relationPermissions = [];
+    private string? relationSuccess;
     private bool canAdminister;
     private bool canReadOrders;
     private bool canReadQuotations;
@@ -293,6 +302,8 @@
         customerRevision = null;
         notFound = false;
         editing = false;
+        relationEditing = false;
+        relationSuccess = null;
         submitting = false;
         ResetInternalRemarkState();
         loading = false;
@@ -301,6 +312,7 @@
         var authenticationState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
         if (!customerLoadGate.IsCurrent(request)) return;
         var user = authenticationState.User;
+        relationPermissions = user.FindAll("permissions").Select(claim => claim.Value).ToArray();
         canEdit = LegacyNavigationAuthorization.IsEnabled(user, "legacy-customer.customers.update");
         canAdminister = user.Identity?.IsAuthenticated == true && new[] { "legacy-customer.customers.read", "legacy-customer.customers.update",
             "legacy-auth.customer-identities.read", "legacy-auth.customer-identities.update" }
@@ -726,6 +738,13 @@
         {
             internalRemarkSubmitting = false;
         }
+    }
+
+    private async Task ReloadAfterRelationAsync(string kind)
+    {
+        loadedCustomerId = 0;
+        await LoadAsync();
+        relationSuccess = Text["RelationSaved_" + kind];
     }
 
     private async Task SaveAsync()

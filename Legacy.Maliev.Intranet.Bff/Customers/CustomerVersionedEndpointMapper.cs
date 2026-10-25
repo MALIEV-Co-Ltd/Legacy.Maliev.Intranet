@@ -76,7 +76,8 @@ internal static partial class CustomerVersionedEndpointMapper
 
     private static bool ValidVersionedCustomer(CustomerDetail? customer, int id) =>
         CustomerUpdateEndpointMapper.ValidCustomer(customer, id) &&
-        (customer!.Company is null || !string.IsNullOrWhiteSpace(customer.Company.Name)) &&
-        (customer.BillingAddress is null || !string.IsNullOrWhiteSpace(customer.BillingAddress.AddressLine1)) &&
-        (customer.ShippingAddress is null || !string.IsNullOrWhiteSpace(customer.ShippingAddress.AddressLine1));
+        customer!.CompanyId is not <= 0 && customer.BillingAddressId is not <= 0 && customer.ShippingAddressId is not <= 0 &&
+        (customer.Company is null || customer.Company.Id == customer.CompanyId && customer.Company.Name is not null) &&
+        (customer.BillingAddress is null || customer.BillingAddress.Id == customer.BillingAddressId && customer.BillingAddress.AddressLine1 is not null) &&
+        (customer.ShippingAddress is null || customer.ShippingAddress.Id == customer.ShippingAddressId && customer.ShippingAddress.AddressLine1 is not null);
 }
