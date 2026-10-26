@@ -78,10 +78,16 @@ jobs:
           test "$(realpath "$DOTNET_ROOT")" = "$expected_root"
           test -d "$DOTNET_ROOT/shared/Microsoft.NETCore.App/10.0.13"
           test -d "$DOTNET_ROOT/shared/Microsoft.AspNetCore.App/10.0.13"
-          unqualified_runtime="$DOTNET_ROOT/shared/Microsoft.NETCore.App/10.0.14"
-          test ! -L "$unqualified_runtime"
-          # setup-dotnet installs latest LTS alongside the requested SDK; this directory is private to this job.
-          if test -d "$unqualified_runtime"; then rm -rf -- "$unqualified_runtime"; fi
+          runtime_parent="$DOTNET_ROOT/shared/Microsoft.NETCore.App"
+          test "$(realpath "$runtime_parent")" = "$runtime_parent"
+          # setup-dotnet installs latest LTS alongside the requested SDK; remove extras only from this verified private root.
+          for unqualified_runtime in "$runtime_parent/"*; do
+            test ! -L "$unqualified_runtime"
+            test -d "$unqualified_runtime"
+            runtime_version="${unqualified_runtime##*/}"
+            [[ "$runtime_version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]
+            if test "$runtime_version" != '10.0.13'; then rm -rf -- "$unqualified_runtime"; fi
+          done
           test "$(dotnet --version)" = '10.0.402'
           dotnet --list-runtimes
           test "$(dotnet --list-runtimes | awk '{ print $2 }' | sort -u)" = '10.0.13'
