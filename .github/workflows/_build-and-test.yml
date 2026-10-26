@@ -150,7 +150,7 @@ jobs:
           test -f "$TASK4_INTERACTIVE_ASSET_ROOT/_framework/blazor.webassembly.js"
       - name: Retain generated Documents fixture dependency lock
         if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: customer-documents-fixture-lock-${{ github.run_id }}-${{ github.run_attempt }}
           path: tests/fixtures/customer-documents-interactive/packages.lock.json
@@ -175,7 +175,7 @@ jobs:
           python3 -B -c 'import xml.etree.ElementTree as E; r=E.parse("TestResults/customer-documents-switch/customer-documents-switch.trx").getroot(); ns={"t":"http://microsoft.com/schemas/VisualStudio/TeamTest/2010"}; c=r.find("t:ResultSummary/t:Counters",ns); assert c is not None and all(c.get(k)==v for k,v in {"total":"10","executed":"10","passed":"10","failed":"0","notExecuted":"0"}.items()), E.tostring(r,encoding="unicode")[-4000:]'
       - name: Retain Documents switch failure and success diagnostics
         if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: customer-documents-switch-${{ github.run_id }}-${{ github.run_attempt }}
           path: TestResults/customer-documents-switch/
@@ -213,7 +213,7 @@ jobs:
             --head "$REVIEWED_PR_HEAD" > isolated-pool-results/root-metadata.json
       - name: Preserve allowlisted synthetic pooled-host root metadata only
         if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: intranet-isolated-pool-${{ github.sha }}
           path: isolated-pool-results/root-metadata.json
@@ -284,7 +284,7 @@ jobs:
       - name: Preserve actual named auth receipt case identities
         timeout-minutes: 3
         if: always() && steps.auth_receipt_focus.outcome != 'skipped'
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: auth-receipt-source-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
           path: TestResults/auth-receipt-source/auth-receipt-source-named.trx
@@ -318,7 +318,7 @@ jobs:
             --results-directory TestResults/customer-relation-contracts
       - name: Retain synthetic customer relation contract results
         if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: customer-relation-contracts-${{ github.sha }}
           path: TestResults/customer-relation-contracts/*.trx
@@ -416,7 +416,7 @@ jobs:
       - name: Retain actual Company input capacity results
         timeout-minutes: 3
         if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: company-input-capacity-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
           path: TestResults/company-input-capacity/*.trx
@@ -488,7 +488,7 @@ jobs:
             --workspace "$GITHUB_WORKSPACE" --source-revision "$(git rev-parse HEAD)" \
             --output-directory "$RUNNER_TEMP/purchase-order-message-focus-proof"
       - name: Preserve original localized purchase-order proof
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: purchase-order-message-focus-${{ github.run_id }}-${{ github.run_attempt }}
           path: ${{ runner.temp }}/purchase-order-message-focus-proof/
@@ -536,7 +536,7 @@ jobs:
           python3 -B -c 'import xml.etree.ElementTree as E; r=E.parse("TestResults/customer-relations/customer-relations.trx").getroot(); ns={"t":"http://microsoft.com/schemas/VisualStudio/TeamTest/2010"}; c=r.find("t:ResultSummary/t:Counters",ns); assert c is not None and all(c.get(k)==v for k,v in {"total":"21","executed":"21","passed":"21","failed":"0","notExecuted":"0"}.items()), "All 21 relation and reachability cases must pass"'
       - name: Retain synthetic customer relation browser results
         if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: customer-relations-browser-${{ github.sha }}
           path: |
@@ -628,7 +628,7 @@ jobs:
         run: python3 -B scripts/verify-recovery-email-focus.py
       - name: Preserve sanitized recovery mailbox named proof
         if: ${{ always() && steps.recovery_email_proof.outcome == 'success' }}
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: recovery-email-${{ github.run_id }}-${{ github.run_attempt }}
           path: ${{ runner.temp }}/recovery-email-evidence/
@@ -661,7 +661,7 @@ jobs:
         run: python3 -B scripts/verify-customers-private-failure-focus.py
       - name: Preserve sanitized Customers named proof
         if: ${{ always() && steps.customers_private_failure_proof.outcome == 'success' }}
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: customers-private-failure-${{ github.run_id }}-${{ github.run_attempt }}
           path: ${{ runner.temp }}/customers-private-failure-evidence/
