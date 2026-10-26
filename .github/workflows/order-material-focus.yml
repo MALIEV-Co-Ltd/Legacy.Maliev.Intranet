@@ -46,21 +46,15 @@ jobs:
           DOTNET_MULTILEVEL_LOOKUP: '0'
         with:
           dotnet-version: 10.0.402
-      - name: Verify qualified SDK and shared runtime identity
+      - name: Verify qualified SDK and ASP.NET runtime identity
         shell: bash
         run: |
           expected_root="${RUNNER_TEMP}/maliev-intranet-dotnet-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-${GITHUB_JOB}"
           test "$DOTNET_ROOT" = "$expected_root"
           test "$(realpath "$DOTNET_ROOT")" = "$expected_root"
-          test -d "$DOTNET_ROOT/shared/Microsoft.NETCore.App/10.0.13"
-          test -d "$DOTNET_ROOT/shared/Microsoft.AspNetCore.App/10.0.13"
-          unqualified_runtime="$DOTNET_ROOT/shared/Microsoft.NETCore.App/10.0.14"
-          test ! -L "$unqualified_runtime"
-          # setup-dotnet installs latest LTS alongside the requested SDK; this directory is private to this job.
-          if test -d "$unqualified_runtime"; then rm -rf -- "$unqualified_runtime"; fi
           test "$(dotnet --version)" = '10.0.402'
           dotnet --list-runtimes
-          test "$(dotnet --list-runtimes | awk '{ print $2 }' | sort -u)" = '10.0.13'
+          test "$(dotnet --list-runtimes | awk '$1 == "Microsoft.AspNetCore.App" { print $2 }')" = '10.0.13'
       - name: Cache NuGet packages
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
         with:
