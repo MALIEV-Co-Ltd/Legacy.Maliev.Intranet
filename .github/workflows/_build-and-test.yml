@@ -23,8 +23,33 @@ jobs:
           persist-credentials: false
       - name: Select .NET 10 SDK for all validation steps
         uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68
+        env:
+          DOTNET_INSTALL_DIR: ${{ runner.temp }}/maliev-intranet-dotnet-${{ github.run_id }}-${{ github.run_attempt }}-${{ github.job }}
+          DOTNET_MULTILEVEL_LOOKUP: '0'
         with:
           dotnet-version: 10.0.402
+      - name: Verify qualified SDK and shared runtime identity
+        shell: bash
+        run: |
+          test ! -e global.json
+          expected_root="${RUNNER_TEMP}/maliev-intranet-dotnet-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-${GITHUB_JOB}"
+          test "$DOTNET_ROOT" = "$expected_root"
+          test "$(realpath "$DOTNET_ROOT")" = "$expected_root"
+          test -d "$DOTNET_ROOT/shared/Microsoft.NETCore.App/10.0.13"
+          test -d "$DOTNET_ROOT/shared/Microsoft.AspNetCore.App/10.0.13"
+          runtime_parent="$DOTNET_ROOT/shared/Microsoft.NETCore.App"
+          test "$(realpath "$runtime_parent")" = "$runtime_parent"
+          # setup-dotnet installs latest LTS alongside the requested SDK; remove extras only from this verified private root.
+          for unqualified_runtime in "$runtime_parent/"*; do
+            test ! -L "$unqualified_runtime"
+            test -d "$unqualified_runtime"
+            runtime_version="${unqualified_runtime##*/}"
+            [[ "$runtime_version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]
+            if test "$runtime_version" != '10.0.13'; then rm -rf -- "$unqualified_runtime"; fi
+          done
+          test "$(dotnet --version)" = '10.0.402'
+          dotnet --list-runtimes
+          test "$(dotnet --list-runtimes | awk '{ print $2 }' | sort -u)" = '10.0.13'
       - name: Check out Legacy.Maliev.ServiceDefaults
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
@@ -547,11 +572,14 @@ jobs:
       - name: Validate .NET solution
         uses: MALIEV-Co-Ltd/Legacy.Maliev.Workflows/actions/dotnet-validate@d7efac266bc66273bc45eab583618871292ecbd6
         env:
+          DOTNET_INSTALL_DIR: ${{ runner.temp }}/maliev-intranet-dotnet-${{ github.run_id }}-${{ github.run_attempt }}-${{ github.job }}
           # The shared action tests solution projects concurrently by default. Keep the
           # Playwright fixture isolated from the long-running integration test host.
           DOTNET_PROCESSOR_COUNT: '1'
           GITHUB_TOKEN: ${{ github.token }}
         with:
+          # Explicit empty input preserves the already-qualified SDK; global.json is refused above.
+          dotnet-version: ''
           solution: Legacy.Maliev.Intranet.slnx
           use-local-maliev-dependencies: 'true'
       - name: Validate joined customer revision contract
