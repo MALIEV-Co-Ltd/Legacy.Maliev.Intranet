@@ -23,8 +23,17 @@ jobs:
           persist-credentials: false
       - name: Select .NET 10 SDK for all validation steps
         uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68
+        env:
+          DOTNET_INSTALL_DIR: ${{ runner.temp }}/maliev-intranet-dotnet-${{ github.run_id }}-${{ github.run_attempt }}-${{ github.job }}
+          DOTNET_MULTILEVEL_LOOKUP: '0'
         with:
           dotnet-version: 10.0.402
+      - name: Verify qualified SDK and shared runtime identity
+        shell: bash
+        run: |
+          test "$(dotnet --version)" = '10.0.402'
+          dotnet --list-runtimes
+          test "$(dotnet --list-runtimes | awk '{ print $2 }' | sort -u)" = '10.0.13'
       - name: Check out Legacy.Maliev.ServiceDefaults
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
