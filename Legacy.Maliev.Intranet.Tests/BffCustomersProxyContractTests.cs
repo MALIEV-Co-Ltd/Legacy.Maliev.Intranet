@@ -158,9 +158,13 @@ public sealed class BffCustomersProxyContractTests
     }
 
     [Theory]
-    [MemberData(nameof(TransportFailures))]
-    public async Task TransportFailure_IsMappedToServiceUnavailable(Exception exception)
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task TransportFailure_IsMappedToServiceUnavailable(bool timeout)
     {
+        Exception exception = timeout
+            ? new TaskCanceledException("customer timeout")
+            : new HttpRequestException("customer unavailable");
         var downstream = new RecordingCustomerHandler(HttpStatusCode.OK, "{}", exception: exception);
         await using var factory = new CustomersBffFactory(downstream, hasPermission: true);
         using var client = CreateClient(factory);
@@ -378,9 +382,13 @@ public sealed class BffCustomersProxyContractTests
     }
 
     [Theory]
-    [MemberData(nameof(TransportFailures))]
-    public async Task Detail_TransportFailure_IsServiceUnavailable(Exception exception)
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Detail_TransportFailure_IsServiceUnavailable(bool timeout)
     {
+        Exception exception = timeout
+            ? new TaskCanceledException("customer timeout")
+            : new HttpRequestException("customer unavailable");
         var downstream = new RecordingCustomerHandler(HttpStatusCode.OK, "{}", exception: exception);
         await using var factory = new CustomersBffFactory(
             downstream,
@@ -1158,12 +1166,6 @@ public sealed class BffCustomersProxyContractTests
         Assert.Equal("Bearer signed-service-token", downstream.Authorization);
         Assert.Contains("\"internalRemark\":\" Employee only \"", downstream.Body, StringComparison.Ordinal);
     }
-
-    public static TheoryData<Exception> TransportFailures => new()
-    {
-        new HttpRequestException("customer unavailable"),
-        new TaskCanceledException("customer timeout"),
-    };
 
     [Theory]
     [InlineData("company", "77")]
