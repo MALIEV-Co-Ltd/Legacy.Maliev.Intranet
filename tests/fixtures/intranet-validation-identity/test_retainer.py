@@ -30,6 +30,48 @@ def fixture():
 
 
 class IdentityRetentionTests(unittest.TestCase):
+    def test_frozen_baseline_binds_only_accepted_current_sources_and_three_facts(self):
+        baseline = json.loads((ROOT / "tests/fixtures/intranet-validation-identity/frozen-purchase-order-roster.json").read_bytes())
+        self.assertEqual(baseline["sourceFiles"], {
+            "Legacy.Maliev.Intranet.Server/PurchaseOrders/PurchaseOrderCreationService.cs": [
+                "f8c89926e71c95383410bb6c078c7760960b94556f72da05ef899bf4665d02cc",
+                "eaecc61d911e32b587107d8144c0ac6aec6c9153e2dd4fd160c690b5bb6bb9b9",
+            ],
+            "Legacy.Maliev.Intranet.Tests/PurchaseOrderCreationServiceTests.cs": [
+                "916ccc7a299e8545dfca0ab251caea46897f6a4cb886bbdec0b3921c0a2b57ba",
+                "9422aa843b110b78f23b6ab5742eb528434c51324ef01df645160188d167f63c",
+            ],
+        })
+        methods = (
+            "CreateAsync_CompletesOrderItemsQuestPdfUploadAndMetadataLink",
+            "CreateAsync_FileLinkFailure_PreservesResourcesWithoutProvenInvocationOwnership",
+            "CreateAsync_UnknownWriteOutcome_DoesNotAttemptDestructiveCompensation",
+        )
+        cls = "Legacy.Maliev.Intranet.Tests.PurchaseOrderCreationServiceTests"
+        self.assertEqual({RET.method_hash(cls, method): 1 for method in methods}, baseline["focusedMethods"])
+        self.assertEqual(3, baseline["focusedCases"])
+        RET.verify_sources(ROOT, baseline)
+
+    def test_frozen_baseline_refuses_each_superseded_source_hash(self):
+        baseline = json.loads((ROOT / "tests/fixtures/intranet-validation-identity/frozen-purchase-order-roster.json").read_bytes())
+        RET.verify_sources(ROOT, baseline)
+        historical = {
+            "Legacy.Maliev.Intranet.Server/PurchaseOrders/PurchaseOrderCreationService.cs": [
+                "77704f410dda96df132f41177e4373258fa574748e8b60f9fc9802bffc8d2fe9",
+                "87f74934b41894c3804236a0a375a26c222af96885034a0c197708213a2979f3",
+            ],
+            "Legacy.Maliev.Intranet.Tests/PurchaseOrderCreationServiceTests.cs": [
+                "150acc8aeec0c7050c649663782a4e699c981e91c73cccca04ff18dfbd61792f",
+                "e87e822b48a2387ea114152a9530e7ab08b170faafbdf3dbbb878022a2b1eeac",
+            ],
+        }
+        for path, hashes in historical.items():
+            for old_hash in hashes:
+                stale = copy.deepcopy(baseline)
+                stale["sourceFiles"][path] = [old_hash]
+                with self.subTest(path=path, old_hash=old_hash), self.assertRaises(RET.InvalidEvidence):
+                    RET.verify_sources(ROOT, stale)
+
     def test_failed_export_retains_only_stage_lines_and_input_hash(self):
         raw, baseline, _, _ = fixture()
         with tempfile.TemporaryDirectory(prefix="intranet-rejection-") as directory:

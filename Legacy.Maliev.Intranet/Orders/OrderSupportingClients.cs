@@ -1,3 +1,4 @@
+using Maliev.Aspire.ServiceDefaults.Diagnostics;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 
@@ -31,7 +32,7 @@ public sealed class OrderDocumentClient(HttpClient httpClient) : IOrderDocumentC
     {
         using var request = new HttpRequestMessage(HttpMethod.Post, "/Pdfs/orderlabel") { Content = JsonContent.Create(payload) };
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
-        using var response = await httpClient.SendAsync(request, cancellationToken);
+        using var response = await httpClient.SendWithPrivateFailureObservationAsync(request, cancellationToken, new PrivateDependencyFailureObservation(), HttpCompletionOption.ResponseContentRead);
         response.EnsureSuccessStatusCode();
         if (!string.Equals(response.Content.Headers.ContentType?.MediaType, "application/pdf", StringComparison.OrdinalIgnoreCase))
             throw new InvalidOperationException("DocumentService did not return a PDF order label.");
@@ -61,7 +62,7 @@ public sealed class LegacyOrderNotificationClient(HttpClient httpClient) : ILega
             ["mail-tracking@maliev.com"]);
         using var request = new HttpRequestMessage(HttpMethod.Post, "/notifications/v1/email/NoReply") { Content = JsonContent.Create(payload) };
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
-        using var response = await httpClient.SendAsync(request, cancellationToken);
+        using var response = await httpClient.SendWithPrivateFailureObservationAsync(request, cancellationToken, new PrivateDependencyFailureObservation(), HttpCompletionOption.ResponseContentRead);
         response.EnsureSuccessStatusCode();
     }
 

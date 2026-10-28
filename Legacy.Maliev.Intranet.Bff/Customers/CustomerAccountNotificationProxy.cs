@@ -1,3 +1,4 @@
+using Maliev.Aspire.ServiceDefaults.Diagnostics;
 using System.Net;
 using System.Net.Http.Json;
 using Legacy.Maliev.Intranet.Contracts;
@@ -13,9 +14,9 @@ public sealed class CustomerAccountNotificationProxy(HttpClient httpClient)
         string customerName,
         string setupUrl,
         CancellationToken cancellationToken) =>
-        httpClient.PostAsJsonAsync(
-            "/notifications/v1/email/NoReply",
-            new
+        httpClient.SendWithPrivateFailureObservationAsync(new HttpRequestMessage(HttpMethod.Post, "/notifications/v1/email/NoReply")
+        {
+            Content = JsonContent.Create(new
             {
                 To = email,
                 Subject = "Your MALIEV customer account",
@@ -23,6 +24,6 @@ public sealed class CustomerAccountNotificationProxy(HttpClient httpClient)
                 ReplyTo = (string?)null,
                 Cc = (IReadOnlyList<string>?)null,
                 Bcc = (IReadOnlyList<string>?)null,
-            },
-            cancellationToken);
+            })
+        }, cancellationToken, new PrivateDependencyFailureObservation(), HttpCompletionOption.ResponseContentRead);
 }

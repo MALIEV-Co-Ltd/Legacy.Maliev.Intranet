@@ -153,15 +153,42 @@ public sealed class PooledTestHostReleaseContractTests(ITestOutputHelper output)
     }
 
     [Theory]
-    [InlineData("10.0.13")]
+    [InlineData("10.0.14")]
     [InlineData("10.0.12-unreviewed")]
     [InlineData("10.0.12+unreviewed")]
+    [InlineData("10.0.13-unreviewed")]
+    [InlineData("10.0.13+unreviewed")]
     [InlineData("")]
     public void DiagnosticWeakHandle_RejectsUnreviewedRuntime(string version)
     {
         Assert.True(ReadDiagnosticWeakHandle(new WeakReference(new object()), version) is null,
             "Unreviewed runtime must reject weak-handle metadata.");
     }
+
+    [Theory]
+    [InlineData("10.0.12")]
+    [InlineData("10.0.13")]
+    public void DiagnosticWeakHandle_AcceptsReviewedExactRuntime(string version)
+    {
+        var witness = new WeakReference(new object());
+        Assert.NotNull(ReadDiagnosticWeakHandle(witness, version));
+        GC.KeepAlive(witness);
+    }
+
+    [Theory]
+    [InlineData("10.0.12")]
+    [InlineData("10.0.13")]
+    public void DiagnosticWeakHandle_RejectsResurrectionAndDerivedWitnesses(string version)
+    {
+        var resurrection = new WeakReference(new object(), trackResurrection: true);
+        var derived = new DerivedWeakReference();
+        Assert.Null(ReadDiagnosticWeakHandle(resurrection, version));
+        Assert.Null(ReadDiagnosticWeakHandle(derived, version));
+        GC.KeepAlive(resurrection);
+        GC.KeepAlive(derived);
+    }
+
+    private sealed class DerivedWeakReference() : WeakReference(new object()) { }
 
     [Fact]
     public void DiagnosticWeakHandle_BindsSourceGeneratedRuntimeIdentity()
@@ -173,9 +200,9 @@ public sealed class PooledTestHostReleaseContractTests(ITestOutputHelper output)
 
     private static string? ReadDiagnosticWeakHandle(WeakReference witness, string? version)
     {
-        // Exact runtime source v10.0.12 WeakReference.cs:40,84-86. Read the
+        // Reviewed v10.0.12/v10.0.13 WeakReference.cs are byte-identical at this boundary. Read the
         // test-owned weak handle itself, never Target or arbitrary host fields.
-        if (version != "10.0.12") return null;
+        if (version is not ("10.0.12" or "10.0.13")) return null;
         if (witness.GetType() != typeof(WeakReference) || witness.TrackResurrection) return null;
         var field = typeof(WeakReference).GetField("_taggedHandle", BindingFlags.Instance | BindingFlags.NonPublic);
         if (field is null || field.FieldType != typeof(nint) || field.GetValue(witness) is not nint handle || handle == 0

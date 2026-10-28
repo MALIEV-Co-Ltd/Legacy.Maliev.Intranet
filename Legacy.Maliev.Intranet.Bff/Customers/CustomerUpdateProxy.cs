@@ -1,3 +1,4 @@
+using Maliev.Aspire.ServiceDefaults.Diagnostics;
 using System.Net.Http.Json;
 using Legacy.Maliev.Intranet.Contracts;
 
@@ -77,7 +78,7 @@ public sealed class CustomerUpdateProxy(HttpClient httpClient)
     {
         using (request)
         {
-            return await httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+            return await httpClient.SendWithPrivateFailureObservationAsync(request, cancellationToken, new PrivateDependencyFailureObservation(), HttpCompletionOption.ResponseHeadersRead);
         }
     }
 

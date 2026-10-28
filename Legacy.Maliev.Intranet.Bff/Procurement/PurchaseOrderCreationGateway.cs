@@ -1,3 +1,4 @@
+using Maliev.Aspire.ServiceDefaults.Diagnostics;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
@@ -91,7 +92,7 @@ public sealed class PurchaseOrderCreationGateway(IHttpClientFactory clients) : I
     public async Task<byte[]> RenderPdfAsync(PurchaseOrderPdfDocument document, CancellationToken cancellationToken)
     {
         using var message = new HttpRequestMessage(HttpMethod.Post, "/Pdfs/purchaseorder") { Content = JsonContent.Create(document) };
-        using var response = await clients.CreateClient(DocumentClient).SendAsync(message, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+        using var response = await clients.CreateClient(DocumentClient).SendWithPrivateFailureObservationAsync(message, cancellationToken, new PrivateDependencyFailureObservation(), HttpCompletionOption.ResponseHeadersRead);
         EnsureSuccess(response);
         if (response.Content.Headers.ContentType?.MediaType is not "application/pdf")
         {
@@ -135,7 +136,7 @@ public sealed class PurchaseOrderCreationGateway(IHttpClientFactory clients) : I
 
     private async Task DeleteAsync(string clientName, string uri, CancellationToken cancellationToken)
     {
-        using var response = await clients.CreateClient(clientName).DeleteAsync(uri, cancellationToken);
+        using var response = await clients.CreateClient(clientName).SendWithPrivateFailureObservationAsync(new HttpRequestMessage(HttpMethod.Delete, uri), cancellationToken, new PrivateDependencyFailureObservation(), HttpCompletionOption.ResponseContentRead);
         if (response.StatusCode != HttpStatusCode.NotFound) EnsureSuccess(response);
     }
 
@@ -147,7 +148,7 @@ public sealed class PurchaseOrderCreationGateway(IHttpClientFactory clients) : I
 
     private static async Task<T> SendAsync<T>(HttpClient client, HttpRequestMessage message, CancellationToken cancellationToken)
     {
-        using var response = await client.SendAsync(message, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+        using var response = await client.SendWithPrivateFailureObservationAsync(message, cancellationToken, new PrivateDependencyFailureObservation(), HttpCompletionOption.ResponseHeadersRead);
         EnsureSuccess(response);
         try
         {

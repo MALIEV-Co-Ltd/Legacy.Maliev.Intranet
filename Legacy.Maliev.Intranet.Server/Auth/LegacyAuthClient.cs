@@ -84,7 +84,7 @@ public sealed class LegacyAuthClient(
             Content = JsonContent.Create(identity),
         };
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
-        using var response = await httpClient.SendAsync(request, cancellationToken);
+        using var response = await SendIdentityAsync(request, cancellationToken);
         if (response.StatusCode == HttpStatusCode.Conflict)
         {
             return null;
@@ -106,7 +106,7 @@ public sealed class LegacyAuthClient(
             Content = JsonContent.Create(identity),
         };
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
-        using var response = await httpClient.SendAsync(request, cancellationToken);
+        using var response = await SendIdentityAsync(request, cancellationToken);
         if (response.StatusCode == HttpStatusCode.Conflict)
         {
             return null;
@@ -114,6 +114,64 @@ public sealed class LegacyAuthClient(
 
         response.EnsureSuccessStatusCode();
         return await response.Content.ReadFromJsonAsync<EmployeeIdentityResponse>(cancellationToken);
+    }
+
+    private async Task<HttpResponseMessage> SendIdentityAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+    {
+        // Only the two retained profile identity sends replace the caller-owned source helper.
+        // Login, refresh and revoke above keep their existing admission and response contracts.
+        request.Options.Set(new HttpRequestOptionsKey<bool>("Maliev.DependencyFailureOwnedByCaller"), logger.IsEnabled(LogLevel.Error));
+        try
+        {
+            var response = await httpClient.SendAsync(request, cancellationToken);
+            if (!response.IsSuccessStatusCode) RecordIdentityFailure((int)response.StatusCode, null);
+            return response;
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { throw; }
+        catch (Exception exception)
+        {
+            var type = exception.GetType();
+            var name = type == typeof(HttpRequestException) ? nameof(HttpRequestException)
+                : type == typeof(TaskCanceledException) ? nameof(TaskCanceledException)
+                : type == typeof(OperationCanceledException) ? nameof(OperationCanceledException)
+                : type == typeof(TimeoutException) ? nameof(TimeoutException)
+                : type == typeof(IOException) ? nameof(IOException)
+                : type == typeof(InvalidOperationException) ? nameof(InvalidOperationException)
+                : type == typeof(ArgumentException) ? nameof(ArgumentException)
+                : type == typeof(NotSupportedException) ? nameof(NotSupportedException)
+                : type == typeof(Polly.Timeout.TimeoutRejectedException) ? nameof(Polly.Timeout.TimeoutRejectedException) : "UnknownException";
+            RecordIdentityFailure(null, name);
+            throw;
+        }
+    }
+
+    private void RecordIdentityFailure(int? status, string? exceptionType)
+    {
+        try
+        {
+            if (status == 404)
+            {
+                logger.LogDebug(new EventId(5101, "DependencyResourceNotFound"),
+                    "{EventName} Dependency={Dependency} Operation={Operation} StatusCode={StatusCode} Method={Method}",
+                    "DependencyResourceNotFound", "AuthService", "Auth.Post", 404, "POST");
+            }
+            else if (status is { } number)
+            {
+                logger.LogError(new EventId(5101, "DependencyRequestFailure"),
+                    "{EventName} Dependency={Dependency} Operation={Operation} StatusCode={StatusCode} Method={Method} ExceptionType={ExceptionType}",
+                    "DependencyRequestFailure", "AuthService", "Auth.Post", number, "POST", exceptionType);
+            }
+            else
+            {
+                logger.LogError(new EventId(5101, "DependencyRequestFailure"),
+                    "{EventName} Dependency={Dependency} Operation={Operation} Method={Method} ExceptionType={ExceptionType}",
+                    "DependencyRequestFailure", "AuthService", "Auth.Post", "POST", exceptionType);
+            }
+        }
+        catch (Exception)
+        {
+            // A diagnostic sink cannot replace the original identity response or exception.
+        }
     }
 
     private bool IsTokenEnvelopeValid(AuthTokenResponse tokens) =>

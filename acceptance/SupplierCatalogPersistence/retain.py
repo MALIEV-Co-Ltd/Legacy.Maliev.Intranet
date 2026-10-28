@@ -29,7 +29,7 @@ OUTCOMES = {"Passed", "Failed", "NotExecuted", "Aborted", "Timeout", "Error", "I
 PINS = {
     "Legacy.Maliev.CatalogService": "3f426723743570a6c20d2c014499445abb0774e1",
     "Legacy.Maliev.ProcurementService": "614a157ab5c8739c144554797a387c45990ba7fe",
-    "Legacy.Maliev.ServiceDefaults": "7b3099bf67d0f17e56cfdb3dcf36541304abaac2",
+    "Legacy.Maliev.ServiceDefaults": "02377791d346e25216c114522b3bfdb6f0f19a16",
     "Legacy.Maliev.CompatibilityContracts": "99529ad665503b227184c0baa946ad4e62db978a",
 }
 
@@ -118,16 +118,16 @@ EXPECTED_BACKEND_COMMANDS = {
     "redis": "exec timeout -k 5 900 docker-entrypoint.sh redis-server --save '' --appendonly no",
 }
 
-def exact_participants(row):
+def exact_participants(row, client_phases=EXPECTED_CLIENT_PHASES):
     clients, backends = row["clients"], row["backends"]
     if not isinstance(clients, list) or not isinstance(backends, list):
         return False
-    if len(clients) != len(EXPECTED_CLIENT_PHASES) or len(backends) != len(EXPECTED_BACKENDS):
+    if len(clients) != len(client_phases) or len(backends) != len(EXPECTED_BACKENDS):
         return False
     names = [item["Name"] for item in clients]
     backend_names = [item["Name"] for item in backends]
-    return (len(set(names)) == len(names) and set(names) == set(EXPECTED_CLIENT_PHASES) and
-            all(type(item["Phase"]) is int and item["Phase"] == EXPECTED_CLIENT_PHASES[item["Name"]]
+    return (len(set(names)) == len(names) and set(names) == set(client_phases) and
+            all(type(item["Phase"]) is int and item["Phase"] == client_phases[item["Name"]]
                 for item in clients) and
             len(set(backend_names)) == len(backend_names) and set(backend_names) == EXPECTED_BACKENDS)
 
@@ -138,7 +138,7 @@ def same_participants(left, right):
             sorted(item["Name"] for item in left["backends"]) ==
             sorted(item["Name"] for item in right["backends"]))
 
-def resource_release(directory):
+def resource_release(directory, client_phases=EXPECTED_CLIENT_PHASES):
     try:
         resources = [json.loads(line) for line in (directory / "resources.jsonl").read_text().splitlines()]
         scopes = [json.loads(line) for line in (directory / "scope.jsonl").read_text().splitlines()]
@@ -180,7 +180,7 @@ def resource_release(directory):
         binding = [{"Name": "postgres-and-redis", "Run": run, "ids": ids}]
         def settled(items):
             return bool(items) and all(item["Released"] is True and item["startupSettled"] is True for item in items)
-        return (all(exact_participants(row) for row in scopes) and
+        return (all(exact_participants(row, client_phases) for row in scopes) and
                 len(released) == 1 and scopes[-1] == released[0] and
                 released[0]["sequence"] > max(row["sequence"] for row in resources) and
                 released[0]["backendBindings"] == binding and

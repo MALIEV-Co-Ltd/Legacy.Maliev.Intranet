@@ -1,17 +1,27 @@
 using System.Globalization;
 using System.Net;
+using System.Text.Encodings.Web;
 using System.Text.Json;
 using Legacy.Maliev.Intranet.Auth;
 using Legacy.Maliev.Intranet.Contracts;
+using Microsoft.AspNetCore.Routing;
 
 namespace Legacy.Maliev.Intranet.Bff.Operations;
 
 /// <summary>Maps employee sessions to privacy-safe outcome receipts.</summary>
 internal static class OutcomeReadbackEndpointMapper
 {
+    internal const string BrowserReceiptPath = "/Operations/Check";
     internal const int MaximumPayloadBytes = 1024 * 1024;
 
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
+
+    private static readonly JsonSerializerOptions BrowserJsonOptions = new(JsonOptions) { WriteIndented = true };
+
+    /// <summary>Identifies only the explicitly mapped browser receipt, not a query-selected format.</summary>
+    internal static bool IsBrowserReceipt(HttpContext context) =>
+        context.GetEndpoint() is RouteEndpoint endpoint &&
+        string.Equals(endpoint.RoutePattern.RawText, BrowserReceiptPath, StringComparison.Ordinal);
 
     /// <summary>Returns one validated aggregate receipt, never a raw producer response.</summary>
     internal static async Task<IResult> GetAsync(
@@ -46,23 +56,44 @@ internal static class OutcomeReadbackEndpointMapper
 
         context.Response.Headers.CacheControl = "no-store";
         context.Response.Headers.Pragma = "no-cache";
-        var accessToken = await sessions.GetAccessTokenAsync(context, cancellationToken);
-        if (string.IsNullOrWhiteSpace(accessToken))
+        var browserReceipt = IsBrowserReceipt(context);
+        var accessToken = browserReceipt ? null : await sessions.GetAccessTokenAsync(context, cancellationToken);
+        if (!browserReceipt && string.IsNullOrWhiteSpace(accessToken))
         {
-            return Receipt(source, StatusCodes.Status401Unauthorized, null, timeProvider);
+            return Receipt(source, StatusCodes.Status401Unauthorized, null, timeProvider, context);
         }
 
         try
         {
+            if (browserReceipt)
+            {
+                var acquired = await sessions.AcquireAccessTokenAsync(context, cancellationToken);
+                if (acquired.Status == EmployeeAccessTokenStatus.Unavailable &&
+                    acquired.FailureCause is EmployeeAccessTokenFailureCause.Transport or EmployeeAccessTokenFailureCause.Timeout)
+                {
+                    var status = acquired.FailureCause == EmployeeAccessTokenFailureCause.Timeout
+                        ? StatusCodes.Status504GatewayTimeout
+                        : StatusCodes.Status502BadGateway;
+                    return Receipt(source, status, null, timeProvider, context);
+                }
+
+                accessToken = acquired.AccessToken;
+            }
+
+            if (string.IsNullOrWhiteSpace(accessToken))
+            {
+                return Receipt(source, StatusCodes.Status401Unauthorized, null, timeProvider, context);
+            }
+
             using var response = await outcomes.GetAsync(source, from, to, accessToken, cancellationToken);
             if (response.StatusCode != HttpStatusCode.OK)
             {
-                return Receipt(source, (int)response.StatusCode, null, timeProvider);
+                return Receipt(source, (int)response.StatusCode, null, timeProvider, context);
             }
 
             if (response.Content.Headers.ContentLength is > MaximumPayloadBytes)
             {
-                return Receipt(source, StatusCodes.Status502BadGateway, null, timeProvider);
+                return Receipt(source, StatusCodes.Status502BadGateway, null, timeProvider, context);
             }
 
             var body = new byte[MaximumPayloadBytes + 1];
@@ -81,17 +112,23 @@ internal static class OutcomeReadbackEndpointMapper
 
             if (length > MaximumPayloadBytes)
             {
-                return Receipt(source, StatusCodes.Status502BadGateway, null, timeProvider);
+                return Receipt(source, StatusCodes.Status502BadGateway, null, timeProvider, context);
             }
 
             var payload = AggregateOutcomePayload.TryValidate(body.AsMemory(0, length), source, from, to, out var validated)
                 ? validated
                 : (JsonElement?)null;
+            if (payload.HasValue && source == "qualification" && IsBrowserReceipt(context))
+            {
+                payload = AggregateOutcomePayload.SummarizeQualification(payload.Value);
+            }
+
             return Receipt(
                 source,
                 payload.HasValue ? StatusCodes.Status200OK : StatusCodes.Status502BadGateway,
                 payload,
-                timeProvider);
+                timeProvider,
+                context);
         }
         catch (Exception exception) when (exception is HttpRequestException or IOException or
             OperationCanceledException && !cancellationToken.IsCancellationRequested)
@@ -99,17 +136,27 @@ internal static class OutcomeReadbackEndpointMapper
             var status = exception is OperationCanceledException
                 ? StatusCodes.Status504GatewayTimeout
                 : StatusCodes.Status502BadGateway;
-            return Receipt(source, status, null, timeProvider);
+            return Receipt(source, status, null, timeProvider, context);
         }
     }
 
-    private static IResult Receipt(string source, int status, JsonElement? payload, TimeProvider timeProvider)
+    private static IResult Receipt(string source, int status, JsonElement? payload, TimeProvider timeProvider, HttpContext context)
     {
         var receipt = new AggregateOutcomeReceipt(
             source,
             timeProvider.GetUtcNow().UtcDateTime.ToString("O", CultureInfo.InvariantCulture),
             status,
             payload);
+        if (IsBrowserReceipt(context))
+        {
+            context.Response.Headers["X-Content-Type-Options"] = "nosniff";
+            var encoded = HtmlEncoder.Default.Encode(JsonSerializer.Serialize(receipt, BrowserJsonOptions));
+            return Results.Text(
+                "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"><title>Aggregate outcome receipt</title></head><body><h1>Aggregate outcome receipt</h1><pre>" + encoded + "</pre></body></html>",
+                "text/html; charset=utf-8",
+                statusCode: StatusCodes.Status200OK);
+        }
+
         return Results.Text(
             JsonSerializer.Serialize(receipt, JsonOptions),
             "application/json",

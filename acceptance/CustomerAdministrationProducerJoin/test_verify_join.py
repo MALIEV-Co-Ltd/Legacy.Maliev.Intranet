@@ -29,9 +29,11 @@ def report(shared_theory_id=False):
             name = verifier.CLASS + "." + method
             if count == 2:
                 name += '(changed: "' + ("profile" if case == 0 else "identity") + '")'
+            if count in (3, 6):
+                name += f"(case: {case})"
             ET.SubElement(results, q("UnitTestResult"), testId=identifier, executionId=execution, testName=name, outcome="Passed")
     summary = ET.SubElement(root, q("ResultSummary"), outcome="Completed")
-    counters = dict.fromkeys(("total", "executed", "passed"), "5")
+    counters = dict.fromkeys(("total", "executed", "passed"), "14")
     counters.update(dict.fromkeys(("failed", "error", "timeout", "aborted", "inconclusive", "passedButRunAborted",
         "notRunnable", "notExecuted", "disconnected", "warning", "completed", "inProgress", "pending"), "0"))
     ET.SubElement(summary, q("Counters"), counters)
@@ -39,16 +41,16 @@ def report(shared_theory_id=False):
 
 class ParserControls(unittest.TestCase):
     def test_valid(self):
-        self.assertEqual(5, sum(verifier.validate(report()).values()))
+        self.assertEqual(14, sum(verifier.validate(report()).values()))
 
     def test_shared_theory_test_id_distinct_execution_ids(self):
-        self.assertEqual(5, sum(verifier.validate(report(True)).values()))
+        self.assertEqual(14, sum(verifier.validate(report(True)).values()))
 
     def test_single_shared_theory_definition(self):
         value = report(True)
         definitions = value.find("./t:TestDefinitions", verifier.NS)
         definitions.remove(list(definitions)[2])
-        self.assertEqual(5, sum(verifier.validate(value).values()))
+        self.assertEqual(14, sum(verifier.validate(value).values()))
 
     def test_shared_definition_without_execution_anchor(self):
         value = report(True)
@@ -56,13 +58,13 @@ class ParserControls(unittest.TestCase):
         for definition in definitions:
             definition.remove(definition.find("./t:Execution", verifier.NS))
         definitions.remove(list(definitions)[2])
-        self.assertEqual(5, sum(verifier.validate(value).values()))
+        self.assertEqual(14, sum(verifier.validate(value).values()))
 
     def test_identical_repeated_definition(self):
         value = report(True)
         definitions = value.find("./t:TestDefinitions", verifier.NS)
         definitions.append(copy.deepcopy(list(definitions)[0]))
-        self.assertEqual(5, sum(verifier.validate(value).values()))
+        self.assertEqual(14, sum(verifier.validate(value).values()))
 
     def test_same_test_id_conflicting_method(self):
         value = report(True)
@@ -195,7 +197,7 @@ class EvidenceBoundaryControls(unittest.TestCase):
     def test_bounded_owned_read(self):
         data, parsed = verifier.read_evidence(self.root, self.path)
         self.assertEqual(self.data, data)
-        self.assertEqual(5, sum(verifier.validate(parsed).values()))
+        self.assertEqual(14, sum(verifier.validate(parsed).values()))
 
     def test_outside_results_rejects(self):
         child = self.root / "owned"
@@ -281,7 +283,7 @@ class EvidenceBoundaryControls(unittest.TestCase):
         self.assertEqual(["customer-administration-producer-join-proof.json"], [path.name for path in files])
         proof = json.loads(files[0].read_text())
         self.assertEqual(verifier.METHODS, proof["methods"])
-        self.assertEqual(5, proof["passed"])
+        self.assertEqual(14, proof["passed"])
         self.assertEqual(verifier.hashlib.sha256(self.path.read_bytes()).hexdigest(), proof["trxSha256"])
         self.assertNotIn("PRIVATE", files[0].read_text())
         self.assertNotIn("testName", files[0].read_text())

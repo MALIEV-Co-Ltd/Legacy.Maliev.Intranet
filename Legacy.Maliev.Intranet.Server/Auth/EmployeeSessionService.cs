@@ -78,6 +78,7 @@ public sealed class EmployeeSessionService(
         var expectedEmployeeId = result.Principal?.FindFirstValue(ClaimTypes.NameIdentifier);
         EmployeeRefreshResult? refreshed = null;
         var transientRefreshFailure = false;
+        var failureCause = EmployeeAccessTokenFailureCause.None;
         var refreshThrottled = false;
         int? retryAfterSeconds = null;
         try
@@ -99,6 +100,12 @@ public sealed class EmployeeSessionService(
             exception is TaskCanceledException && !cancellationToken.IsCancellationRequested)
         {
             transientRefreshFailure = true;
+            failureCause = exception switch
+            {
+                TaskCanceledException => EmployeeAccessTokenFailureCause.Timeout,
+                HttpRequestException { StatusCode: null } => EmployeeAccessTokenFailureCause.Transport,
+                _ => EmployeeAccessTokenFailureCause.None,
+            };
             logger.LogWarning(exception, "Employee session refresh was temporarily unavailable; preserving the opaque session for retry.");
         }
 
@@ -116,7 +123,10 @@ public sealed class EmployeeSessionService(
             if (transientRefreshFailure)
             {
                 return new(refreshThrottled ? EmployeeAccessTokenStatus.Throttled : EmployeeAccessTokenStatus.Unavailable,
-                    null, [], retryAfterSeconds);
+                    null, [], retryAfterSeconds)
+                {
+                    FailureCause = failureCause,
+                };
             }
 
             if (reconciliation.MaySignOut)

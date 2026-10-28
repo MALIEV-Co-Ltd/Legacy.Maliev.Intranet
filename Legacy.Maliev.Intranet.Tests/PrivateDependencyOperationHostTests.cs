@@ -13,7 +13,9 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Http;
+using Microsoft.Extensions.Http.Resilience;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Xunit.Abstractions;
 using BffProgram = Bff::Program;
 using OrdersProxy = Bff::Legacy.Maliev.Intranet.Bff.Orders.OrdersProxy;
@@ -49,6 +51,8 @@ public sealed class PrivateDependencyOperationHostTests(ITestOutputHelper output
         Assert.Equal(dependency, record.Fields["Dependency"]);
         Assert.Equal(operation, record.Fields["Operation"]);
         Assert.Equal(503, record.Fields["StatusCode"]);
+        Assert.Equal("GET", record.Fields["Method"]);
+        Assert.Null(record.Fields["ExceptionType"]);
         AssertSafeFailure(record);
         AssertHandlerOrder(host);
         AssertRequestBoundary(host, bff);
@@ -75,13 +79,18 @@ public sealed class PrivateDependencyOperationHostTests(ITestOutputHelper output
     [InlineData(true, 403)]
     [InlineData(false, 401)]
     [InlineData(false, 403)]
-    public async Task AuthorizationFailure_RegisteredClient_PreservesStatusAndInvalidationWithoutRetry(bool bff, int status)
+    public async Task AuthorizationFailure_RegisteredClient_PreservesStatusAndInvalidationWithOneSourceDiagnostic(bool bff, int status)
     {
         await using var host = new Host(bff, (_, _) => Task.FromResult(Response((HttpStatusCode)status, Canary)));
         await host.ReadAsync(CancellationToken.None, (HttpStatusCode)status);
         Assert.Single(host.Transport.Requests);
         Assert.Equal("service-token-canary", Assert.Single(host.Tokens.Invalidated));
-        Assert.Empty(host.Logs.Failures);
+        var record = Assert.Single(host.Logs.Failures);
+        Assert.Equal(LogLevel.Error, record.Level);
+        Assert.Equal(status, record.Fields["StatusCode"]);
+        Assert.Equal("GET", record.Fields["Method"]);
+        Assert.Null(record.Fields["ExceptionType"]);
+        AssertSafeFailure(record);
         AssertRequestBoundary(host, bff);
     }
 
@@ -117,6 +126,8 @@ public sealed class PrivateDependencyOperationHostTests(ITestOutputHelper output
         Assert.Same(expected, actual);
         Assert.Equal(attempts, host.Transport.Requests.Count);
         var record = Assert.Single(host.Logs.Failures);
+        Assert.Equal("HttpRequestException", record.Fields["ExceptionType"]);
+        Assert.Equal("GET", record.Fields["Method"]);
         Assert.Null(record.Exception);
         AssertSafeFailure(record);
         AssertHandlerOrder(host);
@@ -154,31 +165,222 @@ public sealed class PrivateDependencyOperationHostTests(ITestOutputHelper output
     {
         var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         CancellationToken transportToken = default;
+        OperationCanceledException? terminalCancellation = null;
         await using var host = new Host(true, async (_, token) =>
         {
             transportToken = token;
             entered.TrySetResult();
-            await Task.Delay(Timeout.InfiniteTimeSpan, token);
+            try { await Task.Delay(Timeout.InfiniteTimeSpan, token); }
+            catch (OperationCanceledException failure) { terminalCancellation = failure; throw; }
             return Response(HttpStatusCode.OK, "{}");
         });
-        var pending = host.ReadAsync(CancellationToken.None);
-        await entered.Task.WaitAsync(TimeSpan.FromSeconds(10));
-        var actual = await Assert.ThrowsAsync<TaskCanceledException>(() => pending.WaitAsync(TimeSpan.FromSeconds(30)));
-        Assert.IsType<TimeoutException>(actual.InnerException);
-        Assert.False(CancellationToken.None.IsCancellationRequested);
-        Assert.True(transportToken.IsCancellationRequested);
+        using var caller = new CancellationTokenSource();
+        var pending = host.ReadAsync(caller.Token);
+        try
+        {
+            Assert.Equal(TimeSpan.FromSeconds(10), host.SelectedClientTimeout());
+            await entered.Task.WaitAsync(TimeSpan.FromSeconds(10));
+            var actual = await Assert.ThrowsAsync<TaskCanceledException>(() => pending.WaitAsync(TimeSpan.FromSeconds(30)));
+            var timeout = Assert.IsType<TimeoutException>(actual.InnerException);
+            Assert.Same(terminalCancellation, timeout.InnerException);
+            Assert.False(caller.IsCancellationRequested);
+            Assert.True(transportToken.IsCancellationRequested);
+            Assert.Single(host.Transport.Requests);
+            Assert.Empty(host.Tokens.Invalidated);
+            AssertHandlerOrder(host);
+            AssertRequestBoundary(host, true);
+            output.WriteLine("Actual registered Orders HttpClient deadline propagated as {0} with inner {1}; safe dependency events: {2}",
+                actual.GetType().Name, actual.InnerException!.GetType().Name, host.Logs.Failures.Count());
+            var record = Assert.Single(host.Logs.Failures);
+            Assert.Equal(LogLevel.Error, record.Level);
+            Assert.Equal("OrderService", record.Fields["Dependency"]);
+            Assert.Equal("Orders.Get", record.Fields["Operation"]);
+            Assert.Equal("TaskCanceledException", record.Fields["ExceptionType"]);
+            Assert.False(record.Fields.ContainsKey("StatusCode"));
+            AssertSafeFailure(record);
+        }
+        finally
+        {
+            caller.Cancel();
+            try { await pending.WaitAsync(TimeSpan.FromSeconds(5)); } catch (OperationCanceledException) { }
+        }
+    }
+
+    // Literal original-source-owned registrations; no business handler or financial operation is invoked.
+    public static IEnumerable<object[]> SourceOwnedClients()
+    {
+        yield return new object[] { true, "CustomerAccountNotificationProxy", "NotificationService" };
+        yield return new object[] { true, "ICustomerProfileCreationClient", "CustomerService" };
+        yield return new object[] { true, "ICustomerIdentityCreationClient", "AuthService" };
+        yield return new object[] { true, "IEmployeeProfileCreationClient", "EmployeeService" };
+        yield return new object[] { true, "IEmployeeIdentityCreationClient", "AuthService" };
+        yield return new object[] { true, "ISupplierProfileCreationClient", "ProcurementService" };
+        yield return new object[] { true, "ISupplierAddressCreationClient", "ProcurementService" };
+        yield return new object[] { true, "ISupplierManagementClient", "ProcurementService" };
+        yield return new object[] { true, "CustomersProxy", "CustomerService" };
+        yield return new object[] { true, "CustomerUpdateProxy", "CustomerService" };
+        yield return new object[] { true, "EmployeesProxy", "EmployeeService" };
+        yield return new object[] { true, "CustomerAdministrationIdentityClient", "AuthService" };
+        yield return new object[] { true, "CustomerAdministrationProfileClient", "CustomerService" };
+        yield return new object[] { true, "EmployeeAdministrationCountryClient", "CatalogService" };
+        yield return new object[] { true, "EmployeeAdministrationIdentityClient", "AuthService" };
+        yield return new object[] { true, "EmployeeAdministrationProfileClient", "EmployeeService" };
+        yield return new object[] { true, "EmployeeRecoveryNotificationProxy", "NotificationService" };
+        yield return new object[] { true, "OrdersProxy", "OrderService" };
+        yield return new object[] { true, "FinancesProxy", "AccountingService" };
+        yield return new object[] { true, "InvoicesProxy", "AccountingService" };
+        yield return new object[] { true, "InvoiceDetailProxy", "AccountingService" };
+        yield return new object[] { true, "InvoiceCreationProxy", "AccountingService" };
+        yield return new object[] { true, "InvoiceFileProxy", "FileService" };
+        yield return new object[] { true, "QuotationQualificationClient", "QuotationService" };
+        yield return new object[] { true, "QuotationRequestsProxy", "QuotationService" };
+        yield return new object[] { true, "QuotationRequestFilesProxy", "FileService" };
+        yield return new object[] { true, "QuotationsProxy", "QuotationService" };
+        yield return new object[] { true, "QuotationDecisionProxy", "QuotationService" };
+        yield return new object[] { true, "QuotationFileProxy", "FileService" };
+        yield return new object[] { true, "SuppliersProxy", "ProcurementService" };
+        yield return new object[] { true, "PurchaseOrdersProxy", "ProcurementService" };
+        yield return new object[] { true, "OrderDetailProxy", "OrderService" };
+        yield return new object[] { true, "OrderCreateProxy", "OrderService" };
+        yield return new object[] { true, "OrderCatalogReferenceProxy", "CatalogService" };
+        yield return new object[] { true, "OrderEmployeeReferenceProxy", "EmployeeService" };
+        yield return new object[] { true, "OrderFileProxy", "FileService" };
+        yield return new object[] { true, "FinanceFileProxy", "FileService" };
+        yield return new object[] { true, "OrderDocumentProxy", "DocumentService" };
+        yield return new object[] { true, "OrderNotificationProxy", "NotificationService" };
+        yield return new object[] { true, "CatalogMaterialsProxy", "CatalogService" };
+        yield return new object[] { false, "ILegacyCustomerClient", "CustomerService" };
+        yield return new object[] { false, "ILegacyEmployeeClient", "EmployeeService" };
+        yield return new object[] { false, "ILegacyCatalogClient", "CatalogService" };
+        yield return new object[] { false, "ILegacyProcurementClient", "ProcurementService" };
+        yield return new object[] { false, "ILegacyOrderClient", "OrderService" };
+        yield return new object[] { false, "IPurchaseOrderDocumentClient", "DocumentService" };
+        yield return new object[] { false, "IOrderDocumentClient", "DocumentService" };
+        yield return new object[] { false, "ILegacyFileClient", "FileService" };
+        yield return new object[] { false, "ILegacyOrderNotificationClient", "NotificationService" };
+        yield return new object[] { true, "service-auth", "AuthService" };
+        yield return new object[] { false, "service-auth", "AuthService" };
+        yield return new object[] { false, "employee-confirmation-notification", "NotificationService" };
+        yield return new object[] { true, "aggregate-outcome-accounting", "AccountingService" };
+        yield return new object[] { true, "aggregate-outcome-quotation", "QuotationService" };
+        yield return new object[] { true, "purchase-order-procurement", "ProcurementService" };
+        yield return new object[] { true, "purchase-order-employee", "EmployeeService" };
+        yield return new object[] { true, "purchase-order-catalog", "CatalogService" };
+        yield return new object[] { true, "purchase-order-document", "DocumentService" };
+        yield return new object[] { true, "purchase-order-file", "FileService" };
+        yield return new object[] { true, "quotation-create-quotation", "QuotationService" };
+        yield return new object[] { true, "quotation-create-order", "OrderService" };
+        yield return new object[] { true, "quotation-create-customer", "CustomerService" };
+        yield return new object[] { true, "quotation-create-employee", "EmployeeService" };
+        yield return new object[] { true, "quotation-create-catalog", "CatalogService" };
+        yield return new object[] { true, "quotation-create-document", "DocumentService" };
+        yield return new object[] { true, "quotation-create-file", "FileService" };
+        yield return new object[] { true, "quotation-create-notification", "NotificationService" };
+    }
+
+    [Theory]
+    [MemberData(nameof(SourceOwnedClients))]
+    public async Task SourceOwnedRegisteredFactoryClient_Preserves400AndEmitsOneSafeMethod(
+        bool bff, string clientName, string dependency)
+    {
+        await using var host = new Host(bff, (_, _) => Task.FromResult(Response(HttpStatusCode.BadRequest, BodyCanary)), clientName);
+        using var response = await host.SendSourceProbeAsync(CancellationToken.None);
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Same(host.Transport.LastResponse, response);
+        Assert.Equal(BodyCanary, await response.Content.ReadAsStringAsync());
         Assert.Single(host.Transport.Requests);
-        Assert.Empty(host.Tokens.Invalidated);
-        AssertHandlerOrder(host);
-        AssertRequestBoundary(host, true);
-        output.WriteLine("Actual registered Orders HttpClient deadline propagated as {0} with inner {1}; safe dependency events: {2}",
-            actual.GetType().Name, actual.InnerException!.GetType().Name, host.Logs.Failures.Count());
         var record = Assert.Single(host.Logs.Failures);
         Assert.Equal(LogLevel.Error, record.Level);
-        Assert.Equal("OrderService", record.Fields["Dependency"]);
+        Assert.Equal(dependency, record.Fields["Dependency"]);
         Assert.Equal("Orders.Get", record.Fields["Operation"]);
-        Assert.False(record.Fields.ContainsKey("StatusCode"));
+        Assert.Equal("GET", record.Fields["Method"]);
+        Assert.Equal(400, record.Fields["StatusCode"]);
+        Assert.Null(record.Fields["ExceptionType"]);
         AssertSafeFailure(record);
+        var chain = Assert.Single(host.HandlerChains);
+        var observer = Assert.Single(chain.Select((name, index) => (name, index)),
+            item => item.name == "Maliev.Aspire.ServiceDefaults.Diagnostics.PrivateDependencyFailureHandler").index;
+        Assert.All(chain.Take(observer), name => Assert.StartsWith("Microsoft.Extensions.Http.Logging.", name));
+        Assert.All(host.Transport.Requests, request => Assert.False(request.OwnershipHeader));
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task SourceOwnedRegisteredClient_404KeepsOriginalDebugSeverity(bool bff)
+    {
+        await using var host = new Host(bff, (_, _) => Task.FromResult(Response(HttpStatusCode.NotFound, BodyCanary)));
+        using var response = await host.SendSourceProbeAsync(CancellationToken.None);
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        Assert.Same(host.Transport.LastResponse, response);
+        Assert.Single(host.Transport.Requests);
+        var record = Assert.Single(host.Logs.Failures);
+        Assert.Equal(LogLevel.Debug, record.Level);
+        Assert.Equal("DependencyResourceNotFound", record.Fields["EventName"]);
+        Assert.Equal(404, record.Fields["StatusCode"]);
+        Assert.Equal("GET", record.Fields["Method"]);
+        AssertSafeFailure(record);
+    }
+
+    [Theory]
+    [InlineData(true, true)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(false, false)]
+    public async Task CompatibilityIdentitySourceSend_HasOneOwnerWithoutChangingConflictOutcome(bool customer, bool callerLogging)
+    {
+        await using var host = new Host(false, (_, _) => Task.FromResult(Response(HttpStatusCode.Conflict, BodyCanary)),
+            nameof(ILegacyAuthClient), callerLogging);
+        Assert.Null(await host.CreateIdentityAsync(customer, CancellationToken.None));
+        if (!callerLogging)
+        {
+            Assert.Empty(host.Logs.Failures);
+            Assert.Single(host.Transport.Requests);
+            Assert.False(host.Transport.Requests.Single().OwnershipHeader);
+            return;
+        }
+        var record = Assert.Single(host.Logs.Failures);
+        Assert.Equal(LogLevel.Error, record.Level);
+        Assert.Equal(409, record.Fields["StatusCode"]);
+        Assert.Equal("AuthService", record.Fields["Dependency"]);
+        Assert.Equal("Auth.Post", record.Fields["Operation"]);
+        if (callerLogging) Assert.Equal("POST", record.Fields["Method"]);
+        AssertSafeFailure(record);
+        Assert.Single(host.Transport.Requests);
+        Assert.False(host.Transport.Requests.Single().OwnershipHeader);
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task CompatibilityIdentitySourceSend_DisabledCallerRetains503DependencyFallback(bool customer)
+    {
+        await using var host = new Host(false, (_, _) => Task.FromResult(Response(HttpStatusCode.ServiceUnavailable, BodyCanary)),
+            nameof(ILegacyAuthClient), callerLogging: false);
+        var failure = await Assert.ThrowsAsync<HttpRequestException>(() => host.CreateIdentityAsync(customer, CancellationToken.None));
+        Assert.Equal(HttpStatusCode.ServiceUnavailable, failure.StatusCode);
+        var record = Assert.Single(host.Logs.Failures);
+        Assert.Equal(503, record.Fields["StatusCode"]);
+        Assert.Equal("HttpRequest", record.Fields["Operation"]);
+        AssertSafeFailure(record);
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task CompatibilityIdentitySourceSend_TransportRetainsSameExceptionAndSafeClass(bool customer)
+    {
+        var expected = new HttpRequestException(ExceptionCanary + Canary);
+        await using var host = new Host(false, (_, _) => Task.FromException<HttpResponseMessage>(expected),
+            nameof(ILegacyAuthClient));
+        var actual = await Assert.ThrowsAsync<HttpRequestException>(() => host.CreateIdentityAsync(customer, CancellationToken.None));
+        Assert.Same(expected, actual);
+        var record = Assert.Single(host.Logs.Failures);
+        Assert.Equal("Auth.Post", record.Fields["Operation"]);
+        Assert.Equal("POST", record.Fields["Method"]);
+        Assert.Equal("HttpRequestException", record.Fields["ExceptionType"]);
+        AssertSafeFailure(record);
+        Assert.All(host.Transport.Requests, request => Assert.False(request.OwnershipHeader));
     }
 
     private static void AssertSafeFailure(Failure record)
@@ -252,19 +454,292 @@ public sealed class PrivateDependencyOperationHostTests(ITestOutputHelper output
         };
         // A real server hint keeps the standard Catalog retry characterization bounded;
         // the BFF's existing ShouldRetryAfterHeader=false still exercises its actual delays.
-        if (status == HttpStatusCode.ServiceUnavailable)
+        if (status is HttpStatusCode.ServiceUnavailable or HttpStatusCode.TooManyRequests)
             response.Headers.RetryAfter = new RetryConditionHeaderValue(TimeSpan.Zero);
         return response;
     }
 
+    [Theory]
+    [InlineData(true, 302)]
+    [InlineData(false, 302)]
+    [InlineData(true, 304)]
+    [InlineData(false, 304)]
+    [InlineData(true, 400)]
+    [InlineData(false, 400)]
+    [InlineData(true, 404)]
+    [InlineData(false, 404)]
+    [InlineData(true, 409)]
+    [InlineData(false, 409)]
+    [InlineData(true, 429)]
+    [InlineData(false, 429)]
+    public async Task TerminalNonSuccess_SelectedRegisteredClient_ObservesWithoutChangingCallerOutcome(bool bff, int status)
+    {
+        await using var host = new Host(bff, (_, _) => Task.FromResult(Response((HttpStatusCode)status, BodyCanary)));
+        await host.ReadAsync(CancellationToken.None, (HttpStatusCode)status);
+        Assert.NotEmpty(host.Transport.Requests);
+        if (status != 429) Assert.Single(host.Transport.Requests);
+        Assert.Empty(host.Tokens.Invalidated);
+        var record = Assert.Single(host.Logs.Failures);
+        Assert.Equal(status == 404 ? LogLevel.Debug : LogLevel.Error, record.Level);
+        Assert.Equal(status, record.Fields["StatusCode"]);
+        Assert.Equal("GET", record.Fields["Method"]);
+        if (status == 404)
+        {
+            Assert.Equal("DependencyResourceNotFound", record.Fields["EventName"]);
+            Assert.False(record.Fields.ContainsKey("ExceptionType"));
+        }
+        else
+        {
+            Assert.Null(record.Fields["ExceptionType"]);
+        }
+        AssertSafeFailure(record);
+        AssertHandlerOrder(host);
+        AssertRequestBoundary(host, bff);
+    }
+
+    [Theory]
+    [InlineData(true, 0)]
+    [InlineData(false, 0)]
+    [InlineData(true, 1)]
+    [InlineData(false, 1)]
+    [InlineData(true, 2)]
+    [InlineData(false, 2)]
+    public async Task UnexpectedTransport_SelectedRegisteredClient_PreservesIdentityAndSafeType(bool bff, int kind)
+    {
+        var expected = UnexpectedFailure(kind);
+        await using var host = new Host(bff, (_, _) => Task.FromException<HttpResponseMessage>(expected));
+        Assert.Same(expected, await Record.ExceptionAsync(() => host.ReadAsync(CancellationToken.None)));
+        Assert.Single(host.Transport.Requests);
+        var record = Assert.Single(host.Logs.Failures);
+        Assert.Equal(expected.GetType().Name, record.Fields["ExceptionType"]);
+        Assert.Equal("GET", record.Fields["Method"]);
+        Assert.False(record.Fields.ContainsKey("StatusCode"));
+        AssertSafeFailure(record);
+        AssertHandlerOrder(host);
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task TokenProviderFailure_SelectedRegisteredClient_ObservesBeforeTransport(bool bff)
+    {
+        var expected = UnexpectedFailure(0);
+        await using var host = new Host(bff, (_, _) => Task.FromResult(Response(HttpStatusCode.OK, "{}")));
+        host.Tokens.Failure = expected;
+        Assert.Same(expected, await Record.ExceptionAsync(() => host.ReadAsync(CancellationToken.None)));
+        Assert.Empty(host.Transport.Requests);
+        Assert.Empty(host.Tokens.Invalidated);
+        var record = Assert.Single(host.Logs.Failures);
+        Assert.Equal("InvalidOperationException", record.Fields["ExceptionType"]);
+        Assert.Equal("GET", record.Fields["Method"]);
+        AssertSafeFailure(record);
+        AssertHandlerOrder(host);
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task UnselectedFactoryClient_UnexpectedFailure_RemainsQuiet(bool bff)
+    {
+        await using var host = new Host(bff, (_, _) => Task.FromResult(Response(HttpStatusCode.OK, "{}")));
+        await host.SendUnselectedAsync();
+        Assert.Empty(host.Transport.Requests);
+        Assert.Empty(host.Logs.Failures);
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task NormalConsole_SelectedGenericFailure_EmitsSafeSourceMetadata(bool bff)
+    {
+        var original = Console.Out;
+        using var native = new StringWriter();
+        Console.SetOut(TextWriter.Synchronized(native));
+        try
+        {
+            await using (var host = new Host(bff, (_, _) => Task.FromException<HttpResponseMessage>(UnexpectedFailure(1))))
+            {
+                await Assert.ThrowsAsync<IOException>(() => host.ReadAsync(CancellationToken.None));
+            }
+            var lines = native.ToString().Split('\n', StringSplitOptions.RemoveEmptyEntries);
+            var failures = new List<JsonElement>();
+            foreach (var line in lines)
+            {
+                using var document = JsonDocument.Parse(line);
+                if (document.RootElement.TryGetProperty("Category", out var category)
+                    && category.GetString() == "Maliev.Aspire.ServiceDefaults.Diagnostics.PrivateDependencyFailureHandler")
+                    failures.Add(document.RootElement.Clone());
+            }
+            var failure = Assert.Single(failures);
+            Assert.Equal("ERROR", failure.GetProperty("severity").GetString());
+            Assert.Equal(5101, failure.GetProperty("EventId").GetInt32());
+            Assert.Equal(JsonValueKind.Null, failure.GetProperty("Exception").ValueKind);
+            var state = failure.GetProperty("State");
+            Assert.Equal("GET", state.GetProperty("Method").GetString());
+            Assert.Equal("IOException", state.GetProperty("ExceptionType").GetString());
+            Assert.Equal(bff ? "OrderService" : "CatalogService", state.GetProperty("Dependency").GetString());
+            foreach (var secret in new[] { Canary, EmployeeToken, ServiceToken, BodyCanary, ExceptionCanary })
+                Assert.DoesNotContain(secret, failure.GetRawText());
+        }
+        finally { Console.SetOut(original); }
+    }
+
+    [Theory]
+    [InlineData(0, 200, false)]
+    [InlineData(1, 200, false)]
+    [InlineData(2, 200, false)]
+    [InlineData(3, 200, false)]
+    [InlineData(0, 400, false)]
+    [InlineData(1, 400, false)]
+    [InlineData(2, 400, false)]
+    [InlineData(3, 400, false)]
+    [InlineData(0, 200, true)]
+    [InlineData(1, 400, true)]
+    [InlineData(2, 200, true)]
+    [InlineData(3, 400, true)]
+    public async Task CatalogTypedCall_NativeBufferFault_RecordsActualOuterFailureOnce(int site, int status, bool io)
+    {
+        Exception expected = io ? new IOException(ExceptionCanary) : new InvalidOperationException(ExceptionCanary);
+        var contents = new List<ControlledCatalogContent>();
+        await using var host = new Host(false, (attempt, _) =>
+        {
+            if (site == 3 && attempt == 1) return Task.FromResult(Response(HttpStatusCode.OK, "[]"));
+            var content = new ControlledCatalogContent(expected, false);
+            contents.Add(content);
+            return Task.FromResult(new HttpResponseMessage((HttpStatusCode)status) { Content = content });
+        });
+        var actual = await Record.ExceptionAsync(() => host.CallCatalogSiteAsync(site, CancellationToken.None));
+        if (io) Assert.Same(expected, Assert.IsType<HttpRequestException>(actual).InnerException);
+        else Assert.Same(expected, actual);
+        Assert.Equal(1, Assert.Single(contents).Serializations);
+        var record = Assert.Single(host.Logs.Failures);
+        Assert.Equal(io ? "HttpRequestException" : "InvalidOperationException", record.Fields["ExceptionType"]);
+        Assert.Equal("CatalogService", record.Fields["Dependency"]);
+        Assert.Equal(site == 0 ? "GET" : site == 2 ? "PUT" : "POST", record.Fields["Method"]);
+        Assert.False(record.Fields.ContainsKey("StatusCode"));
+        AssertSafeFailure(record);
+        AssertHandlerOrder(host);
+        Assert.All(host.Transport.Requests, request => Assert.Equal("Bearer service-token-canary", request.Authorization));
+    }
+
+    [Fact]
+    public async Task CatalogTypedCall_NonSuccessStatus_WaitsForRealNativeBufferCompletion()
+    {
+        using var caller = new CancellationTokenSource();
+        var content = new ControlledCatalogContent(null, true);
+        await using var host = new Host(false, (_, _) => Task.FromResult(new HttpResponseMessage(HttpStatusCode.BadRequest) { Content = content }));
+        var pending = host.ReadAsync(caller.Token, HttpStatusCode.BadRequest);
+        try
+        {
+            await content.Entered.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            Assert.False(pending.IsCompleted);
+            Assert.Empty(host.Logs.Failures);
+            content.Release.TrySetResult();
+            await pending.WaitAsync(TimeSpan.FromSeconds(5));
+            Assert.Equal(1, content.Serializations);
+            var record = Assert.Single(host.Logs.Failures);
+            Assert.Equal(400, record.Fields["StatusCode"]);
+            Assert.Null(record.Fields["ExceptionType"]);
+            AssertSafeFailure(record);
+        }
+        finally
+        {
+            caller.Cancel();
+            content.Release.TrySetResult();
+            try { await pending.WaitAsync(TimeSpan.FromSeconds(5)); } catch (OperationCanceledException) { }
+        }
+    }
+
+    [Fact]
+    public async Task CatalogTypedCall_BufferCallerCancellation_DoesNotForgeHandlerDeadline()
+    {
+        using var caller = new CancellationTokenSource();
+        var content = new ControlledCatalogContent(null, true);
+        await using var host = new Host(false, (_, _) => Task.FromResult(new HttpResponseMessage(HttpStatusCode.BadRequest) { Content = content }));
+        var pending = host.ReadAsync(caller.Token, HttpStatusCode.BadRequest);
+        try
+        {
+            await content.Entered.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            Assert.Equal(Timeout.InfiniteTimeSpan, host.SelectedClientTimeout());
+            Assert.False(pending.IsCompleted);
+            Assert.Empty(host.Logs.Failures);
+            caller.Cancel();
+            var actual = await Assert.ThrowsAnyAsync<OperationCanceledException>(() => pending.WaitAsync(TimeSpan.FromSeconds(5)));
+            Assert.NotNull(content.TerminalCancellation);
+            Assert.True(caller.IsCancellationRequested);
+            Assert.True(ReferenceEquals(actual, content.TerminalCancellation)
+                || ReferenceEquals(actual.InnerException, content.TerminalCancellation));
+            Assert.Empty(host.Logs.Failures);
+            Assert.Single(host.Transport.Requests);
+            Assert.Equal(1, content.Serializations);
+        }
+        finally
+        {
+            caller.Cancel();
+            content.Release.TrySetResult();
+            try { await pending.WaitAsync(TimeSpan.FromSeconds(5)); } catch (OperationCanceledException) { }
+        }
+    }
+
+    [Fact]
+    public async Task CatalogActualFactory_RetainsInfiniteNativeTimeoutAndDistinctStandardBudgets()
+    {
+        await using var host = new Host(false, (_, _) => Task.FromResult(Response(HttpStatusCode.OK, "{}")));
+        Assert.Equal(Timeout.InfiniteTimeSpan, host.SelectedClientTimeout());
+        var typedOptions = host.CatalogStandardOptions();
+        Assert.Equal(TimeSpan.FromSeconds(10), typedOptions.AttemptTimeout.Timeout);
+        Assert.Equal(TimeSpan.FromSeconds(30), typedOptions.TotalRequestTimeout.Timeout);
+        Assert.Equal(TimeSpan.FromSeconds(30), typedOptions.CircuitBreaker.SamplingDuration);
+        var options = host.SharedStandardOptions();
+        Assert.Equal(TimeSpan.FromSeconds(30), options.AttemptTimeout.Timeout);
+        Assert.Equal(TimeSpan.FromSeconds(60), options.TotalRequestTimeout.Timeout);
+        Assert.Equal(TimeSpan.FromSeconds(65), options.CircuitBreaker.SamplingDuration);
+        Assert.Empty(host.Transport.Requests);
+        Assert.Empty(host.Logs.Failures);
+    }
+
+    private sealed class ControlledCatalogContent(Exception? failure, bool block) : HttpContent
+    {
+        public TaskCompletionSource Entered { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public TaskCompletionSource Release { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public int Serializations { get; private set; }
+        public OperationCanceledException? TerminalCancellation { get; private set; }
+        protected override bool TryComputeLength(out long length) { length = 0; return false; }
+        protected override Task SerializeToStreamAsync(Stream stream, TransportContext? context) =>
+            SerializeToStreamAsync(stream, context, CancellationToken.None);
+        protected override async Task SerializeToStreamAsync(Stream stream, TransportContext? context, CancellationToken token)
+        {
+            Serializations++;
+            Entered.TrySetResult();
+            try
+            {
+                if (block) await Release.Task.WaitAsync(token);
+                if (failure is not null) System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(failure).Throw();
+                await stream.WriteAsync(Encoding.UTF8.GetBytes(BodyCanary), token);
+            }
+            catch (OperationCanceledException exception) { TerminalCancellation = exception; throw; }
+        }
+    }
+
+    private static Exception UnexpectedFailure(int kind) => kind switch
+    {
+        0 => new InvalidOperationException($"{ExceptionCanary} {Canary} {EmployeeToken} {ServiceToken} {BodyCanary}"),
+        1 => new IOException($"{ExceptionCanary} {Canary} {EmployeeToken} {ServiceToken} {BodyCanary}"),
+        _ => new ArgumentException($"{ExceptionCanary} {Canary} {EmployeeToken} {ServiceToken} {BodyCanary}")
+    };
+
     private sealed class Host : IAsyncDisposable
     {
         private readonly bool useBff;
+        private readonly string clientName;
+        private readonly bool callerLogging;
         private readonly WebApplicationFactory<Program>? compatibility;
         private readonly WebApplicationFactory<BffProgram>? bff;
-        public Host(bool useBff, Func<int, CancellationToken, Task<HttpResponseMessage>> send)
+        public Host(bool useBff, Func<int, CancellationToken, Task<HttpResponseMessage>> send, string? selectedClient = null, bool callerLogging = true)
         {
             this.useBff = useBff;
+            clientName = selectedClient ?? (useBff ? nameof(OrdersProxy) : nameof(ILegacyCatalogClient));
+            this.callerLogging = callerLogging;
             Transport = new ScriptedTransport(send);
             if (useBff) bff = new BffFactory(this);
             else compatibility = new CompatibilityFactory(this);
@@ -275,6 +750,23 @@ public sealed class PrivateDependencyOperationHostTests(ITestOutputHelper output
         public FailureLogs Logs { get; } = new();
         public ConcurrentQueue<string[]> HandlerChains { get; } = new();
         private IServiceProvider Services => useBff ? bff!.Services : compatibility!.Services;
+
+        public async Task<HttpResponseMessage> SendSourceProbeAsync(CancellationToken token)
+        {
+            using var client = Services.GetRequiredService<IHttpClientFactory>().CreateClient(clientName);
+            using var request = new HttpRequestMessage(HttpMethod.Get, "/orders/private-dynamic-sentinel?secret=" + Canary);
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", EmployeeToken);
+            return await client.SendAsync(request, token);
+        }
+
+        public async Task<object?> CreateIdentityAsync(bool customer, CancellationToken token)
+        {
+            using var scope = Services.CreateScope();
+            var auth = scope.ServiceProvider.GetRequiredService<ILegacyAuthClient>();
+            return customer
+                ? await auth.CreateCustomerIdentityAsync(42, new(Canary, Canary, ExceptionCanary, true, null, null, null), EmployeeToken, token)
+                : await auth.CreateEmployeeIdentityAsync(42, new(Canary, Canary, ExceptionCanary, false, null), EmployeeToken, token);
+        }
 
         public async Task SendBodyCanaryAsync()
         {
@@ -308,6 +800,11 @@ public sealed class PrivateDependencyOperationHostTests(ITestOutputHelper output
                 {
                     var page = await scope.ServiceProvider.GetRequiredService<ILegacyCatalogClient>().GetMaterialsAsync(
                         MaterialSortType.MaterialName_Ascending, Canary, 2, 25, EmployeeToken, token);
+                    if (expectedStatus == HttpStatusCode.NotFound)
+                    {
+                        Assert.Null(page);
+                        return;
+                    }
                     Assert.Equal(HttpStatusCode.OK, expectedStatus);
                     Assert.NotNull(page);
                     Assert.Equal(2, page.PageIndex);
@@ -320,17 +817,58 @@ public sealed class PrivateDependencyOperationHostTests(ITestOutputHelper output
             }
         }
 
+        public TimeSpan SelectedClientTimeout()
+        {
+            using var client = Services.GetRequiredService<IHttpClientFactory>()
+                .CreateClient(useBff ? nameof(OrdersProxy) : nameof(ILegacyCatalogClient));
+            return client.Timeout;
+        }
+
+        public HttpStandardResilienceOptions CatalogStandardOptions() =>
+            Services.GetRequiredService<IOptionsMonitor<HttpStandardResilienceOptions>>()
+                .Get(nameof(ILegacyCatalogClient) + "-standard");
+
+        public HttpStandardResilienceOptions SharedStandardOptions() =>
+            Services.GetRequiredService<IOptionsMonitor<HttpStandardResilienceOptions>>()
+                .Get("-standard");
+
+        public async Task CallCatalogSiteAsync(int site, CancellationToken token)
+        {
+            using var scope = Services.CreateScope();
+            var catalog = scope.ServiceProvider.GetRequiredService<ILegacyCatalogClient>();
+            switch (site)
+            {
+                case 0: await catalog.GetMaterialsAsync(MaterialSortType.MaterialName_Ascending, Canary, 2, 25, EmployeeToken, token); break;
+                case 1: await catalog.CreateMaterialAsync(MaterialFixtures.Request, EmployeeToken, token); break;
+                case 2: await catalog.UpdateMaterialAsync(42, MaterialFixtures.Request, EmployeeToken, token); break;
+                default: await catalog.SyncMaterialColorsAsync(42, [1], EmployeeToken, token); break;
+            }
+        }
+
+        public async Task SendUnselectedAsync()
+        {
+            using var client = Services.GetRequiredService<IHttpClientFactory>().CreateClient("UnselectedSourceObserverProof");
+            using var request = new HttpRequestMessage(HttpMethod.Get, "http://unselected.invalid/orders");
+            await Assert.ThrowsAsync<InvalidOperationException>(() => client.SendAsync(request));
+        }
+
         private void Configure(IWebHostBuilder builder)
         {
             builder.UseEnvironment("Testing");
             TestJwtConfiguration.Configure(builder);
-            foreach (var service in new[] { "Auth", "Customer", "Employee", "Catalog", "Procurement", "Order", "Notification", "Accounting", "Quotation", "Delivery" })
+            foreach (var service in new[] { "Auth", "Customer", "Employee", "Catalog", "Procurement", "Order", "Notification", "Accounting", "Quotation", "Delivery", "File", "Document" })
                 builder.UseSetting($"Services:{service}", $"http://{service.ToLowerInvariant()}.invalid/");
             builder.ConfigureServices(services =>
             {
                 services.RemoveAll<IServiceAccessTokenProvider>();
                 services.AddSingleton<IServiceAccessTokenProvider>(Tokens);
                 services.AddSingleton<ILoggerProvider>(Logs);
+                services.AddLogging(logging =>
+                {
+                    logging.SetMinimumLevel(LogLevel.Debug);
+                    logging.AddFilter<FailureLogs>("Maliev.Aspire.ServiceDefaults.Diagnostics.PrivateDependencyFailureHandler", LogLevel.Debug);
+                    logging.AddFilter(typeof(LegacyAuthClient).FullName, callerLogging ? LogLevel.Debug : LogLevel.None);
+                });
                 // First filter wraps all existing filters; its readback happens after their changes.
                 // It does not insert, remove or reorder any AdditionalHandlers.
                 services.Insert(0, ServiceDescriptor.Singleton<IHttpMessageHandlerBuilderFilter>(new HandlerChainCapture(this)));
@@ -339,8 +877,7 @@ public sealed class PrivateDependencyOperationHostTests(ITestOutputHelper output
                     options.HttpMessageHandlerBuilderActions.Add(handlerBuilder =>
                     {
                         var previous = handlerBuilder.PrimaryHandler;
-                        handlerBuilder.PrimaryHandler = handlerBuilder.Name == (useBff
-                            ? nameof(OrdersProxy) : nameof(ILegacyCatalogClient))
+                        handlerBuilder.PrimaryHandler = handlerBuilder.Name == clientName
                             ? Transport : new RejectTransport();
                         previous.Dispose();
                     }));
@@ -352,7 +889,7 @@ public sealed class PrivateDependencyOperationHostTests(ITestOutputHelper output
             public Action<HttpMessageHandlerBuilder> Configure(Action<HttpMessageHandlerBuilder> next) => builder =>
             {
                 next(builder);
-                if (builder.Name == (owner.useBff ? nameof(OrdersProxy) : nameof(ILegacyCatalogClient)))
+                if (builder.Name == owner.clientName)
                     owner.HandlerChains.Enqueue(builder.AdditionalHandlers.Select(handler => handler.GetType().FullName!).ToArray());
             };
         }
@@ -376,7 +913,9 @@ public sealed class PrivateDependencyOperationHostTests(ITestOutputHelper output
     private sealed class Tokens : IServiceAccessTokenProvider
     {
         public ConcurrentQueue<string> Invalidated { get; } = new();
-        public ValueTask<string?> GetAccessTokenAsync(CancellationToken cancellationToken) => ValueTask.FromResult<string?>(ServiceToken);
+        public Exception? Failure { get; set; }
+        public ValueTask<string?> GetAccessTokenAsync(CancellationToken cancellationToken) => Failure is { } failure
+            ? ValueTask.FromException<string?>(failure) : ValueTask.FromResult<string?>(ServiceToken);
         public void Invalidate(string token) => Invalidated.Enqueue(token);
     }
 
@@ -415,7 +954,8 @@ public sealed class PrivateDependencyOperationHostTests(ITestOutputHelper output
             public bool IsEnabled(LogLevel level) => level != LogLevel.None;
             public void Log<TState>(LogLevel level, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
             {
-                if (category != "Maliev.Aspire.ServiceDefaults.Diagnostics.PrivateDependencyFailureHandler" || eventId.Id != 5101) return;
+                if ((category != "Maliev.Aspire.ServiceDefaults.Diagnostics.PrivateDependencyFailureHandler"
+                    && category != typeof(LegacyAuthClient).FullName) || eventId.Id != 5101) return;
                 var fields = ((IEnumerable<KeyValuePair<string, object?>>)(object)state!)
                     .Where(pair => pair.Key != "{OriginalFormat}").ToDictionary(pair => pair.Key, pair => pair.Value);
                 failures.Enqueue(new(level, fields, formatter(state, exception), exception));

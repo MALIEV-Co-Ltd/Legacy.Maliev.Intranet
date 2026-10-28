@@ -9,7 +9,7 @@ permissions:
 jobs:
   validate:
     name: validate
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 120
     env:
       MalievCaptureValidationEvidence: 'true'
@@ -22,11 +22,40 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           persist-credentials: false
+      - name: Select .NET 10 SDK for all validation steps
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68
+        env:
+          DOTNET_INSTALL_DIR: ${{ runner.temp }}/maliev-intranet-dotnet-${{ github.run_id }}-${{ github.run_attempt }}-${{ github.job }}
+          DOTNET_MULTILEVEL_LOOKUP: '0'
+        with:
+          dotnet-version: 10.0.402
+      - name: Verify qualified SDK and shared runtime identity
+        shell: bash
+        run: |
+          test ! -e global.json
+          expected_root="${RUNNER_TEMP}/maliev-intranet-dotnet-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-${GITHUB_JOB}"
+          test "$DOTNET_ROOT" = "$expected_root"
+          test "$(realpath "$DOTNET_ROOT")" = "$expected_root"
+          test -d "$DOTNET_ROOT/shared/Microsoft.NETCore.App/10.0.13"
+          test -d "$DOTNET_ROOT/shared/Microsoft.AspNetCore.App/10.0.13"
+          runtime_parent="$DOTNET_ROOT/shared/Microsoft.NETCore.App"
+          test "$(realpath "$runtime_parent")" = "$runtime_parent"
+          # setup-dotnet installs latest LTS alongside the requested SDK; remove extras only from this verified private root.
+          for unqualified_runtime in "$runtime_parent/"*; do
+            test ! -L "$unqualified_runtime"
+            test -d "$unqualified_runtime"
+            runtime_version="${unqualified_runtime##*/}"
+            [[ "$runtime_version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]
+            if test "$runtime_version" != '10.0.13'; then rm -rf -- "$unqualified_runtime"; fi
+          done
+          test "$(dotnet --version)" = '10.0.402'
+          dotnet --list-runtimes
+          test "$(dotnet --list-runtimes | awk '{ print $2 }' | sort -u)" = '10.0.13'
       - name: Check out Legacy.Maliev.ServiceDefaults
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           repository: MALIEV-Co-Ltd/Legacy.Maliev.ServiceDefaults
-          ref: 7edcd961024868513fd5f373cab3dcb261197f77
+          ref: 02377791d346e25216c114522b3bfdb6f0f19a16
           path: .dependencies/Legacy.Maliev.ServiceDefaults
           persist-credentials: false
       - name: Check out Legacy.Maliev.CompatibilityContracts
@@ -47,17 +76,17 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           repository: MALIEV-Co-Ltd/Legacy.Maliev.AuthService
-          ref: 8319b23e8ffab0c85b66c886a0109f7dac034c6f
+          ref: f7079f133b1e607b8909636a5114ebccc73b27bc
           path: .dependencies/Legacy.Maliev.AuthService
           persist-credentials: false
       - name: Verify exact Customers validation dependency identities
         shell: bash
         run: |
           test "$(git rev-parse HEAD)" = "${{ github.sha }}"
-          test "$(git -C .dependencies/Legacy.Maliev.ServiceDefaults rev-parse HEAD)" = 7edcd961024868513fd5f373cab3dcb261197f77
+          test "$(git -C .dependencies/Legacy.Maliev.ServiceDefaults rev-parse HEAD)" = 02377791d346e25216c114522b3bfdb6f0f19a16
           test "$(git -C .dependencies/Legacy.Maliev.CompatibilityContracts rev-parse HEAD)" = 78e48ffc4ee000df0510cba5e7c7a3c4c4d539d7
           test "$(git -C .dependencies/Legacy.Maliev.CustomerService rev-parse HEAD)" = cebf45e8e1eeb600d760a565f8b0970c7f434148
-          test "$(git -C .dependencies/Legacy.Maliev.AuthService rev-parse HEAD)" = 8319b23e8ffab0c85b66c886a0109f7dac034c6f
+          test "$(git -C .dependencies/Legacy.Maliev.AuthService rev-parse HEAD)" = f7079f133b1e607b8909636a5114ebccc73b27bc
       - name: Verify Docker integration-test runtime
         run: docker info
       - name: Verify bounded browser installer source controls
@@ -99,6 +128,10 @@ jobs:
         timeout-minutes: 6
         shell: bash
         run: |
+          # Use the signed official HTTPS archive after repeated hosted Azure mirror timeouts.
+          test -s /etc/apt/apt-mirrors.txt
+          python3 -c 'from pathlib import Path; s=Path("/etc/apt/sources.list.d/ubuntu.sources").read_text(); assert "mirror+file:/etc/apt/apt-mirrors.txt" in s and "Signed-By:" in s, "Unexpected hosted Ubuntu source policy"'
+          printf '%s\n' 'https://archive.ubuntu.com/ubuntu/' | sudo tee /etc/apt/apt-mirrors.txt > /dev/null
           timeout --signal=TERM --kill-after=20s 5m pwsh -NoProfile \
             -File Legacy.Maliev.Intranet.BrowserTests/bin/Release/net10.0/playwright.ps1 install-deps chromium
       - name: Verify cached browser executables and versions
@@ -143,7 +176,7 @@ jobs:
           test -f "$TASK4_INTERACTIVE_ASSET_ROOT/_framework/blazor.webassembly.js"
       - name: Retain generated Documents fixture dependency lock
         if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: customer-documents-fixture-lock-${{ github.run_id }}-${{ github.run_attempt }}
           path: tests/fixtures/customer-documents-interactive/packages.lock.json
@@ -168,7 +201,7 @@ jobs:
           python3 -B -c 'import xml.etree.ElementTree as E; r=E.parse("TestResults/customer-documents-switch/customer-documents-switch.trx").getroot(); ns={"t":"http://microsoft.com/schemas/VisualStudio/TeamTest/2010"}; c=r.find("t:ResultSummary/t:Counters",ns); assert c is not None and all(c.get(k)==v for k,v in {"total":"10","executed":"10","passed":"10","failed":"0","notExecuted":"0"}.items()), E.tostring(r,encoding="unicode")[-4000:]'
       - name: Retain Documents switch failure and success diagnostics
         if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: customer-documents-switch-${{ github.run_id }}-${{ github.run_attempt }}
           path: TestResults/customer-documents-switch/
@@ -206,7 +239,7 @@ jobs:
             --head "$REVIEWED_PR_HEAD" > isolated-pool-results/root-metadata.json
       - name: Preserve allowlisted synthetic pooled-host root metadata only
         if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: intranet-isolated-pool-${{ github.sha }}
           path: isolated-pool-results/root-metadata.json
@@ -218,6 +251,105 @@ jobs:
         env:
           DIAGNOSTIC_OUTCOME: ${{ steps.current_main_diagnostics.outcome }}
         run: test "$DIAGNOSTIC_OUTCOME" = success
+      - name: Verify eighteen browser auth transport receipt controls
+        id: auth_receipt_focus
+        timeout-minutes: 5
+        shell: bash
+        env:
+          DOTNET_PROCESSOR_COUNT: '1'
+        run: |
+          export GITHUB_ACTIONS=false
+          test ! -e TestResults/auth-receipt-source
+          timeout --signal=TERM --kill-after=20s 4m dotnet test Legacy.Maliev.Intranet.Tests/Legacy.Maliev.Intranet.Tests.csproj \
+            --configuration Release --no-build --no-restore -p:UseLocalMalievDependencies=true \
+            --filter 'FullyQualifiedName=Legacy.Maliev.Intranet.Tests.EmployeeSessionContractTests.RefreshTransportFailure_PreservesTypedStatusAndLegacyNullProjection|FullyQualifiedName=Legacy.Maliev.Intranet.Tests.EmployeeSessionContractTests.RefreshCallerCancellation_IsNeverConvertedToUnavailable|FullyQualifiedName=Legacy.Maliev.Intranet.Tests.EmployeeSessionContractTests.RefreshSemanticFailure_PreservesExistingStatusAndRetryProjection|FullyQualifiedName=Legacy.Maliev.Intranet.Tests.EmployeeSessionContractTests.AccessTokenAcquisition_RetainsFourArgumentConstructorAndDeconstruction|FullyQualifiedName=Legacy.Maliev.Intranet.Tests.Integration.SessionGenerationFenceTests.OutcomeBrowser_RefreshTransportFailurePreservesSafeUnavailableReceipt|FullyQualifiedName=Legacy.Maliev.Intranet.Tests.Integration.SessionGenerationFenceTests.OutcomeMachine_RefreshTransportFailureRetainsLegacyUnauthorizedReceipt|FullyQualifiedName=Legacy.Maliev.Intranet.Tests.Integration.SessionGenerationFenceTests.OutcomeBrowser_SemanticRefreshFailureRetainsUnauthorizedReceipt|FullyQualifiedName=Legacy.Maliev.Intranet.Tests.Integration.SessionGenerationFenceTests.OutcomeBrowser_PeerRenewalWinsOverEarlierRefreshTransportFailure' \
+            --logger 'trx;LogFileName=auth-receipt-source.trx' --results-directory TestResults/auth-receipt-source
+          python3 -B - <<'PY'
+          import xml.etree.ElementTree as E
+          root = E.parse("TestResults/auth-receipt-source/auth-receipt-source.trx").getroot()
+          ns = {"t": "http://microsoft.com/schemas/VisualStudio/TeamTest/2010"}
+          counters = root.find("t:ResultSummary/t:Counters", ns)
+          rows = root.findall("t:Results/t:UnitTestResult", ns)
+          zero = "failed error timeout aborted inconclusive passedButRunAborted notRunnable notExecuted disconnected warning completed inProgress pending".split()
+          expected = {"total": "18", "executed": "18", "passed": "18", **dict.fromkeys(zero, "0")}
+          if counters is None or counters.attrib != expected or len(rows) != 18 or any(row.get("outcome") != "Passed" for row in rows):
+              raise ValueError("All eighteen auth receipt controls must execute and pass")
+          PY
+      - name: Retain named auth receipt results without runtime diagnostics
+        timeout-minutes: 2
+        if: always() && steps.auth_receipt_focus.outcome != 'skipped'
+        shell: bash
+        run: |
+          python3 -B - <<'PY'
+          from pathlib import Path
+          import hashlib
+          import json
+          import xml.etree.ElementTree as E
+          path = Path("TestResults/auth-receipt-source/auth-receipt-source.trx")
+          raw_sha = named_sha = None
+          removed = 0
+          try:
+              data = path.read_bytes()
+              raw_sha = hashlib.sha256(data).hexdigest()
+              if len(data) > 2 * 1024 * 1024 or b"<!DOCTYPE" in data.upper() or b"<!ENTITY" in data.upper():
+                  raise ValueError("Invalid bounded auth receipt XML")
+              root = E.fromstring(data)
+              ns = "{http://microsoft.com/schemas/VisualStudio/TeamTest/2010}"
+              for parent in root.iter():
+                  for child in list(parent):
+                      if child.tag in {ns + name for name in ("Output", "RunInfo", "ResultFiles", "CollectorDataEntries")}:
+                          parent.remove(child)
+                          removed += 1
+              named = path.with_name("auth-receipt-source-named.trx")
+              E.ElementTree(root).write(named, encoding="utf-8", xml_declaration=True)
+              named_sha = hashlib.sha256(named.read_bytes()).hexdigest()
+          finally:
+              path.unlink(missing_ok=True)  # Never include diagnostic-bearing originals in later broad artifacts.
+              print(json.dumps({"rawInputSha256": raw_sha, "namedOutputSha256": named_sha, "removedTagCount": removed}))
+          PY
+      - name: Preserve actual named auth receipt case identities
+        timeout-minutes: 3
+        if: always() && steps.auth_receipt_focus.outcome != 'skipped'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: auth-receipt-source-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: TestResults/auth-receipt-source/auth-receipt-source-named.trx
+          if-no-files-found: error
+          retention-days: 7
+      - name: Verify tracking-number consumer source boundaries
+        timeout-minutes: 5
+        shell: bash
+        env:
+          DOTNET_PROCESSOR_COUNT: '1'
+        run: |
+          export GITHUB_ACTIONS=false
+          test ! -e TestResults/order-tracking-source
+          timeout --signal=TERM --kill-after=20s 4m dotnet test Legacy.Maliev.Intranet.Tests/Legacy.Maliev.Intranet.Tests.csproj \
+            --configuration Release --no-build --no-restore -p:UseLocalMalievDependencies=true \
+            --filter 'FullyQualifiedName=Legacy.Maliev.Intranet.Tests.BffOrderDetailContractTests.Update_TrackingNumberPreservesNullableLiteralSourceBoundBeforeDownstream|FullyQualifiedName=Legacy.Maliev.Intranet.Tests.OrderDetailMaterialChoicesUiTests.TrackingNumber_UsesSourceUtf16BoundAndRefusesOversizeBeforeSave|FullyQualifiedName=Legacy.Maliev.Intranet.Tests.OrderDetailMaterialChoicesUiTests.TrackingNumber_QualifiedOverflowPreservesLiteralUntilProducer' \
+            --logger 'trx;LogFileName=order-tracking-source.trx' --results-directory TestResults/order-tracking-source
+          python3 -B -c 'import xml.etree.ElementTree as E; r=E.parse("TestResults/order-tracking-source/order-tracking-source.trx").getroot(); c=r.find(".//{*}Counters"); assert c is not None and all(c.get(k)==v for k,v in {"total":"29","executed":"29","passed":"29","failed":"0","notExecuted":"0"}.items()), "All twenty-nine tracking-number consumer controls must pass"'
+      - name: Verify customer relation read and correction contracts before full validation
+        timeout-minutes: 8
+        shell: bash
+        env:
+          DOTNET_PROCESSOR_COUNT: '1'
+        run: |
+          export GITHUB_ACTIONS=false
+          timeout --signal=TERM --kill-after=20s 7m dotnet test Legacy.Maliev.Intranet.Tests/Legacy.Maliev.Intranet.Tests.csproj \
+            --configuration Release --no-build --no-restore -p:UseLocalMalievDependencies=true \
+            --filter 'FullyQualifiedName~BffCustomersProxyContractTests' \
+            --logger 'console;verbosity=normal' \
+            --logger 'trx;LogFileName=customer-relation-contracts.trx' \
+            --results-directory TestResults/customer-relation-contracts
+      - name: Retain synthetic customer relation contract results
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: customer-relation-contracts-${{ github.sha }}
+          path: TestResults/customer-relation-contracts/*.trx
+          if-no-files-found: ignore
+          retention-days: 7
       - name: Verify current candidate formatting before full validation
         timeout-minutes: 8
         shell: bash
@@ -226,6 +358,96 @@ jobs:
         run: |
           export GITHUB_ACTIONS=false
           dotnet format Legacy.Maliev.Intranet.slnx --verify-no-changes --no-restore
+      - name: Verify Company input capacity through the rendered editor
+        timeout-minutes: 5
+        shell: bash
+        env:
+          DOTNET_PROCESSOR_COUNT: '1'
+        run: |
+          export GITHUB_ACTIONS=false
+          test ! -e TestResults/company-input-capacity
+          timeout --signal=TERM --kill-after=20s 4m dotnet test Legacy.Maliev.Intranet.Tests/Legacy.Maliev.Intranet.Tests.csproj \
+            --configuration Release --no-build --no-restore -p:UseLocalMalievDependencies=true \
+            --filter 'FullyQualifiedName~Legacy.Maliev.Intranet.Tests.CustomerCompanyInputCapacityComponentTests' \
+            --logger 'trx;LogFileName=company-input-capacity.trx' --results-directory TestResults/company-input-capacity
+          python3 -B - <<'PY'
+          import pathlib
+          import uuid
+          import xml.etree.ElementTree as E
+          path = pathlib.Path("TestResults/company-input-capacity/company-input-capacity.trx")
+          data = path.read_bytes()
+          def require(condition, reason):
+              if not condition:
+                  raise ValueError(reason)
+          require(len(data) <= 2 * 1024 * 1024 and b"<!DOCTYPE" not in data.upper() and b"<!ENTITY" not in data.upper(), "Invalid Company XML")
+          root = E.fromstring(data)
+          tag = lambda name: "{http://microsoft.com/schemas/VisualStudio/TeamTest/2010}" + name
+          cls = "Legacy.Maliev.Intranet.Tests.CustomerCompanyInputCapacityComponentTests"
+          expected = {f'{cls}.{method}(language: "{language}", create: {create})'
+                      for method in ("RenderedInputs_RetainOriginal256UnitLimitForBothRelationStates", "AcceptedBoundary_SubmitsLiteralPaddingAndSupplementaryUnitsWithoutTrimming")
+                      for language in ("en", "th") for create in ("False", "True")}
+          expected |= {f'{cls}.ProgrammaticOverflow_RemainsInvalidBeforeSessionOrWrite(create: {create}, id: "{field}")'
+                       for create in ("False", "True") for field in ("relation-company-name", "relation-tax", "relation-registrar")}
+          expected |= {f"{cls}.OptionalNulls_RemainNullAndRequiredNameStillRefusesBlank(create: {create})" for create in ("False", "True")}
+          require(root.tag == tag("TestRun") and not root.findall(".//" + tag("RunInfo")) and not root.findall(".//" + tag("ErrorInfo")), "Invalid Company run")
+          for name in ("TestRun", "ResultSummary", "Results", "TestDefinitions", "TestEntries", "Counters"):
+              require(len(list(root.iter(tag(name)))) == 1, "Extra or nested Company " + name)
+          for name in ("UnitTest", "TestMethod", "Execution", "UnitTestResult", "TestEntry"):
+              require(len(list(root.iter(tag(name)))) == 16, "Extra or missing Company " + name)
+          def one(parent, name):
+              found = parent.findall(tag(name))
+              require(len(found) == 1, "Missing or ambiguous Company " + name)
+              return found[0]
+          summary = one(root, "ResultSummary")
+          require(summary.get("outcome") == "Completed", "Incomplete Company run")
+          zero = "failed error timeout aborted inconclusive passedButRunAborted notRunnable notExecuted disconnected warning completed inProgress pending".split()
+          counters = {"total": "16", "executed": "16", "passed": "16", **dict.fromkeys(zero, "0")}
+          require(one(summary, "Counters").attrib == counters, "Nonpassing Company counters")
+          def identity(value):
+              require(isinstance(value, str) and str(uuid.UUID(value)) == value.lower(), "Invalid Company identity")
+              return value.lower()
+          expected_assembly = pathlib.Path("Legacy.Maliev.Intranet.Tests/bin/Release/net10.0/Legacy.Maliev.Intranet.Tests.dll").resolve()
+          def assembly(value, storage=False):
+              if not isinstance(value, str) or not pathlib.Path(value).is_absolute():
+                  return False
+              actual = str(pathlib.Path(value).resolve())
+              expected_path = str(expected_assembly)
+              return actual.casefold() == expected_path.casefold() if storage else actual == expected_path
+          definitions = {}
+          for definition in one(root, "TestDefinitions"):
+              require(definition.tag == tag("UnitTest"), "Unexpected Company definition")
+              test_id = identity(definition.get("id"))
+              method = one(definition, "TestMethod")
+              name = definition.get("name")
+              require(test_id not in definitions and name in expected and assembly(definition.get("storage"), storage=True) and assembly(method.get("codeBase")), "Invalid Company assembly or definition")
+              require(method.get("className") == cls and method.get("name") == name[len(cls) + 1:].split("(", 1)[0], "Invalid Company method")
+              definitions[test_id] = (identity(one(definition, "Execution").get("id")), name)
+          require(len(definitions) == 16 and {name for _, name in definitions.values()} == expected, "Wrong Company case roster")
+          results = {}
+          for row in one(root, "Results"):
+              require(row.tag == tag("UnitTestResult") and row.get("outcome") == "Passed", "Nonpassing Company result")
+              test_id = identity(row.get("testId"))
+              binding = (identity(row.get("executionId")), row.get("testName"))
+              require(test_id not in results and definitions.get(test_id) == binding, "Company result-definition mismatch")
+              results[test_id] = binding
+          require(results == definitions and len({execution for execution, _ in results.values()}) == 16, "Incomplete Company executions")
+          entries = set()
+          for entry in one(root, "TestEntries"):
+              require(entry.tag == tag("TestEntry"), "Unexpected Company entry")
+              binding = (identity(entry.get("testId")), identity(entry.get("executionId")))
+              require(binding not in entries, "Duplicate Company entry")
+              entries.add(binding)
+          require(entries == {(test_id, execution) for test_id, (execution, _) in results.items()}, "Company entry-result mismatch")
+          PY
+      - name: Retain actual Company input capacity results
+        timeout-minutes: 3
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: company-input-capacity-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: TestResults/company-input-capacity/*.trx
+          if-no-files-found: error
+          retention-days: 7
       - name: Execute employee creation email boundaries before full validation
         timeout-minutes: 8
         shell: bash
@@ -237,18 +459,128 @@ jobs:
           # regression supplements the unchanged full-suite validation below.
           dotnet test Legacy.Maliev.Intranet.Tests/Legacy.Maliev.Intranet.Tests.csproj \
             --configuration Release --no-build --no-restore -p:UseLocalMalievDependencies=true \
-            --filter 'FullyQualifiedName~EmployeeCreationEmailValidationTests|FullyQualifiedName~EmployeeCreateEmailBoundaryComponentTests|FullyQualifiedName~BffEmployeesCreateContractTests.ProfileEmailStorageBoundary_PreservesAcceptedInputAndRejectsOversizeBeforeDownstreamWrites' \
+            --filter 'FullyQualifiedName~EmployeeCreationEmailValidationTests|FullyQualifiedName~EmployeeCreateEmailBoundaryComponentTests|FullyQualifiedName~BffEmployeesCreateContractTests.ProfileEmailStorageBoundary_PreservesAcceptedInputAndRejectsOversizeBeforeDownstreamWrites|FullyQualifiedName~EmployeeRecoveryEmailValidationComponentTests|FullyQualifiedName~CoverageWorkflowContractTests' \
             --logger 'console;verbosity=normal' \
             --logger 'trx;LogFileName=employee-creation-email.trx' \
             --results-directory TestResults/employee-creation-email
+      - name: Execute recovery form native email admission before full validation
+        timeout-minutes: 5
+        shell: bash
+        env:
+          DOTNET_PROCESSOR_COUNT: '1'
+        run: |
+          export GITHUB_ACTIONS=false
+          test ! -e TestResults/recovery-email-browser
+          timeout --signal=TERM --kill-after=20s 4m dotnet test \
+            Legacy.Maliev.Intranet.BrowserTests/Legacy.Maliev.Intranet.BrowserTests.csproj \
+            --configuration Release --no-build --no-restore -p:UseLocalMalievDependencies=true \
+            --filter 'FullyQualifiedName=Legacy.Maliev.Intranet.BrowserTests.EmployeeRecoveryEmailSyntaxBrowserTests.NativeSubmit_UsesHistoricalPredicateInsteadOfHtmlEmailSyntax' \
+            --blame-hang --blame-hang-timeout 90s --blame-hang-dump-type none \
+            --logger 'console;verbosity=normal' \
+            --logger 'trx;LogFileName=recovery-email-browser.trx' \
+            --results-directory TestResults/recovery-email-browser
+          python3 -B -c 'import xml.etree.ElementTree as E; r=E.parse("TestResults/recovery-email-browser/recovery-email-browser.trx").getroot(); ns={"t":"http://microsoft.com/schemas/VisualStudio/TeamTest/2010"}; c=r.find("t:ResultSummary/t:Counters",ns); assert c is not None and all(c.get(k)==v for k,v in {"total":"4","executed":"4","passed":"4","failed":"0","notExecuted":"0"}.items()), "Recovery form browser focus must execute and pass exactly four cases"'
+      - name: Verify the exact owned framework package boundary before the full suite
+        timeout-minutes: 2
+        shell: bash
+        run: >-
+          dotnet test Legacy.Maliev.Intranet.Tests/Legacy.Maliev.Intranet.Tests.csproj
+          --configuration Release --no-build --no-restore
+          -p:UseLocalMalievDependencies=true -p:CI=false -p:VSTestCollect=
+          --filter "FullyQualifiedName~LegacyServiceDefaultsIdentityContractTests"
+          --logger 'trx;LogFileName=framework-package-boundary.trx'
+          --results-directory TestResults/framework-package-boundary
+      - name: Verify localized purchase-order focus rejection controls
+        shell: bash
+        run: python3 -B tests/fixtures/purchase-order-message-focus/test_retainer.py
+      - name: Execute both localized purchase-order failure guidance regressions
+        timeout-minutes: 3
+        shell: bash
+        env:
+          DOTNET_PROCESSOR_COUNT: '1'
+        run: |
+          export GITHUB_ACTIONS=false
+          test ! -e TestResults/purchase-order-message-focus
+          dotnet test Legacy.Maliev.Intranet.Tests/Legacy.Maliev.Intranet.Tests.csproj \
+            --configuration Release --no-build --no-restore -p:UseLocalMalievDependencies=true \
+            --filter 'FullyQualifiedName=Legacy.Maliev.Intranet.Tests.PurchaseOrderFailureMessageContractTests.UnconfirmedFailureGuidanceRequiresReconciliationWithoutClaimingRollback' \
+            --logger 'trx;LogFileName=localized-two.trx' \
+            --results-directory TestResults/purchase-order-message-focus
+      - name: Verify original localized purchase-order identity joins
+        shell: bash
+        run: |
+          python3 -B scripts/verify-purchase-order-message-focus.py \
+            --trx TestResults/purchase-order-message-focus/localized-two.trx \
+            --workspace "$GITHUB_WORKSPACE" --source-revision "$(git rev-parse HEAD)" \
+            --output-directory "$RUNNER_TEMP/purchase-order-message-focus-proof"
+      - name: Preserve original localized purchase-order proof
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: purchase-order-message-focus-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/purchase-order-message-focus-proof/
+          retention-days: 7
+          if-no-files-found: error
+          include-hidden-files: false
+      - name: Verify published login fixture formatting before browser proof
+        shell: bash
+        run: |
+          dotnet format style Legacy.Maliev.Intranet.BrowserTests/Legacy.Maliev.Intranet.BrowserTests.csproj \
+            --no-restore --verify-no-changes --severity warn \
+            --include Legacy.Maliev.Intranet.BrowserTests/LoginBrowserTests.cs
+      - name: Execute published login request lifecycle and cancellation regressions
+        timeout-minutes: 12
+        shell: bash
+        env:
+          DOTNET_PROCESSOR_COUNT: '1'
+        run: |
+          export GITHUB_ACTIONS=false
+          test ! -e TestResults/published-login-lifecycle
+          timeout --signal=TERM --kill-after=20s 11m dotnet test \
+            Legacy.Maliev.Intranet.BrowserTests/Legacy.Maliev.Intranet.BrowserTests.csproj \
+            --configuration Release --no-build --no-restore -p:UseLocalMalievDependencies=true \
+            --filter 'FullyQualifiedName=Legacy.Maliev.Intranet.BrowserTests.LoginBrowserTests.PublishedForms_RejectInvalidInputBeforeHttpAndKeepValidCsrfSubmission|FullyQualifiedName=Legacy.Maliev.Intranet.BrowserTests.LoginBrowserTests.PublishedForms_CanceledNonceStillFailsBeforeLogin' \
+            --blame-hang --blame-hang-timeout 90s --blame-hang-dump-type none \
+            --logger 'console;verbosity=normal' \
+            --logger 'trx;LogFileName=published-login-lifecycle.trx' \
+            --results-directory TestResults/published-login-lifecycle
+          python3 -B -c 'import xml.etree.ElementTree as E; r=E.parse("TestResults/published-login-lifecycle/published-login-lifecycle.trx").getroot(); ns={"t":"http://microsoft.com/schemas/VisualStudio/TeamTest/2010"}; c=r.find("t:ResultSummary/t:Counters",ns); assert c is not None and all(c.get(k)==v for k,v in {"total":"5","executed":"5","passed":"5","failed":"0","notExecuted":"0"}.items()), "Published login focus must pass all four locale/viewport cases and the canceled-request refusal control"'
+      - name: Execute customer relation editing and reachability regressions
+        timeout-minutes: 15
+        shell: bash
+        env:
+          DOTNET_PROCESSOR_COUNT: '1'
+        run: |
+          export GITHUB_ACTIONS=false
+          timeout --signal=TERM --kill-after=20s 14m dotnet test \
+            Legacy.Maliev.Intranet.BrowserTests/Legacy.Maliev.Intranet.BrowserTests.csproj \
+            --configuration Release --no-build --no-restore -p:UseLocalMalievDependencies=true \
+            --filter 'FullyQualifiedName~CompanyAndAddressEditorsPreserveLiteralValuesScopedVersionsAndReload|FullyQualifiedName~UncertainOrStaleRelationWriteRequiresFreshReadBeforeAnotherSubmission|FullyQualifiedName~CurrentIssuerPermissionsLeaveRelationEditorsDisabled|FullyQualifiedName~CountryReadFailureDoesNotOfferOrSendAnAddressWrite|FullyQualifiedName~ChangedBindingOrUncertainCreationReloadsFreshAttachmentBeforeExplicitNextWrite|FullyQualifiedName~CompanySaveRemainsReachableAfterInputFocus' \
+            --blame-hang --blame-hang-timeout 90s --blame-hang-dump-type none \
+            --logger 'console;verbosity=normal' \
+            --logger 'trx;LogFileName=customer-relations.trx' \
+            --results-directory TestResults/customer-relations
+          python3 -B -c 'import xml.etree.ElementTree as E; r=E.parse("TestResults/customer-relations/customer-relations.trx").getroot(); ns={"t":"http://microsoft.com/schemas/VisualStudio/TeamTest/2010"}; c=r.find("t:ResultSummary/t:Counters",ns); assert c is not None and all(c.get(k)==v for k,v in {"total":"21","executed":"21","passed":"21","failed":"0","notExecuted":"0"}.items()), "All 21 relation and reachability cases must pass"'
+      - name: Retain synthetic customer relation browser results
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: customer-relations-browser-${{ github.sha }}
+          path: |
+            TestResults/customer-relations/*.trx
+            TestResults/customer-relations/*.png
+          if-no-files-found: ignore
+          retention-days: 7
       - name: Validate .NET solution
         uses: MALIEV-Co-Ltd/Legacy.Maliev.Workflows/actions/dotnet-validate@d7efac266bc66273bc45eab583618871292ecbd6
         env:
+          DOTNET_INSTALL_DIR: ${{ runner.temp }}/maliev-intranet-dotnet-${{ github.run_id }}-${{ github.run_attempt }}-${{ github.job }}
           # The shared action tests solution projects concurrently by default. Keep the
           # Playwright fixture isolated from the long-running integration test host.
           DOTNET_PROCESSOR_COUNT: '1'
           GITHUB_TOKEN: ${{ github.token }}
         with:
+          # Explicit empty input preserves the already-qualified SDK; global.json is refused above.
+          dotnet-version: ''
           solution: Legacy.Maliev.Intranet.slnx
           use-local-maliev-dependencies: 'true'
       - name: Validate joined customer revision contract
@@ -300,6 +632,37 @@ jobs:
             exit 1
           fi
           pwsh -NoProfile -File scripts/verify-test-coverage.ps1 -CoverageFile "$coverage_file"
+      - name: Verify recovery mailbox proof rejection controls
+        shell: bash
+        run: python3 -B tests/fixtures/recovery-email/test_focus_retainer.py
+      - name: Execute historical recovery mailbox HTTP admission cases
+        timeout-minutes: 5
+        shell: bash
+        env:
+          DOTNET_PROCESSOR_COUNT: '1'
+        run: |
+          export GITHUB_ACTIONS=false
+          test ! -e TestResults/recovery-email
+          dotnet test Legacy.Maliev.Intranet.Tests/Legacy.Maliev.Intranet.Tests.csproj \
+            --configuration Release --no-build --no-restore \
+            -p:UseLocalMalievDependencies=true -p:EnableCoverageSymbols=true \
+            --filter 'FullyQualifiedName=Legacy.Maliev.Intranet.Tests.BffEmployeeRecoveryContractTests.RecoveryEmail_HistoricalBareSyntaxGatesRequestsAndCompletions|FullyQualifiedName=Legacy.Maliev.Intranet.Tests.BffEmployeeRecoveryContractTests.RecoveryEmail_RequiredNullCannotReachAnyAuthOrNotificationBoundary' \
+            --logger 'trx;LogFileName=recovery-email.trx' --results-directory TestResults/recovery-email
+      - name: Verify exact eleven actual recovery mailbox executions
+        id: recovery_email_proof
+        env:
+          EXPECTED_SOURCE_REVISION: ${{ github.sha }}
+          FOCUS_RESULTS: ${{ github.workspace }}/TestResults/recovery-email
+          FOCUS_EVIDENCE: ${{ runner.temp }}/recovery-email-evidence
+        run: python3 -B scripts/verify-recovery-email-focus.py
+      - name: Preserve sanitized recovery mailbox named proof
+        if: ${{ always() && steps.recovery_email_proof.outcome == 'success' }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: recovery-email-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/recovery-email-evidence/
+          if-no-files-found: error
+          retention-days: 7
       - name: Verify Customers private failure proof rejection controls
         shell: bash
         run: python3 -B tests/fixtures/customers-private-failure/test_focus_retainer.py
@@ -327,7 +690,7 @@ jobs:
         run: python3 -B scripts/verify-customers-private-failure-focus.py
       - name: Preserve sanitized Customers named proof
         if: ${{ always() && steps.customers_private_failure_proof.outcome == 'success' }}
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: customers-private-failure-${{ github.run_id }}-${{ github.run_attempt }}
           path: ${{ runner.temp }}/customers-private-failure-evidence/
@@ -354,6 +717,11 @@ jobs:
           retention-days: 7
           if-no-files-found: error
           include-hidden-files: false
+      - name: Retain tracked-input drift names for coverage admission diagnosis
+        if: always()
+        timeout-minutes: 1
+        shell: bash
+        run: git diff --name-status HEAD --
       - name: Preserve actual runner validation evidence
         if: always()
         uses: MALIEV-Co-Ltd/Legacy.Maliev.Workflows/actions/preserve-validation-evidence@45ced0919a604459c7bb5baf7f38d7bc53d708ba

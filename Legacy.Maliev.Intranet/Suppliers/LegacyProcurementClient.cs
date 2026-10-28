@@ -1,3 +1,4 @@
+using Maliev.Aspire.ServiceDefaults.Diagnostics;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
@@ -18,14 +19,14 @@ public sealed class LegacyProcurementClient(HttpClient httpClient) : ILegacyProc
     {
         using var request = Create(HttpMethod.Post, "/Suppliers", token, payload);
         request.Headers.Add("Idempotency-Key", Guid.NewGuid().ToString("D"));
-        using var response = await httpClient.SendAsync(request, cancellationToken); response.EnsureSuccessStatusCode();
+        using var response = await httpClient.SendWithPrivateFailureObservationAsync(request, cancellationToken, new PrivateDependencyFailureObservation(), HttpCompletionOption.ResponseContentRead); response.EnsureSuccessStatusCode();
         return await response.Content.ReadFromJsonAsync<SupplierResponse>(cancellationToken) ?? throw new InvalidOperationException("Empty supplier response.");
     }
     /// <inheritdoc />
     public async Task<SupplierAddressResponse> CreateSupplierAddressAsync(int id, UpsertSupplierAddressRequest payload, string token, CancellationToken cancellationToken)
     {
         using var request = Create(HttpMethod.Post, $"/suppliers/{id}/addresses", token, payload);
-        using var response = await httpClient.SendAsync(request, cancellationToken); response.EnsureSuccessStatusCode();
+        using var response = await httpClient.SendWithPrivateFailureObservationAsync(request, cancellationToken, new PrivateDependencyFailureObservation(), HttpCompletionOption.ResponseContentRead); response.EnsureSuccessStatusCode();
         return await response.Content.ReadFromJsonAsync<SupplierAddressResponse>(cancellationToken) ?? throw new InvalidOperationException("Empty supplier address response.");
     }
     /// <inheritdoc />
@@ -42,7 +43,7 @@ public sealed class LegacyProcurementClient(HttpClient httpClient) : ILegacyProc
     public async Task<PurchaseOrderResponse> CreatePurchaseOrderAsync(UpsertPurchaseOrderRequest payload, string token, CancellationToken cancellationToken)
     {
         using var request = Create(HttpMethod.Post, "/PurchaseOrders", token, payload); request.Headers.Add("Idempotency-Key", Guid.NewGuid().ToString("D"));
-        using var response = await httpClient.SendAsync(request, cancellationToken); response.EnsureSuccessStatusCode();
+        using var response = await httpClient.SendWithPrivateFailureObservationAsync(request, cancellationToken, new PrivateDependencyFailureObservation(), HttpCompletionOption.ResponseContentRead); response.EnsureSuccessStatusCode();
         return await response.Content.ReadFromJsonAsync<PurchaseOrderResponse>(cancellationToken) ?? throw new InvalidOperationException("Empty purchase-order response.");
     }
     /// <inheritdoc />
@@ -56,7 +57,7 @@ public sealed class LegacyProcurementClient(HttpClient httpClient) : ILegacyProc
     /// <inheritdoc />
     public async Task<OrderItemResponse> CreateOrderItemAsync(UpsertOrderItemRequest payload, string token, CancellationToken cancellationToken)
     {
-        using var request = Create(HttpMethod.Post, "/purchaseorders/orderitems", token, payload); using var response = await httpClient.SendAsync(request, cancellationToken); response.EnsureSuccessStatusCode();
+        using var request = Create(HttpMethod.Post, "/purchaseorders/orderitems", token, payload); using var response = await httpClient.SendWithPrivateFailureObservationAsync(request, cancellationToken, new PrivateDependencyFailureObservation(), HttpCompletionOption.ResponseContentRead); response.EnsureSuccessStatusCode();
         return await response.Content.ReadFromJsonAsync<OrderItemResponse>(cancellationToken) ?? throw new InvalidOperationException("Empty order-item response.");
     }
     /// <inheritdoc />
@@ -67,7 +68,7 @@ public sealed class LegacyProcurementClient(HttpClient httpClient) : ILegacyProc
     public async Task<PurchaseOrderFileResponse> CreatePurchaseOrderFileAsync(int id, string bucket, string objectName, string token, CancellationToken cancellationToken)
     {
         var uri = $"/purchaseorders/{id}/files?bucket={Uri.EscapeDataString(bucket)}&objectName={Uri.EscapeDataString(objectName)}";
-        using var request = Create(HttpMethod.Post, uri, token, null); using var response = await httpClient.SendAsync(request, cancellationToken); response.EnsureSuccessStatusCode();
+        using var request = Create(HttpMethod.Post, uri, token, null); using var response = await httpClient.SendWithPrivateFailureObservationAsync(request, cancellationToken, new PrivateDependencyFailureObservation(), HttpCompletionOption.ResponseContentRead); response.EnsureSuccessStatusCode();
         return await response.Content.ReadFromJsonAsync<PurchaseOrderFileResponse>(cancellationToken) ?? throw new InvalidOperationException("Empty purchase-order file response.");
     }
     /// <inheritdoc />
@@ -75,13 +76,13 @@ public sealed class LegacyProcurementClient(HttpClient httpClient) : ILegacyProc
 
     private async Task<T?> GetAsync<T>(string uri, string token, CancellationToken cancellationToken)
     {
-        using var request = Create(HttpMethod.Get, uri, token, null); using var response = await httpClient.SendAsync(request, cancellationToken);
+        using var request = Create(HttpMethod.Get, uri, token, null); using var response = await httpClient.SendWithPrivateFailureObservationAsync(request, cancellationToken, new PrivateDependencyFailureObservation(), HttpCompletionOption.ResponseContentRead);
         if (response.StatusCode == HttpStatusCode.NotFound) return default; response.EnsureSuccessStatusCode();
         return await response.Content.ReadFromJsonAsync<T>(cancellationToken);
     }
     private async Task SendAsync(HttpMethod method, string uri, string token, object? payload, CancellationToken cancellationToken)
     {
-        using var request = Create(method, uri, token, payload); using var response = await httpClient.SendAsync(request, cancellationToken);
+        using var request = Create(method, uri, token, payload); using var response = await httpClient.SendWithPrivateFailureObservationAsync(request, cancellationToken, new PrivateDependencyFailureObservation(), HttpCompletionOption.ResponseContentRead);
         if (response.StatusCode != HttpStatusCode.NotFound) response.EnsureSuccessStatusCode();
     }
     private static HttpRequestMessage Create(HttpMethod method, string uri, string token, object? payload)

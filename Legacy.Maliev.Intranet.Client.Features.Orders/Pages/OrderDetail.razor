@@ -189,7 +189,7 @@ else if (page is not null)
     private async Task SaveAsync()
     {
         if (page is null || session?.CsrfToken is null || submitting || finishLoading || finishError is not null) return;
-        if (edit.ProcessId <= 0 || edit.Quantity <= 0 || edit.Manufactured < 0 || string.IsNullOrWhiteSpace(edit.Name)) { error = Text["InvalidRequest"]; return; }
+        if (edit.ProcessId <= 0 || edit.Quantity <= 0 || edit.Manufactured < 0 || string.IsNullOrWhiteSpace(edit.Name) || !OrderTrackingNumberAttribute.Accepts(edit.TrackingNumber)) { error = Text["InvalidRequest"]; return; }
         await SendWriteAsync(HttpMethod.Put, $"/bff/orders/{page.Order.Id}", JsonContent.Create(edit.ToRequest()), Text["OrderSaved"]);
     }
 

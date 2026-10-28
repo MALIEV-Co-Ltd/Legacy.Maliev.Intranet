@@ -1,3 +1,4 @@
+using Maliev.Aspire.ServiceDefaults.Diagnostics;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
@@ -41,7 +42,7 @@ public sealed class LegacyOrderClient(HttpClient httpClient) : ILegacyOrderClien
     {
         using var request = Create(HttpMethod.Post, "/Orders", token, payload);
         request.Headers.Add("Idempotency-Key", Guid.NewGuid().ToString("D"));
-        using var response = await httpClient.SendAsync(request, cancellationToken);
+        using var response = await httpClient.SendWithPrivateFailureObservationAsync(request, cancellationToken, new PrivateDependencyFailureObservation(), HttpCompletionOption.ResponseContentRead);
         response.EnsureSuccessStatusCode();
         return await response.Content.ReadFromJsonAsync<OrderResponse>(cancellationToken) ?? throw new InvalidOperationException("Empty order response.");
     }
@@ -52,7 +53,7 @@ public sealed class LegacyOrderClient(HttpClient httpClient) : ILegacyOrderClien
         using var request = Create(HttpMethod.Put, $"/Orders/{id}", token, payload);
         if (expectedModifiedDate is not null)
             request.Headers.Add("X-Expected-Modified-Date", expectedModifiedDate.Value.ToString("O", CultureInfo.InvariantCulture));
-        using var response = await httpClient.SendAsync(request, cancellationToken);
+        using var response = await httpClient.SendWithPrivateFailureObservationAsync(request, cancellationToken, new PrivateDependencyFailureObservation(), HttpCompletionOption.ResponseContentRead);
         response.EnsureSuccessStatusCode();
     }
 
@@ -93,7 +94,7 @@ public sealed class LegacyOrderClient(HttpClient httpClient) : ILegacyOrderClien
     {
         var uri = $"/orders/{orderId}/files?bucket={Uri.EscapeDataString(bucket)}&objectName={Uri.EscapeDataString(objectName)}";
         using var request = Create(HttpMethod.Post, uri, token, null);
-        using var response = await httpClient.SendAsync(request, cancellationToken);
+        using var response = await httpClient.SendWithPrivateFailureObservationAsync(request, cancellationToken, new PrivateDependencyFailureObservation(), HttpCompletionOption.ResponseContentRead);
         response.EnsureSuccessStatusCode();
         return await response.Content.ReadFromJsonAsync<OrderFileResponse>(cancellationToken) ?? throw new InvalidOperationException("Empty order-file response.");
     }
@@ -106,7 +107,7 @@ public sealed class LegacyOrderClient(HttpClient httpClient) : ILegacyOrderClien
     {
         using var request = new HttpRequestMessage(HttpMethod.Get, uri);
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
-        using var response = await httpClient.SendAsync(request, cancellationToken);
+        using var response = await httpClient.SendWithPrivateFailureObservationAsync(request, cancellationToken, new PrivateDependencyFailureObservation(), HttpCompletionOption.ResponseContentRead);
         if (response.StatusCode == HttpStatusCode.NotFound) return default;
         response.EnsureSuccessStatusCode();
         return await response.Content.ReadFromJsonAsync<T>(cancellationToken);
@@ -116,7 +117,7 @@ public sealed class LegacyOrderClient(HttpClient httpClient) : ILegacyOrderClien
     {
         using var request = Create(method, uri, token, payload);
         if (idempotent) request.Headers.Add("Idempotency-Key", Guid.NewGuid().ToString("D"));
-        using var response = await httpClient.SendAsync(request, cancellationToken);
+        using var response = await httpClient.SendWithPrivateFailureObservationAsync(request, cancellationToken, new PrivateDependencyFailureObservation(), HttpCompletionOption.ResponseContentRead);
         if (response.StatusCode != HttpStatusCode.NotFound) response.EnsureSuccessStatusCode();
     }
 

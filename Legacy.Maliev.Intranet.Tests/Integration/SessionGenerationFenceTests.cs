@@ -27,7 +27,7 @@ using BffProgram = Bff::Program;
 
 namespace Legacy.Maliev.Intranet.Tests.Integration;
 
-/// <summary>Real two-provider Redis/crypto/cookie races; only external primary Auth transport is controlled.</summary>
+/// <summary>Real Redis/crypto/cookie boundaries and two-provider races; only external primary HTTP transports are controlled.</summary>
 public sealed class SessionGenerationFenceTests : IAsyncLifetime
 {
     private readonly RedisContainer redis = ValidationContainers.Redis();
@@ -353,6 +353,515 @@ public sealed class SessionGenerationFenceTests : IAsyncLifetime
         new() { Name = "legacy_access_expires_at", Value = scenario.Clock.GetUtcNow().AddMinutes(15).ToString("O") },
     ]);
 
+
+    // Source #307 regressions use the existing production cookie/JWT/Redis boundary.
+    // Only external Auth and aggregate-producer HTTP transports are synthetic.
+    [Theory]
+    [InlineData("/Operations/Check")]
+    [InlineData("/Operations/Check/")]
+    [InlineData("/operations/check")]
+    public async Task OutcomeBrowser_AnonymousCannotReachTheWasmFallbackOrProducer(string path)
+    {
+        using var scenario = new Scenario();
+        await using var factory = new Factory(redis.GetConnectionString(), scenario);
+        using var browser = Client(factory);
+        using var response = await browser.GetAsync(OutcomeRoute("qualification", path));
+        Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
+        Assert.StartsWith("https://localhost/Login?", response.Headers.Location!.AbsoluteUri, StringComparison.Ordinal);
+        Assert.Equal(0, scenario.OutcomeReads);
+        Assert.Equal(0, scenario.LoginCalls);
+    }
+
+    [Theory]
+    [InlineData("quotation", "/Operations/Check")]
+    [InlineData("invoice", "/Operations/Check")]
+    [InlineData("qualification", "/Operations/Check")]
+    [InlineData("quotation", "/Operations/Check/")]
+    [InlineData("invoice", "/Operations/Check/")]
+    [InlineData("qualification", "/operations/check")]
+    public async Task OutcomeBrowser_RealOpaqueSessionReturnsEncodedStaticReceipt(string source, string path)
+    {
+        using var scenario = OutcomeScenario(source);
+        await using var factory = new Factory(redis.GetConnectionString(), scenario);
+        using var browser = Client(factory);
+        await LoginAsync(browser, factory);
+        using var response = await browser.GetAsync(OutcomeRoute(source, path));
+        using var receipt = await BrowserReceiptAsync(response);
+        Assert.Equal(source, receipt.RootElement.GetProperty("source").GetString());
+        Assert.Equal(200, receipt.RootElement.GetProperty("httpStatus").GetInt32());
+        Assert.Equal(1, scenario.LoginCalls);
+        Assert.Equal(0, scenario.RefreshCalls);
+        Assert.Equal(1, scenario.OutcomeReads);
+        Assert.Equal(OutcomeProducerPath(source), scenario.LastOutcomePath);
+        Assert.Equal(scenario.LastIssuedAccessToken, scenario.LastOutcomeAccessToken);
+        Assert.Contains("fromUtc=2026-08-25T17", scenario.LastOutcomeQuery, StringComparison.Ordinal);
+        Assert.Contains("toUtc=2026-09-01T17", scenario.LastOutcomeQuery, StringComparison.Ordinal);
+        Assert.Equal("Bearer", scenario.LastOutcomeScheme);
+        var payload = receipt.RootElement.GetProperty("payload");
+        Assert.True(payload.ValueKind == JsonValueKind.Object);
+        if (source != "qualification")
+        {
+            using var original = JsonDocument.Parse(scenario.OutcomeBody!);
+            Assert.True(JsonElement.DeepEquals(original.RootElement, payload));
+            Assert.True(payload.TryGetProperty("Days", out _));
+            Assert.False(payload.TryGetProperty("days", out _));
+        }
+
+        // The exact receipt-only CSP accommodation must not replace the shell policy.
+        using var shell = await browser.GetAsync("/migration-foundation");
+        Assert.Contains("https://accounts.google.com", Assert.Single(shell.Headers.GetValues("Content-Security-Policy")), StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("/Operations/OutcomeReadback")]
+    [InlineData("/Analytics/OutcomeReadback")]
+    public async Task OutcomeBrowser_SummaryNeverChangesTheAllowedMachineQualificationPayload(string apiPath)
+    {
+        using var scenario = OutcomeScenario("qualification");
+        await using var factory = new Factory(redis.GetConnectionString(), scenario);
+        using var browser = Client(factory);
+        await LoginAsync(browser, factory);
+        using var machineResponse = await browser.GetAsync(OutcomeRoute("qualification", apiPath));
+        Assert.Equal(HttpStatusCode.OK, machineResponse.StatusCode);
+        Assert.Equal("application/json", machineResponse.Content.Headers.ContentType!.MediaType);
+        using var machine = JsonDocument.Parse(await machineResponse.Content.ReadAsStringAsync());
+        using var original = JsonDocument.Parse(scenario.OutcomeBody!);
+        Assert.Equal(original.RootElement.GetRawText(), machine.RootElement.GetProperty("payload").GetRawText());
+        Assert.Equal(8, machine.RootElement.GetProperty("payload").GetProperty("requests").GetArrayLength());
+
+        using var response = await browser.GetAsync(OutcomeRoute("qualification"));
+        using var receipt = await BrowserReceiptAsync(response);
+        var payload = receipt.RootElement.GetProperty("payload");
+        Assert.Equal("current_employee_projection", payload.GetProperty("qualificationBasis").GetString());
+        Assert.Equal(JsonValueKind.Null, payload.GetProperty("historicalAsOfUtc").ValueKind);
+        Assert.Equal(JsonValueKind.Null, payload.GetProperty("qualifiedCustomerCount").ValueKind);
+        var counts = payload.GetProperty("counts");
+        Assert.Equal(8, counts.GetProperty("persistedRequestCount").GetInt32());
+        Assert.Equal(4, counts.GetProperty("identityCompleteRequestCount").GetInt32());
+        Assert.Equal(2, counts.GetProperty("employeeQualifiedRequestCount").GetInt32());
+        Assert.Equal(1, counts.GetProperty("qualifiedWithCompleteIdentityRequestCount").GetInt32());
+        var states = payload.GetProperty("states");
+        Assert.Equal(6, states.EnumerateObject().Count());
+        Assert.Equal(2, states.GetProperty("qualified").GetInt32());
+        Assert.Equal(2, states.GetProperty("unreviewed").GetInt32());
+        foreach (var state in new[] { "not_qualified", "duplicate", "stale", "incomplete" })
+            Assert.Equal(1, states.GetProperty(state).GetInt32());
+        Assert.Equal(8, states.EnumerateObject().Sum(state => state.Value.GetInt32()));
+        foreach (var label in new[] { "adAttributionAvailability", "staffTestExclusionAvailability", "matureDelayAvailability" })
+            Assert.Equal("unavailable", payload.GetProperty(label).GetString());
+        foreach (var forbidden in new[] { "requestId", "transactionId", "journeyId", "requests", "request-41", "11111111-2222-3333-4444-555555555555", "2026-08-26T09:00:00Z" })
+            Assert.DoesNotContain(forbidden, receipt.RootElement.GetRawText(), StringComparison.Ordinal);
+        Assert.Equal(2, scenario.OutcomeReads);
+    }
+
+    [Fact]
+    public async Task OutcomeBrowser_ExplicitEmptyRemainsAvailableZeroNotUnknownCustomers()
+    {
+        using var scenario = OutcomeScenario("qualification");
+        scenario.OutcomeBody = """{"fromUtc":"2026-08-25T17:00:00Z","toUtc":"2026-09-01T17:00:00Z","requests":[]}""";
+        await using var factory = new Factory(redis.GetConnectionString(), scenario);
+        using var browser = Client(factory);
+        await LoginAsync(browser, factory);
+        using var response = await browser.GetAsync(OutcomeRoute("qualification"));
+        using var receipt = await BrowserReceiptAsync(response);
+        Assert.Equal(200, receipt.RootElement.GetProperty("httpStatus").GetInt32());
+        var payload = receipt.RootElement.GetProperty("payload");
+        Assert.All(payload.GetProperty("counts").EnumerateObject(), count => Assert.Equal(0, count.Value.GetInt32()));
+        Assert.Equal(6, payload.GetProperty("states").EnumerateObject().Count());
+        Assert.All(payload.GetProperty("states").EnumerateObject(), state => Assert.Equal(0, state.Value.GetInt32()));
+        Assert.Equal(JsonValueKind.Null, payload.GetProperty("qualifiedCustomerCount").ValueKind);
+    }
+
+    [Theory]
+    [InlineData("unknown-root")]
+    [InlineData("unknown-row")]
+    [InlineData("duplicate")]
+    [InlineData("invalid-identity")]
+    [InlineData("scalar-row")]
+    [InlineData("invalid-json")]
+    public async Task OutcomeBrowser_RejectsUnsafeProducerBeforeQualificationProjection(string defect)
+    {
+        using var scenario = OutcomeScenario("qualification");
+        scenario.OutcomeBody = defect switch
+        {
+            "unknown-root" => scenario.OutcomeBody!.Replace("\"requests\":", "\"private\":\"private-producer-marker\",\"requests\":", StringComparison.Ordinal),
+            "unknown-row" => scenario.OutcomeBody!.Replace("\"requestId\":41", "\"private\":\"private-producer-marker\",\"requestId\":41", StringComparison.Ordinal),
+            "duplicate" => scenario.OutcomeBody!.Replace("\"requestId\":41", "\"requestId\":41,\"requestId\":41", StringComparison.Ordinal),
+            "invalid-identity" => scenario.OutcomeBody!.Replace("request-41", "request-999", StringComparison.Ordinal),
+            "scalar-row" => """{"fromUtc":"2026-08-25T17:00:00Z","toUtc":"2026-09-01T17:00:00Z","requests":["private-producer-marker"]}""",
+            _ => "<script>private-producer-marker</script>",
+        };
+        await using var factory = new Factory(redis.GetConnectionString(), scenario);
+        using var browser = Client(factory);
+        await LoginAsync(browser, factory);
+        using var response = await browser.GetAsync(OutcomeRoute("qualification"));
+        using var receipt = await BrowserReceiptAsync(response);
+        Assert.Equal(502, receipt.RootElement.GetProperty("httpStatus").GetInt32());
+        Assert.Equal(JsonValueKind.Null, receipt.RootElement.GetProperty("payload").ValueKind);
+        Assert.DoesNotContain("private-producer-marker", receipt.RootElement.GetRawText(), StringComparison.Ordinal);
+        Assert.Equal(1, scenario.OutcomeReads);
+    }
+
+    [Theory]
+    [InlineData(401)]
+    [InlineData(403)]
+    [InlineData(500)]
+    public async Task OutcomeBrowser_ProducerDenialNeverLeaksBodyOrRetries(int status)
+    {
+        using var scenario = OutcomeScenario("qualification");
+        scenario.OutcomeStatus = (HttpStatusCode)status;
+        scenario.OutcomeBody = "<script>private-producer-marker</script>";
+        await using var factory = new Factory(redis.GetConnectionString(), scenario);
+        using var browser = Client(factory);
+        await LoginAsync(browser, factory);
+        using var response = await browser.GetAsync(OutcomeRoute("qualification"));
+        using var receipt = await BrowserReceiptAsync(response);
+        Assert.Equal(status, receipt.RootElement.GetProperty("httpStatus").GetInt32());
+        Assert.Equal(JsonValueKind.Null, receipt.RootElement.GetProperty("payload").ValueKind);
+        Assert.DoesNotContain("private-producer-marker", await response.Content.ReadAsStringAsync(), StringComparison.Ordinal);
+        Assert.Equal(1, scenario.OutcomeReads);
+        Assert.Equal(0, scenario.RefreshCalls);
+    }
+
+    [Theory]
+    [InlineData("transport", 502)]
+    [InlineData("io", 502)]
+    [InlineData("timeout", 504)]
+    public async Task OutcomeBrowser_TransportFailuresRemainStatusOnly(string fault, int expected)
+    {
+        using var scenario = OutcomeScenario("qualification");
+        scenario.OutcomeFault = fault;
+        await using var factory = new Factory(redis.GetConnectionString(), scenario);
+        using var browser = Client(factory);
+        await LoginAsync(browser, factory);
+        using var response = await browser.GetAsync(OutcomeRoute("qualification"));
+        using var receipt = await BrowserReceiptAsync(response);
+        Assert.Equal(expected, receipt.RootElement.GetProperty("httpStatus").GetInt32());
+        Assert.Equal(JsonValueKind.Null, receipt.RootElement.GetProperty("payload").ValueKind);
+        Assert.DoesNotContain("private-producer-marker", await response.Content.ReadAsStringAsync(), StringComparison.Ordinal);
+        Assert.Equal(1, scenario.OutcomeReads);
+    }
+
+    [Theory]
+    [InlineData("quotation")]
+    [InlineData("invoice")]
+    [InlineData("qualification")]
+    public async Task OutcomeBrowser_ExistingSourcePermissionGatesBeforeProducerRead(string source)
+    {
+        using var scenario = OutcomeScenario(source);
+        scenario.OutcomePermissions = [];
+        await using var factory = new Factory(redis.GetConnectionString(), scenario);
+        using var browser = Client(factory);
+        await LoginAsync(browser, factory);
+        using var response = await browser.GetAsync(OutcomeRoute(source));
+        Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
+        Assert.StartsWith("https://localhost/AccessDenied?", response.Headers.Location!.AbsoluteUri, StringComparison.Ordinal);
+        Assert.Equal(0, scenario.OutcomeReads);
+        Assert.Equal(0, scenario.RefreshCalls);
+    }
+
+    [Theory]
+    [InlineData("source")]
+    [InlineData("reversed")]
+    [InlineData("missing-zone")]
+    [InlineData("too-wide")]
+    [InlineData("future")]
+    public async Task OutcomeBrowser_InvalidWindowOrDestinationCannotReachProducer(string defect)
+    {
+        using var scenario = OutcomeScenario("qualification");
+        await using var factory = new Factory(redis.GetConnectionString(), scenario);
+        using var browser = Client(factory);
+        await LoginAsync(browser, factory);
+        var (source, from, to) = defect switch
+        {
+            "source" => ("https://other.invalid", OutcomeFrom, OutcomeTo),
+            "reversed" => ("qualification", OutcomeTo, OutcomeFrom),
+            "missing-zone" => ("qualification", "2026-08-25T17:00:00", OutcomeTo),
+            "too-wide" => ("qualification", "2026-07-01T00:00:00Z", OutcomeTo),
+            _ => ("qualification", OutcomeFrom, scenario.Clock.GetUtcNow().AddDays(1).UtcDateTime.ToString("O")),
+        };
+        using var response = await browser.GetAsync($"/Operations/Check?source={Uri.EscapeDataString(source)}&fromUtc={Uri.EscapeDataString(from)}&toUtc={Uri.EscapeDataString(to)}");
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal(0, scenario.OutcomeReads);
+        Assert.Equal(0, scenario.RefreshCalls);
+    }
+
+    [Fact]
+    public async Task OutcomeBrowser_TwoIndependentCookieSessionsNeedNoDashboardBootstrap()
+    {
+        using var scenario = OutcomeScenario("qualification");
+        await using var factory = new Factory(redis.GetConnectionString(), scenario);
+        using var first = Client(factory);
+        using var second = Client(factory);
+        var firstLogin = await LoginAsync(first, factory);
+        var secondLogin = await LoginAsync(second, factory);
+        Assert.NotEqual(firstLogin.Cookie, secondLogin.Cookie);
+        foreach (var browser in new[] { first, second })
+        {
+            using var response = await browser.GetAsync(OutcomeRoute("qualification"));
+            using var receipt = await BrowserReceiptAsync(response);
+            Assert.Equal(200, receipt.RootElement.GetProperty("httpStatus").GetInt32());
+        }
+        Assert.Equal(2, scenario.LoginCalls);
+        Assert.Equal(2, scenario.OutcomeReads);
+        Assert.Equal(0, scenario.RefreshCalls);
+    }
+
+    [Fact]
+    public async Task OutcomeBrowser_NearExpiryReusesCommittedSessionRefresh()
+    {
+        using var scenario = OutcomeScenario("qualification");
+        scenario.SuccessfulOutcomeRefresh = true;
+        await using var factory = new Factory(redis.GetConnectionString(), scenario);
+        using var browser = Client(factory);
+        await LoginAsync(browser, factory);
+        var before = scenario.LastIssuedAccessToken;
+        scenario.Clock.Advance(TimeSpan.FromMinutes(14));
+        using var response = await browser.GetAsync(OutcomeRoute("qualification"));
+        using var receipt = await BrowserReceiptAsync(response);
+        Assert.Equal(200, receipt.RootElement.GetProperty("httpStatus").GetInt32());
+        Assert.Equal(1, scenario.RefreshCalls);
+        Assert.Equal(1, scenario.OutcomeReads);
+        Assert.NotEqual(before, scenario.LastOutcomeAccessToken);
+        Assert.Equal(scenario.LastIssuedAccessToken, scenario.LastOutcomeAccessToken);
+        var retained = await factory.Services.GetRequiredService<DistributedTicketStore>().RetrieveAsync(factory.Probe.LastKey!);
+        Assert.NotNull(retained);
+        Assert.Equal("synthetic-rotation-2", retained.Properties.GetTokenValue("legacy_refresh_token"));
+    }
+
+    [Theory]
+    [InlineData(401)]
+    [InlineData(429)]
+    [InlineData(503)]
+    public async Task OutcomeBrowser_UnavailableRefreshCannotForwardOrLeakCredentials(int status)
+    {
+        using var scenario = OutcomeScenario("qualification");
+        scenario.OutcomeRefreshStatus = (HttpStatusCode)status;
+        await using var factory = new Factory(redis.GetConnectionString(), scenario);
+        using var browser = Client(factory);
+        await LoginAsync(browser, factory);
+        scenario.Clock.Advance(TimeSpan.FromMinutes(14));
+        using var response = await browser.GetAsync(OutcomeRoute("qualification"));
+        using var receipt = await BrowserReceiptAsync(response);
+        Assert.Equal(401, receipt.RootElement.GetProperty("httpStatus").GetInt32());
+        Assert.Equal(JsonValueKind.Null, receipt.RootElement.GetProperty("payload").ValueKind);
+        Assert.True(scenario.RefreshCalls > 0);
+        Assert.Equal(0, scenario.OutcomeReads);
+        if (status != 401)
+            Assert.NotNull(await factory.Services.GetRequiredService<DistributedTicketStore>().RetrieveAsync(factory.Probe.LastKey!));
+    }
+
+    [Theory]
+    [InlineData("transport", 502)]
+    [InlineData("timeout", 504)]
+    public async Task OutcomeBrowser_RefreshTransportFailurePreservesSafeUnavailableReceipt(string fault, int expected)
+    {
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+        using var scenario = OutcomeScenario("qualification");
+        scenario.OutcomeRefreshFault = fault;
+        await using var factory = new Factory(redis.GetConnectionString(), scenario);
+        using var browser = Client(factory);
+        await LoginAsync(browser, factory);
+        var key = factory.Probe.LastKey!;
+        scenario.Clock.Advance(TimeSpan.FromMinutes(14));
+        using var response = await browser.GetAsync(OutcomeRoute("qualification"), timeout.Token);
+        using var receipt = await BrowserReceiptAsync(response);
+        Assert.Equal(expected, receipt.RootElement.GetProperty("httpStatus").GetInt32());
+        Assert.Equal(JsonValueKind.Null, receipt.RootElement.GetProperty("payload").ValueKind);
+        Assert.Equal(1, scenario.ControlledRefreshCalls);
+        Assert.Equal(0, scenario.RefreshCalls);
+        Assert.Equal(0, scenario.OutcomeReads);
+        Assert.DoesNotContain("private-refresh-marker", await response.Content.ReadAsStringAsync(timeout.Token), StringComparison.Ordinal);
+        var retained = await factory.Services.GetRequiredService<DistributedTicketStore>().RetrieveAsync(key);
+        Assert.NotNull(retained);
+        Assert.True(retained.Properties.GetTokenValue("legacy_refresh_token") == "synthetic-rotation-1");
+    }
+
+    [Theory]
+    [InlineData("/Operations/OutcomeReadback", "transport")]
+    [InlineData("/Operations/OutcomeReadback", "timeout")]
+    [InlineData("/Analytics/OutcomeReadback", "transport")]
+    [InlineData("/Analytics/OutcomeReadback", "timeout")]
+    public async Task OutcomeMachine_RefreshTransportFailureRetainsLegacyUnauthorizedReceipt(string path, string fault)
+    {
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+        using var scenario = OutcomeScenario("qualification");
+        scenario.OutcomeRefreshFault = fault;
+        await using var factory = new Factory(redis.GetConnectionString(), scenario);
+        using var browser = Client(factory);
+        await LoginAsync(browser, factory);
+        scenario.Clock.Advance(TimeSpan.FromMinutes(14));
+        using var response = await browser.GetAsync(OutcomeRoute("qualification", path), timeout.Token);
+        var body = await response.Content.ReadAsStringAsync(timeout.Token);
+        using var receipt = JsonDocument.Parse(body);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal("application/json", response.Content.Headers.ContentType!.MediaType);
+        Assert.Equal("no-store", response.Headers.CacheControl!.ToString());
+        Assert.Equal(401, receipt.RootElement.GetProperty("httpStatus").GetInt32());
+        Assert.Equal(JsonValueKind.Null, receipt.RootElement.GetProperty("payload").ValueKind);
+        Assert.Equal(1, scenario.ControlledRefreshCalls);
+        Assert.Equal(0, scenario.RefreshCalls);
+        Assert.Equal(0, scenario.OutcomeReads);
+        Assert.DoesNotContain("private-refresh-marker", body, StringComparison.Ordinal);
+        Assert.DoesNotContain("synthetic-rotation-", body, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("forbidden")]
+    [InlineData("malformed-json")]
+    public async Task OutcomeBrowser_SemanticRefreshFailureRetainsUnauthorizedReceipt(string failure)
+    {
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+        using var scenario = OutcomeScenario("qualification");
+        if (failure == "forbidden") scenario.OutcomeRefreshStatus = HttpStatusCode.Forbidden;
+        else scenario.OutcomeRefreshFault = failure;
+        await using var factory = new Factory(redis.GetConnectionString(), scenario);
+        using var browser = Client(factory);
+        await LoginAsync(browser, factory);
+        scenario.Clock.Advance(TimeSpan.FromMinutes(14));
+        using var response = await browser.GetAsync(OutcomeRoute("qualification"), timeout.Token);
+        using var receipt = await BrowserReceiptAsync(response);
+        Assert.Equal(401, receipt.RootElement.GetProperty("httpStatus").GetInt32());
+        Assert.Equal(JsonValueKind.Null, receipt.RootElement.GetProperty("payload").ValueKind);
+        Assert.Equal(1, scenario.RefreshCalls);
+        Assert.Equal(0, scenario.ControlledRefreshCalls);
+        Assert.Equal(0, scenario.OutcomeReads);
+        Assert.DoesNotContain("private-refresh-marker", await response.Content.ReadAsStringAsync(timeout.Token), StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("transport")]
+    [InlineData("timeout")]
+    public async Task OutcomeBrowser_PeerRenewalWinsOverEarlierRefreshTransportFailure(string fault)
+    {
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+        using var scenario = OutcomeScenario("qualification");
+        scenario.OutcomeRefreshFault = fault;
+        scenario.BlockOutcomeRefreshFault = true;
+        await using var factory = new Factory(redis.GetConnectionString(), scenario);
+        using var browser = Client(factory);
+        await LoginAsync(browser, factory);
+        var key = factory.Probe.LastKey!;
+        var store = factory.Services.GetRequiredService<DistributedTicketStore>();
+        var peerContext = new DefaultHttpContext { RequestServices = factory.Services };
+        var ticket = await store.RetrieveAsync(key, peerContext, timeout.Token);
+        Assert.NotNull(ticket);
+        scenario.Clock.Advance(TimeSpan.FromMinutes(14));
+        var pending = browser.GetAsync(OutcomeRoute("qualification"), timeout.Token);
+        try
+        {
+            await scenario.RefreshEntered.Task.WaitAsync(TimeSpan.FromSeconds(15), timeout.Token);
+            SetRotatedTokens(ticket, scenario);
+            var peerToken = ticket.Properties.GetTokenValue("legacy_access_token");
+            await store.RenewAsync(key, ticket, peerContext, timeout.Token);
+            scenario.ReleaseRefresh.TrySetResult();
+            using var response = await pending;
+            using var receipt = await BrowserReceiptAsync(response);
+            Assert.Equal(200, receipt.RootElement.GetProperty("httpStatus").GetInt32());
+            Assert.Equal(1, scenario.ControlledRefreshCalls);
+            Assert.Equal(0, scenario.RefreshCalls);
+            Assert.Equal(1, scenario.OutcomeReads);
+            Assert.True(peerToken == scenario.LastOutcomeAccessToken);
+            var retained = await store.RetrieveAsync(key, peerContext, timeout.Token);
+            Assert.NotNull(retained);
+            Assert.True(retained.Properties.GetTokenValue("legacy_refresh_token") == "synthetic-rotation-2");
+        }
+        finally
+        {
+            scenario.ReleaseRefresh.TrySetResult();
+            using var drained = await pending;
+        }
+    }
+
+    [Fact]
+    public async Task OutcomeBrowser_ExpiredCookieCannotUseAnOtherwiseStoredAccessToken()
+    {
+        using var scenario = OutcomeScenario("qualification");
+        await using var factory = new Factory(redis.GetConnectionString(), scenario);
+        using var browser = Client(factory);
+        await LoginAsync(browser, factory);
+        var key = factory.Probe.LastKey!;
+        scenario.Clock.Advance(TimeSpan.FromHours(9));
+        using var response = await browser.GetAsync(OutcomeRoute("qualification"));
+        Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
+        Assert.StartsWith("https://localhost/Login?", response.Headers.Location!.AbsoluteUri, StringComparison.Ordinal);
+        Assert.Equal(0, scenario.OutcomeReads);
+        Assert.Equal(0, scenario.RefreshCalls);
+        Assert.Null(await factory.Services.GetRequiredService<DistributedTicketStore>().RetrieveAsync(key));
+    }
+
+    [Fact]
+    public async Task OutcomeBrowser_ChangedRefreshOwnerCannotBecomeTheForwardedEmployee()
+    {
+        using var scenario = OutcomeScenario("qualification", wrongRefreshOwner: true);
+        await using var factory = new Factory(redis.GetConnectionString(), scenario);
+        using var browser = Client(factory);
+        await LoginAsync(browser, factory);
+        scenario.Clock.Advance(TimeSpan.FromMinutes(14));
+        using var response = await browser.GetAsync(OutcomeRoute("qualification"));
+        using var receipt = await BrowserReceiptAsync(response);
+        Assert.Equal(401, receipt.RootElement.GetProperty("httpStatus").GetInt32());
+        Assert.Equal(JsonValueKind.Null, receipt.RootElement.GetProperty("payload").ValueKind);
+        Assert.Equal(0, scenario.OutcomeReads);
+        Assert.Equal(1, scenario.RefreshCalls);
+    }
+
+    private const string OutcomeFrom = "2026-08-25T17:00:00Z";
+    private const string OutcomeTo = "2026-09-01T17:00:00Z";
+
+    private static string OutcomeRoute(string source, string path = "/Operations/Check") =>
+        $"{path}?source={source}&fromUtc={Uri.EscapeDataString(OutcomeFrom)}&toUtc={Uri.EscapeDataString(OutcomeTo)}";
+
+    private static string OutcomeProducerPath(string source) => source switch
+    {
+        "quotation" => "/quotations/outcomes/readback",
+        "invoice" => "/invoices/outcomes/readback",
+        _ => "/quotationrequests/qualification-outcomes/readback",
+    };
+
+    private static Scenario OutcomeScenario(string source, bool wrongRefreshOwner = false) => new()
+    {
+        WrongRefreshOwner = wrongRefreshOwner,
+        OutcomePermissions = source switch
+        {
+            "quotation" => [LegacyEmployeePermissions.QuotationsRead],
+            "invoice" => [LegacyEmployeePermissions.AccountingRead],
+            _ => [LegacyEmployeePermissions.QuotationRequestsRead],
+        },
+        OutcomeBody = OutcomeFixture(source),
+        OutcomePath = OutcomeProducerPath(source),
+    };
+
+    private static string OutcomeFixture(string source) => source switch
+    {
+        "quotation" => """{"FromUtc":"2026-08-25T17:00:00Z","ToUtc":"2026-09-01T17:00:00Z","Days":[{"DayUtc":"2026-08-26T00:00:00","PersistedQuotationCount":3,"AcceptedQuotationCount":2,"SourceAttributedPersistedQuotationCount":1,"SourceAttributedAcceptedQuotationCount":1,"UnattributedPersistedQuotationCount":2,"UnattributedAcceptedQuotationCount":1,"AcceptedQuotedAmountsByCurrency":[{"CurrencyId":1,"QuotedAmount":123.4500,"AcceptedQuotationCount":1},{"CurrencyId":2,"QuotedAmount":9876543210.12345678,"AcceptedQuotationCount":1}]}],"TechnicalConversionAvailability":"unavailable","QualifiedCustomerAvailability":"unavailable","RevenueAvailability":"unavailable"}""",
+        "invoice" => """{"FromUtc":"2026-08-25T17:00:00Z","ToUtc":"2026-09-01T17:00:00Z","Days":[{"DayUtc":"2026-08-26T00:00:00","PaidInvoiceCount":3,"SourceAttributedPaidInvoiceCount":1,"UnattributedPaidInvoiceCount":2,"PaidInvoiceAmountsByCurrency":[{"Currency":"THB","PaidInvoiceTotal":120.5000,"PaidInvoiceCount":2},{"Currency":"USD","PaidInvoiceTotal":25.01,"PaidInvoiceCount":1}]}]}""",
+        _ => """{"fromUtc":"2026-08-25T17:00:00Z","toUtc":"2026-09-01T17:00:00Z","requests":[{"requestId":41,"createdUtc":"2026-08-26T09:00:00Z","transactionId":"request-41","journeyId":"11111111-2222-3333-4444-555555555555","state":"qualified"},{"requestId":42,"createdUtc":"2026-08-26T10:00:00Z","state":"qualified"},{"requestId":43,"createdUtc":"2026-08-26T11:00:00Z","transactionId":"request-43","journeyId":"11111111-2222-3333-4444-555555555555","state":"unreviewed"},{"requestId":44,"createdUtc":"2026-08-26T12:00:00Z","state":"unreviewed"},{"requestId":45,"createdUtc":"2026-08-26T13:00:00Z","transactionId":"request-45","journeyId":"11111111-2222-3333-4444-555555555555","state":"not_qualified"},{"requestId":46,"createdUtc":"2026-08-26T14:00:00Z","state":"duplicate"},{"requestId":47,"createdUtc":"2026-08-26T15:00:00Z","transactionId":"request-47","journeyId":"11111111-2222-3333-4444-555555555555","state":"stale"},{"requestId":48,"createdUtc":"2026-08-26T16:00:00Z","state":"incomplete"}]}""",
+    };
+
+    private static async Task<JsonDocument> BrowserReceiptAsync(HttpResponseMessage response)
+    {
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal("text/html", response.Content.Headers.ContentType!.MediaType);
+        Assert.Equal("utf-8", response.Content.Headers.ContentType.CharSet);
+        Assert.Contains("no-store", response.Headers.CacheControl!.ToString(), StringComparison.Ordinal);
+        Assert.Contains("no-cache", response.Headers.Pragma.ToString(), StringComparison.Ordinal);
+        Assert.Equal("nosniff", Assert.Single(response.Headers.GetValues("X-Content-Type-Options")));
+        Assert.Equal("default-src 'none'; frame-ancestors 'none'; base-uri 'none'",
+            Assert.Single(response.Headers.GetValues("Content-Security-Policy")));
+        var html = await response.Content.ReadAsStringAsync();
+        Assert.Contains("<!doctype html>", html, StringComparison.Ordinal);
+        Assert.Contains("&quot;source&quot;", html, StringComparison.Ordinal);
+        Assert.DoesNotContain("<script", html, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("synthetic-rotation-", html, StringComparison.Ordinal);
+        Assert.DoesNotContain("employee@maliev.com", html, StringComparison.Ordinal);
+        Assert.DoesNotContain("synthetic-employee", html, StringComparison.Ordinal);
+        var start = html.IndexOf("<pre>", StringComparison.Ordinal);
+        var end = html.IndexOf("</pre>", StringComparison.Ordinal);
+        Assert.True(start >= 0 && end > start);
+        return JsonDocument.Parse(WebUtility.HtmlDecode(html[(start + 5)..end]));
+    }
+
     private static HttpClient Client(Factory factory) => factory.CreateClient(new()
     { BaseAddress = new Uri("https://localhost"), HandleCookies = true, AllowAutoRedirect = false });
 
@@ -408,6 +917,18 @@ public sealed class SessionGenerationFenceTests : IAsyncLifetime
                 services.AddSingleton<TimeProvider>(scenario.Clock);
                 services.Configure<CookieAuthenticationOptions>("Cookies", options => options.TimeProvider = scenario.Clock);
                 services.AddSingleton<IHttpMessageHandlerBuilderFilter>(new TransportFilter(scenario));
+                if (scenario.OutcomeRefreshFault is "transport" or "timeout")
+                {
+                    // Control the failure after HTTP resilience, preserving the actual session,
+                    // cookie/JWT/Redis and endpoint path. This does not qualify HTTP retry behavior.
+                    var registration = Assert.Single(services, item => item.ServiceType == typeof(ILegacyAuthClient));
+                    var create = registration.ImplementationFactory;
+                    Assert.NotNull(create);
+                    services.Remove(registration);
+                    services.AddTransient<ILegacyAuthClient>(provider =>
+                        new ControlledRefreshAuthClient((ILegacyAuthClient)create(provider), scenario));
+                }
+
                 services.RemoveAll<IDistributedCache>();
                 services.AddSingleton<IDistributedCache>(provider =>
                 {
@@ -462,6 +983,24 @@ public sealed class SessionGenerationFenceTests : IAsyncLifetime
         public Clock Clock { get; } = new();
         public string PublicKey => rsa.ExportSubjectPublicKeyInfoPem();
         public string Certificate { get; } = CreateCertificate();
+        public string? OutcomeBody { get; set; }
+        public string? OutcomePath { get; init; }
+        public string[]? OutcomePermissions { get; set; }
+        public HttpStatusCode OutcomeStatus { get; set; } = HttpStatusCode.OK;
+        public string? OutcomeFault { get; set; }
+        public bool SuccessfulOutcomeRefresh { get; set; }
+        public HttpStatusCode? OutcomeRefreshStatus { get; set; }
+        public string? OutcomeRefreshFault { get; set; }
+        public bool BlockOutcomeRefreshFault { get; set; }
+        public int OutcomeReads;
+        public int LoginCalls;
+        public int RefreshCalls;
+        public int ControlledRefreshCalls;
+        public string? LastIssuedAccessToken { get; private set; }
+        public string? LastOutcomeAccessToken { get; set; }
+        public string? LastOutcomeScheme { get; set; }
+        public string? LastOutcomePath { get; set; }
+        public string? LastOutcomeQuery { get; set; }
         public bool BlockSuccessfulRefresh { get; init; }
         public bool WrongRefreshOwner { get; init; }
         public TaskCompletionSource RefreshEntered { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -474,9 +1013,12 @@ public sealed class SessionGenerationFenceTests : IAsyncLifetime
             var now = DateTime.UtcNow;
             var token = new JwtSecurityToken("https://synthetic-auth.invalid", "synthetic-intranet",
                 [new("sub", wrongOwner ? "other-synthetic-employee" : "synthetic-employee"), new("name", "employee@maliev.com"), new("email", "employee@maliev.com"),
-                 new("identity_kind", "employee"), new("jti", Guid.NewGuid().ToString("N")), new("permissions", LegacyEmployeePermissions.QuotationRequestsRead)],
+                 new("identity_kind", "employee"), new("jti", Guid.NewGuid().ToString("N")),
+                 .. (OutcomePermissions ?? [LegacyEmployeePermissions.QuotationRequestsRead]).Select(permission => new Claim("permissions", permission))],
                 now.AddMinutes(-1), now.AddHours(1), new SigningCredentials(new RsaSecurityKey(rsa) { KeyId = "synthetic-session-key" }, SecurityAlgorithms.RsaSha256));
-            return new JwtSecurityTokenHandler().WriteToken(token);
+            var accessToken = new JwtSecurityTokenHandler().WriteToken(token);
+            LastIssuedAccessToken = accessToken;
+            return accessToken;
         }
         public object Envelope(bool rotated = false) => new
         { accessToken = Token(rotated && WrongRefreshOwner), refreshToken = rotated ? "synthetic-rotation-2" : "synthetic-rotation-1", tokenType = "Bearer", expiresIn = 900, refreshExpiresAt = Clock.GetUtcNow().AddDays(1) };
@@ -496,20 +1038,66 @@ public sealed class SessionGenerationFenceTests : IAsyncLifetime
         { next(builder); builder.PrimaryHandler = new AuthTransport(scenario); };
     }
 
+    private sealed class ControlledRefreshAuthClient(ILegacyAuthClient inner, Scenario scenario) : ILegacyAuthClient
+    {
+        public Task<EmployeeLoginResult> LoginAsync(string email, string password, CancellationToken cancellationToken) =>
+            inner.LoginAsync(email, password, cancellationToken);
+        public async Task<EmployeeRefreshResult?> RefreshAsync(string refreshToken, CancellationToken cancellationToken)
+        {
+            Interlocked.Increment(ref scenario.ControlledRefreshCalls);
+            if (scenario.BlockOutcomeRefreshFault)
+            {
+                scenario.RefreshEntered.TrySetResult();
+                await scenario.ReleaseRefresh.Task.WaitAsync(cancellationToken);
+            }
+            if (scenario.OutcomeRefreshFault == "transport") throw new HttpRequestException("private-refresh-marker");
+            if (scenario.OutcomeRefreshFault == "timeout") throw new TaskCanceledException("private-refresh-marker");
+            throw new InvalidOperationException("Unknown controlled refresh fault.");
+        }
+        public Task RevokeAsync(string refreshToken, CancellationToken cancellationToken) => inner.RevokeAsync(refreshToken, cancellationToken);
+        public Task<CustomerIdentityResponse?> CreateCustomerIdentityAsync(int databaseId, CreateCustomerIdentityRequest request,
+            string accessToken, CancellationToken cancellationToken) => inner.CreateCustomerIdentityAsync(databaseId, request, accessToken, cancellationToken);
+        public Task<EmployeeIdentityResponse?> CreateEmployeeIdentityAsync(int databaseId, CreateEmployeeIdentityRequest request,
+            string accessToken, CancellationToken cancellationToken) => inner.CreateEmployeeIdentityAsync(databaseId, request, accessToken, cancellationToken);
+    }
+
     private sealed class AuthTransport(Scenario scenario) : HttpMessageHandler
     {
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken token)
         {
             switch (request.RequestUri!.AbsolutePath)
             {
-                case "/auth/v1/login": return new(HttpStatusCode.OK) { Content = JsonContent.Create(scenario.Envelope()) };
+                case "/auth/v1/login":
+                    Interlocked.Increment(ref scenario.LoginCalls);
+                    return new(HttpStatusCode.OK) { Content = JsonContent.Create(scenario.Envelope()) };
                 case "/auth/v1/revoke": return new(HttpStatusCode.NoContent);
                 case "/auth/v1/refresh":
+                    Interlocked.Increment(ref scenario.RefreshCalls);
+                    if (scenario.OutcomeRefreshFault == "malformed-json") return new(HttpStatusCode.OK)
+                    { Content = new StringContent("private-refresh-marker", System.Text.Encoding.UTF8, "application/json") };
+                    if (scenario.SuccessfulOutcomeRefresh) return new(HttpStatusCode.OK) { Content = JsonContent.Create(scenario.Envelope(rotated: true)) };
+                    if (scenario.OutcomeRefreshStatus is { } refreshStatus) return new(refreshStatus);
                     if (scenario.WrongRefreshOwner) return new(HttpStatusCode.OK) { Content = JsonContent.Create(scenario.Envelope(rotated: true)) };
                     if (!scenario.BlockSuccessfulRefresh) return new(HttpStatusCode.Unauthorized);
                     scenario.RefreshEntered.TrySetResult();
                     await scenario.ReleaseRefresh.Task.WaitAsync(token);
                     return new(HttpStatusCode.OK) { Content = JsonContent.Create(scenario.Envelope(rotated: true)) };
+                case "/quotations/outcomes/readback":
+                case "/invoices/outcomes/readback":
+                case "/quotationrequests/qualification-outcomes/readback":
+                    Assert.Equal(scenario.OutcomePath, request.RequestUri.AbsolutePath);
+                    Interlocked.Increment(ref scenario.OutcomeReads);
+                    scenario.LastOutcomePath = request.RequestUri.AbsolutePath;
+                    scenario.LastOutcomeQuery = request.RequestUri.Query;
+                    scenario.LastOutcomeAccessToken = request.Headers.Authorization?.Parameter;
+                    scenario.LastOutcomeScheme = request.Headers.Authorization?.Scheme;
+                    if (scenario.OutcomeFault == "transport") throw new HttpRequestException("private-producer-marker");
+                    if (scenario.OutcomeFault == "io") throw new IOException("private-producer-marker");
+                    if (scenario.OutcomeFault == "timeout") throw new OperationCanceledException("private-producer-marker");
+                    return new(scenario.OutcomeStatus)
+                    {
+                        Content = new StringContent(scenario.OutcomeBody!, System.Text.Encoding.UTF8, "application/json"),
+                    };
                 case "/quotationrequests/84/qualification-receipt":
                     Interlocked.Increment(ref scenario.Forwarded);
                     if (scenario.PeerAccessToken is not null && request.Headers.Authorization?.Parameter != scenario.PeerAccessToken)

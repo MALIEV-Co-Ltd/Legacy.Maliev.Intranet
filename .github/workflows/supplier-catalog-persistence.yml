@@ -13,6 +13,9 @@ on:
       - 'Legacy.Maliev.Intranet.Bff/Procurement/Supplier*.cs'
       - 'Legacy.Maliev.Intranet.Bff/Catalog/Lookup*.cs'
       - 'Legacy.Maliev.Intranet.Server/Suppliers/**'
+      - 'Legacy.Maliev.Intranet.Server/PurchaseOrders/**'
+      - 'Legacy.Maliev.Intranet.Bff/Procurement/PurchaseOrder*.cs'
+      - 'Legacy.Maliev.Intranet.Contracts/PurchaseOrder*.cs'
       - 'Legacy.Maliev.Intranet.Bff/Program.cs'
   pull_request:
     branches: [main]
@@ -26,6 +29,9 @@ on:
       - 'Legacy.Maliev.Intranet.Bff/Procurement/Supplier*.cs'
       - 'Legacy.Maliev.Intranet.Bff/Catalog/Lookup*.cs'
       - 'Legacy.Maliev.Intranet.Server/Suppliers/**'
+      - 'Legacy.Maliev.Intranet.Server/PurchaseOrders/**'
+      - 'Legacy.Maliev.Intranet.Bff/Procurement/PurchaseOrder*.cs'
+      - 'Legacy.Maliev.Intranet.Contracts/PurchaseOrder*.cs'
       - 'Legacy.Maliev.Intranet.Bff/Program.cs'
 
 permissions:
@@ -37,7 +43,7 @@ concurrency:
 
 jobs:
   supplier-catalog-persistence:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 25
     env:
       MalievWorkspaceRoot: ${{ github.workspace }}/.dependencies
@@ -67,7 +73,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           repository: MALIEV-Co-Ltd/Legacy.Maliev.ServiceDefaults
-          ref: 7b3099bf67d0f17e56cfdb3dcf36541304abaac2
+          ref: 02377791d346e25216c114522b3bfdb6f0f19a16
           path: .dependencies/Legacy.Maliev.ServiceDefaults
           persist-credentials: false
       - name: Check out reviewed CompatibilityContracts
@@ -79,8 +85,33 @@ jobs:
           persist-credentials: false
       - name: Set up .NET 10
         uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68
+        env:
+          DOTNET_INSTALL_DIR: ${{ runner.temp }}/maliev-intranet-dotnet-${{ github.run_id }}-${{ github.run_attempt }}-${{ github.job }}
+          DOTNET_MULTILEVEL_LOOKUP: '0'
         with:
-          dotnet-version: 10.0.x
+          dotnet-version: 10.0.402
+      - name: Verify qualified SDK and shared runtime identity
+        shell: bash
+        run: |
+          test ! -e global.json
+          expected_root="${RUNNER_TEMP}/maliev-intranet-dotnet-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-${GITHUB_JOB}"
+          test "$DOTNET_ROOT" = "$expected_root"
+          test "$(realpath "$DOTNET_ROOT")" = "$expected_root"
+          test -d "$DOTNET_ROOT/shared/Microsoft.NETCore.App/10.0.13"
+          test -d "$DOTNET_ROOT/shared/Microsoft.AspNetCore.App/10.0.13"
+          runtime_parent="$DOTNET_ROOT/shared/Microsoft.NETCore.App"
+          test "$(realpath "$runtime_parent")" = "$runtime_parent"
+          # setup-dotnet installs latest LTS alongside the requested SDK; remove extras only from this verified private root.
+          for unqualified_runtime in "$runtime_parent/"*; do
+            test ! -L "$unqualified_runtime"
+            test -d "$unqualified_runtime"
+            runtime_version="${unqualified_runtime##*/}"
+            [[ "$runtime_version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]
+            if test "$runtime_version" != '10.0.13'; then rm -rf -- "$unqualified_runtime"; fi
+          done
+          test "$(dotnet --version)" = '10.0.402'
+          dotnet --list-runtimes
+          test "$(dotnet --list-runtimes | awk '{ print $2 }' | sort -u)" = '10.0.13'
       - name: Verify disposable hosted runtime
         run: |
           test "$RUNNER_ENVIRONMENT" = github-hosted
@@ -122,7 +153,34 @@ jobs:
         timeout-minutes: 8
         run: |
           export GITHUB_ACTIONS=false
-          dotnet test acceptance/SupplierCatalogPersistence/SupplierCatalogPersistence.AcceptanceTests.csproj -c Release --no-build --no-restore -p:UseLocalMalievDependencies=true --filter 'FullyQualifiedName~SupplierCatalogPersistenceTests' --logger 'trx;LogFileName=supplier-persistence.trx' --results-directory "$RUNNER_TEMP/supplier-persistence-results" --nologo
+          dotnet test acceptance/SupplierCatalogPersistence/SupplierCatalogPersistence.AcceptanceTests.csproj -c Release --no-build --no-restore -p:UseLocalMalievDependencies=true --filter 'FullyQualifiedName=SupplierCatalogPersistence.Acceptance.SupplierCatalogPersistenceTests.CatalogPostcodeSelection_RealSupplierSave_ApiReadbackAndReloadPreserveAddress' --logger 'trx;LogFileName=supplier-persistence.trx' --results-directory "$RUNNER_TEMP/supplier-persistence-results" --nologo
+      - name: Exercise actual purchase-order consumer and producer persistence
+        id: purchase_order_join
+        if: ${{ !cancelled() && steps.build.outcome == 'success' && steps.resource_controls.outcome == 'success' }}
+        env:
+          SUPPLIER_RESOURCE_EVIDENCE: ${{ runner.temp }}/purchase-order-replay-evidence
+        timeout-minutes: 8
+        run: |
+          export GITHUB_ACTIONS=false
+          dotnet test acceptance/SupplierCatalogPersistence/SupplierCatalogPersistence.AcceptanceTests.csproj -c Release --no-build --no-restore -p:UseLocalMalievDependencies=true --filter 'FullyQualifiedName=SupplierCatalogPersistence.Acceptance.SupplierCatalogPersistenceTests.PurchaseOrderReplay_RealProducerRowsSurviveLostAcknowledgementAndLaterChildFailure' --logger 'trx;LogFileName=purchase-order-replay.trx' --results-directory "$RUNNER_TEMP/supplier-persistence-results" --nologo
+      - name: Retain exact purchase-order join and ownership proof
+        if: always()
+        env:
+          PROOF_RESULTS: ${{ runner.temp }}/supplier-persistence-results
+          PROOF_EVIDENCE: ${{ runner.temp }}/purchase-order-replay-evidence
+          CANDIDATE_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+          BUILD_OUTCOME: ${{ steps.build.outcome }}
+          EXECUTION_OUTCOME: ${{ steps.purchase_order_join.outcome }}
+          RESOURCE_CONTROLS_OUTCOME: ${{ steps.resource_controls.outcome }}
+        run: python3 -B acceptance/SupplierCatalogPersistence/retain_purchase_order.py
+      - name: Upload sanitized purchase-order join proof
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: purchase-order-replay-persistence-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/purchase-order-replay-evidence/*.json*
+          if-no-files-found: error
+          retention-days: 7
       - name: Retain actual journey and ownership-control results with bound cleanup and source graph
         if: always()
         env:
@@ -135,7 +193,7 @@ jobs:
         run: python3 -B acceptance/SupplierCatalogPersistence/retain.py
       - name: Upload sanitized proof only
         if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: supplier-catalog-persistence-${{ github.run_id }}-${{ github.run_attempt }}
           path: ${{ runner.temp }}/supplier-persistence-evidence/*.json*

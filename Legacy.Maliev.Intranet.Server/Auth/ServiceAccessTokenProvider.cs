@@ -1,3 +1,4 @@
+using Maliev.Aspire.ServiceDefaults.Diagnostics;
 using Microsoft.Extensions.Options;
 using System.Net.Http.Json;
 using Microsoft.Extensions.Logging;
@@ -53,10 +54,7 @@ public sealed class ServiceAccessTokenProvider(
             current = cachedToken;
             if (IsUsable(current)) return current!.Token;
 
-            using var response = await clientFactory.CreateClient("service-auth").PostAsJsonAsync(
-                "/auth/v1/service/login",
-                new ServiceLoginRequest(settings.ClientId, settings.ClientSecret),
-                cancellationToken);
+            using var response = await clientFactory.CreateClient("service-auth").SendWithPrivateFailureObservationAsync(new HttpRequestMessage(HttpMethod.Post, "/auth/v1/service/login") { Content = JsonContent.Create(new ServiceLoginRequest(settings.ClientId, settings.ClientSecret)) }, cancellationToken, new PrivateDependencyFailureObservation(), HttpCompletionOption.ResponseContentRead);
             if (!response.IsSuccessStatusCode)
             {
                 logger.LogWarning("AuthService rejected the Intranet service identity with status {StatusCode}.", response.StatusCode);

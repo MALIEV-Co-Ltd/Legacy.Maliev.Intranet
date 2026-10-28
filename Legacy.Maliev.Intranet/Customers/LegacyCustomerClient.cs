@@ -1,3 +1,4 @@
+using Maliev.Aspire.ServiceDefaults.Diagnostics;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
@@ -18,7 +19,7 @@ public sealed class LegacyCustomerClient(HttpClient httpClient) : ILegacyCustome
     {
         var query = $"/customers?sort={sort}&search={Uri.EscapeDataString(search ?? string.Empty)}&index={index}&size={size}";
         using var request = CreateRequest(HttpMethod.Get, query, accessToken);
-        using var response = await httpClient.SendAsync(request, cancellationToken);
+        using var response = await httpClient.SendWithPrivateFailureObservationAsync(request, cancellationToken, new PrivateDependencyFailureObservation(), HttpCompletionOption.ResponseContentRead);
         if (response.StatusCode == HttpStatusCode.NotFound)
         {
             return null;
@@ -32,7 +33,7 @@ public sealed class LegacyCustomerClient(HttpClient httpClient) : ILegacyCustome
     public async Task<CustomerResponse?> GetCustomerAsync(int id, string accessToken, CancellationToken cancellationToken)
     {
         using var request = CreateRequest(HttpMethod.Get, $"/customers/{id}", accessToken);
-        using var response = await httpClient.SendAsync(request, cancellationToken);
+        using var response = await httpClient.SendWithPrivateFailureObservationAsync(request, cancellationToken, new PrivateDependencyFailureObservation(), HttpCompletionOption.ResponseContentRead);
         if (response.StatusCode == HttpStatusCode.NotFound)
         {
             return null;
@@ -50,7 +51,7 @@ public sealed class LegacyCustomerClient(HttpClient httpClient) : ILegacyCustome
     {
         using var request = CreateRequest(HttpMethod.Post, "/customers", accessToken);
         request.Content = JsonContent.Create(profile);
-        using var response = await httpClient.SendAsync(request, cancellationToken);
+        using var response = await httpClient.SendWithPrivateFailureObservationAsync(request, cancellationToken, new PrivateDependencyFailureObservation(), HttpCompletionOption.ResponseContentRead);
         response.EnsureSuccessStatusCode();
         return await response.Content.ReadFromJsonAsync<CustomerResponse>(cancellationToken)
             ?? throw new InvalidOperationException("CustomerService returned an empty create response.");
@@ -60,7 +61,7 @@ public sealed class LegacyCustomerClient(HttpClient httpClient) : ILegacyCustome
     public async Task DeleteCustomerAsync(int id, string accessToken, CancellationToken cancellationToken)
     {
         using var request = CreateRequest(HttpMethod.Delete, $"/customers/{id}", accessToken);
-        using var response = await httpClient.SendAsync(request, cancellationToken);
+        using var response = await httpClient.SendWithPrivateFailureObservationAsync(request, cancellationToken, new PrivateDependencyFailureObservation(), HttpCompletionOption.ResponseContentRead);
         if (response.StatusCode != HttpStatusCode.NotFound)
         {
             response.EnsureSuccessStatusCode();

@@ -57,7 +57,7 @@ jobs:
         run: sudo -n --preserve-env=RUNNER_ENVIRONMENT,MALIEV_CREATION_HOSTED_ADMISSION python3 -B acceptance/EmployeeAdministration/smoke_creation_control.py --root "$GITHUB_WORKSPACE" --evidence "$RUNNER_TEMP/creation-controller-smoke"
       - name: Retain finite control-service proof only
         if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: finite-control-service-proof-${{ github.run_id }}
           path: |

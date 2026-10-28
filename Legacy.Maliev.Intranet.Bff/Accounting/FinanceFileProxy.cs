@@ -1,3 +1,4 @@
+using Maliev.Aspire.ServiceDefaults.Diagnostics;
 using System.Net.Http.Headers;
 
 namespace Legacy.Maliev.Intranet.Bff.Accounting;
@@ -30,22 +31,16 @@ public sealed class FinanceFileProxy(HttpClient httpClient)
             Content = content,
         };
         request.Headers.Add("Idempotency-Key", idempotencyKey);
-        return await httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+        return await httpClient.SendWithPrivateFailureObservationAsync(request, cancellationToken, new PrivateDependencyFailureObservation(), HttpCompletionOption.ResponseHeadersRead);
     }
 
     /// <summary>Gets a short-lived link for a known clean attachment.</summary>
     public Task<HttpResponseMessage> GetSignedUrlAsync(string bucket, string objectName, CancellationToken cancellationToken) =>
-        httpClient.SendAsync(
-            new HttpRequestMessage(HttpMethod.Get, $"/uploads/SignedUrl?bucket={Uri.EscapeDataString(bucket)}&objectName={Uri.EscapeDataString(objectName)}"),
-            HttpCompletionOption.ResponseHeadersRead,
-            cancellationToken);
+        httpClient.SendWithPrivateFailureObservationAsync(new HttpRequestMessage(HttpMethod.Get, $"/uploads/SignedUrl?bucket={Uri.EscapeDataString(bucket)}&objectName={Uri.EscapeDataString(objectName)}"), cancellationToken, new PrivateDependencyFailureObservation(), HttpCompletionOption.ResponseHeadersRead);
 
     /// <summary>Deletes the exact server-resolved object.</summary>
     public Task<HttpResponseMessage> DeleteAsync(string bucket, string objectName, CancellationToken cancellationToken) =>
-        httpClient.SendAsync(
-            new HttpRequestMessage(HttpMethod.Delete, $"/Uploads?bucket={Uri.EscapeDataString(bucket)}&objectName={Uri.EscapeDataString(objectName)}"),
-            HttpCompletionOption.ResponseHeadersRead,
-            cancellationToken);
+        httpClient.SendWithPrivateFailureObservationAsync(new HttpRequestMessage(HttpMethod.Delete, $"/Uploads?bucket={Uri.EscapeDataString(bucket)}&objectName={Uri.EscapeDataString(objectName)}"), cancellationToken, new PrivateDependencyFailureObservation(), HttpCompletionOption.ResponseHeadersRead);
 }
 
 internal sealed record FinanceUploadResult(IReadOnlyList<FinanceUploadedObject> Object);
