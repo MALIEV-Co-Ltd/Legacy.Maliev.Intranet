@@ -2,6 +2,27 @@
   <PropertyGroup>
     <IntranetEvidenceProject Condition="'$(MSBuildProjectName)' == 'Legacy.Maliev.Intranet.Bff' Or '$(MSBuildProjectName)' == 'Legacy.Maliev.Intranet.Server' Or '$(MSBuildProjectName)' == 'Legacy.Maliev.Intranet.Contracts' Or '$(MSBuildProjectName)' == 'Legacy.Maliev.Intranet.Tests'">true</IntranetEvidenceProject>
   </PropertyGroup>
+  <Target Name="OwnIntranetTestSdkProgramForCompilerCapture" BeforeTargets="CaptureIntranetCompilerInputs"
+          Condition="'$(MalievCaptureValidationEvidence)' == 'true' And '$(MSBuildProjectName)' == 'Legacy.Maliev.Intranet.Tests' And '$(GenerateProgramFile)' == 'true'">
+    <!-- The SDK's initial target already added its package-cache template to Compile. Own the same bytes before capture and compilation. -->
+    <PropertyGroup>
+      <IntranetOwnedTestSdkProgram>$(IntermediateOutputPath)intranet-validation/test-sdk-program/Microsoft.NET.Test.Sdk.Program.cs</IntranetOwnedTestSdkProgram>
+    </PropertyGroup>
+    <MakeDir Directories="$(IntermediateOutputPath)intranet-validation/test-sdk-program" />
+    <Copy SourceFiles="$(GeneratedProgramFile)" DestinationFiles="$(IntranetOwnedTestSdkProgram)" />
+    <GetFileHash Files="$(GeneratedProgramFile)" Algorithm="SHA256">
+      <Output TaskParameter="Items" ItemName="IntranetTestSdkSourceHash" />
+    </GetFileHash>
+    <GetFileHash Files="$(IntranetOwnedTestSdkProgram)" Algorithm="SHA256">
+      <Output TaskParameter="Items" ItemName="IntranetTestSdkOwnedHash" />
+    </GetFileHash>
+    <Error Condition="'@(IntranetTestSdkSourceHash->'%(FileHash)')' != '@(IntranetTestSdkOwnedHash->'%(FileHash)')'"
+           Text="Captured test SDK entry point bytes differ." />
+    <ItemGroup>
+      <Compile Remove="$(GeneratedProgramFile)" />
+      <Compile Include="$(IntranetOwnedTestSdkProgram)" />
+    </ItemGroup>
+  </Target>
   <Target Name="CaptureIntranetCompilerInputs" BeforeTargets="CoreCompile"
           Condition="'$(MalievCaptureValidationEvidence)' == 'true' And '$(IntranetEvidenceProject)' == 'true'">
     <MakeDir Directories="$(IntermediateOutputPath)intranet-validation" />

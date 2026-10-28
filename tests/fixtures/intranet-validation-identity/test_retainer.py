@@ -29,7 +29,140 @@ def fixture():
     return raw, baseline, test_id, execution_id
 
 
+def compiler_fixture(root):
+    for project in ("Legacy.Maliev.Intranet.Bff", "Legacy.Maliev.Intranet.Server",
+                    "Legacy.Maliev.Intranet.Contracts", "Legacy.Maliev.Intranet.Tests"):
+        evidence = root / project / "obj/Release/net10.0/intranet-validation"
+        evidence.mkdir(parents=True)
+        source = root / project / "source.cs"
+        source.write_bytes(b"controlled compiler input")
+        outputs = []
+        for suffix in ("dll", "pdb"):
+            output = root / project / (project + "." + suffix)
+            output.write_bytes(b"controlled compiler output")
+            outputs.append(str(output) + "|" + RET.digest(output.read_bytes()))
+        (evidence / "compiler-inputs.sha256").write_text(str(source) + "|" + RET.digest(source.read_bytes()))
+        (evidence / "compiler-outputs.sha256").write_text("\n".join(outputs))
+        (evidence / "emitted-sources.sha256").write_text("")
+        (evidence / "symbol-policy.txt").write_text("portable|true|true\n")
+
+
 class IdentityRetentionTests(unittest.TestCase):
+    def test_compiler_path_diagnostics_classify_refusals_without_paths_or_content(self):
+        with tempfile.TemporaryDirectory(prefix="intranet-path-rejection-") as directory:
+            root = pathlib.Path(directory)
+            compiler_fixture(root)
+            evidence = root / "Legacy.Maliev.Intranet.Bff/obj/Release/net10.0/intranet-validation"
+            manifest = evidence / "compiler-inputs.sha256"
+            candidates = {
+                "non-absolute": pathlib.Path("private-canary-relative/source.cs"),
+                "leaf-symlink": root / "private-canary-link.cs",
+                "resolved-outside-workspace": root.parent / "private-canary-outside.cs",
+            }
+            for reason, path in candidates.items():
+                manifest.write_text(str(path) + "|" + "a" * 64)
+                with self.subTest(reason=reason), mock.patch.object(
+                        RET.pathlib.Path, "is_symlink", autospec=True,
+                        side_effect=lambda candidate: reason == "leaf-symlink" and candidate == path):
+                    with self.assertRaises(RET.InvalidEvidence):
+                        RET.retain_compiler_custody(root)
+                    diagnostic = RET.compiler_path_diagnostics(root)
+                    row = self.assert_single_anomaly(diagnostic, reason)
+                    self.assertEqual("Legacy.Maliev.Intranet.Bff", row["project"])
+                    self.assertEqual("compiler-inputs", row["manifestKind"])
+                    self.assertEqual(1, row["rowIndex"])
+                    self.assertEqual(RET.digest(str(path).encode()), row["pathSha256"])
+                    self.assertEqual(RET.digest(manifest.read_bytes()), row["manifestSha256"])
+                    self.assertNotIn("private-canary", json.dumps(diagnostic))
+                    self.assertNotIn("controlled compiler input", json.dumps(diagnostic))
+
+    def assert_single_anomaly(self, diagnostic, reason):
+        self.assertEqual({reason: 1}, diagnostic["reasonCounts"])
+        self.assertEqual(0, diagnostic["unavailableManifests"])
+        self.assertFalse(diagnostic["truncated"])
+        self.assertEqual(1, len(diagnostic["anomalies"]))
+        return diagnostic["anomalies"][0]
+
+    def test_compiler_path_diagnostics_valid_input_cap_and_fixed_sdk_classification(self):
+        with tempfile.TemporaryDirectory(prefix="intranet-path-bounds-") as directory:
+            root = pathlib.Path(directory)
+            compiler_fixture(root)
+            self.assertEqual({"reasonCounts": {}, "anomalies": [], "unavailableManifests": 0,
+                              "truncated": False}, RET.compiler_path_diagnostics(root))
+            external = root.parent / "microsoft.net.test.sdk/17.14.1/build/net8.0/Microsoft.NET.Test.Sdk.Program.cs"
+            manifest = root / "Legacy.Maliev.Intranet.Tests/obj/Release/net10.0/intranet-validation/compiler-inputs.sha256"
+            manifest.write_text("\n".join([str(external) + "|" + "a" * 64] * 20))
+            diagnostic = RET.compiler_path_diagnostics(root)
+            self.assertEqual({"resolved-outside-workspace": 20}, diagnostic["reasonCounts"])
+            self.assertEqual(16, len(diagnostic["anomalies"]))
+            self.assertTrue(diagnostic["truncated"])
+            for row in diagnostic["anomalies"]:
+                self.assertEqual("test-sdk-entrypoint", row["inputKind"])
+                self.assertEqual(set(row), {"project", "manifestKind", "rowIndex", "reason", "pathSha256",
+                                            "manifestSha256", "isAbsolute", "leafIsSymlink",
+                                            "resolvedInsideWorkspace", "inputKind"})
+                self.assertTrue(row["isAbsolute"])
+                self.assertFalse(row["leafIsSymlink"])
+                self.assertFalse(row["resolvedInsideWorkspace"])
+                for key in ("pathSha256", "manifestSha256"):
+                    self.assertRegex(row[key], r"^[0-9a-f]{64}$")
+            self.assertNotIn("Microsoft.NET.Test.Sdk.Program.cs", json.dumps(diagnostic))
+
+    def test_compiler_path_diagnostics_bound_invalid_manifests_and_attach_only_to_rejection(self):
+        raw, baseline, _, _ = fixture()
+        with tempfile.TemporaryDirectory(prefix="intranet-path-export-") as directory:
+            root = pathlib.Path(directory)
+            compiler_fixture(root)
+            manifest = root / "Legacy.Maliev.Intranet.Bff/obj/Release/net10.0/intranet-validation/compiler-inputs.sha256"
+            for value in ("private-malformed-value", "x" * (1024 * 1024 + 1)):
+                manifest.write_text(value)
+                diagnostic = RET.compiler_path_diagnostics(root)
+                self.assertEqual(1, diagnostic["unavailableManifests"])
+                self.assertEqual([], diagnostic["anomalies"])
+                self.assertNotIn("private-malformed-value", json.dumps(diagnostic))
+            manifest.write_text("private-refused-path|" + "a" * 64)
+            trx, frozen, output = root / "original.trx", root / "baseline.json", root / "proof/identity-sidecar.json"
+            trx.write_bytes(raw)
+            frozen.write_text(json.dumps(baseline))
+            args = types.SimpleNamespace(trx=trx, baseline=frozen, workspace=root,
+                                         source_revision="1" * 40, output=output)
+            with mock.patch.object(RET.argparse.ArgumentParser, "parse_args", return_value=args):
+                with self.assertRaises(RET.InvalidEvidence):
+                    RET.main()
+            record = json.loads(output.with_name("identity-rejection.json").read_bytes())
+            self.assertFalse(record["accepted"])
+            self.assertEqual("compiler-custody", record["stage"])
+            self.assert_single_anomaly(record["compilerPathDiagnostics"], "non-absolute")
+            self.assertFalse(output.exists())
+            self.assertNotIn("private-refused-path", json.dumps(record))
+
+    def test_capture_rebinds_real_test_sdk_compile_input_before_hashing(self):
+        document = RET.ET.parse(ROOT / "Directory.Build.targets").getroot()
+        target = document.find("./Target[@Name='OwnIntranetTestSdkProgramForCompilerCapture']")
+        self.assertIsNotNone(target)
+        self.assertEqual("CaptureIntranetCompilerInputs", target.get("BeforeTargets"))
+        self.assertEqual("'$(MalievCaptureValidationEvidence)' == 'true' And "
+                         "'$(MSBuildProjectName)' == 'Legacy.Maliev.Intranet.Tests' And "
+                         "'$(GenerateProgramFile)' == 'true'", target.get("Condition"))
+        owned = "$(IntermediateOutputPath)intranet-validation/test-sdk-program/Microsoft.NET.Test.Sdk.Program.cs"
+        self.assertEqual(owned, target.findtext("./PropertyGroup/IntranetOwnedTestSdkProgram"))
+        copy_task = target.find("Copy")
+        self.assertEqual("$(GeneratedProgramFile)", copy_task.get("SourceFiles"))
+        self.assertEqual("$(IntranetOwnedTestSdkProgram)", copy_task.get("DestinationFiles"))
+        compile_items = target.findall("./ItemGroup/Compile")
+        self.assertEqual([{"Remove": "$(GeneratedProgramFile)"},
+                          {"Include": "$(IntranetOwnedTestSdkProgram)"}], [item.attrib for item in compile_items])
+        tasks = list(target)
+        self.assertLess(tasks.index(copy_task), tasks.index(target.find("ItemGroup")))
+        self.assertEqual(2, len(target.findall("GetFileHash")))
+        self.assertEqual(["$(GeneratedProgramFile)", "$(IntranetOwnedTestSdkProgram)"],
+                         [task.get("Files") for task in target.findall("GetFileHash")])
+        self.assertEqual("'@(IntranetTestSdkSourceHash->'%(FileHash)')' != "
+                         "'@(IntranetTestSdkOwnedHash->'%(FileHash)')'", target.find("Error").get("Condition"))
+        capture = document.find("./Target[@Name='CaptureIntranetCompilerInputs']")
+        self.assertEqual("CoreCompile", capture.get("BeforeTargets"))
+        self.assertEqual("@(Compile)", capture.find("GetFileHash").get("Files"))
+
     def test_entry_join_diagnostics_classify_missing_duplicate_and_mismatch(self):
         raw, baseline, test_id, execution_id = fixture()
         for reason in ("undeclared-test-id", "duplicate-test-id", "execution-mismatch", "missing-entry"):
@@ -179,6 +312,9 @@ class IdentityRetentionTests(unittest.TestCase):
                 if stage == "original-trx-identity":
                     expected_keys.add("entryJoinDiagnostics")
                     self.assertEqual([], record["entryJoinDiagnostics"]["anomalies"])
+                if stage == "compiler-custody":
+                    expected_keys.add("compilerPathDiagnostics")
+                    self.assertEqual([], record["compilerPathDiagnostics"]["anomalies"])
                 self.assertEqual(set(record), expected_keys)
                 self.assertFalse(record["accepted"])
                 self.assertEqual(record["stage"], stage)

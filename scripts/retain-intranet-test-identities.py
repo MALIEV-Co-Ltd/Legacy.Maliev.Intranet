@@ -270,6 +270,65 @@ def entry_join_diagnostics(raw):
         return {"unavailable": "invalid-or-unbounded-input"}
 
 
+def compiler_path_diagnostics(workspace):
+    """Describe path refusals without admitting inputs or retaining their names."""
+    counts = collections.Counter()
+    anomalies = []
+    unavailable = 0
+    try:
+        workspace = workspace.resolve()
+    except (OSError, RuntimeError):
+        return {"reasonCounts": {}, "anomalies": [], "unavailableManifests": 12, "truncated": False}
+    for project in ("Legacy.Maliev.Intranet.Bff", "Legacy.Maliev.Intranet.Server",
+                    "Legacy.Maliev.Intranet.Contracts", "Legacy.Maliev.Intranet.Tests"):
+        directory = workspace / project / "obj/Release/net10.0/intranet-validation"
+        for kind in ("compiler-inputs", "compiler-outputs", "emitted-sources"):
+            manifest = directory / (kind + ".sha256")
+            try:
+                require(manifest.is_file() and not manifest.is_symlink()
+                        and manifest.resolve().is_relative_to(workspace)
+                        and manifest.stat().st_size <= 1024 * 1024)
+                with manifest.open("rb") as stream:
+                    raw = stream.read(1024 * 1024 + 1)
+                require(len(raw) <= 1024 * 1024)
+                lines = raw.decode("utf-8-sig").splitlines()
+                require(len(lines) <= 10000)
+                manifest_hash = digest(raw)
+                for index, line in enumerate(lines, 1):
+                    if not line:
+                        continue
+                    path_text, separator, expected = line.rpartition("|")
+                    require(separator and re.fullmatch(r"[0-9a-fA-F]{64}", expected)
+                            and len(path_text) <= 4096)
+                    path = pathlib.Path(path_text)
+                    absolute = path.is_absolute()
+                    symlink = path.is_symlink() if absolute else None
+                    inside = path.resolve().is_relative_to(workspace) if absolute and not symlink else None
+                    if not absolute:
+                        reason = "non-absolute"
+                    elif symlink:
+                        reason = "leaf-symlink"
+                    elif not inside:
+                        reason = "resolved-outside-workspace"
+                    else:
+                        continue
+                    counts[reason] += 1
+                    if len(anomalies) < 16:
+                        suffix = path_text.replace("\\", "/").split("/")[-5:]
+                        known_sdk = suffix == ["microsoft.net.test.sdk", "17.14.1", "build", "net8.0",
+                                               "Microsoft.NET.Test.Sdk.Program.cs"]
+                        anomalies.append({
+                            "project": project, "manifestKind": kind, "rowIndex": index, "reason": reason,
+                            "pathSha256": digest(path_text.encode("utf-8")), "manifestSha256": manifest_hash,
+                            "isAbsolute": absolute, "leafIsSymlink": symlink, "resolvedInsideWorkspace": inside,
+                            "inputKind": "test-sdk-entrypoint" if known_sdk else "other",
+                        })
+            except (InvalidEvidence, OSError, ValueError, RuntimeError):
+                unavailable += 1
+    return {"reasonCounts": dict(sorted(counts.items())), "anomalies": anomalies,
+            "unavailableManifests": unavailable, "truncated": sum(counts.values()) > len(anomalies)}
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--trx", type=pathlib.Path, required=True)
@@ -294,7 +353,7 @@ def main():
         args.output.parent.mkdir(parents=True, exist_ok=True)
         args.output.write_text(json.dumps(evidence, sort_keys=True, separators=(",", ":")) + "\n", encoding="utf-8")
     except (InvalidEvidence, KeyError, ValueError, OSError, ET.ParseError) as error:
-        # Emit only fixed stage names, source line numbers and an input digest.
+        # Emit only bounded fixed labels, identifiers and opaque hashes.
         # Never retain exception text, test names, output or credential values.
         lines = [frame.lineno for frame in traceback.extract_tb(error.__traceback__)
                  if pathlib.Path(frame.filename).resolve() == pathlib.Path(__file__).resolve()]
@@ -302,6 +361,8 @@ def main():
                    "validatorLines": lines, "rawTrxSha256": digest(raw) if raw is not None else None}
         if stage == "original-trx-identity" and raw is not None:
             failure["entryJoinDiagnostics"] = entry_join_diagnostics(raw)
+        if stage == "compiler-custody":
+            failure["compilerPathDiagnostics"] = compiler_path_diagnostics(args.workspace)
         args.output.parent.mkdir(parents=True, exist_ok=True)
         args.output.with_name("identity-rejection.json").write_text(
             json.dumps(failure, sort_keys=True) + "\n", encoding="utf-8")
