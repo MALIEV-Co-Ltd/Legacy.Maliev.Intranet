@@ -30,6 +30,91 @@ def fixture():
 
 
 class IdentityRetentionTests(unittest.TestCase):
+    def test_entry_join_diagnostics_classify_missing_duplicate_and_mismatch(self):
+        raw, baseline, test_id, execution_id = fixture()
+        for reason in ("undeclared-test-id", "duplicate-test-id", "execution-mismatch", "missing-entry"):
+            root = RET.ET.fromstring(raw)
+            entries = RET.one_child(root, "TestEntries")
+            if reason == "undeclared-test-id":
+                entries[0].set("testId", str(uuid.uuid4()))
+            elif reason == "duplicate-test-id":
+                entries.append(copy.deepcopy(entries[0]))
+            elif reason == "execution-mismatch":
+                entries[0].set("executionId", str(uuid.uuid4()))
+            else:
+                entries.remove(entries[0])
+            changed = RET.ET.tostring(root)
+            with self.subTest(reason=reason):
+                with self.assertRaises(RET.InvalidEvidence):
+                    RET.retain(changed, baseline, "1" * 40)
+                diagnostic = RET.entry_join_diagnostics(changed)
+                self.assertEqual(1, diagnostic["reasonCounts"][reason])
+                self.assertTrue(any(row["reason"] == reason for row in diagnostic["anomalies"]))
+                self.assertNotIn("controlled-secret-display-value", json.dumps(diagnostic))
+                self.assertNotIn("private-output-value", json.dumps(diagnostic))
+                with tempfile.TemporaryDirectory(prefix="intranet-entry-rejection-") as directory:
+                    temporary = pathlib.Path(directory)
+                    trx = temporary / "original.trx"
+                    trx.write_bytes(changed)
+                    frozen = temporary / "baseline.json"
+                    frozen.write_text(json.dumps(baseline))
+                    output = temporary / "proof/identity-sidecar.json"
+                    args = types.SimpleNamespace(trx=trx, baseline=frozen, workspace=temporary,
+                                                 source_revision="1" * 40, output=output)
+                    with mock.patch.object(RET.argparse.ArgumentParser, "parse_args", return_value=args):
+                        with self.assertRaises(RET.InvalidEvidence):
+                            RET.main()
+                    rejection = json.loads(output.with_name("identity-rejection.json").read_bytes())
+                    self.assertFalse(rejection["accepted"])
+                    self.assertEqual("original-trx-identity", rejection["stage"])
+                    self.assertEqual(RET.digest(changed), rejection["rawTrxSha256"])
+                    self.assertEqual(diagnostic, rejection["entryJoinDiagnostics"])
+                    self.assertFalse(output.exists())
+
+    def test_entry_join_diagnostics_valid_input_and_hashes(self):
+        raw, _, test_id, execution_id = fixture()
+        self.assertEqual(RET.entry_join_diagnostics(raw), {
+            "definitionCount": 1, "entryCount": 1, "reasonCounts": {}, "anomalies": [], "truncated": False,
+        })
+        changed = raw.replace(b'<TestEntry testId=', b'<TestEntry extra="private-entry-value" testId=')
+        root = RET.ET.fromstring(changed)
+        RET.one_child(root, "TestEntries")[0].set("executionId", str(uuid.uuid4()))
+        diagnostic = RET.entry_join_diagnostics(RET.ET.tostring(root))
+        row = diagnostic["anomalies"][0]
+        self.assertEqual(test_id, row["testId"])
+        self.assertEqual(execution_id, row["declaredExecutionId"])
+        self.assertEqual(RET.method_hash("Tests.Control", "BoundedCase"), row["methodSha256"])
+        self.assertEqual(RET.text_hash("controlled-secret-display-value"), row["canonicalNameSha256"])
+        self.assertNotIn("private-entry-value", json.dumps(diagnostic))
+
+    def test_entry_join_diagnostics_cap_and_invalid_identity_privacy(self):
+        raw, _, _, _ = fixture()
+        root = RET.ET.fromstring(raw)
+        entries = RET.one_child(root, "TestEntries")
+        for _ in range(20):
+            entries.append(copy.deepcopy(entries[0]))
+        diagnostic = RET.entry_join_diagnostics(RET.ET.tostring(root))
+        self.assertEqual({"duplicate-test-id": 20}, diagnostic["reasonCounts"])
+        self.assertEqual(16, len(diagnostic["anomalies"]))
+        self.assertTrue(diagnostic["truncated"])
+        entries[0].set("testId", "private-invalid-id")
+        diagnostic = RET.entry_join_diagnostics(RET.ET.tostring(root))
+        self.assertEqual(1, diagnostic["reasonCounts"]["invalid-entry-identity"])
+        self.assertNotIn("private-invalid-id", json.dumps(diagnostic))
+        for row in diagnostic["anomalies"]:
+            self.assertLessEqual(set(row), {"reason", "testId", "executionId", "declaredExecutionId",
+                                           "methodSha256", "canonicalNameSha256"})
+            for key, value in row.items():
+                if key.endswith("Id"):
+                    self.assertEqual(str(uuid.UUID(value)), value)
+                elif key.endswith("Sha256"):
+                    self.assertRegex(value, r"^[0-9a-f]{64}$")
+
+    def test_entry_join_diagnostics_refuse_unbounded_or_entity_input(self):
+        for raw in (b"", b"not XML private-value", b'<!DOCTYPE TestRun><TestRun/>', b'x' * (64 * 1024 * 1024 + 1)):
+            with self.subTest(size=len(raw)):
+                self.assertEqual({"unavailable": "invalid-or-unbounded-input"}, RET.entry_join_diagnostics(raw))
+
     def test_frozen_baseline_binds_only_accepted_current_sources_and_three_facts(self):
         baseline = json.loads((ROOT / "tests/fixtures/intranet-validation-identity/frozen-purchase-order-roster.json").read_bytes())
         self.assertEqual(baseline["sourceFiles"], {
@@ -90,7 +175,11 @@ class IdentityRetentionTests(unittest.TestCase):
                         RET.main()
                 rejection = output.with_name("identity-rejection.json")
                 record = json.loads(rejection.read_text())
-                self.assertEqual(set(record), {"schemaVersion", "accepted", "stage", "validatorLines", "rawTrxSha256"})
+                expected_keys = {"schemaVersion", "accepted", "stage", "validatorLines", "rawTrxSha256"}
+                if stage == "original-trx-identity":
+                    expected_keys.add("entryJoinDiagnostics")
+                    self.assertEqual([], record["entryJoinDiagnostics"]["anomalies"])
+                self.assertEqual(set(record), expected_keys)
                 self.assertFalse(record["accepted"])
                 self.assertEqual(record["stage"], stage)
                 self.assertEqual(record["rawTrxSha256"], RET.digest(value))

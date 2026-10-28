@@ -208,6 +208,68 @@ def retain_compiler_custody(workspace):
     return captured
 
 
+def entry_join_diagnostics(raw):
+    """Describe rejected joins only; never substitute for the acceptance validator."""
+    try:
+        require(0 < len(raw) <= 64 * 1024 * 1024)
+        require(b"<!DOCTYPE" not in raw.upper() and b"<!ENTITY" not in raw.upper())
+        root = ET.fromstring(raw)
+        require(local_tag(root) == "TestRun")
+        definitions = one_child(root, "TestDefinitions")
+        entries = one_child(root, "TestEntries")
+        require(len(definitions) <= 100000 and len(entries) <= 100000)
+        declared = {}
+        for definition in definitions:
+            require(local_tag(definition) == "UnitTest")
+            key = guid(definition.attrib["id"])
+            require(key not in declared)
+            execution = guid(one_child(definition, "Execution").attrib["id"])
+            method = one_child(definition, "TestMethod")
+            declared[key] = {
+                "declaredExecutionId": execution,
+                "methodSha256": method_hash(method.attrib["className"], method.attrib["name"]),
+                "canonicalNameSha256": text_hash(definition.attrib["name"]),
+            }
+        counts = collections.Counter()
+        anomalies = []
+
+        def record(reason, key=None, execution=None):
+            counts[reason] += 1
+            if len(anomalies) < 16:
+                row = {"reason": reason}
+                if key is not None:
+                    row["testId"] = key
+                    row.update(declared.get(key, {}))
+                if execution is not None:
+                    row["executionId"] = execution
+                anomalies.append(row)
+
+        seen = set()
+        for entry in entries:
+            try:
+                require(local_tag(entry) == "TestEntry")
+                key = guid(entry.attrib["testId"])
+                execution = guid(entry.attrib["executionId"])
+            except (InvalidEvidence, KeyError, ValueError):
+                record("invalid-entry-identity")
+                continue
+            if key not in declared:
+                record("undeclared-test-id", key, execution)
+            if key in seen:
+                record("duplicate-test-id", key, execution)
+            if key in declared and declared[key]["declaredExecutionId"] != execution:
+                record("execution-mismatch", key, execution)
+            seen.add(key)
+        for key in declared:
+            if key not in seen:
+                record("missing-entry", key)
+        return {"definitionCount": len(definitions), "entryCount": len(entries),
+                "reasonCounts": dict(sorted(counts.items())), "anomalies": anomalies,
+                "truncated": sum(counts.values()) > len(anomalies)}
+    except (InvalidEvidence, KeyError, ValueError, ET.ParseError):
+        return {"unavailable": "invalid-or-unbounded-input"}
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--trx", type=pathlib.Path, required=True)
@@ -238,6 +300,8 @@ def main():
                  if pathlib.Path(frame.filename).resolve() == pathlib.Path(__file__).resolve()]
         failure = {"schemaVersion": 1, "accepted": False, "stage": stage,
                    "validatorLines": lines, "rawTrxSha256": digest(raw) if raw is not None else None}
+        if stage == "original-trx-identity" and raw is not None:
+            failure["entryJoinDiagnostics"] = entry_join_diagnostics(raw)
         args.output.parent.mkdir(parents=True, exist_ok=True)
         args.output.with_name("identity-rejection.json").write_text(
             json.dumps(failure, sort_keys=True) + "\n", encoding="utf-8")
