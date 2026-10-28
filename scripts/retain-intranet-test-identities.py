@@ -5,6 +5,7 @@ import hashlib
 import json
 import pathlib
 import re
+import traceback
 import uuid
 import xml.etree.ElementTree as ET
 
@@ -215,12 +216,32 @@ def main():
     parser.add_argument("--source-revision", required=True)
     parser.add_argument("--output", type=pathlib.Path, required=True)
     args = parser.parse_args()
-    baseline = json.loads(args.baseline.read_text(encoding="utf-8-sig"))
-    verify_sources(args.workspace, baseline)
-    evidence = retain(args.trx.read_bytes(), baseline, args.source_revision)
-    evidence["compilerCustody"] = retain_compiler_custody(args.workspace)
-    args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_text(json.dumps(evidence, sort_keys=True, separators=(",", ":")) + "\n", encoding="utf-8")
+    stage = "baseline"
+    raw = None
+    try:
+        baseline = json.loads(args.baseline.read_text(encoding="utf-8-sig"))
+        stage = "source-pins"
+        verify_sources(args.workspace, baseline)
+        stage = "original-trx-read"
+        raw = args.trx.read_bytes()
+        stage = "original-trx-identity"
+        evidence = retain(raw, baseline, args.source_revision)
+        stage = "compiler-custody"
+        evidence["compilerCustody"] = retain_compiler_custody(args.workspace)
+        stage = "proof-write"
+        args.output.parent.mkdir(parents=True, exist_ok=True)
+        args.output.write_text(json.dumps(evidence, sort_keys=True, separators=(",", ":")) + "\n", encoding="utf-8")
+    except (InvalidEvidence, KeyError, ValueError, OSError, ET.ParseError) as error:
+        # Emit only fixed stage names, source line numbers and an input digest.
+        # Never retain exception text, test names, output or credential values.
+        lines = [frame.lineno for frame in traceback.extract_tb(error.__traceback__)
+                 if pathlib.Path(frame.filename).resolve() == pathlib.Path(__file__).resolve()]
+        failure = {"schemaVersion": 1, "accepted": False, "stage": stage,
+                   "validatorLines": lines, "rawTrxSha256": digest(raw) if raw is not None else None}
+        args.output.parent.mkdir(parents=True, exist_ok=True)
+        args.output.with_name("identity-rejection.json").write_text(
+            json.dumps(failure, sort_keys=True) + "\n", encoding="utf-8")
+        raise
     print("Verified privacy-safe original definition/entry/result joins and frozen focused source roster.")
 
 

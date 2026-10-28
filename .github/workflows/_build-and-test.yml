@@ -346,6 +346,7 @@ jobs:
             --source-revision "$(git rev-parse HEAD)" \
             --output "$RUNNER_TEMP/intranet-identity-proof/identity-sidecar.json"
       - name: Preserve original identity and compiler custody proof
+        if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: intranet-identity-proof-${{ github.run_id }}-${{ github.run_attempt }}

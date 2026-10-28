@@ -3,7 +3,9 @@ import importlib.util
 import json
 import pathlib
 import tempfile
+import types
 import unittest
+from unittest import mock
 import uuid
 
 ROOT = pathlib.Path(__file__).resolve().parents[3]
@@ -28,6 +30,34 @@ def fixture():
 
 
 class IdentityRetentionTests(unittest.TestCase):
+    def test_failed_export_retains_only_stage_lines_and_input_hash(self):
+        raw, baseline, _, _ = fixture()
+        with tempfile.TemporaryDirectory(prefix="intranet-rejection-") as directory:
+            root = pathlib.Path(directory)
+            trx = root / "original.trx"
+            frozen = root / "baseline.json"
+            frozen.write_text(json.dumps(baseline))
+            output = root / "proof/identity-sidecar.json"
+            args = types.SimpleNamespace(trx=trx, baseline=frozen, workspace=root,
+                                         source_revision="1" * 40, output=output)
+            for value, stage in ((raw.replace(b'outcome="Completed"', b'outcome="Failed"'), "original-trx-identity"),
+                                 (raw, "compiler-custody")):
+                trx.write_bytes(value)
+                with mock.patch.object(RET.argparse.ArgumentParser, "parse_args", return_value=args):
+                    with self.assertRaises((RET.InvalidEvidence, OSError)):
+                        RET.main()
+                rejection = output.with_name("identity-rejection.json")
+                record = json.loads(rejection.read_text())
+                self.assertEqual(set(record), {"schemaVersion", "accepted", "stage", "validatorLines", "rawTrxSha256"})
+                self.assertFalse(record["accepted"])
+                self.assertEqual(record["stage"], stage)
+                self.assertEqual(record["rawTrxSha256"], RET.digest(value))
+                self.assertTrue(record["validatorLines"])
+                self.assertTrue(all(type(line) is int and line > 0 for line in record["validatorLines"]))
+                self.assertFalse(output.exists())
+                self.assertNotIn("controlled-secret-display-value", rejection.read_text())
+                self.assertNotIn("private-output-value", rejection.read_text())
+
     def test_preserves_actual_guids_and_hashes_names_without_output(self):
         raw, baseline, test_id, execution_id = fixture()
         evidence = RET.retain(raw, baseline, "1" * 40)
