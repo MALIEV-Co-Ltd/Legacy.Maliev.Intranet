@@ -37,16 +37,16 @@ public sealed class CustomerComponentsBehaviorTests
     {
         (CustomerHistoryKind kind, bool loading, string? error,
             OrderListPage? orders, QuotationListPage? quotations, InvoiceListPage? invoices) contract = scenario switch
-        {
-            "missing-page" => (CustomerHistoryKind.Order, false, null, null, null, null),
-            "missing-page-while-loading" => (CustomerHistoryKind.Order, true, null, null, null, null),
-            "missing-page-after-load-error" => (CustomerHistoryKind.Order, false, "load failed", null, null, null),
-            "wrong-order-page" => (CustomerHistoryKind.Order, false, null, null, QuotationsPage(1, 1), null),
-            "extra-order-page" => (CustomerHistoryKind.Order, false, null, OrdersPage(1, 1), QuotationsPage(1, 1), null),
-            "wrong-quotation-page" => (CustomerHistoryKind.Quotation, false, null, null, null, InvoicesPage(1, 1)),
-            "extra-invoice-page" => (CustomerHistoryKind.Invoice, false, null, OrdersPage(1, 1), null, InvoicesPage(1, 1)),
-            _ => throw new ArgumentOutOfRangeException(nameof(scenario)),
-        };
+            {
+                "missing-page" => (CustomerHistoryKind.Order, false, null, null, null, null),
+                "missing-page-while-loading" => (CustomerHistoryKind.Order, true, null, null, null, null),
+                "missing-page-after-load-error" => (CustomerHistoryKind.Order, false, "load failed", null, null, null),
+                "wrong-order-page" => (CustomerHistoryKind.Order, false, null, null, QuotationsPage(1, 1), null),
+                "extra-order-page" => (CustomerHistoryKind.Order, false, null, OrdersPage(1, 1), QuotationsPage(1, 1), null),
+                "wrong-quotation-page" => (CustomerHistoryKind.Quotation, false, null, null, null, InvoicesPage(1, 1)),
+                "extra-invoice-page" => (CustomerHistoryKind.Invoice, false, null, OrdersPage(1, 1), null, InvoicesPage(1, 1)),
+                _ => throw new ArgumentOutOfRangeException(nameof(scenario)),
+            };
         var (kind, loading, error, orders, quotations, invoices) = contract;
         var table = CreateHistoryTable(kind, orders, quotations, invoices);
         SetComponentParameters(table, new Dictionary<string, object?>
