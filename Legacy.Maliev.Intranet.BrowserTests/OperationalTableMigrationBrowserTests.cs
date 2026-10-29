@@ -1043,7 +1043,35 @@ public sealed class OperationalTableMigrationBrowserTests(
 
         await page.GotoAsync(new Uri(server.BaseUri, "PurchaseOrders/Create").AbsoluteUri);
         await page.Locator("#purchase-order-supplier").WaitForAsync();
-        Assert.Equal(4, await page.Locator(".purchase-order-create-page [data-slot='select-trigger']").CountAsync());
+        Assert.Equal(6, await page.Locator(".purchase-order-create-page [data-slot='select-trigger']").CountAsync());
+        foreach (var (id, text) in new[]
+        {
+            ("purchase-order-supplier", "Thai Precision Supplier"),
+            ("purchase-order-shipping-address", "1 Manufacturing Road, Bangkok"),
+            ("purchase-order-billing-address", "1 Manufacturing Road, Bangkok"),
+            ("purchase-order-employee", "Mali Dee"),
+        })
+        {
+            var selection = page.Locator($"#{id}[data-slot='select-trigger']");
+            Assert.Equal(1, await selection.CountAsync());
+            Assert.Equal("BUTTON", await selection.EvaluateAsync<string>("element => element.tagName"));
+            Assert.Equal("combobox", await selection.GetAttributeAsync("role"));
+            await Assertions.Expect(selection).ToBeEnabledAsync();
+            await Assertions.Expect(selection.Locator("[data-slot='select-value']")).ToHaveTextAsync(text);
+        }
+        foreach (var party in new[] { "shipping", "billing" })
+        {
+            var search = page.Locator($"#purchase-order-{party}-company-lookup");
+            Assert.Equal(1, await search.CountAsync());
+            Assert.Equal("INPUT", await search.EvaluateAsync<string>("element => element.tagName"));
+            await Assertions.Expect(search).ToBeEnabledAsync();
+            var results = page.Locator($"#purchase-order-{party}-company-lookup-results[data-slot='select-trigger']");
+            Assert.Equal(1, await results.CountAsync());
+            Assert.Equal("BUTTON", await results.EvaluateAsync<string>("element => element.tagName"));
+            Assert.Equal("combobox", await results.GetAttributeAsync("role"));
+            await Assertions.Expect(results).ToBeEnabledAsync();
+            await Assertions.Expect(page.Locator($"#purchase-order-{party}-company")).ToBeEnabledAsync();
+        }
         Assert.Equal(1, await page.Locator("[id$='-description']").CountAsync());
         await page.GetByRole(AriaRole.Button, new() { Name = "Add line item", Exact = true }).ClickAsync();
         Assert.Equal(2, await page.Locator("[id$='-description']").CountAsync());

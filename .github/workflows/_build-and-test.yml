@@ -571,7 +571,7 @@ jobs:
           if-no-files-found: ignore
           retention-days: 7
       - name: Validate .NET solution
-        uses: MALIEV-Co-Ltd/Legacy.Maliev.Workflows/actions/dotnet-validate@d7efac266bc66273bc45eab583618871292ecbd6
+        uses: MALIEV-Co-Ltd/Legacy.Maliev.Workflows/actions/dotnet-validate@53892c362a30130f582c40da7525e44f11474e8e
         env:
           DOTNET_INSTALL_DIR: ${{ runner.temp }}/maliev-intranet-dotnet-${{ github.run_id }}-${{ github.run_attempt }}-${{ github.job }}
           # The shared action tests solution projects concurrently by default. Keep the

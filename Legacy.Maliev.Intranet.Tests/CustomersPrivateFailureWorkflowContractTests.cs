@@ -13,7 +13,7 @@ public sealed class CustomersPrivateFailureWorkflowContractTests
 
         var root = directory?.FullName ?? throw new InvalidOperationException("Could not locate repository root.");
         var workflow = File.ReadAllText(Path.Combine(root, ".github", "workflows", "_build-and-test.yml"));
-        var shared = workflow.IndexOf("actions/dotnet-validate@d7efac266bc66273bc45eab583618871292ecbd6", StringComparison.Ordinal);
+        var shared = workflow.IndexOf("actions/dotnet-validate@53892c362a30130f582c40da7525e44f11474e8e", StringComparison.Ordinal);
         var strictBuild = workflow.IndexOf("--no-incremental", StringComparison.Ordinal);
         var coverageVerify = workflow.IndexOf("-Mode Verify", StringComparison.Ordinal);
         var focus = workflow.IndexOf("- name: Execute actual normal Program Customers", StringComparison.Ordinal);
