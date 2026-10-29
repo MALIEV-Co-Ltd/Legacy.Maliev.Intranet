@@ -127,9 +127,10 @@ public sealed class RedisDataProtectionIntegrationTests : IAsyncLifetime
         using var seed = CreateProvider(certificate);
         var protectedCookie = CreateCookieFormat(seed).Protect(CreateTicket());
         var before = await KeyRingFingerprintAsync(seed);
+        var disposal = new RegisteredHostDisposalWitness();
         LegacyDataProtectionResources resources;
         await using (var factory = CreateRegisteredHost<TProgram>(
-            "Production", flag, redis.GetConnectionString(), certificate))
+            "Production", flag, redis.GetConnectionString(), certificate, disposal))
         {
             var services = factory.Services;
             Assert.Equal(flag, services.GetRequiredService<IConfiguration>()["MALIEV_OBSERVABILITY_STANDBY"]);
@@ -152,7 +153,12 @@ public sealed class RedisDataProtectionIntegrationTests : IAsyncLifetime
             Assert.NotNull(restored);
             AssertTicket(restored);
             Assert.Equal(before, await KeyRingFingerprintAsync(services));
+            Assert.False(disposal.Completion.IsCompleted);
         }
+        // Join DI's winning cleanup when app.RunAsync and the test factory dispose
+        // concurrently. This new five-second join bounds observation only; it does
+        // not change the host shutdown budget or either cleanup assertion below.
+        await disposal.Completion.WaitAsync(TimeSpan.FromSeconds(5));
         Assert.True(resources.IsDisposed);
         Assert.False(resources.Redis.IsConnected);
         Assert.Equal(before, await KeyRingFingerprintAsync(seed));
@@ -171,7 +177,8 @@ public sealed class RedisDataProtectionIntegrationTests : IAsyncLifetime
     }
 
     internal static WebApplicationFactory<TProgram> CreateRegisteredHost<TProgram>(
-        string environment, string? flag, string? connection = null, string? certificate = null) where TProgram : class
+        string environment, string? flag, string? connection = null, string? certificate = null,
+        RegisteredHostDisposalWitness? disposal = null) where TProgram : class
     {
         using var signingKey = RSA.Create(2048);
         var publicKey = signingKey.ExportSubjectPublicKeyInfoPem();
@@ -193,8 +200,35 @@ public sealed class RedisDataProtectionIntegrationTests : IAsyncLifetime
             foreach (var service in new[] { "Auth", "Quotation", "Catalog", "Customer", "Employee", "Order", "File", "Notification", "Document", "Procurement", "Accounting" })
                 builder.UseSetting("Services:" + service, "https://" + service.ToLowerInvariant() + ".invalid");
             builder.ConfigureServices(services =>
-                services.AddSingleton<IHttpMessageHandlerBuilderFilter, RejectOutboundHttpFilter>());
+            {
+                services.AddSingleton<IHttpMessageHandlerBuilderFilter, RejectOutboundHttpFilter>();
+                if (disposal is null) return;
+                Assert.Equal("Production", environment);
+                var registration = Assert.Single(services,
+                    descriptor => descriptor.ServiceType == typeof(LegacyDataProtectionResources));
+                Assert.Equal(ServiceLifetime.Singleton, registration.Lifetime);
+                var originalFactory = registration.ImplementationFactory;
+                Assert.NotNull(originalFactory);
+                services.AddSingleton(_ => disposal);
+                // Capture the passive witness before the real resource so reverse
+                // DI disposal signals completion only after real cleanup returns.
+                services[services.IndexOf(registration)] = ServiceDescriptor.Describe(
+                    registration.ServiceType, provider =>
+                    {
+                        _ = provider.GetRequiredService<RegisteredHostDisposalWitness>();
+                        return originalFactory(provider);
+                    }, registration.Lifetime);
+            });
         });
+    }
+
+    internal sealed class RegisteredHostDisposalWitness : IDisposable
+    {
+        private readonly TaskCompletionSource completion = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        internal Task Completion => completion.Task;
+
+        public void Dispose() => completion.TrySetResult();
     }
 
     internal static void RequireAbsentStandbyEnvironment(string? flag)
