@@ -172,9 +172,13 @@ public sealed class BffEmployeeSelfProfileContractTests
     }
 
     [Theory]
-    [MemberData(nameof(TransportFailures))]
-    public async Task Profile_TransportFailure_IsServiceUnavailable(Exception exception)
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Profile_TransportFailure_IsServiceUnavailable(bool timeout)
     {
+        Exception exception = timeout
+            ? new TaskCanceledException("employee timeout")
+            : new HttpRequestException("employee unavailable");
         var downstream = new RecordingEmployeeHandler(HttpStatusCode.OK, string.Empty, exception: exception);
         await using var factory = new SelfProfileBffFactory(downstream, legacyDatabaseId: 42);
         using var client = CreateClient(factory);
@@ -184,12 +188,6 @@ public sealed class BffEmployeeSelfProfileContractTests
 
         Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
     }
-
-    public static TheoryData<Exception> TransportFailures => new()
-    {
-        new HttpRequestException("employee unavailable"),
-        new TaskCanceledException("employee timeout"),
-    };
 
     [Theory]
     [InlineData(HttpStatusCode.BadRequest)]

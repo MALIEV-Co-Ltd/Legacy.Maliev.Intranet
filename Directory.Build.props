@@ -5,6 +5,8 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <!-- Capture builds own symbols before the SDK applies its Release defaults. Explicit project policies remain authoritative. -->
+    <DebugSymbols Condition="'$(MalievCaptureValidationEvidence)' == 'true' And '$(DebugSymbols)' == '' And ('$(MSBuildProjectName)' == 'Legacy.Maliev.Intranet.Bff' Or '$(MSBuildProjectName)' == 'Legacy.Maliev.Intranet.Server' Or '$(MSBuildProjectName)' == 'Legacy.Maliev.Intranet.Contracts' Or '$(MSBuildProjectName)' == 'Legacy.Maliev.Intranet.Tests')">true</DebugSymbols>
     <MalievWorkspaceRoot Condition="'$(MalievWorkspaceRoot)' == ''">$(MSBuildThisFileDirectory)..</MalievWorkspaceRoot>
   </PropertyGroup>
 </Project>

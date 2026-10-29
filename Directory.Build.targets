@@ -1,0 +1,55 @@
+<Project>
+  <PropertyGroup>
+    <IntranetEvidenceProject Condition="'$(MSBuildProjectName)' == 'Legacy.Maliev.Intranet.Bff' Or '$(MSBuildProjectName)' == 'Legacy.Maliev.Intranet.Server' Or '$(MSBuildProjectName)' == 'Legacy.Maliev.Intranet.Contracts' Or '$(MSBuildProjectName)' == 'Legacy.Maliev.Intranet.Tests'">true</IntranetEvidenceProject>
+  </PropertyGroup>
+  <Target Name="OwnIntranetTestSdkProgramForCompilerCapture" BeforeTargets="CaptureIntranetCompilerInputs"
+          Condition="'$(MalievCaptureValidationEvidence)' == 'true' And '$(MSBuildProjectName)' == 'Legacy.Maliev.Intranet.Tests' And '$(GenerateProgramFile)' == 'true'">
+    <!-- The SDK's initial target already added its package-cache template to Compile. Own the same bytes before capture and compilation. -->
+    <PropertyGroup>
+      <IntranetOwnedTestSdkProgram>$(IntermediateOutputPath)intranet-validation/test-sdk-program/Microsoft.NET.Test.Sdk.Program.cs</IntranetOwnedTestSdkProgram>
+    </PropertyGroup>
+    <MakeDir Directories="$(IntermediateOutputPath)intranet-validation/test-sdk-program" />
+    <Copy SourceFiles="$(GeneratedProgramFile)" DestinationFiles="$(IntranetOwnedTestSdkProgram)" />
+    <GetFileHash Files="$(GeneratedProgramFile)" Algorithm="SHA256">
+      <Output TaskParameter="Items" ItemName="IntranetTestSdkSourceHash" />
+    </GetFileHash>
+    <GetFileHash Files="$(IntranetOwnedTestSdkProgram)" Algorithm="SHA256">
+      <Output TaskParameter="Items" ItemName="IntranetTestSdkOwnedHash" />
+    </GetFileHash>
+    <Error Condition="'@(IntranetTestSdkSourceHash->'%(FileHash)')' != '@(IntranetTestSdkOwnedHash->'%(FileHash)')'"
+           Text="Captured test SDK entry point bytes differ." />
+    <ItemGroup>
+      <Compile Remove="$(GeneratedProgramFile)" />
+      <Compile Include="$(IntranetOwnedTestSdkProgram)" />
+    </ItemGroup>
+  </Target>
+  <Target Name="CaptureIntranetCompilerInputs" BeforeTargets="CoreCompile"
+          Condition="'$(MalievCaptureValidationEvidence)' == 'true' And '$(IntranetEvidenceProject)' == 'true'">
+    <MakeDir Directories="$(IntermediateOutputPath)intranet-validation" />
+    <GetFileHash Files="@(Compile)" Algorithm="SHA256">
+      <Output TaskParameter="Items" ItemName="IntranetCompilerHashedInputs" />
+    </GetFileHash>
+    <WriteLinesToFile File="$(IntermediateOutputPath)intranet-validation/compiler-inputs.sha256" Overwrite="true" Encoding="UTF-8"
+                      Lines="@(IntranetCompilerHashedInputs->'%(FullPath)|%(FileHash)')" />
+  </Target>
+  <Target Name="CaptureIntranetCompilerOutputs" AfterTargets="Build"
+          Condition="'$(MalievCaptureValidationEvidence)' == 'true' And '$(IntranetEvidenceProject)' == 'true'">
+    <ItemGroup>
+      <IntranetCompilerOutputs Include="$(TargetPath)" />
+      <IntranetCompilerOutputs Include="$([System.IO.Path]::ChangeExtension('$(TargetPath)', '.pdb'))" Condition="'$(DebugType)' != 'None' And '$(DebugType)' != 'none' And '$(DebugSymbols)' != 'false'" />
+      <IntranetEmittedSources Include="$(CompilerGeneratedFilesOutputPath)/**/*.cs" Condition="'$(EmitCompilerGeneratedFiles)' == 'true' And '$(CompilerGeneratedFilesOutputPath)' != ''" />
+    </ItemGroup>
+    <WriteLinesToFile File="$(IntermediateOutputPath)intranet-validation/symbol-policy.txt" Overwrite="true" Encoding="UTF-8"
+                      Lines="$(DebugType)|$(DebugSymbols)|$(EnableCoverageSymbols)" />
+    <GetFileHash Files="@(IntranetCompilerOutputs)" Algorithm="SHA256">
+      <Output TaskParameter="Items" ItemName="IntranetCompilerHashedOutputs" />
+    </GetFileHash>
+    <GetFileHash Files="@(IntranetEmittedSources)" Algorithm="SHA256">
+      <Output TaskParameter="Items" ItemName="IntranetCompilerHashedEmittedSources" />
+    </GetFileHash>
+    <WriteLinesToFile File="$(IntermediateOutputPath)intranet-validation/compiler-outputs.sha256" Overwrite="true" Encoding="UTF-8"
+                      Lines="@(IntranetCompilerHashedOutputs->'%(FullPath)|%(FileHash)')" />
+    <WriteLinesToFile File="$(IntermediateOutputPath)intranet-validation/emitted-sources.sha256" Overwrite="true" Encoding="UTF-8"
+                      Lines="@(IntranetCompilerHashedEmittedSources->'%(FullPath)|%(FileHash)')" />
+  </Target>
+</Project>
