@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "sourceFiles": {
+    "Legacy.Maliev.Intranet.Server/PurchaseOrders/PurchaseOrderCreationService.cs": [
+      "f8c89926e71c95383410bb6c078c7760960b94556f72da05ef899bf4665d02cc",
+      "eaecc61d911e32b587107d8144c0ac6aec6c9153e2dd4fd160c690b5bb6bb9b9"
+    ],
+    "Legacy.Maliev.Intranet.Tests/PurchaseOrderCreationServiceTests.cs": [
+      "916ccc7a299e8545dfca0ab251caea46897f6a4cb886bbdec0b3921c0a2b57ba",
+      "9422aa843b110b78f23b6ab5742eb528434c51324ef01df645160188d167f63c"
+    ]
+  },
+  "focusedMethods": {
+    "c22361e9b7f24a8050f8527160e29157bb2a136d97748644dc46842c95f0a645": 1,
+    "ecd323c3221d040b648343a7523ce1efd068e8d135dc92d3e91f7c2184c70862": 1,
+    "a31faa3e2e04fe180eb14da5a1b3c06754c98643912ae0665e482589bb70fc3b": 1
+  },
+  "focusedCases": 3
+}

@@ -199,9 +199,13 @@ public sealed class BffOrdersProxyContractTests
     }
 
     [Theory]
-    [MemberData(nameof(TransportFailures))]
-    public async Task TransportFailure_IsServiceUnavailable(Exception exception)
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task TransportFailure_IsServiceUnavailable(bool timeout)
     {
+        Exception exception = timeout
+            ? new TaskCanceledException("orders timeout")
+            : new HttpRequestException("orders unavailable");
         var downstream = new RecordingOrderHandler("{}") { Exception = exception };
         await using var factory = new OrdersBffFactory(downstream, ordersRead: true, catalogRead: true);
         using var client = CreateClient(factory);
@@ -211,12 +215,6 @@ public sealed class BffOrdersProxyContractTests
 
         Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
     }
-
-    public static TheoryData<Exception> TransportFailures => new()
-    {
-        new HttpRequestException("orders unavailable"),
-        new TaskCanceledException("orders timeout"),
-    };
 
     private static HttpClient CreateClient(WebApplicationFactory<BffProgram> factory) =>
         factory.CreateClient(new WebApplicationFactoryClientOptions

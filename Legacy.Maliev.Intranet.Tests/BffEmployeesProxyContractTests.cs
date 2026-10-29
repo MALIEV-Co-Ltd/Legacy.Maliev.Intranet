@@ -144,9 +144,13 @@ public sealed class BffEmployeesProxyContractTests
     }
 
     [Theory]
-    [MemberData(nameof(TransportFailures))]
-    public async Task TransportFailure_IsMappedToServiceUnavailable(Exception exception)
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task TransportFailure_IsMappedToServiceUnavailable(bool timeout)
     {
+        Exception exception = timeout
+            ? new TaskCanceledException("employee timeout")
+            : new HttpRequestException("employee unavailable");
         var downstream = new RecordingEmployeeHandler(HttpStatusCode.OK, "{}", exception: exception);
         await using var factory = new EmployeesBffFactory(downstream, hasPermission: true);
         using var client = CreateClient(factory);
@@ -283,9 +287,13 @@ public sealed class BffEmployeesProxyContractTests
     }
 
     [Theory]
-    [MemberData(nameof(TransportFailures))]
-    public async Task Detail_TransportFailure_IsMappedToServiceUnavailable(Exception exception)
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Detail_TransportFailure_IsMappedToServiceUnavailable(bool timeout)
     {
+        Exception exception = timeout
+            ? new TaskCanceledException("employee timeout")
+            : new HttpRequestException("employee unavailable");
         var downstream = new RecordingEmployeeHandler(HttpStatusCode.OK, "{}", exception: exception);
         await using var factory = new EmployeesBffFactory(downstream, hasPermission: true, hasReadPermission: true);
         using var client = CreateClient(factory);
@@ -295,12 +303,6 @@ public sealed class BffEmployeesProxyContractTests
 
         Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
     }
-
-    public static TheoryData<Exception> TransportFailures => new()
-    {
-        new HttpRequestException("employee unavailable"),
-        new TaskCanceledException("employee timeout"),
-    };
 
     private static HttpClient CreateClient(WebApplicationFactory<BffProgram> factory) =>
         factory.CreateClient(new WebApplicationFactoryClientOptions
