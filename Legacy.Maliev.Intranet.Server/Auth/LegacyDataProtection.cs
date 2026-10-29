@@ -37,6 +37,11 @@ public static class LegacyDataProtection
             return builder;
         }
 
+        if (string.Equals(builder.Configuration["MALIEV_OBSERVABILITY_STANDBY"], "true", StringComparison.Ordinal))
+        {
+            dataProtection.DisableAutomaticKeyGeneration();
+        }
+
         var redisConnectionString = builder.Configuration.GetConnectionString("redis");
         if (string.IsNullOrWhiteSpace(redisConnectionString))
         {
