@@ -8,6 +8,7 @@ public sealed partial class BlazorRouteOwnershipCompletionTests
     private static readonly string[] AllowedNonLegacyRoutes =
     [
         "/",
+        "/accounting/customers/{CustomerId:int}/billing/{AccountId:guid}",
         "/migration-foundation",
         "/not-found",
         "/Server/ErrorReport",

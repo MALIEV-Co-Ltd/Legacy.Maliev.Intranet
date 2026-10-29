@@ -12,7 +12,10 @@ public sealed partial class RoutedPageLocalizationParityTests
         var pages = EnumerateOwnedRoutedPages(root).ToArray();
 
         Assert.NotEmpty(pages);
-        Assert.Equal(47, pages.Length);
+        var billingPage = Path.Combine(root, "Legacy.Maliev.Intranet.Client.Features.Accounting", "Pages", "QuotationBilling.razor");
+        Assert.Single(pages, page => page == billingPage);
+        Assert.Equal(47, pages.Count(page => page != billingPage));
+        Assert.Equal(48, pages.Length);
 
         foreach (var page in pages)
         {
