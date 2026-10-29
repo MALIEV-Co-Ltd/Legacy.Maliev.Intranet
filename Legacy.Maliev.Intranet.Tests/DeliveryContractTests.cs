@@ -67,17 +67,21 @@ public sealed class DeliveryContractTests
         var root = FindRoot();
         var dockerfiles = new[]
         {
-            Path.Combine(root, "Legacy.Maliev.Intranet", "Dockerfile"),
-            Path.Combine(root, "Legacy.Maliev.Intranet.Bff", "Dockerfile"),
+            (Path: Path.Combine(root, "Legacy.Maliev.Intranet", "Dockerfile"),
+                Sdk: "dotnet/sdk:10.0.403-alpine3.24", SdkDigest: "cc02b814237a76c4735fb6eeee87181597b5e56f2ce458a435e527674d91f4d7",
+                Runtime: "dotnet/aspnet:10.0.14-alpine3.24", RuntimeDigest: "254fe017495996d3abcc487ffacdcce2b73affb380d3af87af12c8dff41fe0b0"),
+            (Path: Path.Combine(root, "Legacy.Maliev.Intranet.Bff", "Dockerfile"),
+                Sdk: "dotnet/sdk:10.0.402-alpine3.24", SdkDigest: "230c3fbae0ceedc70bca04eed2bfb5694e8b248cadbb81010f41b7a993601f55",
+                Runtime: "dotnet/aspnet:10.0.13-alpine3.24", RuntimeDigest: "819bd3649d8bf53f35527c68d62e17b348ef6f24ae73073f497f00a878348062"),
         };
 
-        Assert.All(dockerfiles, path =>
+        Assert.All(dockerfiles, image =>
         {
-            var dockerfile = File.ReadAllText(path);
-            Assert.Contains("dotnet/sdk:10.0.402-alpine3.24", dockerfile, StringComparison.Ordinal);
-            Assert.Contains("dotnet/aspnet:10.0.13-alpine3.24", dockerfile, StringComparison.Ordinal);
-            Assert.Contains("dotnet/sdk:10.0.402-alpine3.24@sha256:230c3fbae0ceedc70bca04eed2bfb5694e8b248cadbb81010f41b7a993601f55", dockerfile, StringComparison.Ordinal);
-            Assert.Contains("dotnet/aspnet:10.0.13-alpine3.24@sha256:819bd3649d8bf53f35527c68d62e17b348ef6f24ae73073f497f00a878348062", dockerfile, StringComparison.Ordinal);
+            var dockerfile = File.ReadAllText(image.Path);
+            Assert.Contains(image.Sdk, dockerfile, StringComparison.Ordinal);
+            Assert.Contains(image.Runtime, dockerfile, StringComparison.Ordinal);
+            Assert.Contains($"{image.Sdk}@sha256:{image.SdkDigest}", dockerfile, StringComparison.Ordinal);
+            Assert.Contains($"{image.Runtime}@sha256:{image.RuntimeDigest}", dockerfile, StringComparison.Ordinal);
             Assert.Contains("USER $APP_UID", dockerfile, StringComparison.Ordinal);
             Assert.Contains("Legacy.Maliev.ServiceDefaults.git", dockerfile, StringComparison.Ordinal);
             Assert.Contains("checkout 02377791d346e25216c114522b3bfdb6f0f19a16", dockerfile, StringComparison.Ordinal);
