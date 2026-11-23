@@ -67,8 +67,11 @@ internal static class SuppliersEndpointMapper
                     page.PageIndex < 1 ||
                     page.TotalPages < 0 ||
                     page.TotalRecords < 0 ||
-                    page.Items.Any(supplier => supplier.Id < 1);
-                return invalid ? InvalidResponse() : Results.Ok(page);
+                    page.Items.Any(supplier => supplier is null || supplier.Id < 1);
+                return invalid ? InvalidResponse() : Results.Ok(page! with
+                {
+                    Items = page!.Items.Select(supplier => supplier with { Website = SafeWebsite(supplier.Website) }).ToArray(),
+                });
             }
             catch (System.Text.Json.JsonException)
             {
@@ -76,6 +79,12 @@ internal static class SuppliersEndpointMapper
             }
         }
     }
+
+    private static string? SafeWebsite(string? value) =>
+        Uri.TryCreate(value, UriKind.Absolute, out var uri) &&
+        (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps) && string.IsNullOrEmpty(uri.UserInfo)
+            ? uri.AbsoluteUri
+            : null;
 
     private static IResult InvalidResponse() =>
         Results.Problem(statusCode: StatusCodes.Status502BadGateway, title: "Invalid ProcurementService response");

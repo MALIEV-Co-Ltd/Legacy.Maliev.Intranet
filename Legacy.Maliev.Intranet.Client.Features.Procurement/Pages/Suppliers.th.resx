@@ -17,6 +17,9 @@
   <data name="Name" xml:space="preserve"><value>ชื่อ</value></data>
   <data name="Email" xml:space="preserve"><value>อีเมล</value></data>
   <data name="Telephone" xml:space="preserve"><value>โทรศัพท์</value></data>
+  <data name="Website" xml:space="preserve"><value>เว็บไซต์</value></data>
+  <data name="Mobile" xml:space="preserve"><value>โทรศัพท์มือถือ</value></data>
+  <data name="Fax" xml:space="preserve"><value>โทรสาร</value></data>
   <data name="SupplierPages" xml:space="preserve"><value>หน้ารายการผู้ขาย</value></data>
   <data name="Previous" xml:space="preserve"><value>ก่อนหน้า</value></data>
   <data name="Next" xml:space="preserve"><value>ต่อไป</value></data>

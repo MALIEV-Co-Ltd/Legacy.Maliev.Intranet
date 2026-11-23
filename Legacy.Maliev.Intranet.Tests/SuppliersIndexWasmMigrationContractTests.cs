@@ -73,7 +73,7 @@ public sealed class SuppliersIndexWasmMigrationContractTests
         Assert.NotNull(supplierType);
         Assert.NotNull(pageType);
         Assert.Equal(
-            ["Email", "Id", "Name", "Telephone"],
+            ["Email", "Fax", "Id", "Mobile", "Name", "Telephone", "Website"],
             supplierType.GetProperties().Select(property => property.Name).Order(StringComparer.Ordinal).ToArray());
         Assert.Equal(
             ["HasNextPage", "HasPreviousPage", "Items", "PageIndex", "TotalPages", "TotalRecords"],
@@ -87,10 +87,11 @@ public sealed class SuppliersIndexWasmMigrationContractTests
         Assert.Equal("Thai supplier", wire.GetProperty("items")[0].GetProperty("name").GetString());
         Assert.Equal("supplier@example.com", wire.GetProperty("items")[0].GetProperty("email").GetString());
         Assert.Equal("02-123-4567", wire.GetProperty("items")[0].GetProperty("telephone").GetString());
-        Assert.False(wire.GetProperty("items")[0].TryGetProperty("website", out _));
+        Assert.Equal("https://secret.example", wire.GetProperty("items")[0].GetProperty("website").GetString());
         Assert.False(wire.GetProperty("items")[0].TryGetProperty("taxNumber", out _));
         Assert.False(wire.GetProperty("items")[0].TryGetProperty("note", out _));
-        Assert.False(wire.GetProperty("items")[0].TryGetProperty("mobile", out _));
+        Assert.Equal("089-000-0000", wire.GetProperty("items")[0].GetProperty("mobile").GetString());
+        Assert.Equal("02-987-6543", wire.GetProperty("items")[0].GetProperty("fax").GetString());
     }
 
     private static string FindRoot()

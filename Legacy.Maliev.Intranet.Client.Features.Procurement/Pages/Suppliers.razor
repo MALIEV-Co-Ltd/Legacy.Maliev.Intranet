@@ -37,6 +37,8 @@
                               DetailsAriaLabel="@(supplier => Text["ExpandSupplier", supplier.Id])">
             <QuickViewContent Context="supplier"><dl class="operational-quick-view">
                 <div><dt>@Text["Telephone"]</dt><dd>@ValueOrFallback(supplier.Telephone)</dd></div>
+                <div><dt>@Text["Mobile"]</dt><dd>@ValueOrFallback(supplier.Mobile)</dd></div>
+                <div><dt>@Text["Fax"]</dt><dd>@ValueOrFallback(supplier.Fax)</dd></div>
                 <div><dt>@Text["Email"]</dt><dd>@ValueOrFallback(supplier.Email)</dd></div>
             </dl></QuickViewContent>
         </OperationalDataTable>
@@ -68,9 +70,19 @@
     [
         new("id", Text["Id"], supplier => supplier.Id) { Sortable = true, Hideable = false },
         new("name", Text["Name"], supplier => ValueOrFallback(supplier.Name)) { Sortable = true, MinWidth = "12rem" },
-        new("email", Text["Email"], supplier => ValueOrFallback(supplier.Email)) { MinWidth = "14rem" },
+        new("website", Text["Website"], supplier => WebsiteDisplay(supplier.Website)) { CellTemplate = supplier => WebsiteCell(supplier.Website), MinWidth = "14rem" },
+        new("email", Text["Email"], supplier => ValueOrFallback(supplier.Email)) { CellTemplate = SupplierEmailLink, MinWidth = "14rem" },
         new("telephone", Text["Telephone"], supplier => ValueOrFallback(supplier.Telephone)) { MinWidth = "10rem" },
+        new("mobile", Text["Mobile"], supplier => ValueOrFallback(supplier.Mobile)) { MinWidth = "10rem" },
+        new("fax", Text["Fax"], supplier => ValueOrFallback(supplier.Fax)) { MinWidth = "10rem" },
     ];
+
+    private static RenderFragment SupplierEmailLink(SupplierListItem supplier) => builder =>
+    {
+        builder.OpenComponent<SafeEmailLink>(0);
+        builder.AddAttribute(1, nameof(SafeEmailLink.Email), supplier.Email);
+        builder.CloseComponent();
+    };
 
     protected override async Task OnParametersSetAsync()
     {
@@ -203,6 +215,27 @@
         { ColumnKey: "name", Direction: ShadcnSortDirection.Descending } => SupplierListSort.SupplierName_Descending,
         _ => currentSort,
     };
+
+    private static RenderFragment WebsiteCell(string? website) => builder =>
+    {
+        if (Uri.TryCreate(website, UriKind.Absolute, out var uri) &&
+            (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps) && string.IsNullOrEmpty(uri.UserInfo))
+        {
+            builder.OpenElement(0, "a");
+            builder.AddAttribute(1, "href", uri.AbsoluteUri);
+            builder.AddAttribute(2, "target", "_blank");
+            builder.AddAttribute(3, "rel", "noopener noreferrer");
+            builder.AddContent(4, website);
+            builder.CloseElement();
+        }
+        else
+        {
+            builder.AddContent(5, WebsiteDisplay(website));
+        }
+    };
+
+    private static string WebsiteDisplay(string? website) =>
+        Uri.TryCreate(website, UriKind.Absolute, out var uri) && !string.IsNullOrEmpty(uri.UserInfo) ? "-" : ValueOrFallback(website);
 
     private static string ValueOrFallback(string? value) => string.IsNullOrWhiteSpace(value) ? "-" : value;
 }
