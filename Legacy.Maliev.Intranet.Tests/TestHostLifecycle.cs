@@ -28,12 +28,13 @@ internal static class TestHostLifecycle
         "10.0.12" or "10.0.12+cb21a42eafcd44cc35fad48d99dc82ff7512ce2f" or
         "10.0.12+95017c711e6afc1085133d440e42b4bd78155701" or
         "10.0.13" or "10.0.13+0ef4bbfa3291b306a21e5001cb0491277bdd35bc" or
-        "10.0.13+4099f83977f4d29604a9aeb971fb0a7bc1d5f699";
+        "10.0.13+4099f83977f4d29604a9aeb971fb0a7bc1d5f699" or
+        "11.0.0+297acf930fb0f5c07fd4e51d78e521b4ad2e5d1f";
 
     internal static void Configure(IWebHostBuilder builder) => builder.ConfigureServices(services =>
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IStartupFilter, LimiterDisposalStartupFilter>()));
 
-    // Reviewed ASP.NET Core 10.0.12/10.0.13 source creates its endpoint limiter outside DI and never disposes it.
+    // Reviewed ASP.NET Core 10.0.12/10.0.13 and 11.0.0 source creates its endpoint limiter outside DI and never disposes it.
     // Its heartbeat captures the test-host startup context, rooting each disposed pipeline.
     // https://github.com/dotnet/aspnetcore/issues/66434
     // Keep the real middleware/policies intact and supply only the missing shutdown ownership.

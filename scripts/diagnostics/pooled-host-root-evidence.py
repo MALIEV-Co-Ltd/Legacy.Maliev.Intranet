@@ -45,7 +45,19 @@ HEX = r"[0-9a-fA-F]{1,16}"
 FAMILIES = ("System.", "Microsoft.", "Legacy.Maliev.", "Maliev.Aspire.ServiceDefaults.",
             "Polly.", "OpenTelemetry.", "Xunit.", "xunit.", "Grpc.", "Program+")
 MAX_TEXT = 1024 * 1024
-SDK_VERSION = "10.0.401"
+SDK_VERSION = "11.0.100"
+RUNTIME_VERSION = "11.0.0"
+# SHA-256 identities from the official linux-x64 SDK/runtime archives, whose
+# SHA-512 hashes match the Microsoft 11.0 release manifest.
+SDK_FILES = {
+    "dotnet": "bb015c1dbaec79f69addde16893609baf880ccdc5931db354d40096769010e3e",
+    "sdk/11.0.100/dotnet.dll": "f5b29837105f0ba6b8cc23b355e03b8b5e237f2786b2817ad30c683a36462c26",
+    "sdk/11.0.100/MSBuild.dll": "6f35de8bdfe96749f8e70b683dac585f8708a03023d7f8c8a0345889eff137c2",
+}
+RUNTIME_FILES = {
+    "libcoreclr.so": "f1c71f4752aed4f8bd3e712e356260f4a4d4cbb977fc46c0e2a3207ee3ae4bf1",
+    "libmscordaccore.so": "8672a91fad86507ec07b0b0a4e236a16a10182412197fe09b0b4ea8493cdf958",
+}
 CAPTURE_DEADLINE = None
 FRAME_NAMES = frozenset(("GCFrame", "InlinedCallFrame", "TailCallFrame", "ResumableFrame",
     "RedirectedThreadFrame", "FaultingExceptionFrame", "SoftwareExceptionFrame", "FuncEvalFrame",
@@ -96,7 +108,7 @@ def sdk_environment_paths(dotnet, sdk_dir, version):
     require(version == SDK_VERSION, "selected-sdk-version")
     require(dotnet.is_absolute() and dotnet.name == "dotnet"
             and sdk_dir == dotnet.parent / "sdk" / SDK_VERSION, "sdk-root-layout")
-    return {b"MSBuildExtensionsPath": (str(sdk_dir) + "/").encode(),
+    return {b"MSBuildExtensionsPath": str(sdk_dir).encode(),
             b"MSBuildSDKsPath": str(sdk_dir / "Sdks").encode()}
 
 
@@ -112,18 +124,25 @@ def verified_sdk_environment(dotnet, version):
     return expected
 
 
+def verify_exact_files(root, identities):
+    for name, expected in identities.items():
+        path = root / name
+        require(path.is_file() and not path.is_symlink()
+                and path.resolve(strict=True) == path, "binary-identity-path")
+        require(hashlib.sha256(path.read_bytes()).hexdigest() == expected, "binary-identity-hash")
+
+
 def launch_environment_expectations(dotnet):
     """Exact SDK/VMR launch literals for this Linux x64, clean-environment lane."""
     require(dotnet.is_absolute() and dotnet.name == "dotnet", "launch-dotnet-identity")
-    # SDK v10.0.401 Program.cs:59 and VSTestForwardingApp.cs:50-51;
-    # VMR 981be135... XMake.cs:787,2254. No inherited operator settings consulted.
+    # VMR 297acf930fb0f5c07fd4e51d78e521b4ad2e5d1f: SDK Program.cs:70-72,
+    # VSTestForwardingApp.cs:74-75 and MSBuild XMake.cs:870-871,2503.
     fixed = {b"MSBUILDFAILONDRIVEENUMERATINGWILDCARD": b"1",
              b"MSBUILDENSURESTDOUTFORTASKPROCESSES": b"1",
              b"MSBuildLoadMicrosoftTargetsReadOnly": b"true",
              b"VSTEST_DOTNET_ROOT_PATH": str(dotnet.parent).encode(),
              b"VSTEST_DOTNET_ROOT_ARCHITECTURE": b"X64",
-             # SDK 10.0.401's VMR 981be135... TestTaskUtils.cs:216-219,
-             # also Test.Sdk 17.14.1:215-218: --nologo writes exactly this literal.
+             # VMR 297acf93 VSTest TestTaskUtils.cs:236: --nologo writes this literal.
              b"VSTEST_MSBUILD_NOLOGO": b"1"}
     # XMake writes precisely these two literals according to the chosen logger.
     enumerated = {b"_MSBUILDTLENABLED": frozenset((b"0", b"1"))}
@@ -132,11 +151,8 @@ def launch_environment_expectations(dotnet):
 
 def verify_target_environment(target, allowed, enumerated=None):
     # Classification grants no permission: anything outside exact expected values fails closed.
-    # Exact SDK v10.0.401 launch sources: Program, MSBuildForwardingApp[WithoutLogging],
-    # Commands/Test/VSTest/{TestCommand,VSTestForwardingApp}. Its bundled MSBuild
-    # XMake and BuildEnvironmentHelper at dotnet/dotnet 981be135426277fabd550b94fa14cdaf7271b9c2
-    # set/read the remaining exact identities. Conditional/read-only identities are
-    # classified too, never treated as proof that their values are safe or expected.
+    # Exact SDK/VMR 297acf93 launch sources classify identities only;
+    # classification is never permission for an unreviewed value.
     known = {b"MSBuildExtensionsPath": "sdk-extensions-path",
              b"MSBuildSDKsPath": "sdk-sdks-path", b"MSBUILDUSESERVER": "sdk-build-server",
              b"MSBUILDFAILONDRIVEENUMERATINGWILDCARD": "sdk-drive-wildcard",
@@ -434,21 +450,19 @@ def command_output(text, dump, runtime_dir):
 
 def verify_dump_version(text):
     """Verify native FileVersion's encoded product identity, not a product string."""
-    # Runtime v10.0.12 clrversion.h uses RuntimeFile*Version. Its pinned Arcade
-    # at VMR 6f10c96a... CalculateAssemblyAndFileVersions.cs:102-107 encodes
-    # minor*100 + patch//100; (patch%100)*100 + yy; mm*5000 + dd*100 + r.
-    # This remains additional to mapped runtime10.0.12 and exact DAC checks.
+    # Runtime 11.0.0 uses the RuntimeFile*Version fields from the pinned VMR;
+    # the native file-version encoding is checked in addition to exact binary hashes.
     found = False
     suffix = r"(?:\+[0-9a-f]+| @Commit: ?[0-9a-f]+)?"
     for row in lines(text):
         if match := re.fullmatch(r"(\d{1,5}(?:\.\d{1,5}){2,3})" + suffix, row):
             version = tuple(map(int, match.group(1).split(".")))
             if len(version) == 3:
-                require(version == (10, 0, 12), "dump-runtime-version")
+                require(version == (11, 0, 0), "dump-runtime-version")
             else:
                 major, minor, build, revision = version
                 month, remainder = divmod(revision, 5000)
-                require(major == 10 and minor == 0 and build // 100 == 12
+                require(major == 11 and minor == 0 and build // 100 == 0
                         and 1 <= month <= 12 and revision <= 65535
                         and any(0 <= remainder - day * 100 <= 199 for day in range(1, 32)),
                         "dump-runtime-version")
@@ -604,6 +618,9 @@ def clean_environment(private, dotnet, workspace, head):
         "DOTNET_ROOT": str(dotnet.parent), "DOTNET_CLI_HOME": str(home),
         "DOTNET_CLI_TELEMETRY_OPTOUT": "1", "DOTNET_SKIP_FIRST_TIME_EXPERIENCE": "1",
         "DOTNET_NOLOGO": "1", "DOTNET_PROCESSOR_COUNT": "1", "LANG": "C.UTF-8",
+        # SDK 11 enables the MSBuild server by default; keep this diagnostic owned.
+        "DOTNET_CLI_USE_MSBUILD_SERVER": "0", "MSBUILDUSESERVER": "0",
+        "MSBUILDDISABLENODEREUSE": "1",
         "GITHUB_ACTIONS": "false", "GITHUB_TOKEN": "", "RUNNER_OS": "Linux",
         "MalievWorkspaceRoot": str(workspace / ".dependencies"),
         "MALIEV_POOLED_HOST_ROOT_DIAGNOSTICS": "synthetic-isolated-v1",
@@ -617,12 +634,13 @@ def capture(args, private, cohort=False):
     workspace, dotnet = Path(args.workspace).resolve(), Path(args.dotnet).resolve()
     require(dotnet.is_file() and dotnet.name == "dotnet", "dotnet-identity")
     project = workspace / "Legacy.Maliev.Intranet.Tests/Legacy.Maliev.Intranet.Tests.csproj"
-    assembly = project.parent / "bin/Release/net10.0/Legacy.Maliev.Intranet.Tests.dll"
+    assembly = project.parent / "bin/Release/net11.0/Legacy.Maliev.Intranet.Tests.dll"
     require(project.is_file() and assembly.is_file(), "built-release-prerequisite")
     env = clean_environment(private, dotnet, workspace, args.head)
     selected_sdk = run_private([str(dotnet), "--version"], env, workspace, private,
                                "selected-sdk", seconds=15).strip()
     sdk_expected = verified_sdk_environment(dotnet, selected_sdk)
+    verify_exact_files(dotnet.parent, SDK_FILES)
     checkout = run_private(["/usr/bin/git", "rev-parse", "HEAD"], env, workspace, private, "checkout").strip()
     require(re.fullmatch(r"[0-9a-f]{40}", checkout), "checkout-format")
     commit = run_private(["/usr/bin/git", "cat-file", "-p", checkout],
@@ -711,11 +729,12 @@ def capture(args, private, cohort=False):
                           if line.endswith("/libcoreclr.so")}
             require(len(core_paths) == 1, "runtime-map-identity")
             runtime_dir = Path(core_paths.pop()).parent
-            require(runtime_dir.name == "10.0.12" and runtime_dir.parent.name == "Microsoft.NETCore.App",
+            require(runtime_dir.name == RUNTIME_VERSION and runtime_dir.parent.name == "Microsoft.NETCore.App",
                     "runtime-version")
             require(runtime_dir.is_relative_to(dotnet.parent), "runtime-location")
             dac = runtime_dir / "libmscordaccore.so"
             require(dac.is_file(), "matching-dac-prerequisite")
+            verify_exact_files(runtime_dir, RUNTIME_FILES)
             dump = private / "isolated.heap"
             run_private([str(tool), "collect", "--process-id", str(pid), "--type", "Heap",
                          "--output", str(dump)], env, private, private, "heap-collection", seconds=30)
@@ -772,7 +791,7 @@ def capture(args, private, cohort=False):
                        "non_stack": public_root_paths(root_paths(sections[commands[1]], target, non_stack=True))}
     return {"status": "evidence", "head": args.head, "checkout": checkout, "pid": pid,
             "tool": PIN, "package_source": PACKAGE, "package_sha512": PACKAGE_SHA512,
-            "runtime": "10.0.12", "dac_sha256": hashlib.sha256(dac.read_bytes()).hexdigest(),
+            "runtime": RUNTIME_VERSION, "dac_sha256": hashlib.sha256(dac.read_bytes()).hexdigest(),
             "test_assembly_sha256": hashlib.sha256(assembly.read_bytes()).hexdigest(),
             "original_test": {"executed": 1, "failed": 1}, "observed_test_counts": observation,
             "capture_filter": "focused-cohort" if cohort else "original-fact", "witness_count": len(witness_ids),
@@ -842,14 +861,14 @@ class ParserControls(unittest.TestCase):
             for path in (dotnet, sdk_dir / "dotnet.dll", sdk_dir / "MSBuild.dll"):
                 path.write_bytes(b"synthetic, never executed")
             expected = verified_sdk_environment(dotnet, SDK_VERSION)
-            self.assertEqual(expected[b"MSBuildExtensionsPath"], (str(sdk_dir) + "/").encode())
+            self.assertEqual(expected[b"MSBuildExtensionsPath"], str(sdk_dir).encode())
             self.assertEqual(expected[b"MSBuildSDKsPath"], str(sdk_dir / "Sdks").encode())
             verify_target_environment(expected, expected)
             for key, value in expected.items():
                 for mutation in (value + b"/", value + b"../escape", b"/untrusted/path", value + b"\n"):
                     self.rejects(verify_target_environment, {key: mutation}, expected)
             self.rejects(verify_target_environment,
-                         {b"MSBuildExtensionsPath": str(sdk_dir).encode()}, expected)
+                         {b"MSBuildExtensionsPath": (str(sdk_dir) + "/").encode()}, expected)
             self.rejects(sdk_environment_paths, dotnet, root.parent / "sdk" / SDK_VERSION, SDK_VERSION)
             self.rejects(sdk_environment_paths, dotnet, sdk_dir, "10.0.400")
             self.rejects(sdk_environment_paths, dotnet, sdk_dir / ".." / SDK_VERSION, SDK_VERSION)
@@ -1079,14 +1098,35 @@ class ParserControls(unittest.TestCase):
         self.rejects(root_paths, text.replace("1,234", "secret=value"), "4000")
 
     def test_encoded_native_runtime_version(self):
-        native = "10.0.1226.42604\n10.0.1226.42604 @Commit: " + "a" * 40
+        native = "11.0.26.42604\n11.0.26.42604 @Commit: " + "a" * 40
         verify_dump_version(native + "\nWorkstation mode\nSOS Version: 10.0.745401+abc")
-        verify_dump_version("10.0.12+abc\nServer mode with 1 gc heaps\nDATAS 1")
-        for bad in (native.replace("1226", "1126"), native.replace("10.0", "10.1"),
+        verify_dump_version("11.0.0+abc\nServer mode with 1 gc heaps\nDATAS 1")
+        for bad in (native.replace(".26.", ".126."), native.replace("11.0", "11.1"),
                     native.replace("42604", "99999"), native.replace("42604", "4999"),
                     native + "\nsecret=value", "Workstation mode\nSOS Version: 10.0.745401",
-                    "10.0.12 @Commit: secret=value"):
+                    "11.0.0 @Commit: secret=value", "10.0.12+abc"):
             self.rejects(verify_dump_version, bad)
+
+    def test_exact_binary_identities_and_private_build_server_settings(self):
+        with tempfile.TemporaryDirectory(prefix="synthetic-binary-control-") as directory:
+            root = Path(directory).resolve()
+            binary = root / "synthetic"
+            binary.write_bytes(b"reviewed")
+            identity = {"synthetic": hashlib.sha256(b"reviewed").hexdigest()}
+            verify_exact_files(root, identity)
+            binary.write_bytes(b"modified")
+            self.rejects(verify_exact_files, root, identity)
+            binary.unlink()
+            self.rejects(verify_exact_files, root, identity)
+            env = clean_environment(root, root / "dotnet", root, "a" * 40)
+            self.assertEqual(env["DOTNET_CLI_USE_MSBUILD_SERVER"], "0")
+            self.assertEqual(env["MSBUILDUSESERVER"], "0")
+            self.assertEqual(env["MSBUILDDISABLENODEREUSE"], "1")
+            allowed = {k.encode(): v.encode() for k, v in env.items()}
+            for key in (b"DOTNET_CLI_USE_MSBUILD_SERVER", b"MSBUILDUSESERVER", b"MSBUILDDISABLENODEREUSE"):
+                verify_target_environment({key: allowed[key]}, allowed)
+                changed = b"0" if allowed[key] == b"1" else b"1"
+                self.rejects(verify_target_environment, {key: changed}, allowed)
 
     def test_exact_signal_handles_and_target_binding(self):
         head = "a" * 40

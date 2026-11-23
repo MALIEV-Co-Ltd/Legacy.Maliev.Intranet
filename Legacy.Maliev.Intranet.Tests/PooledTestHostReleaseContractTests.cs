@@ -158,6 +158,9 @@ public sealed class PooledTestHostReleaseContractTests(ITestOutputHelper output)
     [InlineData("10.0.12+unreviewed")]
     [InlineData("10.0.13-unreviewed")]
     [InlineData("10.0.13+unreviewed")]
+    [InlineData("11.0.1")]
+    [InlineData("11.0.0-unreviewed")]
+    [InlineData("11.0.0+unreviewed")]
     [InlineData("")]
     public void DiagnosticWeakHandle_RejectsUnreviewedRuntime(string version)
     {
@@ -168,6 +171,7 @@ public sealed class PooledTestHostReleaseContractTests(ITestOutputHelper output)
     [Theory]
     [InlineData("10.0.12")]
     [InlineData("10.0.13")]
+    [InlineData("11.0.0")]
     public void DiagnosticWeakHandle_AcceptsReviewedExactRuntime(string version)
     {
         var witness = new WeakReference(new object());
@@ -178,6 +182,7 @@ public sealed class PooledTestHostReleaseContractTests(ITestOutputHelper output)
     [Theory]
     [InlineData("10.0.12")]
     [InlineData("10.0.13")]
+    [InlineData("11.0.0")]
     public void DiagnosticWeakHandle_RejectsResurrectionAndDerivedWitnesses(string version)
     {
         var resurrection = new WeakReference(new object(), trackResurrection: true);
@@ -200,9 +205,9 @@ public sealed class PooledTestHostReleaseContractTests(ITestOutputHelper output)
 
     private static string? ReadDiagnosticWeakHandle(WeakReference witness, string? version)
     {
-        // Reviewed v10.0.12/v10.0.13 WeakReference.cs are byte-identical at this boundary. Read the
+        // Reviewed v10.0.12/v10.0.13/v11.0.0 retain this weak-handle boundary. Read the
         // test-owned weak handle itself, never Target or arbitrary host fields.
-        if (version is not ("10.0.12" or "10.0.13")) return null;
+        if (version is not ("10.0.12" or "10.0.13" or "11.0.0")) return null;
         if (witness.GetType() != typeof(WeakReference) || witness.TrackResurrection) return null;
         var field = typeof(WeakReference).GetField("_taggedHandle", BindingFlags.Instance | BindingFlags.NonPublic);
         if (field is null || field.FieldType != typeof(nint) || field.GetValue(witness) is not nint handle || handle == 0
