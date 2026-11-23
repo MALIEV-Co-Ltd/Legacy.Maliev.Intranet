@@ -126,7 +126,7 @@
         }
         catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException)
         {
-            error = Text["Unavailable"];
+            if (lease.IsCurrent) error = Text["Unavailable"];
         }
         finally
         {
