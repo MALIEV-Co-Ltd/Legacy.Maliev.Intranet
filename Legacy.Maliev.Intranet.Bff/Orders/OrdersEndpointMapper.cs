@@ -51,7 +51,7 @@ internal static class OrdersEndpointMapper
                     page.PageIndex < 1 ||
                     page.TotalPages < 0 ||
                     page.TotalRecords < 0 ||
-                    page.Items.Any(order => order.Id < 1 || order.ProcessId < 1 || order.Quantity < 0 || order.Manufactured < 0);
+                    page.Items.Any(order => order is null || order.Id < 1 || order.ProcessId < 1 || order.Quantity < 0 || order.Manufactured < 0);
                 return invalid ? InvalidResponse() : Results.Ok(page);
             }
             catch (System.Text.Json.JsonException)
@@ -101,7 +101,7 @@ internal static class OrdersEndpointMapper
             {
                 var processes = await response.Content.ReadFromJsonAsync<List<OrderProcessItem>>(cancellationToken);
                 var invalid = processes is null || processes.Any(process =>
-                    process.Id < 1 || string.IsNullOrWhiteSpace(process.Name));
+                    process is null || process.Id < 1 || string.IsNullOrWhiteSpace(process.Name));
                 return invalid ? InvalidResponse() : Results.Ok(processes);
             }
             catch (System.Text.Json.JsonException)

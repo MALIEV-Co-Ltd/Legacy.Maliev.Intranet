@@ -161,7 +161,7 @@ def retain_compiler_custody(workspace):
                 "Legacy.Maliev.Intranet.Contracts", "Legacy.Maliev.Intranet.Tests")
     captured = {}
     for project in projects:
-        directory = workspace / project / "obj/Release/net10.0/intranet-validation"
+        directory = workspace / project / "obj/Release/net11.0/intranet-validation"
         groups = {}
         policy = directory / "symbol-policy.txt"
         require(policy.is_file() and not policy.is_symlink() and policy.stat().st_size <= 128)
@@ -281,7 +281,7 @@ def compiler_path_diagnostics(workspace):
         return {"reasonCounts": {}, "anomalies": [], "unavailableManifests": 12, "truncated": False}
     for project in ("Legacy.Maliev.Intranet.Bff", "Legacy.Maliev.Intranet.Server",
                     "Legacy.Maliev.Intranet.Contracts", "Legacy.Maliev.Intranet.Tests"):
-        directory = workspace / project / "obj/Release/net10.0/intranet-validation"
+        directory = workspace / project / "obj/Release/net11.0/intranet-validation"
         for kind in ("compiler-inputs", "compiler-outputs", "emitted-sources"):
             manifest = directory / (kind + ".sha256")
             try:

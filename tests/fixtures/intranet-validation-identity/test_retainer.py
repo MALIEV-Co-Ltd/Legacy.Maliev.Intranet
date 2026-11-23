@@ -32,7 +32,7 @@ def fixture():
 def compiler_fixture(root):
     for project in ("Legacy.Maliev.Intranet.Bff", "Legacy.Maliev.Intranet.Server",
                     "Legacy.Maliev.Intranet.Contracts", "Legacy.Maliev.Intranet.Tests"):
-        evidence = root / project / "obj/Release/net10.0/intranet-validation"
+        evidence = root / project / "obj/Release/net11.0/intranet-validation"
         evidence.mkdir(parents=True)
         source = root / project / "source.cs"
         source.write_bytes(b"controlled compiler input")
@@ -52,7 +52,7 @@ class IdentityRetentionTests(unittest.TestCase):
         with tempfile.TemporaryDirectory(prefix="intranet-path-rejection-") as directory:
             root = pathlib.Path(directory)
             compiler_fixture(root)
-            evidence = root / "Legacy.Maliev.Intranet.Bff/obj/Release/net10.0/intranet-validation"
+            evidence = root / "Legacy.Maliev.Intranet.Bff/obj/Release/net11.0/intranet-validation"
             manifest = evidence / "compiler-inputs.sha256"
             candidates = {
                 "non-absolute": pathlib.Path("private-canary-relative/source.cs"),
@@ -90,7 +90,7 @@ class IdentityRetentionTests(unittest.TestCase):
             self.assertEqual({"reasonCounts": {}, "anomalies": [], "unavailableManifests": 0,
                               "truncated": False}, RET.compiler_path_diagnostics(root))
             external = root.parent / "microsoft.net.test.sdk/17.14.1/build/net8.0/Microsoft.NET.Test.Sdk.Program.cs"
-            manifest = root / "Legacy.Maliev.Intranet.Tests/obj/Release/net10.0/intranet-validation/compiler-inputs.sha256"
+            manifest = root / "Legacy.Maliev.Intranet.Tests/obj/Release/net11.0/intranet-validation/compiler-inputs.sha256"
             manifest.write_text("\n".join([str(external) + "|" + "a" * 64] * 20))
             diagnostic = RET.compiler_path_diagnostics(root)
             self.assertEqual({"resolved-outside-workspace": 20}, diagnostic["reasonCounts"])
@@ -113,7 +113,7 @@ class IdentityRetentionTests(unittest.TestCase):
         with tempfile.TemporaryDirectory(prefix="intranet-path-export-") as directory:
             root = pathlib.Path(directory)
             compiler_fixture(root)
-            manifest = root / "Legacy.Maliev.Intranet.Bff/obj/Release/net10.0/intranet-validation/compiler-inputs.sha256"
+            manifest = root / "Legacy.Maliev.Intranet.Bff/obj/Release/net11.0/intranet-validation/compiler-inputs.sha256"
             for value in ("private-malformed-value", "x" * (1024 * 1024 + 1)):
                 manifest.write_text(value)
                 diagnostic = RET.compiler_path_diagnostics(root)
@@ -429,7 +429,7 @@ class IdentityRetentionTests(unittest.TestCase):
             self.assertEqual(root.resolve().parent, pathlib.Path(tempfile.gettempdir()).resolve())
             for project in ("Legacy.Maliev.Intranet.Bff", "Legacy.Maliev.Intranet.Server",
                             "Legacy.Maliev.Intranet.Contracts", "Legacy.Maliev.Intranet.Tests"):
-                evidence = root / project / "obj/Release/net10.0/intranet-validation"
+                evidence = root / project / "obj/Release/net11.0/intranet-validation"
                 evidence.mkdir(parents=True)
                 source = root / project / "source.cs"
                 source.write_bytes(b"controlled compiler input")
@@ -447,7 +447,7 @@ class IdentityRetentionTests(unittest.TestCase):
             self.assertTrue(all(not item["compiledMembershipCertified"] for item in captured.values()))
             self.assertTrue(all(not item["generatedInclusiveCertified"] for item in captured.values()))
             contracts = "Legacy.Maliev.Intranet.Contracts"
-            contract_evidence = root / contracts / "obj/Release/net10.0/intranet-validation"
+            contract_evidence = root / contracts / "obj/Release/net11.0/intranet-validation"
             original_outputs = (contract_evidence / "compiler-outputs.sha256").read_text()
             dll_only = original_outputs.splitlines()[0]
             (contract_evidence / "compiler-outputs.sha256").write_text(dll_only)
@@ -461,7 +461,7 @@ class IdentityRetentionTests(unittest.TestCase):
             (contract_evidence / "compiler-outputs.sha256").write_text(original_outputs)
             with self.assertRaises(RET.InvalidEvidence): RET.retain_compiler_custody(root)
             (contract_evidence / "compiler-outputs.sha256").write_text(dll_only)
-            server_policy = root / "Legacy.Maliev.Intranet.Server/obj/Release/net10.0/intranet-validation/symbol-policy.txt"
+            server_policy = root / "Legacy.Maliev.Intranet.Server/obj/Release/net11.0/intranet-validation/symbol-policy.txt"
             server_policy.write_text("None|false|\n")
             with self.assertRaises(RET.InvalidEvidence): RET.retain_compiler_custody(root)
             server_policy.write_text("portable|true|true\n")

@@ -199,6 +199,26 @@ public sealed class BffOrdersProxyContractTests
     }
 
     [Theory]
+    [InlineData("/bff/orders", "{\"items\":[null],\"pageIndex\":1,\"totalPages\":1,\"totalRecords\":1,\"sentinel\":\"upstream-secret-36\"}")]
+    [InlineData("/bff/orders/pending", "{\"items\":[null],\"pageIndex\":1,\"totalPages\":1,\"totalRecords\":1,\"sentinel\":\"upstream-secret-36\"}")]
+    [InlineData("/bff/order-processes", "[null,{\"id\":1,\"name\":\"upstream-secret-36\"}]")]
+    public async Task NullRows_ReturnGenericBadGatewayWithoutUpstreamData(string path, string payload)
+    {
+        var downstream = new RecordingOrderHandler(payload);
+        await using var factory = new OrdersBffFactory(downstream, ordersRead: true, catalogRead: true);
+        using var client = CreateClient(factory);
+        await SignInAsync(client);
+
+        using var response = await client.GetAsync(path);
+        var body = await response.Content.ReadAsStringAsync();
+
+        Assert.Equal(HttpStatusCode.BadGateway, response.StatusCode);
+        Assert.DoesNotContain("upstream-secret-36", body, StringComparison.Ordinal);
+        using var problem = System.Text.Json.JsonDocument.Parse(body);
+        Assert.Equal("Invalid OrderService response", problem.RootElement.GetProperty("title").GetString());
+    }
+
+    [Theory]
     [InlineData(false)]
     [InlineData(true)]
     public async Task TransportFailure_IsServiceUnavailable(bool timeout)
