@@ -1,8 +1,11 @@
 @page "/Suppliers/Create"
 @attribute [Authorize]
+@implements IDisposable
 @inject HttpClient Http
 @inject NavigationManager Navigation
 @inject IStringLocalizer<SupplierCreate> Text
+@inject ILogger<SupplierCreate> Logger
+@using Microsoft.Extensions.Logging
 
 <PageTitle>@Text["PageTitle"]</PageTitle>
 
@@ -31,20 +34,22 @@
 
         <section class="supplier-editor-section" aria-labelledby="supplier-address-heading">
             <h2 id="supplier-address-heading">@Text["Address"]</h2>
+            <p>@Text["AddressOptionalHint"]</p>
                 <LookupAddressAssist Id="supplier-address-lookup" SelectionChanged="ApplyAddressSuggestion" DetailConfirmed="ApplyAddressDetail" CountryKey="@(model.CountryId.ToString(CultureInfo.InvariantCulture))" Disabled="@submitting" />
             <div class="supplier-editor-grid">
                 <ProcurementInputField TValue="string" Id="supplier-building" Label="@Text["Building"]" @bind-Value="model.Building" />
-                <ProcurementInputField TValue="string" Id="supplier-address-1" Label="@Text["Address1"]" @bind-Value="model.Address1" Required="true" />
+                <ProcurementInputField TValue="string" Id="supplier-address-1" Label="@Text["Address1"]" @bind-Value="model.Address1" Required="@model.HasAnyAddress()" />
                 <ProcurementInputField TValue="string" Id="supplier-address-2" Label="@Text["Address2"]" @bind-Value="model.Address2" />
                 <ProcurementInputField TValue="string" Id="supplier-city" Label="@Text["City"]" @bind-Value="model.City" />
                 <ProcurementInputField TValue="string" Id="supplier-state" Label="@Text["State"]" @bind-Value="model.State" />
                 <ProcurementInputField TValue="string" Id="supplier-postal-code" Label="@Text["PostalCode"]" @bind-Value="model.PostalCode" />
-                <ProcurementInputField TValue="int" Id="supplier-country-id" Label="@Text["CountryId"]" Type="number" Min="1" @bind-Value="model.CountryId" Required="true" />
+                <ProcurementSelectField TValue="int" Id="supplier-country-id" Label="@Text["CountryId"]" @bind-Value="model.CountryId" Options="@CountryOptions" Placeholder="@Text["SelectCountry"]" Required="@model.HasAnyAddress()" Disabled="@(submitting || countriesLoading || countries.Count == 0)" />
+                @if (countryError is not null) { <div role="alert">@countryError <ShadcnButton ButtonType="ShadcnButtonType.Button" Variant="ShadcnButtonVariant.Outline" OnClick="LoadCountriesAsync" Disabled="@(submitting || countriesLoading)">@Text["RetryCountries"]</ShadcnButton></div> }
             </div>
         </section>
 
         <div class="supplier-editor-actions">
-            <ShadcnButton ButtonType="ShadcnButtonType.Submit" OperationFeedback="false" Disabled="@submitting">@(submitting ? Text["Submitting"] : Text["CreateSupplier"])</ShadcnButton>
+            <ShadcnButton ButtonType="ShadcnButtonType.Submit" OperationFeedback="false" Disabled="@(submitting || outcomeUnknown)">@(submitting ? Text["Submitting"] : Text["CreateSupplier"])</ShadcnButton>
             <LegacyLink Href="/Suppliers/Index" Role="LegacyLinkRole.Navigation" Disabled="@submitting" AriaLabel="@Text["Cancel"]">@Text["Cancel"]</LegacyLink>
         </div>
     </EditForm>
@@ -71,47 +76,101 @@
         model.Address1 = value;
         editContext.NotifyFieldChanged(new FieldIdentifier(model, nameof(model.Address1)));
     }
-    private readonly SupplierCreateRequest model = new();
+    private readonly SupplierCreateRequest model = new() { AllowMissingAddress = true };
     private EditContext editContext = null!;
     private bool submitting;
+    private bool disposed;
+    private bool outcomeUnknown;
     private string? error;
+    private IReadOnlyList<EmployeeAdministrationCountry> countries = [];
+    private bool countriesLoading;
+    private string? countryError;
+    private IReadOnlyList<ShadcnSelectOption<int>> CountryOptions => countries.Select(country => new ShadcnSelectOption<int>(country.Id, country.Name)).ToArray();
 
     protected override void OnInitialized() => editContext = new EditContext(model);
+    protected override Task OnInitializedAsync() => LoadCountriesAsync();
+
+    private async Task LoadCountriesAsync()
+    {
+        if (disposed || countriesLoading) return;
+        countriesLoading = true;
+        countryError = null;
+        try
+        {
+            using var response = await Http.GetForPresentationAsync("/bff/suppliers/create-countries");
+            if (disposed) return;
+            if (response.StatusCode == HttpStatusCode.Unauthorized) { NavigateToLogin(); return; }
+            if (!response.IsSuccessStatusCode) { countryError = Text["CountriesUnavailable"]; return; }
+            var values = await response.Content.ReadFromJsonAsync<EmployeeAdministrationCountry[]>();
+            if (disposed) return;
+            if (values is not { Length: > 0 } || values.Any(value => value is null || value.Id <= 0 || string.IsNullOrWhiteSpace(value.Name)) || values.Select(value => value.Id).Distinct().Count() != values.Length)
+            { countryError = Text["CountriesUnavailable"]; return; }
+            countries = values;
+        }
+        catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException)
+        { if (!disposed) countryError = Text["CountriesUnavailable"]; }
+        finally { if (!disposed) countriesLoading = false; }
+    }
     private void HandleInvalidSubmit(EditContext _) => error = Text["ValidationFailed"];
 
     private async Task SubmitAsync()
     {
-        if (submitting) return;
+        if (submitting || disposed || outcomeUnknown) return;
         submitting = true;
         error = null;
+        var snapshot = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(model, System.Text.Json.JsonSerializerOptions.Web);
+        bool Unchanged() => snapshot.AsSpan().SequenceEqual(System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(model, System.Text.Json.JsonSerializerOptions.Web));
+        var dispatched = false;
         try
         {
             using var sessionResponse = await Http.GetForPresentationAsync("/bff/session");
+            if (disposed || !Unchanged()) return;
             if (sessionResponse.StatusCode == HttpStatusCode.Unauthorized) { NavigateToLogin(); return; }
             sessionResponse.EnsureSuccessStatusCode();
             var session = await sessionResponse.Content.ReadFromJsonAsync<EmployeeSessionSummary>();
+            if (disposed || !Unchanged()) return;
             if (string.IsNullOrWhiteSpace(session?.CsrfToken)) { error = Text["CreateFailed"]; return; }
 
-            using var request = new HttpRequestMessage(HttpMethod.Post, "/bff/suppliers") { Content = JsonContent.Create(model) };
+            using var request = new HttpRequestMessage(HttpMethod.Post, "/bff/suppliers") { Content = new ByteArrayContent(snapshot) };
+            request.Content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/json") { CharSet = "utf-8" };
             request.Headers.Add("X-CSRF-TOKEN", session.CsrfToken);
+            dispatched = true;
             using var response = await Http.SendAsync(request);
-            if (response.StatusCode == HttpStatusCode.Unauthorized) { NavigateToLogin(); return; }
-            if (response.StatusCode == HttpStatusCode.Forbidden) { error = Text["Forbidden"]; return; }
-            if (response.StatusCode == HttpStatusCode.BadRequest) { error = Text["ValidationFailed"]; return; }
-            if (response.StatusCode == HttpStatusCode.Conflict) { error = Text["Conflict"]; return; }
-            if (response.StatusCode == HttpStatusCode.TooManyRequests) { error = Text["RateLimited"]; return; }
-            if (!response.IsSuccessStatusCode) { error = Text["CreateFailed"]; return; }
+            if (disposed) return;
+            if (!response.IsSuccessStatusCode)
+            {
+                outcomeUnknown = true;
+                var statusMessage = Text["CreateResponseStatus", (int)response.StatusCode].Value;
+                var detail = response.StatusCode switch
+                {
+                    HttpStatusCode.Forbidden => "Forbidden",
+                    HttpStatusCode.Conflict => "Conflict",
+                    HttpStatusCode.TooManyRequests => "RateLimited",
+                    _ => null,
+                };
+                if (detail is not null) statusMessage += $" {Text[detail]}";
+                error = $"{statusMessage} {Text["CreateOutcomeUnknown"]}";
+                return;
+            }
 
             var created = await response.Content.ReadFromJsonAsync<CreatedSupplier>();
-            if (created is null || created.Id <= 0) { error = Text["InvalidResponse"]; return; }
+            if (disposed) return;
+            if (created is null || created.Id <= 0) { outcomeUnknown = true; error = Text["CreateOutcomeUnknown"]; return; }
             Navigation.NavigateTo($"/Suppliers/View?id={created.Id}");
         }
         catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException)
         {
-            error = Text["CreateFailed"];
+            if (!disposed) { outcomeUnknown = dispatched; error = Text[dispatched ? "CreateOutcomeUnknown" : "CreateFailed"]; }
         }
-        finally { submitting = false; }
+        catch (Exception exception) when (dispatched && exception is not OutOfMemoryException)
+        {
+            Logger.LogWarning("Supplier creation ended unexpectedly after dispatch.");
+            if (!disposed) { outcomeUnknown = true; error = Text["CreateOutcomeUnknown"]; }
+        }
+        finally { if (!disposed) submitting = false; }
     }
+
+    public void Dispose() => disposed = true;
 
     private void NavigateToLogin() => Navigation.NavigateTo($"/Login?returnUrl={Uri.EscapeDataString(Navigation.ToBaseRelativePath(Navigation.Uri))}");
 }

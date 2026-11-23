@@ -10,11 +10,40 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using BffProgram = Bff::Program;
+using CountryClient = Bff::Legacy.Maliev.Intranet.Bff.Employees.EmployeeAdministrationCountryClient;
 
 namespace Legacy.Maliev.Intranet.Tests;
 
 public sealed class BffSupplierManagementContractTests
 {
+    [Theory]
+    [InlineData(true, HttpStatusCode.OK)]
+    [InlineData(false, HttpStatusCode.Forbidden)]
+    public async Task EditCountries_RequiresSupplierReadPermission(bool canRead, HttpStatusCode expected)
+    {
+        var downstream = new SupplierManagementClient();
+        await using var factory = new Factory(downstream, canRead ? [LegacyEmployeePermissions.SuppliersRead] : []);
+        using var client = CreateClient(factory);
+        await SignInAsync(client);
+        using var response = await client.GetAsync("/bff/suppliers/edit-countries");
+        Assert.Equal(expected, response.StatusCode);
+        Assert.Equal(canRead ? 1 : 0, factory.CountryRequests);
+        if (canRead) Assert.Contains("Thailand", await response.Content.ReadAsStringAsync(), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Update_CannotOptOutOfRequiredAddressThroughJson()
+    {
+        var downstream = new SupplierManagementClient();
+        await using var factory = new Factory(downstream, [LegacyEmployeePermissions.SuppliersUpdate]);
+        using var client = CreateClient(factory);
+        var csrf = await SignInAsync(client);
+        using var request = new HttpRequestMessage(HttpMethod.Put, "/bff/suppliers/42") { Content = JsonContent.Create(new { name = "Acme", allowMissingAddress = true }) };
+        request.Headers.Add("X-CSRF-TOKEN", csrf);
+        using var response = await client.SendAsync(request);
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal(0, downstream.ProfileUpdates);
+    }
     [Fact]
     public async Task AuthorizedRead_CombinesSupplierAndAddressWithoutExposingServerCredentials()
     {
@@ -192,6 +221,7 @@ public sealed class BffSupplierManagementContractTests
     private sealed class Factory(SupplierManagementClient downstream, IReadOnlyList<string> permissions)
         : WebApplicationFactory<BffProgram>
     {
+        public int CountryRequests { get; private set; }
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
             builder.UseEnvironment("Testing");
@@ -208,7 +238,18 @@ public sealed class BffSupplierManagementContractTests
                 services.AddSingleton<ILegacyAuthClient>(new AuthClient(permissions));
                 services.RemoveAll<ISupplierManagementClient>();
                 services.AddSingleton<ISupplierManagementClient>(downstream);
+                services.RemoveAll<CountryClient>();
+                services.AddTransient(_ => new CountryClient(new HttpClient(new CountryHandler(() => CountryRequests++)) { BaseAddress = new Uri("http://catalog/") }));
             });
+        }
+    }
+
+    private sealed class CountryHandler(Action onRequest) : HttpMessageHandler
+    {
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            onRequest();
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(new[] { new { id = 66, name = "Thailand" } }) });
         }
     }
 

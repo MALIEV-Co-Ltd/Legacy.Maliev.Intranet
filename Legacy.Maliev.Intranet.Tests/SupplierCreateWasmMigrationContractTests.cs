@@ -40,7 +40,7 @@ public sealed class SupplierCreateWasmMigrationContractTests
         var type = typeof(Legacy.Maliev.Intranet.Contracts.SupplierCreateRequest);
         Assert.Equal(
             ["Address1", "Address2", "Building", "City", "CountryId", "Email", "Fax", "Mobile", "Name", "Note", "PostalCode", "State", "TaxNumber", "Telephone", "Website"],
-            type.GetProperties().Select(property => property.Name).Order(StringComparer.Ordinal).ToArray());
+            type.GetProperties().Where(property => !Attribute.IsDefined(property, typeof(System.Text.Json.Serialization.JsonIgnoreAttribute))).Select(property => property.Name).Order(StringComparer.Ordinal).ToArray());
 
         var invalid = new Legacy.Maliev.Intranet.Contracts.SupplierCreateRequest();
         var results = new List<ValidationResult>();
@@ -48,6 +48,14 @@ public sealed class SupplierCreateWasmMigrationContractTests
         Assert.Contains(results, result => result.MemberNames.Contains("Name", StringComparer.Ordinal));
         Assert.Contains(results, result => result.MemberNames.Contains("Address1", StringComparer.Ordinal));
         Assert.Contains(results, result => result.MemberNames.Contains("CountryId", StringComparer.Ordinal));
+        var optional = new Legacy.Maliev.Intranet.Contracts.SupplierCreateRequest { Name = "Acme", AllowMissingAddress = true };
+        Assert.True(Validator.TryValidateObject(optional, new ValidationContext(optional), new List<ValidationResult>(), true));
+        Assert.DoesNotContain("allowMissingAddress", System.Text.Json.JsonSerializer.Serialize(optional, System.Text.Json.JsonSerializerOptions.Web), StringComparison.OrdinalIgnoreCase);
+        optional.City = "Bangkok";
+        var partialErrors = new List<ValidationResult>();
+        Assert.False(Validator.TryValidateObject(optional, new ValidationContext(optional), partialErrors, true));
+        Assert.Contains(partialErrors, result => result.MemberNames.Contains("Address1", StringComparer.Ordinal));
+        Assert.Contains(partialErrors, result => result.MemberNames.Contains("CountryId", StringComparer.Ordinal));
     }
 
     private static string FindRoot()

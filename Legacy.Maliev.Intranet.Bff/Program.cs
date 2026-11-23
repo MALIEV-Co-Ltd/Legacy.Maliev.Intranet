@@ -1456,12 +1456,19 @@ app.MapGet("/bff/suppliers", (
 })
     .RequireAuthorization(LegacyEmployeePermissions.SuppliersRead);
 
+app.MapGet("/bff/suppliers/create-countries", CustomerRelationEndpointMapper.CountriesAsync)
+    .RequireAuthorization(LegacyEmployeePermissions.SuppliersCreate);
+
+app.MapGet("/bff/suppliers/edit-countries", CustomerRelationEndpointMapper.CountriesAsync)
+    .RequireAuthorization(LegacyEmployeePermissions.SuppliersRead);
+
 app.MapPost("/bff/suppliers", async (
     SupplierCreateRequest request,
     HttpContext context,
     Legacy.Maliev.Intranet.Suppliers.SupplierCreationService workflow,
     CancellationToken cancellationToken) =>
 {
+    request.AllowMissingAddress = true;
     var validationResults = new List<ValidationResult>();
     if (!Validator.TryValidateObject(request, new ValidationContext(request), validationResults, true))
     {

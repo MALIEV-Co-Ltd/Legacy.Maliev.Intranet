@@ -17,19 +17,25 @@
   <data name="Fax" xml:space="preserve"><value>โทรสาร</value></data>
   <data name="Note" xml:space="preserve"><value>บันทึก</value></data>
   <data name="Address" xml:space="preserve"><value>ที่อยู่</value></data>
+  <data name="AddressOptionalHint" xml:space="preserve"><value>ที่อยู่เป็นข้อมูลไม่บังคับ หากระบุข้อมูลที่อยู่ โปรดระบุที่อยู่บรรทัดที่ 1 และประเทศทั้งสองรายการ</value></data>
   <data name="Building" xml:space="preserve"><value>อาคาร</value></data>
   <data name="Address1" xml:space="preserve"><value>ที่อยู่บรรทัดที่ 1</value></data>
   <data name="Address2" xml:space="preserve"><value>ที่อยู่บรรทัดที่ 2</value></data>
   <data name="City" xml:space="preserve"><value>เมือง</value></data>
   <data name="State" xml:space="preserve"><value>จังหวัด/รัฐ</value></data>
   <data name="PostalCode" xml:space="preserve"><value>รหัสไปรษณีย์</value></data>
-  <data name="CountryId" xml:space="preserve"><value>รหัสประเทศ</value></data>
+  <data name="CountryId" xml:space="preserve"><value>ประเทศ</value></data>
+  <data name="SelectCountry" xml:space="preserve"><value>เลือกประเทศ</value></data>
+  <data name="CountriesUnavailable" xml:space="preserve"><value>ไม่สามารถโหลดรายชื่อประเทศ โปรดลองอีกครั้ง</value></data>
+  <data name="RetryCountries" xml:space="preserve"><value>ลองอีกครั้ง</value></data>
   <data name="Submitting" xml:space="preserve"><value>กำลังเพิ่มผู้ขาย…</value></data>
   <data name="Cancel" xml:space="preserve"><value>ยกเลิก</value></data>
   <data name="ValidationFailed" xml:space="preserve"><value>โปรดตรวจสอบช่องที่ระบุ แล้วลองอีกครั้ง</value></data>
-  <data name="Forbidden" xml:space="preserve"><value>คุณไม่มีสิทธิ์เพิ่มผู้ขาย</value></data>
-  <data name="Conflict" xml:space="preserve"><value>มีข้อมูลผู้ขายรายนี้อยู่แล้ว</value></data>
-  <data name="RateLimited" xml:space="preserve"><value>มีการส่งคำขอมากเกินไป รอสักครู่แล้วลองอีกครั้ง</value></data>
+  <data name="Forbidden" xml:space="preserve"><value>เซิร์ฟเวอร์ปฏิเสธคำขอเพิ่มผู้จัดจำหน่าย</value></data>
+  <data name="Conflict" xml:space="preserve"><value>คำขอเพิ่มผู้จัดจำหน่ายขัดแย้งกับข้อมูลที่มีอยู่</value></data>
+  <data name="RateLimited" xml:space="preserve"><value>เซิร์ฟเวอร์กำลังจำกัดจำนวนคำขอ</value></data>
   <data name="CreateFailed" xml:space="preserve"><value>เพิ่มผู้ขายไม่สำเร็จ ระบบไม่ได้บันทึกข้อมูลบางส่วนไว้</value></data>
   <data name="InvalidResponse" xml:space="preserve"><value>บริการจัดซื้อส่งข้อมูลกลับมาไม่ถูกต้อง</value></data>
+  <data name="CreateResponseStatus" xml:space="preserve"><value>คำขอส่งคืนสถานะ {0}</value></data>
+  <data name="CreateOutcomeUnknown" xml:space="preserve"><value>อาจสร้างผู้จัดจำหน่ายแล้ว โปรดตรวจสอบรายชื่อก่อนลองอีกครั้ง</value></data>
 </root>

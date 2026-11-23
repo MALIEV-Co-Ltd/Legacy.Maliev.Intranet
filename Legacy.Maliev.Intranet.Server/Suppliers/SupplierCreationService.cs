@@ -8,7 +8,7 @@ namespace Legacy.Maliev.Intranet.Suppliers;
 /// <summary>Normalized outcomes from supplier profile and address creation.</summary>
 public enum SupplierCreationStatus
 {
-    /// <summary>The supplier and address were created.</summary>
+    /// <summary>The supplier and any eligible address were created.</summary>
     Created,
     /// <summary>The downstream service rejected the request.</summary>
     BadRequest,
@@ -51,9 +51,11 @@ public sealed class SupplierCreationService(
     ISupplierAddressCreationClient addresses,
     ILogger<SupplierCreationService> logger)
 {
-    /// <summary>Creates a supplier and address, compensating the profile when the address fails.</summary>
+    /// <summary>Creates a supplier and, when supplied, an address; ambiguous address failures require reconciliation.</summary>
     public async Task<SupplierCreationResult> CreateAsync(SupplierCreateRequest request, CancellationToken cancellationToken)
     {
+        if (request.HasAnyAddress() && !request.HasCreateAddress()) return new(SupplierCreationStatus.BadRequest);
+
         HttpResponseMessage profileResponse;
         try
         {
@@ -92,51 +94,23 @@ public sealed class SupplierCreationService(
             }
         }
 
-        SupplierCreationResult addressResult;
+        if (!request.HasCreateAddress()) return new(SupplierCreationStatus.Created, supplierId);
+
         try
         {
             using var addressResponse = await addresses.CreateAsync(supplierId, request, CancellationToken.None);
-            addressResult = addressResponse.IsSuccessStatusCode
-                ? new(SupplierCreationStatus.Created, supplierId)
-                : FromFailure(addressResponse);
+            if (addressResponse.IsSuccessStatusCode) return new(SupplierCreationStatus.Created, supplierId);
         }
         catch (OperationCanceledException)
         {
-            addressResult = new(SupplierCreationStatus.Unavailable);
+            // The address write may have committed before its response was lost.
         }
         catch (HttpRequestException)
         {
-            addressResult = new(SupplierCreationStatus.Unavailable);
+            // The address write may have committed before its response was lost.
         }
-
-        if (addressResult.Status == SupplierCreationStatus.Created)
-        {
-            return addressResult;
-        }
-
-        return await CompensateAsync(supplierId, addressResult)
-            ? addressResult
-            : new(SupplierCreationStatus.Unavailable);
-    }
-
-    private async Task<bool> CompensateAsync(int supplierId, SupplierCreationResult original)
-    {
-        try
-        {
-            using var response = await profiles.DeleteAsync(supplierId, CancellationToken.None);
-            if (response.IsSuccessStatusCode || response.StatusCode == HttpStatusCode.NotFound)
-            {
-                return true;
-            }
-
-            logger.LogError("Supplier compensation failed with HTTP {StatusCode} for supplier {SupplierId} after {WorkflowStatus}.", (int)response.StatusCode, supplierId, original.Status);
-            return false;
-        }
-        catch (Exception exception) when (exception is HttpRequestException or OperationCanceledException)
-        {
-            logger.LogError(exception, "Supplier compensation was unavailable for supplier {SupplierId} after {WorkflowStatus}.", supplierId, original.Status);
-            return false;
-        }
+        logger.LogWarning("Supplier address creation requires reconciliation after an uncertain outcome.");
+        return new(SupplierCreationStatus.Unavailable);
     }
 
     private static SupplierCreationResult FromFailure(HttpResponseMessage response) => response.StatusCode switch

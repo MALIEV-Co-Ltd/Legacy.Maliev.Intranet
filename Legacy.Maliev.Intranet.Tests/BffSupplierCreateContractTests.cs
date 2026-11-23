@@ -10,11 +10,59 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using BffProgram = Bff::Program;
+using CountryClient = Bff::Legacy.Maliev.Intranet.Bff.Employees.EmployeeAdministrationCountryClient;
 
 namespace Legacy.Maliev.Intranet.Tests;
 
 public sealed class BffSupplierCreateContractTests
 {
+    [Fact]
+    public async Task AuthorizedCreate_WithoutAddressCreatesProfileOnly()
+    {
+        var profiles = new ProfileClient();
+        var addresses = new AddressClient();
+        await using var factory = new Factory(profiles, addresses, canCreate: true);
+        using var client = CreateClient(factory);
+        var csrf = await SignInAsync(client);
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/bff/suppliers") { Content = JsonContent.Create(new { name = "Acme" }) };
+        request.Headers.Add("X-CSRF-TOKEN", csrf);
+        using var response = await client.SendAsync(request);
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        Assert.Equal("Acme", profiles.Request?.Name);
+        Assert.Null(addresses.SupplierId);
+    }
+
+    [Theory]
+    [InlineData("1 Main Road", 0, "countryId")]
+    [InlineData("", 66, "address1")]
+    [InlineData("   ", 66, "address1")]
+    public async Task AuthorizedCreate_PartialAddressReturnsFieldErrorBeforeWrite(string address, int countryId, string expectedField)
+    {
+        var profiles = new ProfileClient();
+        var addresses = new AddressClient();
+        await using var factory = new Factory(profiles, addresses, canCreate: true);
+        using var client = CreateClient(factory);
+        var csrf = await SignInAsync(client);
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/bff/suppliers") { Content = JsonContent.Create(new { name = "Acme", address1 = address, countryId }) };
+        request.Headers.Add("X-CSRF-TOKEN", csrf);
+        using var response = await client.SendAsync(request);
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Contains(expectedField, await response.Content.ReadAsStringAsync(), StringComparison.Ordinal);
+        Assert.Null(profiles.Request);
+        Assert.Null(addresses.SupplierId);
+    }
+    [Theory]
+    [InlineData(true, HttpStatusCode.OK)]
+    [InlineData(false, HttpStatusCode.Forbidden)]
+    public async Task CountryLookup_RequiresSupplierCreatePermission(bool canCreate, HttpStatusCode expected)
+    {
+        await using var factory = new Factory(new ProfileClient(), new AddressClient(), canCreate);
+        using var client = CreateClient(factory);
+        await SignInAsync(client);
+        using var response = await client.GetAsync("/bff/suppliers/create-countries");
+        Assert.Equal(expected, response.StatusCode);
+        if (canCreate) Assert.Contains("Thailand", await response.Content.ReadAsStringAsync(), StringComparison.Ordinal);
+    }
     [Fact]
     public async Task AuthorizedCsrfWrite_CreatesSupplierWithoutExposingServiceTokens()
     {
@@ -116,8 +164,16 @@ public sealed class BffSupplierCreateContractTests
                 services.RemoveAll<ISupplierAddressCreationClient>();
                 services.AddSingleton<ISupplierProfileCreationClient>(profiles);
                 services.AddSingleton<ISupplierAddressCreationClient>(addresses);
+                services.RemoveAll<CountryClient>();
+                services.AddTransient(_ => new CountryClient(new HttpClient(new CountryHandler()) { BaseAddress = new Uri("http://catalog/") }));
             });
         }
+    }
+
+    private sealed class CountryHandler : HttpMessageHandler
+    {
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) =>
+            Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(new[] { new { id = 66, name = "Thailand" } }) });
     }
 
     private sealed class AuthClient(bool canCreate) : ILegacyAuthClient

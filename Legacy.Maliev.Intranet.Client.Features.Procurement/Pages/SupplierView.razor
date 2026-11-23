@@ -1,4 +1,5 @@
 @page "/Suppliers/View"
+@implements IDisposable
 @attribute [Authorize]
 @using Microsoft.JSInterop
 @inject HttpClient Http
@@ -6,6 +7,8 @@
 @inject IJSRuntime JavaScript
 @inject IStringLocalizer<SupplierView> Text
 @inject IStringLocalizer<SupplierCreate> Fields
+@inject ILogger<SupplierView> Logger
+@using Microsoft.Extensions.Logging
 
 <PageTitle>@Text["PageTitle", Id]</PageTitle>
 <main class="supplier-editor-page">
@@ -49,11 +52,12 @@
                     <ProcurementInputField TValue="string" Id="supplier-edit-city" Label="@Fields["City"]" @bind-Value="model.City" Disabled="@submitting" />
                     <ProcurementInputField TValue="string" Id="supplier-edit-state" Label="@Fields["State"]" @bind-Value="model.State" Disabled="@submitting" />
                     <ProcurementInputField TValue="string" Id="supplier-edit-postal-code" Label="@Fields["PostalCode"]" @bind-Value="model.PostalCode" Disabled="@submitting" />
-                    <ProcurementInputField TValue="int" Id="supplier-edit-country-id" Label="@Fields["CountryId"]" Type="number" Min="1" @bind-Value="model.CountryId" Required="true" Disabled="@submitting" />
+                    <ProcurementSelectField TValue="int" Id="supplier-edit-country-id" Label="@Fields["CountryId"]" @bind-Value="model.CountryId" Options="@CountryOptions" Placeholder="@Fields["SelectCountry"]" Required="true" Disabled="@(submitting || countriesLoading || countries.Count == 0)" />
+                    @if (countryError is not null) { <div role="alert">@countryError <ShadcnButton ButtonType="ShadcnButtonType.Button" Variant="ShadcnButtonVariant.Outline" OnClick="LoadCountriesAsync" Disabled="@(submitting || countriesLoading)">@Fields["RetryCountries"]</ShadcnButton></div> }
                 </div>
             </section>
             <div class="supplier-editor-actions">
-                <ShadcnButton ButtonType="ShadcnButtonType.Submit" OperationFeedback="false" Disabled="@submitting">@Text["Save"]</ShadcnButton>
+                <ShadcnButton ButtonType="ShadcnButtonType.Submit" OperationFeedback="false" Disabled="@(submitting || writeOutcomeUnknown)">@Text["Save"]</ShadcnButton>
                 <LegacyLink Href="/Suppliers/Index" Role="LegacyLinkRole.Navigation" AriaLabel="@Text["Back"]">@Text["Back"]</LegacyLink>
             </div>
         </EditForm>
@@ -61,7 +65,7 @@
         <section class="supplier-danger-zone" aria-labelledby="supplier-danger-heading">
             <h2 id="supplier-danger-heading">@Text["ConfirmDeleteTitle"]</h2>
             <ShadcnAlertDialog Open="@deleteDialogOpen" OpenChanged="HandleDeleteDialogChangedAsync">
-                <ShadcnAlertDialogTrigger id="supplier-delete-trigger" Disabled="@submitting">@Text["Delete"]</ShadcnAlertDialogTrigger>
+                <ShadcnAlertDialogTrigger id="supplier-delete-trigger" Disabled="@(submitting || writeOutcomeUnknown)">@Text["Delete"]</ShadcnAlertDialogTrigger>
                 <ShadcnAlertDialogContent>
                     <ShadcnAlertDialogHeader>
                         <ShadcnAlertDialogTitle>@Text["ConfirmDeleteTitle"]</ShadcnAlertDialogTitle>
@@ -69,7 +73,7 @@
                     </ShadcnAlertDialogHeader>
                     <ShadcnAlertDialogFooter>
                         <ShadcnAlertDialogCancel Disabled="@submitting">@Text["Cancel"]</ShadcnAlertDialogCancel>
-                        <ShadcnAlertDialogAction Disabled="@submitting" OnClick="@(_ => DeleteAsync())">@Text["Delete"]</ShadcnAlertDialogAction>
+                        <ShadcnAlertDialogAction Disabled="@(submitting || writeOutcomeUnknown)" OnClick="@(_ => DeleteAsync())">@Text["Delete"]</ShadcnAlertDialogAction>
                     </ShadcnAlertDialogFooter>
                 </ShadcnAlertDialogContent>
             </ShadcnAlertDialog>
@@ -103,11 +107,54 @@
     private SupplierDetail? detail;
     private EditContext editContext = null!;
     private bool loading, submitting;
+    private bool disposed;
+    private bool writeOutcomeUnknown;
+    private long loadRevision;
     private bool deleteDialogOpen, restoreDeleteTriggerFocus;
+    private int deleteDialogSupplierId;
+    private long deleteDialogRevision;
     private string? error, notification;
+    private IReadOnlyList<EmployeeAdministrationCountry> countries = [];
+    private bool countriesLoading;
+    private string? countryError;
+    private Task? initialCountriesLoad;
+    private IReadOnlyList<ShadcnSelectOption<int>> CountryOptions =>
+        countries.Select(country => new ShadcnSelectOption<int>(country.Id, country.Name))
+            .Concat(model.CountryId > 0 && countries.All(country => country.Id != model.CountryId)
+                ? [new ShadcnSelectOption<int>(model.CountryId, $"{Fields["CountryId"]}: {model.CountryId}")]
+                : []).ToArray();
 
     protected override void OnInitialized() => editContext = new EditContext(model);
-    protected override async Task OnParametersSetAsync() => await LoadAsync();
+    protected override async Task OnParametersSetAsync()
+    {
+        if (disposed) return;
+        initialCountriesLoad ??= LoadCountriesAsync();
+        await LoadAsync();
+        if (!disposed) StateHasChanged();
+        await initialCountriesLoad;
+    }
+
+    private async Task LoadCountriesAsync()
+    {
+        if (disposed || countriesLoading) return;
+        countriesLoading = true;
+        countryError = null;
+        try
+        {
+            using var response = await Http.GetForPresentationAsync("/bff/suppliers/edit-countries");
+            if (disposed) return;
+            if (response.StatusCode == HttpStatusCode.Unauthorized) { Login(); return; }
+            if (!response.IsSuccessStatusCode) { countryError = Fields["CountriesUnavailable"]; return; }
+            var values = await response.Content.ReadFromJsonAsync<EmployeeAdministrationCountry[]>();
+            if (disposed) return;
+            if (values is not { Length: > 0 } || values.Any(value => value is null || value.Id <= 0 || string.IsNullOrWhiteSpace(value.Name)) || values.Select(value => value.Id).Distinct().Count() != values.Length)
+            { countryError = Fields["CountriesUnavailable"]; return; }
+            countries = values;
+        }
+        catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException)
+        { if (!disposed) countryError = Fields["CountriesUnavailable"]; }
+        finally { if (!disposed) countriesLoading = false; }
+    }
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (!restoreDeleteTriggerFocus)
@@ -134,76 +181,126 @@
     private Task HandleDeleteDialogChangedAsync(bool open)
     {
         deleteDialogOpen = open;
+        deleteDialogSupplierId = open ? Id : 0;
+        deleteDialogRevision = open ? Volatile.Read(ref loadRevision) : 0;
         restoreDeleteTriggerFocus = !open;
         return Task.CompletedTask;
     }
 
     private async Task LoadAsync()
     {
-        if (Id <= 0) { error = Text["NotFound"]; detail = null; return; }
+        if (disposed) return;
+        var revision = Interlocked.Increment(ref loadRevision);
+        var requestedId = Id;
+        deleteDialogOpen = false;
+        deleteDialogSupplierId = 0;
+        restoreDeleteTriggerFocus = false;
+        if (!submitting) writeOutcomeUnknown = false;
+        if (requestedId <= 0) { loading = false; error = Text["NotFound"]; detail = null; return; }
         loading = true; error = null; notification = null; detail = null;
         try
         {
-            using var response = await Http.GetForPresentationAsync($"/bff/suppliers/{Id}");
+            using var response = await Http.GetForPresentationAsync($"/bff/suppliers/{requestedId}");
+            if (!IsCurrent(revision, requestedId)) return;
             if (response.StatusCode == HttpStatusCode.Unauthorized) { Login(); return; }
             if (response.StatusCode == HttpStatusCode.Forbidden) { error = Text["Forbidden"]; return; }
             if (response.StatusCode == HttpStatusCode.NotFound) { error = Text["NotFound"]; return; }
             if (response.StatusCode == HttpStatusCode.TooManyRequests) { error = Text["RateLimited"]; return; }
             if (!response.IsSuccessStatusCode) { error = Text["Unavailable"]; return; }
-            detail = await response.Content.ReadFromJsonAsync<SupplierDetail>();
-            if (detail is null || detail.Id != Id) { detail = null; error = Text["InvalidResponse"]; return; }
+            var loaded = await response.Content.ReadFromJsonAsync<SupplierDetail>();
+            if (!IsCurrent(revision, requestedId)) return;
+            if (loaded is null || loaded.Id != requestedId) { detail = null; error = Text["InvalidResponse"]; return; }
+            detail = loaded;
             Copy(detail);
             editContext = new EditContext(model);
         }
-        catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException) { error = Text["Unavailable"]; }
-        finally { loading = false; }
+        catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException) { if (IsCurrent(revision, requestedId)) error = Text["Unavailable"]; }
+        finally { if (IsCurrent(revision, requestedId)) loading = false; }
     }
+
+    private bool IsCurrent(long revision, int requestedId) => !disposed && Id == requestedId && Volatile.Read(ref loadRevision) == revision;
+
+    public void Dispose() { disposed = true; Interlocked.Increment(ref loadRevision); }
 
     private void HandleInvalidSubmit(EditContext _) => error = Text["ValidationFailed"];
 
     private async Task SaveAsync()
     {
-        if (submitting) return;
-        using var response = await SendWriteAsync(HttpMethod.Put);
+        if (submitting || disposed || writeOutcomeUnknown) return;
+        var requestedId = Id;
+        var revision = Volatile.Read(ref loadRevision);
+        var result = await SendWriteAsync(HttpMethod.Put, revision, requestedId);
+        using var response = result.Response;
+        if (!IsCurrent(revision, requestedId)) { if (result.Dispatched && !disposed && Id == requestedId) MarkUncertain(null); return; }
         if (response is null || !HandleWrite(response)) return;
         notification = Text["Saved"];
     }
 
     private async Task DeleteAsync()
     {
-        if (submitting) return;
-        using var response = await SendWriteAsync(HttpMethod.Delete);
+        if (submitting || disposed || writeOutcomeUnknown) return;
+        var requestedId = Id;
+        var revision = Volatile.Read(ref loadRevision);
+        if (!deleteDialogOpen || deleteDialogSupplierId != requestedId || deleteDialogRevision != revision) return;
+        deleteDialogSupplierId = 0;
+        var result = await SendWriteAsync(HttpMethod.Delete, revision, requestedId);
+        using var response = result.Response;
+        if (!IsCurrent(revision, requestedId)) { if (result.Dispatched && !disposed && Id == requestedId) MarkUncertain(null); return; }
         if (response is null || !HandleWrite(response)) return;
         Navigation.NavigateTo("/Suppliers/Index");
     }
 
-    private async Task<HttpResponseMessage?> SendWriteAsync(HttpMethod method)
+    private async Task<(HttpResponseMessage? Response, bool Dispatched)> SendWriteAsync(HttpMethod method, long revision, int requestedId)
     {
         submitting = true; error = null; notification = null;
+        var snapshot = method == HttpMethod.Put ? System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(model, System.Text.Json.JsonSerializerOptions.Web) : null;
+        var dispatched = false;
         try
         {
             using var sessionResponse = await Http.GetForPresentationAsync("/bff/session");
+            if (!IsCurrent(revision, requestedId)) return (null, false);
             var session = sessionResponse.IsSuccessStatusCode ? await sessionResponse.Content.ReadFromJsonAsync<EmployeeSessionSummary>() : null;
-            if (string.IsNullOrWhiteSpace(session?.CsrfToken)) { error = Text["Unavailable"]; return null; }
-            using var request = new HttpRequestMessage(method, $"/bff/suppliers/{Id}");
-            if (method == HttpMethod.Put) request.Content = JsonContent.Create(model);
+            if (!IsCurrent(revision, requestedId)) return (null, false);
+            if (string.IsNullOrWhiteSpace(session?.CsrfToken)) { error = Text["Unavailable"]; return (null, false); }
+            if (snapshot is not null && !snapshot.AsSpan().SequenceEqual(System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(model, System.Text.Json.JsonSerializerOptions.Web))) return (null, false);
+            using var request = new HttpRequestMessage(method, $"/bff/suppliers/{requestedId}");
+            if (snapshot is not null) { request.Content = new ByteArrayContent(snapshot); request.Content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/json") { CharSet = "utf-8" }; }
             request.Headers.Add("X-CSRF-TOKEN", session.CsrfToken);
-            return await Http.SendAsync(request);
+            dispatched = true;
+            var response = await Http.SendAsync(request);
+            if (snapshot is not null && !snapshot.AsSpan().SequenceEqual(System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(model, System.Text.Json.JsonSerializerOptions.Web)))
+            {
+                response.Dispose();
+                if (!disposed && Id == requestedId) MarkUncertain(null);
+                return (null, true);
+            }
+            return (response, true);
         }
-        catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException) { error = Text["Unavailable"]; return null; }
-        finally { submitting = false; }
+        catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException) { if (!disposed && Id == requestedId) { if (dispatched) MarkUncertain(null); else if (IsCurrent(revision, requestedId)) error = Text["Unavailable"]; } return (null, dispatched); }
+        catch (Exception exception) when (dispatched && exception is not OutOfMemoryException) { Logger.LogWarning("Supplier write ended unexpectedly after dispatch."); if (!disposed && Id == requestedId) MarkUncertain(null); return (null, true); }
+        finally { if (!disposed) submitting = false; }
     }
 
     private bool HandleWrite(HttpResponseMessage response)
     {
-        if (response.StatusCode == HttpStatusCode.Unauthorized) { Login(); return false; }
-        if (response.StatusCode == HttpStatusCode.Forbidden) error = Text["Forbidden"];
-        else if (response.StatusCode == HttpStatusCode.NotFound) error = Text["NotFound"];
-        else if (response.StatusCode == HttpStatusCode.BadRequest) error = Text["ValidationFailed"];
-        else if (response.StatusCode == HttpStatusCode.Conflict) error = Text["Conflict"];
-        else if (response.StatusCode == HttpStatusCode.TooManyRequests) error = Text["RateLimited"];
-        else if (!response.IsSuccessStatusCode) error = Text["Unavailable"];
+        if (!response.IsSuccessStatusCode) MarkUncertain(response.StatusCode);
         return response.IsSuccessStatusCode;
+    }
+
+    private void MarkUncertain(HttpStatusCode? status)
+    {
+        writeOutcomeUnknown = true;
+        var context = status switch
+        {
+            HttpStatusCode.Unauthorized => Text["WriteUnauthorized"].Value,
+            HttpStatusCode.Forbidden => Text["Forbidden"].Value,
+            HttpStatusCode.NotFound => Text["NotFound"].Value,
+            HttpStatusCode.BadRequest => Text["ValidationFailed"].Value,
+            HttpStatusCode.Conflict => Text["Conflict"].Value,
+            HttpStatusCode.TooManyRequests => Text["WriteRateLimited"].Value,
+            _ => Text["Unavailable"].Value,
+        };
+        error = context + " " + Text["WriteOutcomeUnknown"].Value;
     }
 
     private void Copy(SupplierDetail value) { model.Name=value.Name; model.Website=value.Website; model.TaxNumber=value.TaxNumber; model.Email=value.Email; model.Note=value.Note; model.Telephone=value.Telephone; model.Mobile=value.Mobile; model.Fax=value.Fax; model.Building=value.Building; model.Address1=value.Address1; model.Address2=value.Address2; model.City=value.City; model.State=value.State; model.PostalCode=value.PostalCode; model.CountryId=value.CountryId; }

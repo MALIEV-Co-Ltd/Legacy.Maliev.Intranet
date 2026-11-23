@@ -17,19 +17,25 @@
   <data name="Fax" xml:space="preserve"><value>Fax</value></data>
   <data name="Note" xml:space="preserve"><value>Note</value></data>
   <data name="Address" xml:space="preserve"><value>Address</value></data>
+  <data name="AddressOptionalHint" xml:space="preserve"><value>Address is optional. If you enter any address details, provide both address line 1 and country.</value></data>
   <data name="Building" xml:space="preserve"><value>Building</value></data>
   <data name="Address1" xml:space="preserve"><value>Address line 1</value></data>
   <data name="Address2" xml:space="preserve"><value>Address line 2</value></data>
   <data name="City" xml:space="preserve"><value>City</value></data>
   <data name="State" xml:space="preserve"><value>State</value></data>
   <data name="PostalCode" xml:space="preserve"><value>Postal code</value></data>
-  <data name="CountryId" xml:space="preserve"><value>Country ID</value></data>
+  <data name="CountryId" xml:space="preserve"><value>Country</value></data>
+  <data name="SelectCountry" xml:space="preserve"><value>Select country</value></data>
+  <data name="CountriesUnavailable" xml:space="preserve"><value>Countries are unavailable. Try again.</value></data>
+  <data name="RetryCountries" xml:space="preserve"><value>Retry</value></data>
   <data name="Submitting" xml:space="preserve"><value>Creating…</value></data>
   <data name="Cancel" xml:space="preserve"><value>Cancel</value></data>
   <data name="ValidationFailed" xml:space="preserve"><value>Review the highlighted fields and try again.</value></data>
-  <data name="Forbidden" xml:space="preserve"><value>You do not have permission to create suppliers.</value></data>
-  <data name="Conflict" xml:space="preserve"><value>This supplier already exists.</value></data>
-  <data name="RateLimited" xml:space="preserve"><value>Too many requests were submitted. Wait a moment and try again.</value></data>
+  <data name="Forbidden" xml:space="preserve"><value>The server refused the supplier request.</value></data>
+  <data name="Conflict" xml:space="preserve"><value>The supplier request conflicted with existing data.</value></data>
+  <data name="RateLimited" xml:space="preserve"><value>The server is limiting requests.</value></data>
   <data name="CreateFailed" xml:space="preserve"><value>The supplier could not be completed. No partial supplier was retained.</value></data>
   <data name="InvalidResponse" xml:space="preserve"><value>The procurement service returned an invalid response.</value></data>
+  <data name="CreateResponseStatus" xml:space="preserve"><value>The request returned status {0}.</value></data>
+  <data name="CreateOutcomeUnknown" xml:space="preserve"><value>The supplier may have been created. Check the supplier list before trying again.</value></data>
 </root>

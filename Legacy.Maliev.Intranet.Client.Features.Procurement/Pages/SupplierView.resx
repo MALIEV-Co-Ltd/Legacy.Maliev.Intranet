@@ -4,4 +4,5 @@
   <data name="ConfirmDeleteTitle" xml:space="preserve"><value>Delete this supplier?</value></data>
   <data name="ConfirmDeleteBody" xml:space="preserve"><value>This supplier will be permanently deleted. Cancel to keep the supplier record.</value></data>
   <data name="Cancel" xml:space="preserve"><value>Cancel</value></data>
+<data name="WriteUnauthorized"><value>The supplier request was not authorized.</value></data><data name="WriteRateLimited"><value>The supplier request was rate limited.</value></data><data name="WriteOutcomeUnknown"><value>The change may have completed. Reload the supplier before trying again.</value></data>
 </root>

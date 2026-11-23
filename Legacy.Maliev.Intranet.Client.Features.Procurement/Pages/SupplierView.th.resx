@@ -22,4 +22,5 @@
   <data name="ConfirmDeleteTitle" xml:space="preserve"><value>ลบผู้ขายรายนี้หรือไม่</value></data>
   <data name="ConfirmDeleteBody" xml:space="preserve"><value>ข้อมูลผู้ขายจะถูกลบอย่างถาวร หากต้องการเก็บข้อมูลนี้ไว้ให้เลือกยกเลิก</value></data>
   <data name="Cancel" xml:space="preserve"><value>ยกเลิก</value></data>
+<data name="WriteUnauthorized"><value>คำขอข้อมูลผู้จำหน่ายไม่ได้รับอนุญาต</value></data><data name="WriteRateLimited"><value>คำขอข้อมูลผู้จำหน่ายถูกจำกัด</value></data><data name="WriteOutcomeUnknown"><value>การเปลี่ยนแปลงอาจเสร็จสมบูรณ์แล้ว โปรดโหลดข้อมูลผู้จำหน่ายใหม่ก่อนลองอีกครั้ง</value></data>
 </root>
