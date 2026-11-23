@@ -88,7 +88,21 @@ public sealed record CatalogMaterialListItem(
     string Name,
     string? MaterialNumber,
     decimal? DensityKilogramPerCubicMeter,
-    CatalogMaterialGroup? MaterialGroup);
+    CatalogMaterialGroup? MaterialGroup,
+    string? Aisi = null,
+    string? Din = null,
+    string? Bts = null,
+    string? Jis = null,
+    string? Uns = null,
+    string? En = null,
+    string? Afnor = null,
+    string? Uni = null,
+    string? Sis = null,
+    string? Sae = null,
+    string? Astm = null,
+    string? Ams = null,
+    decimal? MachinabilityPercent = null,
+    decimal? ThermalConductivityWattPerMeterKelvin = null);
 
 /// <summary>Browser-safe material detail preserving the complete legacy editor wire contract.</summary>
 public sealed record CatalogMaterialDetail(

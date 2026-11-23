@@ -11,6 +11,7 @@
   <data name="Loading" xml:space="preserve"><value>Loading materials</value></data><data name="Empty" xml:space="preserve"><value>No materials matched this query.</value></data>
   <data name="Id" xml:space="preserve"><value>ID</value></data><data name="Group" xml:space="preserve"><value>Group</value></data><data name="Name" xml:space="preserve"><value>Name</value></data>
   <data name="Number" xml:space="preserve"><value>Number</value></data><data name="Density" xml:space="preserve"><value>Density</value></data><data name="Machinable" xml:space="preserve"><value>Machinable</value></data><data name="Printable" xml:space="preserve"><value>Printable</value></data>
+  <data name="Machinability" xml:space="preserve"><value>Machinability (%)</value></data><data name="ThermalConductivity" xml:space="preserve"><value>Thermal conductivity (W/m-K)</value></data>
   <data name="Yes" xml:space="preserve"><value>Yes</value></data><data name="No" xml:space="preserve"><value>No</value></data>
   <data name="MaterialPages" xml:space="preserve"><value>Material pages</value></data><data name="Previous" xml:space="preserve"><value>Previous</value></data><data name="Next" xml:space="preserve"><value>Next</value></data>
   <data name="PageSummary" xml:space="preserve"><value>Page {0} of {1} · {2} records</value></data>

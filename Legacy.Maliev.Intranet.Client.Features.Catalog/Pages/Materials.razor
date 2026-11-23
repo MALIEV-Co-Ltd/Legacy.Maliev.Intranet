@@ -73,8 +73,22 @@
         new("number", Text["Number"], material => material.MaterialNumber) { Sortable = true },
         new("name", Text["Name"], material => material.Name) { Sortable = true, MinWidth = "12rem" },
         new("group", Text["Group"], material => material.MaterialGroup?.Name ?? "-") { Sortable = true },
+        new("aisi", "AISI", material => TextOrDash(material.Aisi)),
+        new("din", "DIN", material => TextOrDash(material.Din)),
+        new("bts", "BTS", material => TextOrDash(material.Bts)),
+        new("jis", "JIS", material => TextOrDash(material.Jis)),
+        new("uns", "UNS", material => TextOrDash(material.Uns)),
+        new("en", "EN", material => TextOrDash(material.En)),
+        new("afnor", "AFNOR", material => TextOrDash(material.Afnor)),
+        new("uni", "UNI", material => TextOrDash(material.Uni)),
+        new("sis", "SIS", material => TextOrDash(material.Sis)),
+        new("sae", "SAE", material => TextOrDash(material.Sae)),
+        new("astm", "ASTM", material => TextOrDash(material.Astm)),
+        new("ams", "AMS", material => TextOrDash(material.Ams)),
+        new("machinability", Text["Machinability"], material => material.MachinabilityPercent) { Sortable = true, CellTemplate = material => builder => builder.AddContent(0, material.MachinabilityPercent?.ToString(CultureInfo.CurrentCulture) ?? "-") },
         new("density", Text["Density"], material => material.DensityKilogramPerCubicMeter) { Sortable = true },
-        new("machinable", Text["Machinable"], material => Text[material.Machinable ? "Yes" : "No"].Value) { Sortable = true },
+        new("thermal", Text["ThermalConductivity"], material => material.ThermalConductivityWattPerMeterKelvin) { Sortable = true, CellTemplate = material => builder => builder.AddContent(0, material.ThermalConductivityWattPerMeterKelvin?.ToString(CultureInfo.CurrentCulture) ?? "-") },
+        new("machinable", Text["Machinable"], material => Text[material.Machinable ? "Yes" : "No"].Value),
         new("printable", Text["Printable"], material => Text[material.Printable ? "Yes" : "No"].Value),
     ];
 
@@ -168,6 +182,8 @@
         return Task.CompletedTask;
     }
 
+    private static string TextOrDash(string? value) => string.IsNullOrEmpty(value) ? "-" : value;
+
     private Task HandleDataTableRequestAsync(ShadcnDataTableRequest request) =>
         NavigateAsync(request.PageIndex + 1, request.Query, MapSort(request.Sorts), request.PageSize, replace: true);
 
@@ -197,8 +213,10 @@
             CatalogMaterialSort.MaterialGroup_Descending => [new("group", ShadcnSortDirection.Descending)],
             CatalogMaterialSort.MaterialDensity_Ascending => [new("density", ShadcnSortDirection.Ascending)],
             CatalogMaterialSort.MaterialDensity_Descending => [new("density", ShadcnSortDirection.Descending)],
-            CatalogMaterialSort.MaterialMachinability_Ascending => [new("machinable", ShadcnSortDirection.Ascending)],
-            CatalogMaterialSort.MaterialMachinability_Descending => [new("machinable", ShadcnSortDirection.Descending)],
+            CatalogMaterialSort.MaterialMachinability_Ascending => [new("machinability", ShadcnSortDirection.Ascending)],
+            CatalogMaterialSort.MaterialMachinability_Descending => [new("machinability", ShadcnSortDirection.Descending)],
+            CatalogMaterialSort.MaterialThermalConductivity_Ascending => [new("thermal", ShadcnSortDirection.Ascending)],
+            CatalogMaterialSort.MaterialThermalConductivity_Descending => [new("thermal", ShadcnSortDirection.Descending)],
             _ => [],
         },
     };
@@ -215,8 +233,10 @@
         { ColumnKey: "group", Direction: ShadcnSortDirection.Descending } => CatalogMaterialSort.MaterialGroup_Descending,
         { ColumnKey: "density", Direction: ShadcnSortDirection.Ascending } => CatalogMaterialSort.MaterialDensity_Ascending,
         { ColumnKey: "density", Direction: ShadcnSortDirection.Descending } => CatalogMaterialSort.MaterialDensity_Descending,
-        { ColumnKey: "machinable", Direction: ShadcnSortDirection.Ascending } => CatalogMaterialSort.MaterialMachinability_Ascending,
-        { ColumnKey: "machinable", Direction: ShadcnSortDirection.Descending } => CatalogMaterialSort.MaterialMachinability_Descending,
+        { ColumnKey: "machinability", Direction: ShadcnSortDirection.Ascending } => CatalogMaterialSort.MaterialMachinability_Ascending,
+        { ColumnKey: "machinability", Direction: ShadcnSortDirection.Descending } => CatalogMaterialSort.MaterialMachinability_Descending,
+        { ColumnKey: "thermal", Direction: ShadcnSortDirection.Ascending } => CatalogMaterialSort.MaterialThermalConductivity_Ascending,
+        { ColumnKey: "thermal", Direction: ShadcnSortDirection.Descending } => CatalogMaterialSort.MaterialThermalConductivity_Descending,
         _ => currentSort,
     };
 }

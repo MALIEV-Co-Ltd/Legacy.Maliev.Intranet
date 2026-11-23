@@ -679,6 +679,27 @@ public sealed class BffMaterialsProxyContractTests
     }
 
     [Fact]
+    public async Task MaterialList_ProjectsSourceSpecificationsWithoutFinancialFields()
+    {
+        const string payload = """{"items":[{"id":42,"materialGroupId":1,"machinable":true,"printable":false,"name":"Steel","aisi":"4140","din":"DIN-X","bts":"BTS-X","jis":"JIS-X","uns":"UNS-X","en":"EN-X","afnor":"AFNOR-X","uni":"UNI-X","sis":"SIS-X","sae":"SAE-X","astm":"ASTM-X","ams":"AMS-X","machinabilityPercent":55,"thermalConductivityWattPerMeterKelvin":42,"pricePerKilogram":123,"currencyId":99}],"pageIndex":1,"totalPages":1,"totalRecords":1,"hasNextPage":false,"hasPreviousPage":false}""";
+        var downstream = new RecordingCatalogHandler(HttpStatusCode.OK, payload);
+        await using var factory = new MaterialsBffFactory(downstream, hasPermission: true, compatibilityGrant: false);
+        using var client = CreateClient(factory);
+        await SignInAsync(client);
+
+        using var response = await client.GetAsync("/bff/catalog/materials");
+        var body = await response.Content.ReadAsStringAsync();
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        foreach (var value in new[] { "4140", "DIN-X", "BTS-X", "JIS-X", "UNS-X", "EN-X", "AFNOR-X", "UNI-X", "SIS-X", "SAE-X", "ASTM-X", "AMS-X" })
+            Assert.Contains(value, body, StringComparison.Ordinal);
+        Assert.Contains("\"machinabilityPercent\":55", body, StringComparison.Ordinal);
+        Assert.Contains("\"thermalConductivityWattPerMeterKelvin\":42", body, StringComparison.Ordinal);
+        Assert.DoesNotContain("pricePerKilogram", body, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("currencyId", body, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public async Task EmployeeWithoutExactPermission_IsForbiddenBeforeCatalogCall()
     {
         var downstream = new RecordingCatalogHandler(HttpStatusCode.OK, MaterialPageJson);
