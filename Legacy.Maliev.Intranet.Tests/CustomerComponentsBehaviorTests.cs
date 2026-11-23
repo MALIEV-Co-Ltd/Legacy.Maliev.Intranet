@@ -1,13 +1,18 @@
 using System.Reflection;
+using System.Net;
 using System.Security.Claims;
 using System.Net.Http.Json;
+using Bunit;
 using Legacy.Maliev.Intranet.Client.Features.Customers.Components;
 using Legacy.Maliev.Intranet.Client.Features.Customers.Pages;
 using Legacy.Maliev.Intranet.Contracts;
 using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Forms;
 using Microsoft.AspNetCore.Components.RenderTree;
 using Microsoft.AspNetCore.Components.Rendering;
 using Microsoft.Extensions.Localization;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Configuration;
 using Maliev.ShadcnBlazor.Components.Feedback;
 
 #pragma warning disable BL0006 // Focused tests inspect the compiled Razor render tree without adding a test-only renderer dependency.
@@ -252,6 +257,234 @@ public sealed class CustomerComponentsBehaviorTests
         scoped.Dispose();
     }
 
+    [Theory]
+    [InlineData("SaveAsync", "editContext", "editing", false)]
+    [InlineData("SaveAsync", "editContext", "editing", true)]
+    [InlineData("SaveInternalRemarkAsync", "internalRemarkEditContext", "internalRemarkEditing", false)]
+    [InlineData("SaveInternalRemarkAsync", "internalRemarkEditContext", "internalRemarkEditing", true)]
+    public async Task CustomerView_ChangedRouteOrAuthorizationDuringValidationDoesNotSendAWrite(string method, string contextField, string editingField, bool authorizationChanges)
+    {
+        var handler = new RejectUnexpectedWriteHandler();
+        var view = new CustomerView { Id = 42 };
+        SetNonPublicProperty(view, "Http", new HttpClient(handler) { BaseAddress = new Uri("https://localhost") });
+        SetNonPublicProperty(view, "AuthenticationStateProvider", new AuthenticatedStateProvider());
+        var context = new EditContext(new object());
+        var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        context.OnValidationRequested += (_, args) => args.AddAsyncValidator(_ => release.Task);
+        SetNonPublicField(view, contextField, context);
+        SetNonPublicField(view, editingField, true);
+        SetNonPublicField(view, "canEdit", true);
+        SetNonPublicField(view, "customerRevision", "revision");
+        SetNonPublicField(view, "appliedAuthenticationRevision", 0L);
+
+        var pending = InvokeTaskAsync(view, method);
+        Assert.False(pending.IsCompleted);
+        await InvokeTaskAsync(view, method);
+        if (authorizationChanges) SetNonPublicField(view, "authenticationRevision", 1L);
+        else view.Id = 43;
+        release.SetResult();
+        await pending;
+
+        Assert.Equal(0, handler.Calls);
+        view.Dispose();
+    }
+
+    [Theory]
+    [InlineData("SaveAsync", "editContext", "editing")]
+    [InlineData("SaveInternalRemarkAsync", "internalRemarkEditContext", "internalRemarkEditing")]
+    public async Task CustomerView_PendingAuthenticationNotificationBlocksSaveBeforePermissionsRefresh(string method, string contextField, string editingField)
+    {
+        var handler = new RejectUnexpectedWriteHandler();
+        var view = new CustomerView { Id = 42 };
+        SetNonPublicProperty(view, "Http", new HttpClient(handler) { BaseAddress = new Uri("https://localhost") });
+        SetNonPublicProperty(view, "AuthenticationStateProvider", new AuthenticatedStateProvider());
+        SetNonPublicField(view, contextField, new EditContext(new object()));
+        SetNonPublicField(view, editingField, true);
+        SetNonPublicField(view, "canEdit", true);
+        SetNonPublicField(view, "customerRevision", "revision");
+        SetNonPublicField(view, "appliedAuthenticationRevision", 0L);
+        SetNonPublicField(view, "authenticationRevision", 1L);
+
+        await InvokeTaskAsync(view, method);
+
+        Assert.Equal(0, handler.Calls);
+        view.Dispose();
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(1)]
+    [InlineData(2)]
+    [InlineData(3)]
+    public async Task CustomerRelations_ChangedCustomerOrPermissionDuringValidationDoesNotSendAWrite(int change)
+    {
+        var handler = new RejectUnexpectedWriteHandler();
+        var customer = new CustomerDetail(42, "Synthetic", "Customer", "Synthetic Customer", null, null, null,
+            "synthetic@example.invalid", null, null, null, null, null, null, null, null, null);
+        var relations = new CustomerRelations();
+        var provider = new NotifyingRelationAuthProvider();
+        long? authorizationRevision = 0;
+        provider.AuthenticationStateChanged += _ => authorizationRevision = null;
+        SetComponentParameters(relations, new Dictionary<string, object?>
+        {
+            [nameof(CustomerRelations.Customer)] = customer,
+            [nameof(CustomerRelations.Permissions)] = new[] { "legacy-customer.customers.update", "legacy-customer.companies.create" },
+            [nameof(CustomerRelations.Localize)] = (Func<string, string>)(key => key),
+            [nameof(CustomerRelations.AuthorizationRevision)] = (Func<long?>)(() => authorizationRevision),
+        });
+        SetNonPublicProperty(relations, "Http", new HttpClient(handler) { BaseAddress = new Uri("https://localhost") });
+        var context = new EditContext(new object());
+        var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        context.OnValidationRequested += (_, args) => args.AddAsyncValidator(_ => release.Task);
+        SetNonPublicField(relations, "editContext", context);
+        SetNonPublicField(relations, "kind", "company");
+        SetNonPublicField(relations, "relation", "new");
+        SetNonPublicField(relations, "version", "relation-version");
+        SetNonPublicField(relations, "customerVersion", "customer-version");
+
+        var pending = InvokeTaskAsync(relations, "SaveAsync");
+        Assert.False(pending.IsCompleted);
+        if (change == 1) SetNonPublicProperty(relations, nameof(CustomerRelations.Permissions), Array.Empty<string>());
+        else if (change == 2) provider.Notify();
+        else if (change == 3) { provider.Notify(); authorizationRevision = 1; }
+        else SetNonPublicProperty(relations, nameof(CustomerRelations.Customer), customer with { Id = 43 });
+        release.SetResult();
+        await pending;
+
+        Assert.Equal(0, handler.Calls);
+        relations.Dispose();
+    }
+
+    private sealed class NotifyingRelationAuthProvider : Microsoft.AspNetCore.Components.Authorization.AuthenticationStateProvider
+    {
+        private static readonly Microsoft.AspNetCore.Components.Authorization.AuthenticationState State = new(new ClaimsPrincipal(new ClaimsIdentity(
+            [new Claim("permissions", "legacy-customer.customers.update")], "test")));
+        public override Task<Microsoft.AspNetCore.Components.Authorization.AuthenticationState> GetAuthenticationStateAsync() => Task.FromResult(State);
+        public void Notify() => NotifyAuthenticationStateChanged(Task.FromResult(new Microsoft.AspNetCore.Components.Authorization.AuthenticationState(new ClaimsPrincipal())));
+        public void NotifyPending(Task<Microsoft.AspNetCore.Components.Authorization.AuthenticationState> state) => NotifyAuthenticationStateChanged(state);
+    }
+
+    [Fact]
+    public async Task CustomerRelations_AuthorizationRevisionWaitsForActualParentNotification()
+    {
+        using var context = new BunitContext();
+        var provider = new NotifyingRelationAuthProvider();
+        using var http = new HttpClient(new RejectUnexpectedWriteHandler()) { BaseAddress = new Uri("https://localhost") };
+        context.Services.AddLocalization();
+        context.Services.AddSingleton(http);
+        context.Services.AddSingleton<Microsoft.AspNetCore.Components.Authorization.AuthenticationStateProvider>(provider);
+        context.Services.AddSingleton<IConfiguration>(new ConfigurationBuilder().Build());
+        context.JSInterop.Mode = JSRuntimeMode.Loose;
+        var parent = context.Render<CustomerView>();
+        SetNonPublicField(parent.Instance, "canEdit", true);
+        SetNonPublicField(parent.Instance, "appliedAuthenticationRevision", 0L);
+        Assert.Equal(0L, (long?)InvokeNonPublic(parent.Instance, "RelationAuthorizationRevision"));
+        var next = new TaskCompletionSource<Microsoft.AspNetCore.Components.Authorization.AuthenticationState>(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        await parent.InvokeAsync(() => provider.NotifyPending(next.Task));
+        Assert.Null(InvokeNonPublic(parent.Instance, "RelationAuthorizationRevision"));
+        next.SetResult(new Microsoft.AspNetCore.Components.Authorization.AuthenticationState(
+            new ClaimsPrincipal(new ClaimsIdentity([new Claim("permissions", "legacy-customer.customers.update")], "test"))));
+        parent.WaitForAssertion(() => Assert.Equal(1L, (long?)InvokeNonPublic(parent.Instance, "RelationAuthorizationRevision")));
+    }
+
+    [Fact]
+    public async Task CustomerRelations_RealParentAuthenticationEventBlocksPendingValidation()
+    {
+        using var context = new BunitContext();
+        var provider = new NotifyingRelationAuthProvider();
+        var handler = new RejectUnexpectedWriteHandler();
+        using var http = new HttpClient(handler) { BaseAddress = new Uri("https://localhost") };
+        context.Services.AddLocalization();
+        context.Services.AddSingleton(http);
+        context.Services.AddSingleton<Microsoft.AspNetCore.Components.Authorization.AuthenticationStateProvider>(provider);
+        context.Services.AddSingleton<IConfiguration>(new ConfigurationBuilder().Build());
+        context.JSInterop.Mode = JSRuntimeMode.Loose;
+        var parent = context.Render<CustomerView>();
+        SetNonPublicField(parent.Instance, "canEdit", true);
+        SetNonPublicField(parent.Instance, "appliedAuthenticationRevision", 0L);
+        Assert.Equal(0L, (long?)InvokeNonPublic(parent.Instance, "RelationAuthorizationRevision"));
+        var customer = new CustomerDetail(42, "Synthetic", "Customer", "Synthetic Customer", null, null, null,
+            "synthetic@example.invalid", null, null, null, null, null, null, null, null, null);
+        var relations = new CustomerRelations();
+        SetComponentParameters(relations, new Dictionary<string, object?>
+        {
+            [nameof(CustomerRelations.Customer)] = customer,
+            [nameof(CustomerRelations.Permissions)] = new[] { "legacy-customer.customers.update", "legacy-customer.companies.create" },
+            [nameof(CustomerRelations.Localize)] = (Func<string, string>)(key => key),
+            [nameof(CustomerRelations.AuthorizationRevision)] = (Func<long?>)(() => (long?)InvokeNonPublic(parent.Instance, "RelationAuthorizationRevision")),
+        });
+        SetNonPublicProperty(relations, "Http", http);
+        var validation = new EditContext(new object());
+        var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        validation.OnValidationRequested += (_, args) => args.AddAsyncValidator(_ => release.Task);
+        SetNonPublicField(relations, "editContext", validation);
+        SetNonPublicField(relations, "kind", "company");
+        SetNonPublicField(relations, "relation", "new");
+        SetNonPublicField(relations, "version", "relation-version");
+        SetNonPublicField(relations, "customerVersion", "customer-version");
+
+        var pending = InvokeTaskAsync(relations, "SaveAsync");
+        Assert.False(pending.IsCompleted);
+        await parent.InvokeAsync(provider.Notify);
+        release.SetResult();
+        await pending;
+
+        Assert.Equal(0, handler.Calls);
+        relations.Dispose();
+    }
+
+    [Fact]
+    public async Task CustomerRelations_PermissionChangeAfterWriteRequiresReloadWithoutSuccessCallback()
+    {
+        var handler = new HoldingRelationWriteHandler();
+        using var http = new HttpClient(handler) { BaseAddress = new Uri("https://localhost") };
+        var relations = new CustomerRelations();
+        long? authorizationRevision = 0;
+        var saved = 0;
+        SetComponentParameters(relations, new Dictionary<string, object?>
+        {
+            [nameof(CustomerRelations.Customer)] = new CustomerDetail(42, "Synthetic", "Customer", "Synthetic Customer", null, null, null,
+                "synthetic@example.invalid", null, null, null, null, null, null, null, null, null),
+            [nameof(CustomerRelations.Permissions)] = new[] { "legacy-customer.customers.update", "legacy-customer.companies.create" },
+            [nameof(CustomerRelations.Localize)] = (Func<string, string>)(key => key),
+            [nameof(CustomerRelations.AuthorizationRevision)] = (Func<long?>)(() => authorizationRevision),
+            [nameof(CustomerRelations.Saved)] = EventCallback.Factory.Create<string>(new object(), (Action<string>)(_ => saved++)),
+        });
+        SetNonPublicProperty(relations, "Http", http);
+        SetNonPublicField(relations, "editContext", new EditContext(new object()));
+        SetNonPublicField(relations, "kind", "company");
+        SetNonPublicField(relations, "relation", "new");
+        SetNonPublicField(relations, "version", "relation-version");
+        SetNonPublicField(relations, "customerVersion", "customer-version");
+
+        var pending = InvokeTaskAsync(relations, "SaveAsync");
+        await handler.WriteStarted.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        authorizationRevision = null;
+        handler.ReleaseWrite.SetResult();
+        await pending;
+
+        Assert.True((bool)GetNonPublicField(relations, "needsReload")!);
+        Assert.Equal("RelationOutcomeUnknown", GetNonPublicField(relations, "error"));
+        Assert.Equal(0, saved);
+        relations.Dispose();
+    }
+
+    private sealed class HoldingRelationWriteHandler : HttpMessageHandler
+    {
+        public TaskCompletionSource WriteStarted { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public TaskCompletionSource ReleaseWrite { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            if (request.Method == HttpMethod.Get && request.RequestUri!.AbsolutePath == "/bff/session")
+                return new(HttpStatusCode.OK) { Content = JsonContent.Create(new EmployeeSessionSummary(true, "employee", "Synthetic", ["Employee"], "synthetic-csrf", 7, [])) };
+            if (request.Method != HttpMethod.Put) throw new InvalidOperationException("Unexpected synthetic request.");
+            WriteStarted.SetResult();
+            await ReleaseWrite.Task.WaitAsync(cancellationToken);
+            return new(HttpStatusCode.NoContent);
+        }
+    }
+
     public static TheoryData<string> InvalidPageContracts =>
         new()
         {
@@ -333,6 +566,20 @@ public sealed class CustomerComponentsBehaviorTests
     private static object? GetNonPublicField(object target, string name) =>
         (target.GetType().GetField(name, BindingFlags.Instance | BindingFlags.NonPublic)
             ?? throw new MissingFieldException(target.GetType().FullName, name)).GetValue(target);
+
+    private static void SetNonPublicField(object target, string name, object value) =>
+        (target.GetType().GetField(name, BindingFlags.Instance | BindingFlags.NonPublic)
+            ?? throw new MissingFieldException(target.GetType().FullName, name)).SetValue(target, value);
+
+    private sealed class RejectUnexpectedWriteHandler : HttpMessageHandler
+    {
+        public int Calls { get; private set; }
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            Calls++;
+            throw new InvalidOperationException("Unexpected request during validation.");
+        }
+    }
 
     private static async Task<CustomerView> LoadCustomerViewAsync(string[] grants)
     {
