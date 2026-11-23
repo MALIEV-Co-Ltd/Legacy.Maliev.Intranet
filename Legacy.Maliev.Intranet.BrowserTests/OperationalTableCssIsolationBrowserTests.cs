@@ -118,7 +118,7 @@ public sealed class OperationalTableCssIsolationBrowserTests(PlaywrightFixture p
             "Legacy.Maliev.Intranet.Client.Shared",
             "obj",
             "Release",
-            "net10.0",
+            "net11.0",
             "scopedcss",
             "Components",
             "OperationalTable.razor.rz.scp.css");

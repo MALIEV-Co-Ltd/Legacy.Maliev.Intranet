@@ -106,13 +106,13 @@ function SourceRevision {
 
 function Pair([string] $Project, [bool] $Fresh) {
     $script:Stage = 'produced-outputs'
-    $prefix = "$Project/bin/Release/net10.0/$Project"
+    $prefix = "$Project/bin/Release/net11.0/$Project"
     $dll = Bytes ($prefix + '.dll')
     $pdb = Bytes ($prefix + '.pdb')
     if ($Fresh) {
         foreach ($extension in @('dll', 'pdb')) { Require ((Get-Item -LiteralPath (OwnedPath ($prefix + '.' + $extension))).LastWriteTimeUtc -ge $script:BuildStart) }
     }
-    $runtime = 'Legacy.Maliev.Intranet.Tests/bin/Release/net10.0/' + $Project
+    $runtime = 'Legacy.Maliev.Intranet.Tests/bin/Release/net11.0/' + $Project
     $script:Stage = 'runtime-copy-pairing'
     Require ((Sha (Bytes ($runtime + '.dll'))) -ceq (Sha $dll))
     Require ((Sha (Bytes ($runtime + '.pdb'))) -ceq (Sha $pdb))

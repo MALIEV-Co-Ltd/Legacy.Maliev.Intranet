@@ -128,7 +128,7 @@ public sealed class CoverageEvidenceVerifierTests(ITestOutputHelper output)
     public async Task Verify_DebugSourceCandidate_IsNotReleaseMembership()
     {
         using var fixture = new EvidenceFixture(output);
-        var debug = Path.Combine(fixture.Root, EvidenceFixture.Project, "obj", "Debug", "net10.0", "Unrelated.g.cs");
+        var debug = Path.Combine(fixture.Root, EvidenceFixture.Project, "obj", "Debug", "net11.0", "Unrelated.g.cs");
         Directory.CreateDirectory(Path.GetDirectoryName(debug)!);
         File.WriteAllText(debug, "// Synthetic Debug candidate, not a Release PDB document.\n");
         Assert.Equal(0, (await fixture.RunAsync("Capture")).ExitCode);
@@ -243,9 +243,9 @@ public sealed class CoverageEvidenceVerifierTests(ITestOutputHelper output)
         internal string CoveragePath => Path.Combine(ResultsPath, "coverage.cobertura.xml");
         internal string SummaryPath => Path.Combine(ResultsPath, "coverage-evidence.json");
         internal string CapturePath => Path.Combine(ResultsPath, "coverage-capture.json");
-        internal string DllPath => Path.Combine(Root, Project, "bin", "Release", "net10.0", Project + ".dll");
+        internal string DllPath => Path.Combine(Root, Project, "bin", "Release", "net11.0", Project + ".dll");
         internal string PdbPath => Path.ChangeExtension(DllPath, ".pdb");
-        internal string RuntimeDirectory => Path.Combine(Root, "Legacy.Maliev.Intranet.Tests", "bin", "Release", "net10.0");
+        internal string RuntimeDirectory => Path.Combine(Root, "Legacy.Maliev.Intranet.Tests", "bin", "Release", "net11.0");
         internal string AuthoredSourcePath { get; }
         internal string ExecutableGeneratedSourcePath { get; }
 
