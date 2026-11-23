@@ -28,4 +28,5 @@
   <data name="ContactDetails" xml:space="preserve"><value>ข้อมูลการติดต่อ</value></data>
   <data name="OnboardingDeliveryPending" xml:space="preserve"><value>สร้างบัญชีลูกค้าแล้ว แต่ยังส่งอีเมลสำหรับตั้งรหัสผ่านไม่สำเร็จ โปรดอย่าสร้างบัญชีซ้ำ และให้ดำเนินการส่งคำเชิญอีกครั้งจากหน้าข้อมูลลูกค้า</value></data>
   <data name="ViewCreatedCustomer" xml:space="preserve"><value>เปิดหน้าข้อมูลลูกค้า</value></data>
+  <data name="FormChanged" xml:space="preserve"><value>ข้อมูลเปลี่ยนระหว่างเตรียมคำขอ โปรดตรวจสอบและส่งอีกครั้ง</value></data>
 </root>

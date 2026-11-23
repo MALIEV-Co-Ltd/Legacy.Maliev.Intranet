@@ -28,4 +28,5 @@
   <data name="ContactDetails" xml:space="preserve"><value>Contact details</value></data>
   <data name="OnboardingDeliveryPending" xml:space="preserve"><value>The customer was created, but the password setup email could not be delivered. Do not create a duplicate account; retry onboarding from the customer record.</value></data>
   <data name="ViewCreatedCustomer" xml:space="preserve"><value>Open customer record</value></data>
+  <data name="FormChanged" xml:space="preserve"><value>The form changed while preparing the request. Review it and submit again.</value></data>
 </root>
