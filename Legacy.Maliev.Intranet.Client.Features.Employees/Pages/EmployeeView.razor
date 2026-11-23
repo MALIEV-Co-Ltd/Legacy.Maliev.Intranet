@@ -1,5 +1,6 @@
 @page "/Employees/View"
 @attribute [Authorize]
+@implements IDisposable
 @inject HttpClient Http
 @inject NavigationManager Navigation
 @inject IStringLocalizer<EmployeeView> Text
@@ -52,18 +53,22 @@
     private string? error;
     private bool loading;
     private bool notFound;
+    private readonly LatestRequestGate requestGate = new();
 
     protected override Task OnParametersSetAsync() => LoadAsync();
 
     private async Task LoadAsync()
     {
+        using var lease = requestGate.Begin();
+        var requestedId = Id;
         loading = true;
         detail = null;
         error = null;
         notFound = false;
         try
         {
-            using var response = await Http.GetForPresentationAsync($"/bff/employees/{Id}");
+            using var response = await Http.GetForPresentationAsync($"/bff/employees/{requestedId}", lease.CancellationToken);
+            if (!lease.IsCurrent) return;
             if (response.StatusCode == HttpStatusCode.Unauthorized)
             {
                 Navigation.NavigateTo($"/Login?returnUrl={Uri.EscapeDataString(Navigation.ToBaseRelativePath(Navigation.Uri))}");
@@ -101,21 +106,28 @@
                 return;
             }
 
-            detail = await response.Content.ReadFromJsonAsync<EmployeeDetail>();
-            if (detail is null || detail.Id != Id)
+            var loaded = await response.Content.ReadFromJsonAsync<EmployeeDetail>(cancellationToken: lease.CancellationToken);
+            if (!lease.IsCurrent) return;
+            detail = loaded;
+            if (loaded is null || loaded.Id != requestedId)
             {
                 error = Text["InvalidResponse"];
             }
         }
+        catch (OperationCanceledException) when (!lease.IsCurrent || lease.CancellationToken.IsCancellationRequested)
+        {
+        }
         catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException)
         {
-            error = Text["Unavailable"];
+            if (lease.IsCurrent) error = Text["Unavailable"];
         }
         finally
         {
-            loading = false;
+            if (lease.IsCurrent) loading = false;
         }
     }
+
+    public void Dispose() => requestGate.Dispose();
 
     private string ValueOrFallback(string? value) => string.IsNullOrWhiteSpace(value) ? Text["NotProvided"] : value;
 
