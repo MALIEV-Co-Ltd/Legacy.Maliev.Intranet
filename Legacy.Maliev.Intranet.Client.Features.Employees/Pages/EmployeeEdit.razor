@@ -1,5 +1,6 @@
 @page "/Employees/Edit"
 @attribute [Authorize]
+@implements IDisposable
 @using System.ComponentModel.DataAnnotations
 @using System.Text.Json
 @using Microsoft.AspNetCore.Components.Forms
@@ -118,6 +119,9 @@
     private string? error;
     private string? notice;
     private int loadSequence;
+    private bool disposed;
+
+    public void Dispose() { disposed = true; ++loadSequence; }
     private bool FieldsDisabled => loading || saving || saveLocked || captured?.Profile.Id != Id;
     private static readonly System.Text.Json.JsonSerializerOptions ResponseJson = new(System.Text.Json.JsonSerializerDefaults.Web);
     private IReadOnlyList<ShadcnSelectOption<int?>> RoleOptions => captured?.Roles
@@ -217,9 +221,11 @@
         try
         {
             using var sessionResponse = await Http.GetForPresentationAsync("/bff/session");
+            if (disposed || sequence != loadSequence || employeeId != Id) return;
             if (sessionResponse.StatusCode == HttpStatusCode.Unauthorized) { RedirectToLogin(); return; }
             if (!sessionResponse.IsSuccessStatusCode) { error = Text["EditSessionUnavailable"]; return; }
             var session = await sessionResponse.Content.ReadFromJsonAsync<EmployeeSessionSummary>();
+            if (disposed || sequence != loadSequence || employeeId != Id) return;
             if (string.IsNullOrWhiteSpace(session?.CsrfToken)) { error = Text["EditSessionUnavailable"]; return; }
             using var request = new HttpRequestMessage(HttpMethod.Put, $"/bff/employees/{employeeId}/edit")
             {
@@ -231,16 +237,18 @@
             dispatched = true;
             saveLocked = true;
             using var response = await Http.SendAsync(request);
+            if (disposed) return;
             if (sequence != loadSequence || employeeId != Id) { error = Text["EditNavigationChanged"]; return; }
             EmployeeAdministrationSaveResult? result;
             try
             {
                 result = await ReadSaveResultAsync(response.Content);
+                if (disposed) return;
             }
             catch (System.Text.Json.JsonException) when (response.StatusCode is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden)
             {
                 // Middleware may reject without a coordinator receipt; remain locked without assuming write effects.
-                error = Text["EditForbiddenSave"];
+                if (!disposed) error = Text["EditForbiddenSave"];
                 return;
             }
             if (sequence != loadSequence || employeeId != Id) { error = Text["EditNavigationChanged"]; return; }
@@ -275,12 +283,12 @@
         }
         catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException)
         {
-            error = Text[dispatched ? "EditUnknownOutcome" : "EditSessionUnavailable"];
+            if (!disposed) error = Text[dispatched ? "EditUnknownOutcome" : "EditSessionUnavailable"];
         }
         finally
         {
-            saving = false;
-            if (sequence != loadSequence || employeeId != Id)
+            if (!disposed) saving = false;
+            if (!disposed && (sequence != loadSequence || employeeId != Id))
             {
                 saveLocked = true;
                 notice = null;

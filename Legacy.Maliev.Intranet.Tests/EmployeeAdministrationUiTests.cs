@@ -224,6 +224,54 @@ public sealed class EmployeeAdministrationUiTests
         Assert.Equal(2, handler.EditReads);
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task DisposedDuringSessionPreflightDoesNotRedirectOrSendWrite(bool unauthorized)
+    {
+        using var culture = new EnglishCulture();
+        using var handler = new EmployeeTransport { HoldSession = true, SessionUnauthorized = unauthorized };
+        using var context = Context(handler);
+        var cut = Render(context);
+        Ready(cut);
+        var pending = cut.Find("form").SubmitAsync();
+        try
+        {
+            await handler.SessionEntered.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            await cut.InvokeAsync(() => context.Services.GetRequiredService<NavigationManager>().NavigateTo("/not-an-employee-route"));
+        }
+        finally { handler.ReleaseSession.TrySetResult(); }
+        await pending.WaitAsync(TimeSpan.FromSeconds(5));
+        Assert.EndsWith("/not-an-employee-route", context.Services.GetRequiredService<NavigationManager>().Uri, StringComparison.Ordinal);
+        Assert.Empty(handler.Writes);
+    }
+    [Fact]
+    public async Task DisposedAfterDispatchDoesNotReplayRedirectOrMutatePage()
+    {
+        using var culture = new EnglishCulture();
+        using var handler = new EmployeeTransport { HoldPut = true };
+        using var context = Context(handler);
+        var cut = Render(context);
+        Ready(cut);
+        var page = cut.FindComponent<EmployeeEdit>().Instance;
+        var pending = cut.Find("form").SubmitAsync();
+        try
+        {
+            await handler.PutEntered.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            await cut.InvokeAsync(() => context.Services.GetRequiredService<NavigationManager>().NavigateTo("/not-an-employee-route"));
+            var notice = typeof(EmployeeEdit).GetField("notice", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!;
+            var error = typeof(EmployeeEdit).GetField("error", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!;
+            var beforeNotice = notice.GetValue(page);
+            var beforeError = error.GetValue(page);
+            handler.ReleasePut.TrySetResult();
+            await pending.WaitAsync(TimeSpan.FromSeconds(5));
+            Assert.Equal(beforeNotice, notice.GetValue(page));
+            Assert.Equal(beforeError, error.GetValue(page));
+            Assert.Single(handler.Writes);
+            Assert.EndsWith("/not-an-employee-route", context.Services.GetRequiredService<NavigationManager>().Uri, StringComparison.Ordinal);
+        }
+        finally { handler.ReleasePut.TrySetResult(); }
+    }
     private static BunitContext Context(EmployeeTransport handler)
     {
         var context = new BunitContext();
@@ -262,6 +310,10 @@ public sealed class EmployeeAdministrationUiTests
         public string Outcome { get; set; } = "complete";
         public string? InvalidEdit { get; set; }
         public bool HoldPut { get; set; }
+        public bool HoldSession { get; set; }
+        public bool SessionUnauthorized { get; set; }
+        public TaskCompletionSource SessionEntered { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public TaskCompletionSource ReleaseSession { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
         public bool HasAddress { get; set; } = true;
         public bool UseReloadVersions { get; set; }
         public HttpStatusCode ReadStatus { get; set; } = HttpStatusCode.OK;
@@ -273,7 +325,15 @@ public sealed class EmployeeAdministrationUiTests
             Assert.Equal("https://localhost", request.RequestUri!.GetLeftPart(UriPartial.Authority));
             var path = request.RequestUri.AbsolutePath;
             if (request.Method == HttpMethod.Get && path == "/bff/session")
-                return Json(new EmployeeSessionSummary(true, "controlled-session", "Synthetic", [], "controlled-ui-csrf"));
+            {
+                if (HoldSession)
+                {
+                    SessionEntered.TrySetResult();
+                    await ReleaseSession.Task.WaitAsync(cancellationToken);
+                }
+                return SessionUnauthorized ? new(HttpStatusCode.Unauthorized)
+                    : Json(new EmployeeSessionSummary(true, "controlled-session", "Synthetic", [], "controlled-ui-csrf"));
+            }
             if (request.Method == HttpMethod.Get && path is "/bff/employees/41/edit" or "/bff/employees/42/edit")
             {
                 Interlocked.Increment(ref editReads);
