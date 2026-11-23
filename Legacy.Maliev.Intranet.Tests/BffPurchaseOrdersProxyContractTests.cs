@@ -111,6 +111,22 @@ public sealed class BffPurchaseOrdersProxyContractTests
     }
 
     [Fact]
+    public async Task NullPurchaseOrderRow_IsBadGateway()
+    {
+        var downstream = new RecordingPurchaseOrderHandler("""{"items":[null],"pageIndex":1,"totalPages":1,"totalRecords":1,"privateSentinel":"purchase-upstream-only-621"}""");
+        await using var factory = new PurchaseOrdersBffFactory(downstream, purchaseOrdersRead: true);
+        using var client = CreateClient(factory);
+        await SignInAsync(client);
+
+        using var response = await client.GetAsync("/bff/purchase-orders");
+
+        Assert.Equal(HttpStatusCode.BadGateway, response.StatusCode);
+        var body = await response.Content.ReadAsStringAsync();
+        Assert.Contains("Invalid ProcurementService response", body, StringComparison.Ordinal);
+        Assert.DoesNotContain("purchase-upstream-only-621", body, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task InvalidPayload_IsBadGatewayWithoutPayloadLeak()
     {
         var downstream = new RecordingPurchaseOrderHandler("procurement-secret-not-json");

@@ -1,9 +1,11 @@
 @page "/Orders/View"
 @attribute [Authorize]
 @implements IDisposable
+@using Microsoft.Extensions.Logging
 @inject HttpClient Http
 @inject NavigationManager Navigation
 @inject IStringLocalizer<OrderDetail> Text
+@inject ILogger<OrderDetail> Logger
 
 <PageTitle>@Text["PageTitle", Id ?? 0]</PageTitle>
 
@@ -41,20 +43,20 @@ else if (page is not null)
         <ShadcnAccordion Values="@openSections" ValuesChanged="@(values => openSections = values)" Multiple="true" Label="@Text["OrderDetails"]" Class="order-edit-sections">
             <ShadcnAccordionItem Value="details"><ShadcnAccordionTrigger>@Text["OrderDetails"]</ShadcnAccordionTrigger><ShadcnAccordionContent>
                 <div class="order-edit-grid">
-                    <ShadcnFormField Id="order-customer" Label="@Text["CustomerId"]"><Control><ShadcnInput TValue="string" id="order-customer" Value="@(page.Order.CustomerId?.ToString(CultureInfo.CurrentCulture) ?? "-")" ReadOnly="true" /></Control></ShadcnFormField>
+                    <ShadcnFormField Id="order-customer" Label="@Text["CustomerId"]"><Control><ShadcnInput TValue="string" id="order-customer" Value="@(page.Order.CustomerId?.ToString(CultureInfo.CurrentCulture) ?? "-")" ReadOnly="true"  Disabled="@submitting" /></Control></ShadcnFormField>
                     @if (page.Order.CustomerId is int customerId) { <div class="order-customer-link"><ShadcnButton Href="@($"/Customers/View?id={customerId}")" Variant="ShadcnButtonVariant.Outline">@Text["CustomerInfo"]</ShadcnButton></div> }
-                <ShadcnFormField Id="order-employee" Label="@Text["Employee"]"><Control><ShadcnSelect TValue="int?" id="order-employee" @bind-Value="edit.EmployeeId" Options="@EmployeeOptions" Placeholder="@Text["Employee"]" Clearable="true" /></Control></ShadcnFormField>
-                <ShadcnFormField Id="order-name" Label="@Text["Name"]"><Control><ShadcnInput TValue="string" id="order-name" Type="text" Required="true" @bind-Value="edit.Name" maxlength="100" /></Control></ShadcnFormField>
-                <ShadcnFormField Id="order-quantity" Label="@Text["Quantity"]"><Control><ShadcnInput TValue="int" id="order-quantity" Type="number" min="1" Required="true" @bind-Value="edit.Quantity" /></Control></ShadcnFormField>
-                <ShadcnFormField Id="order-manufactured" Label="@Text["Manufactured"]"><Control><ShadcnInput TValue="int" id="order-manufactured" Type="number" min="0" Required="true" @bind-Value="edit.Manufactured" /></Control></ShadcnFormField>
-                    <ShadcnFormField Id="order-remaining" Label="@Text["Remaining"]"><Control><ShadcnInput TValue="string" id="order-remaining" Value="@(page.Order.Remaining?.ToString(CultureInfo.CurrentCulture) ?? "-")" ReadOnly="true" /></Control></ShadcnFormField>
+                <ShadcnFormField Id="order-employee" Label="@Text["Employee"]"><Control><ShadcnSelect TValue="int?" id="order-employee" @bind-Value="edit.EmployeeId" Options="@EmployeeOptions" Placeholder="@Text["Employee"]" Clearable="true"  Disabled="@submitting" /></Control></ShadcnFormField>
+                <ShadcnFormField Id="order-name" Label="@Text["Name"]"><Control><ShadcnInput TValue="string" id="order-name" Type="text" Required="true" @bind-Value="edit.Name" maxlength="100"  Disabled="@submitting" /></Control></ShadcnFormField>
+                <ShadcnFormField Id="order-quantity" Label="@Text["Quantity"]"><Control><ShadcnInput TValue="int" id="order-quantity" Type="number" min="1" Required="true" @bind-Value="edit.Quantity"  Disabled="@submitting" /></Control></ShadcnFormField>
+                <ShadcnFormField Id="order-manufactured" Label="@Text["Manufactured"]"><Control><ShadcnInput TValue="int" id="order-manufactured" Type="number" min="0" Required="true" @bind-Value="edit.Manufactured"  Disabled="@submitting" /></Control></ShadcnFormField>
+                    <ShadcnFormField Id="order-remaining" Label="@Text["Remaining"]"><Control><ShadcnInput TValue="string" id="order-remaining" Value="@(page.Order.Remaining?.ToString(CultureInfo.CurrentCulture) ?? "-")" ReadOnly="true"  Disabled="@submitting" /></Control></ShadcnFormField>
                 </div>
             </ShadcnAccordionContent></ShadcnAccordionItem>
 
             <ShadcnAccordionItem Value="process"><ShadcnAccordionTrigger>@Text["Process"]</ShadcnAccordionTrigger><ShadcnAccordionContent><div class="order-edit-grid">
-                <ShadcnFormField Id="order-process" Label="@Text["Process"]"><Control><ShadcnSelect TValue="int" id="order-process" @bind-Value="edit.ProcessId" Options="@ProcessOptions" Placeholder="@Text["Process"]" Clearable="false" /></Control></ShadcnFormField>
+                <ShadcnFormField Id="order-process" Label="@Text["Process"]"><Control><ShadcnSelect TValue="int" id="order-process" @bind-Value="edit.ProcessId" Options="@ProcessOptions" Placeholder="@Text["Process"]" Clearable="false"  Disabled="@submitting" /></Control></ShadcnFormField>
                 <ShadcnFormField Id="order-material" Label="@Text["Material"]"><Control><ShadcnSelect TValue="int?" id="order-material" Value="@edit.MaterialId" ValueChanged="MaterialChangedAsync" Options="@MaterialOptions" Placeholder="@Text["Material"]" Clearable="true" Disabled="@submitting" /></Control></ShadcnFormField>
-                <ShadcnFormField Id="order-color" Label="@Text["Color"]"><Control><ShadcnSelect TValue="int?" id="order-color" @bind-Value="edit.ColorId" Options="@ColorOptions" Placeholder="@Text["Color"]" Clearable="true" /></Control></ShadcnFormField>
+                <ShadcnFormField Id="order-color" Label="@Text["Color"]"><Control><ShadcnSelect TValue="int?" id="order-color" @bind-Value="edit.ColorId" Options="@ColorOptions" Placeholder="@Text["Color"]" Clearable="true"  Disabled="@submitting" /></Control></ShadcnFormField>
                 <ShadcnFormField Id="order-finish" Label="@Text["SurfaceFinish"]"><Control><ShadcnSelect TValue="int?" id="order-finish" @bind-Value="edit.SurfaceFinishId" Options="@SurfaceFinishOptions" Placeholder="@Text["SurfaceFinish"]" Clearable="true" Disabled="@(submitting || finishLoading || finishError is not null)" /></Control></ShadcnFormField>
                 @if (finishLoading) { <p role="status" aria-live="polite">@Text["FinishLoading"]</p> }
                 @if (finishError is not null)
@@ -64,26 +66,26 @@ else if (page is not null)
             </div></ShadcnAccordionContent></ShadcnAccordionItem>
 
             <ShadcnAccordionItem Value="price"><ShadcnAccordionTrigger>@Text["UnitPrice"]</ShadcnAccordionTrigger><ShadcnAccordionContent><div class="order-edit-grid">
-                <ShadcnFormField Id="order-unit-price" Label="@Text["UnitPrice"]"><Control><ShadcnInput TValue="decimal?" id="order-unit-price" Type="number" InputMode="decimal" min="0" @bind-Value="edit.UnitPrice" /></Control></ShadcnFormField>
-                <ShadcnFormField Id="order-discount" Label="@Text["Discount"]"><Control><ShadcnInput TValue="decimal?" id="order-discount" Type="number" InputMode="decimal" min="0" max="100" @bind-Value="edit.DiscountPercent" /></Control></ShadcnFormField>
-                <ShadcnFormField Id="order-currency" Label="@Text["Currency"]"><Control><ShadcnSelect TValue="int?" id="order-currency" @bind-Value="edit.CurrencyId" Options="@CurrencyOptions" Placeholder="@Text["Currency"]" Clearable="true" /></Control></ShadcnFormField>
+                <ShadcnFormField Id="order-unit-price" Label="@Text["UnitPrice"]"><Control><ShadcnInput TValue="decimal?" id="order-unit-price" Type="number" InputMode="decimal" min="0" @bind-Value="edit.UnitPrice"  Disabled="@submitting" /></Control></ShadcnFormField>
+                <ShadcnFormField Id="order-discount" Label="@Text["Discount"]"><Control><ShadcnInput TValue="decimal?" id="order-discount" Type="number" InputMode="decimal" min="0" max="100" @bind-Value="edit.DiscountPercent"  Disabled="@submitting" /></Control></ShadcnFormField>
+                <ShadcnFormField Id="order-currency" Label="@Text["Currency"]"><Control><ShadcnSelect TValue="int?" id="order-currency" @bind-Value="edit.CurrencyId" Options="@CurrencyOptions" Placeholder="@Text["Currency"]" Clearable="true"  Disabled="@submitting" /></Control></ShadcnFormField>
             </div></ShadcnAccordionContent></ShadcnAccordionItem>
 
             <ShadcnAccordionItem Value="schedule"><ShadcnAccordionTrigger>@Text["PromisedDate"]</ShadcnAccordionTrigger><ShadcnAccordionContent><div class="order-edit-grid">
-                <ShadcnFormField Id="order-lead-time" Label="@Text["LeadTime"]"><Control><ShadcnInput TValue="int?" id="order-lead-time" Type="number" min="0" @bind-Value="edit.LeadTime" /></Control></ShadcnFormField>
-                <ShadcnFormField Id="order-promised-date" Label="@Text["PromisedDate"]"><Control><ShadcnDatePicker id="order-promised-date" @bind-Value="PromisedDate" Clearable="true" /></Control></ShadcnFormField>
-                <ShadcnFormField Id="order-finished-date" Label="@Text["FinishedDate"]"><Control><ShadcnDatePicker id="order-finished-date" @bind-Value="FinishedDate" Clearable="true" /></Control></ShadcnFormField>
-                <ShadcnFormField Id="order-tracking" Label="@Text["TrackingNumber"]"><Control><ShadcnInput TValue="string" id="order-tracking" Type="text" @bind-Value="edit.TrackingNumber" /></Control></ShadcnFormField>
+                <ShadcnFormField Id="order-lead-time" Label="@Text["LeadTime"]"><Control><ShadcnInput TValue="int?" id="order-lead-time" Type="number" min="0" @bind-Value="edit.LeadTime"  Disabled="@submitting" /></Control></ShadcnFormField>
+                <ShadcnFormField Id="order-promised-date" Label="@Text["PromisedDate"]"><Control><ShadcnDatePicker id="order-promised-date" @bind-Value="PromisedDate" Clearable="true"  Disabled="@submitting" /></Control></ShadcnFormField>
+                <ShadcnFormField Id="order-finished-date" Label="@Text["FinishedDate"]"><Control><ShadcnDatePicker id="order-finished-date" @bind-Value="FinishedDate" Clearable="true"  Disabled="@submitting" /></Control></ShadcnFormField>
+                <ShadcnFormField Id="order-tracking" Label="@Text["TrackingNumber"]"><Control><ShadcnInput TValue="string" id="order-tracking" Type="text" @bind-Value="edit.TrackingNumber"  Disabled="@submitting" /></Control></ShadcnFormField>
             </div></ShadcnAccordionContent></ShadcnAccordionItem>
 
             <ShadcnAccordionItem Value="requirements"><ShadcnAccordionTrigger>@Text["Requirements"]</ShadcnAccordionTrigger><ShadcnAccordionContent>
                 <div class="order-edit-grid">
-                    <ShadcnFormField Id="order-description" Label="@Text["Requirements"]" Class="order-edit-wide"><Control><ShadcnTextarea TValue="string" id="order-description" @bind-Value="edit.Description" maxlength="250" /></Control></ShadcnFormField>
-                    <ShadcnFormField Id="order-comment" Label="@Text["Comment"]" Class="order-edit-wide"><Control><ShadcnTextarea TValue="string" id="order-comment" @bind-Value="edit.Comment" /></Control></ShadcnFormField>
+                    <ShadcnFormField Id="order-description" Label="@Text["Requirements"]" Class="order-edit-wide"><Control><ShadcnTextarea TValue="string" id="order-description" @bind-Value="edit.Description" maxlength="250"  Disabled="@submitting" /></Control></ShadcnFormField>
+                    <ShadcnFormField Id="order-comment" Label="@Text["Comment"]" Class="order-edit-wide"><Control><ShadcnTextarea TValue="string" id="order-comment" @bind-Value="edit.Comment"  Disabled="@submitting" /></Control></ShadcnFormField>
                     <div class="order-edit-checks order-edit-wide">
-                        <ShadcnField Orientation="ShadcnFieldOrientation.Horizontal"><ShadcnCheckbox id="order-social" Value="@edit.AllowSocialMedia" ValueChanged="@(value => edit.AllowSocialMedia = value.GetValueOrDefault())" /><ShadcnFieldLabel For="order-social">@Text["AllowSocialMedia"]</ShadcnFieldLabel></ShadcnField>
-                        <ShadcnField Orientation="ShadcnFieldOrientation.Horizontal"><ShadcnCheckbox id="order-cancellation" Value="@edit.AllowCancellation" ValueChanged="@(value => edit.AllowCancellation = value.GetValueOrDefault())" /><ShadcnFieldLabel For="order-cancellation">@Text["AllowCancellation"]</ShadcnFieldLabel></ShadcnField>
-                        <ShadcnField Orientation="ShadcnFieldOrientation.Horizontal"><ShadcnCheckbox id="order-payment" Value="@edit.AllowPayment" ValueChanged="@(value => edit.AllowPayment = value.GetValueOrDefault())" /><ShadcnFieldLabel For="order-payment">@Text["AllowPayment"]</ShadcnFieldLabel></ShadcnField>
+                        <ShadcnField Orientation="ShadcnFieldOrientation.Horizontal"><ShadcnCheckbox id="order-social" Value="@edit.AllowSocialMedia" ValueChanged="@(value => edit.AllowSocialMedia = value.GetValueOrDefault())"  Disabled="@submitting" /><ShadcnFieldLabel For="order-social">@Text["AllowSocialMedia"]</ShadcnFieldLabel></ShadcnField>
+                        <ShadcnField Orientation="ShadcnFieldOrientation.Horizontal"><ShadcnCheckbox id="order-cancellation" Value="@edit.AllowCancellation" ValueChanged="@(value => edit.AllowCancellation = value.GetValueOrDefault())"  Disabled="@submitting" /><ShadcnFieldLabel For="order-cancellation">@Text["AllowCancellation"]</ShadcnFieldLabel></ShadcnField>
+                        <ShadcnField Orientation="ShadcnFieldOrientation.Horizontal"><ShadcnCheckbox id="order-payment" Value="@edit.AllowPayment" ValueChanged="@(value => edit.AllowPayment = value.GetValueOrDefault())"  Disabled="@submitting" /><ShadcnFieldLabel For="order-payment">@Text["AllowPayment"]</ShadcnFieldLabel></ShadcnField>
                     </div>
                 </div>
             </ShadcnAccordionContent></ShadcnAccordionItem>
@@ -95,7 +97,7 @@ else if (page is not null)
         <h2>@Text["Status"]</h2>
         <p>@Text["CurrentStatus"]: <span class="operations-status-pill">@StatusLabel(page.CurrentStatus?.Name)</span></p>
         <div class="order-status-actions">
-            <ShadcnFormField Id="order-next-status" Label="@Text["NextStatus"]"><Control><ShadcnSelect TValue="int?" id="order-next-status" @bind-Value="selectedStatus" Options="@StatusOptions" Placeholder="@Text["NextStatus"]" Clearable="true" /></Control></ShadcnFormField>
+            <ShadcnFormField Id="order-next-status" Label="@Text["NextStatus"]"><Control><ShadcnSelect TValue="int?" id="order-next-status" @bind-Value="selectedStatus" Options="@StatusOptions" Placeholder="@Text["NextStatus"]" Clearable="true"  Disabled="@submitting" /></Control></ShadcnFormField>
             <ShadcnButton OnClick="TransitionAsync" Disabled="@(submitting || selectedStatus is null)">@Text["ApplyStatus"]</ShadcnButton>
         </div>
         <div class="order-history" tabindex="0"><ShadcnItemGroup>
@@ -112,7 +114,7 @@ else if (page is not null)
 
     <section class="order-files-panel">
         <h2>@Text["Files"]</h2>
-        <div class="order-upload-actions"><InputFile OnChange="SelectFiles" multiple /><ShadcnButton OnClick="UploadAsync" Disabled="@(submitting || uploads.Count == 0)">@Text["Upload"]</ShadcnButton></div>
+        <div class="order-upload-actions"><InputFile OnChange="SelectFiles" multiple disabled="@submitting" /><ShadcnButton OnClick="UploadAsync" Disabled="@(submitting || uploads.Count == 0)">@Text["Upload"]</ShadcnButton></div>
         @if (!string.IsNullOrWhiteSpace(uploadError))
         {
             <ShadcnAlert Variant="ShadcnAlertVariant.Destructive" AlertRole="ShadcnAlertRole.Alert"><ShadcnAlertDescription>@uploadError</ShadcnAlertDescription></ShadcnAlert>
@@ -138,6 +140,8 @@ else if (page is not null)
     private bool submitting;
     private bool finishLoading;
     private bool disposed;
+    private long detailGeneration;
+    private readonly HashSet<int> unsettledOrders = [];
     private long finishGeneration;
     private CancellationTokenSource? finishCancellation;
     private string? finishError;
@@ -162,28 +166,43 @@ else if (page is not null)
 
     private async Task LoadAsync()
     {
+        if (disposed) return;
+        var generation = ++detailGeneration;
+        var requestedId = Id;
+        bool Current() => !disposed && generation == detailGeneration && Id == requestedId;
         CancelFinishes();
         finishLoading = false; finishError = null;
-        loading = true; error = null;
-        if (Id is not > 0) { error = Text["InvalidId"]; loading = false; return; }
+        loading = true; error = null; notice = null; uploadError = null;
+        page = null; session = null; uploads.Clear(); selectedStatus = null;
+        if (requestedId is not > 0) { error = Text["InvalidId"]; loading = false; return; }
         try
         {
             using var sessionResponse = await Http.GetForPresentationAsync("/bff/session");
-            session = sessionResponse.IsSuccessStatusCode
+            if (!Current()) return;
+            var loadedSession = sessionResponse.IsSuccessStatusCode
                 ? await sessionResponse.Content.ReadFromJsonAsync<EmployeeSessionSummary>()
                 : null;
-            using var response = await Http.GetForPresentationAsync($"/bff/orders/{Id.Value}");
+            if (!Current()) return;
+            using var response = await Http.GetForPresentationAsync($"/bff/orders/{requestedId.Value}");
+            if (!Current()) return;
             if (response.StatusCode == HttpStatusCode.Unauthorized) { Navigation.NavigateTo($"/Login?returnUrl={Uri.EscapeDataString(Navigation.ToBaseRelativePath(Navigation.Uri))}"); return; }
             if (response.StatusCode == HttpStatusCode.NotFound) { error = Text["NotFound"]; return; }
             if (!response.IsSuccessStatusCode) { error = ErrorFor(response.StatusCode); return; }
-            page = await response.Content.ReadFromJsonAsync<OrderDetailPage>();
-            if (page is null) { error = Text["InvalidResponse"]; return; }
-            edit = OrderEditModel.From(page.Order);
-            finishes = page.SurfaceFinishes;
+            var loaded = await response.Content.ReadFromJsonAsync<OrderDetailPage>();
+            if (!Current()) return;
+            if (loaded?.Order is null || loaded.Order.Id != requestedId.Value) { error = Text["InvalidResponse"]; return; }
+            page = loaded;
+            session = loadedSession;
+            edit = OrderEditModel.From(loaded.Order);
+            finishes = loaded.SurfaceFinishes;
             selectedStatus = null;
+            if (unsettledOrders.Contains(requestedId.Value)) error = Text["WriteOutcomeUnknown"];
         }
-        catch (HttpRequestException) { error = Text["Unavailable"]; }
-        finally { loading = false; }
+        catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException)
+        {
+            if (Current()) error = Text["Unavailable"];
+        }
+        finally { if (Current()) loading = false; }
     }
 
     private async Task SaveAsync()
@@ -258,6 +277,7 @@ else if (page is not null)
     public void Dispose()
     {
         disposed = true;
+        detailGeneration++;
         CancelFinishes();
     }
 
@@ -269,7 +289,7 @@ else if (page is not null)
         await SendAsync(request, Text["StatusSaved"]);
     }
 
-    private void SelectFiles(InputFileChangeEventArgs args) { uploads.Clear(); uploads.AddRange(args.GetMultipleFiles()); uploadError = null; }
+    private void SelectFiles(InputFileChangeEventArgs args) { if (disposed || submitting) return; uploads.Clear(); uploads.AddRange(args.GetMultipleFiles()); uploadError = null; }
 
     private async Task UploadAsync()
     {
@@ -309,6 +329,21 @@ else if (page is not null)
 
     private async Task SendAsync(HttpRequestMessage request, string success)
     {
+        if (disposed || submitting || page is null || Id != page.Order.Id) return;
+        var orderId = page.Order.Id;
+        var generation = detailGeneration;
+        var editSnapshot = edit.ToRequest();
+        bool Current() => !disposed && generation == detailGeneration && Id == orderId && page?.Order.Id == orderId;
+        bool EditUnchanged() => Equals(editSnapshot, edit.ToRequest());
+        if (unsettledOrders.Contains(orderId)) { error = Text["WriteOutcomeUnknown"]; return; }
+        var dispatched = false;
+        void MarkUncertain(string? status = null)
+        {
+            if (disposed) return;
+            unsettledOrders.Add(orderId);
+            if (Current()) error = string.IsNullOrWhiteSpace(status)
+                ? Text["WriteOutcomeUnknown"].Value : $"{status} {Text["WriteOutcomeUnknown"]}";
+        }
         submitting = true; error = null; notice = null;
         try
         {
@@ -316,25 +351,43 @@ else if (page is not null)
             // example, after an Aspire restart). Refresh the browser-safe session projection
             // immediately before every write so the request token matches the current cookie.
             using var sessionResponse = await Http.GetForPresentationAsync("/bff/session");
-            session = sessionResponse.IsSuccessStatusCode
+            if (!Current() || !EditUnchanged()) return;
+            var refreshedSession = sessionResponse.IsSuccessStatusCode
                 ? await sessionResponse.Content.ReadFromJsonAsync<EmployeeSessionSummary>()
                 : null;
+            if (!Current() || !EditUnchanged()) return;
+            session = refreshedSession;
             request.Headers.Remove("X-CSRF-TOKEN");
             if (!string.IsNullOrWhiteSpace(session?.CsrfToken))
             {
                 request.Headers.Add("X-CSRF-TOKEN", session.CsrfToken);
             }
 
+            if (string.IsNullOrWhiteSpace(session?.CsrfToken)) { error = Text["Unavailable"]; return; }
+            dispatched = true;
             using var response = await Http.SendAsync(request);
-            if (response.StatusCode == HttpStatusCode.Conflict) { error = Text["Conflict"]; return; }
-            if (!response.IsSuccessStatusCode) { error = ErrorFor(response.StatusCode); return; }
-            notice = success; uploads.Clear(); await LoadAsync();
+            if (!Current()) { MarkUncertain(); return; }
+            if (!response.IsSuccessStatusCode)
+            {
+                MarkUncertain(response.StatusCode == HttpStatusCode.Conflict ? Text["Conflict"].Value : ErrorFor(response.StatusCode));
+                return;
+            }
+            if (!EditUnchanged()) { MarkUncertain(Text["OrderSaved"].Value); return; }
+            uploads.Clear();
+            await LoadAsync();
+            if (!disposed && Id == orderId && page?.Order.Id == orderId && error is null) notice = success;
         }
         catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException)
         {
-            error = Text["Unavailable"];
+            if (dispatched) MarkUncertain();
+            else if (Current()) error = Text["Unavailable"];
         }
-        finally { submitting = false; }
+        catch (Exception exception) when (dispatched && exception is not OutOfMemoryException and not StackOverflowException and not AccessViolationException)
+        {
+            Logger.LogWarning("An order write ended unexpectedly after dispatch.");
+            MarkUncertain();
+        }
+        finally { if (!disposed) submitting = false; }
     }
 
     private string ErrorFor(HttpStatusCode status) => status switch { HttpStatusCode.Forbidden => Text["Forbidden"], HttpStatusCode.TooManyRequests => Text["RateLimited"], HttpStatusCode.BadGateway => Text["InvalidResponse"], _ => Text["Unavailable"] };

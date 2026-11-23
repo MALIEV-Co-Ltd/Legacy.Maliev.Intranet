@@ -66,4 +66,4 @@
   <data name="FilesTooLarge" xml:space="preserve"><value>ขนาดไฟล์รวมต้องไม่เกิน 100 MB</value></data>
   <data name="FinishLoading" xml:space="preserve"><value>กำลังโหลดการตกแต่งผิวสำหรับวัสดุนี้</value></data>
   <data name="FinishRetry" xml:space="preserve"><value>โหลดการตกแต่งผิวอีกครั้ง</value></data>
-</root>
+<data name="WriteOutcomeUnknown" xml:space="preserve"><value>การเปลี่ยนแปลงคำสั่งซื้ออาจถูกบันทึกแล้ว โปรดติดต่อผู้รับผิดชอบก่อนลองอีกครั้ง</value></data></root>

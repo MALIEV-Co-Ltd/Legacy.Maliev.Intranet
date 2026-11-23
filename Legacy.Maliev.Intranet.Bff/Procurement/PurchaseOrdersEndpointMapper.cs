@@ -67,7 +67,7 @@ internal static class PurchaseOrdersEndpointMapper
                     page.PageIndex < 1 ||
                     page.TotalPages < 0 ||
                     page.TotalRecords < 0 ||
-                    page.Items.Any(order => order.Id < 1 || order.EmployeeId is < 1);
+                    page.Items.Any(order => order is null || order.Id < 1 || order.EmployeeId is < 1);
                 return invalid ? InvalidResponse() : Results.Ok(page);
             }
             catch (System.Text.Json.JsonException)

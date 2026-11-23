@@ -99,12 +99,13 @@
             page = null;
             employeeNames = new Dictionary<int, string>();
         }
-        HttpResponseMessage[]? responses = null;
+        Task<HttpResponseMessage>? ordersTask = null;
+        Task<HttpResponseMessage>? employeesTask = null;
         try
         {
-            var ordersTask = Http.GetForPresentationAsync($"/bff/purchase-orders?sort={currentSort}&search={Uri.EscapeDataString(Search ?? string.Empty)}&index={Index}&size={Size}", lease.CancellationToken);
-            var employeesTask = Http.GetForPresentationAsync("/bff/employees?sort=EmployeeId_Ascending&search=&index=1&size=250", lease.CancellationToken);
-            responses = await Task.WhenAll(ordersTask, employeesTask);
+            ordersTask = Http.GetForPresentationAsync($"/bff/purchase-orders?sort={currentSort}&search={Uri.EscapeDataString(Search ?? string.Empty)}&index={Index}&size={Size}", lease.CancellationToken);
+            employeesTask = Http.GetForPresentationAsync("/bff/employees?sort=EmployeeId_Ascending&search=&index=1&size=250", lease.CancellationToken);
+            var responses = await Task.WhenAll(ordersTask, employeesTask);
             if (!lease.IsCurrent || HandleFailure(responses))
             {
                 return;
@@ -116,7 +117,8 @@
             {
                 return;
             }
-            if (nextPage?.Items is null || employees?.Items is null)
+            if (nextPage?.Items is null || employees?.Items is null || nextPage.Items.Any(item => item is null) ||
+                employees.Items.Any(employee => employee is null) || employees.Items.Select(employee => employee.Id).Distinct().Count() != employees.Items.Count)
             {
                 error = Text["InvalidResponse"];
                 return;
@@ -137,13 +139,8 @@
         }
         finally
         {
-            if (responses is not null)
-            {
-                foreach (var response in responses)
-                {
-                    response.Dispose();
-                }
-            }
+            if (ordersTask is { IsCompletedSuccessfully: true }) ordersTask.Result.Dispose();
+            if (employeesTask is { IsCompletedSuccessfully: true }) employeesTask.Result.Dispose();
 
             if (lease.IsCurrent)
             {

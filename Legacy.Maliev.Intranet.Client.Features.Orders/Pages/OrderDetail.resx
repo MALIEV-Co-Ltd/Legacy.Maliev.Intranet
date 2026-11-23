@@ -11,4 +11,4 @@
   <data name="FilesTooLarge" xml:space="preserve"><value>The combined file size cannot exceed 100 MB.</value></data>
   <data name="FinishLoading" xml:space="preserve"><value>Loading surface finishes for this material.</value></data>
   <data name="FinishRetry" xml:space="preserve"><value>Reload surface finishes</value></data>
-</root>
+<data name="WriteOutcomeUnknown" xml:space="preserve"><value>The order change may have been applied. Contact the responsible owner before trying again.</value></data></root>
