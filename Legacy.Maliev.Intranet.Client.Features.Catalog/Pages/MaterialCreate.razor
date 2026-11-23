@@ -1,9 +1,12 @@
 @page "/Materials/Create"
 @attribute [Authorize]
+@implements IDisposable
 @using Microsoft.AspNetCore.Components.Forms
+@using Microsoft.Extensions.Logging
 @inject HttpClient Http
 @inject NavigationManager Navigation
 @inject IStringLocalizer<MaterialCreate> Text
+@inject ILogger<MaterialCreate> Logger
 
 <PageTitle>@Text["PageTitle"]</PageTitle>
 
@@ -23,6 +26,7 @@
 
         <EditForm EditContext="@editContext" OnValidSubmit="SubmitAsync" OnInvalidSubmit="@(_ => error = Text["ValidationFailed"])" class="material-editor__form">
             <DataAnnotationsValidator />
+            <fieldset class="material-editor__fields" disabled="@submitting">
             <section class="material-editor__section">
                 <h2>@Text["BasicInformation"]</h2>
                 <div class="material-editor__grid">
@@ -81,8 +85,9 @@
                 </div>
             </section>
 
+            </fieldset>
             <div class="material-editor__actions">
-                <ShadcnButton ButtonType="ShadcnButtonType.Submit" OperationFeedback="false" Disabled="@submitting">@(submitting ? Text["Submitting"] : Text["CreateMaterial"])</ShadcnButton>
+                <ShadcnButton ButtonType="ShadcnButtonType.Submit" OperationFeedback="false" Disabled="@(submitting || createOutcomeUnknown)">@(submitting ? Text["Submitting"] : Text["CreateMaterial"])</ShadcnButton>
                 <LegacyLink Href="/Materials/Index" Role="LegacyLinkRole.Navigation" Disabled="@submitting" AriaLabel="@Text["Cancel"]">@Text["Cancel"]</LegacyLink>
             </div>
         </EditForm>
@@ -96,6 +101,8 @@
     private EditContext editContext = null!;
     private bool loading = true;
     private bool submitting;
+    private bool disposed;
+    private bool createOutcomeUnknown;
     private string? error;
 
     private IReadOnlyList<ShadcnSelectOption<int>> MaterialGroupOptions => materialGroups.Select(group => new ShadcnSelectOption<int>(group.Id, group.Name)).ToArray();
@@ -106,20 +113,24 @@
         editContext = new EditContext(model);
         try
         {
-            materialGroups = await LoadLookupAsync<CatalogMaterialGroup>("/bff/catalog/material-groups");
-            currencies = await LoadLookupAsync<CatalogCurrency>("/bff/catalog/currencies");
+            var groups = await LoadLookupAsync<CatalogMaterialGroup>("/bff/catalog/material-groups");
+            if (disposed) return;
+            var availableCurrencies = await LoadLookupAsync<CatalogCurrency>("/bff/catalog/currencies");
+            if (disposed) return;
+            materialGroups = groups;
+            currencies = availableCurrencies;
         }
         catch (UnauthorizedAccessException)
         {
-            NavigateToLogin();
+            if (!disposed) NavigateToLogin();
         }
         catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException)
         {
-            error = Text["LookupsUnavailable"];
+            if (!disposed) error = Text["LookupsUnavailable"];
         }
         finally
         {
-            loading = false;
+            if (!disposed) loading = false;
         }
     }
 
@@ -137,71 +148,63 @@
 
     private async Task SubmitAsync()
     {
-        if (submitting)
+        if (submitting || disposed || createOutcomeUnknown)
         {
             return;
         }
 
-        var validatedContext = editContext;
         submitting = true;
+        var dispatched = false;
         try
         {
-            var valid = await validatedContext.ValidateAsync();
-            if (!ReferenceEquals(validatedContext, editContext)) return;
-            if (!valid)
+            var snapshot = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(model, System.Text.Json.JsonSerializerOptions.Web);
+            bool Unchanged() => snapshot.AsSpan().SequenceEqual(
+                System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(model, System.Text.Json.JsonSerializerOptions.Web));
+            var valid = await editContext.ValidateAsync();
+            if (disposed) return;
+            if (!valid || !Unchanged())
             {
                 error = Text["ValidationFailed"];
                 return;
             }
             error = null;
             var session = await Http.GetFromJsonForPresentationAsync<EmployeeSessionSummary>("/bff/session");
+            if (disposed) return;
             if (string.IsNullOrWhiteSpace(session?.CsrfToken))
             {
                 error = Text["CreateFailed"];
                 return;
             }
 
-            using var request = new HttpRequestMessage(HttpMethod.Post, "/bff/catalog/materials")
-            {
-                Content = JsonContent.Create(model),
-            };
-            request.Headers.Add("X-CSRF-TOKEN", session.CsrfToken);
-            using var response = await Http.SendAsync(request);
-
-            if (response.StatusCode == HttpStatusCode.Unauthorized)
-            {
-                NavigateToLogin();
-                return;
-            }
-
-            if (response.StatusCode == HttpStatusCode.Forbidden)
-            {
-                error = Text["Forbidden"];
-                return;
-            }
-
-            if (response.StatusCode == HttpStatusCode.BadRequest)
+            if (!Unchanged())
             {
                 error = Text["ValidationFailed"];
                 return;
             }
 
-            if (response.StatusCode == HttpStatusCode.TooManyRequests)
+            using var request = new HttpRequestMessage(HttpMethod.Post, "/bff/catalog/materials")
             {
-                error = Text["RateLimited"];
-                return;
-            }
+                Content = JsonContent.Create(System.Text.Json.JsonSerializer.Deserialize<CatalogMaterialUpsertRequest>(snapshot, System.Text.Json.JsonSerializerOptions.Web)),
+            };
+            request.Headers.Add("X-CSRF-TOKEN", session.CsrfToken);
+            dispatched = true;
+            using var response = await Http.SendAsync(request);
+            if (disposed) return;
 
             if (!response.IsSuccessStatusCode)
             {
-                error = Text["CreateFailed"];
+                // A proxy response alone cannot prove the create was not committed.
+                createOutcomeUnknown = true;
+                error = Text["CreateOutcomeUnknown"];
                 return;
             }
 
             var created = await response.Content.ReadFromJsonAsync<CatalogCreatedMaterial>();
+            if (disposed) return;
             if (created is null || created.Id <= 0)
             {
-                error = Text["InvalidResponse"];
+                createOutcomeUnknown = true;
+                error = Text["CreateOutcomeUnknown"];
                 return;
             }
 
@@ -209,13 +212,28 @@
         }
         catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException)
         {
-            error = Text["CreateFailed"];
+            if (!disposed)
+            {
+                createOutcomeUnknown = dispatched;
+                error = Text[dispatched ? "CreateOutcomeUnknown" : "CreateFailed"];
+            }
+        }
+        catch (Exception exception) when (dispatched && exception is not OutOfMemoryException)
+        {
+            Logger.LogError("Unexpected material creation failure after dispatch; the outcome is unknown.");
+            if (!disposed)
+            {
+                createOutcomeUnknown = true;
+                error = Text["CreateOutcomeUnknown"];
+            }
         }
         finally
         {
-            submitting = false;
+            if (!disposed) submitting = false;
         }
     }
+
+    public void Dispose() => disposed = true;
 
     private void NavigateToLogin() => Navigation.NavigateTo(
         $"/Login?returnUrl={Uri.EscapeDataString(Navigation.ToBaseRelativePath(Navigation.Uri))}");

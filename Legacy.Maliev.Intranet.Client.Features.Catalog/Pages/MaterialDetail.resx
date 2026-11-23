@@ -29,6 +29,7 @@
   <data name="SaveMaterial" xml:space="preserve"><value>Save material</value></data>
   <data name="Saving" xml:space="preserve"><value>Saving...</value></data>
   <data name="MaterialSaved" xml:space="preserve"><value>Material saved.</value></data>
+  <data name="SaveOutcomeUncertain" xml:space="preserve"><value>The save may be incomplete. Contact the catalog owner to resolve the outcome before trying again.</value></data>
   <data name="SaveFailed" xml:space="preserve"><value>The material could not be saved. Try again.</value></data>
   <data name="AssociationSaveFailed" xml:space="preserve"><value>The material was saved, but its color or surface-finish options could not be updated. Try again.</value></data>
   <data name="ValidationFailed" xml:space="preserve"><value>Correct the highlighted fields before saving.</value></data>

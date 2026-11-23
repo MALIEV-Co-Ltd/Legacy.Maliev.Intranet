@@ -56,4 +56,5 @@
   <data name="Forbidden" xml:space="preserve"><value>You do not have permission to create materials.</value></data>
   <data name="RateLimited" xml:space="preserve"><value>Catalog requests are temporarily limited. Wait and try again.</value></data>
   <data name="InvalidResponse" xml:space="preserve"><value>The material catalog returned an invalid response.</value></data>
+  <data name="CreateOutcomeUnknown" xml:space="preserve"><value>The material may have been created. Check the material list before trying again.</value></data>
 </root>

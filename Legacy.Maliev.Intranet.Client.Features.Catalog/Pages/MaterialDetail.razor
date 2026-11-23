@@ -1,5 +1,6 @@
 @page "/Materials/View"
 @attribute [Authorize]
+@implements IDisposable
 @using Microsoft.AspNetCore.Components.Forms
 @inject HttpClient Http
 @inject NavigationManager Navigation
@@ -27,6 +28,10 @@
     }
     else if (material is not null)
     {
+        @if (saveRequiresReload)
+        {
+            <ShadcnAlert Variant="ShadcnAlertVariant.Destructive" AlertRole="ShadcnAlertRole.Alert"><ShadcnAlertDescription>@Text["SaveOutcomeUncertain"]</ShadcnAlertDescription></ShadcnAlert>
+        }
         @if (!string.IsNullOrWhiteSpace(notification))
         {
             <ShadcnAlert AlertRole="ShadcnAlertRole.Status"><ShadcnAlertDescription>@notification</ShadcnAlertDescription></ShadcnAlert>
@@ -135,7 +140,7 @@
             </section>
 
             <div class="material-detail__actions">
-                <ShadcnButton ButtonType="ShadcnButtonType.Submit" OperationFeedback="false" Disabled="@submitting">@(submitting ? Text["Saving"] : Text["SaveMaterial"])</ShadcnButton>
+                <ShadcnButton ButtonType="ShadcnButtonType.Submit" OperationFeedback="false" Disabled="@(submitting || saveRequiresReload)">@(submitting ? Text["Saving"] : Text["SaveMaterial"])</ShadcnButton>
                 <LegacyLink Href="/Materials/Index" Role="LegacyLinkRole.Navigation" Disabled="@submitting" AriaLabel="@Text["BackToMaterials"]">@Text["BackToMaterials"]</LegacyLink>
             </div>
         </EditForm>
@@ -156,6 +161,10 @@
     private bool loadingAssociations;
     private bool notFound;
     private bool submitting;
+    private long loadRevision;
+    private bool disposed;
+    private bool saveRequiresReload;
+    private readonly HashSet<int> uncertainMaterialIds = [];
     private IReadOnlyList<CatalogMaterialColor> colors = [];
     private IReadOnlyList<CatalogMaterialSurfaceFinish> surfaceFinishes = [];
     private HashSet<int> selectedColorIds = [];
@@ -172,6 +181,10 @@
 
     private async Task LoadAsync()
     {
+        if (disposed) return;
+        var revision = Interlocked.Increment(ref loadRevision);
+        var requestedId = Id;
+        saveRequiresReload = uncertainMaterialIds.Contains(requestedId);
         material = null;
         error = null;
         notification = null;
@@ -179,6 +192,8 @@
 
         if (Id <= 0)
         {
+            loading = false;
+            loadingAssociations = false;
             notFound = true;
             error = Text["MaterialNotFound"];
             return;
@@ -188,15 +203,17 @@
         loadingAssociations = true;
         try
         {
-            var detailTask = LoadMaterialAsync();
+            var detailTask = LoadMaterialAsync(requestedId);
             var groupsTask = LoadLookupAsync<CatalogMaterialGroup>("/bff/catalog/material-groups");
             var currenciesTask = LoadLookupAsync<CatalogCurrency>("/bff/catalog/currencies");
             var colorsTask = LoadLookupAsync<CatalogMaterialColor>("/bff/catalog/colors");
             var surfaceFinishesTask = LoadLookupAsync<CatalogMaterialSurfaceFinish>("/bff/catalog/surface-finishes");
-            var selectedColorsTask = LoadAssociationLookupAsync<CatalogMaterialColor>($"/bff/catalog/materials/{Id}/colors");
-            var selectedSurfaceFinishesTask = LoadAssociationLookupAsync<CatalogMaterialSurfaceFinish>($"/bff/catalog/materials/{Id}/surface-finishes");
+            var selectedColorsTask = LoadAssociationLookupAsync<CatalogMaterialColor>($"/bff/catalog/materials/{requestedId}/colors");
+            var selectedSurfaceFinishesTask = LoadAssociationLookupAsync<CatalogMaterialSurfaceFinish>($"/bff/catalog/materials/{requestedId}/surface-finishes");
             await Task.WhenAll(detailTask, groupsTask, currenciesTask, colorsTask, surfaceFinishesTask, selectedColorsTask, selectedSurfaceFinishesTask);
+            if (!IsCurrentLoad(revision, requestedId)) return;
             material = await detailTask;
+            if (material.Id != requestedId) { material = null; error = Text["Unavailable"]; return; }
             materialGroups = await groupsTask;
             currencies = await currenciesTask;
             colors = await colorsTask;
@@ -212,35 +229,42 @@
         }
         catch (UnauthorizedAccessException)
         {
-            NavigateToLogin();
+            if (IsCurrentLoad(revision, requestedId)) NavigateToLogin();
         }
         catch (MaterialNotFoundException)
         {
-            notFound = true;
-            error = Text["MaterialNotFound"];
+            if (IsCurrentLoad(revision, requestedId)) { notFound = true; error = Text["MaterialNotFound"]; }
         }
         catch (CatalogForbiddenException)
         {
-            error = Text["Forbidden"];
+            if (IsCurrentLoad(revision, requestedId)) error = Text["Forbidden"];
         }
         catch (CatalogRateLimitedException)
         {
-            error = Text["RateLimited"];
+            if (IsCurrentLoad(revision, requestedId)) error = Text["RateLimited"];
         }
         catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException)
         {
-            error = Text["Unavailable"];
+            if (IsCurrentLoad(revision, requestedId)) error = Text["Unavailable"];
         }
         finally
         {
-            loading = false;
-            loadingAssociations = false;
+            if (IsCurrentLoad(revision, requestedId)) { loading = false; loadingAssociations = false; }
         }
     }
 
-    private async Task<CatalogMaterialDetail> LoadMaterialAsync()
+    private bool IsCurrentLoad(long revision, int requestedId) =>
+        !disposed && Id == requestedId && Volatile.Read(ref loadRevision) == revision;
+
+    public void Dispose()
     {
-        using var response = await Http.GetForPresentationAsync($"/bff/catalog/materials/{Id}");
+        disposed = true;
+        Interlocked.Increment(ref loadRevision);
+    }
+
+    private async Task<CatalogMaterialDetail> LoadMaterialAsync(int materialId)
+    {
+        using var response = await Http.GetForPresentationAsync($"/bff/catalog/materials/{materialId}");
         if (response.StatusCode == HttpStatusCode.Unauthorized) throw new UnauthorizedAccessException();
         if (response.StatusCode == HttpStatusCode.Forbidden) throw new CatalogForbiddenException();
         if (response.StatusCode == HttpStatusCode.NotFound) throw new MaterialNotFoundException();
@@ -273,14 +297,30 @@
 
     private async Task SubmitAsync()
     {
-        if (submitting) return;
+        if (submitting || disposed || saveRequiresReload) return;
+        var materialId = Id;
         var validatedContext = editContext;
-        var validatedId = Id;
+        var revision = Volatile.Read(ref loadRevision);
+        var snapshot = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(model, System.Text.Json.JsonSerializerOptions.Web);
+        var colorSnapshot = selectedColorIds.ToHashSet();
+        var finishSnapshot = selectedSurfaceFinishIds.ToHashSet();
+        bool IsCurrentSave() => IsCurrentLoad(revision, materialId) && ReferenceEquals(editContext, validatedContext)
+            && snapshot.AsSpan().SequenceEqual(System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(model, System.Text.Json.JsonSerializerOptions.Web))
+            && colorSnapshot.SetEquals(selectedColorIds) && finishSnapshot.SetEquals(selectedSurfaceFinishIds);
+        void RequireReload()
+        {
+            if (disposed) return;
+            uncertainMaterialIds.Add(materialId);
+            if (Id != materialId) return;
+            saveRequiresReload = true;
+            error = Text["SaveOutcomeUncertain"];
+        }
+        var dispatched = false;
         submitting = true;
         try
         {
             var valid = await validatedContext.ValidateAsync();
-            if (!ReferenceEquals(validatedContext, editContext) || validatedId != Id) return;
+            if (!IsCurrentSave()) return;
             if (!valid)
             {
                 error = Text["ValidationFailed"];
@@ -289,58 +329,63 @@
             error = null;
             notification = null;
             var session = await Http.GetFromJsonForPresentationAsync<EmployeeSessionSummary>("/bff/session");
+            if (!IsCurrentSave()) return;
             if (string.IsNullOrWhiteSpace(session?.CsrfToken))
             {
                 error = Text["SaveFailed"];
                 return;
             }
-
-            using var request = new HttpRequestMessage(HttpMethod.Put, $"/bff/catalog/materials/{Id}")
+            using var request = new HttpRequestMessage(HttpMethod.Put, $"/bff/catalog/materials/{materialId}")
             {
-                Content = JsonContent.Create(model),
+                Content = new ByteArrayContent(snapshot),
             };
+            request.Content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/json") { CharSet = "utf-8" };
             request.Headers.Add("X-CSRF-TOKEN", session.CsrfToken);
+            dispatched = true;
             using var response = await Http.SendAsync(request);
+            if (!IsCurrentSave()) { RequireReload(); return; }
             if (response.StatusCode == HttpStatusCode.Unauthorized) { NavigateToLogin(); return; }
             if (response.StatusCode == HttpStatusCode.Forbidden) { error = Text["Forbidden"]; return; }
             if (response.StatusCode == HttpStatusCode.NotFound) { notFound = true; error = Text["MaterialNotFound"]; return; }
             if (response.StatusCode == HttpStatusCode.BadRequest) { error = Text["ValidationFailed"]; return; }
-            if (response.StatusCode == HttpStatusCode.Conflict) { error = Text["Conflict"]; return; }
-            if (response.StatusCode == HttpStatusCode.TooManyRequests) { error = Text["RateLimited"]; return; }
-            if (!response.IsSuccessStatusCode) { error = Text["SaveFailed"]; return; }
-
-            await SyncAssociationSetAsync(
-                persistedColorIds,
-                selectedColorIds,
-                "colors");
-            await SyncAssociationSetAsync(
-                persistedSurfaceFinishIds,
-                selectedSurfaceFinishIds,
-                "surface-finishes");
-            persistedColorIds = selectedColorIds.ToHashSet();
-            persistedSurfaceFinishIds = selectedSurfaceFinishIds.ToHashSet();
+            if (response.StatusCode == HttpStatusCode.Conflict)
+            {
+                RequireReload();
+                if (saveRequiresReload) error = $"{Text["Conflict"]} {Text["SaveOutcomeUncertain"]}";
+                return;
+            }
+            if (!response.IsSuccessStatusCode) { RequireReload(); return; }
+            if (!await SyncAssociationSetAsync(persistedColorIds, colorSnapshot, "colors", materialId, IsCurrentSave)) { RequireReload(); return; }
+            if (!await SyncAssociationSetAsync(persistedSurfaceFinishIds, finishSnapshot, "surface-finishes", materialId, IsCurrentSave)) { RequireReload(); return; }
+            if (!IsCurrentSave()) { RequireReload(); return; }
+            persistedColorIds = colorSnapshot;
+            persistedSurfaceFinishIds = finishSnapshot;
             notification = Text["MaterialSaved"];
             CopyToSummary();
         }
         catch (UnauthorizedAccessException)
         {
-            NavigateToLogin();
+            if (dispatched) RequireReload();
+            else if (IsCurrentSave()) NavigateToLogin();
         }
         catch (CatalogForbiddenException)
         {
-            error = Text["Forbidden"];
+            if (dispatched) RequireReload();
+            else if (IsCurrentSave()) error = Text["Forbidden"];
         }
         catch (AssociationSaveException)
         {
-            error = Text["AssociationSaveFailed"];
+            if (dispatched) RequireReload();
+            else if (IsCurrentSave()) error = Text["AssociationSaveFailed"];
         }
         catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException)
         {
-            error = Text["SaveFailed"];
+            if (dispatched) RequireReload();
+            else if (IsCurrentSave()) error = Text["SaveFailed"];
         }
         finally
         {
-            submitting = false;
+            if (!disposed) submitting = false;
         }
     }
 
@@ -359,36 +404,42 @@
         editContext = new EditContext(model);
     }
 
-    private async Task SyncAssociationSetAsync(
+    private async Task<bool> SyncAssociationSetAsync(
         IEnumerable<int> persisted,
         IEnumerable<int> selected,
-        string segment)
+        string segment,
+        int materialId,
+        Func<bool> isCurrent)
     {
+        var current = persisted.ToHashSet();
+        var next = selected.ToHashSet();
         var session = await Http.GetFromJsonForPresentationAsync<EmployeeSessionSummary>("/bff/session");
+        if (!isCurrent()) return false;
         if (string.IsNullOrWhiteSpace(session?.CsrfToken))
         {
             throw new AssociationSaveException();
         }
 
-        var current = persisted.ToHashSet();
-        var next = selected.ToHashSet();
         foreach (var id in next.Except(current))
         {
+            if (!isCurrent()) return false;
             await SendAssociationAsync(
                 HttpMethod.Post,
-                $"/bff/catalog/materials/{Id}/{segment}/{id}",
+                $"/bff/catalog/materials/{materialId}/{segment}/{id}",
                 session.CsrfToken,
                 ignoreNotFound: false);
         }
 
         foreach (var id in current.Except(next))
         {
+            if (!isCurrent()) return false;
             await SendAssociationAsync(
                 HttpMethod.Delete,
-                $"/bff/catalog/materials/{Id}/{segment}/{id}",
+                $"/bff/catalog/materials/{materialId}/{segment}/{id}",
                 session.CsrfToken,
                 ignoreNotFound: true);
         }
+        return isCurrent();
     }
 
     private async Task SendAssociationAsync(

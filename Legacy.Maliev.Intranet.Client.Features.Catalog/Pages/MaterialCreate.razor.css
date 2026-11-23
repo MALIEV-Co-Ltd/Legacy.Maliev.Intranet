@@ -2,6 +2,7 @@
 .material-editor .operations-page-header p { margin: 0.25rem 0 0; color: var(--shadcn-muted-foreground); }
 .material-editor__loading { display: flex; align-items: center; gap: 0.625rem; color: var(--shadcn-muted-foreground); }
 .material-editor__form { display: grid; gap: 1rem; margin-top: 1rem; }
+.material-editor__fields { display: grid; gap: 1rem; min-width: 0; margin: 0; padding: 0; border: 0; }
 .material-editor__section { padding: 1rem; border: 1px solid var(--shadcn-border); border-radius: var(--shadcn-radius-lg); background: var(--shadcn-card); color: var(--shadcn-card-foreground); }
 .material-editor__section h2 { margin: 0 0 1rem; font-size: 1rem; }
 .material-editor__grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }

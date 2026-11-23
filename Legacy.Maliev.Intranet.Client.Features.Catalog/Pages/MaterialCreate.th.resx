@@ -56,4 +56,5 @@
   <data name="Forbidden" xml:space="preserve"><value>คุณไม่มีสิทธิ์เพิ่มวัสดุ</value></data>
   <data name="RateLimited" xml:space="preserve"><value>ระบบได้รับคำขอข้อมูลวัสดุมากเกินไป โปรดรอสักครู่แล้วลองอีกครั้ง</value></data>
   <data name="InvalidResponse" xml:space="preserve"><value>ระบบวัสดุส่งข้อมูลกลับมาไม่ถูกต้อง</value></data>
+  <data name="CreateOutcomeUnknown" xml:space="preserve"><value>อาจสร้างวัสดุแล้ว โปรดตรวจสอบรายการวัสดุก่อนลองอีกครั้ง</value></data>
 </root>

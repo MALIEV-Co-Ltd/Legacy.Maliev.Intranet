@@ -29,6 +29,7 @@
   <data name="SaveMaterial" xml:space="preserve"><value>บันทึกวัสดุ</value></data>
   <data name="Saving" xml:space="preserve"><value>กำลังบันทึก…</value></data>
   <data name="MaterialSaved" xml:space="preserve"><value>บันทึกวัสดุแล้ว</value></data>
+  <data name="SaveOutcomeUncertain" xml:space="preserve"><value>การบันทึกอาจไม่สมบูรณ์ โปรดติดต่อผู้ดูแลรายการวัสดุเพื่อตรวจสอบผลก่อนลองอีกครั้ง</value></data>
   <data name="SaveFailed" xml:space="preserve"><value>ไม่สามารถบันทึกวัสดุได้ ลองอีกครั้ง</value></data>
   <data name="AssociationSaveFailed" xml:space="preserve"><value>บันทึกวัสดุแล้ว แต่ไม่สามารถอัปเดตตัวเลือกสีหรือการตกแต่งพื้นผิวได้ ลองอีกครั้ง</value></data>
   <data name="ValidationFailed" xml:space="preserve"><value>โปรดแก้ไขช่องที่ระบุก่อนบันทึก</value></data>
