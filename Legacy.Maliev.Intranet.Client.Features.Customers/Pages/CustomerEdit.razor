@@ -29,7 +29,7 @@
     }
     else if (captured is not null && captured.Profile.Id == Id)
     {
-        @if (saveLocked) { <p role="status">@Text["ReloadRequired"]</p> }
+        @if (saveLocked) { <p role="status">@Text[unsettledCustomers.Contains(Id) ? "ReconciliationRequired" : "ReloadRequired"]</p> }
         <EditForm EditContext="@editContext" OnSubmit="HandleSubmitAsync" data-save-locked="@saveLocked.ToString().ToLowerInvariant()" data-customer-id="@captured.Profile.Id">
             <section class="customer-edit__section" aria-labelledby="customer-edit-profile">
                 <h2 id="customer-edit-profile">@Text["Profile"]</h2>
@@ -84,6 +84,9 @@
     private bool loading;
     private bool saving;
     private bool saveLocked = true;
+    private bool saveDispatched;
+    private int saveCustomerId;
+    private readonly HashSet<int> unsettledCustomers = [];
     private string? error;
     private string? notice;
     private bool FieldsDisabled => disposed || loading || saving || saveLocked || captured?.Profile.Id != Id;
@@ -94,7 +97,8 @@
         if (!saving) return ReloadAsync();
         ++generation;
         loadCancellation?.Cancel();
-        saveCancellation?.Cancel();
+        if (saveDispatched) unsettledCustomers.Add(saveCustomerId);
+        else saveCancellation?.Cancel();
         saveLocked = true;
         notice = null;
         error = Text["NavigationChanged"];
@@ -140,7 +144,8 @@
             };
             editContext = new(model);
             validation = new(editContext);
-            saveLocked = false;
+            saveLocked = unsettledCustomers.Contains(customerId);
+            if (saveLocked) error = Text["ReconciliationRequired"];
         }
         catch (Exception exception) when (exception is HttpRequestException or OperationCanceledException or JsonException or IOException or InvalidOperationException)
         {
@@ -168,6 +173,8 @@
         saving = true;
         error = notice = null;
         var dispatched = false;
+        saveCustomerId = customerId;
+        saveDispatched = false;
         try
         {
             using var sessionResponse = await Http.GetForPresentationAsync("/bff/session", cancellation.Token);
@@ -181,25 +188,33 @@
             request.Headers.Add("X-CSRF-TOKEN", session.CsrfToken);
             cancellation.Token.ThrowIfCancellationRequested();
             dispatched = true;
+            saveDispatched = true;
             saveLocked = true;
             using var response = await Http.SendAsync(request, cancellation.Token);
             if (!Current(sequence, customerId)) return;
             var result = await ReadSaveResultAsync(response.Content, cancellation.Token);
             if (!Current(sequence, customerId)) return;
             if (result is null || result.StatusCode != (int)response.StatusCode || result.OutcomeUnknown)
-            { error = Text["UnknownOutcome"]; return; }
+            { unsettledCustomers.Add(customerId); error = Text["UnknownOutcome"]; return; }
             if (response.StatusCode == HttpStatusCode.OK && result.Stage == "complete") { notice = Text["Saved"]; return; }
-            if (result.CompletedStages.Count != 0) { error = Text["PartialCompletion"]; return; }
+            if (result.CompletedStages.Count != 0) { unsettledCustomers.Add(customerId); error = Text["PartialCompletion"]; return; }
             error = response.StatusCode is HttpStatusCode.PreconditionFailed or HttpStatusCode.Conflict
                 ? Text["Stale"] : StatusMessage(response.StatusCode);
         }
         catch (Exception exception) when (exception is HttpRequestException or OperationCanceledException or JsonException or IOException or InvalidOperationException)
         {
+            if (dispatched) unsettledCustomers.Add(customerId);
             if (Current(sequence, customerId)) error = Text[dispatched ? "UnknownOutcome" : "SessionUnavailable"];
+        }
+        catch (Exception exception) when (dispatched && exception is not OutOfMemoryException and not StackOverflowException and not AccessViolationException)
+        {
+            unsettledCustomers.Add(customerId);
+            if (Current(sequence, customerId)) error = Text["UnknownOutcome"];
         }
         finally
         {
             saving = false;
+            saveDispatched = false;
             if (ReferenceEquals(saveCancellation, cancellation)) saveCancellation = null;
         }
     }
@@ -269,7 +284,7 @@
         disposed = true;
         ++generation;
         loadCancellation?.Cancel();
-        saveCancellation?.Cancel();
+        if (!saveDispatched) saveCancellation?.Cancel();
         // Each awaited operation owns and disposes its cancellation source in its using scope.
     }
     private sealed class Model

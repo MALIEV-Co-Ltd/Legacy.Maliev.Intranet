@@ -45,4 +45,5 @@
   <data name="InvalidLength" xml:space="preserve"><value>ข้อมูลนี้ยาวเกินกำหนด</value></data>
   <data name="ValidationFailed" xml:space="preserve"><value>กรุณาตรวจสอบช่องข้อมูลที่ระบุก่อนบันทึก</value></data>
   <data name="InvalidUsername" xml:space="preserve"><value>อีเมลต้องใช้เฉพาะตัวอักษร ASCII ตัวเลข จุด ขีดล่าง @ เครื่องหมายบวก หรือขีดกลาง</value></data>
+  <data name="ReconciliationRequired" xml:space="preserve"><value>การบันทึกก่อนหน้าอาจยังดำเนินการอยู่ โปรดติดต่อผู้ดูแลระบบก่อนบันทึกอีกครั้ง</value></data>
 </root>

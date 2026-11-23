@@ -28,6 +28,7 @@
   <data name="Saving" xml:space="preserve"><value>Saving…</value></data>
   <data name="Back" xml:space="preserve"><value>Back to customer</value></data>
   <data name="ReloadRequired" xml:space="preserve"><value>Reload explicitly before another save. No write is automatically retried.</value></data>
+  <data name="ReconciliationRequired" xml:space="preserve"><value>The earlier save may still complete. Contact an administrator before another save.</value></data>
   <data name="Saved" xml:space="preserve"><value>Customer profile and account flags were saved. Reload before making another change.</value></data>
   <data name="PartialCompletion" xml:space="preserve"><value>The customer profile was saved, but the account update did not complete. Reload to inspect current data; do not repeat the save.</value></data>
   <data name="UnknownOutcome" xml:space="preserve"><value>The save outcome could not be confirmed. Reload to inspect current data before any further action.</value></data>

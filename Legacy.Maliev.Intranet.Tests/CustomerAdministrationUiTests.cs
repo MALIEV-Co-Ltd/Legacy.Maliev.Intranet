@@ -85,6 +85,30 @@ public sealed class CustomerAdministrationUiTests
         Assert.Equal(2, handler.EditReads);
     }
 
+    [Fact]
+    public async Task Save_UnknownOutcomeRemainsLockedAcrossReadAndLateCommit()
+    {
+        using var culture = new EnglishCulture();
+        using var handler = new Transport { Outcome = "profile-unknown" };
+        using var context = Context(handler);
+        var cut = Render(context);
+        Ready(cut);
+        await cut.Find("form").SubmitAsync();
+        Locked(cut);
+        await cut.Find("header button").ClickAsync();
+        Locked(cut);
+        Assert.Equal("Synthetic", cut.Find("#customer-edit-first").GetAttribute("value"));
+        Assert.Contains("The earlier save may still complete. Contact an administrator before another save.", cut.Markup, StringComparison.Ordinal);
+        await cut.Find("form").SubmitAsync();
+        Assert.Single(handler.Writes);
+        handler.LateCommitApplied = true;
+        await cut.Find("header button").ClickAsync();
+        Locked(cut);
+        Assert.Equal("Late committed", cut.Find("#customer-edit-first").GetAttribute("value"));
+        await cut.Find("form").SubmitAsync();
+        Assert.Single(handler.Writes);
+    }
+
     [Theory]
     [InlineData("profile-unknown")]
     [InlineData("identity-partial")]
@@ -169,7 +193,7 @@ public sealed class CustomerAdministrationUiTests
     }
 
     [Fact]
-    public async Task Save_QueryChangeCancelsHeldPutAndIgnoresLateSuccessUntilExplicitReload()
+    public async Task Save_QueryChangeObservesHeldPutAndIgnoresLateSuccessUntilExplicitReload()
     {
         using var culture = new EnglishCulture();
         using var handler = new Transport { HoldPut = true };
@@ -182,7 +206,7 @@ public sealed class CustomerAdministrationUiTests
             await handler.PutEntered.Task.WaitAsync(TimeSpan.FromSeconds(5));
             await cut.InvokeAsync(() => context.Services.GetRequiredService<NavigationManager>().NavigateTo("/Customers/Edit?id=42"));
             cut.WaitForAssertion(() => Assert.Empty(cut.FindAll("form")));
-            Assert.True(handler.PutToken.IsCancellationRequested);
+            Assert.False(handler.PutToken.IsCancellationRequested);
             Assert.Equal(1, handler.EditReads);
         });
         Assert.DoesNotContain("Customer profile and account flags were saved.", cut.Markup, StringComparison.Ordinal);
@@ -194,7 +218,7 @@ public sealed class CustomerAdministrationUiTests
     }
 
     [Fact]
-    public async Task Save_DisposeCancelsHeldPutWithoutLateReadbackOrReplay()
+    public async Task Save_DisposeObservesHeldPutWithoutLateReadbackOrReplay()
     {
         using var culture = new EnglishCulture();
         using var handler = new Transport { HoldPut = true };
@@ -206,7 +230,7 @@ public sealed class CustomerAdministrationUiTests
         {
             await handler.PutEntered.Task.WaitAsync(TimeSpan.FromSeconds(5));
             await context.DisposeComponentsAsync().WaitAsync(TimeSpan.FromSeconds(5));
-            Assert.True(handler.PutToken.IsCancellationRequested);
+            Assert.False(handler.PutToken.IsCancellationRequested);
         });
         Assert.Single(handler.Writes);
         Assert.Equal(1, handler.EditReads);
@@ -310,6 +334,7 @@ public sealed class CustomerAdministrationUiTests
         public bool HoldPut { get; set; }
         public bool HoldRead { get; set; }
         public bool UseReloadVersions { get; set; }
+        public bool LateCommitApplied { get; set; }
         private int editReads;
         private int sessionReads;
         public int EditReads => Volatile.Read(ref editReads);
@@ -368,7 +393,7 @@ public sealed class CustomerAdministrationUiTests
             };
         }
         private CustomerAdministrationEdit Edit(int id) => new(
-            new(id, "Synthetic", "Customer", "Synthetic Customer", "+6621234567", null, null,
+            new(id, LateCommitApplied ? "Late committed" : "Synthetic", "Customer", "Synthetic Customer", "+6621234567", null, null,
                 "initial@example.invalid", new DateTime(2000, 1, 2), null, null, null, null, null, null, null, null),
             new("controlled-identity", "initial@example.invalid", "initial@example.invalid", true, "+6621234567", false,
                 true, new DateTimeOffset(2026, 10, 7, 0, 0, 0, TimeSpan.Zero), true, 0, id, null, null,
