@@ -129,6 +129,38 @@ public sealed class BffEmployeesProxyContractTests
     }
 
     [Fact]
+    public async Task NullEmployeeRow_IsMappedToBadGateway()
+    {
+        var downstream = new RecordingEmployeeHandler(HttpStatusCode.OK, """{"items":[null],"pageIndex":1,"totalPages":1,"totalRecords":1,"privateSentinel":"employee-null-upstream-621"}""");
+        await using var factory = new EmployeesBffFactory(downstream, hasPermission: true);
+        using var client = CreateClient(factory);
+        await SignInAsync(client);
+
+        using var response = await client.GetAsync("/bff/employees");
+
+        Assert.Equal(HttpStatusCode.BadGateway, response.StatusCode);
+        var body = await response.Content.ReadAsStringAsync();
+        Assert.Contains("Invalid EmployeeService response", body, StringComparison.Ordinal);
+        Assert.DoesNotContain("employee-null-upstream-621", body, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task DuplicateEmployeeIds_AreMappedToBadGateway()
+    {
+        var downstream = new RecordingEmployeeHandler(HttpStatusCode.OK, """{"items":[{"id":1},{"id":1}],"pageIndex":1,"totalPages":1,"totalRecords":2,"privateSentinel":"employee-duplicate-upstream-621"}""");
+        await using var factory = new EmployeesBffFactory(downstream, hasPermission: true);
+        using var client = CreateClient(factory);
+        await SignInAsync(client);
+
+        using var response = await client.GetAsync("/bff/employees");
+
+        Assert.Equal(HttpStatusCode.BadGateway, response.StatusCode);
+        var body = await response.Content.ReadAsStringAsync();
+        Assert.Contains("Invalid EmployeeService response", body, StringComparison.Ordinal);
+        Assert.DoesNotContain("employee-duplicate-upstream-621", body, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task InvalidPageShape_IsMappedToBadGateway()
     {
         var downstream = new RecordingEmployeeHandler(

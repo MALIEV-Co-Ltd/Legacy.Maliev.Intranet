@@ -2505,7 +2505,8 @@ app.MapGet("/bff/employees", async (
         try
         {
             var page = await response.Content.ReadFromJsonAsync<EmployeeListPage>(cancellationToken);
-            return page is null || page.Items is null
+            return page is null || page.Items is null || page.Items.Any(employee => employee is null) ||
+                page.Items.Select(employee => employee.Id).Distinct().Count() != page.Items.Count
                 ? Results.Problem(statusCode: StatusCodes.Status502BadGateway, title: "Invalid EmployeeService response")
                 : Results.Ok(page);
         }
