@@ -22,8 +22,8 @@ LOCKS = (
     "build/nuget-locks/Legacy.Maliev.CompatibilityContracts/packages.lock.json",
 )
 DEPENDENCY_REFS = (
-    "02377791d346e25216c114522b3bfdb6f0f19a16",
-    "78e48ffc4ee000df0510cba5e7c7a3c4c4d539d7",
+    "173d63218d9142b34075bca87f5c6d933bcbdfb6",
+    "fe17b8cea8ace3eef5434f8b29c9038f5c975613",
 )
 FORBIDDEN = tuple(
     prefix + suffix for prefix in ("", "nested/") for suffix in (
