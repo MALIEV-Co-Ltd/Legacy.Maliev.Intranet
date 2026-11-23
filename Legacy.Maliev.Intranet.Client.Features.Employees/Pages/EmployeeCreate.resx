@@ -31,4 +31,10 @@
   <data name="ViewEmployee" xml:space="preserve"><value>View employee</value></data>
   <data name="ResendConfirmation" xml:space="preserve"><value>Request a new confirmation link</value></data>
   <data name="EmailTooLong" xml:space="preserve"><value>Email must be 256 characters or fewer.</value></data>
+  <data name="CreateOutcomeUnknown" xml:space="preserve"><value>The employee may have been created. Check the employee list before trying again.</value></data>
+  <data name="CreateStatusUnauthorized" xml:space="preserve"><value>The request reported that your session is not authorized.</value></data>
+  <data name="CreateStatusForbidden" xml:space="preserve"><value>The request reported insufficient permission.</value></data>
+  <data name="CreateStatusBadRequest" xml:space="preserve"><value>The service reported invalid employee details.</value></data>
+  <data name="CreateStatusConflict" xml:space="preserve"><value>The service reported an account conflict.</value></data>
+  <data name="CreateStatusRateLimited" xml:space="preserve"><value>The service reported too many requests.</value></data>
 </root>

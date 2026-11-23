@@ -1,10 +1,13 @@
 @page "/Employees/Create"
 @attribute [Authorize]
+@implements IDisposable
 @inject HttpClient Http
 @inject NavigationManager Navigation
 @inject IStringLocalizer<EmployeeCreate> Text
+@inject ILogger<EmployeeCreate> Logger
 @using System.Linq.Expressions
 @using Microsoft.AspNetCore.Components.Forms
+@using Microsoft.Extensions.Logging
 
 <PageTitle>@Text["PageTitle"]</PageTitle>
 
@@ -44,7 +47,7 @@
             </div>
         </section>
         <div class="employee-create__actions">
-            <ShadcnButton ButtonType="ShadcnButtonType.Submit" OperationFeedback="false" Disabled="@submitting">
+            <ShadcnButton ButtonType="ShadcnButtonType.Submit" OperationFeedback="false" Disabled="@(submitting || outcomeUnknown)">
                 @(submitting ? Text["Submitting"] : Text["CreateEmployee"])
             </ShadcnButton>
             <LegacyLink Href="/Employees/Index" Role="LegacyLinkRole.Navigation" Disabled="@submitting" AriaLabel="@Text["Cancel"]">@Text["Cancel"]</LegacyLink>
@@ -57,6 +60,8 @@
     private readonly CreateEmployeeAccountRequest model = new();
     private EditContext editContext = null!;
     private bool submitting;
+    private bool disposed;
+    private bool outcomeUnknown;
     private string? error;
     private int? createdId;
     private bool confirmationEmailSent;
@@ -82,39 +87,71 @@
 
     private async Task SubmitAsync()
     {
-        if (submitting) return;
+        if (submitting || disposed || outcomeUnknown) return;
 
         submitting = true;
         error = null;
+        var snapshot = new CreateEmployeeAccountRequest
+        {
+            FirstName = model.FirstName, LastName = model.LastName, Email = model.Email,
+            Password = model.Password, ConfirmPassword = model.ConfirmPassword,
+            PhoneNumber = model.PhoneNumber, RoleId = model.RoleId, DateOfBirth = model.DateOfBirth,
+        };
+        bool Unchanged() => snapshot.FirstName == model.FirstName && snapshot.LastName == model.LastName
+            && snapshot.Email == model.Email && snapshot.Password == model.Password
+            && snapshot.ConfirmPassword == model.ConfirmPassword && snapshot.PhoneNumber == model.PhoneNumber
+            && snapshot.RoleId == model.RoleId && snapshot.DateOfBirth == model.DateOfBirth;
+        var dispatched = false;
         try
         {
             using var sessionResponse = await Http.GetForPresentationAsync("/bff/session");
+            if (disposed || !Unchanged()) return;
             if (sessionResponse.StatusCode == HttpStatusCode.Unauthorized) { NavigateToLogin(); return; }
             sessionResponse.EnsureSuccessStatusCode();
             var session = await sessionResponse.Content.ReadFromJsonAsync<EmployeeSessionSummary>();
+            if (disposed || !Unchanged()) return;
             if (string.IsNullOrWhiteSpace(session?.CsrfToken)) { error = Text["CreateFailed"]; return; }
 
-            using var request = new HttpRequestMessage(HttpMethod.Post, "/bff/employees") { Content = JsonContent.Create(model) };
+            using var request = new HttpRequestMessage(HttpMethod.Post, "/bff/employees") { Content = JsonContent.Create(snapshot) };
             request.Headers.Add("X-CSRF-TOKEN", session.CsrfToken);
+            dispatched = true;
             using var response = await Http.SendAsync(request);
-            if (response.StatusCode == HttpStatusCode.Unauthorized) { NavigateToLogin(); return; }
-            if (response.StatusCode == HttpStatusCode.Forbidden) { error = Text["Forbidden"]; return; }
-            if (response.StatusCode == HttpStatusCode.BadRequest) { error = Text["ValidationFailed"]; return; }
-            if (response.StatusCode == HttpStatusCode.Conflict) { error = Text["Conflict"]; return; }
-            if (response.StatusCode == HttpStatusCode.TooManyRequests) { error = Text["RateLimited"]; return; }
-            if (!response.IsSuccessStatusCode) { error = Text["CreateFailed"]; return; }
+            if (disposed) return;
+            if (!response.IsSuccessStatusCode)
+            {
+                outcomeUnknown = true;
+                var status = response.StatusCode switch
+                {
+                    HttpStatusCode.Unauthorized => Text["CreateStatusUnauthorized"].Value,
+                    HttpStatusCode.Forbidden => Text["CreateStatusForbidden"].Value,
+                    HttpStatusCode.BadRequest => Text["CreateStatusBadRequest"].Value,
+                    HttpStatusCode.Conflict => Text["CreateStatusConflict"].Value,
+                    HttpStatusCode.TooManyRequests => Text["CreateStatusRateLimited"].Value,
+                    _ => string.Empty,
+                };
+                error = string.IsNullOrEmpty(status) ? Text["CreateOutcomeUnknown"] : $"{status} {Text["CreateOutcomeUnknown"]}";
+                return;
+            }
 
             var created = await response.Content.ReadFromJsonAsync<CreatedEmployeeAccount>();
-            if (created is null || created.Id <= 0) { error = Text["InvalidResponse"]; return; }
+            if (disposed) return;
+            if (created is null || created.Id <= 0) { outcomeUnknown = true; error = Text["CreateOutcomeUnknown"]; return; }
             createdId = created.Id;
             confirmationEmailSent = created.ConfirmationEmailSent;
         }
         catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException)
         {
-            error = Text["CreateFailed"];
+            if (!disposed) { outcomeUnknown = dispatched; error = Text[dispatched ? "CreateOutcomeUnknown" : "CreateFailed"]; }
         }
-        finally { submitting = false; }
+        catch (Exception exception) when (dispatched && exception is not OutOfMemoryException)
+        {
+            Logger.LogWarning("Employee creation ended unexpectedly after dispatch.");
+            if (!disposed) { outcomeUnknown = true; error = Text["CreateOutcomeUnknown"]; }
+        }
+        finally { if (!disposed) submitting = false; }
     }
+
+    public void Dispose() => disposed = true;
 
     private void NavigateToLogin() => Navigation.NavigateTo($"/Login?returnUrl={Uri.EscapeDataString(Navigation.ToBaseRelativePath(Navigation.Uri))}");
 }

@@ -31,4 +31,10 @@
   <data name="ViewEmployee" xml:space="preserve"><value>ดูข้อมูลพนักงาน</value></data>
   <data name="ResendConfirmation" xml:space="preserve"><value>ขอลิงก์ยืนยันใหม่</value></data>
   <data name="EmailTooLong" xml:space="preserve"><value>อีเมลต้องมีความยาวไม่เกิน 256 ตัวอักษร</value></data>
+  <data name="CreateOutcomeUnknown" xml:space="preserve"><value>อาจสร้างข้อมูลพนักงานแล้ว โปรดตรวจสอบรายชื่อพนักงานก่อนลองอีกครั้ง</value></data>
+  <data name="CreateStatusUnauthorized" xml:space="preserve"><value>ระบบแจ้งว่าเซสชันของคุณไม่ได้รับอนุญาต</value></data>
+  <data name="CreateStatusForbidden" xml:space="preserve"><value>ระบบแจ้งว่าคุณไม่มีสิทธิ์เพียงพอ</value></data>
+  <data name="CreateStatusBadRequest" xml:space="preserve"><value>ระบบแจ้งว่าข้อมูลพนักงานไม่ถูกต้อง</value></data>
+  <data name="CreateStatusConflict" xml:space="preserve"><value>ระบบแจ้งว่าข้อมูลบัญชีขัดแย้งกัน</value></data>
+  <data name="CreateStatusRateLimited" xml:space="preserve"><value>ระบบแจ้งว่ามีคำขอมากเกินไป</value></data>
 </root>
