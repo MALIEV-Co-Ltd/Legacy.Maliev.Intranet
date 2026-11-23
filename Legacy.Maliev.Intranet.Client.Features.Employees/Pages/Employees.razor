@@ -62,15 +62,24 @@
     private bool loading;
     private EmployeeListSort currentSort = EmployeeListSort.EmployeeId_Descending;
     private readonly LatestRequestGate requestGate = new();
+    private bool disposed;
     private ShadcnDataTableState dataTableState = new() { PageSize = 25 };
     private static readonly int[] PageSizeOptions = [10, 25, 50, 100, 250];
     private IReadOnlyList<ShadcnDataTableColumn<EmployeeListItem>> Columns =>
     [
         new("id", Text["Id"], employee => employee.Id) { Sortable = true, Hideable = false },
         new("name", Text["Name"], employee => employee.FullName) { MinWidth = "12rem" },
+        new("firstName", Text["FirstName"], employee => ValueOrFallback(employee.FirstName)) { MinWidth = "10rem" },
+        new("lastName", Text["LastName"], employee => ValueOrFallback(employee.LastName)) { MinWidth = "10rem" },
         new("role", Text["Role"], employee => ValueOrFallback(employee.Role?.Name)) { MinWidth = "12rem" },
-        new("email", Text["Email"], employee => employee.Email) { Sortable = true, MinWidth = "14rem" },
+        new("email", Text["Email"], employee => employee.Email) { Sortable = true, MinWidth = "14rem", CellTemplate = EmployeeEmailLink },
     ];
+    private static RenderFragment EmployeeEmailLink(EmployeeListItem employee) => builder =>
+    {
+        builder.OpenComponent<SafeEmailLink>(0);
+        builder.AddAttribute(1, nameof(SafeEmailLink.Email), employee.Email);
+        builder.CloseComponent();
+    };
     private IReadOnlyList<PageBreadcrumbItem> Breadcrumbs =>
     [
         new(Text["Operations"], "/Dashboard"),
@@ -176,6 +185,7 @@
         dataTableState = BuildDataTableState();
 
         await ReplaceUrlAsync(Index, Search, currentSort, Size);
+        if (disposed) return;
         await LoadAsync(new ListToolbarState<EmployeeListSort>(Search, currentSort, Size));
     }
 
@@ -186,7 +196,11 @@
         catch (JSDisconnectedException) { }
     }
 
-    public void Dispose() => requestGate.Dispose();
+    public void Dispose()
+    {
+        disposed = true;
+        requestGate.Dispose();
+    }
 
     private ShadcnDataTableState BuildDataTableState() => new()
     {

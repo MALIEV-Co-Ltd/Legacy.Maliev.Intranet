@@ -68,7 +68,7 @@
     [
         new("id", Text["Id"], customer => customer.Id) { Sortable = true, Hideable = false, CellTemplate = CustomerIdLink },
         new("name", Text["Name"], customer => customer.FullName) { MinWidth = "12rem" },
-        new("email", Text["Email"], customer => customer.Email) { Sortable = true, MinWidth = "14rem" },
+        new("email", Text["Email"], customer => customer.Email) { Sortable = true, MinWidth = "14rem", CellTemplate = CustomerEmailLink },
         new("company", Text["Company"], customer => ValueOrFallback(customer.Company?.Name)) { Sortable = true, MinWidth = "14rem" },
     ];
     private IReadOnlyList<PageBreadcrumbItem> Breadcrumbs =>
@@ -215,6 +215,13 @@
         builder.AddAttribute(3, nameof(LegacyLink.AriaLabel), $"{Text["Id"]} {customer.Id}");
         builder.AddAttribute(4, nameof(LegacyLink.ChildContent),
             (RenderFragment)(content => content.AddContent(0, customer.Id)));
+        builder.CloseComponent();
+    };
+
+    private static RenderFragment CustomerEmailLink(CustomerListItem customer) => builder =>
+    {
+        builder.OpenComponent<SafeEmailLink>(0);
+        builder.AddAttribute(1, nameof(SafeEmailLink.Email), customer.Email);
         builder.CloseComponent();
     };
 

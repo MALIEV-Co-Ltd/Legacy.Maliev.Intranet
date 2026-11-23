@@ -1,0 +1,31 @@
+@if (string.IsNullOrWhiteSpace(Email))
+{
+    <span>-</span>
+}
+else if (Mailto is { } href)
+{
+    <LegacyLink Href="@href" Role="LegacyLinkRole.Inline">@Email</LegacyLink>
+}
+else
+{
+    @Email
+}
+
+@code {
+    [Parameter] public string? Email { get; set; }
+
+    private string? Mailto
+    {
+        get
+        {
+            if (string.IsNullOrWhiteSpace(Email)) return null;
+            var separator = Email.LastIndexOf('@');
+            if (separator <= 0 || separator == Email.Length - 1 ||
+                Email.Any(char.IsControl) || Email.Contains('?') || Email.Contains('#') ||
+                !System.Net.Mail.MailAddress.TryCreate(Email, out var address) ||
+                !string.Equals(address.Address, Email, StringComparison.Ordinal)) return null;
+
+            return $"mailto:{Uri.EscapeDataString(Email[..separator])}@{Uri.EscapeDataString(Email[(separator + 1)..])}";
+        }
+    }
+}

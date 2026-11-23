@@ -36,4 +36,6 @@
   <data name="ViewEmployee" xml:space="preserve"><value>เปิดข้อมูลพนักงาน {0}</value></data>
   <data name="ExpandEmployee" xml:space="preserve"><value>ขยายรายละเอียดพนักงาน {0}</value></data>
   <data name="CollapseEmployee" xml:space="preserve"><value>ย่อรายละเอียดพนักงาน {0}</value></data>
+  <data name="FirstName" xml:space="preserve"><value>ชื่อ</value></data>
+  <data name="LastName" xml:space="preserve"><value>นามสกุล</value></data>
 </root>
