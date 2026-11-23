@@ -12,9 +12,9 @@
   <ItemGroup>
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
     <!-- This non-host library uses Defaults diagnostics, not OpenAPI document generation. -->
-    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.12" ExcludeAssets="analyzers" />
-    <PackageReference Include="Microsoft.AspNetCore.DataProtection.StackExchangeRedis" Version="10.0.13" />
-    <PackageReference Include="Microsoft.Extensions.Caching.StackExchangeRedis" Version="10.0.13" />
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.14" ExcludeAssets="analyzers" />
+    <PackageReference Include="Microsoft.AspNetCore.DataProtection.StackExchangeRedis" Version="11.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Caching.StackExchangeRedis" Version="11.0.0" />
     <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.23.0" />
   </ItemGroup>
   <ItemGroup>
@@ -23,7 +23,7 @@
   <!-- Server has no OpenAPI document consumer. Keep package APIs/XML docs and every other analyzer. -->
   <Target Name="RemoveUnusedServerOpenApiXmlCommentGenerator" BeforeTargets="CoreCompile">
     <ItemGroup>
-      <Analyzer Remove="$(NuGetPackageRoot)microsoft.aspnetcore.openapi/10.0.12/analyzers/dotnet/cs/Microsoft.AspNetCore.OpenApi.SourceGenerators.dll" />
+      <Analyzer Remove="$(NuGetPackageRoot)microsoft.aspnetcore.openapi/10.0.14/analyzers/dotnet/cs/Microsoft.AspNetCore.OpenApi.SourceGenerators.dll" />
     </ItemGroup>
   </Target>
 </Project>

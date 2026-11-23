@@ -237,11 +237,15 @@
     private string? invoicesError;
     private CancellationTokenSource? invoicesLoadCts;
     private bool activeTabNeedsVisibilitySync;
+    private Task<AuthenticationState>? latestAuthenticationState;
+    private Task<AuthenticationState>? appliedAuthenticationState;
+    private bool disposed;
 
     private static readonly ShadcnIconData ArrowLeftIcon = LucideIconCatalog.Instance.Get(LucideIconNames.ArrowLeft);
 
     protected override void OnInitialized()
     {
+        AuthenticationStateProvider.AuthenticationStateChanged += OnAuthenticationStateChanged;
         editContext = new EditContext(editModel);
         internalRemarkEditContext = new EditContext(internalRemarkEditModel);
     }
@@ -281,7 +285,8 @@
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        await JS.InvokeVoidAsync("malievCustomerWorkspace.preservePanelKeyDefaults");
+        try { await JS.InvokeVoidAsync("malievCustomerWorkspace.preservePanelKeyDefaults"); }
+        catch (JSDisconnectedException) { return; }
 
         if (!activeTabNeedsVisibilitySync)
         {
@@ -289,7 +294,8 @@
         }
 
         activeTabNeedsVisibilitySync = false;
-        await JS.InvokeVoidAsync("malievCustomerWorkspace.ensureActiveTabVisible");
+        try { await JS.InvokeVoidAsync("malievCustomerWorkspace.ensureActiveTabVisible"); }
+        catch (JSDisconnectedException) { }
     }
 
     private async Task LoadAsync()
@@ -309,8 +315,10 @@
         loading = false;
         loadedCustomerId = request.CustomerId;
 
-        var authenticationState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
-        if (!customerLoadGate.IsCurrent(request)) return;
+        var state = ReadAuthenticationState();
+        var authenticationState = await state;
+        if (disposed || !customerLoadGate.IsCurrent(request) || !ReferenceEquals(state, Volatile.Read(ref latestAuthenticationState))) return;
+        appliedAuthenticationState = state;
         var user = authenticationState.User;
         relationPermissions = user.FindAll("permissions").Select(claim => claim.Value).ToArray();
         canEdit = LegacyNavigationAuthorization.IsEnabled(user, "legacy-customer.customers.update");
@@ -693,18 +701,22 @@
 
     private async Task SaveInternalRemarkAsync()
     {
-        if (!canEdit || !internalRemarkEditing || internalRemarkSubmitting) return;
-        if (!internalRemarkEditContext.Validate())
-        {
-            internalRemarkError = Text["InternalRemarkValidationFailed"];
-            return;
-        }
-
+        if (!canEdit || !internalRemarkEditing || internalRemarkSubmitting || !HasCurrentAuthenticationState()) return;
+        var validatedContext = internalRemarkEditContext;
+        var validatedId = Id;
         internalRemarkSubmitting = true;
-        internalRemarkError = null;
         try
         {
+            var valid = await validatedContext.ValidateAsync();
+            if (!ReferenceEquals(validatedContext, internalRemarkEditContext) || validatedId != Id || !canEdit || !internalRemarkEditing || !HasCurrentAuthenticationState()) return;
+            if (!valid)
+            {
+                internalRemarkError = Text["InternalRemarkValidationFailed"];
+                return;
+            }
+            internalRemarkError = null;
             using var sessionResponse = await Http.GetForPresentationAsync("/bff/session");
+            if (!HasCurrentAuthenticationState() || validatedId != Id || !ReferenceEquals(validatedContext, internalRemarkEditContext)) return;
             if (sessionResponse.StatusCode == HttpStatusCode.Unauthorized) { NavigateToLogin(); return; }
             sessionResponse.EnsureSuccessStatusCode();
             var session = await sessionResponse.Content.ReadFromJsonAsync<EmployeeSessionSummary>();
@@ -749,23 +761,26 @@
 
     private async Task SaveAsync()
     {
-        if (!canEdit || !editing || submitting) return;
+        if (!canEdit || !editing || submitting || !HasCurrentAuthenticationState()) return;
         if (string.IsNullOrWhiteSpace(customerRevision))
         {
             operationError = Text["InvalidResponse"];
             return;
         }
 
-        if (!editContext.Validate())
-        {
-            operationError = Text["ValidationFailed"];
-            return;
-        }
-
+        var validatedContext = editContext;
+        var validatedId = Id;
         submitting = true;
-        operationError = null;
         try
         {
+            var valid = await validatedContext.ValidateAsync();
+            if (!ReferenceEquals(validatedContext, editContext) || validatedId != Id || !canEdit || !editing || !HasCurrentAuthenticationState()) return;
+            if (!valid)
+            {
+                operationError = Text["ValidationFailed"];
+                return;
+            }
+            operationError = null;
             using var sessionResponse = await Http.GetForPresentationAsync("/bff/session");
             if (sessionResponse.StatusCode == HttpStatusCode.Unauthorized)
             {
@@ -916,8 +931,35 @@
 
     private void NavigateToLogin() => Navigation.NavigateTo($"/Login?returnUrl={Uri.EscapeDataString(Navigation.ToBaseRelativePath(Navigation.Uri))}");
 
+    private Task<AuthenticationState> ReadAuthenticationState()
+    {
+        var current = Volatile.Read(ref latestAuthenticationState);
+        if (current is not null) return current;
+        var initial = AuthenticationStateProvider.GetAuthenticationStateAsync();
+        return Interlocked.CompareExchange(ref latestAuthenticationState, initial, null) ?? initial;
+    }
+
+    private bool HasCurrentAuthenticationState() =>
+        !disposed && ReferenceEquals(appliedAuthenticationState, Volatile.Read(ref latestAuthenticationState));
+
+    private void OnAuthenticationStateChanged(Task<AuthenticationState> state)
+    {
+        Volatile.Write(ref latestAuthenticationState, state);
+        _ = InvokeAsync(async () =>
+        {
+            if (disposed || !ReferenceEquals(state, Volatile.Read(ref latestAuthenticationState))) return;
+            canEdit = canAdminister = canReadOrders = canReadQuotations = canReadInvoices = false;
+            relationPermissions = [];
+            ResetHistoryState();
+            await LoadAsync();
+            if (!disposed && ReferenceEquals(state, Volatile.Read(ref latestAuthenticationState))) StateHasChanged();
+        });
+    }
+
     public void Dispose()
     {
+        disposed = true;
+        AuthenticationStateProvider.AuthenticationStateChanged -= OnAuthenticationStateChanged;
         customerLoadGate.Dispose();
         internalRemarkLoadCts?.Cancel();
         internalRemarkLoadCts?.Dispose();

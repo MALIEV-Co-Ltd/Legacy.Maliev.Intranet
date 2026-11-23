@@ -4,20 +4,20 @@ namespace Legacy.Maliev.Intranet.Tests;
 
 public sealed class LegacyServiceDefaultsIdentityContractTests
 {
-    private const string DotNetPatchVersion = "10.0.13";
+    private const string DotNetPatchVersion = "11.0.0";
     private const string NativeLoggingReplacementCommit = "02377791d346e25216c114522b3bfdb6f0f19a16";
 
     [Theory]
-    [InlineData("Microsoft.AspNetCore.Components.Authorization", "10.0.13")]
-    [InlineData("Microsoft.AspNetCore.Components.Web", "10.0.13")]
-    [InlineData("Microsoft.AspNetCore.Components.WebAssembly", "10.0.13")]
-    [InlineData("Microsoft.AspNetCore.Components.WebAssembly.DevServer", "10.0.13")]
-    [InlineData("Microsoft.AspNetCore.Components.WebAssembly.Server", "10.0.13")]
-    [InlineData("Microsoft.AspNetCore.DataProtection.StackExchangeRedis", "10.0.13")]
-    [InlineData("Microsoft.AspNetCore.Mvc.Testing", "10.0.12")]
-    [InlineData("Microsoft.Extensions.Caching.StackExchangeRedis", "10.0.13")]
-    [InlineData("Microsoft.Extensions.Localization", "10.0.13")]
-    [InlineData("Microsoft.Extensions.Localization.Abstractions", "10.0.13")]
+    [InlineData("Microsoft.AspNetCore.Components.Authorization", "11.0.0")]
+    [InlineData("Microsoft.AspNetCore.Components.Web", "11.0.0")]
+    [InlineData("Microsoft.AspNetCore.Components.WebAssembly", "11.0.0")]
+    [InlineData("Microsoft.AspNetCore.Components.WebAssembly.DevServer", "11.0.0")]
+    [InlineData("Microsoft.AspNetCore.Components.WebAssembly.Server", "11.0.0")]
+    [InlineData("Microsoft.AspNetCore.DataProtection.StackExchangeRedis", "11.0.0")]
+    [InlineData("Microsoft.AspNetCore.Mvc.Testing", "11.0.0")]
+    [InlineData("Microsoft.Extensions.Caching.StackExchangeRedis", "11.0.0")]
+    [InlineData("Microsoft.Extensions.Localization", "11.0.0")]
+    [InlineData("Microsoft.Extensions.Localization.Abstractions", "11.0.0")]
     public void DirectPackageBoundary_RequiresEveryOccurrenceAndRejectsWrongDuplicate(string package, string expected)
     {
         var exact = new XElement("PackageReference", new XAttribute("Include", package), new XAttribute("Version", expected));
@@ -32,7 +32,7 @@ public sealed class LegacyServiceDefaultsIdentityContractTests
         var childOverridden = new XElement(exact);
         childOverridden.Add(new XElement("VersionOverride", "10.0.14"));
         Assert.False(AllDirectOccurrencesUseExpectedPatch([exact, childOverridden], package));
-        foreach (var wrong in new[] { "10.0.11", expected == "10.0.12" ? "10.0.13" : "10.0.12", "10.0.14", expected + "-unreviewed" })
+        foreach (var wrong in new[] { "10.0.11", "10.0.12", "10.0.13", "10.0.14", expected + "-unreviewed" })
         {
             var other = new XElement("PackageReference", new XAttribute("Include", package), new XAttribute("Version", wrong));
             Assert.False(AllDirectOccurrencesUseExpectedPatch([exact, other], package));
@@ -190,14 +190,13 @@ public sealed class LegacyServiceDefaultsIdentityContractTests
         })
         {
             Assert.True(AllDirectOccurrencesUseExpectedPatch(directReferences, package),
-                $"Every direct {package} occurrence must use exactly {ExpectedFrameworkPatch(package)}.");
+                $"Every direct {package} occurrence must use exactly {DotNetPatchVersion}.");
         }
+        Assert.True(AllDirectOccurrencesUseExpectedPatch(directReferences, "Microsoft.AspNetCore.OpenApi", "10.0.14"),
+            "Every direct Microsoft.AspNetCore.OpenApi occurrence must use exactly 10.0.14.");
     }
 
-    private static string ExpectedFrameworkPatch(string package) =>
-        package == "Microsoft.AspNetCore.Mvc.Testing" ? "10.0.12" : DotNetPatchVersion;
-
-    private static bool AllDirectOccurrencesUseExpectedPatch(IEnumerable<XElement> references, string package)
+    private static bool AllDirectOccurrencesUseExpectedPatch(IEnumerable<XElement> references, string package, string expected = DotNetPatchVersion)
     {
         // NuGet IDs are case-insensitive; differently cased duplicates remain in this boundary.
         var occurrences = references.Where(reference => string.Equals(
@@ -206,7 +205,7 @@ public sealed class LegacyServiceDefaultsIdentityContractTests
             reference.Attribute("VersionOverride") is null &&
             !reference.Elements().Any(element => element.Name.LocalName == "VersionOverride") &&
             ((string?)reference.Attribute("Version") ?? reference.Elements().SingleOrDefault(element => element.Name.LocalName == "Version")?.Value)
-                == ExpectedFrameworkPatch(package));
+                == expected);
     }
 
     [Fact]

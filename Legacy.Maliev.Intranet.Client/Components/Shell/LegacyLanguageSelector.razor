@@ -1,6 +1,7 @@
 @using System.Globalization
 @using Legacy.Maliev.Intranet.Contracts
 @using Legacy.Maliev.Intranet.Client.Layout
+@implements IDisposable
 @inject IJSRuntime JS
 @inject NavigationManager Navigation
 @inject IStringLocalizer<LegacyTopBar> Text
@@ -12,6 +13,7 @@
 </div>
 
 @code {
+    private bool disposed;
     private const string EnglishCulture = "en-TH";
     private const string ThaiCulture = "th-TH";
     private static readonly IReadOnlyList<ShadcnSelectOption<string>> CultureOptions =
@@ -30,7 +32,11 @@
         culture = string.Equals(culture, "th-TH", StringComparison.OrdinalIgnoreCase)
             ? "th-TH"
             : "en-TH";
-        await JS.InvokeVoidAsync("malievCulture.set", culture);
+        try { await JS.InvokeVoidAsync("malievCulture.set", culture); }
+        catch (JSDisconnectedException) { return; }
+        if (disposed) return;
         Navigation.NavigateTo(Navigation.Uri, forceLoad: true);
     }
+
+    public void Dispose() => disposed = true;
 }

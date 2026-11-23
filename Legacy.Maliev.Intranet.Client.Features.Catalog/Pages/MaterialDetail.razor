@@ -274,17 +274,20 @@
     private async Task SubmitAsync()
     {
         if (submitting) return;
-        if (!editContext.Validate())
-        {
-            error = Text["ValidationFailed"];
-            return;
-        }
-
+        var validatedContext = editContext;
+        var validatedId = Id;
         submitting = true;
-        error = null;
-        notification = null;
         try
         {
+            var valid = await validatedContext.ValidateAsync();
+            if (!ReferenceEquals(validatedContext, editContext) || validatedId != Id) return;
+            if (!valid)
+            {
+                error = Text["ValidationFailed"];
+                return;
+            }
+            error = null;
+            notification = null;
             var session = await Http.GetFromJsonForPresentationAsync<EmployeeSessionSummary>("/bff/session");
             if (string.IsNullOrWhiteSpace(session?.CsrfToken))
             {

@@ -62,17 +62,17 @@ public sealed class DeliveryContractTests
     }
 
     [Fact]
-    public void Dockerfiles_AreDotNet10NonRootAndPinLegacyBuildDependencies()
+    public void Dockerfiles_AreDotNet11NonRootAndPinLegacyBuildDependencies()
     {
         var root = FindRoot();
         var dockerfiles = new[]
         {
             (Path: Path.Combine(root, "Legacy.Maliev.Intranet", "Dockerfile"),
-                Sdk: "dotnet/sdk:10.0.403-alpine3.24", SdkDigest: "cc02b814237a76c4735fb6eeee87181597b5e56f2ce458a435e527674d91f4d7",
-                Runtime: "dotnet/aspnet:10.0.14-alpine3.24", RuntimeDigest: "254fe017495996d3abcc487ffacdcce2b73affb380d3af87af12c8dff41fe0b0"),
+                Sdk: "dotnet/sdk:11.0.100-alpine3.24", SdkDigest: "52556c0fb9d0f609ae9aeab9efeeba96f4acc2f7038f7696f2235ccbdbb8e290",
+                Runtime: "dotnet/aspnet:11.0.0-alpine3.24", RuntimeDigest: "d39b72ad1534fa0faf52b488bffb0762df7ba269d120f0338713d4dda2a41bf5"),
             (Path: Path.Combine(root, "Legacy.Maliev.Intranet.Bff", "Dockerfile"),
-                Sdk: "dotnet/sdk:10.0.402-alpine3.24", SdkDigest: "230c3fbae0ceedc70bca04eed2bfb5694e8b248cadbb81010f41b7a993601f55",
-                Runtime: "dotnet/aspnet:10.0.13-alpine3.24", RuntimeDigest: "819bd3649d8bf53f35527c68d62e17b348ef6f24ae73073f497f00a878348062"),
+                Sdk: "dotnet/sdk:11.0.100-alpine3.24", SdkDigest: "52556c0fb9d0f609ae9aeab9efeeba96f4acc2f7038f7696f2235ccbdbb8e290",
+                Runtime: "dotnet/aspnet:11.0.0-alpine3.24", RuntimeDigest: "d39b72ad1534fa0faf52b488bffb0762df7ba269d120f0338713d4dda2a41bf5"),
         };
 
         Assert.All(dockerfiles, image =>
@@ -84,9 +84,9 @@ public sealed class DeliveryContractTests
             Assert.Contains($"{image.Runtime}@sha256:{image.RuntimeDigest}", dockerfile, StringComparison.Ordinal);
             Assert.Contains("USER $APP_UID", dockerfile, StringComparison.Ordinal);
             Assert.Contains("Legacy.Maliev.ServiceDefaults.git", dockerfile, StringComparison.Ordinal);
-            Assert.Contains("checkout 02377791d346e25216c114522b3bfdb6f0f19a16", dockerfile, StringComparison.Ordinal);
+            Assert.Contains("checkout 173d63218d9142b34075bca87f5c6d933bcbdfb6", dockerfile, StringComparison.Ordinal);
             Assert.Contains("Legacy.Maliev.CompatibilityContracts.git", dockerfile, StringComparison.Ordinal);
-            Assert.Contains("checkout 78e48ffc4ee000df0510cba5e7c7a3c4c4d539d7", dockerfile, StringComparison.Ordinal);
+            Assert.Contains("checkout fe17b8cea8ace3eef5434f8b29c9038f5c975613", dockerfile, StringComparison.Ordinal);
             Assert.DoesNotContain("Maliev.Aspire.git", dockerfile, StringComparison.Ordinal);
             Assert.DoesNotContain("Maliev.MessagingContracts.git", dockerfile, StringComparison.Ordinal);
             Assert.Contains("dotnet restore ", dockerfile, StringComparison.Ordinal);

@@ -142,16 +142,18 @@
             return;
         }
 
-        if (!editContext.Validate())
-        {
-            error = Text["ValidationFailed"];
-            return;
-        }
-
+        var validatedContext = editContext;
         submitting = true;
-        error = null;
         try
         {
+            var valid = await validatedContext.ValidateAsync();
+            if (!ReferenceEquals(validatedContext, editContext)) return;
+            if (!valid)
+            {
+                error = Text["ValidationFailed"];
+                return;
+            }
+            error = null;
             var session = await Http.GetFromJsonForPresentationAsync<EmployeeSessionSummary>("/bff/session");
             if (string.IsNullOrWhiteSpace(session?.CsrfToken))
             {

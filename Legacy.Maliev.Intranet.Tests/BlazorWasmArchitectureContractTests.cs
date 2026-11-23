@@ -15,7 +15,7 @@ public sealed class BlazorWasmArchitectureContractTests
     }
 
     [Fact]
-    public void Client_IsNet10BlazorWebAssemblyWithReleasedShadcnPackageAndNoServerSecrets()
+    public void Client_IsNet11BlazorWebAssemblyWithReleasedShadcnPackageAndNoServerSecrets()
     {
         var root = FindRoot();
         var clientRoot = Path.Combine(root, "Legacy.Maliev.Intranet.Client");
@@ -23,7 +23,7 @@ public sealed class BlazorWasmArchitectureContractTests
         var source = ReadSourceTree(clientRoot);
 
         Assert.Contains("Microsoft.NET.Sdk.BlazorWebAssembly", project, StringComparison.Ordinal);
-        Assert.Contains("<TargetFramework>net10.0</TargetFramework>", project, StringComparison.Ordinal);
+        Assert.Contains("<TargetFramework>net11.0</TargetFramework>", project, StringComparison.Ordinal);
         Assert.Contains("PackageReference Include=\"Maliev.ShadcnBlazor\" Version=\"2.2.1\"", project, StringComparison.Ordinal);
         Assert.DoesNotContain("PackageReference Include=\"MudBlazor\"", project, StringComparison.Ordinal);
         Assert.Contains("..\\Legacy.Maliev.Intranet.Contracts\\Legacy.Maliev.Intranet.Contracts.csproj", project, StringComparison.Ordinal);

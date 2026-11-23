@@ -1,4 +1,5 @@
 @page "/Quotations/View"
+@implements IDisposable
 @attribute [Authorize]
 @using Microsoft.AspNetCore.Components.Authorization
 @inject HttpClient Http
@@ -189,8 +190,54 @@
     private string? decisionError;
     private int retryAfterSeconds;
     private QuotationDecisionResult? decisionResult;
+    private Task<AuthenticationState>? latestAuthenticationState;
+    private Task<AuthenticationState>? appliedAuthenticationState;
+    private bool disposed;
+
+    protected override void OnInitialized() => AuthenticationStateProvider.AuthenticationStateChanged += OnAuthenticationStateChanged;
 
     protected override Task OnParametersSetAsync() => LoadAsync();
+
+    private Task<AuthenticationState> ReadAuthenticationState()
+    {
+        var current = Volatile.Read(ref latestAuthenticationState);
+        if (current is not null) return current;
+        var initial = AuthenticationStateProvider.GetAuthenticationStateAsync();
+        return Interlocked.CompareExchange(ref latestAuthenticationState, initial, null) ?? initial;
+    }
+
+    private bool HasCurrentAuthenticationState() =>
+        !disposed && ReferenceEquals(appliedAuthenticationState, Volatile.Read(ref latestAuthenticationState));
+
+    private async Task ApplyAuthenticationStateAsync(Task<AuthenticationState> state)
+    {
+        AuthenticationState authentication;
+        try { authentication = await state; }
+        catch (Exception) when (disposed || !ReferenceEquals(state, Volatile.Read(ref latestAuthenticationState))) { return; }
+        if (disposed || !ReferenceEquals(state, Volatile.Read(ref latestAuthenticationState))) return;
+        canDecide = authentication.User.Claims.Any(claim =>
+            claim.Type == "permissions" && claim.Value == LegacyQuotationPermissions.Update);
+        appliedAuthenticationState = state;
+    }
+
+    private void OnAuthenticationStateChanged(Task<AuthenticationState> state)
+    {
+        Volatile.Write(ref latestAuthenticationState, state);
+        _ = InvokeAsync(async () =>
+        {
+            if (disposed || !ReferenceEquals(state, Volatile.Read(ref latestAuthenticationState))) return;
+            canDecide = false;
+            pendingDecision = null;
+            await ApplyAuthenticationStateAsync(state);
+            if (!disposed && ReferenceEquals(state, Volatile.Read(ref latestAuthenticationState))) StateHasChanged();
+        });
+    }
+
+    public void Dispose()
+    {
+        disposed = true;
+        AuthenticationStateProvider.AuthenticationStateChanged -= OnAuthenticationStateChanged;
+    }
 
     private async Task LoadAsync()
     {
@@ -201,9 +248,8 @@
         decisionError = null;
         decisionResult = null;
         retryAfterSeconds = 0;
-        var authenticationState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
-        canDecide = authenticationState.User.Claims.Any(claim =>
-            claim.Type == "permissions" && claim.Value == LegacyQuotationPermissions.Update);
+        await ApplyAuthenticationStateAsync(ReadAuthenticationState());
+        if (disposed) return;
         if (Id is not > 0)
         {
             error = Text["InvalidId"];
@@ -246,7 +292,7 @@
 
     private void BeginDecision(bool accepted)
     {
-        if (!canDecide || decisionBusy) return;
+        if (!canDecide || decisionBusy || !HasCurrentAuthenticationState()) return;
         pendingDecision = accepted;
         decisionMessage = null;
         decisionError = null;
@@ -265,7 +311,7 @@
 
     private async Task SubmitDecisionAsync()
     {
-        if (!canDecide || decisionBusy || pendingDecision is not bool accepted || Id is not > 0 || page is null) return;
+        if (!canDecide || decisionBusy || !HasCurrentAuthenticationState() || pendingDecision is not bool accepted || Id is not > 0 || page is null) return;
 
         decisionBusy = true;
         decisionMessage = null;

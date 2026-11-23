@@ -175,18 +175,21 @@
             return;
         }
 
-        if (!editContext.Validate())
-        {
-            error = Text["ValidationFailed"];
-            notice = null;
-            return;
-        }
-
+        var validatedContext = editContext;
+        var validatedProfile = profile;
         submitting = true;
-        error = null;
-        notice = null;
         try
         {
+            var valid = await validatedContext.ValidateAsync();
+            if (!ReferenceEquals(validatedContext, editContext) || !ReferenceEquals(validatedProfile, profile)) return;
+            if (!valid)
+            {
+                error = Text["ValidationFailed"];
+                notice = null;
+                return;
+            }
+            error = null;
+            notice = null;
             using var sessionResponse = await Http.GetForPresentationAsync("/bff/session");
             if (sessionResponse.StatusCode == HttpStatusCode.Unauthorized)
             {

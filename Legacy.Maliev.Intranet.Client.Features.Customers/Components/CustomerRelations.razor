@@ -136,12 +136,18 @@
 
     private async Task SaveAsync()
     {
-        if (saving || needsReload || kind is null || version is null || customerVersion is null || editContext is null || !editContext.Validate()) return;
+        if (saving || needsReload || kind is null || version is null || customerVersion is null || editContext is null) return;
+        var validatedContext = editContext;
+        var validatedCustomerId = Customer.Id;
+        var token = lifetime.Token;
         saving = true;
-        error = null;
         var sent = false;
         try
         {
+            var valid = await validatedContext.ValidateAsync(token);
+            if (!valid || token.IsCancellationRequested || Locked || Customer.Id != validatedCustomerId
+                || !ReferenceEquals(validatedContext, editContext)) return;
+            error = null;
             using var sessionResponse = await Http.GetForPresentationAsync("/bff/session", lifetime.Token);
             if (!sessionResponse.IsSuccessStatusCode) { error = Failure(sessionResponse.StatusCode); return; }
             var session = await sessionResponse.Content.ReadFromJsonAsync<EmployeeSessionSummary>(lifetime.Token);

@@ -198,7 +198,10 @@
     public string? Error { get; set; }
 
     private bool _isCheckingAuth = true;
+    private Task<AuthenticationState>? _latestAuthenticationState;
+    private bool _disposed;
     private bool _isProcessing;
+    private bool _authenticationChangedDuringProcessing;
     private bool _rememberMe;
     private string _emailInput = string.Empty;
     private string _password = string.Empty;
@@ -246,11 +249,13 @@
     protected override async Task OnInitializedAsync()
     {
         ThemeService.Changed += OnThemeChanged;
+        AuthenticationStateProvider.AuthenticationStateChanged += OnAuthenticationStateChanged;
         _errorMessage = string.IsNullOrWhiteSpace(Error) ? null : Error;
 
         try
         {
-            var authenticationState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+            var authenticationState = await GetLatestAuthenticationStateAsync();
+            if (_disposed) return;
             if (authenticationState.User.Identity?.IsAuthenticated == true)
             {
                 Navigation.NavigateTo(LocalReturnUrlForGoogle, replace: true);
@@ -262,7 +267,7 @@
             Logger.LogDebug(exception, "Employee login could not read the existing authentication state.");
         }
 
-        _isCheckingAuth = false;
+        if (!_disposed) _isCheckingAuth = false;
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -299,6 +304,44 @@
     private Task ToggleThemeAsync() => ThemeService.ToggleAsync();
 
     private void OnThemeChanged(object? sender, EventArgs args) => _ = InvokeAsync(StateHasChanged);
+
+    private async Task<AuthenticationState> GetLatestAuthenticationStateAsync()
+    {
+        while (true)
+        {
+            var pending = Volatile.Read(ref _latestAuthenticationState);
+            if (pending is null)
+            {
+                var initial = AuthenticationStateProvider.GetAuthenticationStateAsync();
+                pending = Interlocked.CompareExchange(ref _latestAuthenticationState, initial, null) ?? initial;
+            }
+            AuthenticationState state;
+            try { state = await pending; }
+            catch (Exception) when (!ReferenceEquals(pending, Volatile.Read(ref _latestAuthenticationState))) { continue; }
+            if (ReferenceEquals(pending, Volatile.Read(ref _latestAuthenticationState))) return state;
+        }
+    }
+
+    private void OnAuthenticationStateChanged(Task<AuthenticationState> state)
+    {
+        Interlocked.Exchange(ref _latestAuthenticationState, state);
+        _ = InvokeAsync(async () =>
+        {
+            try
+            {
+                var current = await GetLatestAuthenticationStateAsync();
+                if (!_disposed && current.User.Identity?.IsAuthenticated == true)
+                {
+                    if (_isProcessing) _authenticationChangedDuringProcessing = true;
+                    else Navigation.NavigateTo(LocalReturnUrlForGoogle, replace: true);
+                }
+            }
+            catch (Exception exception)
+            {
+                Logger.LogDebug(exception, "Employee login could not read the updated authentication state.");
+            }
+        });
+    }
 
     private void ContinueWithEmail()
     {
@@ -348,6 +391,7 @@
                 password,
                 ReturnUrl,
                 _rememberMe);
+            if (_disposed) return;
             if (result.Succeeded && result.RedirectUrl is not null)
             {
                 Navigation.NavigateTo(result.RedirectUrl, forceLoad: true);
@@ -361,6 +405,21 @@
             password = string.Empty;
             _isProcessing = false;
         }
+
+        if (_authenticationChangedDuringProcessing && !_disposed)
+        {
+            _authenticationChangedDuringProcessing = false;
+            try
+            {
+                var current = await GetLatestAuthenticationStateAsync();
+                if (!_disposed && current.User.Identity?.IsAuthenticated == true)
+                    Navigation.NavigateTo(LocalReturnUrlForGoogle, replace: true);
+            }
+            catch (Exception exception)
+            {
+                Logger.LogDebug(exception, "Employee login could not read the updated authentication state.");
+            }
+        }
     }
 
     private static bool IsLocalPath(string? path) =>
@@ -370,6 +429,8 @@
 
     public ValueTask DisposeAsync()
     {
+        _disposed = true;
+        AuthenticationStateProvider.AuthenticationStateChanged -= OnAuthenticationStateChanged;
         ThemeService.Changed -= OnThemeChanged;
         _password = string.Empty;
         _passwordVisible = false;

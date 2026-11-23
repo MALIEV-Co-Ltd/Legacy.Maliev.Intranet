@@ -303,6 +303,8 @@
     private bool _loading = true;
     private DotNetObjectReference<Dashboard>? _selfReference;
     private int? _refreshHandle;
+    private readonly object _refreshLock = new();
+    private bool _disposed;
 
     private ShadcnChartConfig QuotationDecisionChartConfig => new()
     {
@@ -349,10 +351,21 @@
         if (firstRender)
         {
             _selfReference = DotNetObjectReference.Create(this);
-            _refreshHandle = await JS.InvokeAsync<int>(
-                "malievDashboardRefresh.start",
-                _selfReference,
-                RefreshInterval.TotalMilliseconds);
+            try
+            {
+                var refreshHandle = await JS.InvokeAsync<int>(
+                    "malievDashboardRefresh.start",
+                    _selfReference,
+                    RefreshInterval.TotalMilliseconds);
+                bool stop;
+                lock (_refreshLock)
+                {
+                    stop = _disposed;
+                    if (!stop) _refreshHandle = refreshHandle;
+                }
+                if (stop) await StopRefreshAsync(refreshHandle);
+            }
+            catch (JSDisconnectedException) { }
         }
     }
 
@@ -360,6 +373,7 @@
 
     private async Task LoadAsync(bool showLoading = true)
     {
+        if (Volatile.Read(ref _disposed)) return;
         if (showLoading)
         {
             _loading = true;
@@ -368,6 +382,7 @@
         try
         {
             using var response = await Http.GetForPresentationAsync("/bff/dashboard");
+            if (Volatile.Read(ref _disposed)) return;
             if (response.StatusCode is System.Net.HttpStatusCode.Unauthorized or System.Net.HttpStatusCode.Forbidden)
             {
                 Navigation.NavigateTo($"/Login?returnUrl={Uri.EscapeDataString(Navigation.ToBaseRelativePath(Navigation.Uri))}");
@@ -380,16 +395,18 @@
                 return;
             }
 
-            _snapshot = await response.Content.ReadFromJsonAsync<LegacyDashboardSnapshot>();
-            _error = _snapshot is null ? Text["InvalidDashboardResponse"].Value : null;
+            var snapshot = await response.Content.ReadFromJsonAsync<LegacyDashboardSnapshot>();
+            if (Volatile.Read(ref _disposed)) return;
+            _snapshot = snapshot;
+            _error = snapshot is null ? Text["InvalidDashboardResponse"].Value : null;
         }
         catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException)
         {
-            _error = Text["DashboardUnavailable"];
+            if (!Volatile.Read(ref _disposed)) _error = Text["DashboardUnavailable"];
         }
         finally
         {
-            if (showLoading)
+            if (showLoading && !Volatile.Read(ref _disposed))
             {
                 _loading = false;
             }
@@ -400,17 +417,35 @@
     public async Task RefreshFromBrowserAsync()
     {
         await LoadAsync(showLoading: false);
-        await InvokeAsync(StateHasChanged);
+        if (Volatile.Read(ref _disposed)) return;
+        await InvokeAsync(RenderRefreshIfActive);
+    }
+
+    private void RenderRefreshIfActive()
+    {
+        if (!Volatile.Read(ref _disposed)) StateHasChanged();
     }
 
     public async ValueTask DisposeAsync()
     {
-        if (_refreshHandle is int refreshHandle)
+        int? refreshHandle;
+        lock (_refreshLock)
         {
-            await JS.InvokeVoidAsync("malievDashboardRefresh.stop", refreshHandle);
+            _disposed = true;
+            refreshHandle = _refreshHandle;
+            _refreshHandle = null;
         }
+        try
+        {
+            if (refreshHandle is int handle) await StopRefreshAsync(handle);
+        }
+        finally { _selfReference?.Dispose(); }
+    }
 
-        _selfReference?.Dispose();
+    private async ValueTask StopRefreshAsync(int refreshHandle)
+    {
+        try { await JS.InvokeVoidAsync("malievDashboardRefresh.stop", refreshHandle); }
+        catch (JSDisconnectedException) { }
     }
 
     private static ShadcnIconData ActivityIcon(string kind) => kind switch

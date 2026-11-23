@@ -179,10 +179,11 @@
         await LoadAsync(new ListToolbarState<EmployeeListSort>(Search, currentSort, Size));
     }
 
-    private ValueTask ReplaceUrlAsync(int index, string? search, EmployeeListSort sort, int size)
+    private async ValueTask ReplaceUrlAsync(int index, string? search, EmployeeListSort sort, int size)
     {
         var uri = $"/Employees/Index?search={Uri.EscapeDataString(search ?? string.Empty)}&sort={sort}&index={index}&size={Math.Clamp(size, 1, 250)}";
-        return JavaScript.InvokeVoidAsync("malievNavigation.replaceCurrentUrl", uri);
+        try { await JavaScript.InvokeVoidAsync("malievNavigation.replaceCurrentUrl", uri); }
+        catch (JSDisconnectedException) { }
     }
 
     public void Dispose() => requestGate.Dispose();

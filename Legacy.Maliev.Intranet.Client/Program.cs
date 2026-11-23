@@ -24,6 +24,8 @@ builder.Services.AddScoped<AuthenticationStateProvider>(provider =>
 
 var host = builder.Build();
 var js = host.Services.GetRequiredService<IJSRuntime>();
-var selectedCulture = await js.InvokeAsync<string?>("malievCulture.get");
+string? selectedCulture;
+try { selectedCulture = await js.InvokeAsync<string?>("malievCulture.get"); }
+catch (JSDisconnectedException) { selectedCulture = null; }
 WorkspaceCulture.Apply(selectedCulture);
 await host.RunAsync();
