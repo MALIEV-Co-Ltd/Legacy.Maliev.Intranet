@@ -51,7 +51,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           repository: MALIEV-Co-Ltd/Legacy.Maliev.EmployeeService
-          ref: 8a8a619b021e9dc71607fa279aa12257844b6359
+          ref: c0b3ae0a8eb91cdfa35173934cd26b18f6c22420
           path: .dependencies/Legacy.Maliev.EmployeeService
           persist-credentials: false
       - name: Set up .NET
@@ -91,7 +91,7 @@ jobs:
         run: |
           test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
           test "$(git -C .dependencies/Legacy.Maliev.AuthService rev-parse HEAD)" = f7079f133b1e607b8909636a5114ebccc73b27bc
-          test "$(git -C .dependencies/Legacy.Maliev.EmployeeService rev-parse HEAD)" = 8a8a619b021e9dc71607fa279aa12257844b6359
+          test "$(git -C .dependencies/Legacy.Maliev.EmployeeService rev-parse HEAD)" = c0b3ae0a8eb91cdfa35173934cd26b18f6c22420
           test "$(git -C .dependencies/Legacy.Maliev.ServiceDefaults rev-parse HEAD)" = 02377791d346e25216c114522b3bfdb6f0f19a16
           test "$(git -C .dependencies/Legacy.Maliev.CompatibilityContracts rev-parse HEAD)" = 78e48ffc4ee000df0510cba5e7c7a3c4c4d539d7
       - name: Build joined project before tests

@@ -107,7 +107,9 @@ public sealed class EmployeeAdministrationAcceptanceTests(EmployeeJoinContainers
         Assert.Equal(1, edit.Address!.Id);
         Assert.Contains(edit.Countries, country => country.Id == 764);
         var before = await fixture.SnapshotAsync();
-        using var response = await SaveAsync(client, Input(edit));
+        const string firstName = " \tแก้ไข\u00a0 ";
+        const string lastName = " \tUpdated family\u00a0 ";
+        using var response = await SaveAsync(client, Input(edit) with { FirstName = firstName, LastName = lastName });
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var receipt = (await response.Content.ReadFromJsonAsync<EmployeeAdministrationSaveResult>())!;
         Assert.Equal("complete", receipt.Stage);
@@ -120,9 +122,9 @@ public sealed class EmployeeAdministrationAcceptanceTests(EmployeeJoinContainers
         Assert.Equal(before.Identity.PasswordHash, after.Identity.PasswordHash);
         Assert.Equal(before.Identity.TwoFactorEnabled, after.Identity.TwoFactorEnabled);
         Assert.Equal(before.Identity.LockoutEnd, after.Identity.LockoutEnd);
-        Assert.Equal("แก้ไข", after.Employee.FirstName);
+        Assert.Equal(firstName, after.Employee.FirstName);
         Assert.Equal("changed@maliev.test", after.Employee.Email);
-        Assert.Equal("Updated family", after.Employee.LastName);
+        Assert.Equal(lastName, after.Employee.LastName);
         Assert.Equal(new DateTime(1990, 1, 2), after.Employee.DateOfBirth);
         Assert.Equal("+6621111111", after.Employee.PhoneNumber);
         Assert.Equal(after.Employee.PhoneNumber, after.Identity.PhoneNumber);
@@ -139,6 +141,9 @@ public sealed class EmployeeAdministrationAcceptanceTests(EmployeeJoinContainers
         Assert.Equal(2, after.IdentityCount);
         Assert.True(fixture.IamCalls > 0);
         Assert.Empty(fixture.TransportFailures);
+        var reloaded = await ReadAsync(client);
+        Assert.Equal(firstName, reloaded.Profile.FirstName);
+        Assert.Equal(lastName, reloaded.Profile.LastName);
     }
 
     [Fact]

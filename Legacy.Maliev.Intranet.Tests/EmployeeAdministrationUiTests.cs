@@ -100,7 +100,8 @@ public sealed class EmployeeAdministrationUiTests
         using var context = Context(handler);
         var cut = Render(context);
         Ready(cut);
-        await ChangeTextAsync(cut, "employee-edit-first", "สมชาย ใหม่");
+        await ChangeTextAsync(cut, "employee-edit-first", " \tสมชาย ใหม่\u00a0 ");
+        await ChangeTextAsync(cut, "employee-edit-last", " \tFamily\u00a0 ");
         await ChangeTextAsync(cut, "employee-edit-email", "changed@example.invalid");
         await ChangeTextAsync(cut, "employee-edit-city", "เชียงใหม่");
 
@@ -109,7 +110,8 @@ public sealed class EmployeeAdministrationUiTests
         var sent = Assert.Single(handler.Writes);
         Assert.Equal("/bff/employees/41/edit", sent.Path);
         Assert.Equal("controlled-ui-csrf", sent.Csrf);
-        Assert.Equal("สมชาย ใหม่", sent.Body.FirstName);
+        Assert.Equal(" \tสมชาย ใหม่\u00a0 ", sent.Body.FirstName);
+        Assert.Equal(" \tFamily\u00a0 ", sent.Body.LastName);
         Assert.Equal("changed@example.invalid", sent.Body.Email);
         Assert.Equal("เชียงใหม่", sent.Body.Address!.City);
         Assert.Equal(77, sent.Body.CapturedHomeAddressId);

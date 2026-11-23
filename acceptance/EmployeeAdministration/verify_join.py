@@ -25,7 +25,7 @@ EXPECTED_CASES.update(CLASS + "." + THEORY + '(failure: "' + failure + '")'
 ISSUER_COMMIT = "f7079f133b1e607b8909636a5114ebccc73b27bc"
 PINS = {
     "auth": (".dependencies/Legacy.Maliev.AuthService", ISSUER_COMMIT),
-    "employee": (".dependencies/Legacy.Maliev.EmployeeService", "8a8a619b021e9dc71607fa279aa12257844b6359"),
+    "employee": (".dependencies/Legacy.Maliev.EmployeeService", "c0b3ae0a8eb91cdfa35173934cd26b18f6c22420"),
     "defaults": (".dependencies/Legacy.Maliev.ServiceDefaults", "02377791d346e25216c114522b3bfdb6f0f19a16"),
     "contracts": (".dependencies/Legacy.Maliev.CompatibilityContracts", "78e48ffc4ee000df0510cba5e7c7a3c4c4d539d7"),
 }
