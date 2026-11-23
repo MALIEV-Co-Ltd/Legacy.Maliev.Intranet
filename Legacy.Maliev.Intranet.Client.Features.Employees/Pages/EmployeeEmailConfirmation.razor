@@ -1,5 +1,6 @@
 @page "/Employees/EmailConfirmation"
 @attribute [AllowAnonymous]
+@implements IDisposable
 @inject HttpClient Http
 @inject IStringLocalizer<EmployeeEmailConfirmation> Text
 
@@ -32,6 +33,10 @@
 @code {
     private bool submitting;
     private bool completed;
+    private bool disposed;
+    private long linkRevision;
+    private string? lastEmail;
+    private string? lastToken;
     private string? notice;
     private ShadcnAlertVariant noticeVariant = ShadcnAlertVariant.Default;
     private ShadcnAlertRole NoticeRole => noticeVariant == ShadcnAlertVariant.Destructive ? ShadcnAlertRole.Alert : ShadcnAlertRole.Status;
@@ -40,21 +45,40 @@
     [SupplyParameterFromQuery(Name = "token")] public string? Token { get; set; }
     private bool HasValidAction => !string.IsNullOrWhiteSpace(Email) && !string.IsNullOrWhiteSpace(Token);
 
+    protected override void OnParametersSet()
+    {
+        if (string.Equals(lastEmail, Email, StringComparison.Ordinal) && string.Equals(lastToken, Token, StringComparison.Ordinal)) return;
+        lastEmail = Email;
+        lastToken = Token;
+        linkRevision++;
+        completed = false;
+        notice = null;
+    }
+
+    public void Dispose() => disposed = true;
+
     private async Task ConfirmAsync()
     {
-        if (submitting || completed || !HasValidAction) return;
+        if (disposed || submitting || completed || !HasValidAction) return;
         submitting = true;
         notice = null;
+        var email = Email!;
+        var token = Token!;
+        var revision = linkRevision;
+        bool Current() => !disposed && revision == linkRevision && string.Equals(email, Email, StringComparison.Ordinal)
+            && string.Equals(token, Token, StringComparison.Ordinal);
         try
         {
             var csrf = await GetCsrfAsync();
+            if (!Current()) return;
             if (csrf is null) { ShowError(Text["Unavailable"]); return; }
             using var request = new HttpRequestMessage(HttpMethod.Post, "/bff/employee-recovery/email-confirmation/complete")
             {
-                Content = JsonContent.Create(new EmployeeEmailConfirmationRequest(Email!, Token!)),
+                Content = JsonContent.Create(new EmployeeEmailConfirmationRequest(email, token)),
             };
             request.Headers.Add("X-CSRF-TOKEN", csrf);
             using var response = await Http.SendAsync(request);
+            if (!Current()) return;
             if (response.StatusCode == HttpStatusCode.NoContent)
             {
                 completed = true;
@@ -73,9 +97,9 @@
         catch (Exception exception) when (
             exception is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException)
         {
-            ShowError(Text["Unavailable"]);
+            if (Current()) ShowError(Text["Unavailable"]);
         }
-        finally { submitting = false; }
+        finally { if (!disposed) submitting = false; }
     }
 
     private async Task<string?> GetCsrfAsync()

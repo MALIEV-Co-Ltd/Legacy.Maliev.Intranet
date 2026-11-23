@@ -1,5 +1,6 @@
 @page "/Employees/ResendConfirmation"
 @attribute [AllowAnonymous]
+@implements IDisposable
 @inject HttpClient Http
 @inject IStringLocalizer<EmployeeResendConfirmation> Text
 @using Microsoft.AspNetCore.Components.Forms
@@ -27,13 +28,14 @@
 @code {
     private readonly ConfirmationEmailForm form = new();
     private bool submitting;
+    private bool disposed;
     private string? emailError;
     private string? notice;
     private ShadcnAlertVariant noticeVariant = ShadcnAlertVariant.Default;
 
     private async Task SubmitAsync()
     {
-        if (submitting) return;
+        if (submitting || disposed) return;
         emailError = string.IsNullOrWhiteSpace(form.Email) ? Text["EmailRequired"].Value : null;
         if (emailError is not null) return;
         var submitted = new EmployeeRecoveryEmailRequest(form.Email);
@@ -46,8 +48,10 @@
         try
         {
             using var session = await Http.GetForPresentationAsync("/bff/session");
+            if (disposed || form.Email != submitted.Email) return;
             if (!session.IsSuccessStatusCode) { ShowUnavailable(); return; }
             var csrf = (await session.Content.ReadFromJsonAsync<EmployeeSessionSummary>())?.CsrfToken;
+            if (disposed || form.Email != submitted.Email) return;
             if (string.IsNullOrWhiteSpace(csrf)) { ShowUnavailable(); return; }
             using var request = new HttpRequestMessage(HttpMethod.Post, "/bff/employee-recovery/email-confirmation/request")
             {
@@ -55,6 +59,7 @@
             };
             request.Headers.Add("X-CSRF-TOKEN", csrf);
             using var response = await Http.SendAsync(request);
+            if (disposed || form.Email != submitted.Email) return;
             if (response.StatusCode == HttpStatusCode.Accepted)
             {
                 noticeVariant = ShadcnAlertVariant.Default;
@@ -68,10 +73,12 @@
         }
         catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException)
         {
-            ShowUnavailable();
+            if (!disposed && form.Email == submitted.Email) ShowUnavailable();
         }
-        finally { submitting = false; }
+        finally { if (!disposed) submitting = false; }
     }
+
+    public void Dispose() => disposed = true;
 
     private void ShowUnavailable()
     {
