@@ -1,3 +1,19 @@
+::deep .quotation-request-status-icon {
+    display: inline-grid;
+    place-items: center;
+    width: 1rem;
+    height: 1rem;
+    margin-inline-end: .35rem;
+    border: 1px solid currentColor;
+    border-radius: 50%;
+    font-size: .75rem;
+    font-weight: 700;
+    line-height: 1;
+}
+::deep .quotation-request-status-icon--done { color: var(--legacy-success, #087a45); }
+::deep .quotation-request-status-icon--ongoing { color: var(--legacy-info, #1763a6); }
+::deep .quotation-request-status-icon--open { color: var(--legacy-danger, #b42318); }
+
 .quotation-request-status {
     display: inline-flex;
     align-items: center;

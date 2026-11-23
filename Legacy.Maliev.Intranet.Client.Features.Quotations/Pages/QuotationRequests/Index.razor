@@ -65,15 +65,34 @@
     [
         new("id", Text["Id"], request => request.Id) { Sortable = true, Hideable = false },
         new("customer", Text["Customer"], request => Name(request)) { MinWidth = "12rem" },
-        new("status", Text["Status"], request => request.Done == true ? Text["Done"].Value : Text["Open"].Value),
+        new("status", Text["Status"], request => StatusText(request.Done)) { CellTemplate = StatusCell },
+        new("email", Text["Email"], request => Fallback(request.Email)) { MinWidth = "14rem" },
+        new("telephone", Text["Telephone"], request => Fallback(request.TelephoneNumber)) { MinWidth = "10rem" },
+        new("country", Text["Country"], request => Fallback(request.Country)) { MinWidth = "10rem" },
         new("created", Text["Created"], request => request.CreatedDate) { Sortable = true, MinWidth = "10rem", CellTemplate = request => builder => builder.AddContent(0, Format(request.CreatedDate)) },
         new("company", Text["Company"], request => Fallback(request.CompanyName)) { MinWidth = "14rem" },
+        new("tax", Text["TaxNumber"], request => Fallback(request.TaxIdentification)) { MinWidth = "12rem" },
     ];
     private IReadOnlyList<PageBreadcrumbItem> Breadcrumbs =>
     [
         new(Text["Operations"], "/Dashboard"),
         new(Text["Heading"]),
     ];
+
+    private string StatusText(bool? done) => done switch { true => Text["Done"].Value, false => Text["Ongoing"].Value, null => Text["Open"].Value };
+
+    private RenderFragment StatusCell(QuotationRequestItem request) => builder =>
+    {
+        var state = request.Done switch { true => "done", false => "ongoing", null => "open" };
+        var icon = request.Done switch { true => "✓", false => "?", null => "+" };
+        builder.OpenElement(0, "span");
+        builder.AddAttribute(1, "class", $"quotation-request-status-icon quotation-request-status-icon--{state}");
+        builder.AddAttribute(2, "data-status-icon", state);
+        builder.AddAttribute(3, "aria-hidden", "true");
+        builder.AddContent(4, icon);
+        builder.CloseElement();
+        builder.AddContent(5, StatusText(request.Done));
+    };
 
     protected override async Task OnParametersSetAsync()
     {
@@ -126,7 +145,7 @@
         }
         catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException)
         {
-            error = Text["Unavailable"];
+            if (lease.IsCurrent) error = Text["Unavailable"];
         }
         finally
         {
