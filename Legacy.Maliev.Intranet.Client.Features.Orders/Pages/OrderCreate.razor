@@ -1,5 +1,6 @@
 @page "/Orders/Create"
 @attribute [Authorize]
+@implements IDisposable
 @using Microsoft.AspNetCore.Components.Forms
 @inject HttpClient Http
 @inject NavigationManager Navigation
@@ -56,7 +57,7 @@ else
                 </section>
             </div>
         </section>
-        <ShadcnButton ButtonType="ShadcnButtonType.Submit" OperationFeedback="false" Disabled="@submitting">@(submitting ? Text["Creating"] : Text["Create"])</ShadcnButton>
+        <ShadcnButton ButtonType="ShadcnButtonType.Submit" OperationFeedback="false" Disabled="@(submitting || createdOrderId.HasValue)">@(submitting ? Text["Creating"] : Text["Create"])</ShadcnButton>
     </EditForm>
 }
 </main>
@@ -74,6 +75,9 @@ else
     private bool loading = true;
     private bool submitting;
     private bool customerLookupAttempted;
+    private long materialRevision;
+    private long loadRevision;
+    private bool disposed;
     private int? createdOrderId;
     private string? error;
     private string? notice;
@@ -85,48 +89,62 @@ else
 
     protected override async Task OnParametersSetAsync()
     {
+        if (disposed) return;
         if (CustomerId is > 0) model.CustomerId = CustomerId.Value;
         await LoadAsync(CustomerId);
     }
 
     private async Task LoadAsync(int? customerId)
     {
+        if (disposed) return;
+        var revision = ++loadRevision;
+        var requestedCustomer = model.CustomerId;
+        bool Current() => !disposed && revision == loadRevision && requestedCustomer == model.CustomerId;
         loading = true;
         error = null;
         try
         {
             using var sessionResponse = await Http.GetForPresentationAsync("/bff/session");
-            session = sessionResponse.IsSuccessStatusCode
+            if (!Current()) return;
+            var loadedSession = sessionResponse.IsSuccessStatusCode
                 ? await sessionResponse.Content.ReadFromJsonAsync<EmployeeSessionSummary>()
                 : null;
+            if (!Current()) return;
             var path = customerId is > 0 ? $"/bff/orders/create?customerId={customerId.Value}" : "/bff/orders/create";
             using var response = await Http.GetForPresentationAsync(path);
+            if (!Current()) return;
             if (response.StatusCode == HttpStatusCode.Unauthorized)
             {
                 Navigation.NavigateTo($"/Login?returnUrl={Uri.EscapeDataString(Navigation.ToBaseRelativePath(Navigation.Uri))}");
                 return;
             }
             if (!response.IsSuccessStatusCode) { error = ErrorFor(response.StatusCode); return; }
-            createPage = await response.Content.ReadFromJsonAsync<OrderCreatePage>();
-            if (createPage is null) { error = Text["InvalidResponse"]; return; }
+            var page = await response.Content.ReadFromJsonAsync<OrderCreatePage>();
+            if (!Current()) return;
+            if (page is null) { error = Text["InvalidResponse"]; return; }
+            session = loadedSession;
+            createPage = page;
             customerLookupAttempted = customerId is > 0;
-            if (createPage.Customer is not null) model.CustomerId = createPage.Customer.Id;
-            if (model.ProcessId == 0 && createPage.Processes.Count > 0) model.ProcessId = createPage.Processes[0].Id;
+            if (page.Customer is not null) model.CustomerId = page.Customer.Id;
+            if (model.ProcessId == 0 && page.Processes.Count > 0) model.ProcessId = page.Processes[0].Id;
         }
-        catch (HttpRequestException) { error = Text["Unavailable"]; }
-        finally { loading = false; }
+        catch (HttpRequestException) { if (Current()) error = Text["Unavailable"]; }
+        catch (System.Text.Json.JsonException) { if (Current()) error = Text["InvalidResponse"]; }
+        finally { if (!disposed && revision == loadRevision) loading = false; }
     }
 
     private Task LookupCustomerAsync() => LoadAsync(model.CustomerId > 0 ? model.CustomerId : null);
 
     private async Task OnMaterialChangedAsync(int? value)
     {
+        if (disposed) return;
         model.MaterialId = value;
         await LoadMaterialOptionsAsync();
     }
 
     private async Task LoadMaterialOptionsAsync()
     {
+        var revision = ++materialRevision;
         model.ColorId = null;
         model.SurfaceFinishId = null;
         materialOptions = new([], []);
@@ -134,10 +152,20 @@ else
         try
         {
             using var response = await Http.GetForPresentationAsync($"/bff/orders/create/materials/{materialId}");
+            if (revision != materialRevision) return;
             if (!response.IsSuccessStatusCode) { error = ErrorFor(response.StatusCode); return; }
-            materialOptions = await response.Content.ReadFromJsonAsync<OrderMaterialOptions>() ?? new([], []);
+            var result = await response.Content.ReadFromJsonAsync<OrderMaterialOptions>();
+            if (revision == materialRevision) materialOptions = result ?? new([], []);
         }
-        catch (HttpRequestException) { error = Text["Unavailable"]; }
+        catch (HttpRequestException) { if (revision == materialRevision) error = Text["Unavailable"]; }
+        catch (System.Text.Json.JsonException) { if (revision == materialRevision) error = Text["InvalidResponse"]; }
+    }
+
+    public void Dispose()
+    {
+        disposed = true;
+        materialRevision++;
+        loadRevision++;
     }
 
     private void SelectFiles(InputFileChangeEventArgs args)
@@ -148,7 +176,7 @@ else
 
     private async Task CreateAsync()
     {
-        if (session?.CsrfToken is null) return;
+        if (disposed || submitting || createdOrderId.HasValue || session?.CsrfToken is null) return;
         if (model.CustomerId <= 0 || model.ProcessId <= 0 || model.Quantity <= 0 || string.IsNullOrWhiteSpace(model.Name)) { error = Text["InvalidRequest"]; return; }
         if (createPage?.Customer?.Id != model.CustomerId) { error = Text["ValidateCustomer"]; return; }
         if (uploads.Sum(file => file.Size) > MaxUploadBytes) { error = Text["FilesTooLarge"]; return; }
@@ -170,9 +198,11 @@ else
             request.Headers.Add("X-CSRF-TOKEN", session.CsrfToken);
             request.Headers.Add("Idempotency-Key", createAttemptId.ToString("D"));
             using var response = await Http.SendAsync(request);
+            if (disposed) return;
             if (!response.IsSuccessStatusCode) { error = ErrorFor(response.StatusCode); return; }
             var result = await response.Content.ReadFromJsonAsync<OrderCreatedResult>();
-            if (result is null) { error = Text["InvalidResponse"]; return; }
+            if (disposed) return;
+            if (result is null || result.Id <= 0) { error = Text["InvalidResponse"]; return; }
             if (string.IsNullOrWhiteSpace(result.Warning))
             {
                 Navigation.NavigateTo($"/Orders/View?id={result.Id}");
@@ -181,8 +211,9 @@ else
             createdOrderId = result.Id;
             notice = Text["NotificationWarning"];
         }
-        catch (HttpRequestException) { error = Text["Unavailable"]; }
-        finally { submitting = false; }
+        catch (HttpRequestException) { if (!disposed) error = Text["Unavailable"]; }
+        catch (System.Text.Json.JsonException) { if (!disposed) error = Text["InvalidResponse"]; }
+        finally { if (!disposed) submitting = false; }
     }
 
     private string ErrorFor(HttpStatusCode status) => status switch

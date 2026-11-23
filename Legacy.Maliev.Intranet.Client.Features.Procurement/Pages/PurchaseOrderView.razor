@@ -1,5 +1,6 @@
 @page "/PurchaseOrders/View"
 @attribute [Authorize]
+@implements IDisposable
 @using Microsoft.JSInterop
 @inject HttpClient Http
 @inject NavigationManager Navigation
@@ -98,43 +99,64 @@
     private bool notFound;
     private bool deleting;
     private bool forbidden;
+    private bool disposed;
+    private long revision;
     private string? error;
 
     protected override Task OnParametersSetAsync() => LoadAsync();
 
     private async Task LoadAsync()
     {
+        if (disposed) return;
+        var requestId = Id;
+        var requestRevision = ++revision;
+        bool Current() => !disposed && revision == requestRevision && Id == requestId;
         loading = true; notFound = false; forbidden = false; error = null; detail = null;
-        if (Id <= 0) { notFound = true; loading = false; return; }
+        deleteDialogOpen = false;
+        if (requestId <= 0) { notFound = true; loading = false; return; }
         try
         {
-            using var response = await Http.GetForPresentationAsync($"/bff/purchase-orders/{Id}");
+            using var response = await Http.GetForPresentationAsync($"/bff/purchase-orders/{requestId}");
+            if (!Current()) return;
             if (response.StatusCode == HttpStatusCode.Unauthorized) { NavigateToLogin(); return; }
             if (response.StatusCode == HttpStatusCode.Forbidden) { forbidden = true; error = Text["Forbidden"]; return; }
             if (response.StatusCode == HttpStatusCode.NotFound) { notFound = true; return; }
             if (response.StatusCode == HttpStatusCode.TooManyRequests) { error = Text["RateLimited"]; return; }
             if (!response.IsSuccessStatusCode) { error = Text["Unavailable"]; return; }
-            detail = await response.Content.ReadFromJsonAsync<PurchaseOrderDetail>();
-            if (detail is null || detail.Id != Id) error = Text["InvalidResponse"];
+            var loaded = await response.Content.ReadFromJsonAsync<PurchaseOrderDetail>();
+            if (!Current()) return;
+            if (loaded is null || loaded.Id != requestId || loaded.Items is null || loaded.Downloads is null ||
+                loaded.Items.Any(item => item is null) || loaded.Downloads.Any(download => download is null || download.Url is null || !download.Url.IsAbsoluteUri))
+            {
+                error = Text["InvalidResponse"];
+                return;
+            }
+            detail = loaded;
         }
-        catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException) { error = Text["Unavailable"]; }
-        finally { loading = false; }
+        catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException) { if (Current()) error = Text["Unavailable"]; }
+        finally { if (Current()) loading = false; }
     }
 
     private async Task DeleteAsync()
     {
-        if (deleting) return;
+        var requestId = Id;
+        var requestRevision = revision;
+        bool Current() => !disposed && revision == requestRevision && Id == requestId;
+        if (disposed || deleting || loading || requestId <= 0 || detail?.Id != requestId) return;
         deleting = true; error = null;
         try
         {
             using var sessionResponse = await Http.GetForPresentationAsync("/bff/session");
+            if (!Current()) return;
             if (sessionResponse.StatusCode == HttpStatusCode.Unauthorized) { NavigateToLogin(); return; }
             sessionResponse.EnsureSuccessStatusCode();
             var session = await sessionResponse.Content.ReadFromJsonAsync<EmployeeSessionSummary>();
+            if (!Current()) return;
             if (string.IsNullOrWhiteSpace(session?.CsrfToken)) { error = Text["DeleteFailed"]; return; }
-            using var request = new HttpRequestMessage(HttpMethod.Delete, $"/bff/purchase-orders/{Id}");
+            using var request = new HttpRequestMessage(HttpMethod.Delete, $"/bff/purchase-orders/{requestId}");
             request.Headers.Add("X-CSRF-TOKEN", session.CsrfToken);
             using var response = await Http.SendAsync(request);
+            if (!Current()) return;
             if (response.StatusCode == HttpStatusCode.Unauthorized) { NavigateToLogin(); return; }
             if (response.StatusCode == HttpStatusCode.Forbidden) { error = Text["ForbiddenDelete"]; return; }
             if (response.StatusCode == HttpStatusCode.NotFound) { Navigation.NavigateTo("/PurchaseOrders/Index"); return; }
@@ -142,9 +164,11 @@
             if (!response.IsSuccessStatusCode) { error = Text["DeleteFailed"]; return; }
             Navigation.NavigateTo("/PurchaseOrders/Index");
         }
-        catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException) { error = Text["DeleteFailed"]; }
-        finally { deleting = false; }
+        catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException) { if (Current()) error = Text["DeleteFailed"]; }
+        finally { if (!disposed) deleting = false; }
     }
+
+    public void Dispose() { disposed = true; revision++; }
 
     private string Value(string? value) => string.IsNullOrWhiteSpace(value) ? "-" : value;
     private static string Money(decimal value) => $"{value:N2} THB";
