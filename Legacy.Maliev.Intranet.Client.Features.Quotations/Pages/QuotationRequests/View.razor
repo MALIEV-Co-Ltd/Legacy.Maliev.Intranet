@@ -47,6 +47,17 @@
             <div class="quotation-request-layout">
                 <section class="quotation-request-card quotation-request-card--customer" aria-labelledby="customer-details-heading">
                     <h2 id="customer-details-heading">@Text["CustomerDetails"]</h2>
+                    <div class="quotation-request-contact">
+                        <SafeEmailLink Email="@detail.Request.Email" />
+                        @if (PhoneLink(detail.Request.TelephoneNumber) is { } phoneLink)
+                        {
+                            <a href="@phoneLink">@detail.Request.TelephoneNumber</a>
+                        }
+                        else if (!string.IsNullOrWhiteSpace(detail.Request.TelephoneNumber))
+                        {
+                            <span>@detail.Request.TelephoneNumber</span>
+                        }
+                    </div>
                     <LookupCompanyAssist Id="request-company-lookup" Selected="ApplyCompanySuggestion" Disabled="@submitting" />
                     <div class="quotation-request-grid"><QuotationInputField TValue="string" Id="request-first-name" Label="@Text["FirstName"]" @bind-Value="edit.FirstName" Disabled="@submitting" /><QuotationInputField TValue="string" Id="request-last-name" Label="@Text["LastName"]" @bind-Value="edit.LastName" Disabled="@submitting" /><QuotationInputField TValue="string" Id="request-email" Label="@Text["Email"]" Type="email" @bind-Value="edit.Email" Disabled="@submitting" /><QuotationInputField TValue="string" Id="request-telephone" Label="@Text["Telephone"]" Type="tel" @bind-Value="edit.TelephoneNumber" Disabled="@submitting" /><QuotationInputField TValue="string" Id="request-company" Label="@Text["Company"]" @bind-Value="edit.CompanyName" Disabled="@submitting" /><QuotationInputField TValue="string" Id="request-country" Label="@Text["Country"]" @bind-Value="edit.Country" Disabled="@submitting" /><div class="quotation-request-wide"><QuotationInputField TValue="string" Id="request-tax" Label="@Text["Tax"]" @bind-Value="edit.TaxIdentification" Disabled="@submitting" /></div></div>
                 </section>
@@ -109,6 +120,12 @@
 </main>
 
 @code {
+    private static string? PhoneLink(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value) || value.Any(c => !char.IsAsciiDigit(c) && c is not ('+' or ' ' or '-' or '(' or ')' or '.'))) return null;
+        var number = new string(value.Where(c => char.IsAsciiDigit(c) || c == '+').ToArray());
+        return number.Any(char.IsAsciiDigit) && (!number.Contains('+') || (number[0] == '+' && number.LastIndexOf('+') == 0)) ? $"tel:{number}" : null;
+    }
     [SupplyParameterFromQuery(Name = "id")] public int? Id { get; set; }
     private QuotationRequestDetail? detail;
     private ServiceFinderMetadata? finderMetadata;
