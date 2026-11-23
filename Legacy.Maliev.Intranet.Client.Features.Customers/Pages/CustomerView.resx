@@ -127,6 +127,7 @@
   <data name="SaveRelation" xml:space="preserve"><value>Save this section</value></data>
   <data name="ReloadRelation" xml:space="preserve"><value>Reload this section</value></data>
   <data name="RelationReloadRequired" xml:space="preserve"><value>The record changed or the save outcome is uncertain. Reload this section before saving again.</value></data>
+  <data name="RelationOutcomeUnknown" xml:space="preserve"><value>The save outcome is uncertain. Contact an administrator before trying again.</value></data>
   <data name="RelationUnavailable" xml:space="preserve"><value>This section is temporarily unavailable. Cancel and try loading it again.</value></data>
   <data name="RelationSessionExpired" xml:space="preserve"><value>Your session expired. Sign in again before editing.</value></data>
   <data name="CountriesUnavailable" xml:space="preserve"><value>Country choices are unavailable. No address change has been sent.</value></data>
@@ -142,4 +143,5 @@
   <data name="Country" xml:space="preserve"><value>Country</value></data>
   <data name="SelectCountry" xml:space="preserve"><value>Select country</value></data>
   <data name="RelationPermissionRequired" xml:space="preserve"><value>Your current permissions do not allow company or address edits.</value></data>
+  <data name="InternalRemarkOutcomeUnknown" xml:space="preserve"><value>The remark update may have completed. Contact an administrator before trying again.</value></data>
 </root>

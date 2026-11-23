@@ -100,7 +100,7 @@ internal static partial class CustomerRelationEndpointMapper
     }
 
     private static bool ValidCountries(EmployeeAdministrationCountry[]? values) => values is { Length: > 0 } &&
-        values.All(value => value.Id > 0 && !string.IsNullOrWhiteSpace(value.Name)) && values.Select(value => value.Id).Distinct().Count() == values.Length;
+        values.All(value => value is not null && value.Id > 0 && !string.IsNullOrWhiteSpace(value.Name)) && values.Select(value => value.Id).Distinct().Count() == values.Length;
 
     private static bool ValidProjection(CustomerRelationDetail? value, int id, string kind, string relation) =>
         !(value is null || value.CustomerId != id ||

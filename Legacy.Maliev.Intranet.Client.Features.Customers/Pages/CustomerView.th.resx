@@ -127,6 +127,7 @@
   <data name="SaveRelation" xml:space="preserve"><value>บันทึกส่วนนี้</value></data>
   <data name="ReloadRelation" xml:space="preserve"><value>โหลดข้อมูลส่วนนี้ใหม่</value></data>
   <data name="RelationReloadRequired" xml:space="preserve"><value>ข้อมูลเปลี่ยนแปลงหรือยังยืนยันผลการบันทึกไม่ได้ กรุณาโหลดข้อมูลส่วนนี้ใหม่ก่อนบันทึกอีกครั้ง</value></data>
+  <data name="RelationOutcomeUnknown" xml:space="preserve"><value>ยังยืนยันผลการบันทึกไม่ได้ โปรดติดต่อผู้ดูแลระบบก่อนลองอีกครั้ง</value></data>
   <data name="RelationUnavailable" xml:space="preserve"><value>ส่วนนี้ไม่พร้อมใช้งานชั่วคราว กรุณายกเลิกแล้วลองโหลดใหม่</value></data>
   <data name="RelationSessionExpired" xml:space="preserve"><value>เซสชันหมดอายุ กรุณาเข้าสู่ระบบอีกครั้งก่อนแก้ไข</value></data>
   <data name="CountriesUnavailable" xml:space="preserve"><value>ไม่สามารถโหลดตัวเลือกประเทศได้ ยังไม่ได้ส่งการแก้ไขที่อยู่</value></data>
@@ -142,4 +143,5 @@
   <data name="Country" xml:space="preserve"><value>ประเทศ</value></data>
   <data name="SelectCountry" xml:space="preserve"><value>เลือกประเทศ</value></data>
   <data name="RelationPermissionRequired" xml:space="preserve"><value>สิทธิ์ปัจจุบันของคุณไม่อนุญาตให้แก้ไขบริษัทหรือที่อยู่</value></data>
+  <data name="InternalRemarkOutcomeUnknown" xml:space="preserve"><value>การแก้ไขหมายเหตุอาจเสร็จสมบูรณ์แล้ว โปรดติดต่อผู้ดูแลระบบก่อนลองอีกครั้ง</value></data>
 </root>

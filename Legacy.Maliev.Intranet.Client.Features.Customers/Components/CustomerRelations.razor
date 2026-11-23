@@ -1,7 +1,9 @@
 @namespace Legacy.Maliev.Intranet.Client.Features.Customers.Components
 @implements IDisposable
 @using Microsoft.AspNetCore.Components.Forms
+@using Microsoft.Extensions.Logging
 @inject HttpClient Http
+@inject ILogger<CustomerRelations> Logger
 
 <section class="customer-relations" aria-labelledby="customer-relations-heading">
     <h2 id="customer-relations-heading">@Localize("RelationEditing")</h2>
@@ -50,7 +52,7 @@
             </div>
             <div class="customer-relations__actions">
                 <ShadcnButton ButtonType="ShadcnButtonType.Submit" Disabled="@(saving || needsReload)">@(saving ? Localize("Saving") : Localize("SaveRelation"))</ShadcnButton>
-                @if (needsReload) { <ShadcnButton ButtonType="ShadcnButtonType.Button" OnClick="@(() => BeginAsync(kind!))" Disabled="@saving">@Localize("ReloadRelation")</ShadcnButton> }
+                @if (needsReload && !unsettled.Contains((Customer.Id, kind!))) { <ShadcnButton ButtonType="ShadcnButtonType.Button" OnClick="@(() => BeginAsync(kind!))" Disabled="@saving">@Localize("ReloadRelation")</ShadcnButton> }
                 <ShadcnButton ButtonType="ShadcnButtonType.Button" Variant="ShadcnButtonVariant.Ghost" OnClick="CancelAsync" Disabled="@saving">@Localize("Cancel")</ShadcnButton>
             </div>
         </EditForm>
@@ -61,11 +63,15 @@
 @code {
     [Parameter, EditorRequired] public CustomerDetail Customer { get; set; } = null!;
     [Parameter] public IReadOnlyCollection<string> Permissions { get; set; } = [];
+    [Parameter] public Func<long?>? AuthorizationRevision { get; set; }
     [Parameter] public bool Locked { get; set; }
     [Parameter] public EventCallback<bool> EditingChanged { get; set; }
     [Parameter] public EventCallback<string> Saved { get; set; }
     [Parameter, EditorRequired] public Func<string, string> Localize { get; set; } = null!;
     private readonly CancellationTokenSource lifetime = new();
+    private CustomerDetail? boundCustomer;
+    private long editorRevision;
+    private readonly HashSet<(int CustomerId, string Kind)> unsettled = [];
     private string? kind, relation, version, customerVersion, error, saved;
     private bool loading, saving, needsReload;
     private CustomerCompanyEdit company = new();
@@ -73,6 +79,16 @@
     private EmployeeAdministrationCountry[] countries = [];
     private EditContext? editContext;
     private IReadOnlyList<ShadcnSelectOption<int>> CountryOptions => countries.Select(country => new ShadcnSelectOption<int>(country.Id, country.Name)).ToArray();
+
+    protected override void OnParametersSet()
+    {
+        if (ReferenceEquals(boundCustomer, Customer)) return;
+        boundCustomer = Customer;
+        editorRevision++;
+        kind = relation = version = customerVersion = error = saved = null;
+        editContext = null;
+        loading = false;
+    }
 
     private bool CanEditRelation(string selected)
     {
@@ -86,6 +102,14 @@
     private async Task BeginAsync(string selected)
     {
         if (Locked || !CanEditRelation(selected) || loading || saving) return;
+        if (unsettled.Contains((Customer.Id, selected))) { error = Localize("RelationOutcomeUnknown"); return; }
+        var customer = Customer;
+        var customerId = Customer.Id;
+        var revision = ++editorRevision;
+        var authorizationRevision = AuthorizationRevision?.Invoke();
+        bool Current() => !lifetime.IsCancellationRequested && editorRevision == revision && ReferenceEquals(Customer, customer)
+            && kind == selected && !Locked && CanEditRelation(selected)
+            && (AuthorizationRevision is null || authorizationRevision is not null && AuthorizationRevision() == authorizationRevision);
         kind = selected;
         loading = true;
         needsReload = false;
@@ -93,22 +117,27 @@
         version = customerVersion = null;
         editContext = null;
         await EditingChanged.InvokeAsync(true);
+        if (!Current()) { if (editorRevision == revision && Customer.Id == customerId) loading = false; return; }
         try
         {
             // Re-resolve attachment IDs after uncertain creation or a concurrent reattachment.
-            using var profileResponse = await Http.GetForPresentationAsync($"/bff/customers/{Customer.Id}/versioned", lifetime.Token);
+            using var profileResponse = await Http.GetForPresentationAsync($"/bff/customers/{customerId}/versioned", lifetime.Token);
+            if (!Current()) return;
             if (!profileResponse.IsSuccessStatusCode) { error = Failure(profileResponse.StatusCode); return; }
             var latest = await profileResponse.Content.ReadFromJsonAsync<CustomerDetail>(lifetime.Token);
-            if (latest is null || latest.Id != Customer.Id || !ValidVersion(profileResponse.Headers.ETag?.ToString(), 8))
+            if (!Current()) return;
+            if (latest is null || latest.Id != customerId || !ValidVersion(profileResponse.Headers.ETag?.ToString(), 8))
             { error = Localize("InvalidResponse"); return; }
-            var id = kind == "company" ? latest.CompanyId : kind == "billing" ? latest.BillingAddressId : latest.ShippingAddressId;
+            var id = selected == "company" ? latest.CompanyId : selected == "billing" ? latest.BillingAddressId : latest.ShippingAddressId;
             relation = id?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "new";
-            using var response = await Http.GetForPresentationAsync($"/bff/customers/{Customer.Id}/relations/{kind}/{relation}", lifetime.Token);
+            using var response = await Http.GetForPresentationAsync($"/bff/customers/{customerId}/relations/{selected}/{relation}", lifetime.Token);
+            if (!Current()) return;
             if (!response.IsSuccessStatusCode) { error = Failure(response.StatusCode); return; }
             version = response.Headers.ETag?.ToString();
             customerVersion = response.Headers.TryGetValues("X-Customer-ETag", out var values) ? values.SingleOrDefault() : null;
             var value = await response.Content.ReadFromJsonAsync<CustomerRelationDetail>(lifetime.Token);
-            if (value is null || value.CustomerId != Customer.Id || value.RelationId != id ||
+            if (!Current()) return;
+            if (value is null || value.CustomerId != customerId || value.RelationId != id ||
                 !ValidVersion(version, 64) || !ValidVersion(customerVersion, 8) ||
                 (kind == "company" ? value.Address is not null || (id is null ? value.Company is not null : value.Company is null || value.Company.Id != id)
                     : value.Company is not null || (id is null ? value.Address is not null : value.Address is null || value.Address.Id != id)))
@@ -120,8 +149,11 @@
             if (kind != "company")
             {
                 using var countryResponse = await Http.GetForPresentationAsync("/bff/customers/relation-countries", lifetime.Token);
+                if (!Current()) return;
                 if (!countryResponse.IsSuccessStatusCode) { error = Localize("CountriesUnavailable"); return; }
-                countries = await countryResponse.Content.ReadFromJsonAsync<EmployeeAdministrationCountry[]>(lifetime.Token) ?? [];
+                var loadedCountries = await countryResponse.Content.ReadFromJsonAsync<EmployeeAdministrationCountry[]>(lifetime.Token) ?? [];
+                if (!Current()) return;
+                countries = loadedCountries;
                 if (countries.Length == 0 || countries.Any(country => country.Id <= 0 || string.IsNullOrWhiteSpace(country.Name)) || countries.Select(country => country.Id).Distinct().Count() != countries.Length ||
                     address.CountryId != 0 && countries.All(country => country.Id != address.CountryId))
                 { error = Localize("CountriesUnavailable"); return; }
@@ -130,40 +162,71 @@
         }
         catch (OperationCanceledException) when (lifetime.IsCancellationRequested) { }
         catch (Exception exception) when (exception is HttpRequestException or OperationCanceledException or System.Text.Json.JsonException or InvalidOperationException)
-        { error = Localize("RelationUnavailable"); }
-        finally { loading = false; }
+        { if (Current()) error = Localize("RelationUnavailable"); }
+        finally { if (editorRevision == revision && Customer.Id == customerId) loading = false; }
     }
 
     private async Task SaveAsync()
     {
         if (saving || needsReload || kind is null || version is null || customerVersion is null || editContext is null) return;
-        var validatedContext = editContext;
-        var validatedCustomerId = Customer.Id;
-        var token = lifetime.Token;
+        var customer = Customer;
+        var selectedKind = kind;
+        var selectedRelation = relation;
+        var selectedVersion = version;
+        var selectedCustomerVersion = customerVersion;
+        var validatingContext = editContext;
+        var revision = editorRevision;
+        var snapshot = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(
+            selectedKind == "company" ? (object)company : address, System.Text.Json.JsonSerializerOptions.Web);
+        var authorizationRevision = AuthorizationRevision?.Invoke();
+        void MarkUncertain()
+        {
+            unsettled.Add((customer.Id, selectedKind));
+            if (!lifetime.IsCancellationRequested && Customer.Id == customer.Id && kind == selectedKind)
+            {
+                needsReload = true;
+                error = Localize("RelationOutcomeUnknown");
+            }
+        }
+        bool StillCurrent() => !lifetime.IsCancellationRequested && !Locked && !needsReload
+            && ReferenceEquals(customer, Customer) && ReferenceEquals(validatingContext, editContext)
+            && kind == selectedKind && relation == selectedRelation && version == selectedVersion
+            && customerVersion == selectedCustomerVersion && CanEditRelation(selectedKind)
+            && snapshot.AsSpan().SequenceEqual(System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(
+                selectedKind == "company" ? (object)company : address, System.Text.Json.JsonSerializerOptions.Web))
+            && (AuthorizationRevision is null || authorizationRevision is not null && AuthorizationRevision() == authorizationRevision);
+        if (!StillCurrent()) return;
         saving = true;
         var sent = false;
         try
         {
-            var valid = await validatedContext.ValidateAsync(token);
-            if (!valid || token.IsCancellationRequested || Locked || Customer.Id != validatedCustomerId
-                || !ReferenceEquals(validatedContext, editContext)) return;
+            if (!await validatingContext.ValidateAsync(lifetime.Token) || !StillCurrent()) return;
             error = null;
             using var sessionResponse = await Http.GetForPresentationAsync("/bff/session", lifetime.Token);
+            if (!StillCurrent()) return;
             if (!sessionResponse.IsSuccessStatusCode) { error = Failure(sessionResponse.StatusCode); return; }
             var session = await sessionResponse.Content.ReadFromJsonAsync<EmployeeSessionSummary>(lifetime.Token);
+            if (!StillCurrent()) return;
             if (string.IsNullOrWhiteSpace(session?.CsrfToken)) { error = Localize("RelationUnavailable"); return; }
+            if (!StillCurrent()) return;
             using var request = new HttpRequestMessage(HttpMethod.Put,
-                $"/bff/customers/{Customer.Id}/relations/{kind}/{(kind == "company" ? "" : "address/")}{relation}")
-            { Content = kind == "company" ? JsonContent.Create(company) : JsonContent.Create(address) };
+                $"/bff/customers/{customer.Id}/relations/{selectedKind}/{(selectedKind == "company" ? "" : "address/")}{selectedRelation}")
+            { Content = new ByteArrayContent(snapshot) };
+            request.Content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/json") { CharSet = "utf-8" };
             request.Headers.Add("X-CSRF-TOKEN", session.CsrfToken);
-            request.Headers.TryAddWithoutValidation("If-Match", version);
-            request.Headers.TryAddWithoutValidation("X-Customer-If-Match", customerVersion);
+            request.Headers.TryAddWithoutValidation("If-Match", selectedVersion);
+            request.Headers.TryAddWithoutValidation("X-Customer-If-Match", selectedCustomerVersion);
+            using var writeTimeout = LegacyPresentation.CreateRequestTimeout();
             sent = true;
-            using var response = await Http.SendAsync(request, lifetime.Token);
+            using var response = await Http.SendAsync(request, writeTimeout.Token);
+            if (!StillCurrent())
+            {
+                MarkUncertain();
+                return;
+            }
             if (!response.IsSuccessStatusCode)
             {
-                needsReload = response.StatusCode is HttpStatusCode.NotFound or HttpStatusCode.PreconditionFailed or HttpStatusCode.Conflict || (int)response.StatusCode >= 500;
-                error = needsReload ? Localize("RelationReloadRequired") : Failure(response.StatusCode);
+                MarkUncertain();
                 return;
             }
             // Confirm the scoped producer acknowledgement before reporting success.
@@ -172,17 +235,25 @@
             var newId = response.Headers.TryGetValues("X-Relation-Id", out var ids) ? ids.SingleOrDefault() : null;
             if (response.StatusCode != HttpStatusCode.NoContent || !ValidVersion(newVersion, 64) || !ValidVersion(newCustomerVersion, 8) ||
                 !int.TryParse(newId, out var boundId) || boundId <= 0 || relation != "new" && newId != relation)
-            { needsReload = true; error = Localize("RelationReloadRequired"); return; }
+            { MarkUncertain(); return; }
             var savedKind = kind;
             saved = Localize("RelationSaved_" + kind);
             kind = null;
             editContext = null;
             await EditingChanged.InvokeAsync(false);
+            if (lifetime.IsCancellationRequested || editorRevision != revision || !ReferenceEquals(customer, Customer)
+                || Locked || !CanEditRelation(selectedKind)
+                || AuthorizationRevision is not null && (authorizationRevision is null || AuthorizationRevision() != authorizationRevision)) return;
             await Saved.InvokeAsync(savedKind);
         }
         catch (OperationCanceledException) when (lifetime.IsCancellationRequested) { }
         catch (Exception exception) when (exception is HttpRequestException or OperationCanceledException or System.Text.Json.JsonException or InvalidOperationException)
-        { needsReload = sent; error = Localize(sent ? "RelationReloadRequired" : "RelationUnavailable"); }
+        { if (sent) MarkUncertain(); else if (StillCurrent()) error = Localize("RelationUnavailable"); }
+        catch (Exception exception) when (sent && exception is not OutOfMemoryException and not StackOverflowException and not AccessViolationException)
+        {
+            Logger.LogWarning("Customer relation save ended unexpectedly after dispatch.");
+            MarkUncertain();
+        }
         finally { saving = false; }
     }
 
@@ -194,6 +265,6 @@
     });
     private static bool ValidVersion(string? value, int length) => value is not null && value.Length == length + 2 && value[0] == '"' && value[^1] == '"' &&
         value.AsSpan(1, length).IndexOfAnyExcept("0123456789abcdefABCDEF".AsSpan()) < 0;
-    private async Task CancelAsync() { kind = null; editContext = null; error = null; await EditingChanged.InvokeAsync(false); }
-    public void Dispose() { lifetime.Cancel(); lifetime.Dispose(); }
+    private async Task CancelAsync() { editorRevision++; kind = null; editContext = null; error = null; await EditingChanged.InvokeAsync(false); }
+    public void Dispose() { editorRevision++; lifetime.Cancel(); lifetime.Dispose(); }
 }
