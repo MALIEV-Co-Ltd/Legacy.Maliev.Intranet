@@ -1,14 +1,17 @@
 @page "/hr/profile"
 @attribute [Authorize]
+@implements IDisposable
 @using System.Globalization
 @using System.ComponentModel.DataAnnotations
 @using System.Net
 @using System.Net.Http.Json
 @using Legacy.Maliev.Intranet.Contracts
 @using Microsoft.AspNetCore.Components.Forms
+@using Microsoft.AspNetCore.Components.Authorization
 @inject HttpClient Http
 @inject NavigationManager Navigation
 @inject IStringLocalizer<EmployeeProfile> Text
+@inject AuthenticationStateProvider AuthenticationStateProvider
 
 <PageTitle>@Text["PageTitle"]</PageTitle>
 
@@ -88,9 +91,16 @@
     private bool submitting;
     private string? error;
     private string? notice;
+    private readonly object authenticationStateLock = new();
+    private Task<AuthenticationState>? latestAuthenticationState;
+    private long authenticationRevision;
+    private long profileAuthenticationRevision = -1;
+    private string? profileEmployeeIdentity;
+    private bool disposed;
 
     protected override Task OnInitializedAsync()
     {
+        AuthenticationStateProvider.AuthenticationStateChanged += OnAuthenticationStateChanged;
         editContext = new EditContext(model);
         return LoadAsync();
     }
@@ -99,6 +109,7 @@
 
     private async Task LoadAsync(bool clearNotice)
     {
+        var revision = Volatile.Read(ref authenticationRevision);
         loading = true;
         error = null;
         if (clearNotice)
@@ -108,7 +119,31 @@
 
         try
         {
+            (AuthenticationState State, long Revision) current;
+            try { current = await GetLatestAuthenticationStateAsync(); }
+            catch (Exception)
+            {
+                if (!disposed && revision == Volatile.Read(ref authenticationRevision))
+                {
+                    profile = null;
+                    profileEmployeeIdentity = null;
+                    profileAuthenticationRevision = -1;
+                    error = Text["SessionUnavailable"];
+                }
+                return;
+            }
+            if (disposed || current.Revision != revision || revision != Volatile.Read(ref authenticationRevision)) return;
+            var employeeIdentity = current.State.User.Identity?.IsAuthenticated == true
+                ? current.State.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value : null;
+            if (string.IsNullOrWhiteSpace(employeeIdentity))
+            {
+                profile = null;
+                profileEmployeeIdentity = null;
+                error = Text["SessionUnavailable"];
+                return;
+            }
             using var response = await Http.GetForPresentationAsync("/bff/profile");
+            if (disposed || revision != Volatile.Read(ref authenticationRevision)) return;
             if (response.StatusCode == HttpStatusCode.Unauthorized)
             {
                 RedirectToLogin();
@@ -148,6 +183,7 @@
             }
 
             var loaded = await response.Content.ReadFromJsonAsync<EmployeeDetail>();
+            if (disposed || revision != Volatile.Read(ref authenticationRevision)) return;
             if (loaded is null || loaded.Id <= 0)
             {
                 profile = null;
@@ -155,33 +191,70 @@
                 return;
             }
 
+            using var sessionResponse = await Http.GetForPresentationAsync("/bff/session");
+            if (disposed || revision != Volatile.Read(ref authenticationRevision)) return;
+            var session = sessionResponse.IsSuccessStatusCode
+                ? await sessionResponse.Content.ReadFromJsonAsync<EmployeeSessionSummary>() : null;
+            if (disposed || revision != Volatile.Read(ref authenticationRevision)) return;
+            if (session?.IsAuthenticated != true
+                || !string.Equals(session.EmployeeId, employeeIdentity, StringComparison.Ordinal)
+                || session.LegacyDatabaseId != loaded.Id)
+            {
+                profile = null;
+                profileEmployeeIdentity = null;
+                profileAuthenticationRevision = -1;
+                error = Text["SessionUnavailable"];
+                return;
+            }
+
             profile = loaded;
+            profileAuthenticationRevision = revision;
+            profileEmployeeIdentity = employeeIdentity;
             ResetEditableFields();
         }
         catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException)
         {
-            error = Text["Unavailable"];
+            if (!disposed && revision == Volatile.Read(ref authenticationRevision)) error = Text["Unavailable"];
         }
         finally
         {
-            loading = false;
+            if (!disposed && revision == Volatile.Read(ref authenticationRevision)) loading = false;
         }
     }
 
     private async Task SaveAsync()
     {
-        if (profile is null || submitting)
+        var currentProfile = profile;
+        var revision = Volatile.Read(ref authenticationRevision);
+        var employeeIdentity = profileEmployeeIdentity;
+        if (currentProfile is null || string.IsNullOrWhiteSpace(employeeIdentity)
+            || loading || submitting || disposed || profileAuthenticationRevision != revision)
         {
             return;
         }
 
         var validatedContext = editContext;
-        var validatedProfile = profile;
+        var fields = (model.FirstName, model.LastName, model.PhoneNumber, model.DateOfBirth);
+        bool StillCurrent() => !disposed && revision == Volatile.Read(ref authenticationRevision)
+            && profileAuthenticationRevision == revision && ReferenceEquals(profile, currentProfile)
+            && string.Equals(profileEmployeeIdentity, employeeIdentity, StringComparison.Ordinal)
+            && ReferenceEquals(editContext, validatedContext)
+            && fields == (model.FirstName, model.LastName, model.PhoneNumber, model.DateOfBirth);
+        void RequireReload()
+        {
+            if (disposed || revision != Volatile.Read(ref authenticationRevision) || !ReferenceEquals(profile, currentProfile)) return;
+            profile = null;
+            profileAuthenticationRevision = -1;
+            profileEmployeeIdentity = null;
+            error = Text["SaveOutcomeUnknown"];
+            notice = null;
+        }
         submitting = true;
+        var sent = false;
         try
         {
             var valid = await validatedContext.ValidateAsync();
-            if (!ReferenceEquals(validatedContext, editContext) || !ReferenceEquals(validatedProfile, profile)) return;
+            if (!StillCurrent()) return;
             if (!valid)
             {
                 error = Text["ValidationFailed"];
@@ -191,6 +264,7 @@
             error = null;
             notice = null;
             using var sessionResponse = await Http.GetForPresentationAsync("/bff/session");
+            if (!StillCurrent()) return;
             if (sessionResponse.StatusCode == HttpStatusCode.Unauthorized)
             {
                 RedirectToLogin();
@@ -204,23 +278,33 @@
             }
 
             var session = await sessionResponse.Content.ReadFromJsonAsync<EmployeeSessionSummary>();
-            if (string.IsNullOrWhiteSpace(session?.CsrfToken))
+            if (!StillCurrent()) return;
+            if (session?.IsAuthenticated != true || !string.Equals(session.EmployeeId, employeeIdentity, StringComparison.Ordinal)
+                || session.LegacyDatabaseId != currentProfile.Id
+                || string.IsNullOrWhiteSpace(session.CsrfToken))
             {
                 error = Text["SessionUnavailable"];
                 return;
             }
 
             var update = new EmployeeSelfProfileUpdateRequest(
-                model.FirstName.Trim(),
-                model.LastName.Trim(),
-                string.IsNullOrWhiteSpace(model.PhoneNumber) ? null : model.PhoneNumber.Trim(),
-                model.DateOfBirth);
+                fields.FirstName.Trim(),
+                fields.LastName.Trim(),
+                string.IsNullOrWhiteSpace(fields.PhoneNumber) ? null : fields.PhoneNumber.Trim(),
+                fields.DateOfBirth);
             using var request = new HttpRequestMessage(HttpMethod.Put, "/bff/profile")
             {
                 Content = JsonContent.Create(update),
             };
             request.Headers.Add("X-CSRF-TOKEN", session.CsrfToken);
+            if (!StillCurrent()) return;
+            sent = true;
             using var response = await Http.SendAsync(request);
+            if (!StillCurrent())
+            {
+                RequireReload();
+                return;
+            }
             if (response.StatusCode == HttpStatusCode.Unauthorized)
             {
                 RedirectToLogin();
@@ -252,6 +336,12 @@
                 return;
             }
 
+            if ((int)response.StatusCode >= 500 || (response.IsSuccessStatusCode && response.StatusCode != HttpStatusCode.NoContent))
+            {
+                RequireReload();
+                return;
+            }
+
             if (!response.IsSuccessStatusCode)
             {
                 error = Text["SaveFailed"];
@@ -259,19 +349,79 @@
             }
 
             await LoadAsync(clearNotice: false);
-            if (profile is not null && string.IsNullOrWhiteSpace(error))
+            if (!disposed && revision == Volatile.Read(ref authenticationRevision)
+                && profileAuthenticationRevision == revision && profile?.Id == currentProfile.Id
+                && string.IsNullOrWhiteSpace(error))
             {
                 notice = Text["Saved"];
             }
         }
         catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException)
         {
-            error = Text["SaveFailed"];
+            if (sent) RequireReload();
+            else if (StillCurrent()) error = Text["SaveFailed"];
         }
         finally
         {
             submitting = false;
         }
+    }
+
+    private async Task<(AuthenticationState State, long Revision)> GetLatestAuthenticationStateAsync()
+    {
+        while (true)
+        {
+            Task<AuthenticationState>? pending;
+            long revision;
+            lock (authenticationStateLock) { pending = latestAuthenticationState; revision = authenticationRevision; }
+            if (pending is null)
+            {
+                var initial = AuthenticationStateProvider.GetAuthenticationStateAsync();
+                lock (authenticationStateLock)
+                {
+                    pending = latestAuthenticationState ??= initial;
+                    revision = authenticationRevision;
+                }
+            }
+            AuthenticationState state;
+            try { state = await pending; }
+            catch (Exception) when (!IsCurrentAuthenticationState(pending, revision)) { continue; }
+            if (IsCurrentAuthenticationState(pending, revision)) return (state, revision);
+        }
+    }
+
+    private bool IsCurrentAuthenticationState(Task<AuthenticationState> state, long revision)
+    {
+        lock (authenticationStateLock)
+            return ReferenceEquals(state, latestAuthenticationState) && revision == authenticationRevision;
+    }
+
+    private void OnAuthenticationStateChanged(Task<AuthenticationState> state)
+    {
+        long revision;
+        lock (authenticationStateLock)
+        {
+            revision = ++authenticationRevision;
+            latestAuthenticationState = state;
+        }
+        _ = InvokeAsync(() =>
+        {
+            if (disposed || revision != Volatile.Read(ref authenticationRevision)
+                || profileAuthenticationRevision == revision) return;
+            profile = null;
+            profileAuthenticationRevision = -1;
+            profileEmployeeIdentity = null;
+            loading = false;
+            error = Text["SessionUnavailable"];
+            notice = null;
+            StateHasChanged();
+        });
+    }
+
+    public void Dispose()
+    {
+        disposed = true;
+        AuthenticationStateProvider.AuthenticationStateChanged -= OnAuthenticationStateChanged;
     }
 
     private void ResetEditableFields()

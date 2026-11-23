@@ -28,7 +28,8 @@ public sealed class EmployeeProfileWasmMigrationContractTests
         Assert.Contains("<ShadcnDatePicker", page, StringComparison.Ordinal);
         Assert.Contains("<ShadcnAlert", page, StringComparison.Ordinal);
         Assert.DoesNotContain("<Mud", page, StringComparison.Ordinal);
-        Assert.DoesNotContain("LegacyDatabaseId", page, StringComparison.Ordinal);
+        Assert.Contains("session.LegacyDatabaseId != loaded.Id", page, StringComparison.Ordinal);
+        Assert.Contains("session.LegacyDatabaseId != currentProfile.Id", page, StringComparison.Ordinal);
         Assert.DoesNotContain("/bff/employees/", page, StringComparison.Ordinal);
         Assert.DoesNotContain("AccessToken", page, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("RefreshToken", page, StringComparison.OrdinalIgnoreCase);

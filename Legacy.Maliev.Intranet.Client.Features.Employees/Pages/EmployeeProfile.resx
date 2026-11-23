@@ -40,4 +40,5 @@
   <data name="SaveFailed" xml:space="preserve"><value>Your profile could not be saved. Please try again.</value></data>
   <data name="ForbiddenUpdate" xml:space="preserve"><value>You do not have permission to update this profile.</value></data>
   <data name="RateLimited" xml:space="preserve"><value>Too many requests were made. Please wait a moment and try again.</value></data>
+  <data name="SaveOutcomeUnknown" xml:space="preserve"><value>The save outcome is unknown. Refresh your profile before trying again.</value></data>
 </root>
