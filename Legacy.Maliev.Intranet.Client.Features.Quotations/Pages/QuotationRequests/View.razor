@@ -1,6 +1,7 @@
 @page "/QuotationRequests/View"
 @using Legacy.Maliev.Intranet.Client.Features.Quotations.Models
 @attribute [Authorize]
+@implements IDisposable
 @inject HttpClient Http
 @inject NavigationManager Navigation
 @inject IStringLocalizer<View> Text
@@ -127,6 +128,9 @@
         return number.Any(char.IsAsciiDigit) && (!number.Contains('+') || (number[0] == '+' && number.LastIndexOf('+') == 0)) ? $"tel:{number}" : null;
     }
     [SupplyParameterFromQuery(Name = "id")] public int? Id { get; set; }
+    private readonly LatestRequestGate loadGate = new();
+    private bool disposed;
+    private int? loadId;
     private QuotationRequestDetail? detail;
     private ServiceFinderMetadata? finderMetadata;
     private Edit edit = new();
@@ -148,40 +152,97 @@
     protected override async Task OnParametersSetAsync() => await LoadAsync();
     private async Task LoadAsync()
     {
-        loading = true; error = null; finderMetadata = null;
-        if (Id is not > 0) { error = Text["InvalidId"]; loading = false; return; }
+        if (disposed) return;
+
+        var id = Id;
+        var returnUrl = Navigation.ToBaseRelativePath(Navigation.Uri);
+        using var lease = loadGate.Begin();
+        if (loadId != id)
+        {
+            loadId = id;
+            saveError = null;
+            notice = null;
+        }
+
+        loading = true;
+        error = null;
+        session = null;
+        detail = null;
+        finderMetadata = null;
+        qualification = null;
+        qualificationError = null;
+        qualificationLoading = false;
+
+        if (id is not > 0)
+        {
+            error = Text["InvalidId"];
+            loading = false;
+            return;
+        }
+
         try
         {
-            session = await Http.GetFromJsonForPresentationAsync<EmployeeSessionSummary>("/bff/session");
-            using var response = await Http.GetForPresentationAsync($"/bff/quotation-requests/{Id}");
-            if (response.StatusCode == HttpStatusCode.Unauthorized) { Navigation.NavigateTo($"/Login?returnUrl={Uri.EscapeDataString(Navigation.ToBaseRelativePath(Navigation.Uri))}"); return; }
+            var loadedSession = await Http.GetFromJsonForPresentationAsync<EmployeeSessionSummary>("/bff/session");
+            if (!lease.IsCurrent) return;
+
+            session = loadedSession;
+            using var response = await Http.GetForPresentationAsync($"/bff/quotation-requests/{id}", lease.CancellationToken);
+            if (!lease.IsCurrent) return;
+            if (response.StatusCode == HttpStatusCode.Unauthorized) { Navigation.NavigateTo($"/Login?returnUrl={Uri.EscapeDataString(returnUrl)}"); return; }
             if (response.StatusCode == HttpStatusCode.NotFound) { error = Text["NotFound"]; return; }
             if (!response.IsSuccessStatusCode) { error = ErrorFor(response.StatusCode); return; }
-            detail = await response.Content.ReadFromJsonAsync<QuotationRequestDetail>();
-            if (detail is null) { error = Text["Invalid"]; return; }
-            edit = Edit.From(detail.Request);
-            if (ServiceFinderMetadataEnvelope.TryRead(detail.Request.InternalComment, out finderMetadata)) edit.InternalComment = finderMetadata!.OperatorComment;
+
+            var loadedDetail = await response.Content.ReadFromJsonAsync<QuotationRequestDetail>(lease.CancellationToken);
+            if (!lease.IsCurrent) return;
+            if (loadedDetail is null) { error = Text["Invalid"]; return; }
+
+            detail = loadedDetail;
+            edit = Edit.From(loadedDetail.Request);
+            if (ServiceFinderMetadataEnvelope.TryRead(loadedDetail.Request.InternalComment, out finderMetadata)) edit.InternalComment = finderMetadata!.OperatorComment;
             editContext = new EditContext(edit);
-            await LoadQualificationAsync(detail.Request.Id);
+            await LoadQualificationAsync(loadedDetail.Request.Id, lease);
         }
-        catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException) { error = Text["Unavailable"]; }
-        finally { loading = false; }
+        catch (Exception exception) when (exception is HttpRequestException or OperationCanceledException or System.Text.Json.JsonException)
+        {
+            if (lease.IsCurrent) error = Text["Unavailable"];
+        }
+        finally
+        {
+            if (lease.IsCurrent) loading = false;
+        }
     }
 
-    private async Task LoadQualificationAsync(int id)
+    private async Task LoadQualificationAsync(int id, LatestRequestGate.Lease lease)
     {
-        qualificationLoading = true; qualificationError = null;
+        qualificationLoading = true;
         try
         {
-            using var response = await Http.GetForPresentationAsync($"/bff/quotation-requests/{id}/qualification-receipt");
+            using var response = await Http.GetForPresentationAsync($"/bff/quotation-requests/{id}/qualification-receipt", lease.CancellationToken);
+            if (!lease.IsCurrent) return;
             if (response.StatusCode == HttpStatusCode.NotFound) { qualificationError = Text["QualificationNotFound"]; return; }
             if (!response.IsSuccessStatusCode) { qualificationError = ErrorFor(response.StatusCode); return; }
-            qualification = await response.Content.ReadFromJsonAsync<QuotationQualificationReceipt>();
-            if (qualification is null) { qualificationError = Text["Invalid"]; return; }
-            qualificationEdit = QualificationEdit.From(qualification);
+
+            var loadedQualification = await response.Content.ReadFromJsonAsync<QuotationQualificationReceipt>(lease.CancellationToken);
+            if (!lease.IsCurrent) return;
+            if (loadedQualification is null) { qualificationError = Text["Invalid"]; return; }
+
+            qualification = loadedQualification;
+            qualificationEdit = QualificationEdit.From(loadedQualification);
         }
-        catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException) { qualificationError = Text["Unavailable"]; }
-        finally { qualificationLoading = false; }
+        catch (Exception exception) when (exception is HttpRequestException or OperationCanceledException or System.Text.Json.JsonException)
+        {
+            if (lease.IsCurrent) qualificationError = Text["Unavailable"];
+        }
+        finally
+        {
+            if (lease.IsCurrent) qualificationLoading = false;
+        }
+    }
+
+    public void Dispose()
+    {
+        disposed = true;
+        loadGate.Dispose();
     }
 
     private async Task SaveQualificationAsync()
