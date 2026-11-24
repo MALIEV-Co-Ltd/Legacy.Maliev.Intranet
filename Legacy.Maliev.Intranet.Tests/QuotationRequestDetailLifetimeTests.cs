@@ -44,6 +44,35 @@ public sealed class QuotationRequestDetailLifetimeTests
     }
 
     [Fact]
+    public async Task PendingUnauthorizedCannotRedirectOrReplaceInvalidRoute()
+    {
+        using var fixture = new Fixture(DetailPath);
+        var pending = fixture.Load(41);
+        try
+        {
+            await fixture.Handler.Started.Task.WaitAsync(Deadline);
+            await fixture.Load(0).WaitAsync(Deadline);
+            var navigation = fixture.Navigation.Uri;
+            var invalidError = fixture.Error;
+            var paths = fixture.Handler.Paths;
+
+            fixture.Handler.Complete(new HttpResponseMessage(HttpStatusCode.Unauthorized));
+            await pending.WaitAsync(Deadline);
+
+            Assert.Equal(navigation, fixture.Navigation.Uri);
+            Assert.NotNull(invalidError);
+            Assert.Equal(invalidError, fixture.Error);
+            Assert.Null(fixture.Detail);
+            Assert.False(fixture.Loading);
+            Assert.Equal(paths, fixture.Handler.Paths);
+        }
+        finally
+        {
+            await fixture.Drain(pending);
+        }
+    }
+
+    [Fact]
     public async Task EarlierQualificationErrorCannotReplaceNewerView()
     {
         using var fixture = new Fixture(ReceiptPath);
