@@ -250,7 +250,7 @@ public sealed class LegacyDashboardAggregator
             }
 
             var currencies = await response.Content.ReadFromJsonAsync<IReadOnlyList<CatalogCurrency>>(cancellationToken);
-            if (currencies is null || currencies.Any(currency => currency.Id <= 0 || string.IsNullOrWhiteSpace(currency.ShortName)))
+            if (currencies is null || currencies.Any(currency => currency is null || currency.Id <= 0 || string.IsNullOrWhiteSpace(currency.ShortName)))
             {
                 state.MarkDegraded("currencies");
                 return;
