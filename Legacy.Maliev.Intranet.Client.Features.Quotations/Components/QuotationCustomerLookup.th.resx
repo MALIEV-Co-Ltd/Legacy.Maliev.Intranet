@@ -1,0 +1,14 @@
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
+  <data name="CustomerSearch" xml:space="preserve"><value>ชื่อหรืออีเมลของลูกค้า</value></data>
+  <data name="Search" xml:space="preserve"><value>ค้นหาลูกค้า</value></data>
+  <data name="Searching" xml:space="preserve"><value>กำลังค้นหาลูกค้า…</value></data>
+  <data name="CustomerResults" xml:space="preserve"><value>ลูกค้าที่ตรงกับการค้นหา</value></data>
+  <data name="SearchTooLong" xml:space="preserve"><value>ใช้ไม่เกิน {0} อักขระ</value></data>
+  <data name="SearchForbidden" xml:space="preserve"><value>คุณไม่มีสิทธิ์ค้นหารายชื่อลูกค้า</value></data>
+  <data name="SearchUnavailable" xml:space="preserve"><value>ไม่สามารถค้นหาลูกค้าได้</value></data>
+  <data name="NoCustomers" xml:space="preserve"><value>ไม่พบลูกค้าที่ตรงกับการค้นหา</value></data>
+</root>

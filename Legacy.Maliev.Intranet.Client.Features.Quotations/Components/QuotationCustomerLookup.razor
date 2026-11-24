@@ -1,0 +1,125 @@
+@implements IDisposable
+@inject HttpClient Http
+@inject IStringLocalizer<QuotationCustomerLookup> Text
+
+<div class="quotation-create__customer">
+    <ShadcnField Disabled="@Disabled">
+        <ShadcnFieldLabel For="quotation-customer-search">@Text["CustomerSearch"]</ShadcnFieldLabel>
+        <input id="quotation-customer-search" class="shadcn-input" type="search" maxlength="@MaximumSearchLength"
+               disabled="@Disabled" @bind="search" @bind:event="oninput" @bind:after="ResetSearch" />
+    </ShadcnField>
+    <ShadcnButton ButtonType="ShadcnButtonType.Button" Variant="ShadcnButtonVariant.Outline"
+                  OnClick="SearchAsync" Disabled="@(Disabled || string.IsNullOrWhiteSpace(search))">@Text["Search"]</ShadcnButton>
+</div>
+@if (searching)
+{
+    <p role="status">@Text["Searching"]</p>
+}
+else if (message is not null)
+{
+    <p role="status">@message</p>
+}
+else if (results.Count > 0)
+{
+    <ul aria-label="@Text["CustomerResults"]">
+        @foreach (var customer in results)
+        {
+            <li>
+                <ShadcnButton ButtonType="ShadcnButtonType.Button" Variant="ShadcnButtonVariant.Outline"
+                              Disabled="@Disabled" OnClick="() => SelectAsync(customer)">#@customer.Id @customer.FullName</ShadcnButton>
+            </li>
+        }
+    </ul>
+}
+
+@code {
+    private const int MaximumSearchLength = 100;
+    private const int ResultLimit = 10;
+    private readonly LatestRequestGate searchGate = new();
+    private IReadOnlyList<CustomerListItem> results = [];
+    private string search = string.Empty;
+    private string? message;
+    private bool searching;
+    private bool disposed;
+
+    [Parameter] public bool Disabled { get; set; }
+    [Parameter, EditorRequired] public EventCallback<int> CustomerSelected { get; set; }
+
+    protected override void OnParametersSet()
+    {
+        if (Disabled) ResetSearch();
+    }
+
+    private void ResetSearch()
+    {
+        if (disposed) return;
+        using var lease = searchGate.Begin();
+        ClearResults();
+    }
+
+    private void ClearResults()
+    {
+        results = [];
+        message = null;
+        searching = false;
+    }
+
+    private async Task SearchAsync()
+    {
+        if (disposed || Disabled) return;
+        using var lease = searchGate.Begin();
+        ClearResults();
+        var query = search.Trim();
+        if (query.Length == 0) return;
+        if (query.Length > MaximumSearchLength)
+        {
+            message = Text["SearchTooLong", MaximumSearchLength];
+            return;
+        }
+
+        searching = true;
+        try
+        {
+            using var response = await Http.GetForPresentationAsync(
+                $"/bff/customers?search={Uri.EscapeDataString(query)}&index=1&size={ResultLimit}", lease.CancellationToken);
+            if (!lease.IsCurrent) return;
+            if (!response.IsSuccessStatusCode)
+            {
+                message = Text[response.StatusCode == HttpStatusCode.Forbidden ? "SearchForbidden" : "SearchUnavailable"];
+                return;
+            }
+
+            var page = await response.Content.ReadFromJsonAsync<CustomerListPage>(lease.CancellationToken);
+            if (!lease.IsCurrent) return;
+            if (page?.Items is null)
+            {
+                message = Text["SearchUnavailable"];
+                return;
+            }
+
+            results = page.Items.Where(customer => customer is not null && customer.Id > 0).Take(ResultLimit).ToArray();
+            if (results.Count == 0) message = Text["NoCustomers"];
+        }
+        catch (Exception exception) when (exception is HttpRequestException or OperationCanceledException or System.Text.Json.JsonException)
+        {
+            if (lease.IsCurrent) message = Text["SearchUnavailable"];
+        }
+        finally
+        {
+            if (lease.IsCurrent) searching = false;
+        }
+    }
+
+    private Task SelectAsync(CustomerListItem customer)
+    {
+        if (disposed || Disabled || !results.Any(result => ReferenceEquals(result, customer))) return Task.CompletedTask;
+        ResetSearch();
+        return CustomerSelected.InvokeAsync(customer.Id);
+    }
+
+    public void Dispose()
+    {
+        disposed = true;
+        searchGate.Dispose();
+    }
+}

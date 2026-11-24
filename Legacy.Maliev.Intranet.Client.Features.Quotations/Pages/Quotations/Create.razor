@@ -14,6 +14,9 @@
     {
         @if (!string.IsNullOrWhiteSpace(error)) { <ShadcnAlert Variant="ShadcnAlertVariant.Destructive" AlertRole="ShadcnAlertRole.Alert"><ShadcnAlertDescription>@error</ShadcnAlertDescription></ShadcnAlert> }
         @if (!string.IsNullOrWhiteSpace(warning)) { <ShadcnAlert AlertRole="ShadcnAlertRole.Status"><ShadcnAlertDescription>@warning</ShadcnAlertDescription></ShadcnAlert> }
+        var lookupContext = (CustomerId, SourceRequestId, model.CustomerId);
+        <QuotationCustomerLookup @key="lookupContext" Disabled="@submitting"
+                                 CustomerSelected="id => SelectSearchedCustomerAsync(id, lookupContext)" />
         <EditForm EditContext="@editContext" OnValidSubmit="SubmitAsync" class="quotation-create__form">
             <DataAnnotationsValidator />
             <section class="quotation-create__section" aria-labelledby="customer-heading">
@@ -83,6 +86,12 @@
     protected override void OnInitialized() => editContext = new EditContext(model);
     protected override async Task OnParametersSetAsync() { model.CustomerId = CustomerId is > 0 ? CustomerId.Value : model.CustomerId; await LoadPageAsync(model.CustomerId > 0 ? model.CustomerId : null); }
     private async Task LoadCustomerAsync() => await LoadPageAsync(model.CustomerId > 0 ? model.CustomerId : null);
+    private Task SelectSearchedCustomerAsync(int id, (int? CustomerId, int? SourceRequestId, int FormCustomerId) lookupContext)
+    {
+        if (loading || submitting || lookupContext != (CustomerId, SourceRequestId, model.CustomerId)) return Task.CompletedTask;
+        model.CustomerId = id;
+        return LoadCustomerAsync();
+    }
     private async Task SearchOrdersAsync()
     {
         if (page is null || string.IsNullOrWhiteSpace(orderSearch)) return;

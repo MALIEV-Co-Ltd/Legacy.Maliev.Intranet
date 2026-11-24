@@ -1,0 +1,14 @@
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
+  <data name="CustomerSearch" xml:space="preserve"><value>Customer name or email</value></data>
+  <data name="Search" xml:space="preserve"><value>Search customers</value></data>
+  <data name="Searching" xml:space="preserve"><value>Searching for customers…</value></data>
+  <data name="CustomerResults" xml:space="preserve"><value>Matching customers</value></data>
+  <data name="SearchTooLong" xml:space="preserve"><value>Use {0} characters or fewer.</value></data>
+  <data name="SearchForbidden" xml:space="preserve"><value>You do not have permission to search the customer list.</value></data>
+  <data name="SearchUnavailable" xml:space="preserve"><value>Customer search is unavailable.</value></data>
+  <data name="NoCustomers" xml:space="preserve"><value>No matching customers found.</value></data>
+</root>
