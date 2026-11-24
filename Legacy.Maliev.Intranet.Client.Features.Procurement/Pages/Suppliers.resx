@@ -17,6 +17,9 @@
   <data name="Name" xml:space="preserve"><value>Name</value></data>
   <data name="Email" xml:space="preserve"><value>Email</value></data>
   <data name="Telephone" xml:space="preserve"><value>Telephone</value></data>
+  <data name="Website" xml:space="preserve"><value>Website</value></data>
+  <data name="Mobile" xml:space="preserve"><value>Mobile</value></data>
+  <data name="Fax" xml:space="preserve"><value>Fax</value></data>
   <data name="SupplierPages" xml:space="preserve"><value>Supplier pages</value></data>
   <data name="Previous" xml:space="preserve"><value>Previous</value></data>
   <data name="Next" xml:space="preserve"><value>Next</value></data>

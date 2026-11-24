@@ -26,7 +26,10 @@ public sealed record SupplierListItem(
     int Id,
     string? Name,
     string? Email,
-    string? Telephone);
+    string? Telephone,
+    string? Website = null,
+    string? Mobile = null,
+    string? Fax = null);
 
 /// <summary>Browser-safe legacy-compatible page of suppliers.</summary>
 public sealed record SupplierListPage(

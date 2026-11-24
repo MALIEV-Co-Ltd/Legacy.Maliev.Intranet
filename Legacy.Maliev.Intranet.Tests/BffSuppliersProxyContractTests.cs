@@ -29,11 +29,33 @@ public sealed class BffSuppliersProxyContractTests
         Assert.Equal("/Suppliers?sort=SupplierName_Ascending&search=Thai%20supplier&index=2&size=25", downstream.PathAndQuery);
         Assert.Equal("Bearer signed-service-token", downstream.Authorization);
         Assert.Contains("\"name\":\"Thai supplier\"", json, StringComparison.Ordinal);
-        Assert.DoesNotContain("website", json, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("\"website\":\"https://secret.example/\"", json, StringComparison.Ordinal);
+        Assert.Contains("\"mobile\":\"089-000-0000\"", json, StringComparison.Ordinal);
+        Assert.Contains("\"fax\":\"02-987-6543\"", json, StringComparison.Ordinal);
         Assert.DoesNotContain("taxNumber", json, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("note", json, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("signed-service-token", json, StringComparison.Ordinal);
         Assert.DoesNotContain("server-only-access-token", json, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("javascript:alert(1)")]
+    [InlineData("https://user:password@supplier.example/path")]
+    [InlineData("/relative")]
+    public async Task UnsafeWebsiteIsNotExposedAsALink(string website)
+    {
+        var downstream = new RecordingSupplierHandler(SupplierPageJson.Replace("https://secret.example", website, StringComparison.Ordinal));
+        await using var factory = new SuppliersBffFactory(downstream, suppliersRead: true);
+        using var client = CreateClient(factory);
+        await SignInAsync(client);
+
+        using var response = await client.GetAsync("/bff/suppliers");
+        var json = await response.Content.ReadAsStringAsync();
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.DoesNotContain(website, json, StringComparison.Ordinal);
+        using var document = System.Text.Json.JsonDocument.Parse(json);
+        var item = document.RootElement.GetProperty("items")[0];
+        Assert.True(!item.TryGetProperty("website", out var value) || value.ValueKind == System.Text.Json.JsonValueKind.Null);
     }
 
     [Fact]
