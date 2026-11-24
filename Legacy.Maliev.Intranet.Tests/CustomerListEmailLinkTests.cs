@@ -11,6 +11,7 @@ public sealed class CustomerListEmailLinkTests
     [Theory]
     [InlineData("customer@example.test", "mailto:customer@example.test")]
     [InlineData("customer+sales@example.test", "mailto:customer%2Bsales@example.test")]
+    [InlineData("billing%team@example.test", "mailto:billing%25team@example.test")]
     public void CustomerEmail_IsAnEncodedMailLink(string email, string expectedHref)
     {
         using var context = new BunitContext();
