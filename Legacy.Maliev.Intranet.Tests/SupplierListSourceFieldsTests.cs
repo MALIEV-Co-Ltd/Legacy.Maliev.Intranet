@@ -8,6 +8,28 @@ namespace Legacy.Maliev.Intranet.Tests;
 
 public sealed class SupplierListSourceFieldsTests
 {
+    [Fact]
+    public void SupplierWebsiteWithMarkupCharactersRendersAsSafeLinkAndText()
+    {
+        const string website = "https://supplier.example/path?q=<script>";
+        using var context = new BunitContext();
+        context.Services.AddLocalization();
+        context.Services.AddLogging();
+        context.JSInterop.Mode = JSRuntimeMode.Loose;
+        using var handler = new SupplierHandler(website);
+        using var http = new HttpClient(handler) { BaseAddress = new Uri("https://localhost") };
+        context.Services.AddSingleton(http);
+
+        var page = context.Render<SupplierPage>();
+        page.WaitForAssertion(() => Assert.Contains("Example", page.Markup, StringComparison.Ordinal));
+        var cell = page.Find("td[data-column='website']");
+        var link = cell.QuerySelector("a");
+        Assert.NotNull(link);
+        Assert.Equal("https://supplier.example/path?q=%3Cscript%3E", link.GetAttribute("href"));
+        Assert.Equal(website, link.TextContent);
+        Assert.Empty(cell.QuerySelectorAll("script"));
+    }
+
     [Theory]
     [InlineData("https://supplier.example/path", true)]
     [InlineData("http://supplier.example/path", true)]
